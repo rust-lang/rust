@@ -8,13 +8,12 @@ use crate::diagnostics::utils::{
     report_error_if_not_applied_to_span, report_type_error, type_is_unit, type_matches_path,
     Applicability, FieldInfo, FieldInnerTy, HasFieldMap, SetOnce,
 };
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
 use std::str::FromStr;
 use syn::{
-    parse_quote, spanned::Spanned, Attribute, Field, Meta, MetaList, MetaNameValue, NestedMeta,
-    Path, Type,
+    parse_quote, spanned::Spanned, Attribute, Meta, MetaList, MetaNameValue, NestedMeta, Path, Type,
 };
 use synstructure::{BindingInfo, Structure};
 
@@ -81,8 +80,8 @@ impl DiagnosticDeriveBuilder {
     }
 
     pub fn body<'s>(&mut self, structure: &mut Structure<'s>) -> (TokenStream, TokenStream) {
-        // Keep track of which fields need to be handled with a by-move binding.
-        let mut needs_moved = std::collections::HashSet::new();
+        // Keep track of which fields are subdiagnostics or have no attributes.
+        let mut subdiagnostics_or_empty = std::collections::HashSet::new();
 
         // Generates calls to `span_label` and similar functions based on the attributes
         // on fields. Code for suggestions uses formatting machinery and the value of
@@ -93,11 +92,16 @@ impl DiagnosticDeriveBuilder {
         let attrs = structure
             .clone()
             .filter(|field_binding| {
-                let ast = &field_binding.ast();
-                !self.needs_move(ast) || {
-                    needs_moved.insert(field_binding.binding.clone());
-                    false
-                }
+                let attrs = &field_binding.ast().attrs;
+
+                (!attrs.is_empty()
+                    && attrs.iter().all(|attr| {
+                        "subdiagnostic" != attr.path.segments.last().unwrap().ident.to_string()
+                    }))
+                    || {
+                        subdiagnostics_or_empty.insert(field_binding.binding.clone());
+                        false
+                    }
             })
             .each(|field_binding| self.generate_field_attrs_code(field_binding));
 
@@ -107,39 +111,10 @@ impl DiagnosticDeriveBuilder {
         // attributes or a `#[subdiagnostic]` attribute then it must be passed as an
         // argument to the diagnostic so that it can be referred to by Fluent messages.
         let args = structure
-            .filter(|field_binding| needs_moved.contains(&field_binding.binding))
+            .filter(|field_binding| subdiagnostics_or_empty.contains(&field_binding.binding))
             .each(|field_binding| self.generate_field_attrs_code(field_binding));
 
         (attrs, args)
-    }
-
-    /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
-    /// call (like `span_label`).
-    fn should_generate_set_arg(&self, field: &Field) -> bool {
-        field.attrs.is_empty()
-    }
-
-    /// Returns `true` if `field` needs to have code generated in the by-move branch of the
-    /// generated derive rather than the by-ref branch.
-    fn needs_move(&self, field: &Field) -> bool {
-        let generates_set_arg = self.should_generate_set_arg(field);
-        let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
-        // FIXME(davidtwco): better support for one field needing to be in the by-move and
-        // by-ref branches.
-        let is_subdiagnostic = field
-            .attrs
-            .iter()
-            .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
-            .any(|attr| attr == "subdiagnostic");
-
-        // `set_arg` calls take their argument by-move..
-        generates_set_arg
-            // If this is a `MultiSpan` field then it needs to be moved to be used by any
-            // attribute..
-            || is_multispan
-            // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
-            // unlikely to be `Copy`..
-            || is_subdiagnostic
     }
 
     /// Establishes state in the `DiagnosticDeriveBuilder` resulting from the struct
@@ -156,7 +131,7 @@ impl DiagnosticDeriveBuilder {
         let name = name.as_str();
         let meta = attr.parse_meta()?;
 
-        let is_help_note_or_warn = matches!(name, "help" | "note" | "warn_");
+        let is_help_or_note = matches!(name, "help" | "note");
 
         let nested = match meta {
             // Most attributes are lists, like `#[error(..)]`/`#[warning(..)]` for most cases or
@@ -164,12 +139,8 @@ impl DiagnosticDeriveBuilder {
             Meta::List(MetaList { ref nested, .. }) => nested,
             // Subdiagnostics without spans can be applied to the type too, and these are just
             // paths: `#[help]` and `#[note]`
-            Meta::Path(_) if is_help_note_or_warn => {
-                let fn_name = if name == "warn_" {
-                    Ident::new("warn", attr.span())
-                } else {
-                    Ident::new(name, attr.span())
-                };
+            Meta::Path(_) if is_help_or_note => {
+                let fn_name = proc_macro2::Ident::new(name, attr.span());
                 return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::_subdiag::#fn_name); });
             }
             _ => throw_invalid_attr!(attr, &meta),
@@ -181,11 +152,9 @@ impl DiagnosticDeriveBuilder {
             "error" => self.kind.set_once((DiagnosticDeriveKind::Error, span)),
             "warning" => self.kind.set_once((DiagnosticDeriveKind::Warn, span)),
             "lint" => self.kind.set_once((DiagnosticDeriveKind::Lint, span)),
-            "help" | "note" | "warn_" => (),
+            "help" | "note" => (),
             _ => throw_invalid_attr!(attr, &meta, |diag| {
-                diag.help(
-                    "only `error`, `warning`, `help`, `note` and `warn_` are valid attributes",
-                )
+                diag.help("only `error`, `warning`, `help` and `note` are valid attributes")
             }),
         }
 
@@ -194,16 +163,14 @@ impl DiagnosticDeriveBuilder {
         let mut nested_iter = nested.into_iter();
         if let Some(nested_attr) = nested_iter.next() {
             // Report an error if there are any other list items after the path.
-            if is_help_note_or_warn && nested_iter.next().is_some() {
+            if is_help_or_note && nested_iter.next().is_some() {
                 throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
-                    diag.help(
-                        "`help`, `note` and `warn_` struct attributes can only have one argument",
-                    )
+                    diag.help("`help` and `note` struct attributes can only have one argument")
                 });
             }
 
             match nested_attr {
-                NestedMeta::Meta(Meta::Path(path)) if is_help_note_or_warn => {
+                NestedMeta::Meta(Meta::Path(path)) if is_help_or_note => {
                     let fn_name = proc_macro2::Ident::new(name, attr.span());
                     return Ok(quote! { #diag.#fn_name(rustc_errors::fluent::#path); });
                 }
@@ -211,7 +178,7 @@ impl DiagnosticDeriveBuilder {
                     self.slug.set_once((path.clone(), span));
                 }
                 NestedMeta::Meta(meta @ Meta::NameValue(_))
-                    if !is_help_note_or_warn
+                    if !is_help_or_note
                         && meta.path().segments.last().unwrap().ident.to_string() == "code" =>
                 {
                     // don't error for valid follow-up attributes
@@ -260,55 +227,57 @@ impl DiagnosticDeriveBuilder {
         let field = binding_info.ast();
         let field_binding = &binding_info.binding;
 
-        if self.should_generate_set_arg(&field) {
+        let inner_ty = FieldInnerTy::from_type(&field.ty);
+
+        // When generating `set_arg` or `add_subdiagnostic` calls, move data rather than
+        // borrow it to avoid requiring clones - this must therefore be the last use of
+        // each field (for example, any formatting machinery that might refer to a field
+        // should be generated already).
+        if field.attrs.is_empty() {
             let diag = &self.diag;
             let ident = field.ident.as_ref().unwrap();
-            return quote! {
+            quote! {
                 #diag.set_arg(
                     stringify!(#ident),
                     #field_binding
                 );
-            };
+            }
+        } else {
+            field
+                .attrs
+                .iter()
+                .map(move |attr| {
+                    let name = attr.path.segments.last().unwrap().ident.to_string();
+                    let (binding, needs_destructure) = match (name.as_str(), &inner_ty) {
+                        // `primary_span` can accept a `Vec<Span>` so don't destructure that.
+                        ("primary_span", FieldInnerTy::Vec(_)) => {
+                            (quote! { #field_binding.clone() }, false)
+                        }
+                        // `subdiagnostics` are not derefed because they are bound by value.
+                        ("subdiagnostic", _) => (quote! { #field_binding }, true),
+                        _ => (quote! { *#field_binding }, true),
+                    };
+
+                    let generated_code = self
+                        .generate_inner_field_code(
+                            attr,
+                            FieldInfo {
+                                binding: binding_info,
+                                ty: inner_ty.inner_type().unwrap_or(&field.ty),
+                                span: &field.span(),
+                            },
+                            binding,
+                        )
+                        .unwrap_or_else(|v| v.to_compile_error());
+
+                    if needs_destructure {
+                        inner_ty.with(field_binding, generated_code)
+                    } else {
+                        generated_code
+                    }
+                })
+                .collect()
         }
-
-        let needs_move = self.needs_move(&field);
-        let inner_ty = FieldInnerTy::from_type(&field.ty);
-
-        field
-            .attrs
-            .iter()
-            .map(move |attr| {
-                let name = attr.path.segments.last().unwrap().ident.to_string();
-                let needs_clone =
-                    name == "primary_span" && matches!(inner_ty, FieldInnerTy::Vec(_));
-                let (binding, needs_destructure) = if needs_clone {
-                    // `primary_span` can accept a `Vec<Span>` so don't destructure that.
-                    (quote! { #field_binding.clone() }, false)
-                } else if needs_move {
-                    (quote! { #field_binding }, true)
-                } else {
-                    (quote! { *#field_binding }, true)
-                };
-
-                let generated_code = self
-                    .generate_inner_field_code(
-                        attr,
-                        FieldInfo {
-                            binding: binding_info,
-                            ty: inner_ty.inner_type().unwrap_or(&field.ty),
-                            span: &field.span(),
-                        },
-                        binding,
-                    )
-                    .unwrap_or_else(|v| v.to_compile_error());
-
-                if needs_destructure {
-                    inner_ty.with(field_binding, generated_code)
-                } else {
-                    generated_code
-                }
-            })
-            .collect()
     }
 
     fn generate_inner_field_code(
@@ -355,12 +324,10 @@ impl DiagnosticDeriveBuilder {
                 report_error_if_not_applied_to_span(attr, &info)?;
                 Ok(self.add_spanned_subdiagnostic(binding, ident, parse_quote! { _subdiag::label }))
             }
-            "note" | "help" | "warn_" => {
-                let warn_ident = Ident::new("warn", Span::call_site());
-                let (ident, path) = match name {
-                    "note" => (ident, parse_quote! { _subdiag::note }),
-                    "help" => (ident, parse_quote! { _subdiag::help }),
-                    "warn_" => (&warn_ident, parse_quote! { _subdiag::warn }),
+            "note" | "help" => {
+                let path = match name {
+                    "note" => parse_quote! { _subdiag::note },
+                    "help" => parse_quote! { _subdiag::help },
                     _ => unreachable!(),
                 };
                 if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
@@ -397,10 +364,10 @@ impl DiagnosticDeriveBuilder {
             "suggestion" | "suggestion_short" | "suggestion_hidden" | "suggestion_verbose" => {
                 return self.generate_inner_field_code_suggestion(attr, info);
             }
-            "label" | "help" | "note" | "warn_" => (),
+            "label" | "help" | "note" => (),
             _ => throw_invalid_attr!(attr, &meta, |diag| {
                 diag.help(
-                    "only `label`, `help`, `note`, `warn` or `suggestion{,_short,_hidden,_verbose}` are \
+                    "only `label`, `note`, `help` or `suggestion{,_short,_hidden,_verbose}` are \
                      valid field attributes",
                 )
             }),
@@ -429,14 +396,7 @@ impl DiagnosticDeriveBuilder {
                 Ok(self.add_spanned_subdiagnostic(binding, ident, msg))
             }
             "note" | "help" if type_is_unit(&info.ty) => Ok(self.add_subdiagnostic(ident, msg)),
-            // `warn_` must be special-cased because the attribute `warn` already has meaning and
-            // so isn't used, despite the diagnostic API being named `warn`.
-            "warn_" if type_matches_path(&info.ty, &["rustc_span", "Span"]) => Ok(self
-                .add_spanned_subdiagnostic(binding, &Ident::new("warn", Span::call_site()), msg)),
-            "warn_" if type_is_unit(&info.ty) => {
-                Ok(self.add_subdiagnostic(&Ident::new("warn", Span::call_site()), msg))
-            }
-            "note" | "help" | "warn_" => report_type_error(attr, "`Span` or `()`")?,
+            "note" | "help" => report_type_error(attr, "`Span` or `()`")?,
             _ => unreachable!(),
         }
     }

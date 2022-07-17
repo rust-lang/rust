@@ -40,35 +40,6 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
-macro_rules! into_diagnostic_arg_using_display {
-    ($( $ty:ty ),+ $(,)?) => {
-        $(
-            impl IntoDiagnosticArg for $ty {
-                fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-                    self.to_string().into_diagnostic_arg()
-                }
-            }
-        )+
-    }
-}
-
-into_diagnostic_arg_using_display!(
-    i8,
-    u8,
-    i16,
-    u16,
-    i32,
-    u32,
-    i64,
-    u64,
-    i128,
-    u128,
-    std::num::NonZeroU32,
-    hir::Target,
-    Edition,
-    Ident,
-);
-
 impl IntoDiagnosticArg for bool {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         if self {
@@ -79,9 +50,81 @@ impl IntoDiagnosticArg for bool {
     }
 }
 
-impl IntoDiagnosticArg for char {
+impl IntoDiagnosticArg for i8 {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self)))
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u8 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i16 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u16 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i64 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u64 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for i128 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for u128 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for String {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl IntoDiagnosticArg for std::num::NonZeroU32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for Edition {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
 
@@ -91,15 +134,15 @@ impl IntoDiagnosticArg for Symbol {
     }
 }
 
-impl<'a> IntoDiagnosticArg for &'a str {
+impl IntoDiagnosticArg for Ident {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         self.to_string().into_diagnostic_arg()
     }
 }
 
-impl IntoDiagnosticArg for String {
+impl<'a> IntoDiagnosticArg for &'a str {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(self))
+        self.to_string().into_diagnostic_arg()
     }
 }
 

@@ -1,16 +1,16 @@
-error: `#[doc(keyword = "...")]` should be used on empty modules
+error: `#[doc(keyword = "...")]` can only be used on empty modules
   --> $DIR/doc_keyword.rs:6:7
    |
 LL | #[doc(keyword = "hell")]
    |       ^^^^^^^^^^^^^^^^
 
-error: `#[doc(keyword = "...")]` should be used on modules
+error: `#[doc(keyword = "...")]` can only be used on modules
   --> $DIR/doc_keyword.rs:11:7
    |
 LL | #[doc(keyword = "hall")]
    |       ^^^^^^^^^^^^^^^^
 
-error: `#[doc(keyword = "...")]` should be used on modules
+error: `#[doc(keyword = "...")]` can only be used on modules
   --> $DIR/doc_keyword.rs:17:11
    |
 LL |     #[doc(keyword = "match")]

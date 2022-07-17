@@ -21,7 +21,7 @@ error: `#[nonsense(...)]` is not a valid attribute
 LL | #[nonsense(typeck::ambiguous_lifetime_bound, code = "E0123")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: only `error`, `warning`, `help`, `note` and `warn_` are valid attributes
+   = help: only `error`, `warning`, `help` and `note` are valid attributes
 
 error: diagnostic kind not specified
   --> $DIR/diagnostic-derive.rs:53:1
@@ -233,7 +233,7 @@ LL | | struct SlugNotProvided {}
    |
    = help: specify the slug as the first argument to the attribute, such as `#[error(typeck::example_error)]`
 
-error: the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
   --> $DIR/diagnostic-derive.rs:142:5
    |
 LL |     #[primary_span]
@@ -247,7 +247,7 @@ LL |     #[nonsense]
    |
    = help: only `skip_arg`, `primary_span`, `label`, `note`, `help` and `subdiagnostic` are valid field attributes
 
-error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+error: the `#[label(...)]` attribute can only be applied to fields of type `Span`
   --> $DIR/diagnostic-derive.rs:167:5
    |
 LL |     #[label(typeck::label)]
@@ -279,7 +279,7 @@ LL | #[derive(SessionDiagnostic)]
    = note: if you intended to print `}`, you can escape it using `}}`
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+error: the `#[label(...)]` attribute can only be applied to fields of type `Span`
   --> $DIR/diagnostic-derive.rs:210:5
    |
 LL |     #[label(typeck::label)]
@@ -363,7 +363,7 @@ error: `#[label(...)]` is not a valid attribute
 LL |     #[label(typeck::label, foo("..."))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: only `#[error(..)]` and `#[warning(..)]` are supported
+error: only `#[error(..)]` and `#[warn(..)]` are supported
   --> $DIR/diagnostic-derive.rs:540:1
    |
 LL | / #[lint(typeck::ambiguous_lifetime_bound)]

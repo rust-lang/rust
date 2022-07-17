@@ -22,7 +22,7 @@ LL | #![deny(future_incompatible)]
    = note: `#[deny(invalid_doc_attributes)]` implied by `#[deny(future_incompatible)]`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
-   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+   = note: read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level for more information
 
 error: aborting due to previous error; 1 warning emitted
 

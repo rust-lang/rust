@@ -7,8 +7,8 @@
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(iter_intersperse)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
+#![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
@@ -27,7 +27,6 @@ pub mod dead;
 mod debugger_visualizer;
 mod diagnostic_items;
 pub mod entry;
-mod errors;
 pub mod hir_id_validator;
 pub mod hir_stats;
 mod lang_items;

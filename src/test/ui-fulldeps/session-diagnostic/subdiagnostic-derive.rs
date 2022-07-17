@@ -244,7 +244,7 @@ enum V {
 //~^ ERROR label without `#[primary_span]` field
 struct W {
     #[primary_span]
-    //~^ ERROR the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+    //~^ ERROR the `#[primary_span]` attribute can only be applied to fields of type `Span`
     span: String,
 }
 
@@ -507,16 +507,4 @@ enum AX {
         #[primary_span]
         span: Span,
     }
-}
-
-#[derive(SessionSubdiagnostic)]
-#[warn_(parser::add_paren)]
-struct AY {
-}
-
-#[derive(SessionSubdiagnostic)]
-#[warn_(parser::add_paren)]
-struct AZ {
-    #[primary_span]
-    span: Span,
 }

@@ -15,6 +15,6 @@ fn foo() {}
 // Regression test for the ICE described in #83512.
 trait Foo {
     #[doc(keyword = "match")]
-    //~^ ERROR: `#[doc(keyword = "...")]` should be used on modules
+    //~^ ERROR: `#[doc(keyword = "...")]` can only be used on modules
     fn quux() {}
 }

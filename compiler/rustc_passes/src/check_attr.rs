@@ -4,10 +4,9 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors;
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -176,20 +175,16 @@ impl CheckAttrVisitor<'_> {
                 if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
                     attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
                 {
-                    match attr.style {
-                        ast::AttrStyle::Outer => self.tcx.emit_spanned_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr.span,
-                            errors::OuterCrateLevelAttr,
-                        ),
-                        ast::AttrStyle::Inner => self.tcx.emit_spanned_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr.span,
-                            errors::InnerCrateLevelAttr,
-                        ),
-                    }
+                    self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                        let msg = match attr.style {
+                            ast::AttrStyle::Outer => {
+                                "crate-level attribute should be an inner attribute: add an exclamation \
+                                 mark: `#![foo]`"
+                            }
+                            ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
+                        };
+                        lint.build(msg).emit();
+                    });
                 }
             }
 
@@ -214,21 +209,37 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx.emit_spanned_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::IgnoredAttrWithMacro { sym },
-        );
+        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+            lint.build(&format!(
+                "`#[{sym}]` is ignored on struct fields, match arms and macro defs",
+            ))
+            .warn(
+                "this was previously accepted by the compiler but is \
+                 being phased out; it will become a hard error in \
+                 a future release!",
+            )
+            .note(
+                "see issue #80564 <https://github.com/rust-lang/rust/issues/80564> \
+                 for more information",
+            )
+            .emit();
+        });
     }
 
     fn inline_attr_str_error_without_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
-        self.tcx.emit_spanned_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::IgnoredAttr { sym },
-        );
+        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+            lint.build(&format!("`#[{sym}]` is ignored on struct fields and match arms"))
+                .warn(
+                    "this was previously accepted by the compiler but is \
+                 being phased out; it will become a hard error in \
+                 a future release!",
+                )
+                .note(
+                    "see issue #80564 <https://github.com/rust-lang/rust/issues/80564> \
+                 for more information",
+                )
+                .emit();
+        });
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure. Returns `true` if valid.
@@ -238,12 +249,9 @@ impl CheckAttrVisitor<'_> {
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredInlineAttrFnProto,
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[inline]` is ignored on function prototypes").emit();
+                });
                 true
             }
             // FIXME(#65833): We permit associated consts to have an `#[inline]` attribute with
@@ -251,12 +259,19 @@ impl CheckAttrVisitor<'_> {
             // accidentally, to to be compatible with crates depending on them, we can't throw an
             // error here.
             Target::AssocConst => {
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredInlineAttrConstants,
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[inline]` is ignored on constants")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                             being phased out; it will become a hard error in \
+                             a future release!",
+                        )
+                        .note(
+                            "see issue #65833 <https://github.com/rust-lang/rust/issues/65833> \
+                             for more information",
+                        )
+                        .emit();
+                });
                 true
             }
             // FIXME(#80564): Same for fields, arms, and macro defs
@@ -265,10 +280,14 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx.sess.emit_err(errors::InlineNotFnOrClosure {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0518,
+                    "attribute should be applied to function or closure",
+                )
+                .span_label(span, "not a function or closure")
+                .emit();
                 false
             }
         }
@@ -290,40 +309,36 @@ impl CheckAttrVisitor<'_> {
 
             // function prototypes can't be covered
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredNoCoverageFnProto,
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[no_coverage]` is ignored on function prototypes").emit();
+                });
                 true
             }
 
             Target::Mod | Target::ForeignMod | Target::Impl | Target::Trait => {
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredNoCoveragePropagate,
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[no_coverage]` does not propagate into items and must be applied to the contained functions directly").emit();
+                });
                 true
             }
 
             Target::Expression | Target::Statement | Target::Arm => {
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::IgnoredNoCoverageFnDefn,
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("`#[no_coverage]` may only be applied to function definitions")
+                        .emit();
+                });
                 true
             }
 
             _ => {
-                self.tcx.sess.emit_err(errors::IgnoredNoCoverageNotCoverable {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0788,
+                    "`#[no_coverage]` must be applied to coverable code",
+                )
+                .span_label(span, "not coverable code")
+                .emit();
                 false
             }
         }
@@ -374,10 +389,14 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "attribute should be applied to a function definition",
+                    )
+                    .span_label(span, "not a function definition")
+                    .emit();
                 false
             }
         }
@@ -389,10 +408,14 @@ impl CheckAttrVisitor<'_> {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "attribute should be applied to a function definition",
+                    )
+                    .span_label(span, "not a function definition")
+                    .emit();
                 false
             }
         }
@@ -409,7 +432,13 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         match target {
             _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
-                self.tcx.sess.emit_err(errors::NakedTrackedCaller { attr_span });
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr_span,
+                    E0736,
+                    "cannot use `#[track_caller]` with `#[naked]`",
+                )
+                .emit();
                 false
             }
             Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => true,
@@ -424,9 +453,14 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx
-                    .sess
-                    .emit_err(errors::TrackedCallerWrongLocation { attr_span, defn_span: span });
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr_span,
+                    E0739,
+                    "attribute should be applied to function"
+                )
+                .span_label(span, "not a function")
+                .emit();
                 false
             }
         }
@@ -451,10 +485,14 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx.sess.emit_err(errors::NonExhaustiveWrongLocation {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                struct_span_err!(
+                    self.tcx.sess,
+                    attr.span,
+                    E0701,
+                    "attribute can only be applied to a struct or enum"
+                )
+                .span_label(span, "not a struct or enum")
+                .emit();
                 false
             }
         }
@@ -473,10 +511,11 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToTrait {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute can only be applied to a trait")
+                    .span_label(span, "not a trait")
+                    .emit();
                 false
             }
         }
@@ -492,10 +531,11 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Trait => true,
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToTrait {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute can only be applied to a trait")
+                    .span_label(span, "not a trait")
+                    .emit();
                 false
             }
         }
@@ -515,12 +555,16 @@ impl CheckAttrVisitor<'_> {
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::TargetFeatureOnStatement,
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("attribute should be applied to a function")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                             being phased out; it will become a hard error in \
+                             a future release!",
+                        )
+                        .span_label(span, "not a function")
+                        .emit();
+                });
                 true
             }
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
@@ -532,10 +576,11 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a function")
+                    .span_label(span, "not a function")
+                    .emit();
                 false
             }
         }
@@ -546,17 +591,24 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::ForeignStatic | Target::Static => true,
             _ => {
-                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToStatic {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a static")
+                    .span_label(span, "not a static")
+                    .emit();
                 false
             }
         }
     }
 
     fn doc_attr_str_error(&self, meta: &NestedMetaItem, attr_name: &str) {
-        self.tcx.sess.emit_err(errors::DocExpectStr { attr_span: meta.span(), attr_name });
+        self.tcx
+            .sess
+            .struct_span_err(
+                meta.span(),
+                &format!("doc {0} attribute expects a string: #[doc({0} = \"a\")]", attr_name),
+            )
+            .emit();
     }
 
     fn check_doc_alias_value(
@@ -569,12 +621,22 @@ impl CheckAttrVisitor<'_> {
         aliases: &mut FxHashMap<String, Span>,
     ) -> bool {
         let tcx = self.tcx;
-        let span = meta.name_value_literal_span().unwrap_or_else(|| meta.span());
-        let attr_str =
-            &format!("`#[doc(alias{})]`", if is_list { "(\"...\")" } else { " = \"...\"" });
+        let err_fn = move |span: Span, msg: &str| {
+            tcx.sess.span_err(
+                span,
+                &format!(
+                    "`#[doc(alias{})]` {}",
+                    if is_list { "(\"...\")" } else { " = \"...\"" },
+                    msg,
+                ),
+            );
+            false
+        };
         if doc_alias == kw::Empty {
-            tcx.sess.emit_err(errors::DocAliasEmpty { span, attr_str });
-            return false;
+            return err_fn(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                "attribute cannot have empty value",
+            );
         }
 
         let doc_alias_str = doc_alias.as_str();
@@ -582,16 +644,23 @@ impl CheckAttrVisitor<'_> {
             .chars()
             .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
         {
-            tcx.sess.emit_err(errors::DocAliasBadChar { span, attr_str, char_: c });
+            self.tcx.sess.span_err(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                &format!(
+                    "{:?} character isn't allowed in `#[doc(alias{})]`",
+                    c,
+                    if is_list { "(\"...\")" } else { " = \"...\"" },
+                ),
+            );
             return false;
         }
         if doc_alias_str.starts_with(' ') || doc_alias_str.ends_with(' ') {
-            tcx.sess.emit_err(errors::DocAliasStartEnd { span, attr_str });
-            return false;
+            return err_fn(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                "cannot start or end with ' '",
+            );
         }
-
-        let span = meta.span();
-        if let Some(location) = match target {
+        if let Some(err) = match target {
             Target::Impl => Some("implementation block"),
             Target::ForeignMod => Some("extern block"),
             Target::AssocTy => {
@@ -617,21 +686,19 @@ impl CheckAttrVisitor<'_> {
             Target::Param => return false,
             _ => None,
         } {
-            tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
-            return false;
+            return err_fn(meta.span(), &format!("isn't allowed on {}", err));
         }
         let item_name = self.tcx.hir().name(hir_id);
         if item_name == doc_alias {
-            tcx.sess.emit_err(errors::DocAliasNotAnAlias { span, attr_str });
-            return false;
+            return err_fn(meta.span(), "is the same as the item's name");
         }
+        let span = meta.span();
         if let Err(entry) = aliases.try_insert(doc_alias_str.to_owned(), span) {
-            self.tcx.emit_spanned_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                span,
-                errors::DocAliasDuplicated { first_defn: *entry.entry.get() },
-            );
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, span, |lint| {
+                lint.build("doc alias is duplicated")
+                    .span_label(*entry.entry.get(), "first defined here")
+                    .emit();
+            });
         }
         true
     }
@@ -656,12 +723,22 @@ impl CheckAttrVisitor<'_> {
                         _ => {
                             self.tcx
                                 .sess
-                                .emit_err(errors::DocAliasNotStringLiteral { span: v.span() });
+                                .struct_span_err(
+                                    v.span(),
+                                    "`#[doc(alias(\"a\"))]` expects string literals",
+                                )
+                                .emit();
                             errors += 1;
                         }
                     },
                     None => {
-                        self.tcx.sess.emit_err(errors::DocAliasNotStringLiteral { span: v.span() });
+                        self.tcx
+                            .sess
+                            .struct_span_err(
+                                v.span(),
+                                "`#[doc(alias(\"a\"))]` expects string literals",
+                            )
+                            .emit();
                         errors += 1;
                     }
                 }
@@ -670,7 +747,14 @@ impl CheckAttrVisitor<'_> {
         } else if let Some(doc_alias) = meta.value_str() {
             self.check_doc_alias_value(meta, doc_alias, hir_id, target, false, aliases)
         } else {
-            self.tcx.sess.emit_err(errors::DocAliasMalformed { span: meta.span() });
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    "doc alias attribute expects a string `#[doc(alias = \"a\")]` or a list of \
+                     strings `#[doc(alias(\"a\", \"b\"))]`",
+                )
+                .emit();
             false
         }
     }
@@ -687,20 +771,35 @@ impl CheckAttrVisitor<'_> {
         }) {
             Some(ItemKind::Mod(ref module)) => {
                 if !module.item_ids.is_empty() {
-                    self.tcx.sess.emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            meta.span(),
+                            "`#[doc(keyword = \"...\")]` can only be used on empty modules",
+                        )
+                        .emit();
                     return false;
                 }
             }
             _ => {
-                self.tcx.sess.emit_err(errors::DocKeywordNotMod { span: meta.span() });
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        meta.span(),
+                        "`#[doc(keyword = \"...\")]` can only be used on modules",
+                    )
+                    .emit();
                 return false;
             }
         }
         if !rustc_lexer::is_ident(doc_keyword.as_str()) {
-            self.tcx.sess.emit_err(errors::DocKeywordInvalidIdent {
-                span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                doc_keyword,
-            });
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                    &format!("`{doc_keyword}` is not a valid identifier"),
+                )
+                .emit();
             return false;
         }
         true
@@ -713,12 +812,24 @@ impl CheckAttrVisitor<'_> {
         }) {
             Some(ItemKind::Impl(ref i)) => {
                 if !matches!(&i.self_ty.kind, hir::TyKind::Tup([_])) {
-                    self.tcx.sess.emit_err(errors::DocTupleVariadicNotFirst { span: meta.span() });
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            meta.span(),
+                            "`#[doc(tuple_variadic)]` must be used on the first of a set of tuple trait impls with varying arity",
+                        )
+                        .emit();
                     return false;
                 }
             }
             _ => {
-                self.tcx.sess.emit_err(errors::DocKeywordOnlyImpl { span: meta.span() });
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        meta.span(),
+                        "`#[doc(keyword = \"...\")]` can only be used on impl blocks",
+                    )
+                    .emit();
                 return false;
             }
         }
@@ -747,9 +858,13 @@ impl CheckAttrVisitor<'_> {
             if let Some((prev_inline, prev_span)) = *specified_inline {
                 if do_inline != prev_inline {
                     let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
-                    spans.push_span_label(prev_span, fluent::passes::doc_inline_conflict_first);
-                    spans.push_span_label(meta.span(), fluent::passes::doc_inline_conflict_second);
-                    self.tcx.sess.emit_err(errors::DocKeywordConflict { spans });
+                    spans.push_span_label(prev_span, "this attribute...");
+                    spans.push_span_label(meta.span(), "...conflicts with this attribute");
+                    self.tcx
+                        .sess
+                        .struct_span_err(spans, "conflicting doc inlining attributes")
+                        .help("remove one of the conflicting attributes")
+                        .emit();
                     return false;
                 }
                 true
@@ -758,14 +873,23 @@ impl CheckAttrVisitor<'_> {
                 true
             }
         } else {
-            self.tcx.emit_spanned_lint(
+            self.tcx.struct_span_lint_hir(
                 INVALID_DOC_ATTRIBUTES,
                 hir_id,
                 meta.span(),
-                errors::DocInlineOnlyUse {
-                    attr_span: meta.span(),
-                    item_span: (attr.style == AttrStyle::Outer)
-                        .then(|| self.tcx.hir().span(hir_id)),
+                |lint| {
+                    let mut err = lint.build(
+                        "this attribute can only be applied to a `use` item",
+                    );
+                    err.span_label(meta.span(), "only applicable on `use` items");
+                    if attr.style == AttrStyle::Outer {
+                        err.span_label(
+                            self.tcx.hir().span(hir_id),
+                            "not a `use` item",
+                        );
+                    }
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#inline-and-no_inline for more information")
+                        .emit();
                 },
             );
             false
@@ -780,7 +904,15 @@ impl CheckAttrVisitor<'_> {
         attr_name: &str,
     ) -> bool {
         if CRATE_HIR_ID == hir_id {
-            self.tcx.sess.emit_err(errors::DocAttrNotCrateLevel { span: meta.span(), attr_name });
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    &format!(
+                        "`#![doc({attr_name} = \"...\")]` isn't allowed as a crate-level attribute",
+                    ),
+                )
+                .emit();
             return false;
         }
         true
@@ -794,25 +926,36 @@ impl CheckAttrVisitor<'_> {
         hir_id: HirId,
     ) -> bool {
         if hir_id != CRATE_HIR_ID {
-            self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span(), |lint| {
-                let mut err = lint.build(fluent::passes::attr_crate_level);
-                if attr.style == AttrStyle::Outer
-                    && self.tcx.hir().get_parent_item(hir_id) == CRATE_DEF_ID
-                {
-                    if let Ok(mut src) = self.tcx.sess.source_map().span_to_snippet(attr.span) {
-                        src.insert(1, '!');
-                        err.span_suggestion_verbose(
-                            attr.span,
-                            fluent::passes::suggestion,
-                            src,
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        err.span_help(attr.span, fluent::passes::help);
+            self.tcx.struct_span_lint_hir(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                |lint| {
+                    let mut err = lint.build(
+                        "this attribute can only be applied at the crate level",
+                    );
+                    if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == CRATE_DEF_ID {
+                        if let Ok(mut src) =
+                            self.tcx.sess.source_map().span_to_snippet(attr.span)
+                        {
+                            src.insert(1, '!');
+                            err.span_suggestion_verbose(
+                                attr.span,
+                                "to apply to the crate, use an inner attribute",
+                                src,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_help(
+                                attr.span,
+                                "to apply to the crate, use an inner attribute",
+                            );
+                        }
                     }
-                }
-                err.note(fluent::passes::note).emit();
-            });
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level for more information")
+                        .emit();
+                },
+            );
             return false;
         }
         true
@@ -827,14 +970,18 @@ impl CheckAttrVisitor<'_> {
                 match i_meta.name_or_empty() {
                     sym::attr | sym::no_crate_inject => {}
                     _ => {
-                        self.tcx.emit_spanned_lint(
+                        self.tcx.struct_span_lint_hir(
                             INVALID_DOC_ATTRIBUTES,
                             hir_id,
                             i_meta.span(),
-                            errors::DocTestUnknown {
-                                path: rustc_ast_pretty::pprust::path_to_string(
-                                    &i_meta.meta_item().unwrap().path,
-                                ),
+                            |lint| {
+                                lint.build(&format!(
+                                    "unknown `doc(test)` attribute `{}`",
+                                    rustc_ast_pretty::pprust::path_to_string(
+                                        &i_meta.meta_item().unwrap().path
+                                    ),
+                                ))
+                                .emit();
                             },
                         );
                         is_valid = false;
@@ -842,12 +989,9 @@ impl CheckAttrVisitor<'_> {
                 }
             }
         } else {
-            self.tcx.emit_spanned_lint(
-                INVALID_DOC_ATTRIBUTES,
-                hir_id,
-                meta.span(),
-                errors::DocTestTakesList,
-            );
+            self.tcx.struct_span_lint_hir(INVALID_DOC_ATTRIBUTES, hir_id, meta.span(), |lint| {
+                lint.build("`#[doc(test(...)]` takes a list of attributes").emit();
+            });
             is_valid = false;
         }
         is_valid
@@ -949,66 +1093,79 @@ impl CheckAttrVisitor<'_> {
 
                         sym::primitive => {
                             if !self.tcx.features().rustdoc_internals {
-                                self.tcx.emit_spanned_lint(
+                                self.tcx.struct_span_lint_hir(
                                     INVALID_DOC_ATTRIBUTES,
                                     hir_id,
                                     i_meta.span,
-                                    errors::DocPrimitive,
+                                    |lint| {
+                                        let mut diag = lint.build(
+                                            "`doc(primitive)` should never have been stable",
+                                        );
+                                        diag.emit();
+                                    },
                                 );
                             }
                         }
 
                         _ => {
-                            let path = rustc_ast_pretty::pprust::path_to_string(&i_meta.path);
-                            if i_meta.has_name(sym::spotlight) {
-                                self.tcx.emit_spanned_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownSpotlight {
-                                        path,
-                                        span: i_meta.span
+                            self.tcx.struct_span_lint_hir(
+                                INVALID_DOC_ATTRIBUTES,
+                                hir_id,
+                                i_meta.span,
+                                |lint| {
+                                    let mut diag = lint.build(&format!(
+                                        "unknown `doc` attribute `{}`",
+                                        rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
+                                    ));
+                                    if i_meta.has_name(sym::spotlight) {
+                                        diag.note(
+                                            "`doc(spotlight)` was renamed to `doc(notable_trait)`",
+                                        );
+                                        diag.span_suggestion_short(
+                                            i_meta.span,
+                                            "use `notable_trait` instead",
+                                            "notable_trait",
+                                            Applicability::MachineApplicable,
+                                        );
+                                        diag.note("`doc(spotlight)` is now a no-op");
                                     }
-                                );
-                            } else if i_meta.has_name(sym::include) &&
-                                    let Some(value) = i_meta.value_str() {
-                                let applicability = if list.len() == 1 {
-                                    Applicability::MachineApplicable
-                                } else {
-                                    Applicability::MaybeIncorrect
-                                };
-                                // If there are multiple attributes, the suggestion would suggest
-                                // deleting all of them, which is incorrect.
-                                self.tcx.emit_spanned_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownInclude {
-                                        path,
-                                        value: value.to_string(),
-                                        inner: (attr.style == AttrStyle::Inner)
-                                            .then_some("!")
-                                            .unwrap_or(""),
-                                        sugg: (attr.meta().unwrap().span, applicability),
+                                    if i_meta.has_name(sym::include) {
+                                        if let Some(value) = i_meta.value_str() {
+                                            // if there are multiple attributes, the suggestion would suggest deleting all of them, which is incorrect
+                                            let applicability = if list.len() == 1 {
+                                                Applicability::MachineApplicable
+                                            } else {
+                                                Applicability::MaybeIncorrect
+                                            };
+                                            let inner = if attr.style == AttrStyle::Inner {
+                                                "!"
+                                            } else {
+                                                ""
+                                            };
+                                            diag.span_suggestion(
+                                                attr.meta().unwrap().span,
+                                                "use `doc = include_str!` instead",
+                                                format!(
+                                                    "#{inner}[doc = include_str!(\"{value}\")]",
+                                                ),
+                                                applicability,
+                                            );
+                                        }
                                     }
-                                );
-                            } else {
-                                self.tcx.emit_spanned_lint(
-                                    INVALID_DOC_ATTRIBUTES,
-                                    hir_id,
-                                    i_meta.span,
-                                    errors::DocTestUnknownAny { path }
-                                );
-                            }
+                                    diag.emit();
+                                },
+                            );
                             is_valid = false;
                         }
                     }
                 } else {
-                    self.tcx.emit_spanned_lint(
+                    self.tcx.struct_span_lint_hir(
                         INVALID_DOC_ATTRIBUTES,
                         hir_id,
                         meta.span(),
-                        errors::DocInvalid,
+                        |lint| {
+                            lint.build("invalid `doc` attribute").emit();
+                        },
                     );
                     is_valid = false;
                 }
@@ -1023,7 +1180,14 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Struct | Target::Enum | Target::TyAlias => true,
             _ => {
-                self.tcx.sess.emit_err(errors::PassByValue { attr_span: attr.span, span });
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "`pass_by_value` attribute should be applied to a struct, enum or type alias.",
+                    )
+                    .span_label(span, "is not a struct, enum or type alias")
+                    .emit();
                 false
             }
         }
@@ -1033,7 +1197,14 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Method(MethodKind::Inherent) => true,
             _ => {
-                self.tcx.sess.emit_err(errors::AllowIncoherentImpl { attr_span: attr.span, span });
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "`rustc_allow_incoherent_impl` attribute should be applied to impl items.",
+                    )
+                    .span_label(span, "the only currently supported targets are inherent methods")
+                    .emit();
                 false
             }
         }
@@ -1052,7 +1223,12 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 self.tcx
                     .sess
-                    .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span, span });
+                    .struct_span_err(
+                        attr.span,
+                        "`rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.",
+                    )
+                    .span_label(span, "only adts, extern types and traits are supported")
+                    .emit();
                 false
             }
         }
@@ -1062,12 +1238,19 @@ impl CheckAttrVisitor<'_> {
     fn check_must_use(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         let node = self.tcx.hir().get(hir_id);
         if let Some(kind) = node.fn_kind() && let rustc_hir::IsAsync::Async = kind.asyncness() {
-            self.tcx.emit_spanned_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                attr.span,
-                errors::MustUseAsync { span }
-            );
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                lint.build(
+                    "`must_use` attribute on `async` functions \
+                    applies to the anonymous `Future` returned by the \
+                    function, not the value within",
+                )
+                .span_label(
+                    span,
+                    "this attribute does nothing, the `Future`s \
+                    returned by async functions are already `must_use`",
+                )
+                .emit();
+            });
         }
 
         if !matches!(
@@ -1095,12 +1278,12 @@ impl CheckAttrVisitor<'_> {
                 _ => "a",
             };
 
-            self.tcx.emit_spanned_lint(
-                UNUSED_ATTRIBUTES,
-                hir_id,
-                attr.span,
-                errors::MustUseNoEffect { article, target },
-            );
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                lint.build(&format!(
+                    "`#[must_use]` has no effect when applied to {article} {target}"
+                ))
+                .emit();
+            });
         }
 
         // For now, its always valid
@@ -1112,7 +1295,11 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Struct | Target::Enum | Target::Union | Target::Trait => true,
             _ => {
-                self.tcx.sess.emit_err(errors::MustNotSuspend { attr_span: attr.span, span });
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "`must_not_suspend` attribute should be applied to a struct, enum, or trait")
+                        .span_label(span, "is not a struct, enum, or trait")
+                        .emit();
                 false
             }
         }
@@ -1132,12 +1319,16 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
                 // this, so only emit a warning.
-                self.tcx.emit_spanned_lint(
-                    UNUSED_ATTRIBUTES,
-                    hir_id,
-                    attr.span,
-                    errors::Cold { span },
-                );
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("attribute should be applied to a function")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                             being phased out; it will become a hard error in \
+                             a future release!",
+                        )
+                        .span_label(span, "not a function")
+                        .emit();
+                });
             }
         }
     }
@@ -1152,12 +1343,19 @@ impl CheckAttrVisitor<'_> {
             return;
         }
 
-        self.tcx.emit_spanned_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr.span,
-            errors::Link { span: (target != Target::ForeignMod).then_some(span) },
-        );
+        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+            let mut diag =
+                lint.build("attribute should be applied to an `extern` block with non-Rust ABI");
+            diag.warn(
+                "this was previously accepted by the compiler but is \
+                 being phased out; it will become a hard error in \
+                 a future release!",
+            );
+            if target != Target::ForeignMod {
+                diag.span_label(span, "not an `extern` block");
+            }
+            diag.emit();
+        });
     }
 
     /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.

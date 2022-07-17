@@ -59,7 +59,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                         return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                     }
                     (Some(DiagnosticDeriveKind::Lint), _) => {
-                        span_err(span, "only `#[error(..)]` and `#[warning(..)]` are supported")
+                        span_err(span, "only `#[error(..)]` and `#[warn(..)]` are supported")
                             .help("use the `#[error(...)]` attribute to create a error")
                             .emit();
                         return DiagnosticDeriveError::ErrorHandled.to_compile_error();

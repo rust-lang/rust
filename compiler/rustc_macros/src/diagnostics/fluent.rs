@@ -260,12 +260,10 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             #generated
 
             pub mod _subdiag {
-                pub const help: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("help"));
                 pub const note: crate::SubdiagnosticMessage =
                     crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("note"));
-                pub const warn: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("warn"));
+                pub const help: crate::SubdiagnosticMessage =
+                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("help"));
                 pub const label: crate::SubdiagnosticMessage =
                     crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("label"));
                 pub const suggestion: crate::SubdiagnosticMessage =

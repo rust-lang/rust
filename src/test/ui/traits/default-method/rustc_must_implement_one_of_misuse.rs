@@ -36,11 +36,11 @@ trait Tr5 {
 }
 
 #[rustc_must_implement_one_of(abc, xyz)]
-//~^ attribute should be applied to a trait
+//~^ attribute can only be applied to a trait
 fn function() {}
 
 #[rustc_must_implement_one_of(abc, xyz)]
-//~^ attribute should be applied to a trait
+//~^ attribute can only be applied to a trait
 struct Struct {}
 
 fn main() {}

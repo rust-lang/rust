@@ -7,14 +7,14 @@ LL | #[inline]
 LL | const FOO: u8 = 0;
    | ------------------ not a function or closure
 
-error: attribute should be applied to a function definition
+error: attribute should be applied to a function
   --> $DIR/multiple-invalid.rs:6:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | const FOO: u8 = 0;
-   | ------------------ not a function definition
+   | ------------------ not a function
 
 error: aborting due to 2 previous errors
 
