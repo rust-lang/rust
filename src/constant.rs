@@ -362,7 +362,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let (data_id, alloc, section_name) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
                 //println!("alloc_id {}", alloc_id);
-                let alloc = match tcx.get_global_alloc(alloc_id).unwrap() {
+                let alloc = match tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::Vtable(..) => {
                         unreachable!()
