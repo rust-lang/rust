@@ -32,7 +32,6 @@
 #![feature(fmt_internals)]
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
-#![feature(future_poll_fn)]
 #![feature(generic_assert_internals)]
 #![feature(array_try_from_fn)]
 #![feature(hasher_prefixfree_extras)]
