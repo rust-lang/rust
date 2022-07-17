@@ -1195,7 +1195,7 @@ pub unsafe fn _mm_mask_i32gather_epi64<const SCALE: i32>(
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` should be 1, 2, 4 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_epi64)
 #[inline]
