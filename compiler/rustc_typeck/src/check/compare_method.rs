@@ -1505,6 +1505,21 @@ pub fn check_type_bounds<'tcx>(
             &outlives_environment,
         );
 
+        let constraints = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        for (key, value) in constraints {
+            infcx
+                .report_mismatched_types(
+                    &ObligationCause::misc(
+                        value.hidden_type.span,
+                        tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local()),
+                    ),
+                    tcx.mk_opaque(key.def_id, key.substs),
+                    value.hidden_type.ty,
+                    TypeError::Mismatch,
+                )
+                .emit();
+        }
+
         Ok(())
     })
 }
