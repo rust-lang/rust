@@ -243,7 +243,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(label_break_value)]
 #![feature(lang_items)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(linkage)]
 #![feature(min_specialization)]

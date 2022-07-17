@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(let_chains)]
-
 #[cfg(FALSE)]
 fn foo() {
     #[attr]

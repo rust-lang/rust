@@ -186,6 +186,8 @@ declare_features! (
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
+    /// Allows `if/while p && let q = r && ...` chains.
+    (accepted, let_chains, "1.64.0", Some(53667), None),
     /// Allows `break {expr}` with a value inside `loop`s.
     (accepted, loop_break_value, "1.19.0", Some(37339), None),
     /// Allows use of `?` as the Kleene "at most one" operator in macros.
