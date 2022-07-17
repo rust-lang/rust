@@ -192,7 +192,6 @@ function createCommands(): Record<string, CommandFactory> {
         showReferences: {enabled: commands.showReferences},
         triggerParameterHints: {enabled: commands.triggerParameterHints},
         openLogs: {enabled: commands.openLogs},
-        openFile: {enabled: commands.openFile},
         revealDependency: {enabled: commands.revealDependency}
     };
 }

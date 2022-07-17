@@ -155,7 +155,7 @@ export class DependencyFile extends vscode.TreeItem {
         this.id = this.dependencyPath.toLowerCase();
         if (!isDir) {
             this.command = {
-                command: "rust-analyzer.openFile",
+                command: "vscode.open",
                 title: "Open File",
                 arguments: [vscode.Uri.file(this.dependencyPath)],
             };

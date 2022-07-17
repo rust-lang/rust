@@ -286,10 +286,6 @@
                 "category": "rust-analyzer"
             },
             {
-                "command": "rust-analyzer.openFile",
-                "title": "Open File"
-            },
-            {
                 "command": "rust-analyzer.revealDependency",
                 "title": "Reveal File"
             }
