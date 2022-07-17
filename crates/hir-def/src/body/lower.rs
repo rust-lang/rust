@@ -1,7 +1,7 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::{mem, sync::Arc};
+use std::{collections::HashMap, mem, sync::Arc};
 
 use either::Either;
 use hir_expand::{
@@ -10,8 +10,6 @@ use hir_expand::{
     name::{name, AsName, Name},
     ExpandError, HirFileId, InFile,
 };
-use la_arena::Arena;
-use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{
@@ -28,8 +26,8 @@ use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
     expr::{
-        dummy_expr_id, Array, BindingAnnotation, Expr, ExprId, FloatTypeWrapper, Label, LabelId,
-        Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        Array, BindingAnnotation, Expr, ExprId, FloatTypeWrapper, Label, LabelId, Literal,
+        MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     intern::Interned,
     item_scope::BuiltinShadowMode,
@@ -82,24 +80,8 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    ExprCollector {
-        db,
-        source_map: BodySourceMap::default(),
-        body: Body {
-            exprs: Arena::default(),
-            pats: Arena::default(),
-            labels: Arena::default(),
-            params: Vec::new(),
-            body_expr: dummy_expr_id(),
-            block_scopes: Vec::new(),
-            _c: Count::new(),
-            or_pats: Default::default(),
-        },
-        expander,
-        name_to_pat_grouping: Default::default(),
-        is_lowering_inside_or_pat: false,
-    }
-    .collect(params, body)
+    let collector = ExprCollector::new(db, expander);
+    collector.collect(params, body)
 }
 
 struct ExprCollector<'a> {
@@ -112,7 +94,18 @@ struct ExprCollector<'a> {
     is_lowering_inside_or_pat: bool,
 }
 
-impl ExprCollector<'_> {
+impl<'a> ExprCollector<'a> {
+    pub(crate) fn new(db: &'a dyn DefDatabase, expander: Expander) -> Self {
+        Self {
+            db,
+            expander,
+            body: Body::default(),
+            source_map: BodySourceMap::default(),
+            name_to_pat_grouping: HashMap::default(),
+            is_lowering_inside_or_pat: false,
+        }
+    }
+
     fn collect(
         mut self,
         param_list: Option<ast::ParamList>,
@@ -197,7 +190,8 @@ impl ExprCollector<'_> {
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
-        self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr())
+        let expr_id = self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr());
+        expr_id
     }
 
     /// Returns `None` if and only if the expression is `#[cfg]`d out.
@@ -689,7 +683,6 @@ impl ExprCollector<'_> {
         };
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.expander.module, module);
-
         let mut statements: Vec<_> =
             block.statements().filter_map(|s| self.collect_stmt(s)).collect();
         let tail = block.tail_expr().and_then(|e| self.maybe_collect_expr(e));

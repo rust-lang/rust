@@ -238,7 +238,7 @@ pub struct Mark {
 }
 
 /// The body of an item (function, const etc.).
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,

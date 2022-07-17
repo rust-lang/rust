@@ -173,27 +173,17 @@ pub(crate) fn hover_for_definition(
         Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node)?.krate())),
         _ => None,
     };
-    if let Some(markup) = render::definition(sema.db, definition, famous_defs.as_ref(), config) {
-        let mut res = HoverResult::default();
-        res.markup = render::process_markup(sema.db, definition, &markup, config);
-        if let Some(action) = show_implementations_action(sema.db, definition) {
-            res.actions.push(action);
+    render::definition(sema.db, definition, famous_defs.as_ref(), config).map(|markup| {
+        HoverResult {
+            markup: render::process_markup(sema.db, definition, &markup, config),
+            actions: show_implementations_action(sema.db, definition)
+                .into_iter()
+                .chain(show_fn_references_action(sema.db, definition))
+                .chain(runnable_action(sema, definition, file_id))
+                .chain(goto_type_action_for_def(sema.db, definition))
+                .collect(),
         }
-
-        if let Some(action) = show_fn_references_action(sema.db, definition) {
-            res.actions.push(action);
-        }
-
-        if let Some(action) = runnable_action(sema, definition, file_id) {
-            res.actions.push(action);
-        }
-
-        if let Some(action) = goto_type_action_for_def(sema.db, definition) {
-            res.actions.push(action);
-        }
-        return Some(res);
-    }
-    None
+    })
 }
 
 fn hover_ranged(

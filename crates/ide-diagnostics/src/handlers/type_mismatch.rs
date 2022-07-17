@@ -328,7 +328,7 @@ fn div(x: i32, y: i32) -> Option<i32> {
             }
             fn main() {
                 run(f()) // FIXME: remove this error
-                  //^^^ error: expected Rate<5>, found Rate<_>
+                  //^^^ error: expected Rate<5>, found Rate<{unknown}>
             }
 "#,
         );

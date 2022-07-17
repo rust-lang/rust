@@ -3011,14 +3011,14 @@ struct TS(usize);
 fn main() {
     let x;
     [x,] = &[1,];
-  //^^^^expected &[i32; 1], got [{unknown}; _]
+  //^^^^expected &[i32; 1], got [{unknown}; {unknown}]
 
     // FIXME we only want the outermost error, but this matches the current
     // behavior of slice patterns
     let x;
     [(x,),] = &[(1,),];
   // ^^^^expected {unknown}, got ({unknown},)
-  //^^^^^^^expected &[(i32,); 1], got [{unknown}; _]
+  //^^^^^^^expected &[(i32,); 1], got [{unknown}; {unknown}]
 
     let x;
     ((x,),) = &((1,),);

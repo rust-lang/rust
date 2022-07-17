@@ -5,10 +5,15 @@ use hir_expand::{
     name::{AsName, Name},
     AstId, InFile,
 };
-use std::{convert::TryInto, fmt::Write};
 use syntax::ast::{self, HasName};
 
-use crate::{body::LowerCtx, intern::Interned, path::Path};
+use crate::{
+    body::LowerCtx,
+    builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
+    expr::Literal,
+    intern::Interned,
+    path::Path,
+};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mutability {
@@ -177,7 +182,10 @@ impl TypeRef {
                 // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
                 // `hir_ty` level, which would allow knowing the type of:
                 // let v: [u8; 2 + 2] = [0u8; 4];
-                let len = ConstScalarOrPath::from_expr_opt(inner.expr());
+                let len = inner.expr().map_or(
+                    ConstScalarOrPath::Scalar(ConstScalar::Unknown),
+                    ConstScalarOrPath::from_expr,
+                );
 
                 TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
@@ -386,16 +394,9 @@ impl std::fmt::Display for ConstScalarOrPath {
 }
 
 impl ConstScalarOrPath {
-    pub(crate) fn from_expr_opt(expr: Option<ast::Expr>) -> Self {
-        match expr {
-            Some(x) => Self::from_expr(x),
-            None => Self::Scalar(ConstScalar::Unknown),
-        }
-    }
-
     // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
     // parse stage.
-    fn from_expr(expr: ast::Expr) -> Self {
+    pub(crate) fn from_expr(expr: ast::Expr) -> Self {
         match expr {
             ast::Expr::PathExpr(p) => {
                 match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
@@ -403,22 +404,31 @@ impl ConstScalarOrPath {
                     None => Self::Scalar(ConstScalar::Unknown),
                 }
             }
-            ast::Expr::Literal(lit) => {
-                let lkind = lit.kind();
-                match lkind {
-                    ast::LiteralKind::IntNumber(num)
-                        if num.suffix() == None || num.suffix() == Some("usize") =>
-                    {
-                        Self::Scalar(
-                            num.value()
-                                .and_then(|v| v.try_into().ok())
-                                .map(ConstScalar::Usize)
-                                .unwrap_or(ConstScalar::Unknown),
-                        )
+            ast::Expr::PrefixExpr(prefix_expr) => match prefix_expr.op_kind() {
+                Some(ast::UnaryOp::Neg) => {
+                    let unsigned = prefix_expr
+                        .expr()
+                        .map_or(Self::Scalar(ConstScalar::Unknown), Self::from_expr);
+                    // Add sign
+                    match unsigned {
+                        Self::Scalar(ConstScalar::UInt(num)) => {
+                            Self::Scalar(ConstScalar::Int(-(num as i128)))
+                        }
+                        other => other,
                     }
-                    _ => Self::Scalar(ConstScalar::Unknown),
                 }
-            }
+                _ => prefix_expr.expr().map_or(Self::Scalar(ConstScalar::Unknown), Self::from_expr),
+            },
+            ast::Expr::Literal(literal) => Self::Scalar(match literal.kind() {
+                ast::LiteralKind::IntNumber(num) => {
+                    num.value().map(ConstScalar::UInt).unwrap_or(ConstScalar::Unknown)
+                }
+                ast::LiteralKind::Char(c) => {
+                    c.value().map(ConstScalar::Char).unwrap_or(ConstScalar::Unknown)
+                }
+                ast::LiteralKind::Bool(f) => ConstScalar::Bool(f),
+                _ => ConstScalar::Unknown,
+            }),
             _ => Self::Scalar(ConstScalar::Unknown),
         }
     }
@@ -427,9 +437,10 @@ impl ConstScalarOrPath {
 /// A concrete constant value
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConstScalar {
-    // for now, we only support the trivial case of constant evaluating the length of an array
-    // Note that this is u64 because the target usize may be bigger than our usize
-    Usize(u64),
+    Int(i128),
+    UInt(u128),
+    Bool(bool),
+    Char(char),
 
     /// Case of an unknown value that rustc might know but we don't
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
@@ -439,21 +450,37 @@ pub enum ConstScalar {
     Unknown,
 }
 
-impl std::fmt::Display for ConstScalar {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+impl ConstScalar {
+    pub fn builtin_type(&self) -> BuiltinType {
         match self {
-            ConstScalar::Usize(us) => us.fmt(f),
-            ConstScalar::Unknown => f.write_char('_'),
+            ConstScalar::UInt(_) | ConstScalar::Unknown => BuiltinType::Uint(BuiltinUint::U128),
+            ConstScalar::Int(_) => BuiltinType::Int(BuiltinInt::I128),
+            ConstScalar::Char(_) => BuiltinType::Char,
+            ConstScalar::Bool(_) => BuiltinType::Bool,
         }
     }
 }
 
-impl ConstScalar {
-    /// Gets a target usize out of the ConstScalar
-    pub fn as_usize(&self) -> Option<u64> {
+impl From<Literal> for ConstScalar {
+    fn from(literal: Literal) -> Self {
+        match literal {
+            Literal::Char(c) => Self::Char(c),
+            Literal::Bool(flag) => Self::Bool(flag),
+            Literal::Int(num, _) => Self::Int(num),
+            Literal::Uint(num, _) => Self::UInt(num),
+            _ => Self::Unknown,
+        }
+    }
+}
+
+impl std::fmt::Display for ConstScalar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            &ConstScalar::Usize(us) => Some(us),
-            _ => None,
+            ConstScalar::Int(num) => num.fmt(f),
+            ConstScalar::UInt(num) => num.fmt(f),
+            ConstScalar::Bool(flag) => flag.fmt(f),
+            ConstScalar::Char(c) => write!(f, "'{c}'"),
+            ConstScalar::Unknown => f.write_str("{unknown}"),
         }
     }
 }

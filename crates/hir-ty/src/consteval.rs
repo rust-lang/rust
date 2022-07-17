@@ -347,17 +347,6 @@ pub fn eval_const(
     }
 }
 
-pub fn eval_usize(expr: Idx<Expr>, mut ctx: ConstEvalCtx<'_>) -> Option<u64> {
-    if let Ok(ce) = eval_const(expr, &mut ctx) {
-        match ce {
-            ComputedExpr::Literal(Literal::Int(x, _)) => return x.try_into().ok(),
-            ComputedExpr::Literal(Literal::Uint(x, _)) => return x.try_into().ok(),
-            _ => {}
-        }
-    }
-    None
-}
-
 pub(crate) fn path_to_const(
     db: &dyn HirDatabase,
     resolver: &Resolver,
@@ -406,17 +395,22 @@ pub fn unknown_const_as_generic(ty: Ty) -> GenericArg {
 }
 
 /// Interns a constant scalar with the given type
-pub fn intern_scalar_const(value: ConstScalar, ty: Ty) -> Const {
+pub fn intern_const_scalar_with_type(value: ConstScalar, ty: Ty) -> Const {
     ConstData { ty, value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: value }) }
         .intern(Interner)
 }
 
 /// Interns a possibly-unknown target usize
-pub fn usize_const(value: Option<u64>) -> Const {
-    intern_scalar_const(
-        value.map(ConstScalar::Usize).unwrap_or(ConstScalar::Unknown),
+pub fn usize_const(value: Option<u128>) -> Const {
+    intern_const_scalar_with_type(
+        value.map(ConstScalar::UInt).unwrap_or(ConstScalar::Unknown),
         TyBuilder::usize(),
     )
+}
+
+/// Interns a constant scalar with the default type
+pub fn intern_const_scalar(value: ConstScalar) -> Const {
+    intern_const_scalar_with_type(value, TyBuilder::builtin(value.builtin_type()))
 }
 
 pub(crate) fn const_eval_recover(
@@ -463,7 +457,7 @@ pub(crate) fn eval_to_const<'a>(
         }
     }
     let body = ctx.body.clone();
-    let ctx = ConstEvalCtx {
+    let mut ctx = ConstEvalCtx {
         db: ctx.db,
         owner: ctx.owner,
         exprs: &body.exprs,
@@ -471,7 +465,12 @@ pub(crate) fn eval_to_const<'a>(
         local_data: HashMap::default(),
         infer: &ctx.result,
     };
-    usize_const(eval_usize(expr, ctx))
+    let computed_expr = eval_const(expr, &mut ctx);
+    let const_scalar = match computed_expr {
+        Ok(ComputedExpr::Literal(literal)) => literal.into(),
+        _ => ConstScalar::Unknown,
+    };
+    intern_const_scalar_with_type(const_scalar, TyBuilder::usize())
 }
 
 #[cfg(test)]

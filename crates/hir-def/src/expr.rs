@@ -13,7 +13,7 @@
 //! See also a neighboring `body` module.
 
 use hir_expand::name::Name;
-use la_arena::{Idx, RawIdx};
+use la_arena::Idx;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
@@ -26,9 +26,6 @@ use crate::{
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
 
 pub type ExprId = Idx<Expr>;
-pub(crate) fn dummy_expr_id() -> ExprId {
-    ExprId::from_raw(RawIdx::from(!0))
-}
 
 pub type PatId = Idx<Pat>;
 

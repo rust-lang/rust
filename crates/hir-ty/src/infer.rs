@@ -605,10 +605,10 @@ impl<'a> InferenceContext<'a> {
         let data = c.data(Interner);
         match data.value {
             ConstValue::Concrete(cc) => match cc.interned {
-                hir_def::type_ref::ConstScalar::Usize(_) => c,
                 hir_def::type_ref::ConstScalar::Unknown => {
                     self.table.new_const_var(data.ty.clone())
                 }
+                _ => c,
             },
             _ => c,
         }
