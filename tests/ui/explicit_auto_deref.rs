@@ -242,4 +242,17 @@ fn main() {
     fn ret_any(x: &Box<dyn std::any::Any>) -> &dyn std::any::Any {
         &**x
     }
+
+    let x = String::new();
+    let _: *const str = &*x;
+
+    struct S7([u32; 1]);
+    impl core::ops::Deref for S7 {
+        type Target = [u32; 1];
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    let x = S7([0]);
+    let _: &[u32] = &*x;
 }

@@ -357,7 +357,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                 }),
                                 StateData { span: expr.span, hir_id: expr.hir_id, position },
                             ));
-                        } else if position.is_deref_stable() {
+                        } else if position.is_deref_stable()
+                            // Auto-deref doesn't combine with other adjustments
+                            && next_adjust.map_or(true, |a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
+                            && iter.all(|a| matches!(a.kind, Adjust::Deref(_) | Adjust::Borrow(_)))
+                        {
                             self.state = Some((
                                 State::Borrow { mutability },
                                 StateData {
