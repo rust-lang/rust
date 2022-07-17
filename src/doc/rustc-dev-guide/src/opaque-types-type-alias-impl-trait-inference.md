@@ -1,6 +1,9 @@
 # Inference of opaque types (type alias `impl Trait`)
 
-This page describes how the compiler infers the hidden type for an opaque type. This kind of type inference is particularly complex because, unlike other kinds of type inference, it works across functions and function bodies.
+This page describes how the compiler infers the hidden type for an opaque type.
+This kind of type inference is particularly complex because,
+unlike other kinds of type inference,
+it works across functions and function bodies.
 
 ## Running example
 
