@@ -411,9 +411,7 @@ impl ConstScalarOrPath {
             }
             ast::Expr::PrefixExpr(prefix_expr) => match prefix_expr.op_kind() {
                 Some(ast::UnaryOp::Neg) => {
-                    let unsigned = prefix_expr
-                        .expr()
-                        .map_or(Self::Scalar(ConstScalar::Unknown), Self::from_expr);
+                    let unsigned = Self::from_expr_opt(prefix_expr.expr());
                     // Add sign
                     match unsigned {
                         Self::Scalar(ConstScalar::UInt(num)) => {
@@ -422,7 +420,7 @@ impl ConstScalarOrPath {
                         other => other,
                     }
                 }
-                _ => prefix_expr.expr().map_or(Self::Scalar(ConstScalar::Unknown), Self::from_expr),
+                _ => Self::from_expr_opt(prefix_expr.expr()),
             },
             ast::Expr::Literal(literal) => Self::Scalar(match literal.kind() {
                 ast::LiteralKind::IntNumber(num) => {
