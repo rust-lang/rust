@@ -25,8 +25,10 @@ their command specifies, or the test will fail without even being run.
 
 * `//@ignore-XXX` avoids running the test on targets whose triple contains `XXX`
     * `XXX` can also be one of `64bit`, `32bit` or `16bit`
+    * `XXX` can also be `on-host`, which will only run the test during cross compilation testing.
 * `//@only-XXX` avoids running the test on targets whose triple **does not** contain `XXX`
     * `XXX` can also be one of `64bit`, `32bit` or `16bit`
+    * `XXX` can also be `on-host`, which will not run the test during cross compilation testing
 * `//@stderr-per-bitwidth` produces one stderr file per bitwidth, as they may differ significantly sometimes
 * `//@error-pattern: XXX` make sure the stderr output contains `XXX`
 * `//@revisions: XXX YYY` runs the test once for each space separated name in the list
