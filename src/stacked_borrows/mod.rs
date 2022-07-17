@@ -1037,17 +1037,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Raw pointers need to be enabled.
                 ty::RawPtr(tym) if kind == RetagKind::Raw =>
                     Some((RefKind::Raw { mutable: tym.mutbl == Mutability::Mut }, false)),
-                // Boxes are handled separately due to that allocator situation.
+                // Boxes are handled separately due to that allocator situation,
+                // see the visitor below.
                 _ => None,
             }
         }
 
-        // We need a visitor to visit all references. However, that requires
-        // a `MPlaceTy` (or `OpTy`), so we have a fast path for reference types that
-        // avoids allocating.
-
+        // For some types we can do the work without starting up the visitor infrastructure.
         if let Some((ref_kind, protector)) = qualify(place.layout.ty, kind) {
-            // Fast path.
             let val = this.read_immediate(&this.place_to_op(place)?)?;
             let val = this.retag_reference(&val, ref_kind, protector)?;
             this.write_immediate(*val, place)?;
@@ -1077,11 +1074,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         ) {
             return Ok(());
         }
-        // Now go visit this thing.
-        let place = this.force_allocation(place)?;
 
+        // Now go visit this thing.
         let mut visitor = RetagVisitor { ecx: this, kind };
-        return visitor.visit_value(&place);
+        return visitor.visit_value(place);
 
         // The actual visitor.
         struct RetagVisitor<'ecx, 'mir, 'tcx> {
@@ -1091,36 +1087,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
             for RetagVisitor<'ecx, 'mir, 'tcx>
         {
-            type V = MPlaceTy<'tcx, Tag>;
+            type V = PlaceTy<'tcx, Tag>;
 
             #[inline(always)]
             fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
                 self.ecx
             }
 
-            fn visit_box(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_box(&mut self, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
                 // Boxes do not get a protector: protectors reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
                 let (ref_kind, protector) = (RefKind::Unique { two_phase: false }, false);
-
-                let val = self.ecx.read_immediate(&place.into())?;
+                let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
                 let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
-                self.ecx.write_immediate(*val, &place.into())?;
+                self.ecx.write_immediate(*val, place)?;
                 Ok(())
             }
 
-            fn visit_value(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_value(&mut self, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
                 if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
-                    let val = self.ecx.read_immediate(&place.into())?;
+                    let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
                     let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
-                    self.ecx.write_immediate(*val, &place.into())?;
+                    self.ecx.write_immediate(*val, place)?;
                 } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
                     // Wide raw pointers *do* have fields and their types are strange.
                     // vtables have a type like `&[*const (); 3]` or so!
                     // Do *not* recurse into them.
-                    // (No need to worry about wide references or boxes, those always "qualify".)
+                    // (No need to worry about wide references, those always "qualify". And Boxes
+                    // are handles specially by the visitor anyway.)
                 } else {
-                    // Maybe we need to go deeper.
+                    // Recurse deeper.
                     self.walk_value(place)?;
                 }
                 Ok(())
