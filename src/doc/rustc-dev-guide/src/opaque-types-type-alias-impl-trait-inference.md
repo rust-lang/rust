@@ -188,7 +188,13 @@ The registered hidden types are stored into the `QueryResponse` struct in the `o
 
 When the `QueryResponse` is instantiated into the surrounding infcx in `query_response_substitution_guess`, we convert each hidden type constraint by invoking `handle_opaque_type` (as above).
 
-There is one bit of "weirdness". The instantiated opaque types are stored in a *map*, and we have to pick one opaque type to use as the key of that map. We use the one that is considered "expected". But really both of the opaque types may have defining uses. When the query result is instantiated, that will be re-evaluated from the context that is using the query.
+There is one bit of "weirdness".
+The instantiated opaque types are stored in a *map*,
+and we have to pick one opaque type to use as the key of that map.
+We use the one that is considered "expected".
+But really both of the opaque types may have defining uses.
+When the query result is instantiated,
+that will be re-evaluated from the context that is using the query.
 
 ### Within the MIR borrow checker
 
