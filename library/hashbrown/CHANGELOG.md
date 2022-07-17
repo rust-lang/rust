@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [v0.12.3] - 2022-07-17
+
+## Fixed
+
+- Fixed double-drop in `RawTable::clone_from`. (#348)
+
 ## [v0.12.2] - 2022-07-09
 
 ## Added
@@ -357,7 +363,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.12.3...HEAD
+[v0.12.3]: https://github.com/rust-lang/hashbrown/compare/v0.12.2...v0.12.3
 [v0.12.2]: https://github.com/rust-lang/hashbrown/compare/v0.12.1...v0.12.2
 [v0.12.1]: https://github.com/rust-lang/hashbrown/compare/v0.12.0...v0.12.1
 [v0.12.0]: https://github.com/rust-lang/hashbrown/compare/v0.11.2...v0.12.0
