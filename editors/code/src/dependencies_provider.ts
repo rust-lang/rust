@@ -3,6 +3,9 @@ import * as fspath from "path";
 import * as fs from "fs";
 import * as os from "os";
 import { activeToolchain, Cargo, Crate, getRustcVersion } from "./toolchain";
+import { Ctx } from "./ctx";
+import { setFlagsFromString } from "v8";
+import * as ra from "./lsp_ext";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
 
@@ -11,10 +14,12 @@ export class RustDependenciesProvider
 {
     cargo: Cargo;
     dependenciesMap: { [id: string]: Dependency | DependencyFile };
+    ctx: Ctx;
 
-    constructor(private readonly workspaceRoot: string) {
+    constructor(private readonly workspaceRoot: string, ctx: Ctx) {
         this.cargo = new Cargo(this.workspaceRoot || ".", debugOutput);
         this.dependenciesMap = {};
+        this.ctx = ctx;
     }
 
     private _onDidChangeTreeData: vscode.EventEmitter<
@@ -76,6 +81,8 @@ export class RustDependenciesProvider
     }
 
     private async getRootDependencies(): Promise<Dependency[]> {
+        const crates = await this.ctx.client.sendRequest(ra.fetchDependencyGraph, {});
+
         const registryDir = fspath.join(os.homedir(), ".cargo", "registry", "src");
         const basePath = fspath.join(registryDir, fs.readdirSync(registryDir)[0]);
         const deps = await this.getDepsInCartoTree(basePath);

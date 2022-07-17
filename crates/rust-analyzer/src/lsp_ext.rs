@@ -27,6 +27,21 @@ pub struct AnalyzerStatusParams {
     pub text_document: Option<TextDocumentIdentifier>,
 }
 
+pub enum FetchDependencyGraph {}
+
+impl Request for FetchDependencyGraph {
+    type Params = FetchDependencyGraphParams;
+    type Result = FetchDependencyGraphResult;
+    const METHOD: &'static str = "rust-analyzer/fetchDependencyGraph";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchDependencyGraphParams {}
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FetchDependencyGraphResult {}
+
 pub enum MemoryUsage {}
 
 impl Request for MemoryUsage {
