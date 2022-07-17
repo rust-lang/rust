@@ -154,7 +154,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Set page size.
                 let page_size = system_info.offset(
                     field_offsets[2],
-                    MemPlaceMeta::None,
                     dword_layout,
                     &this.tcx,
                 )?;
@@ -165,7 +164,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Set number of processors.
                 let num_cpus = system_info.offset(
                     field_offsets[6],
-                    MemPlaceMeta::None,
                     dword_layout,
                     &this.tcx,
                 )?;
