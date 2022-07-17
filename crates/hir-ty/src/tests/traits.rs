@@ -467,6 +467,23 @@ fn test<T: Iterable>() {
 }
 
 #[test]
+fn associated_type_shorthand_from_self_issue_12484() {
+    check_types(
+        r#"
+trait Bar {
+    type A;
+}
+trait Foo {
+    type A;
+    fn test(a: Self::A, _: impl Bar) {
+        a;
+      //^ Foo::A<Self>
+    }
+}"#,
+    );
+}
+
+#[test]
 fn infer_associated_type_bound() {
     check_types(
         r#"

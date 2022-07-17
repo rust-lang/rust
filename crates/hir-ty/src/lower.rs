@@ -1161,8 +1161,9 @@ pub(crate) fn generic_predicates_for_param_query(
                             return false;
                         }
                     }
-                    WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        if *local_id != param_id.local_id {
+                    &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
+                        let target_id = TypeOrConstParamId { parent: def, local_id };
+                        if target_id != param_id {
                             return false;
                         }
                     }
