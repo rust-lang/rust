@@ -19,9 +19,10 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) -> Result<()> {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
         flags.push("-Astable-features".to_owned());
+        flags.push("-Aunused".to_owned());
     } else {
         flags.push("-Dwarnings".to_owned());
-        flags.push("-Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+        flags.push("-Dunused".to_owned());
     }
     if let Ok(sysroot) = env::var("MIRI_SYSROOT") {
         flags.push("--sysroot".to_string());

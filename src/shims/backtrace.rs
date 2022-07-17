@@ -104,8 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 for (i, ptr) in ptrs.into_iter().enumerate() {
                     let offset = ptr_layout.size * i.try_into().unwrap();
 
-                    let op_place =
-                        buf_place.offset(offset, MemPlaceMeta::None, ptr_layout, this)?;
+                    let op_place = buf_place.offset(offset, ptr_layout, this)?;
 
                     this.write_pointer(ptr, &op_place.into())?;
                 }

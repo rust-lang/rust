@@ -12,8 +12,8 @@ LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
 note: inside `main` at $DIR/issue-miri-1050-2.rs:LL:CC
   --> $DIR/issue-miri-1050-2.rs:LL:CC
    |
-LL |         Box::from_raw(ptr.as_ptr());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         drop(Box::from_raw(ptr.as_ptr()));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

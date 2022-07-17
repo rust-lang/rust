@@ -631,7 +631,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Ensure that the access is within bounds.
         assert!(op_place.layout.size >= offset + layout.size);
-        let value_place = op_place.offset(offset, MemPlaceMeta::None, layout, this)?;
+        let value_place = op_place.offset(offset, layout, this)?;
         Ok(value_place)
     }
 
