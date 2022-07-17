@@ -227,17 +227,9 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
                     // Check that RPITs are only constrained in their outermost
                     // function, otherwise report a mismatched types error.
-                    if let hir::Node::Item(hir::Item {
-                        kind:
-                            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                                origin:
-                                    hir::OpaqueTyOrigin::AsyncFn(parent)
-                                    | hir::OpaqueTyOrigin::FnReturn(parent),
-                                ..
-                            }),
-                        ..
-                    }) = infcx.tcx.hir().get_by_def_id(opaque_type_key.def_id.expect_local()) &&
-                        parent.to_def_id() != body.source.def_id()
+                    if let OpaqueTyOrigin::FnReturn(parent) | OpaqueTyOrigin::AsyncFn(parent)
+                            = infcx.opaque_ty_origin_unchecked(opaque_type_key.def_id, hidden_type.span)
+                        && parent.to_def_id() != body.source.def_id()
                     {
                         infcx
                             .report_mismatched_types(
