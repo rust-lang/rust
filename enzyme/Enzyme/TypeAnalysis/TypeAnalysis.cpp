@@ -1368,6 +1368,28 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     updateAnalysis(&gep, TypeTree(BaseType::Anything).Only(-1), &gep);
     return;
   }
+  if (isa<ConstantPointerNull>(gep.getPointerOperand())) {
+    bool nonZero = false;
+    bool legal = true;
+    for (auto &ind : gep.indices()) {
+      if (auto CI = dyn_cast<ConstantInt>(ind)) {
+        if (!CI->isZero()) {
+          nonZero = true;
+          continue;
+        }
+      }
+      auto CT = getAnalysis(ind).Inner0();
+      if (CT == BaseType::Integer) {
+        continue;
+      }
+      legal = false;
+      break;
+    }
+    if (legal && nonZero) {
+      updateAnalysis(&gep, TypeTree(BaseType::Integer).Only(-1), &gep);
+      return;
+    }
+  }
 
   auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
 
