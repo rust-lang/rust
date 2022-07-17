@@ -66,11 +66,9 @@ pub(crate) struct ErrorMatch {
 
 impl Condition {
     fn parse(c: &str) -> Self {
-        match c {
-            "on-host" => return Condition::OnHost,
-            _ => {}
-        }
-        if let Some(bits) = c.strip_suffix("bit") {
+        if c == "on-host" {
+            Condition::OnHost
+        } else if let Some(bits) = c.strip_suffix("bit") {
             let bits: u8 = bits.parse().expect(
                 "ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N",
             );
