@@ -2222,8 +2222,12 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calling `take` function after `as_ref`.
     ///
     /// ### Why is this bad?
+    /// Redundant code. `take` writes `None` to its argument.
+    /// In this case the modification is useless as it's a temporary that cannot be read from afterwards.
     ///
     /// ### Example
     /// ```rust
