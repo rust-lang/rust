@@ -754,9 +754,6 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    generator has more than one variant, the parent place's variant index must be set, indicating
 ///    which variant is being used. If it has just one variant, the variant index may or may not be
 ///    included - the single possible variant is inferred if it is not included.
-///  - [`OpaqueCast`](ProjectionElem::OpaqueCast): This projection changes the place's type to the
-///    given one, and makes no other changes. A `OpaqueCast` projection on any type other than an
-///    opaque type from the current crate is not well-formed.
 ///  - [`ConstantIndex`](ProjectionElem::ConstantIndex): Computes an offset in units of `T` into the
 ///    place as described in the documentation for the `ProjectionElem`. The resulting address is
 ///    the parent's address plus that offset, and the type is `T`. This is only legal if the parent
@@ -859,10 +856,6 @@ pub enum ProjectionElem<V, T> {
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
-
-    /// Like an explicit cast from an opaque type to a concrete type, but without
-    /// requiring an intermediate variable.
-    OpaqueCast(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place

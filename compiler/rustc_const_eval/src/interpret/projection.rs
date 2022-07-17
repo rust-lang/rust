@@ -349,11 +349,6 @@ where
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
-            OpaqueCast(ty) => {
-                let mut place = *base;
-                place.layout = self.layout_of(ty)?;
-                place
-            }
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
@@ -378,11 +373,6 @@ where
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
         Ok(match proj_elem {
-            OpaqueCast(ty) => {
-                let mut op = *base;
-                op.layout = self.layout_of(ty)?;
-                op
-            }
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
