@@ -1,26 +1,29 @@
-import * as vscode from 'vscode';
-import * as fspath from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
-import { activeToolchain, Cargo, Crate, getRustcVersion } from './toolchain';
+import * as vscode from "vscode";
+import * as fspath from "path";
+import * as fs from "fs";
+import * as os from "os";
+import { activeToolchain, Cargo, Crate, getRustcVersion } from "./toolchain";
 
 const debugOutput = vscode.window.createOutputChannel("Debug");
 
-export class RustDependenciesProvider implements vscode.TreeDataProvider<Dependency | DependencyFile>{
+export class RustDependenciesProvider
+    implements vscode.TreeDataProvider<Dependency | DependencyFile>
+{
     cargo: Cargo;
     dependenciesMap: { [id: string]: Dependency | DependencyFile };
 
-    constructor(
-        private readonly workspaceRoot: string,
-    ) {
-        this.cargo = new Cargo(this.workspaceRoot || '.', debugOutput);
+    constructor(private readonly workspaceRoot: string) {
+        this.cargo = new Cargo(this.workspaceRoot || ".", debugOutput);
         this.dependenciesMap = {};
     }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<Dependency | DependencyFile | undefined | null | void> = new vscode.EventEmitter<Dependency | undefined | null | void>();
+    private _onDidChangeTreeData: vscode.EventEmitter<
+        Dependency | DependencyFile | undefined | null | void
+    > = new vscode.EventEmitter<Dependency | undefined | null | void>();
 
-    readonly onDidChangeTreeData: vscode.Event<Dependency | DependencyFile | undefined | null | void> = this._onDidChangeTreeData.event;
-
+    readonly onDidChangeTreeData: vscode.Event<
+        Dependency | DependencyFile | undefined | null | void
+    > = this._onDidChangeTreeData.event;
 
     getDependency(filePath: string): Dependency | DependencyFile | undefined {
         return this.dependenciesMap[filePath.toLowerCase()];
@@ -34,7 +37,9 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
         this._onDidChangeTreeData.fire();
     }
 
-    getParent?(element: Dependency | DependencyFile): vscode.ProviderResult<Dependency | DependencyFile> {
+    getParent?(
+        element: Dependency | DependencyFile
+    ): vscode.ProviderResult<Dependency | DependencyFile> {
         if (element instanceof Dependency) return undefined;
         return element.parent;
     }
@@ -44,31 +49,26 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
         return element;
     }
 
-    getChildren(element?: Dependency | DependencyFile): vscode.ProviderResult<Dependency[] | DependencyFile[]> {
+    getChildren(
+        element?: Dependency | DependencyFile
+    ): vscode.ProviderResult<Dependency[] | DependencyFile[]> {
         return new Promise((resolve, _reject) => {
             if (!this.workspaceRoot) {
-                void vscode.window.showInformationMessage('No dependency in empty workspace');
+                void vscode.window.showInformationMessage("No dependency in empty workspace");
                 return Promise.resolve([]);
             }
 
             if (element) {
-                const files = fs.readdirSync(element.dependencyPath).map(fileName => {
+                const files = fs.readdirSync(element.dependencyPath).map((fileName) => {
                     const filePath = fspath.join(element.dependencyPath, fileName);
-                    const collapsibleState = fs.lstatSync(filePath).isDirectory() ?
-                        vscode.TreeItemCollapsibleState.Collapsed :
-                        vscode.TreeItemCollapsibleState.None;
-                    const dep = new DependencyFile(
-                        fileName,
-                        filePath,
-                        element,
-                        collapsibleState
-                    );
+                    const collapsibleState = fs.lstatSync(filePath).isDirectory()
+                        ? vscode.TreeItemCollapsibleState.Collapsed
+                        : vscode.TreeItemCollapsibleState.None;
+                    const dep = new DependencyFile(fileName, filePath, element, collapsibleState);
                     this.dependenciesMap[dep.dependencyPath.toLowerCase()] = dep;
                     return dep;
                 });
-                return resolve(
-                    files
-                );
+                return resolve(files);
             } else {
                 return resolve(this.getRootDependencies());
             }
@@ -76,7 +76,7 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
     }
 
     private async getRootDependencies(): Promise<Dependency[]> {
-        const registryDir = fspath.join(os.homedir(), '.cargo', 'registry', 'src');
+        const registryDir = fspath.join(os.homedir(), ".cargo", "registry", "src");
         const basePath = fspath.join(registryDir, fs.readdirSync(registryDir)[0]);
         const deps = await this.getDepsInCartoTree(basePath);
         const stdlib = await this.getStdLib();
@@ -87,7 +87,17 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
     private async getStdLib(): Promise<Dependency> {
         const toolchain = await activeToolchain();
         const rustVersion = await getRustcVersion(os.homedir());
-        const stdlibPath = fspath.join(os.homedir(), '.rustup', 'toolchains', toolchain, 'lib', 'rustlib', 'src', 'rust', 'library');
+        const stdlibPath = fspath.join(
+            os.homedir(),
+            ".rustup",
+            "toolchains",
+            toolchain,
+            "lib",
+            "rustlib",
+            "src",
+            "rust",
+            "library"
+        );
         const stdlib = new Dependency(
             "stdlib",
             rustVersion,
@@ -110,7 +120,7 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
             );
         };
 
-        const deps = crates.map(crate => {
+        const deps = crates.map((crate) => {
             const dep = toDep(crate.name, crate.version);
             this.dependenciesMap[dep.dependencyPath.toLowerCase()] = dep;
             return dep;
@@ -118,7 +128,6 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
         return deps;
     }
 }
-
 
 export class Dependency extends vscode.TreeItem {
     constructor(
@@ -135,7 +144,6 @@ export class Dependency extends vscode.TreeItem {
 }
 
 export class DependencyFile extends vscode.TreeItem {
-
     constructor(
         readonly label: string,
         readonly dependencyPath: string,
@@ -146,7 +154,11 @@ export class DependencyFile extends vscode.TreeItem {
         const isDir = fs.lstatSync(this.dependencyPath).isDirectory();
         this.id = this.dependencyPath.toLowerCase();
         if (!isDir) {
-            this.command = { command: 'rust-analyzer.openFile', title: "Open File", arguments: [vscode.Uri.file(this.dependencyPath)], };
+            this.command = {
+                command: "rust-analyzer.openFile",
+                title: "Open File",
+                arguments: [vscode.Uri.file(this.dependencyPath)],
+            };
         }
     }
 }

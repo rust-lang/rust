@@ -8,11 +8,11 @@ import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
 import { AstInspector } from "./ast_inspector";
-import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor, RustEditor } from './util';
+import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor, RustEditor } from "./util";
 import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
-import { DependencyId } from './dependencies_provider';
+import { DependencyId } from "./dependencies_provider";
 
 export * from "./ast_inspector";
 export * from "./run";
@@ -291,8 +291,7 @@ export function revealDependency(ctx: CtxInit): Cmd {
             do {
                 documentPath = path.dirname(documentPath);
                 parentChain.push({ id: documentPath.toLowerCase() });
-            }
-            while (!ctx.dependencies.contains(documentPath));
+            } while (!ctx.dependencies.contains(documentPath));
             parentChain.reverse();
             for (const idx in parentChain) {
                 await ctx.treeView.reveal(parentChain[idx], { select: true, expand: true });
@@ -302,7 +301,7 @@ export function revealDependency(ctx: CtxInit): Cmd {
 }
 
 export async function execRevealDependency(e: RustEditor): Promise<void> {
-    await vscode.commands.executeCommand('rust-analyzer.revealDependency', e);
+    await vscode.commands.executeCommand("rust-analyzer.revealDependency", e);
 }
 
 export function ssr(ctx: CtxInit): Cmd {
