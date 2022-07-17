@@ -161,7 +161,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc_id = ptr.provenance;
         // We need to handle `extern static`.
-        match self.tcx.get_global_alloc(alloc_id) {
+        match self.tcx.try_get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
                 bug!("global memory cannot point to thread-local static")
             }
@@ -289,7 +289,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let Some((alloc_kind, mut alloc)) = self.memory.alloc_map.remove(&alloc_id) else {
             // Deallocating global memory -- always an error
-            return Err(match self.tcx.get_global_alloc(alloc_id) {
+            return Err(match self.tcx.try_get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Function(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is a function")
                 }
@@ -478,7 +478,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::Provenance, M::AllocExtra>>> {
-        let (alloc, def_id) = match self.tcx.get_global_alloc(id) {
+        let (alloc, def_id) = match self.tcx.try_get_global_alloc(id) {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
                 (mem, None)
@@ -669,7 +669,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // # Statics
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
-        match self.tcx.get_global_alloc(id) {
+        match self.tcx.try_get_global_alloc(id) {
             Some(GlobalAlloc::Static(did)) => {
                 assert!(!self.tcx.is_thread_local_static(did));
                 // Use size and align of the type.
@@ -715,7 +715,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(extra) = self.memory.extra_fn_ptr_map.get(&id) {
             Some(FnVal::Other(*extra))
         } else {
-            match self.tcx.get_global_alloc(id) {
+            match self.tcx.try_get_global_alloc(id) {
                 Some(GlobalAlloc::Function(instance)) => Some(FnVal::Instance(instance)),
                 _ => None,
             }
@@ -839,7 +839,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                 }
                 None => {
                     // global alloc
-                    match self.ecx.tcx.get_global_alloc(id) {
+                    match self.ecx.tcx.try_get_global_alloc(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
                             write!(fmt, " (unchanged global, ")?;
                             write_allocation_track_relocs(

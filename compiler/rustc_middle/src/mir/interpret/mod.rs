@@ -312,7 +312,9 @@ impl<'s> AllocDecodingSession<'s> {
                                 State::InProgress(TinyList::new_single(self.session_id), alloc_id);
                             Some(alloc_id)
                         }
-                        AllocDiscriminant::Fn | AllocDiscriminant::Static | AllocDiscriminant::Vtable => {
+                        AllocDiscriminant::Fn
+                        | AllocDiscriminant::Static
+                        | AllocDiscriminant::Vtable => {
                             // Fns and statics cannot be cyclic, and their `AllocId`
                             // is determined later by interning.
                             *entry =
@@ -366,7 +368,8 @@ impl<'s> AllocDecodingSession<'s> {
                     assert!(alloc_id.is_none());
                     trace!("creating static alloc ID");
                     let ty = <Ty<'_> as Decodable<D>>::decode(decoder);
-                    let poly_trait_ref = <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);
+                    let poly_trait_ref =
+                        <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);
                     trace!("decoded vtable alloc instance: {ty:?}, {poly_trait_ref:?}");
                     let alloc_id = decoder.interner().create_vtable_alloc(ty, poly_trait_ref);
                     alloc_id
@@ -533,7 +536,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Generates an `AllocId` for a (symbolic, not-reified) vtable.  Will get deduplicated.
-    pub fn create_vtable_alloc(self, ty: Ty<'tcx>, poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>) -> AllocId {
+    pub fn create_vtable_alloc(
+        self,
+        ty: Ty<'tcx>,
+        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    ) -> AllocId {
         self.reserve_and_set_dedup(GlobalAlloc::Vtable(ty, poly_trait_ref))
     }
 
@@ -554,7 +561,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This function exists to allow const eval to detect the difference between evaluation-
     /// local dangling pointers and allocations in constants/statics.
     #[inline]
-    pub fn get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
+    pub fn try_get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
         self.alloc_map.lock().alloc_map.get(&id).cloned()
     }
 
@@ -565,7 +572,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ids), this function is frequently used throughout rustc, but should not be used within
     /// the miri engine.
     pub fn global_alloc(self, id: AllocId) -> GlobalAlloc<'tcx> {
-        match self.get_global_alloc(id) {
+        match self.try_get_global_alloc(id) {
             Some(alloc) => alloc,
             None => bug!("could not find allocation for {id:?}"),
         }

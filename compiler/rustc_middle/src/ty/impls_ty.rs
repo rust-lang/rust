@@ -147,7 +147,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            tcx.get_global_alloc(*self).hash_stable(hcx, hasher);
+            tcx.try_get_global_alloc(*self).hash_stable(hcx, hasher);
         });
     }
 }

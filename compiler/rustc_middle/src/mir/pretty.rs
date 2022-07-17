@@ -720,12 +720,14 @@ pub fn write_allocations<'tcx>(
                 write!(w, "{}", display_allocation(tcx, alloc.inner()))
             };
         write!(w, "\n{id:?}")?;
-        match tcx.get_global_alloc(id) {
+        match tcx.try_get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
             Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {inst})")?,
-            Some(GlobalAlloc::Vtable(ty, Some(trait_ref))) => write!(w, " (vtable: impl {trait_ref} for {ty})")?,
+            Some(GlobalAlloc::Vtable(ty, Some(trait_ref))) => {
+                write!(w, " (vtable: impl {trait_ref} for {ty})")?
+            }
             Some(GlobalAlloc::Vtable(ty, None)) => write!(w, " (vtable: impl ? for {ty})")?,
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 match tcx.eval_static_initializer(did) {
