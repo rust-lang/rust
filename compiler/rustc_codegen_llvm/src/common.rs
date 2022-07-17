@@ -240,6 +240,13 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
+                // For vtables, get the underlying data allocation.
+                let alloc_id = match self.tcx.global_alloc(alloc_id) {
+                    GlobalAlloc::Vtable(ty, trait_ref) => {
+                        self.tcx.vtable_allocation((ty, trait_ref))
+                    }
+                    _ => alloc_id,
+                };
                 let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
@@ -257,6 +264,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         self.get_fn_addr(fn_instance.polymorphize(self.tcx)),
                         self.data_layout().instruction_address_space,
                     ),
+                    GlobalAlloc::Vtable(..) => bug!("vtables are already handled"),
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         assert!(!self.tcx.is_thread_local_static(def_id));

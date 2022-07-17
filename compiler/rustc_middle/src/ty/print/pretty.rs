@@ -1282,11 +1282,12 @@ pub trait PrettyPrinter<'tcx>:
                                         p!("<too short allocation>")
                                     }
                                 }
-                                // FIXME: for statics and functions, we could in principle print more detail.
+                                // FIXME: for statics, vtables, and functions, we could in principle print more detail.
                                 Some(GlobalAlloc::Static(def_id)) => {
                                     p!(write("<static({:?})>", def_id))
                                 }
                                 Some(GlobalAlloc::Function(_)) => p!("<function>"),
+                                Some(GlobalAlloc::Vtable(..)) => p!("<vtable>"),
                                 None => p!("<dangling pointer>"),
                             }
                             return Ok(self);

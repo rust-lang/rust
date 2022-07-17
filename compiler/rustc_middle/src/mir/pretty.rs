@@ -725,6 +725,8 @@ pub fn write_allocations<'tcx>(
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
             Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {inst})")?,
+            Some(GlobalAlloc::Vtable(ty, Some(trait_ref))) => write!(w, " (vtable: impl {trait_ref} for {ty})")?,
+            Some(GlobalAlloc::Vtable(ty, None)) => write!(w, " (vtable: impl ? for {ty})")?,
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 match tcx.eval_static_initializer(did) {
                     Ok(alloc) => {

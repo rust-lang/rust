@@ -62,6 +62,8 @@ pub enum AllocKind {
     LiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
+    /// A (symbolic) vtable allocation.
+    Vtable,
     /// A dead allocation.
     Dead,
 }
@@ -291,6 +293,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Some(GlobalAlloc::Function(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is a function")
                 }
+                Some(GlobalAlloc::Vtable(..)) => {
+                    err_ub_format!("deallocating {alloc_id:?}, which is a vtable")
+                }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is static memory")
                 }
@@ -479,6 +484,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (mem, None)
             }
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
+            Some(GlobalAlloc::Vtable(..)) => throw_ub!(DerefVtablePointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
@@ -678,6 +684,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (alloc.size(), alloc.align, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
+            Some(GlobalAlloc::Vtable(..)) => {
+                // No data to be accessed here.
+                return (Size::ZERO, Align::ONE, AllocKind::Vtable);
+            }
             // The rest must be dead.
             None => {
                 // Deallocated pointers are allowed, we should be able to find
@@ -840,7 +850,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                             )?;
                         }
                         Some(GlobalAlloc::Function(func)) => {
-                            write!(fmt, " (fn: {})", func)?;
+                            write!(fmt, " (fn: {func})")?;
+                        }
+                        Some(GlobalAlloc::Vtable(ty, Some(trait_ref))) => {
+                            write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;
+                        }
+                        Some(GlobalAlloc::Vtable(ty, None)) => {
+                            write!(fmt, " (vtable: impl ? for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;

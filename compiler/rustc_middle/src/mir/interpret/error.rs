@@ -271,6 +271,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     WriteToReadOnly(AllocId),
     // Trying to access the data behind a function pointer.
     DerefFunctionPointer(AllocId),
+    // Trying to access the data behind a vtable pointer.
+    DerefVtablePointer(AllocId),
     /// The value validity check found a problem.
     /// Should only be thrown by `validity.rs` and always point out which part of the value
     /// is the problem.
@@ -359,6 +361,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             ),
             WriteToReadOnly(a) => write!(f, "writing to {a:?} which is read-only"),
             DerefFunctionPointer(a) => write!(f, "accessing {a:?} which contains a function"),
+            DerefVtablePointer(a) => write!(f, "accessing {a:?} which contains a vtable"),
             ValidationFailure { path: None, msg } => {
                 write!(f, "constructing invalid value: {msg}")
             }
