@@ -43,9 +43,14 @@ pub fn main() {
         * `m::produce_singleton`
         * `m::produce_doubleton`
 * In the `main` function, the opaque type is out of scope:
-    * When `main` calls `m::produce_singleton`, it gets back a reference to the opaque type `Seq<i32>`.
-    * The `is_send` call checks that `Seq<i32>: Send`. `Send` is not listed amongst the bounds of the impl trait, but because of auto-trait leakage, we are able to infer that it holds.
-    * The for loop desugaring requires that `Seq<T>: IntoIterator`, which is provable from the bounds declared on `Seq<T>`.
+    * When `main` calls `m::produce_singleton`,
+      it gets back a reference to the opaque type `Seq<i32>`.
+    * The `is_send` call checks that `Seq<i32>:
+      Send`. `Send` is not listed amongst the bounds of the impl trait,
+      but because of auto-trait leakage, 
+      we are able to infer that it holds.
+    * The for loop desugaring requires that `Seq<T>: IntoIterator`,
+      which is provable from the bounds declared on `Seq<T>`.
 
 ### Type-checking `main`
 
@@ -97,7 +102,9 @@ flowchart TD
 
 ### Within the `type_of` query
 
-The `type_of` query, when applied to an opaque type O, returns the hidden type. That hidden type is computed by combining the results from each constraining function within defining scope of O. 
+The `type_of` query, when applied to an opaque type O, returns the hidden type.
+That hidden type is computed by combining the results from each constraining function 
+within defining scope of O.
 
 ```mermaid
 flowchart TD
@@ -164,7 +171,9 @@ flowchart TD
 
 ### Interactions with queries
 
-When queries encounter a `opaque_ty_obligation`, they do not try to process them, but instead just store the constraints into the infcx.
+When queries encounter a `opaque_ty_obligation`,
+they do not try to process them,
+but instead just store the constraints into the infcx.
 
 ```mermaid
 graph TD
@@ -184,9 +193,13 @@ graph TD
     end
 ```
 
-The registered hidden types are stored into the `QueryResponse` struct in the `opaque_types` field (the function `take_opaque_types_for_query_response` reads them out).
+The registered hidden types are stored into the `QueryResponse` struct in
+the `opaque_types` field
+(the function `take_opaque_types_for_query_response` reads them out).
 
-When the `QueryResponse` is instantiated into the surrounding infcx in `query_response_substitution_guess`, we convert each hidden type constraint by invoking `handle_opaque_type` (as above).
+When the `QueryResponse` is instantiated into the surrounding infcx in
+`query_response_substitution_guess`,
+we convert each hidden type constraint by invoking `handle_opaque_type` (as above).
 
 There is one bit of "weirdness".
 The instantiated opaque types are stored in a *map*,
