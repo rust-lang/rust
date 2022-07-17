@@ -1021,6 +1021,10 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn retag(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        let retag_fields = this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields;
+        let mut visitor = RetagVisitor { ecx: this, kind, retag_fields };
+        return visitor.visit_value(place);
+
         // Determine mutability and whether to add a protector.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
@@ -1037,90 +1041,67 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Raw pointers need to be enabled.
                 ty::RawPtr(tym) if kind == RetagKind::Raw =>
                     Some((RefKind::Raw { mutable: tym.mutbl == Mutability::Mut }, false)),
-                // Boxes are handled separately due to that allocator situation.
+                // Boxes are handled separately due to that allocator situation,
+                // see the visitor below.
                 _ => None,
             }
         }
-
-        // We need a visitor to visit all references. However, that requires
-        // a `MPlaceTy` (or `OpTy`), so we have a fast path for reference types that
-        // avoids allocating.
-
-        if let Some((ref_kind, protector)) = qualify(place.layout.ty, kind) {
-            // Fast path.
-            let val = this.read_immediate(&this.place_to_op(place)?)?;
-            let val = this.retag_reference(&val, ref_kind, protector)?;
-            this.write_immediate(*val, place)?;
-            return Ok(());
-        }
-
-        // If we don't want to recurse, we are already done.
-        // EXCEPT if this is a `Box`, then we have to recurse because allocators.
-        // (Yes this means we technically also recursively retag the allocator itself even if field
-        // retagging is not enabled. *shrug*)
-        if !this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields
-            && !place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box())
-        {
-            return Ok(());
-        }
-
-        // Skip some types that have no further structure we might care about.
-        if matches!(
-            place.layout.ty.kind(),
-            ty::RawPtr(..)
-                | ty::Ref(..)
-                | ty::Int(..)
-                | ty::Uint(..)
-                | ty::Float(..)
-                | ty::Bool
-                | ty::Char
-        ) {
-            return Ok(());
-        }
-        // Now go visit this thing.
-        let place = this.force_allocation(place)?;
-
-        let mut visitor = RetagVisitor { ecx: this, kind };
-        return visitor.visit_value(&place);
 
         // The actual visitor.
         struct RetagVisitor<'ecx, 'mir, 'tcx> {
             ecx: &'ecx mut MiriEvalContext<'mir, 'tcx>,
             kind: RetagKind,
+            retag_fields: bool,
+        }
+        impl<'ecx, 'mir, 'tcx> RetagVisitor<'ecx, 'mir, 'tcx> {
+            #[inline(always)] // yes this helps in our benchmarks
+            fn retag_place(
+                &mut self,
+                place: &PlaceTy<'tcx, Tag>,
+                ref_kind: RefKind,
+                protector: bool,
+            ) -> InterpResult<'tcx> {
+                let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
+                let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
+                self.ecx.write_immediate(*val, place)?;
+                Ok(())
+            }
         }
         impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
             for RetagVisitor<'ecx, 'mir, 'tcx>
         {
-            type V = MPlaceTy<'tcx, Tag>;
+            type V = PlaceTy<'tcx, Tag>;
 
             #[inline(always)]
             fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
                 self.ecx
             }
 
-            fn visit_box(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_box(&mut self, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
                 // Boxes do not get a protector: protectors reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
-                let (ref_kind, protector) = (RefKind::Unique { two_phase: false }, false);
-
-                let val = self.ecx.read_immediate(&place.into())?;
-                let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
-                self.ecx.write_immediate(*val, &place.into())?;
-                Ok(())
+                self.retag_place(
+                    place,
+                    RefKind::Unique { two_phase: false },
+                    /*protector*/ false,
+                )
             }
 
-            fn visit_value(&mut self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_value(&mut self, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
                 if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
-                    let val = self.ecx.read_immediate(&place.into())?;
-                    let val = self.ecx.retag_reference(&val, ref_kind, protector)?;
-                    self.ecx.write_immediate(*val, &place.into())?;
+                    self.retag_place(place, ref_kind, protector)?;
                 } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
                     // Wide raw pointers *do* have fields and their types are strange.
                     // vtables have a type like `&[*const (); 3]` or so!
                     // Do *not* recurse into them.
-                    // (No need to worry about wide references or boxes, those always "qualify".)
-                } else {
-                    // Maybe we need to go deeper.
+                    // (No need to worry about wide references, those always "qualify". And Boxes
+                    // are handles specially by the visitor anyway.)
+                } else if self.retag_fields
+                    || place.layout.ty.ty_adt_def().is_some_and(|adt| adt.is_box())
+                {
+                    // Recurse deeper. Need to always recurse for `Box` to even hit `visit_box`.
+                    // (Yes this means we technically also recursively retag the allocator itself
+                    // even if field retagging is not enabled. *shrug*)
                     self.walk_value(place)?;
                 }
                 Ok(())
