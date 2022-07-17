@@ -290,10 +290,6 @@
                 "title": "Reveal File"
             },
             {
-                "command": "rust-analyzer.openFile",
-                "title": "Open File"
-            },
-            {
                 "command": "rust-analyzer.revealDependency",
                 "title": "Reveal File"
             }
