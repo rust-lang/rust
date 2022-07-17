@@ -195,3 +195,7 @@ rm -r $BUILD_ARTIFACTS/llvm $BUILD_ARTIFACTS/lld
 $@ \
     --rust-profile-use=${RUSTC_PROFILE_MERGED_FILE} \
     --llvm-profile-use=${LLVM_PROFILE_MERGED_FILE}
+
+echo "Rustc binary size"
+ls -la ./build/$PGO_HOST/stage2/bin
+ls -la ./build/$PGO_HOST/stage2/lib
