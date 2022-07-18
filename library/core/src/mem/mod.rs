@@ -1040,6 +1040,8 @@ pub fn copy<T: Copy>(x: &T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
 pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    assert!(size_of::<T>() >= size_of::<U>(), "cannot transmute_copy if U is larger than T");
+
     // If U has a higher alignment requirement, src might not be suitably aligned.
     if align_of::<U>() > align_of::<T>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
