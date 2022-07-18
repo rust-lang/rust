@@ -23,20 +23,15 @@
 //! for the relevant versions of the rust compiler
 //!
 
-// pub(crate) so tests can use the TokenStream, more notes in test/utils.rs
-pub(crate) mod abi_1_48;
-mod abi_1_54;
-mod abi_1_56;
-mod abi_1_57;
 mod abi_1_58;
 mod abi_1_63;
 mod abi_1_64;
 
+// Used by `test/utils.rs`
+#[cfg(test)]
+pub(crate) use abi_1_64::TokenStream as TestTokenStream;
+
 use super::dylib::LoadProcMacroDylibError;
-pub(crate) use abi_1_48::Abi as Abi_1_48;
-pub(crate) use abi_1_54::Abi as Abi_1_54;
-pub(crate) use abi_1_56::Abi as Abi_1_56;
-pub(crate) use abi_1_57::Abi as Abi_1_57;
 pub(crate) use abi_1_58::Abi as Abi_1_58;
 pub(crate) use abi_1_63::Abi as Abi_1_63;
 pub(crate) use abi_1_64::Abi as Abi_1_64;
@@ -54,10 +49,6 @@ impl PanicMessage {
 }
 
 pub(crate) enum Abi {
-    Abi1_48(Abi_1_48),
-    Abi1_54(Abi_1_54),
-    Abi1_56(Abi_1_56),
-    Abi1_57(Abi_1_57),
     Abi1_58(Abi_1_58),
     Abi1_63(Abi_1_63),
     Abi1_64(Abi_1_64),
@@ -81,22 +72,6 @@ impl Abi {
         // FIXME: this should use exclusive ranges when they're stable
         // https://github.com/rust-lang/rust/issues/37854
         match (info.version.0, info.version.1) {
-            (1, 48..=53) => {
-                let inner = unsafe { Abi_1_48::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_48(inner))
-            }
-            (1, 54..=55) => {
-                let inner = unsafe { Abi_1_54::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_54(inner))
-            }
-            (1, 56) => {
-                let inner = unsafe { Abi_1_56::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_56(inner))
-            }
-            (1, 57) => {
-                let inner = unsafe { Abi_1_57::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_57(inner))
-            }
             (1, 58..=62) => {
                 let inner = unsafe { Abi_1_58::from_lib(lib, symbol_name) }?;
                 Ok(Abi::Abi1_58(inner))
@@ -120,10 +95,6 @@ impl Abi {
         attributes: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, PanicMessage> {
         match self {
-            Self::Abi1_48(abi) => abi.expand(macro_name, macro_body, attributes),
-            Self::Abi1_54(abi) => abi.expand(macro_name, macro_body, attributes),
-            Self::Abi1_56(abi) => abi.expand(macro_name, macro_body, attributes),
-            Self::Abi1_57(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_64(abi) => abi.expand(macro_name, macro_body, attributes),
@@ -132,10 +103,6 @@ impl Abi {
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         match self {
-            Self::Abi1_48(abi) => abi.list_macros(),
-            Self::Abi1_54(abi) => abi.list_macros(),
-            Self::Abi1_56(abi) => abi.list_macros(),
-            Self::Abi1_57(abi) => abi.list_macros(),
             Self::Abi1_58(abi) => abi.list_macros(),
             Self::Abi1_63(abi) => abi.list_macros(),
             Self::Abi1_64(abi) => abi.list_macros(),

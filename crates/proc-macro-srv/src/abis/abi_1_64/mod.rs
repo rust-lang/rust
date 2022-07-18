@@ -13,6 +13,8 @@ use proc_macro_api::ProcMacroKind;
 
 use super::PanicMessage;
 
+pub use rustc_server::TokenStream;
+
 pub(crate) struct Abi {
     exported_macros: Vec<proc_macro::bridge::client::ProcMacro>,
 }
@@ -36,11 +38,10 @@ impl Abi {
         macro_body: &tt::Subtree,
         attributes: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, PanicMessage> {
-        let parsed_body = rustc_server::TokenStream::with_subtree(macro_body.clone());
+        let parsed_body = TokenStream::with_subtree(macro_body.clone());
 
-        let parsed_attributes = attributes.map_or(rustc_server::TokenStream::new(), |attr| {
-            rustc_server::TokenStream::with_subtree(attr.clone())
-        });
+        let parsed_attributes =
+            attributes.map_or(TokenStream::new(), |attr| TokenStream::with_subtree(attr.clone()));
 
         for proc_macro in &self.exported_macros {
             match proc_macro {
