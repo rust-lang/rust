@@ -2000,6 +2000,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 let mut err = if let Some(subst) = subst {
                     if matches!(obligation.cause.code(), ObligationCauseCode::ItemObligation(..))
                         && !obligation.param_env.is_const()
+                        && !self.is_tainted_by_errors()
                     {
                         let mut err = struct_span_err!(
                             self.tcx.sess,
