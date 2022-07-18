@@ -34,6 +34,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
+        self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty);
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
             return;
         }
@@ -416,6 +417,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn suggest_non_zero_new_unwrap(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected: Ty<'tcx>,
+        expr_ty: Ty<'tcx>,
+    ) {
+        let tcx = self.tcx;
+        let (adt, unwrap) = match expected.kind() {
+            // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
+            ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+                // Unwrap option
+                let Some(fst) = substs.first() else { return };
+                let ty::Adt(adt, _) = fst.expect_ty().kind() else { return };
+
+                (adt, "")
+            }
+            // In case NonZero* is wanted, but * is provided also add `.unwrap()` to satisfy types
+            ty::Adt(adt, _) => (adt, ".unwrap()"),
+            _ => return,
+        };
+
+        let map = [
+            (sym::NonZeroU8, tcx.types.u8),
+            (sym::NonZeroU16, tcx.types.u16),
+            (sym::NonZeroU32, tcx.types.u32),
+            (sym::NonZeroU64, tcx.types.u64),
+            (sym::NonZeroU128, tcx.types.u128),
+            (sym::NonZeroI8, tcx.types.i8),
+            (sym::NonZeroI16, tcx.types.i16),
+            (sym::NonZeroI32, tcx.types.i32),
+            (sym::NonZeroI64, tcx.types.i64),
+            (sym::NonZeroI128, tcx.types.i128),
+        ];
+
+        let Some((s, _)) = map
+            .iter()
+            .find(|&&(s, _)| self.tcx.is_diagnostic_item(s, adt.did()))
+            .filter(|&&(_, t)| { self.can_coerce(expr_ty, t) })
+            else { return };
+
+        let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
+
+        err.multipart_suggestion(
+            format!("consider calling `{s}::new`"),
+            vec![
+                (expr.span.shrink_to_lo(), format!("{path}::new(")),
+                (expr.span.shrink_to_hi(), format!("){unwrap}")),
+            ],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     pub fn get_conversion_methods(
