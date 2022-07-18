@@ -311,6 +311,17 @@ fn test_posix_gettimeofday() {
     assert_eq!(is_error, -1);
 }
 
+fn test_isatty() {
+    // Testing whether our isatty shim returns the right value would require controlling whether
+    // these streams are actually TTYs, which is hard.
+    // For now, we just check that these calls are supported at all.
+    unsafe {
+        libc::isatty(libc::STDIN_FILENO);
+        libc::isatty(libc::STDOUT_FILENO);
+        libc::isatty(libc::STDERR_FILENO);
+    }
+}
+
 fn main() {
     #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     test_posix_fadvise();
@@ -335,4 +346,6 @@ fn main() {
 
     #[cfg(any(target_os = "linux"))]
     test_clocks();
+
+    test_isatty();
 }
