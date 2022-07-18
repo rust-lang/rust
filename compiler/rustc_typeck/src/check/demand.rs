@@ -19,6 +19,7 @@ use rustc_span::{BytePos, Span};
 use super::method::probe;
 
 use std::iter;
+use std::ops::Bound;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
@@ -345,6 +346,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
+            }
+
+            // Avoid suggesting wrapping in `NonZeroU64` and alike
+            if self.tcx.layout_scalar_valid_range(expected_adt.did())
+                != (Bound::Unbounded, Bound::Unbounded)
+            {
+                return;
             }
 
             let compatible_variants: Vec<String> = expected_adt
