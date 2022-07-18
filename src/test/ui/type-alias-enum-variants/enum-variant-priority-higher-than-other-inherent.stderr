@@ -1,4 +1,4 @@
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
   --> $DIR/enum-variant-priority-higher-than-other-inherent.rs:21:5
    |
 LL |     <E>::V();
