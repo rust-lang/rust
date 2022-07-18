@@ -919,7 +919,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     expect![[r#"
 
         ```rust
-        foo::Bar
+        foo::Foo
         ```
 
         ```rust

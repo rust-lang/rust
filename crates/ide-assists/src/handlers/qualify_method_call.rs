@@ -1,8 +1,5 @@
-use hir::{ItemInNs, ModuleDef};
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    imports::import_assets::item_for_path_search,
-};
+use hir::{db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, ItemInNs, ModuleDef};
+use ide_db::assists::{AssistId, AssistKind};
 use syntax::{ast, AstNode};
 
 use crate::{
@@ -65,6 +62,26 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
         },
     );
     Some(())
+}
+
+fn item_for_path_search(db: &dyn HirDatabase, item: ItemInNs) -> Option<ItemInNs> {
+    Some(match item {
+        ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
+            Some(assoc_item) => match assoc_item.container(db) {
+                AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+                AssocItemContainer::Impl(impl_) => match impl_.trait_(db) {
+                    None => ItemInNs::from(ModuleDef::from(impl_.self_ty(db).as_adt()?)),
+                    Some(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+                },
+            },
+            None => item,
+        },
+        ItemInNs::Macros(_) => item,
+    })
+}
+
+fn item_as_assoc(db: &dyn HirDatabase, item: ItemInNs) -> Option<AssocItem> {
+    item.as_module_def().and_then(|module_def| module_def.as_assoc_item(db))
 }
 
 #[cfg(test)]

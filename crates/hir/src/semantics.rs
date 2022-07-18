@@ -16,7 +16,6 @@ use hir_expand::{
     name::{known, AsName},
     ExpansionInfo, MacroCallId,
 };
-use hir_ty::Interner;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
@@ -975,18 +974,11 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
-        self.analyze(call.syntax())?.resolve_method_call(self.db, call).map(|(id, _)| id)
+        self.analyze(call.syntax())?.resolve_method_call(self.db, call)
     }
 
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
-        let source_analyzer = self.analyze(call.syntax())?;
-        let (func, subst) = source_analyzer.resolve_method_call(self.db, call)?;
-        let ty = self.db.value_ty(func.into()).substitute(Interner, &subst);
-        let resolver = source_analyzer.resolver;
-        let ty = Type::new_with_resolver(self.db, &resolver, ty);
-        let mut res = ty.as_callable(self.db)?;
-        res.is_bound_method = true;
-        Some(res)
+        self.analyze(call.syntax())?.resolve_method_call_as_callable(self.db, call)
     }
 
     fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {

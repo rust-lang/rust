@@ -24,7 +24,7 @@ use std::fmt;
 
 use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
-use hir::{AsAssocItem, FieldSource, HasSource, InFile, ModuleSource, Semantics};
+use hir::{FieldSource, HasSource, InFile, ModuleSource, Semantics};
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
@@ -37,6 +37,7 @@ use crate::{
     search::FileReference,
     source_change::{FileSystemEdit, SourceChange},
     syntax_helpers::node_ext::expr_as_name_ref,
+    traits::convert_to_def_in_trait,
     RootDatabase,
 };
 
@@ -248,7 +249,7 @@ fn rename_mod(
 
 fn rename_reference(
     sema: &Semantics<RootDatabase>,
-    mut def: Definition,
+    def: Definition,
     new_name: &str,
 ) -> Result<SourceChange> {
     let ident_kind = IdentifierKind::classify(new_name)?;
@@ -275,41 +276,7 @@ fn rename_reference(
         }
     }
 
-    let assoc_item = match def {
-        // HACK: resolve trait impl items to the item def of the trait definition
-        // so that we properly resolve all trait item references
-        Definition::Function(it) => it.as_assoc_item(sema.db),
-        Definition::TypeAlias(it) => it.as_assoc_item(sema.db),
-        Definition::Const(it) => it.as_assoc_item(sema.db),
-        _ => None,
-    };
-    def = match assoc_item {
-        Some(assoc) => assoc
-            .containing_trait_impl(sema.db)
-            .and_then(|trait_| {
-                trait_.items(sema.db).into_iter().find_map(|it| match (it, assoc) {
-                    (hir::AssocItem::Function(trait_func), hir::AssocItem::Function(func))
-                        if trait_func.name(sema.db) == func.name(sema.db) =>
-                    {
-                        Some(Definition::Function(trait_func))
-                    }
-                    (hir::AssocItem::Const(trait_konst), hir::AssocItem::Const(konst))
-                        if trait_konst.name(sema.db) == konst.name(sema.db) =>
-                    {
-                        Some(Definition::Const(trait_konst))
-                    }
-                    (
-                        hir::AssocItem::TypeAlias(trait_type_alias),
-                        hir::AssocItem::TypeAlias(type_alias),
-                    ) if trait_type_alias.name(sema.db) == type_alias.name(sema.db) => {
-                        Some(Definition::TypeAlias(trait_type_alias))
-                    }
-                    _ => None,
-                })
-            })
-            .unwrap_or(def),
-        None => def,
-    };
+    let def = convert_to_def_in_trait(sema.db, def);
     let usages = def.usages(sema).all();
 
     if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {

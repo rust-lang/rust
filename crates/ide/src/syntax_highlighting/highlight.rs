@@ -510,7 +510,11 @@ fn highlight_method_call(
     if func.is_async(sema.db) {
         h |= HlMod::Async;
     }
-    if func.as_assoc_item(sema.db).and_then(|it| it.containing_trait(sema.db)).is_some() {
+    if func
+        .as_assoc_item(sema.db)
+        .and_then(|it| it.containing_trait_or_trait_impl(sema.db))
+        .is_some()
+    {
         h |= HlMod::Trait;
     }
 
