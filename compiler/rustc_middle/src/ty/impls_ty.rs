@@ -153,9 +153,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
 }
 
 // `Relocations` with default type parameters is a sorted map.
-impl<'a, Tag> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Tag>
+impl<'a, Prov> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Prov>
 where
-    Tag: HashStable<StableHashingContext<'a>>,
+    Prov: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.len().hash_stable(hcx, hasher);

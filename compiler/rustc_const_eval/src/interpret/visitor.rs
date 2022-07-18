@@ -21,20 +21,20 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
     fn to_op_for_read(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
 
     /// Makes this into an `OpTy`, in a potentially more expensive way that is good for projections.
     fn to_op_for_proj(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         self.to_op_for_read(ecx)
     }
 
     /// Creates this from an `OpTy`.
     ///
     /// If `to_op_for_proj` only ever produces `Indirect` operands, then this one is definitely `Indirect`.
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self;
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self;
 
     /// Projects to the given enum variant.
     fn project_downcast(
@@ -62,18 +62,18 @@ pub trait ValueMut<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
     fn to_op_for_read(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
 
     /// Makes this into an `OpTy`, in a potentially more expensive way that is good for projections.
     fn to_op_for_proj(
         &self,
         ecx: &mut InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>>;
 
     /// Creates this from an `OpTy`.
     ///
     /// If `to_op_for_proj` only ever produces `Indirect` operands, then this one is definitely `Indirect`.
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self;
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self;
 
     /// Projects to the given enum variant.
     fn project_downcast(
@@ -95,7 +95,7 @@ pub trait ValueMut<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Sized {
 // So we have some copy-paste here. (We could have a macro but since we only have 2 types with this
 // double-impl, that would barely make the code shorter, if at all.)
 
-impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::Provenance> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
@@ -105,12 +105,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
     fn to_op_for_read(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.clone())
     }
 
     #[inline(always)]
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self {
         op.clone()
     }
 
@@ -134,7 +134,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tc
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
-    for OpTy<'tcx, M::PointerTag>
+    for OpTy<'tcx, M::Provenance>
 {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
@@ -145,7 +145,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     fn to_op_for_read(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.clone())
     }
 
@@ -153,12 +153,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     fn to_op_for_proj(
         &self,
         _ecx: &mut InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.clone())
     }
 
     #[inline(always)]
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self {
         op.clone()
     }
 
@@ -182,7 +182,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
-    for MPlaceTy<'tcx, M::PointerTag>
+    for MPlaceTy<'tcx, M::Provenance>
 {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
@@ -193,12 +193,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
     fn to_op_for_read(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.into())
     }
 
     #[inline(always)]
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self {
         // assert is justified because our `to_op_for_read` only ever produces `Indirect` operands.
         op.assert_mem_place()
     }
@@ -223,7 +223,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
-    for MPlaceTy<'tcx, M::PointerTag>
+    for MPlaceTy<'tcx, M::Provenance>
 {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
@@ -234,7 +234,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     fn to_op_for_read(
         &self,
         _ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.into())
     }
 
@@ -242,12 +242,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     fn to_op_for_proj(
         &self,
         _ecx: &mut InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         Ok(self.into())
     }
 
     #[inline(always)]
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self {
         // assert is justified because our `to_op_for_proj` only ever produces `Indirect` operands.
         op.assert_mem_place()
     }
@@ -272,7 +272,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
-    for PlaceTy<'tcx, M::PointerTag>
+    for PlaceTy<'tcx, M::Provenance>
 {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
@@ -283,7 +283,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     fn to_op_for_read(
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // We `force_allocation` here so that `from_op` below can work.
         ecx.place_to_op(self)
     }
@@ -292,13 +292,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
     fn to_op_for_proj(
         &self,
         ecx: &mut InterpCx<'mir, 'tcx, M>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         // We `force_allocation` here so that `from_op` below can work.
         Ok(ecx.force_allocation(self)?.into())
     }
 
     #[inline(always)]
-    fn from_op(op: &OpTy<'tcx, M::PointerTag>) -> Self {
+    fn from_op(op: &OpTy<'tcx, M::Provenance>) -> Self {
         // assert is justified because our `to_op` only ever produces `Indirect` operands.
         op.assert_mem_place().into()
     }
@@ -336,7 +336,7 @@ macro_rules! make_value_visitor {
             #[inline(always)]
             fn read_discriminant(
                 &mut self,
-                op: &OpTy<'tcx, M::PointerTag>,
+                op: &OpTy<'tcx, M::Provenance>,
             ) -> InterpResult<'tcx, VariantIdx> {
                 Ok(self.ecx().read_discriminant(op)?.1)
             }

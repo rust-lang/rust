@@ -21,7 +21,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
-    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
         let (ty, poly_trait_ref) = self.tcx.erase_regions((ty, poly_trait_ref));
@@ -42,7 +42,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// corresponds to the first method declared in the trait of the provided vtable.
     pub fn get_vtable_slot(
         &self,
-        vtable: Pointer<Option<M::PointerTag>>,
+        vtable: Pointer<Option<M::Provenance>>,
         idx: u64,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
@@ -57,7 +57,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns the drop fn instance as well as the actual dynamic type.
     pub fn read_drop_type_from_vtable(
         &self,
-        vtable: Pointer<Option<M::PointerTag>>,
+        vtable: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
         let pointer_size = self.pointer_size();
         // We don't care about the pointee type; we just want a pointer.
@@ -89,7 +89,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn read_size_and_align_from_vtable(
         &self,
-        vtable: Pointer<Option<M::PointerTag>>,
+        vtable: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
         // We check for `size = 3 * ptr_size`, which covers the drop fn (unused here),
@@ -126,9 +126,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn read_new_vtable_after_trait_upcasting_from_vtable(
         &self,
-        vtable: Pointer<Option<M::PointerTag>>,
+        vtable: Pointer<Option<M::Provenance>>,
         idx: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         let pointer_size = self.pointer_size();
 
         let vtable_slot = vtable.offset(pointer_size * idx, self)?;

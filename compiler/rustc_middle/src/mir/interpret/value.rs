@@ -126,7 +126,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// Do *not* match on a `Scalar`! Use the various `to_*` methods instead.
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub enum Scalar<Tag = AllocId> {
+pub enum Scalar<Prov = AllocId> {
     /// The raw bytes of a simple value.
     Int(ScalarInt),
 
@@ -137,7 +137,7 @@ pub enum Scalar<Tag = AllocId> {
     /// We also store the size of the pointer, such that a `Scalar` always knows how big it is.
     /// The size is always the pointer size of the current target, but this is not information
     /// that we always have readily available.
-    Ptr(Pointer<Tag>, u8),
+    Ptr(Pointer<Prov>, u8),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -145,7 +145,7 @@ static_assert_size!(Scalar, 24);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: Provenance> fmt::Debug for Scalar<Tag> {
+impl<Prov: Provenance> fmt::Debug for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr, _size) => write!(f, "{:?}", ptr),
@@ -154,7 +154,7 @@ impl<Tag: Provenance> fmt::Debug for Scalar<Tag> {
     }
 }
 
-impl<Tag: Provenance> fmt::Display for Scalar<Tag> {
+impl<Prov: Provenance> fmt::Display for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
@@ -163,7 +163,7 @@ impl<Tag: Provenance> fmt::Display for Scalar<Tag> {
     }
 }
 
-impl<Tag: Provenance> fmt::LowerHex for Scalar<Tag> {
+impl<Prov: Provenance> fmt::LowerHex for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
@@ -172,37 +172,38 @@ impl<Tag: Provenance> fmt::LowerHex for Scalar<Tag> {
     }
 }
 
-impl<Tag> From<Single> for Scalar<Tag> {
+impl<Prov> From<Single> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Single) -> Self {
         Scalar::from_f32(f)
     }
 }
 
-impl<Tag> From<Double> for Scalar<Tag> {
+impl<Prov> From<Double> for Scalar<Prov> {
     #[inline(always)]
     fn from(f: Double) -> Self {
         Scalar::from_f64(f)
     }
 }
 
-impl<Tag> From<ScalarInt> for Scalar<Tag> {
+impl<Prov> From<ScalarInt> for Scalar<Prov> {
     #[inline(always)]
     fn from(ptr: ScalarInt) -> Self {
         Scalar::Int(ptr)
     }
 }
 
-impl<Tag> Scalar<Tag> {
+impl<Prov> Scalar<Prov> {
     #[inline(always)]
-    pub fn from_pointer(ptr: Pointer<Tag>, cx: &impl HasDataLayout) -> Self {
+    pub fn from_pointer(ptr: Pointer<Prov>, cx: &impl HasDataLayout) -> Self {
         Scalar::Ptr(ptr, u8::try_from(cx.pointer_size().bytes()).unwrap())
     }
 
-    /// Create a Scalar from a pointer with an `Option<_>` tag (where `None` represents a plain integer).
-    pub fn from_maybe_pointer(ptr: Pointer<Option<Tag>>, cx: &impl HasDataLayout) -> Self {
+    /// Create a Scalar from a pointer with an `Option<_>` provenance (where `None` represents a
+    /// plain integer / "invalid" pointer).
+    pub fn from_maybe_pointer(ptr: Pointer<Option<Prov>>, cx: &impl HasDataLayout) -> Self {
         match ptr.into_parts() {
-            (Some(tag), offset) => Scalar::from_pointer(Pointer::new(tag, offset), cx),
+            (Some(prov), offset) => Scalar::from_pointer(Pointer::new(prov, offset), cx),
             (None, offset) => {
                 Scalar::Int(ScalarInt::try_from_uint(offset.bytes(), cx.pointer_size()).unwrap())
             }
@@ -310,7 +311,7 @@ impl<Tag> Scalar<Tag> {
     pub fn to_bits_or_ptr_internal(
         self,
         target_size: Size,
-    ) -> Result<Result<u128, Pointer<Tag>>, ScalarSizeMismatch> {
+    ) -> Result<Result<u128, Pointer<Prov>>, ScalarSizeMismatch> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         Ok(match self {
             Scalar::Int(int) => Ok(int.to_bits(target_size).map_err(|size| {
@@ -329,7 +330,7 @@ impl<Tag> Scalar<Tag> {
     }
 }
 
-impl<'tcx, Tag: Provenance> Scalar<Tag> {
+impl<'tcx, Prov: Provenance> Scalar<Prov> {
     /// Fundamental scalar-to-int (cast) operation. Many convenience wrappers exist below, that you
     /// likely want to use instead.
     ///
@@ -341,13 +342,13 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         match self {
             Scalar::Int(int) => Ok(int),
             Scalar::Ptr(ptr, sz) => {
-                if Tag::OFFSET_IS_ADDR {
+                if Prov::OFFSET_IS_ADDR {
                     Ok(ScalarInt::try_from_uint(ptr.offset.bytes(), Size::from_bytes(sz)).unwrap())
                 } else {
                     // We know `offset` is relative, since `OFFSET_IS_ADDR == false`.
-                    let (tag, offset) = ptr.into_parts();
+                    let (prov, offset) = ptr.into_parts();
                     // Because `OFFSET_IS_ADDR == false`, this unwrap can never fail.
-                    Err(Scalar::Ptr(Pointer::new(tag.get_alloc_id().unwrap(), offset), sz))
+                    Err(Scalar::Ptr(Pointer::new(prov.get_alloc_id().unwrap(), offset), sz))
                 }
             }
         }
@@ -489,24 +490,24 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Hash)]
-pub enum ScalarMaybeUninit<Tag = AllocId> {
-    Scalar(Scalar<Tag>),
+pub enum ScalarMaybeUninit<Prov = AllocId> {
+    Scalar(Scalar<Prov>),
     Uninit,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ScalarMaybeUninit, 24);
 
-impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
+impl<Prov> From<Scalar<Prov>> for ScalarMaybeUninit<Prov> {
     #[inline(always)]
-    fn from(s: Scalar<Tag>) -> Self {
+    fn from(s: Scalar<Prov>) -> Self {
         ScalarMaybeUninit::Scalar(s)
     }
 }
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: Provenance> fmt::Debug for ScalarMaybeUninit<Tag> {
+impl<Prov: Provenance> fmt::Debug for ScalarMaybeUninit<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "<uninitialized>"),
@@ -515,7 +516,7 @@ impl<Tag: Provenance> fmt::Debug for ScalarMaybeUninit<Tag> {
     }
 }
 
-impl<Tag: Provenance> fmt::LowerHex for ScalarMaybeUninit<Tag> {
+impl<Prov: Provenance> fmt::LowerHex for ScalarMaybeUninit<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
@@ -524,19 +525,19 @@ impl<Tag: Provenance> fmt::LowerHex for ScalarMaybeUninit<Tag> {
     }
 }
 
-impl<Tag> ScalarMaybeUninit<Tag> {
+impl<Prov> ScalarMaybeUninit<Prov> {
     #[inline]
-    pub fn from_pointer(ptr: Pointer<Tag>, cx: &impl HasDataLayout) -> Self {
+    pub fn from_pointer(ptr: Pointer<Prov>, cx: &impl HasDataLayout) -> Self {
         ScalarMaybeUninit::Scalar(Scalar::from_pointer(ptr, cx))
     }
 
     #[inline]
-    pub fn from_maybe_pointer(ptr: Pointer<Option<Tag>>, cx: &impl HasDataLayout) -> Self {
+    pub fn from_maybe_pointer(ptr: Pointer<Option<Prov>>, cx: &impl HasDataLayout) -> Self {
         ScalarMaybeUninit::Scalar(Scalar::from_maybe_pointer(ptr, cx))
     }
 
     #[inline]
-    pub fn check_init<'tcx>(self) -> InterpResult<'tcx, Scalar<Tag>> {
+    pub fn check_init<'tcx>(self) -> InterpResult<'tcx, Scalar<Prov>> {
         match self {
             ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),
@@ -544,7 +545,7 @@ impl<Tag> ScalarMaybeUninit<Tag> {
     }
 }
 
-impl<'tcx, Tag: Provenance> ScalarMaybeUninit<Tag> {
+impl<'tcx, Prov: Provenance> ScalarMaybeUninit<Prov> {
     #[inline(always)]
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
         self.check_init()?.to_bool()
