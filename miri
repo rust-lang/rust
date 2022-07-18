@@ -96,9 +96,13 @@ fi
 
 # Prepare flags for cargo and rustc.
 CARGO="cargo +$TOOLCHAIN"
+# Share target dir between `miri` and `cargo-miri`.
 if [ -z "$CARGO_TARGET_DIR" ]; then
-    # Share target dir between `miri` and `cargo-miri`.
     export CARGO_TARGET_DIR="$MIRIDIR/target"
+fi
+# We configure dev builds to not be unusably slow.
+if [ -z "$CARGO_PROFILE_DEV_OPT_LEVEL" ]; then
+    export CARGO_PROFILE_DEV_OPT_LEVEL=2
 fi
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
