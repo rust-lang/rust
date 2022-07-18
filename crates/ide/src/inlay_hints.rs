@@ -1910,7 +1910,7 @@ impl<T> Vec<T> {
 pub struct Box<T> {}
 
 trait Display {}
-trait Sync {}
+auto trait Sync {}
 
 fn main() {
     // The block expression wrapping disables the constructor hint hiding logic
