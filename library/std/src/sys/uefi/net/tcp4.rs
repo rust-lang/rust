@@ -1,14 +1,11 @@
-use super::uefi_service_binding::{self, ServiceBinding};
+use super::uefi_service_binding::ServiceBinding;
 use crate::io;
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv4Addr, SocketAddrV4};
 use crate::os::uefi;
-use crate::os::uefi::raw::protocols::{
-    ip4, managed_network, service_binding, simple_network, tcp4,
-};
+use crate::os::uefi::raw::protocols::{ip4, managed_network, simple_network, tcp4};
 use crate::os::uefi::raw::Status;
 use crate::ptr::NonNull;
-use crate::sys_common::AsInner;
 
 // FIXME: Discuss what the values these constants should have
 const TYPE_OF_SERVICE: u8 = 8;
@@ -34,8 +31,6 @@ impl Tcp4Protocol {
         subnet_mask: &crate::net::Ipv4Addr,
         remote_addr: &crate::net::SocketAddrV4,
     ) -> io::Result<()> {
-        let protocol = self.protocol.as_ptr();
-
         let mut config_data = tcp4::ConfigData {
             // FIXME: Check in mailing list what traffic_class should be used
             type_of_service: TYPE_OF_SERVICE,
@@ -53,43 +48,7 @@ impl Tcp4Protocol {
             // FIXME: Maybe provide a rust default one at some point
             control_option: crate::ptr::null_mut(),
         };
-
-        let r = unsafe { ((*protocol).configure)(protocol, &mut config_data) };
-
-        if r.is_error() {
-            let e = match r {
-                Status::NO_MAPPING => io::Error::new(
-                    io::ErrorKind::Other,
-                    "The underlying IPv6 driver was responsible for choosing a source address for this instance, but no source address was available for use",
-                ),
-                Status::INVALID_PARAMETER => {
-                    io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
-                }
-                Status::ACCESS_DENIED => io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "Configuring TCP instance when it is configured without calling Configure() with NULL to reset it",
-                ),
-                Status::UNSUPPORTED => io::Error::new(
-                    io::ErrorKind::Unsupported,
-                    "One or more of the control options are not supported in the implementation.",
-                ),
-                Status::OUT_OF_RESOURCES => io::Error::new(
-                    io::ErrorKind::OutOfMemory,
-                    "Could not allocate enough system resources when executing Configure()",
-                ),
-                Status::DEVICE_ERROR => io::Error::new(
-                    io::ErrorKind::Other,
-                    "An unexpected network or system error occurred",
-                ),
-                _ => io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Unknown Error: {}", r.as_usize()),
-                ),
-            };
-            Err(e)
-        } else {
-            Ok(())
-        }
+        Self::config_raw(self.protocol.as_ptr(), &mut config_data)
     }
 
     pub fn accept(&self) -> io::Result<Tcp4Protocol> {
@@ -251,9 +210,7 @@ connection is reset either by instance itself or communication peer",
         let mut receive_token = tcp4::IoToken { completion_token, packet };
         Self::receive_raw(self.protocol.as_ptr(), &mut receive_token)?;
 
-        println!("Wait for receive");
         receive_event.wait()?;
-        println!("Receive Done");
 
         let r = receive_token.completion_token.status;
         if r.is_error() {
@@ -485,6 +442,48 @@ connection is reset either by instance itself or communication peer",
                     format!("Status: {}", r.as_usize()),
                 )),
             }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn config_raw(
+        protocol: *mut tcp4::Protocol,
+        config_data: *mut tcp4::ConfigData,
+    ) -> io::Result<()> {
+        let r = unsafe { ((*protocol).configure)(protocol, config_data) };
+
+        if r.is_error() {
+            let e = match r {
+                Status::NO_MAPPING => io::Error::new(
+                    io::ErrorKind::Other,
+                    "The underlying IPv6 driver was responsible for choosing a source address for this instance, but no source address was available for use",
+                ),
+                Status::INVALID_PARAMETER => {
+                    io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
+                }
+                Status::ACCESS_DENIED => io::Error::new(
+                    io::ErrorKind::PermissionDenied,
+                    "Configuring TCP instance when it is configured without calling Configure() with NULL to reset it",
+                ),
+                Status::UNSUPPORTED => io::Error::new(
+                    io::ErrorKind::Unsupported,
+                    "One or more of the control options are not supported in the implementation.",
+                ),
+                Status::OUT_OF_RESOURCES => io::Error::new(
+                    io::ErrorKind::OutOfMemory,
+                    "Could not allocate enough system resources when executing Configure()",
+                ),
+                Status::DEVICE_ERROR => io::Error::new(
+                    io::ErrorKind::Other,
+                    "An unexpected network or system error occurred",
+                ),
+                _ => io::Error::new(
+                    io::ErrorKind::Uncategorized,
+                    format!("Unknown Error: {}", r.as_usize()),
+                ),
+            };
+            Err(e)
         } else {
             Ok(())
         }

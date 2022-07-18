@@ -1,10 +1,10 @@
 //! Implemented using File Protocol
 
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
-use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+// use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi::raw::protocols::file;
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
@@ -329,8 +329,14 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     Ok(ReadDir { inner })
 }
 
-pub fn unlink(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn unlink(p: &Path) -> io::Result<()> {
+    let open_mode = file::MODE_READ | file::MODE_WRITE;
+    let attr = 0;
+    let file = {
+        let rootfs = uefi_fs::FileProtocol::get_rootfs()?;
+        rootfs.open(p, open_mode, attr)
+    }?;
+    file.delete()
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
@@ -380,12 +386,14 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn stat(p: &Path) -> io::Result<FileAttr> {
+    let opts = OpenOptions { open_mode: file::MODE_READ, attr: 0 };
+    File::open(p, &opts)?.file_attr()
 }
 
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+// Shoule be same as stat since symlinks are not implemented anyway
+pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    stat(p)
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
@@ -417,7 +425,7 @@ fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
                             Ok(x) => x,
                             Err(_) => continue,
                         };
-                    cascade_delete(new_file);
+                    let _ = cascade_delete(new_file);
                 } else {
                     let open_mode = file::MODE_READ | file::MODE_WRITE;
                     let attr = 0;

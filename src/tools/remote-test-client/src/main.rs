@@ -109,7 +109,7 @@ fn prepare_rootfs(target: &str, rootfs: &Path, server: &Path, rootfs_img: &Path)
     t!(fs::copy(server, rootfs.join("testd")));
 
     match target {
-        "arm-unknown-linux-gnueabihf" | "aarch64-unknown-linux-gnu" => {
+        "arm-unknown-linux-gnueabihf" | "aarch64-unknown-linux-gnu" | "x86_64-unknown-uefi" => {
             prepare_rootfs_cpio(rootfs, rootfs_img)
         }
         "riscv64gc-unknown-linux-gnu" => prepare_rootfs_ext4(rootfs, rootfs_img),
@@ -233,6 +233,29 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("virtio-blk-device,drive=hd0")
                 .arg("-drive")
                 .arg(&format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
+            t!(cmd.spawn());
+        }
+        "x86_64-unknown-uefi" => {
+            let mut cmd = Command::new("qemu-system-x86_64");
+            cmd.arg("-nographic")
+                .arg("-machine")
+                .arg("virt")
+                .arg("-m")
+                .arg("1024")
+                .arg("-drive")
+                .arg("if=pflash,format=raw,unit=0,file=/tmp/OVMF/OVMF_CODE.fd")
+                .arg("-drive")
+                .arg("if=pflash,format=raw,unit=1,file=/tmp/OVMF/OVMF_VARS.fd")
+                .arg("-drive")
+                .arg("format=raw,file=/tmp/OVMF/UefiShell.iso")
+                .arg("-append")
+                .arg("quiet console=ttyS0")
+                .arg("-netdev")
+                .arg("user,id=net0,hostfwd=tcp::12345-:12345")
+                .arg("-device")
+                .arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00")
+                .arg("-drive")
+                .arg(&format!("file={},format=raw,media=disk", &rootfs_img.to_string_lossy()));
             t!(cmd.spawn());
         }
         _ => panic!("cannot start emulator for: {}", target),

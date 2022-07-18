@@ -1,14 +1,12 @@
+#[allow(unused)]
 use super::uefi_service_binding::ServiceBinding;
 use crate::io;
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv6Addr, SocketAddrV6};
 use crate::os::uefi;
-use crate::os::uefi::raw::protocols::{
-    ip6, managed_network, service_binding, simple_network, tcp6,
-};
+use crate::os::uefi::raw::protocols::{ip6, managed_network, simple_network, tcp6};
 use crate::os::uefi::raw::Status;
 use crate::ptr::NonNull;
-use crate::sys_common::AsInner;
 
 // FIXME: Discuss what the values these constants should have
 const TRAFFIC_CLASS: u8 = 0;

@@ -2,7 +2,6 @@ use super::raw::{self, EventNotify, Status, Tpl};
 use crate::ffi::c_void;
 use crate::io;
 use crate::ptr::NonNull;
-use crate::sys_common::AsInner;
 
 pub(crate) struct Event {
     inner: NonNull<c_void>,
@@ -14,7 +13,7 @@ impl Event {
     }
 
     fn from_raw_event(ptr: raw::Event) -> Option<Self> {
-        Some(Self { inner: NonNull::new(ptr)? })
+        Some(Self::new(NonNull::new(ptr)?))
     }
 
     pub(crate) fn create(

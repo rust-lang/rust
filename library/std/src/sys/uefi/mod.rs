@@ -13,7 +13,6 @@
 //! [`OsString`]: crate::ffi::OsString
 
 #![deny(unsafe_op_in_unsafe_fn)]
-
 pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
@@ -173,6 +172,6 @@ pub unsafe extern "efiapi" fn efi_main(
     }
 }
 
-pub fn unknown_error(e: &uefi::raw::Status) -> crate::io::Error {
-    crate::io::Error::new(crate::io::ErrorKind::Other, format!("Unknown Error: {}", e.as_usize()))
-}
+// pub fn unknown_error(e: &uefi::raw::Status) -> crate::io::Error {
+//     crate::io::Error::new(crate::io::ErrorKind::Other, format!("Unknown Error: {}", e.as_usize()))
+// }
