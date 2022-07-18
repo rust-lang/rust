@@ -1694,7 +1694,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn isatty(&mut self, miri_fd: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         #[cfg(unix)]
-        {
+        if matches!(this.machine.isolated_op, IsolatedOp::Allow) {
             let miri_fd = this.read_scalar(miri_fd)?.to_i32()?;
             if let Some(host_fd) =
                 this.machine.file_handler.handles.get(&miri_fd).and_then(|fd| fd.as_unix_host_fd())
@@ -1714,7 +1714,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
         // We are attemping to use a Unix interface on a non-Unix platform, or we are on a Unix
-        // platform and the passed file descriptor is not open.
+        // platform and the passed file descriptor is not open, or isolation is enabled
         // FIXME: It should be possible to emulate this at least on Windows by using
         // GetConsoleMode.
         let enotty = this.eval_libc("ENOTTY")?;
