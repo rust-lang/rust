@@ -833,6 +833,20 @@ impl Config {
         )
     }
 
+    pub fn completion_label_details_support(&self) -> bool {
+        try_!(self
+            .caps
+            .text_document
+            .as_ref()?
+            .completion
+            .as_ref()?
+            .completion_item
+            .as_ref()?
+            .label_details_support
+            .as_ref()?)
+        .is_some()
+    }
+
     pub fn offset_encoding(&self) -> OffsetEncoding {
         if supports_utf8(&self.caps) {
             OffsetEncoding::Utf8

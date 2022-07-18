@@ -277,6 +277,13 @@ fn completion_item(
         ..Default::default()
     };
 
+    if config.completion_label_details_support() {
+        lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
+            detail: None,
+            description: lsp_item.detail.clone(),
+        });
+    }
+
     set_score(&mut lsp_item, max_relevance, item.relevance());
 
     if config.completion().enable_imports_on_the_fly {
