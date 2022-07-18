@@ -177,7 +177,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         let item = noop_flat_map_item(i, self).expect_one("noop did something");
         self.depth -= 1;
 
-        // Remove any #[rustc_main] or #[start] from the AST so it doesn't
+        // Remove any #[main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         let item = match entry_point_type(self.sess, &item, self.depth) {
@@ -352,7 +352,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 
-    ecx.expr_array_ref(
+    ecx.expr_vec_slice(
         sp,
         cx.test_cases
             .iter()

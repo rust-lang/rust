@@ -4,25 +4,25 @@
 fn main() {
     let mut _x: usize;
     _x = 1;
-    println!("_x is {_x}", _x = 5);
+    println!("_x is {}", _x = 5);
     //~^ WARNING named argument `_x` is not used by name [named_arguments_used_positionally]
     //~| HELP use the named argument by name to avoid ambiguity
-    println!("_x is {y}", y = _x);
+    println!("_x is {}", y = _x);
     //~^ WARNING named argument `y` is not used by name [named_arguments_used_positionally]
     //~| HELP use the named argument by name to avoid ambiguity
-    println!("first positional arg {}, second positional arg {}, _x is {y}", 1, 2, y = _x);
+    println!("first positional arg {}, second positional arg {}, _x is {}", 1, 2, y = _x);
     //~^ WARNING named argument `y` is not used by name [named_arguments_used_positionally]
     //~| HELP use the named argument by name to avoid ambiguity
 
     let mut _x: usize;
     _x = 1;
-    let _f = format!("_x is {_x}", _x = 5);
+    let _f = format!("_x is {}", _x = 5);
     //~^ WARNING named argument `_x` is not used by name [named_arguments_used_positionally]
     //~| HELP use the named argument by name to avoid ambiguity
-    let _f = format!("_x is {y}", y = _x);
+    let _f = format!("_x is {}", y = _x);
     //~^ WARNING named argument `y` is not used by name [named_arguments_used_positionally]
     //~| HELP use the named argument by name to avoid ambiguity
-    let _f = format!("first positional arg {}, second positional arg {}, _x is {y}", 1, 2, y = _x);
+    let _f = format!("first positional arg {}, second positional arg {}, _x is {}", 1, 2, y = _x);
     //~^ WARNING named argument `y` is not used by name [named_arguments_used_positionally]
     //~| HELP use the named argument by name to avoid ambiguity
 
