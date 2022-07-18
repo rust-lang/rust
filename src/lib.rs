@@ -62,6 +62,7 @@ pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as _};
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
 pub use crate::shims::foreign_items::EvalContextExt as _;
+pub use crate::shims::intrinsics::atomic::EvalContextExt as _;
 pub use crate::shims::intrinsics::EvalContextExt as _;
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
