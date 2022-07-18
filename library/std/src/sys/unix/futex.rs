@@ -267,7 +267,6 @@ pub mod zircon {
         ) -> zx_status_t;
         pub fn zx_futex_wake(value_ptr: *const zx_futex_t, wake_count: u32) -> zx_status_t;
         pub fn zx_futex_wake_single_owner(value_ptr: *const zx_futex_t) -> zx_status_t;
-        pub fn zx_nanosleep(deadline: zx_time_t) -> zx_status_t;
         pub fn zx_thread_self() -> zx_handle_t;
     }
 }
