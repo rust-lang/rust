@@ -51,18 +51,22 @@ fn atomic_all_ops() {
     static ATOMIC: AtomicIsize = AtomicIsize::new(0);
     static ATOMIC_UNSIGNED: AtomicU64 = AtomicU64::new(0);
 
+    let load_orders = [Relaxed, Acquire, SeqCst];
+    let stored_orders = [Relaxed, Release, SeqCst];
+    let rmw_orders = [Relaxed, Release, Acquire, AcqRel, SeqCst];
+
     // loads
-    for o in [Relaxed, Acquire, SeqCst] {
+    for o in load_orders {
         ATOMIC.load(o);
     }
 
     // stores
-    for o in [Relaxed, Release, SeqCst] {
+    for o in stored_orders {
         ATOMIC.store(1, o);
     }
 
     // most RMWs
-    for o in [Relaxed, Release, Acquire, AcqRel, SeqCst] {
+    for o in rmw_orders {
         ATOMIC.swap(0, o);
         ATOMIC.fetch_or(0, o);
         ATOMIC.fetch_xor(0, o);
@@ -76,29 +80,13 @@ fn atomic_all_ops() {
         ATOMIC_UNSIGNED.fetch_max(0, o);
     }
 
-    // RMWs with deparate failure ordering
-    ATOMIC.store(0, SeqCst);
-    assert_eq!(ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed), Ok(0));
-    assert_eq!(ATOMIC.compare_exchange(0, 2, Acquire, Relaxed), Err(1));
-    assert_eq!(ATOMIC.compare_exchange(0, 1, Release, Relaxed), Err(1));
-    assert_eq!(ATOMIC.compare_exchange(1, 0, AcqRel, Relaxed), Ok(1));
-    ATOMIC.compare_exchange(0, 1, SeqCst, Relaxed).ok();
-    ATOMIC.compare_exchange(0, 1, Acquire, Acquire).ok();
-    ATOMIC.compare_exchange(0, 1, AcqRel, Acquire).ok();
-    ATOMIC.compare_exchange(0, 1, SeqCst, Acquire).ok();
-    ATOMIC.compare_exchange(0, 1, SeqCst, SeqCst).ok();
-
-    ATOMIC.store(0, SeqCst);
-    compare_exchange_weak_loop!(ATOMIC, 0, 1, Relaxed, Relaxed);
-    assert_eq!(ATOMIC.compare_exchange_weak(0, 2, Acquire, Relaxed), Err(1));
-    assert_eq!(ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed), Err(1));
-    compare_exchange_weak_loop!(ATOMIC, 1, 0, AcqRel, Relaxed);
-    assert_eq!(ATOMIC.load(Relaxed), 0);
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Relaxed).ok();
-    ATOMIC.compare_exchange_weak(0, 1, Acquire, Acquire).ok();
-    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Acquire).ok();
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Acquire).ok();
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, SeqCst).ok();
+    // RMWs with separate failure ordering
+    for o1 in rmw_orders {
+        for o2 in load_orders {
+            let _res = ATOMIC.compare_exchange(0, 0, o1, o2);
+            let _res = ATOMIC.compare_exchange_weak(0, 0, o1, o2);
+        }
+    }
 }
 
 fn atomic_u64() {
@@ -106,7 +94,12 @@ fn atomic_u64() {
 
     ATOMIC.store(1, SeqCst);
     assert_eq!(ATOMIC.compare_exchange(0, 0x100, AcqRel, Acquire), Err(1));
+    assert_eq!(ATOMIC.compare_exchange(0, 1, Release, Relaxed), Err(1));
+    assert_eq!(ATOMIC.compare_exchange(1, 0, AcqRel, Relaxed), Ok(1));
+    assert_eq!(ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed), Ok(0));
     compare_exchange_weak_loop!(ATOMIC, 1, 0x100, AcqRel, Acquire);
+    assert_eq!(ATOMIC.compare_exchange_weak(0, 2, Acquire, Relaxed), Err(0x100));
+    assert_eq!(ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed), Err(0x100));
     assert_eq!(ATOMIC.load(Relaxed), 0x100);
 
     assert_eq!(ATOMIC.fetch_max(0x10, SeqCst), 0x100);

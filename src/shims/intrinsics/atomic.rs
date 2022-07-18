@@ -49,57 +49,93 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "cxchg_seqcst_seqcst" =>
                 this.atomic_compare_exchange(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::SeqCst)?,
             #[rustfmt::skip]
-            "cxchg_acquire_acquire" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Acquire)?,
-            #[rustfmt::skip]
-            "cxchg_release_relaxed" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Release, AtomicReadOrd::Relaxed)?,
-            #[rustfmt::skip]
-            "cxchg_acqrel_acquire" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Acquire)?,
-            #[rustfmt::skip]
-            "cxchg_relaxed_relaxed" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::Relaxed)?,
-            #[rustfmt::skip]
-            "cxchg_acquire_relaxed" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Relaxed)?,
-            #[rustfmt::skip]
-            "cxchg_acqrel_relaxed" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Relaxed)?,
+            "cxchg_seqcst_acquire" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::Acquire)?,
             #[rustfmt::skip]
             "cxchg_seqcst_relaxed" =>
                 this.atomic_compare_exchange(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::Relaxed)?,
             #[rustfmt::skip]
-            "cxchg_seqcst_acquire" =>
-                this.atomic_compare_exchange(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::Acquire)?,
+            "cxchg_acqrel_seqcst" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchg_acqrel_acquire" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchg_acqrel_relaxed" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Relaxed)?,
+            #[rustfmt::skip]
+            "cxchg_acquire_seqcst" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchg_acquire_acquire" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchg_acquire_relaxed" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Relaxed)?,
+            #[rustfmt::skip]
+            "cxchg_release_seqcst" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Release, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchg_release_acquire" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Release, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchg_release_relaxed" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Release, AtomicReadOrd::Relaxed)?,
+            #[rustfmt::skip]
+            "cxchg_relaxed_seqcst" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchg_relaxed_acquire" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchg_relaxed_relaxed" =>
+                this.atomic_compare_exchange(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::Relaxed)?,
 
             #[rustfmt::skip]
             "cxchgweak_seqcst_seqcst" =>
                 this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::SeqCst)?,
             #[rustfmt::skip]
-            "cxchgweak_acquire_acquire" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Acquire)?,
-            #[rustfmt::skip]
-            "cxchgweak_release_relaxed" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Release, AtomicReadOrd::Relaxed)?,
-            #[rustfmt::skip]
-            "cxchgweak_acqrel_acquire" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Acquire)?,
-            #[rustfmt::skip]
-            "cxchgweak_relaxed_relaxed" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::Relaxed)?,
-            #[rustfmt::skip]
-            "cxchgweak_acquire_relaxed" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Relaxed)?,
-            #[rustfmt::skip]
-            "cxchgweak_acqrel_relaxed" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Relaxed)?,
+            "cxchgweak_seqcst_acquire" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::Acquire)?,
             #[rustfmt::skip]
             "cxchgweak_seqcst_relaxed" =>
                 this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::Relaxed)?,
             #[rustfmt::skip]
-            "cxchgweak_seqcst_acquire" =>
-                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::SeqCst, AtomicReadOrd::Acquire)?,
+            "cxchgweak_acqrel_seqcst" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchgweak_acqrel_acquire" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchgweak_acqrel_relaxed" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::AcqRel, AtomicReadOrd::Relaxed)?,
+            #[rustfmt::skip]
+            "cxchgweak_acquire_seqcst" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchgweak_acquire_acquire" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchgweak_acquire_relaxed" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Acquire, AtomicReadOrd::Relaxed)?,
+            #[rustfmt::skip]
+            "cxchgweak_release_seqcst" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Release, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchgweak_release_acquire" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Release, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchgweak_release_relaxed" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Release, AtomicReadOrd::Relaxed)?,
+            #[rustfmt::skip]
+            "cxchgweak_relaxed_seqcst" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::SeqCst)?,
+            #[rustfmt::skip]
+            "cxchgweak_relaxed_acquire" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::Acquire)?,
+            #[rustfmt::skip]
+            "cxchgweak_relaxed_relaxed" =>
+                this.atomic_compare_exchange_weak(args, dest, AtomicRwOrd::Relaxed, AtomicReadOrd::Relaxed)?,
 
             #[rustfmt::skip]
             "or_seqcst" =>
