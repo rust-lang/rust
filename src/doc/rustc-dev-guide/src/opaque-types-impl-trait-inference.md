@@ -12,8 +12,6 @@ it can work across functions and function bodies.
 
 To help explain how it works, let's consider an example.
 
-###
-
 ```rust
 mod m {
     pub type Seq<T> = impl IntoIterator<Item = T>;
