@@ -9,7 +9,6 @@ use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::DUMMY_SP;
 
 use std::fmt;
-use std::rc::Rc;
 
 pub struct CustomTypeOp<F, G> {
     closure: F,
@@ -109,7 +108,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
         Ok((
             TypeOpOutput {
                 output: value,
-                constraints: Some(Rc::new(region_constraints)),
+                constraints: Some(infcx.tcx.arena.alloc(region_constraints)),
                 error_info: None,
             },
             region_constraint_data,
