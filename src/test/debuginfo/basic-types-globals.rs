@@ -13,7 +13,7 @@
 // gdbr-command:print I
 // gdb-check:$2 = -1
 // gdbg-command:print 'basic_types_globals::C'
-// gdbr-command:print C
+// gdbr-command:print/d C
 // gdbg-check:$3 = 97
 // gdbr-check:$3 = 97
 // gdbg-command:print/d 'basic_types_globals::I8'
