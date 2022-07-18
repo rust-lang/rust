@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     ///
     /// Crates which have `no_std` compatibility and may optionally require alloc may wish to ensure types are
-    /// imported from alloc to ensure disabling `alloc` does not cause the crate to fail to compile. This lint
+    /// imported from core to ensure disabling `alloc` does not cause the crate to fail to compile. This lint
     /// is also useful for crates migrating to become `no_std` compatible.
     ///
     /// ### Example
