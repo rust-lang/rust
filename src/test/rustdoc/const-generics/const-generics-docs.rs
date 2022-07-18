@@ -19,8 +19,8 @@ pub use extern_crate::WTrait;
 
 // @has foo/trait.Trait.html '//pre[@class="rust trait"]' \
 //      'pub trait Trait<const N: usize>'
-// @has - '//*[@id="impl-Trait%3C1_usize%3E-for-u8"]//h3[@class="code-header in-band"]' 'impl Trait<1_usize> for u8'
-// @has - '//*[@id="impl-Trait%3C2_usize%3E-for-u8"]//h3[@class="code-header in-band"]' 'impl Trait<2_usize> for u8'
+// @has - '//*[@id="impl-Trait%3C1%3E-for-u8"]//h3[@class="code-header in-band"]' 'impl Trait<1> for u8'
+// @has - '//*[@id="impl-Trait%3C2%3E-for-u8"]//h3[@class="code-header in-band"]' 'impl Trait<2> for u8'
 // @has - '//*[@id="impl-Trait%3C{1%20+%202}%3E-for-u8"]//h3[@class="code-header in-band"]' 'impl Trait<{1 + 2}> for u8'
 // @has - '//*[@id="impl-Trait%3CN%3E-for-%5Bu8%3B%20N%5D"]//h3[@class="code-header in-band"]' \
 //      'impl<const N: usize> Trait<N> for [u8; N]'
