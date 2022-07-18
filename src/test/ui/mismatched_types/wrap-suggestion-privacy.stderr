@@ -13,7 +13,7 @@ note: function defined here
    |
 LL | fn needs_wrapper(t: inner::Wrapper<i32>) {}
    |    ^^^^^^^^^^^^^ ----------------------
-help: try wrapping the expression in `inner::Wrapper`
+help: try wrapping the expression in `inner::Wrapper` (its field is private, but it's local to this crate and its privacy can be changed)
    |
 LL |     needs_wrapper(inner::Wrapper(0));
    |                   +++++++++++++++ +

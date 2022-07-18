@@ -348,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            let compatible_variants: Vec<String> = expected_adt
+            let compatible_variants: Vec<(String, Option<String>)> = expected_adt
                 .variants()
                 .iter()
                 .filter(|variant| {
@@ -357,13 +357,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .filter_map(|variant| {
                     let sole_field = &variant.fields[0];
 
-                    if !sole_field.did.is_local()
-                        && !sole_field
-                            .vis
-                            .is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
-                    {
+                    let field_is_local = sole_field.did.is_local();
+                    let field_is_accessible =
+                        sole_field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx);
+
+                    if !field_is_local && !field_is_accessible {
                         return None;
                     }
+
+                    let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
+                        .then(|| format!(" (its field is private, but it's local to this crate and its privacy can be changed)"));
 
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
@@ -373,9 +376,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
                         {
-                            return Some(path.to_string());
+                            return Some((path.to_string(), note_about_variant_field_privacy));
                         }
-                        Some(variant_path)
+                        Some((variant_path, note_about_variant_field_privacy))
                     } else {
                         None
                     }
@@ -389,10 +392,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             match &compatible_variants[..] {
                 [] => { /* No variants to format */ }
-                [variant] => {
+                [(variant, note)] => {
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
-                        &format!("try wrapping the expression in `{variant}`"),
+                        &format!(
+                            "try wrapping the expression in `{variant}`{note}",
+                            note = note.as_deref().unwrap_or("")
+                        ),
                         vec![
                             (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
                             (expr.span.shrink_to_hi(), ")".to_string()),
@@ -407,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "try wrapping the expression in a variant of `{}`",
                             self.tcx.def_path_str(expected_adt.did())
                         ),
-                        compatible_variants.into_iter().map(|variant| {
+                        compatible_variants.into_iter().map(|(variant, _)| {
                             vec![
                                 (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
                                 (expr.span.shrink_to_hi(), ")".to_string()),
