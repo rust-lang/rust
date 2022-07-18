@@ -35,7 +35,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
     add_reference(ctx, d, &mut fixes);
     add_missing_ok_or_some(ctx, d, &mut fixes);
     remove_semicolon(ctx, d, &mut fixes);
-    str_ref_to_string(ctx, d, &mut fixes);
+    str_ref_to_owned(ctx, d, &mut fixes);
 
     if fixes.is_empty() {
         None
@@ -135,7 +135,7 @@ fn remove_semicolon(
     Some(())
 }
 
-fn str_ref_to_string(
+fn str_ref_to_owned(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::TypeMismatch,
     acc: &mut Vec<Assist>,
@@ -151,12 +151,12 @@ fn str_ref_to_string(
     let expr = d.expr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
 
-    let to_string = format!(".to_string()");
+    let to_owned = format!(".to_owned()");
 
-    let edit = TextEdit::insert(expr.syntax().text_range().end(), to_string);
+    let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
     let source_change =
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
-    acc.push(fix("str_ref_to_string", "Add .to_string() here", source_change, expr_range));
+    acc.push(fix("str_ref_to_owned", "Add .to_owned() here", source_change, expr_range));
 
     Some(())
 }
@@ -527,7 +527,7 @@ fn foo() -> SomeOtherEnum { 0$0 }
     }
 
     #[test]
-    fn str_ref_to_string() {
+    fn str_ref_to_owned() {
         check_fix(
             r#"
 struct String;
@@ -540,7 +540,7 @@ fn test() -> String {
 struct String;
 
 fn test() -> String {
-    "a".to_string()
+    "a".to_owned()
 }
             "#,
         );
