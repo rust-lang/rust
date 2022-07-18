@@ -58,6 +58,12 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         _ => "",
     };
 
+    let parent_ref_expr = to_extract.syntax().parent().and_then(ast::RefExpr::cast);
+    let var_modifier = match parent_ref_expr {
+        Some(expr) if expr.mut_token().is_some() => "mut ",
+        _ => "",
+    };
+
     let anchor = Anchor::from(&to_extract)?;
     let indent = anchor.syntax().prev_sibling_or_token()?.as_token()?.clone();
     let target = to_extract.syntax().text_range();
@@ -85,7 +91,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             match anchor {
                 Anchor::Before(_) | Anchor::Replace(_) => {
-                    format_to!(buf, "let {} = {}", var_name, reference_modifier)
+                    format_to!(buf, "let {}{} = {}", var_modifier, var_name, reference_modifier)
                 }
                 Anchor::WrapInBlock(_) => {
                     format_to!(buf, "{{ let {} = {}", var_name, reference_modifier)
@@ -100,8 +106,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 }
                 match ctx.config.snippet_cap {
                     Some(cap) => {
-                        let snip = buf
-                            .replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
+                        let snip = buf.replace(
+                            &format!("let {}{}", var_modifier, var_name),
+                            &format!("let {}$0{}", var_modifier, var_name),
+                        );
                         edit.replace_snippet(cap, expr_range, snip)
                     }
                     None => edit.replace(expr_range, buf),
@@ -126,8 +134,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             let offset = anchor.syntax().text_range().start();
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snip =
-                        buf.replace(&format!("let {}", var_name), &format!("let $0{}", var_name));
+                    let snip = buf.replace(
+                        &format!("let {}{}", var_modifier, var_name),
+                        &format!("let {}$0{}", var_modifier, var_name),
+                    );
                     edit.insert_snippet(cap, offset, snip)
                 }
                 None => edit.insert(offset, buf),
@@ -1247,6 +1257,22 @@ fn foo() {
     let local = &S::new();
     let $0x = &local.sub;
     x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_for_mutable_borrow() {
+        check_assist(
+            extract_variable,
+            r#"
+fn foo() {
+    let v = &mut $00$0;
+}"#,
+            r#"
+fn foo() {
+    let mut $0var_name = 0;
+    let v = &mut var_name;
 }"#,
         );
     }
