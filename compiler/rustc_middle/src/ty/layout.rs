@@ -3498,7 +3498,7 @@ fn make_thin_self_ptr<'tcx>(
 ///
 /// This code is intentionally conservative, and will not detect
 /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
-/// * uninit invalid &[T] where T has align 1 (only inside arrays)
+/// * uninit invalid `&[T]` where T has align 1 (only inside arrays)
 ///
 /// A strict form of these checks that uses const evaluation exists in
 /// `rustc_const_eval::might_permit_raw_init`, and a tracking issue for making these checks
