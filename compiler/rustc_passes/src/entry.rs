@@ -77,7 +77,7 @@ fn err_if_attr_found(ctxt: &EntryContext<'_>, attrs: &[Attribute], sym: Symbol) 
             .sess
             .struct_span_err(
                 attr.span,
-                &format!("`{}` attribute can only be used on functions", sym.as_str()),
+                &format!("`{}` attribute can only be used on functions", sym),
             )
             .emit();
     }

@@ -228,7 +228,7 @@ pub fn suggest_adding_lifetime_params<'tcx>(
     if is_impl {
         sugg.push_str(" and update trait if needed");
     }
-    err.multipart_suggestion(sugg.as_str(), suggestions, Applicability::MaybeIncorrect);
+    err.multipart_suggestion(sugg, suggestions, Applicability::MaybeIncorrect);
 
     true
 }

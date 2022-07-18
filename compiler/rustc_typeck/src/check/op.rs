@@ -395,8 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 false,
                             ),
                         };
-                        let mut err =
-                            struct_span_err!(self.tcx.sess, op.span, E0369, "{}", message.as_str());
+                        let mut err = struct_span_err!(self.tcx.sess, op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
                             self.add_type_neq_err_label(
                                 &mut err,

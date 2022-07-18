@@ -80,7 +80,7 @@ impl ForLifetimeSpanType {
         }
     }
 
-    pub(crate) fn suggestion(&self, sugg: &str) -> String {
+    pub(crate) fn suggestion(&self, sugg: impl std::fmt::Display) -> String {
         match self {
             Self::BoundEmpty | Self::TypeEmpty => format!("for<{}> ", sugg),
             Self::BoundTail | Self::TypeTail => format!(", {}", sugg),
@@ -2311,8 +2311,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
 
         let suggest_existing =
             |err: &mut Diagnostic,
-             name: &str,
-             formatters: Vec<Option<Box<dyn Fn(&str) -> String>>>| {
+             name: Symbol,
+             formatters: Vec<Option<Box<dyn Fn(Symbol) -> String>>>| {
                 if let Some(MissingLifetimeSpot::HigherRanked { span: for_span, span_type }) =
                     self.missing_named_lifetime_spots.iter().rev().next()
                 {
@@ -2332,7 +2332,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     // If all single char lifetime names are present, we wrap around and double the chars.
                     let lt_name = (1..)
                         .flat_map(a_to_z_repeat_n)
-                        .find(|lt| !lifetime_names.contains(&Symbol::intern(&lt)))
+                        .map(|lt| Symbol::intern(&lt))
+                        .find(|lt| !lifetime_names.contains(lt))
                         .unwrap();
                     let msg = format!(
                         "consider making the {} lifetime-generic with a new `{}` lifetime",
@@ -2359,7 +2360,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     introduce_suggestion.push((*for_span, for_sugg));
                     for ((span, _), formatter) in spans_with_counts.iter().zip(formatters.iter()) {
                         if let Some(formatter) = formatter {
-                            introduce_suggestion.push((*span, formatter(&lt_name)));
+                            introduce_suggestion.push((*span, formatter(lt_name)));
                         }
                     }
                     err.multipart_suggestion_verbose(
@@ -2582,7 +2583,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         let lifetime_names: Vec<_> = lifetime_names.iter().collect();
         match &lifetime_names[..] {
             [name] => {
-                let mut suggs: Vec<Option<Box<dyn Fn(&str) -> String>>> = Vec::new();
+                let mut suggs: Vec<Option<Box<dyn Fn(Symbol) -> String>>> = Vec::new();
                 for (snippet, (_, count)) in snippets.iter().zip(spans_with_counts.iter().copied())
                 {
                     suggs.push(match snippet.as_deref() {
@@ -2590,7 +2591,11 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         Some("'_") => Some(Box::new(|n| n.to_string())),
                         Some("") => Some(Box::new(move |n| format!("{}, ", n).repeat(count))),
                         Some("<") => Some(Box::new(move |n| {
-                            std::iter::repeat(n).take(count).collect::<Vec<_>>().join(", ")
+                            std::iter::repeat(n)
+                                .take(count)
+                                .map(|n| n.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         })),
                         Some(snippet) if !snippet.ends_with('>') => Some(Box::new(move |name| {
                             format!(
@@ -2605,7 +2610,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         _ => None,
                     });
                 }
-                suggest_existing(err, name.as_str(), suggs);
+                suggest_existing(err, **name, suggs);
             }
             [] => {
                 let mut suggs = Vec::new();
