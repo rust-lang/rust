@@ -358,10 +358,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let sole_field = &variant.fields[0];
 
                     if !sole_field.did.is_local()
-                        && !sole_field.vis.is_accessible_from(
-                            self.tcx.parent_module(expr.hir_id).to_def_id(),
-                            self.tcx,
-                        )
+                        && !sole_field
+                            .vis
+                            .is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
                     {
                         return None;
                     }
@@ -433,8 +432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
             ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
                 // Unwrap option
-                let Some(fst) = substs.first() else { return };
-                let ty::Adt(adt, _) = fst.expect_ty().kind() else { return };
+                let ty::Adt(adt, _) = substs.type_at(0).kind() else { return };
 
                 (adt, "")
             }
@@ -458,8 +456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let Some((s, _)) = map
             .iter()
-            .find(|&&(s, _)| self.tcx.is_diagnostic_item(s, adt.did()))
-            .filter(|&&(_, t)| { self.can_coerce(expr_ty, t) })
+            .find(|&&(s, t)| self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t))
             else { return };
 
         let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
