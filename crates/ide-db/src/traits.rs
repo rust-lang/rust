@@ -1,7 +1,7 @@
 //! Functionality for obtaining data related to traits from the DB.
 
-use crate::RootDatabase;
-use hir::Semantics;
+use crate::{defs::Definition, RootDatabase};
+use hir::{db::HirDatabase, AsAssocItem, Semantics};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -67,6 +67,28 @@ pub fn get_missing_assoc_items(
             })
             .collect()
     })
+}
+
+/// Converts associated trait impl items to their trait definition counterpart
+pub(crate) fn convert_to_def_in_trait(db: &dyn HirDatabase, def: Definition) -> Definition {
+    use hir::AssocItem::*;
+    (|| {
+        let assoc = def.as_assoc_item(db)?;
+        let trait_ = assoc.containing_trait_impl(db)?;
+        let name = match assoc {
+            Function(it) => it.name(db),
+            Const(it) => it.name(db)?,
+            TypeAlias(it) => it.name(db),
+        };
+        let item = trait_.items(db).into_iter().find(|it| match (it, assoc) {
+            (Function(trait_func), Function(_)) => trait_func.name(db) == name,
+            (Const(trait_konst), Const(_)) => trait_konst.name(db).map_or(false, |it| it == name),
+            (TypeAlias(trait_type_alias), TypeAlias(_)) => trait_type_alias.name(db) == name,
+            _ => false,
+        })?;
+        Some(Definition::from(item))
+    })()
+    .unwrap_or(def)
 }
 
 #[cfg(test)]

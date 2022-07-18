@@ -16,6 +16,7 @@ use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
 use crate::{
     defs::{Definition, NameClass, NameRefClass},
+    traits::convert_to_def_in_trait,
     RootDatabase,
 };
 
@@ -620,7 +621,7 @@ impl<'a> FindUsages<'a> {
                 sink(file_id, reference)
             }
             Some(NameRefClass::Definition(def))
-                if crate::rename::convert_to_def_in_trait(def, self.sema) == self.def =>
+                if convert_to_def_in_trait(self.sema.db, def) == self.def =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
