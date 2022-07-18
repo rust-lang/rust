@@ -3496,6 +3496,9 @@ fn make_thin_self_ptr<'tcx>(
 /// Determines if this type permits "raw" initialization by just transmuting some
 /// memory into an instance of `T`.
 ///
+/// If called with InitKind::Uninit, this function must always panic if a 0x01 filled buffer would
+/// cause LLVM UB.
+///
 /// This code is intentionally conservative, and will not detect
 /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
 /// * uninit `&T` where T has align 1 size 0 (only inside arrays).
@@ -3547,11 +3550,18 @@ where
         // See: https://github.com/rust-lang/rust/pull/99389
         if inside_array {
             match init_kind {
-                // FIXME(#66151) We need to ignore uninit references with an alignment of 1 and
-                // size 0
-                // (as in, &[u8] and &str)
-                // Since if we do not, old versions of `hyper` with no semver compatible fix
-                // (0.11, 0.12, 0.13) break.
+                // We panic if creating this type with all 0x01 bytes would
+                // cause LLVM UB.
+                //
+                // Therefore, in order for us to not panic,
+                // * the alignment of the pointer must be 1
+                //   (or we would have an unaligned pointer)
+                //
+                // * the statically known size of the pointee must be 0.
+                //   (or we would emit dereferenceable)
+                //
+                // If this bypass didn't exist, old versions of `hyper` with no semver compatible
+                // fix (0.11, 0.12, 0.13) would panic, as they make uninit &[u8] and &str.
                 InitKind::Uninit => {
                     if let ty::Ref(_, inner, _) = this.ty.kind() {
                         let penv = ty::ParamEnv::reveal_all().and(*inner);
