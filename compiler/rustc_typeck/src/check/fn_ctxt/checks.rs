@@ -303,12 +303,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let provided_arg: &hir::Expr<'tcx> = &provided_args[input_idx];
             let expectation = Expectation::rvalue_hint(self, expected_input_ty);
-            // FIXME: check that this is safe; I don't believe this commits any of the obligations, but I can't be sure.
-            //
-            //   I had another method of "soft" type checking before,
-            //   but it was failing to find the type of some expressions (like "")
-            //   so I prodded this method and made it pub(super) so I could call it, and it seems to work well.
-            let checked_ty = self.check_expr_kind(provided_arg, expectation);
+            let already_checked_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(provided_arg);
+            let checked_ty = already_checked_ty.unwrap_or_else(|| self.check_expr(provided_arg));
 
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
             let can_coerce = self.can_coerce(checked_ty, coerced_ty);
