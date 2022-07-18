@@ -3498,7 +3498,7 @@ fn make_thin_self_ptr<'tcx>(
 ///
 /// This code is intentionally conservative, and will not detect
 /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
-/// * uninit `&[T]` where T has align 1 (only inside arrays). This includes `&str`
+/// * uninit `&T` where T has align 1 size 0 (only inside arrays).
 /// * zero init enums where a discriminant with tag 0 exists, but is invalid to be zeroed
 /// * zero init type that does not allow zero init (only inside arrays)
 ///
@@ -3547,7 +3547,8 @@ where
         // See: https://github.com/rust-lang/rust/pull/99389
         if inside_array {
             match init_kind {
-                // FIXME(#66151) We need to ignore uninit slice references with an alignment of 1
+                // FIXME(#66151) We need to ignore uninit references with an alignment of 1 and
+                // size 0
                 // (as in, &[u8] and &str)
                 // Since if we do not, old versions of `hyper` with no semver compatible fix
                 // (0.11, 0.12, 0.13) break.
