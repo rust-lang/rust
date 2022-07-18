@@ -3,7 +3,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Arg, ArgAction, ArgMatches, Command, PossibleValue};
-use clippy_dev::{bless, fmt, lint, new_lint, serve, setup, update_lints};
+use clippy_dev::{bless, dogfood, fmt, lint, new_lint, serve, setup, update_lints};
 use indoc::indoc;
 
 fn main() {
@@ -12,6 +12,13 @@ fn main() {
     match matches.subcommand() {
         Some(("bless", matches)) => {
             bless::bless(matches.contains_id("ignore-timestamp"));
+        },
+        Some(("dogfood", matches)) => {
+            dogfood::dogfood(
+                matches.contains_id("fix"),
+                matches.contains_id("allow-dirty"),
+                matches.contains_id("allow-staged"),
+            );
         },
         Some(("fmt", matches)) => {
             fmt::run(matches.contains_id("check"), matches.contains_id("verbose"));
@@ -104,6 +111,17 @@ fn get_clap_config() -> ArgMatches {
                     .long("ignore-timestamp")
                     .help("Include files updated before clippy was built"),
             ),
+            Command::new("dogfood").about("Runs the dogfood test").args([
+                Arg::new("fix").long("fix").help("Apply the suggestions when possible"),
+                Arg::new("allow-dirty")
+                    .long("allow-dirty")
+                    .help("Fix code even if the working directory has changes")
+                    .requires("fix"),
+                Arg::new("allow-staged")
+                    .long("allow-staged")
+                    .help("Fix code even if the working directory has staged changes")
+                    .requires("fix"),
+            ]),
             Command::new("fmt")
                 .about("Run rustfmt on all projects and tests")
                 .args([

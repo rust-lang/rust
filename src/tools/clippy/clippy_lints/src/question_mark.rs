@@ -1,16 +1,19 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{eq_expr_value, is_lang_ctor, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt};
+use clippy_utils::{
+    eq_expr_value, get_parent_node, is_else_clause, is_lang_ctor, path_to_local, path_to_local_id, peel_blocks,
+    peel_blocks_with_stmt,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultOk};
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, PatKind};
+use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, Node, PatKind, PathSegment, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
+use rustc_span::{sym, symbol::Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -39,135 +42,190 @@ declare_clippy_lint! {
 
 declare_lint_pass!(QuestionMark => [QUESTION_MARK]);
 
-impl QuestionMark {
-    /// Checks if the given expression on the given context matches the following structure:
+enum IfBlockType<'hir> {
+    /// An `if x.is_xxx() { a } else { b } ` expression.
     ///
-    /// ```ignore
-    /// if option.is_none() {
-    ///    return None;
-    /// }
-    /// ```
+    /// Contains: caller (x), caller_type, call_sym (is_xxx), if_then (a), if_else (b)
+    IfIs(
+        &'hir Expr<'hir>,
+        Ty<'hir>,
+        Symbol,
+        &'hir Expr<'hir>,
+        Option<&'hir Expr<'hir>>,
+    ),
+    /// An `if let Xxx(a) = b { c } else { d }` expression.
     ///
-    /// ```ignore
-    /// if result.is_err() {
-    ///     return result;
-    /// }
-    /// ```
-    ///
-    /// If it matches, it will suggest to use the question mark operator instead
-    fn check_is_none_or_err_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if_chain! {
-            if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr);
-            if let ExprKind::MethodCall(segment, args, _) = &cond.kind;
-            if let Some(subject) = args.get(0);
-            if (Self::option_check_and_early_return(cx, subject, then) && segment.ident.name == sym!(is_none)) ||
-                (Self::result_check_and_early_return(cx, subject, then) && segment.ident.name == sym!(is_err));
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let receiver_str = &Sugg::hir_with_applicability(cx, subject, "..", &mut applicability);
-                let mut replacement: Option<String> = None;
-                if let Some(else_inner) = r#else {
-                    if eq_expr_value(cx, subject, peel_blocks(else_inner)) {
-                        replacement = Some(format!("Some({}?)", receiver_str));
-                    }
-                } else if Self::moves_by_default(cx, subject)
-                    && !matches!(subject.kind, ExprKind::Call(..) | ExprKind::MethodCall(..))
-                {
-                    replacement = Some(format!("{}.as_ref()?;", receiver_str));
+    /// Contains: let_pat_qpath (Xxx), let_pat_type, let_pat_sym (a), let_expr (b), if_then (c),
+    /// if_else (d)
+    IfLet(
+        &'hir QPath<'hir>,
+        Ty<'hir>,
+        Symbol,
+        &'hir Expr<'hir>,
+        &'hir Expr<'hir>,
+        Option<&'hir Expr<'hir>>,
+    ),
+}
+
+/// Checks if the given expression on the given context matches the following structure:
+///
+/// ```ignore
+/// if option.is_none() {
+///    return None;
+/// }
+/// ```
+///
+/// ```ignore
+/// if result.is_err() {
+///     return result;
+/// }
+/// ```
+///
+/// If it matches, it will suggest to use the question mark operator instead
+fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+    if_chain! {
+        if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr);
+        if !is_else_clause(cx.tcx, expr);
+        if let ExprKind::MethodCall(segment, args, _) = &cond.kind;
+        if let Some(caller) = args.get(0);
+        let caller_ty = cx.typeck_results().expr_ty(caller);
+        let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then, r#else);
+        if is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block);
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+            let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
+            let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx.at(caller.span), cx.param_env) &&
+                !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
+            let sugg = if let Some(else_inner) = r#else {
+                if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
+                    format!("Some({}?)", receiver_str)
                 } else {
-                    replacement = Some(format!("{}?;", receiver_str));
+                    return;
                 }
+            } else {
+                format!("{}{}?;", receiver_str, if by_ref { ".as_ref()" } else { "" })
+            };
 
-                if let Some(replacement_str) = replacement {
-                    span_lint_and_sugg(
-                        cx,
-                        QUESTION_MARK,
-                        expr.span,
-                        "this block may be rewritten with the `?` operator",
-                        "replace it with",
-                        replacement_str,
-                        applicability,
-                    );
-                }
-            }
+            span_lint_and_sugg(
+                cx,
+                QUESTION_MARK,
+                expr.span,
+                "this block may be rewritten with the `?` operator",
+                "replace it with",
+                sugg,
+                applicability,
+            );
         }
     }
+}
 
-    fn check_if_let_some_or_err_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if_chain! {
-            if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: Some(if_else) })
-                = higher::IfLet::hir(cx, expr);
-            if let PatKind::TupleStruct(ref path1, fields, None) = let_pat.kind;
-            if (Self::option_check_and_early_return(cx, let_expr, if_else) && is_lang_ctor(cx, path1, OptionSome)) ||
-                (Self::result_check_and_early_return(cx, let_expr, if_else) && is_lang_ctor(cx, path1, ResultOk));
-
-            if let PatKind::Binding(annot, bind_id, _, _) = fields[0].kind;
+fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+    if_chain! {
+        if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else }) = higher::IfLet::hir(cx, expr);
+        if !is_else_clause(cx.tcx, expr);
+        if let PatKind::TupleStruct(ref path1, fields, None) = let_pat.kind;
+        if let PatKind::Binding(annot, bind_id, ident, _) = fields[0].kind;
+        let caller_ty = cx.typeck_results().expr_ty(let_expr);
+        let if_block = IfBlockType::IfLet(path1, caller_ty, ident.name, let_expr, if_then, if_else);
+        if (is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
+            || is_early_return(sym::Result, cx, &if_block);
+        if if_else.map(|e| eq_expr_value(cx, let_expr, peel_blocks(e))).filter(|e| *e).is_none();
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+            let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
             let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
-            if path_to_local_id(peel_blocks(if_then), bind_id);
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-                let replacement = format!("{}{}?", receiver_str, if by_ref { ".as_ref()" } else { "" },);
+            let requires_semi = matches!(get_parent_node(cx.tcx, expr.hir_id), Some(Node::Stmt(_)));
+            let sugg = format!(
+                "{}{}?{}",
+                receiver_str,
+                if by_ref { ".as_ref()" } else { "" },
+                if requires_semi { ";" } else { "" }
+            );
+            span_lint_and_sugg(
+                cx,
+                QUESTION_MARK,
+                expr.span,
+                "this block may be rewritten with the `?` operator",
+                "replace it with",
+                sugg,
+                applicability,
+            );
+        }
+    }
+}
 
-                span_lint_and_sugg(
-                    cx,
-                    QUESTION_MARK,
-                    expr.span,
-                    "this if-let-else may be rewritten with the `?` operator",
-                    "replace it with",
-                    replacement,
-                    applicability,
-                );
+fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_>) -> bool {
+    match *if_block {
+        IfBlockType::IfIs(caller, caller_ty, call_sym, if_then, _) => {
+            // If the block could be identified as `if x.is_none()/is_err()`,
+            // we then only need to check the if_then return to see if it is none/err.
+            is_type_diagnostic_item(cx, caller_ty, smbl)
+                && expr_return_none_or_err(smbl, cx, if_then, caller, None)
+                && match smbl {
+                    sym::Option => call_sym == sym!(is_none),
+                    sym::Result => call_sym == sym!(is_err),
+                    _ => false,
+                }
+        },
+        IfBlockType::IfLet(qpath, let_expr_ty, let_pat_sym, let_expr, if_then, if_else) => {
+            is_type_diagnostic_item(cx, let_expr_ty, smbl)
+                && match smbl {
+                    sym::Option => {
+                        // We only need to check `if let Some(x) = option` not `if let None = option`,
+                        // because the later one will be suggested as `if option.is_none()` thus causing conflict.
+                        is_lang_ctor(cx, qpath, OptionSome)
+                            && if_else.is_some()
+                            && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, None)
+                    },
+                    sym::Result => {
+                        (is_lang_ctor(cx, qpath, ResultOk)
+                            && if_else.is_some()
+                            && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
+                            || is_lang_ctor(cx, qpath, ResultErr)
+                                && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
+                    },
+                    _ => false,
+                }
+        },
+    }
+}
+
+fn expr_return_none_or_err(
+    smbl: Symbol,
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    cond_expr: &Expr<'_>,
+    err_sym: Option<Symbol>,
+) -> bool {
+    match peel_blocks_with_stmt(expr).kind {
+        ExprKind::Ret(Some(ret_expr)) => expr_return_none_or_err(smbl, cx, ret_expr, cond_expr, err_sym),
+        ExprKind::Path(ref qpath) => match smbl {
+            sym::Option => is_lang_ctor(cx, qpath, OptionNone),
+            sym::Result => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
+            _ => false,
+        },
+        ExprKind::Call(call_expr, args_expr) => {
+            if_chain! {
+                if smbl == sym::Result;
+                if let ExprKind::Path(QPath::Resolved(_, path)) = &call_expr.kind;
+                if let Some(segment) = path.segments.first();
+                if let Some(err_sym) = err_sym;
+                if let Some(arg) = args_expr.first();
+                if let ExprKind::Path(QPath::Resolved(_, arg_path)) = &arg.kind;
+                if let Some(PathSegment { ident, .. }) = arg_path.segments.first();
+                then {
+                    return segment.ident.name == sym::Err && err_sym == ident.name;
+                }
             }
-        }
-    }
-
-    fn result_check_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>, nested_expr: &Expr<'_>) -> bool {
-        Self::is_result(cx, expr) && Self::expression_returns_unmodified_err(nested_expr, expr)
-    }
-
-    fn option_check_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>, nested_expr: &Expr<'_>) -> bool {
-        Self::is_option(cx, expr) && Self::expression_returns_none(cx, nested_expr)
-    }
-
-    fn moves_by_default(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.typeck_results().expr_ty(expression);
-
-        !expr_ty.is_copy_modulo_regions(cx.tcx.at(expression.span), cx.param_env)
-    }
-
-    fn is_option(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.typeck_results().expr_ty(expression);
-
-        is_type_diagnostic_item(cx, expr_ty, sym::Option)
-    }
-
-    fn is_result(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.typeck_results().expr_ty(expression);
-
-        is_type_diagnostic_item(cx, expr_ty, sym::Result)
-    }
-
-    fn expression_returns_none(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
-        match peel_blocks_with_stmt(expression).kind {
-            ExprKind::Ret(Some(expr)) => Self::expression_returns_none(cx, expr),
-            ExprKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
-            _ => false,
-        }
-    }
-
-    fn expression_returns_unmodified_err(expr: &Expr<'_>, cond_expr: &Expr<'_>) -> bool {
-        match peel_blocks_with_stmt(expr).kind {
-            ExprKind::Ret(Some(ret_expr)) => Self::expression_returns_unmodified_err(ret_expr, cond_expr),
-            ExprKind::Path(_) => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
-            _ => false,
-        }
+            false
+        },
+        _ => false,
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        Self::check_is_none_or_err_and_early_return(cx, expr);
-        Self::check_if_let_some_or_err_and_early_return(cx, expr);
+        check_is_none_or_err_and_early_return(cx, expr);
+        check_if_let_some_or_err_and_early_return(cx, expr);
     }
 }

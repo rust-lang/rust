@@ -255,6 +255,7 @@ mod init_numbered_fields;
 mod inline_fn_without_body;
 mod int_plus_one;
 mod invalid_upcast_comparisons;
+mod invalid_utf8_in_unchecked;
 mod items_after_statements;
 mod iter_not_returning_iterator;
 mod large_const_arrays;
@@ -364,6 +365,7 @@ mod single_component_path_imports;
 mod size_of_in_element_count;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
+mod std_instead_of_core;
 mod strings;
 mod strlen_on_c_strings;
 mod suspicious_operation_groupings;
@@ -913,6 +915,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(manual_retain::ManualRetain::new(msrv)));
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
     store.register_late_pass(move || Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
+    store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
+    store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

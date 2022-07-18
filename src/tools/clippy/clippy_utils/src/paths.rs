@@ -163,6 +163,7 @@ pub const STR_BYTES: [&str; 4] = ["core", "str", "<impl str>", "bytes"];
 pub const STR_CHARS: [&str; 4] = ["core", "str", "<impl str>", "chars"];
 pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
 pub const STR_FROM_UTF8: [&str; 4] = ["core", "str", "converts", "from_utf8"];
+pub const STR_FROM_UTF8_UNCHECKED: [&str; 4] = ["core", "str", "converts", "from_utf8_unchecked"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];
 pub const STR_STARTS_WITH: [&str; 4] = ["core", "str", "<impl str>", "starts_with"];
 #[cfg(feature = "internal")]

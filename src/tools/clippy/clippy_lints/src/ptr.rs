@@ -502,7 +502,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .iter()
             .filter_map(get_rptr_lm)
             .filter(|&(lt, _, _)| cx.tcx.named_region(lt.hir_id) == out_region)
-            .map(|(_, mutability, span)| (mutability == Mutability::Not).then(|| span))
+            .map(|(_, mutability, span)| (mutability == Mutability::Not).then_some(span))
             .collect();
         if let Some(args) = args
             && !args.is_empty()
