@@ -782,7 +782,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(|| Box::new(default::Default::default()));
-    store.register_late_pass(|| Box::new(unused_self::UnusedSelf));
+    store.register_late_pass(move || Box::new(unused_self::UnusedSelf::new(avoid_breaking_exported_api)));
     store.register_late_pass(|| Box::new(mutable_debug_assertion::DebugAssertWithMutCall));
     store.register_late_pass(|| Box::new(exit::Exit));
     store.register_late_pass(|| Box::new(to_digit_is_some::ToDigitIsSome));
