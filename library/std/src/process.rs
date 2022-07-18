@@ -474,7 +474,7 @@ impl fmt::Debug for ChildStderr {
 ///             .expect("failed to execute process")
 /// };
 ///
-/// let hello = output.stdout;
+/// assert_eq!(String::from_utf8_lossy(&output.stdout), "hello\n");
 /// ```
 ///
 /// `Command` can be reused to spawn multiple processes. The builder methods
