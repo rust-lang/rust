@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-99073.rs:6:13
+   |
+LL | fn fix<F: Fn(G), G: Fn()>(f: F) -> impl Fn() {
+   |                                    --------- the expected opaque type
+LL |     move || f(fix(&f))
+   |             ^^^^^^^^^^ types differ
+   |
+   = note: expected opaque type `impl Fn()`
+           found type parameter `G`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
