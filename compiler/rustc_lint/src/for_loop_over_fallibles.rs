@@ -1,6 +1,7 @@
 use crate::{LateContext, LateLintPass, LintContext};
 
 use hir::{Expr, Pat};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_span::sym;
@@ -65,18 +66,24 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
             _ => return,
         };
 
-        let Ok(pat_snip) = cx.sess().source_map().span_to_snippet(pat.span) else { return };
         let Ok(arg_snip) = cx.sess().source_map().span_to_snippet(arg.span) else { return };
 
-        let help_string = format!(
-            "consider replacing `for {pat_snip} in {arg_snip}` with `if let {var}({pat_snip}) = {arg_snip}`"
-        );
         let msg = format!(
             "for loop over `{arg_snip}`, which is {article} `{ty}`. This is more readably written as an `if let` statement",
         );
 
         cx.struct_span_lint(FOR_LOOP_OVER_FALLIBLES, arg.span, |diag| {
-            diag.build(msg).help(help_string).emit()
+            diag.build(msg)
+                .multipart_suggestion_verbose(
+                    "consider using `if let` to clear intent",
+                    vec![
+                        // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
+                        (expr.span.with_hi(pat.span.lo()), format!("if let {var}(")),
+                        (pat.span.between(arg.span), format!(") = ")),
+                    ],
+                    Applicability::MachineApplicable,
+                )
+                .emit()
         })
     }
 }
@@ -89,11 +96,10 @@ fn extract_for_loop<'tcx>(expr: &Expr<'tcx>) -> Option<(&'tcx Pat<'tcx>, &'tcx E
     && let [stmt] = block.stmts
     && let hir::StmtKind::Expr(e) = stmt.kind
     && let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind
-    && let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind 
+    && let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind
     {
         Some((field.pat, arg))
     } else {
         None
     }
-    
 }
