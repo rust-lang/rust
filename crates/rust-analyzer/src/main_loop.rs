@@ -2,6 +2,7 @@
 //! requests/replies and notifications back to the client.
 use std::{
     fmt,
+    ops::Deref,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -720,13 +721,62 @@ impl GlobalState {
                 Ok(())
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
-                for flycheck in &this.flycheck {
-                    flycheck.update();
+                let mut updated = false;
+                if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
+                    let (vfs, _) = &*this.vfs.read();
+                    if let Some(file_id) = vfs.file_id(&vfs_path) {
+                        let analysis = this.analysis_host.analysis();
+                        let crate_ids = analysis.crate_for(file_id)?;
+
+                        let paths: Vec<_> = crate_ids
+                            .iter()
+                            .filter_map(|&crate_id| {
+                                analysis
+                                    .crate_root(crate_id)
+                                    .map(|file_id| {
+                                        vfs.file_path(file_id).as_path().map(ToOwned::to_owned)
+                                    })
+                                    .transpose()
+                            })
+                            .collect::<ide::Cancellable<_>>()?;
+                        let paths: Vec<_> = paths.iter().map(Deref::deref).collect();
+
+                        let workspace_ids =
+                            this.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
+                                project_model::ProjectWorkspace::Cargo { cargo, .. } => {
+                                    cargo.packages().filter(|&pkg| cargo[pkg].is_member).any(
+                                        |pkg| {
+                                            cargo[pkg].targets.iter().any(|&it| {
+                                                paths.contains(&cargo[it].root.as_path())
+                                            })
+                                        },
+                                    )
+                                }
+                                project_model::ProjectWorkspace::Json { project, .. } => project
+                                    .crates()
+                                    .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
+                                project_model::ProjectWorkspace::DetachedFiles { .. } => false,
+                            });
+                        'workspace: for (id, _) in workspace_ids {
+                            for flycheck in &this.flycheck {
+                                if id == flycheck.id() {
+                                    updated = true;
+                                    flycheck.update();
+                                    continue 'workspace;
+                                }
+                            }
+                        }
+                    }
+                    if let Some(abs_path) = vfs_path.as_path() {
+                        if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
+                            this.fetch_workspaces_queue
+                                .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
+                        }
+                    }
                 }
-                if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
-                    if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
-                        this.fetch_workspaces_queue
-                            .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
+                if !updated {
+                    for flycheck in &this.flycheck {
+                        flycheck.update();
                     }
                 }
                 Ok(())

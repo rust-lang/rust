@@ -55,6 +55,7 @@ pub struct FlycheckHandle {
     // XXX: drop order is significant
     sender: Sender<Restart>,
     _thread: jod_thread::JoinHandle,
+    id: usize,
 }
 
 impl FlycheckHandle {
@@ -70,12 +71,16 @@ impl FlycheckHandle {
             .name("Flycheck".to_owned())
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
-        FlycheckHandle { sender, _thread: thread }
+        FlycheckHandle { id, sender, _thread: thread }
     }
 
     /// Schedule a re-start of the cargo check worker.
     pub fn update(&self) {
         self.sender.send(Restart).unwrap();
+    }
+
+    pub fn id(&self) -> usize {
+        self.id
     }
 }
 
