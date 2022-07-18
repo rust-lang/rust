@@ -21,7 +21,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         match intrinsic_name {
-            // Atomic operations
             "load_seqcst" => this.atomic_load(args, dest, AtomicReadOrd::SeqCst)?,
             "load_relaxed" => this.atomic_load(args, dest, AtomicReadOrd::Relaxed)?,
             "load_acquire" => this.atomic_load(args, dest, AtomicReadOrd::Acquire)?,
