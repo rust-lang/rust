@@ -1084,7 +1084,11 @@ pub(crate) fn format_trait(
             let item_snippet = context.snippet(item.span);
             if let Some(lo) = item_snippet.find('/') {
                 // 1 = `{`
-                let comment_hi = body_lo - BytePos(1);
+                let comment_hi = if generics.params.len() > 0 {
+                    generics.span.lo() - BytePos(1)
+                } else {
+                    body_lo - BytePos(1)
+                };
                 let comment_lo = item.span.lo() + BytePos(lo as u32);
                 if comment_lo < comment_hi {
                     match recover_missing_comment_in_span(
