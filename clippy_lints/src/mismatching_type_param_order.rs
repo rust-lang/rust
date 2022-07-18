@@ -18,6 +18,11 @@ declare_clippy_lint! {
     /// Naming type parameters inconsistently may cause you to refer to the
     /// wrong type parameter.
     ///
+    /// ### Limitations
+    /// This lint only applies to impl blocks with simple generic params, e.g.
+    /// `A`. If there is anything more complicated, such as a tuple, it will be
+    /// ignored.
+    ///
     /// ### Example
     /// ```rust
     /// struct Foo<A, B> {
@@ -53,14 +58,15 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
             if !generic_args.args.is_empty();
             then {
                 // get the name and span of the generic parameters in the Impl
-                let impl_params = generic_args.args.iter()
-                .filter_map(|p|
+                let mut impl_params = Vec::new();
+                for p in generic_args.args.iter() {
                     match p {
                         GenericArg::Type(Ty {kind: TyKind::Path(QPath::Resolved(_, path)), ..}) =>
-                            Some((path.segments[0].ident.to_string(), path.span)),
-                        _ => None,
-                    }
-                );
+                            impl_params.push((path.segments[0].ident.to_string(), path.span)),
+                        GenericArg::Type(_) => return,
+                        _ => (),
+                    };
+                }
 
                 // find the type that the Impl is for
                 // only lint on struct/enum/union for now
@@ -83,8 +89,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
                     type_param_names.iter().enumerate().map(|(i, param)| (param, i)).collect();
 
                 let type_name = segment.ident;
-                for (i, (impl_param_name, impl_param_span)) in impl_params.enumerate() {
-                    if mismatch_param_name(i, &impl_param_name, &type_param_names_hashmap) {
+                for (i, (impl_param_name, impl_param_span)) in impl_params.iter().enumerate() {
+                    if mismatch_param_name(i, impl_param_name, &type_param_names_hashmap) {
                         let msg = format!("`{}` has a similarly named generic type parameter `{}` in its declaration, but in a different order",
                                           type_name, impl_param_name);
                         let help = format!("try `{}`, or a name that does not conflict with `{}`'s generic params",
@@ -92,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
                         span_lint_and_help(
                             cx,
                             MISMATCHING_TYPE_PARAM_ORDER,
-                            impl_param_span,
+                            *impl_param_span,
                             &msg,
                             None,
                             &help
