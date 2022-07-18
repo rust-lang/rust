@@ -26,13 +26,13 @@ error: passing `WithParameters<T, 1_usize>` by reference
   --> $DIR/rustc_pass_by_value_self.rs:47:17
    |
 LL |     fn with_ref(&self) {}
-   |                 ^^^^^ help: try passing by value: `WithParameters<T, 1_usize>`
+   |                 ^^^^^ help: try passing by value: `WithParameters<T, 1>`
 
 error: passing `WithParameters<T, 1_usize, u8>` by reference
   --> $DIR/rustc_pass_by_value_self.rs:51:17
    |
 LL |     fn with_ref(&self) {}
-   |                 ^^^^^ help: try passing by value: `WithParameters<T, 1_usize, u8>`
+   |                 ^^^^^ help: try passing by value: `WithParameters<T, 1, u8>`
 
 error: aborting due to 5 previous errors
 
