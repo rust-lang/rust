@@ -1,6 +1,6 @@
 // We want to control preemption here.
 //@compile-flags: -Zmiri-preemption-rate=0
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 #![feature(core_intrinsics)]
 
 use std::intrinsics::atomic_store;

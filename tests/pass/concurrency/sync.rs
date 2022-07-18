@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-strict-provenance
 
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};

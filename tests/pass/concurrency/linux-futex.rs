@@ -1,4 +1,4 @@
-//@only-linux
+//@only-target-linux
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]

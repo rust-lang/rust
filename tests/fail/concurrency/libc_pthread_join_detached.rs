@@ -1,4 +1,4 @@
-//@ignore-windows: No libc on Windows
+//@ignore-target-windows: No libc on Windows
 
 // Joining a detached thread is undefined behavior.
 

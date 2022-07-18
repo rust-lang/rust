@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 // This specifically tests behavior *without* preemption.
 //@compile-flags: -Zmiri-preemption-rate=0
 

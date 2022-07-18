@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 // FIXME: disallow preemption to work around https://github.com/rust-lang/rust/issues/55005
 //@compile-flags: -Zmiri-ignore-leaks -Zmiri-preemption-rate=0
 

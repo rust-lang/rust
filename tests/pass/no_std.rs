@@ -3,7 +3,7 @@
 // windows tls dtors go through libstd right now, thus this test
 // cannot pass. When windows tls dtors go through the special magic
 // windows linker section, we can run this test on windows again.
-//@ignore-windows
+//@ignore-target-windows
 
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {

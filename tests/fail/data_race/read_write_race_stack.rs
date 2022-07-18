@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-disable-isolation -Zmir-opt-level=0 -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
 // Note: mir-opt-level set to 0 to prevent the read of stack_var in thread 1
