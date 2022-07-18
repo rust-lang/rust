@@ -1,16 +1,16 @@
 //! Advertises the capabilities of the LSP Server.
 use lsp_types::{
     CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
-    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, DeclarationCapability,
-    DocumentOnTypeFormattingOptions, FileOperationFilter, FileOperationPattern,
-    FileOperationPatternKind, FileOperationRegistrationOptions, FoldingRangeProviderCapability,
-    HoverProviderCapability, ImplementationProviderCapability, InlayHintOptions,
-    InlayHintServerCapabilities, OneOf, RenameOptions, SaveOptions,
-    SelectionRangeProviderCapability, SemanticTokensFullOptions, SemanticTokensLegend,
-    SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
-    WorkDoneProgressOptions, WorkspaceFileOperationsServerCapabilities,
-    WorkspaceServerCapabilities,
+    CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
+    CompletionOptionsCompletionItem, DeclarationCapability, DocumentOnTypeFormattingOptions,
+    FileOperationFilter, FileOperationPattern, FileOperationPatternKind,
+    FileOperationRegistrationOptions, FoldingRangeProviderCapability, HoverProviderCapability,
+    ImplementationProviderCapability, InlayHintOptions, InlayHintServerCapabilities, OneOf,
+    RenameOptions, SaveOptions, SelectionRangeProviderCapability, SemanticTokensFullOptions,
+    SemanticTokensLegend, SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TypeDefinitionProviderCapability, WorkDoneProgressOptions,
+    WorkspaceFileOperationsServerCapabilities, WorkspaceServerCapabilities,
 };
 use serde_json::json;
 
@@ -36,7 +36,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 "(".to_string(),
             ]),
             all_commit_characters: None,
-            completion_item: None,
+            completion_item: completion_item(&config),
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
         signature_help_provider: Some(SignatureHelpOptions {
@@ -168,6 +168,12 @@ pub(crate) fn completion_item_edit_resolve(caps: &ClientCapabilities) -> bool {
                 .any(|cap_string| cap_string.as_str() == "additionalTextEdits"),
         )
     })() == Some(true)
+}
+
+fn completion_item(config: &Config) -> Option<CompletionOptionsCompletionItem> {
+    Some(CompletionOptionsCompletionItem {
+        label_details_support: Some(config.completion_label_details_support()),
+    })
 }
 
 fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProviderCapability {
