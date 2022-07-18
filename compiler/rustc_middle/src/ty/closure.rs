@@ -182,7 +182,11 @@ impl<'tcx> CapturedPlace<'tcx> {
                         .unwrap();
                     }
                     ty => {
-                        bug!("Unexpected type {:?} for `Field` projection", ty)
+                        span_bug!(
+                            self.get_capture_kind_span(tcx),
+                            "Unexpected type {:?} for `Field` projection",
+                            ty
+                        )
                     }
                 },
 
