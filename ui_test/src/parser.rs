@@ -69,9 +69,9 @@ impl Condition {
         if c == "on-host" {
             Ok(Condition::OnHost)
         } else if let Some(bits) = c.strip_suffix("bit") {
-            let bits: u8 = bits.parse().expect(
-                "ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N",
-            );
+            let bits: u8 = bits.parse().map_err(|_err| {
+                eyre!("invalid ignore/only filter ending in 'bit': {c:?} is not a valid bitwdith")
+            })?;
             Ok(Condition::Bitwidth(bits))
         } else if let Some(target) = c.strip_prefix("target-") {
             Ok(Condition::Target(target.to_owned()))
