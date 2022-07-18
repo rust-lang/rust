@@ -2291,6 +2291,16 @@ extern "rust-intrinsic" {
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
     pub fn black_box<T>(dummy: T) -> T;
+
+    /// `ptr` must point to a vtable.
+    /// The intrinsic will return the size stored in that vtable.
+    #[cfg(not(bootstrap))]
+    pub fn vtable_size(ptr: *const ()) -> usize;
+
+    /// `ptr` must point to a vtable.
+    /// The intrinsic will return the alignment stored in that vtable.
+    #[cfg(not(bootstrap))]
+    pub fn vtable_align(ptr: *const ()) -> usize;
 }
 
 // Some functions are defined here because they accidentally got made

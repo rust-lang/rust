@@ -363,6 +363,20 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return;
             }
 
+            sym::vtable_size | sym::vtable_align => {
+                let ptr = args[0].immediate();
+                let layout = self.layout_of(self.tcx.types.usize);
+                let type_ = self.backend_type(layout);
+                let offset = match name {
+                    sym::vtable_size => 1,
+                    sym::vtable_align => 2,
+                    _ => bug!(),
+                };
+                let offset = self.const_int(type_, offset);
+                let vtable_field_ptr = self.inbounds_gep(type_, ptr, &[offset]);
+                self.load(type_, vtable_field_ptr, layout.align.abi)
+            }
+
             _ if name.as_str().starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                     Ok(llval) => llval,

@@ -1564,6 +1564,8 @@ symbols! {
         volatile_store,
         vreg,
         vreg_low16,
+        vtable_align,
+        vtable_size,
         warn,
         wasm_abi,
         wasm_import_module,

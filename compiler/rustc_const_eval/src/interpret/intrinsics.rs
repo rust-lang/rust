@@ -492,6 +492,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
+
+            sym::vtable_size => {
+                let ptr = self.read_pointer(&args[0])?;
+                let (size, _align) = self.get_vtable_size_and_align(ptr)?;
+                self.write_scalar(Scalar::from_machine_usize(size.bytes(), self), dest)?;
+            }
+            sym::vtable_align => {
+                let ptr = self.read_pointer(&args[0])?;
+                let (_size, align) = self.get_vtable_size_and_align(ptr)?;
+                self.write_scalar(Scalar::from_machine_usize(align.bytes(), self), dest)?;
+            }
+
             _ => return Ok(false),
         }
 
