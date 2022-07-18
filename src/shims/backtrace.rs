@@ -122,15 +122,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let ptr = this.read_pointer(ptr)?;
-        // Take apart the pointer, we need its pieces.
+        // Take apart the pointer, we need its pieces. The offset encodes the span.
         let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(ptr)?;
 
-        let fn_instance =
-            if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(alloc_id) {
-                instance
-            } else {
-                throw_ub_format!("expected function pointer, found {:?}", ptr);
-            };
+        // This has to be an actual global fn ptr, not a dlsym function.
+        let fn_instance = if let Some(GlobalAlloc::Function(instance)) =
+            this.tcx.try_get_global_alloc(alloc_id)
+        {
+            instance
+        } else {
+            throw_ub_format!("expected static function pointer, found {:?}", ptr);
+        };
 
         let lo =
             this.tcx.sess.source_map().lookup_char_pos(BytePos(offset.bytes().try_into().unwrap()));

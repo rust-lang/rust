@@ -1,4 +1,7 @@
-use std::mem::transmute;
+#![feature(ptr_metadata)]
+
+use std::mem::{self, transmute};
+use std::ptr;
 
 fn one_line_ref() -> i16 {
     *&1
@@ -71,6 +74,19 @@ fn wide_ptr_ops() {
     assert!(!(a > b));
 }
 
+fn metadata_vtable() {
+    let p = &0i32 as &dyn std::fmt::Debug;
+    let meta: ptr::DynMetadata<_> = ptr::metadata(p as *const _);
+    assert_eq!(meta.size_of(), mem::size_of::<i32>());
+    assert_eq!(meta.align_of(), mem::align_of::<i32>());
+
+    type T = [i32; 16];
+    let p = &T::default() as &dyn std::fmt::Debug;
+    let meta: ptr::DynMetadata<_> = ptr::metadata(p as *const _);
+    assert_eq!(meta.size_of(), mem::size_of::<T>());
+    assert_eq!(meta.align_of(), mem::align_of::<T>());
+}
+
 fn main() {
     assert_eq!(one_line_ref(), 1);
     assert_eq!(basic_ref(), 1);
@@ -116,4 +132,5 @@ fn main() {
     assert!(dangling >= 4);
 
     wide_ptr_ops();
+    metadata_vtable();
 }
