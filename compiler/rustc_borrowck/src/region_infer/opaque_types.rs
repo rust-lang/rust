@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::InferCtxt;
@@ -63,8 +63,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
-    ) -> VecMap<DefId, OpaqueHiddenType<'tcx>> {
-        let mut result: VecMap<DefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+    ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
+        let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
@@ -235,7 +235,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // lifetimes with 'static and remapping only those used in the
         // `impl Trait` return type, resulting in the parameters
         // shifting.
-        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id);
+        let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
         debug!(?id_substs);
         let map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>> =
             substs.iter().enumerate().map(|(index, subst)| (subst, id_substs[index])).collect();
@@ -268,7 +268,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // This logic duplicates most of `check_opaque_meets_bounds`.
             // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
             let param_env = self.tcx.param_env(def_id);
-            let body_id = self.tcx.local_def_id_to_hir_id(def_id.as_local().unwrap());
+            let body_id = self.tcx.local_def_id_to_hir_id(def_id);
             self.tcx.infer_ctxt().enter(move |infcx| {
                 // Require the hidden type to be well-formed with only the generics of the opaque type.
                 // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
@@ -296,7 +296,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         infcx
                             .report_mismatched_types(
                                 &ObligationCause::misc(instantiated_ty.span, body_id),
-                                self.tcx.mk_opaque(def_id, id_substs),
+                                self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
                                 definition_ty,
                                 err,
                             )
@@ -423,7 +423,7 @@ fn check_opaque_type_parameter_valid(
 struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    opaque_type_def_id: DefId,
+    opaque_type_def_id: LocalDefId,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
     map_missing_regions_to_empty: bool,
 
@@ -437,7 +437,7 @@ struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        opaque_type_def_id: DefId,
+        opaque_type_def_id: LocalDefId,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
         span: Span,
