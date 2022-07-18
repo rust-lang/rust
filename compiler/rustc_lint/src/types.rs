@@ -1434,10 +1434,6 @@ declare_lint! {
     /// - Passing `Ordering::Release` or `Ordering::AcqRel` as the failure
     ///   ordering for any of `AtomicType::compare_exchange`,
     ///   `AtomicType::compare_exchange_weak`, or `AtomicType::fetch_update`.
-    ///
-    /// - Passing in a pair of orderings to `AtomicType::compare_exchange`,
-    ///   `AtomicType::compare_exchange_weak`, or `AtomicType::fetch_update`
-    ///   where the failure ordering is stronger than the success ordering.
     INVALID_ATOMIC_ORDERING,
     Deny,
     "usage of invalid atomic ordering in atomic operations and memory fences"
@@ -1544,9 +1540,9 @@ impl InvalidAtomicOrdering {
         let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak])
             else {return };
 
-        let (success_order_arg, fail_order_arg) = match method {
-            sym::fetch_update => (&args[1], &args[2]),
-            sym::compare_exchange | sym::compare_exchange_weak => (&args[3], &args[4]),
+        let fail_order_arg = match method {
+            sym::fetch_update => &args[2],
+            sym::compare_exchange | sym::compare_exchange_weak => &args[4],
             _ => return,
         };
 
@@ -1567,37 +1563,6 @@ impl InvalidAtomicOrdering {
                 fail_order_arg.span,
                 InvalidAtomicOrderingDiag { method, fail_order_arg_span: fail_order_arg.span },
             );
-        }
-
-        let Some(success_ordering) = Self::match_ordering(cx, success_order_arg) else { return };
-
-        if matches!(
-            (success_ordering, fail_ordering),
-            (sym::Relaxed | sym::Release, sym::Acquire)
-                | (sym::Relaxed | sym::Release | sym::Acquire | sym::AcqRel, sym::SeqCst)
-        ) {
-            let success_suggestion =
-                if success_ordering == sym::Release && fail_ordering == sym::Acquire {
-                    sym::AcqRel
-                } else {
-                    fail_ordering
-                };
-            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, success_order_arg.span, |diag| {
-                diag.build(fluent::lint::atomic_ordering_invalid_fail_success)
-                    .set_arg("method", method)
-                    .set_arg("fail_ordering", fail_ordering)
-                    .set_arg("success_ordering", success_ordering)
-                    .set_arg("success_suggestion", success_suggestion)
-                    .span_label(fail_order_arg.span, fluent::lint::fail_label)
-                    .span_label(success_order_arg.span, fluent::lint::success_label)
-                    .span_suggestion_short(
-                        success_order_arg.span,
-                        fluent::lint::suggestion,
-                        format!("std::sync::atomic::Ordering::{success_suggestion}"),
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
-            });
         }
     }
 }
