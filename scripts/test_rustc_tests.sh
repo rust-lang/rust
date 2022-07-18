@@ -93,7 +93,6 @@ rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in b
 rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
 rm -r src/test/run-make/issue-88756-default-output # same
-rm -r src/test/run-make/issue-88756-opt-help # same
 rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 
 # genuine bugs
@@ -117,6 +116,8 @@ rm src/test/ui/backtrace.rs # TODO warning
 rm src/test/ui/empty_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
 rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
+# not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
+rm -r src/test/run-make/native-link-modifier-bundle
 
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui,incremental}

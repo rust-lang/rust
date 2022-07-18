@@ -63,3 +63,6 @@ deny-warnings = false
 verbose-tests = false
 EOF
 popd
+
+# FIXME remove once inline asm is fully supported
+export RUSTFLAGS="$RUSTFLAGS --cfg=rustix_use_libc"
