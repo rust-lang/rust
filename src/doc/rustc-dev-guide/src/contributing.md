@@ -78,13 +78,12 @@ to review your request based on which files you changed.
 
 If you want to request that a specific person reviews your pull request, you
 can add an `r?` to the pull request description or in a comment. For example,
-[Steve][steveklabnik] usually reviews documentation changes. So if you were to
-make a documentation change, add
+if you want to ask a review to @awesome-reviewer, add
 
-    r? @steveklabnik
+    r? @awesome-reviewer
 
 to the end of the pull request description, and [@rust-highfive][rust-highfive] will assign
-[@steveklabnik][steveklabnik] instead of a random person. This is entirely optional.
+them instead of a random person. This is entirely optional.
 
 You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
 So if you were making a diagnostics change, then you could get a reviewer from the diagnostics
@@ -135,7 +134,6 @@ speed the process up. Typically only small changes that are expected not to conf
 with one another are marked as "always roll up".
 
 [rust-highfive]: https://github.com/rust-highfive
-[steveklabnik]: https://github.com/steveklabnik
 [@bors]: https://github.com/bors
 [merge-queue]: https://bors.rust-lang.org/queue/rust
 
