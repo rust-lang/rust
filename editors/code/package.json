@@ -686,7 +686,15 @@
                 "rust-analyzer.files.watcher": {
                     "markdownDescription": "Controls file watching implementation.",
                     "default": "client",
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "client",
+                        "server"
+                    ],
+                    "enumDescriptions": [
+                        "Use the client (editor) to watch files for changes",
+                        "Use server-side file watching"
+                    ]
                 },
                 "rust-analyzer.highlightRelated.breakPoints.enable": {
                     "markdownDescription": "Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.",

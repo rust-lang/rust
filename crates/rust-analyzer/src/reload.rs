@@ -320,7 +320,7 @@ impl GlobalState {
 
         let watch = match files_config.watcher {
             FilesWatcher::Client => vec![],
-            FilesWatcher::Notify => project_folders.watch,
+            FilesWatcher::Server => project_folders.watch,
         };
         self.vfs_config_version += 1;
         self.loader.handle.set_config(vfs::loader::Config {
