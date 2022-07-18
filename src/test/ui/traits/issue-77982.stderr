@@ -41,59 +41,22 @@ LL |     opts.get::<Q>(opt.as_ref());
    |             +++++
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-77982.rs:13:59
+  --> $DIR/issue-77982.rs:13:44
    |
 LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
-   |                                            ---------      ^^^^
-   |                                            |
-   |                                            type must be known at this point
-   |
-   = note: multiple `impl`s satisfying `u32: From<_>` found in the following crates: `core`, `std`:
-           - impl From<Ipv4Addr> for u32;
-           - impl From<NonZeroU32> for u32;
-           - impl From<bool> for u32;
-           - impl From<char> for u32;
-           and 3 more
-help: try using a fully qualified path to specify the expected types
-   |
-LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into(0u32))).collect();
-   |                                                      +++++++++++++++++++++++    ~
+   |                                            ^^^^^^^^^ cannot call trait method as a free function
 
-error[E0283]: type annotations needed for `Box<T>`
-  --> $DIR/issue-77982.rs:36:9
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:36:16
    |
 LL |     let _ = ().foo();
-   |         ^      --- type must be known at this point
-   |
-note: multiple `impl`s satisfying `(): Foo<'_, _>` found
-  --> $DIR/issue-77982.rs:29:1
-   |
-LL | impl Foo<'static, u32> for () {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL | impl<'a> Foo<'a, i16> for () {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider giving this pattern a type, where the type for type parameter `T` is specified
-   |
-LL |     let _: Box<T> = ().foo();
-   |          ++++++++
+   |                ^^^ cannot call trait method as a free function
 
-error[E0283]: type annotations needed for `Box<T>`
-  --> $DIR/issue-77982.rs:40:9
+error[E0283]: type annotations needed
+  --> $DIR/issue-77982.rs:40:19
    |
 LL |     let _ = (&()).bar();
-   |         ^         --- type must be known at this point
-   |
-note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
-  --> $DIR/issue-77982.rs:32:1
-   |
-LL | impl<'a> Bar<'static, u32> for &'a () {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL | impl<'a> Bar<'a, i16> for &'a () {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider giving this pattern a type, where the type for type parameter `T` is specified
-   |
-LL |     let _: Box<T> = (&()).bar();
-   |          ++++++++
+   |                   ^^^ cannot call trait method as a free function
 
 error: aborting due to 5 previous errors
 

@@ -2,15 +2,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-29147.rs:21:13
    |
 LL |     let _ = <S5<_>>::xxx;
-   |             ^^^^^^^^^^^^ cannot infer type for struct `S5<_>`
-   |
-note: multiple `impl`s satisfying `S5<_>: Foo` found
-  --> $DIR/issue-29147.rs:17:1
-   |
-LL | impl Foo for S5<u32> { fn xxx(&self) {} }
-   | ^^^^^^^^^^^^^^^^^^^^
-LL | impl Foo for S5<u64> { fn xxx(&self) {} }
-   | ^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^ cannot call trait method as a free function
 
 error: aborting due to previous error
 

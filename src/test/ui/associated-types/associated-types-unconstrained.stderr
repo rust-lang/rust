@@ -2,9 +2,7 @@ error[E0283]: type annotations needed
   --> $DIR/associated-types-unconstrained.rs:14:20
    |
 LL |     let x: isize = Foo::bar();
-   |                    ^^^^^^^^ cannot infer type
-   |
-   = note: cannot satisfy `_: Foo`
+   |                    ^^^^^^^^ cannot call trait method as a free function
 
 error: aborting due to previous error
 
