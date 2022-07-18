@@ -473,6 +473,9 @@ macro_rules! make_value_visitor {
                         // The second `Box` field is the allocator, which we recursively check for validity
                         // like in regular structs.
                         self.visit_field(v, 1, &alloc)?;
+
+                        // We visited all parts of this one.
+                        return Ok(());
                     }
                     _ => {},
                 };
