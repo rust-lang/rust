@@ -1,4 +1,4 @@
-pub mod atomic;
+mod atomic;
 mod simd;
 
 use std::iter;
@@ -11,6 +11,7 @@ use rustc_middle::{mir, ty, ty::FloatTy};
 use rustc_target::abi::Integer;
 
 use crate::*;
+use atomic::EvalContextExt as _;
 use helpers::check_arg_count;
 use simd::EvalContextExt as _;
 
