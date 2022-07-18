@@ -70,6 +70,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(methods::MANUAL_SATURATING_ARITHMETIC),
     LintId::of(methods::MAP_COLLECT_RESULT_UNIT),
     LintId::of(methods::NEW_RET_NO_SELF),
+    LintId::of(methods::OBFUSCATED_IF_ELSE),
     LintId::of(methods::OK_EXPECT),
     LintId::of(methods::OPTION_MAP_OR_NONE),
     LintId::of(methods::RESULT_MAP_OR_INTO_OPTION),
