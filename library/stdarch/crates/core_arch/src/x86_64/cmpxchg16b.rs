@@ -34,7 +34,7 @@ use stdarch_test::assert_instr;
 /// support `cmpxchg16b` and the program enters an execution path that
 /// eventually would reach this function the behavior is undefined.
 ///
-/// The `success` ordering must also be stronger or equal to `failure`, or this
+/// The failure ordering must be [`SeqCst`], [`Acquire`] or [`Relaxed`], or this
 /// function call is undefined. See the `Atomic*` documentation's
 /// `compare_exchange` function for more information. When `compare_exchange`
 /// panics, this is undefined behavior. Currently this function aborts the
@@ -54,15 +54,21 @@ pub unsafe fn cmpxchg16b(
     debug_assert!(dst as usize % 16 == 0);
 
     let (val, _ok) = match (success, failure) {
-        (Acquire, Acquire) => intrinsics::atomic_cxchg_acquire_acquire(dst, old, new),
-        (Release, Relaxed) => intrinsics::atomic_cxchg_release_relaxed(dst, old, new),
-        (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel_acquire(dst, old, new),
         (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed_relaxed(dst, old, new),
-        (SeqCst, SeqCst) => intrinsics::atomic_cxchg_seqcst_seqcst(dst, old, new),
+        (Relaxed, Acquire) => intrinsics::atomic_cxchg_relaxed_acquire(dst, old, new),
+        (Relaxed, SeqCst) => intrinsics::atomic_cxchg_relaxed_seqcst(dst, old, new),
         (Acquire, Relaxed) => intrinsics::atomic_cxchg_acquire_relaxed(dst, old, new),
+        (Acquire, Acquire) => intrinsics::atomic_cxchg_acquire_acquire(dst, old, new),
+        (Acquire, SeqCst) => intrinsics::atomic_cxchg_acquire_seqcst(dst, old, new),
+        (Release, Relaxed) => intrinsics::atomic_cxchg_release_relaxed(dst, old, new),
+        (Release, Acquire) => intrinsics::atomic_cxchg_release_acquire(dst, old, new),
+        (Release, SeqCst) => intrinsics::atomic_cxchg_release_seqcst(dst, old, new),
         (AcqRel, Relaxed) => intrinsics::atomic_cxchg_acqrel_relaxed(dst, old, new),
+        (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel_acquire(dst, old, new),
+        (AcqRel, SeqCst) => intrinsics::atomic_cxchg_acqrel_seqcst(dst, old, new),
         (SeqCst, Relaxed) => intrinsics::atomic_cxchg_seqcst_relaxed(dst, old, new),
         (SeqCst, Acquire) => intrinsics::atomic_cxchg_seqcst_acquire(dst, old, new),
+        (SeqCst, SeqCst) => intrinsics::atomic_cxchg_seqcst_seqcst(dst, old, new),
 
         // The above block is all copied from libcore, and this statement is
         // also copied from libcore except that it's a panic in libcore and we
