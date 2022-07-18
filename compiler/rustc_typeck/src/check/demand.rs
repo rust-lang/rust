@@ -19,7 +19,6 @@ use rustc_span::{BytePos, Span};
 use super::method::probe;
 
 use std::iter;
-use std::ops::Bound;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
@@ -349,13 +348,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            // Avoid suggesting wrapping in `NonZeroU64` and alike
-            if self.tcx.layout_scalar_valid_range(expected_adt.did())
-                != (Bound::Unbounded, Bound::Unbounded)
-            {
-                return;
-            }
-
             let compatible_variants: Vec<String> = expected_adt
                 .variants()
                 .iter()
@@ -364,6 +356,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.fields[0];
+
+                    if !sole_field.did.is_local()
+                        && !sole_field.vis.is_accessible_from(
+                            self.tcx.parent_module(expr.hir_id).to_def_id(),
+                            self.tcx,
+                        )
+                    {
+                        return None;
+                    }
+
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
                         let variant_path =
