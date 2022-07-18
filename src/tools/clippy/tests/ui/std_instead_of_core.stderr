@@ -1,0 +1,85 @@
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:9:9
+   |
+LL |     use std::hash::Hasher;
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::std-instead-of-core` implied by `-D warnings`
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:11:9
+   |
+LL |     use ::std::hash::Hash;
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:14:20
+   |
+LL |     use std::fmt::{Debug, Result};
+   |                    ^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:14:27
+   |
+LL |     use std::fmt::{Debug, Result};
+   |                           ^^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:17:15
+   |
+LL |     let ptr = std::ptr::null::<u32>();
+   |               ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:18:19
+   |
+LL |     let ptr_mut = ::std::ptr::null_mut::<usize>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:21:16
+   |
+LL |     let cell = std::cell::Cell::new(8u32);
+   |                ^^^^^^^^^^^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `core`
+  --> $DIR/std_instead_of_core.rs:22:25
+   |
+LL |     let cell_absolute = ::std::cell::Cell::new(8u32);
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider importing the item from `core`
+
+error: used import from `std` instead of `alloc`
+  --> $DIR/std_instead_of_core.rs:27:9
+   |
+LL |     use std::vec::Vec;
+   |         ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::std-instead-of-alloc` implied by `-D warnings`
+   = help: consider importing the item from `alloc`
+
+error: used import from `alloc` instead of `core`
+  --> $DIR/std_instead_of_core.rs:32:9
+   |
+LL |     use alloc::slice::from_ref;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::alloc-instead-of-core` implied by `-D warnings`
+   = help: consider importing the item from `core`
+
+error: aborting due to 10 previous errors
+

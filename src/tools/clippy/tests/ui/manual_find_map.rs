@@ -12,6 +12,39 @@ fn main() {
 
     // is_ok(), unwrap_or()
     let _ = (0..).find(|&n| to_res(n).is_ok()).map(|a| to_res(a).unwrap_or(1));
+
+    let _ = (1..5)
+        .find(|&x| to_ref(to_opt(x)).is_some())
+        .map(|y| to_ref(to_opt(y)).unwrap());
+    let _ = (1..5)
+        .find(|x| to_ref(to_opt(*x)).is_some())
+        .map(|y| to_ref(to_opt(y)).unwrap());
+
+    let _ = (1..5)
+        .find(|&x| to_ref(to_res(x)).is_ok())
+        .map(|y| to_ref(to_res(y)).unwrap());
+    let _ = (1..5)
+        .find(|x| to_ref(to_res(*x)).is_ok())
+        .map(|y| to_ref(to_res(y)).unwrap());
+}
+
+#[rustfmt::skip]
+fn simple_equal() {
+    iter::<Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
+    iter::<&Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
+    iter::<&&Option<u8>>().find(|x| x.is_some()).map(|x| x.unwrap());
+    iter::<Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
+    iter::<&Option<&u8>>().find(|x| x.is_some()).map(|x| x.cloned().unwrap());
+    iter::<&Option<String>>().find(|x| x.is_some()).map(|x| x.as_deref().unwrap());
+    iter::<Option<&String>>().find(|&x| to_ref(x).is_some()).map(|y| to_ref(y).cloned().unwrap());
+
+    iter::<Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
+    iter::<&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
+    iter::<&&Result<u8, ()>>().find(|x| x.is_ok()).map(|x| x.unwrap());
+    iter::<Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
+    iter::<&Result<&u8, ()>>().find(|x| x.is_ok()).map(|x| x.cloned().unwrap());
+    iter::<&Result<String, ()>>().find(|x| x.is_ok()).map(|x| x.as_deref().unwrap());
+    iter::<Result<&String, ()>>().find(|&x| to_ref(x).is_ok()).map(|y| to_ref(y).cloned().unwrap());
 }
 
 fn no_lint() {
@@ -28,11 +61,19 @@ fn no_lint() {
         .map(|a| to_opt(a).unwrap());
 }
 
+fn iter<T>() -> impl Iterator<Item = T> {
+    std::iter::empty()
+}
+
 fn to_opt<T>(_: T) -> Option<T> {
     unimplemented!()
 }
 
 fn to_res<T>(_: T) -> Result<T, ()> {
+    unimplemented!()
+}
+
+fn to_ref<'a, T>(_: T) -> &'a T {
     unimplemented!()
 }
 

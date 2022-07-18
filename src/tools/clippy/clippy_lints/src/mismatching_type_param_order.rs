@@ -9,7 +9,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for type parameters which are positioned inconsistently between
-    /// a type definition and impl block. Specifically, a paramater in an impl
+    /// a type definition and impl block. Specifically, a parameter in an impl
     /// block which has the same name as a parameter in the type def, but is in
     /// a different place.
     ///

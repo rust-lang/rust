@@ -8,8 +8,8 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, GenericArg, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Closure, Expr, ExprKind, FnRetTy, GenericArg, HirId,
+    ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
     TraitItemKind, TyKind, UnOp,
 };
 use rustc_infer::infer::TyCtxtInferExt;
@@ -717,20 +717,36 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
 
             Node::Expr(parent) if parent.span.ctxt() == ctxt => match parent.kind {
                 ExprKind::Ret(_) => {
-                    let output = cx
-                        .tcx
-                        .fn_sig(cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()))
-                        .skip_binder()
-                        .output();
-                    Some(if !output.is_ref() {
-                        Position::Other(precedence)
-                    } else if output.has_placeholders() || output.has_opaque_types() {
-                        Position::ReborrowStable(precedence)
-                    } else {
-                        Position::DerefStable(precedence)
-                    })
+                    let owner_id = cx.tcx.hir().body_owner(cx.enclosing_body.unwrap());
+                    Some(
+                        if let Node::Expr(Expr {
+                            kind: ExprKind::Closure(&Closure { fn_decl, .. }),
+                            ..
+                        }) = cx.tcx.hir().get(owner_id)
+                        {
+                            match fn_decl.output {
+                                FnRetTy::Return(ty) => binding_ty_auto_deref_stability(ty, precedence),
+                                FnRetTy::DefaultReturn(_) => Position::Other(precedence),
+                            }
+                        } else {
+                            let output = cx
+                                .tcx
+                                .fn_sig(cx.tcx.hir().local_def_id(owner_id))
+                                .skip_binder()
+                                .output();
+                            if !output.is_ref() {
+                                Position::Other(precedence)
+                            } else if output.has_placeholders() || output.has_opaque_types() {
+                                Position::ReborrowStable(precedence)
+                            } else {
+                                Position::DerefStable(precedence)
+                            }
+                        },
+                    )
                 },
-                ExprKind::Call(func, _) if func.hir_id == child_id => (child_id == e.hir_id).then(|| Position::Callee),
+                ExprKind::Call(func, _) if func.hir_id == child_id => {
+                    (child_id == e.hir_id).then_some(Position::Callee)
+                },
                 ExprKind::Call(func, args) => args
                     .iter()
                     .position(|arg| arg.hir_id == child_id)
@@ -756,9 +772,14 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                             } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
                                 && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
                                 && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
-                                && let subs = cx.typeck_results().node_substs_opt(child_id).unwrap_or_else(
-                                    || cx.tcx.mk_substs([].iter())
-                                ) && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                                && let subs = match cx
+                                    .typeck_results()
+                                    .node_substs_opt(parent.hir_id)
+                                    .and_then(|subs| subs.get(1..))
+                                {
+                                    Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
+                                    None => cx.tcx.mk_substs([].iter()),
+                                } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
                                     // Trait methods taking `&self`
                                     sub_ty
                                 } else {
