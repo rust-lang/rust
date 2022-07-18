@@ -1534,3 +1534,17 @@ fn read_large_dir() {
         entry.unwrap();
     }
 }
+
+/// Test the fallback for getting the metadata of files like hiberfil.sys that
+/// Windows holds a special lock on, preventing normal means of querying
+/// metadata. See #96980.
+#[test]
+#[cfg(windows)]
+fn hiberfil_sys() {
+    let hiberfil = Path::new(r"C:\hiberfil.sys");
+
+    assert_eq!(true, hiberfil.try_exists().unwrap());
+    fs::symlink_metadata(hiberfil).unwrap();
+    fs::metadata(hiberfil).unwrap();
+    assert_eq!(true, hiberfil.exists());
+}
