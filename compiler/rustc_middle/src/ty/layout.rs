@@ -3494,11 +3494,13 @@ fn make_thin_self_ptr<'tcx>(
 }
 
 /// Determines if this type permits "raw" initialization by just transmuting some
-/// uninitialized memory into an instance of `T`.
+/// memory into an instance of `T`.
 ///
 /// This code is intentionally conservative, and will not detect
 /// * making uninitialized types who have a full valid range (ints, floats, raw pointers)
-/// * uninit invalid `&[T]` where T has align 1 (only inside arrays)
+/// * uninit `&[T]` where T has align 1 (only inside arrays). This includes `&str`
+/// * zero init enums where a discriminant with tag 0 exists, but is invalid to be zeroed
+/// * zero init type that does not allow zero init (only inside arrays)
 ///
 /// A strict form of these checks that uses const evaluation exists in
 /// `rustc_const_eval::might_permit_raw_init`, and a tracking issue for making these checks
@@ -3506,30 +3508,62 @@ fn make_thin_self_ptr<'tcx>(
 ///
 /// FIXME: Once all the conservatism is removed from here, and the checks are ran by default,
 /// we can use the const evaluation checks always instead.
-pub fn might_permit_raw_init<'tcx, C>(this: TyAndLayout<'tcx>, cx: &C) -> bool
+pub fn might_permit_raw_init<'tcx, C>(this: TyAndLayout<'tcx>, cx: &C, init_kind: InitKind) -> bool
 where
     C: HasDataLayout + ty::layout::HasParamEnv<'tcx> + ty::layout::HasTyCtxt<'tcx>,
 {
-    return might_permit_raw_init_inner(this, cx, false);
+    return might_permit_raw_init_inner(this, cx, init_kind, false);
 
     fn might_permit_raw_init_inner<'tcx, C>(
         this: TyAndLayout<'tcx>,
         cx: &C,
+        init_kind: InitKind,
         inside_array: bool,
     ) -> bool
     where
         C: HasDataLayout + ty::layout::HasParamEnv<'tcx> + ty::layout::HasTyCtxt<'tcx>,
     {
+        let scalar_allows_raw_init = move |s: Scalar| -> bool {
+            match init_kind {
+                InitKind::Zero => {
+                    // The range must contain 0.
+                    s.valid_range(cx).contains(0)
+                }
+                InitKind::Uninit => {
+                    // FIXME(#66151) This should be "is the type a union", but that's pending on a
+                    // resolution to https://github.com/rust-lang/unsafe-code-guidelines/issues/71
+                    // And likely a large number of crates fail with those rules, though no crater
+                    // run has been done yet.
+                    //
+                    // The range must include all values.
+                    s.is_always_valid(cx)
+                }
+            }
+        };
+
+        // These are bypasses in order to try not to break quite as many crates so quickly.
+        // They are being done only if we're inside an array, to ensure we don't panic on *less*
+        // things than we did before this change.
+        // See: https://github.com/rust-lang/rust/pull/99389
         if inside_array {
-            if let ty::Ref(_, inner, _) = this.ty.kind() {
-                if let ty::Slice(inner) = inner.kind() {
-                    let penv = ty::ParamEnv::reveal_all().and(*inner);
-                    if let Ok(l) = cx.tcx().layout_of(penv) {
-                        return l.layout.align().abi == Align::ONE;
+            match init_kind {
+                // FIXME(#66151) We need to ignore uninit slice references with an alignment of 1
+                // (as in, &[u8] and &str)
+                // Since if we do not, old versions of `hyper` with no semver compatible fix
+                // (0.11, 0.12, 0.13) break.
+                InitKind::Uninit => {
+                    if let ty::Ref(_, inner, _) = this.ty.kind() {
+                        let penv = ty::ParamEnv::reveal_all().and(*inner);
+                        if let Ok(l) = cx.tcx().layout_of(penv) {
+                            return l.layout.align().abi == Align::ONE
+                                && l.layout.size() == Size::ZERO;
+                        }
                     }
                 }
-
-                if let ty::Str = inner.kind() {
+                // FIXME(#66151) We need to ignore all forms of zero data being made inside an
+                // array, because old versions of crossbeam make zeroed data, sometimes at an
+                // arbitrary type chosen by the user (such as for crossbeam-channel).
+                InitKind::Zero => {
                     return true;
                 }
             }
@@ -3538,9 +3572,9 @@ where
         // Check the ABI.
         let valid = match this.abi {
             Abi::Uninhabited => false, // definitely UB
-            Abi::Scalar(s) => s.is_always_valid(cx),
-            Abi::ScalarPair(s1, s2) => s1.is_always_valid(cx) && s2.is_always_valid(cx),
-            Abi::Vector { element: s, count } => count == 0 || s.is_always_valid(cx),
+            Abi::Scalar(s) => scalar_allows_raw_init(s),
+            Abi::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
+            Abi::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
             Abi::Aggregate { .. } => true, // Fields are checked below.
         };
         if !valid {
@@ -3552,14 +3586,26 @@ where
         match &this.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
             FieldsShape::Array { count, .. } => {
-                if *count > 0 && !might_permit_raw_init_inner(this.field(cx, 0), cx, true) {
+                if *count > 0
+                    && !might_permit_raw_init_inner(
+                        this.field(cx, 0),
+                        cx,
+                        init_kind,
+                        /*inside_array*/ true,
+                    )
+                {
                     // Found non empty array with a type that is unhappy about this kind of initialization
                     return false;
                 }
             }
             FieldsShape::Arbitrary { offsets, .. } => {
                 for idx in 0..offsets.len() {
-                    if !might_permit_raw_init_inner(this.field(cx, idx), cx, inside_array) {
+                    if !might_permit_raw_init_inner(
+                        this.field(cx, idx),
+                        cx,
+                        init_kind,
+                        inside_array,
+                    ) {
                         // We found a field that is unhappy with this kind of initialization.
                         return false;
                     }
@@ -3567,7 +3613,7 @@ where
             }
         }
 
-        if matches!(this.variants, Variants::Multiple { .. }) {
+        if matches!(this.variants, Variants::Multiple { .. }) && init_kind == InitKind::Uninit {
             // All uninit enums are automatically invalid, even if their discriminant includes all values.
             return false;
         }

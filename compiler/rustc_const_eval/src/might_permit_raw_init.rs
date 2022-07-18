@@ -15,7 +15,7 @@ pub fn might_permit_raw_init<'tcx>(
 ) -> bool {
     let strict = tcx.sess.opts.unstable_opts.strict_init_checks;
 
-    if strict || kind == InitKind::Zero {
+    if strict {
         let machine = CompileTimeInterpreter::new(Limit::new(0), false);
 
         let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
@@ -38,6 +38,6 @@ pub fn might_permit_raw_init<'tcx>(
         cx.validate_operand(&ot).is_ok()
     } else {
         let layout_cx = LayoutCx { tcx, param_env: ParamEnv::reveal_all() };
-        layout::might_permit_raw_init(ty, &layout_cx)
+        layout::might_permit_raw_init(ty, &layout_cx, kind)
     }
 }
