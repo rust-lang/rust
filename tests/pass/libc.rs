@@ -1,11 +1,12 @@
 //@ignore-windows: No libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
-
 #![feature(rustc_private)]
+
+use std::fs::{remove_file, File};
+use std::os::unix::io::AsRawFd;
 
 extern crate libc;
 
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn tmp() -> std::path::PathBuf {
     std::env::var("MIRI_TEMP")
         .map(std::path::PathBuf::from)
@@ -15,9 +16,7 @@ fn tmp() -> std::path::PathBuf {
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
-    use std::fs::{remove_file, File};
     use std::io::Write;
-    use std::os::unix::io::AsRawFd;
 
     let path = tmp().join("miri_test_libc_posix_fadvise.txt");
     // Cleanup before test
@@ -44,9 +43,7 @@ fn test_posix_fadvise() {
 
 #[cfg(any(target_os = "linux"))]
 fn test_sync_file_range() {
-    use std::fs::{remove_file, File};
     use std::io::Write;
-    use std::os::unix::io::AsRawFd;
 
     let path = tmp().join("miri_test_libc_sync_file_range.txt");
     // Cleanup before test.
@@ -319,6 +316,19 @@ fn test_isatty() {
         libc::isatty(libc::STDIN_FILENO);
         libc::isatty(libc::STDOUT_FILENO);
         libc::isatty(libc::STDERR_FILENO);
+
+        // But when we open a file, it is definitely not a TTY.
+        let path = tmp().join("notatty.txt");
+        // Cleanup before test.
+        remove_file(&path).ok();
+        let file = File::create(&path).unwrap();
+
+        assert_eq!(libc::isatty(file.as_raw_fd()), 0);
+        assert_eq!(std::io::Error::last_os_error().raw_os_error().unwrap(), libc::ENOTTY);
+
+        // Cleanup after test.
+        drop(file);
+        remove_file(&path).unwrap();
     }
 }
 
