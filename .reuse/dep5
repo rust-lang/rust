@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+
+# Temporarily mark all files to be licensed with the custom "TODO" license,
+# until we import the proper licensing metadata in a separate PR.
+Files: *
+Copyright: TODO
+License: LicenseRef-TODO

@@ -1,0 +1,2 @@
+Temporary placeholder, only needed until we import the actual licensing
+metadata.
