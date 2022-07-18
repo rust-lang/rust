@@ -530,6 +530,11 @@ fn codegen_stmt<'tcx>(
                     let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
+                Rvalue::CopyForDeref(place) => {
+                    let cplace = codegen_place(fx, place);
+                    let val = cplace.to_cvalue(fx);
+                    lval.write_cvalue(fx, val)
+                }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                     let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());
@@ -662,29 +667,6 @@ fn codegen_stmt<'tcx>(
                             let (ptr, _extra) = operand.load_scalar_pair(fx);
                             lval.write_cvalue(fx, CValue::by_val(ptr, dest_layout))
                         }
-                    } else if let ty::Adt(adt_def, _substs) = from_ty.kind() {
-                        // enum -> discriminant value
-                        assert!(adt_def.is_enum());
-                        match to_ty.kind() {
-                            ty::Uint(_) | ty::Int(_) => {}
-                            _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
-                        }
-                        let to_clif_ty = fx.clif_type(to_ty).unwrap();
-
-                        let discriminant = crate::discriminant::codegen_get_discriminant(
-                            fx,
-                            operand,
-                            fx.layout_of(operand.layout().ty.discriminant_ty(fx.tcx)),
-                        )
-                        .load_scalar(fx);
-
-                        let res = crate::cast::clif_intcast(
-                            fx,
-                            discriminant,
-                            to_clif_ty,
-                            to_ty.is_signed(),
-                        );
-                        lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
                         let from = operand.load_scalar(fx);
@@ -862,6 +844,7 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }
+            PlaceElem::OpaqueCast(ty) => cplace = cplace.place_opaque_cast(fx, ty),
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }

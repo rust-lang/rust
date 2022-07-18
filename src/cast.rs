@@ -144,7 +144,7 @@ pub(crate) fn clif_int_or_float_cast(
             fx.bcx.ins().fcvt_to_uint_sat(to_ty, from)
         };
 
-        if let Some(false) = fx.tcx.sess.opts.debugging_opts.saturating_float_casts {
+        if let Some(false) = fx.tcx.sess.opts.unstable_opts.saturating_float_casts {
             return val;
         }
 

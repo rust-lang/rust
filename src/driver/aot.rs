@@ -33,7 +33,7 @@ fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectM
     // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
     // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
     // can easily double the amount of time necessary to perform linking.
-    builder.per_function_section(sess.opts.debugging_opts.function_sections.unwrap_or(false));
+    builder.per_function_section(sess.opts.unstable_opts.function_sections.unwrap_or(false));
     ObjectModule::new(builder)
 }
 
@@ -66,7 +66,11 @@ fn emit_module(
     let work_product = if backend_config.disable_incr_cache {
         None
     } else {
-        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(tcx.sess, &name, &tmp_file)
+        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+            tcx.sess,
+            &name,
+            &[("o", &tmp_file)],
+        )
     };
 
     ModuleCodegenResult(
@@ -82,7 +86,10 @@ fn reuse_workproduct_for_cgu(
 ) -> CompiledModule {
     let work_product = cgu.previous_work_product(tcx);
     let obj_out = tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
-    let source_file = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, &work_product.saved_file);
+    let source_file = rustc_incremental::in_incr_comp_dir_sess(
+        &tcx.sess,
+        &work_product.saved_files.get("o").expect("no saved object file in work product"),
+    );
     if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
         tcx.sess.err(&format!(
             "unable to copy {} to {}: {}",

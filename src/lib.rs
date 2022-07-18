@@ -79,7 +79,7 @@ mod prelude {
     pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
         self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable, UintTy,
+        TypeFoldable, TypeVisitable, UintTy,
     };
     pub(crate) use rustc_target::abi::{Abi, Scalar, Size, VariantIdx};
 
@@ -171,7 +171,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
+    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
         vec![]
     }
 
