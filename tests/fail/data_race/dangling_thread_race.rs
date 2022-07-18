@@ -1,6 +1,6 @@
 // We want to control preemption here.
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-preemption-rate=0
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 
 use std::mem;
 use std::thread::{sleep, spawn};

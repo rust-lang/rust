@@ -65,16 +65,18 @@ pub(crate) struct ErrorMatch {
 }
 
 impl Condition {
-    fn parse(c: &str) -> Self {
+    fn parse(c: &str) -> Result<Self> {
         if c == "on-host" {
-            Condition::OnHost
+            Ok(Condition::OnHost)
         } else if let Some(bits) = c.strip_suffix("bit") {
             let bits: u8 = bits.parse().expect(
                 "ignore/only filter ending in 'bit' must be of the form 'Nbit' for some integer N",
             );
-            Condition::Bitwidth(bits)
+            Ok(Condition::Bitwidth(bits))
+        } else if let Some(target) = c.strip_prefix("target-") {
+            Ok(Condition::Target(target.to_owned()))
         } else {
-            Condition::Target(c.to_owned())
+            Err(eyre!("invalid ignore/only condition {c:?}"))
         }
     }
 }
@@ -211,13 +213,13 @@ impl Comments {
             command => {
                 if let Some(s) = command.strip_prefix("ignore-") {
                     // args are ignored (can be sue as comment)
-                    self.ignore.push(Condition::parse(s));
+                    self.ignore.push(Condition::parse(s)?);
                     return Ok(());
                 }
 
                 if let Some(s) = command.strip_prefix("only-") {
                     // args are ignored (can be sue as comment)
-                    self.only.push(Condition::parse(s));
+                    self.only.push(Condition::parse(s)?);
                     return Ok(());
                 }
                 bail!("unknown command {command}");

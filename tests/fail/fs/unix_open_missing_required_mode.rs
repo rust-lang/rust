@@ -1,4 +1,4 @@
-//@ignore-windows: No libc on Windows
+//@ignore-target-windows: No libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]

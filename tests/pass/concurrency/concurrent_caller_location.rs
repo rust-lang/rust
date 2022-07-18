@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 
 use std::panic::Location;
 use std::thread::spawn;

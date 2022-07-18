@@ -1,4 +1,4 @@
-//@ignore-windows: No libc on Windows
+//@ignore-target-windows: No libc on Windows
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 

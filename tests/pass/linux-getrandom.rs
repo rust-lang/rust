@@ -1,4 +1,4 @@
-//@only-linux
+//@only-target-linux
 #![feature(rustc_private)]
 extern crate libc;
 

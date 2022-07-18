@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
 use std::sync::atomic::{AtomicUsize, Ordering};

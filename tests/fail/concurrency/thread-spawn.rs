@@ -1,4 +1,4 @@
-//@only-windows: Only Windows is not supported.
+//@only-target-windows: Only Windows is not supported.
 
 use std::thread;
 

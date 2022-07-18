@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-disable-data-race-detector
 
 use std::thread::spawn;

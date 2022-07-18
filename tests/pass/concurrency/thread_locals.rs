@@ -1,4 +1,4 @@
-//@ignore-windows: Concurrency on Windows is not supported yet.
+//@ignore-target-windows: Concurrency on Windows is not supported yet.
 //@compile-flags: -Zmiri-strict-provenance
 
 //! The main purpose of this test is to check that if we take a pointer to

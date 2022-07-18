@@ -1,4 +1,4 @@
-//@ignore-windows: No libc on Windows
+//@ignore-target-windows: No libc on Windows
 //
 // Check that if we do not set the mutex type, it is the default.
 
