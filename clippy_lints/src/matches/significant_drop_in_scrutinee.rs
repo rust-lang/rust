@@ -89,6 +89,10 @@ fn has_significant_drop_in_scrutinee<'tcx, 'a>(
     source: MatchSource,
 ) -> Option<(Vec<FoundSigDrop>, &'static str)> {
     let mut helper = SigDropHelper::new(cx);
+    let scrutinee = match (source, &scrutinee.kind) {
+        (MatchSource::ForLoopDesugar, ExprKind::Call(_, [e])) => e,
+        _ => scrutinee,
+    };
     helper.find_sig_drop(scrutinee).map(|drops| {
         let message = if source == MatchSource::Normal {
             "temporary with significant `Drop` in `match` scrutinee will live until the end of the `match` expression"

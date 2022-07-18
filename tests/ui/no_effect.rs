@@ -5,7 +5,6 @@
 #![allow(clippy::deref_addrof)]
 #![allow(clippy::redundant_field_names)]
 
-
 struct Unit;
 struct Tuple(i32);
 struct Struct {

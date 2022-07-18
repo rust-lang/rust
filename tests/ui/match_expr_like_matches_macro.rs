@@ -63,6 +63,18 @@ fn main() {
     }
     {
         // lint
+        // skip rustfmt to prevent removing block for first pattern
+        #[rustfmt::skip]
+        let _ans = match x {
+            E::A(_) => {
+                true
+            }
+            E::B(_) => true,
+            _ => false,
+        };
+    }
+    {
+        // lint
         let _ans = match x {
             E::B(_) => false,
             E::C => false,

@@ -211,4 +211,8 @@ fn main() {
     unsafe {
         var(0, &**x);
     }
+
+    let s = &"str";
+    let _ = || return *s;
+    let _ = || -> &'static str { return s };
 }

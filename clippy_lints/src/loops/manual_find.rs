@@ -139,7 +139,7 @@ fn last_stmt_and_ret<'tcx>(
     if_chain! {
         // This should be the loop
         if let Some((node_hir, Node::Stmt(..))) = parent_iter.next();
-        // This should be the funciton body
+        // This should be the function body
         if let Some((_, Node::Block(block))) = parent_iter.next();
         if let Some((last_stmt, last_ret)) = extract(block);
         if last_stmt.hir_id == node_hir;

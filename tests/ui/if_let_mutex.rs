@@ -27,7 +27,7 @@ fn if_let_option() {
     };
 }
 
-// When mutexs are different don't warn
+// When mutexes are different don't warn
 fn if_let_different_mutex() {
     let m = Mutex::new(Some(0_u8));
     let other = Mutex::new(None::<u8>);
