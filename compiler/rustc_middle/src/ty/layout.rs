@@ -3266,7 +3266,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // this attribute doesn't make it UB for the pointed-to data to be undef.
                     attrs.set(ArgAttribute::NoUndef);
 
-                    // `Box` pointer parameters never alias because ownership is transferred
+                    // The aliasing rules for `Box<T>` are still not decided, but currently we emit
+                    // `noalias` for it. This can be turned off using an unstable flag.
+                    // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
+                    let noalias_for_box =
+                        self.tcx().sess.opts.unstable_opts.box_noalias.unwrap_or(true);
+
                     // `&mut` pointer parameters never alias other parameters,
                     // or mutable global data
                     //
@@ -3281,7 +3286,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // `-Zmutable-noalias` debugging option.
                     let no_alias = match kind {
                         PointerKind::Shared | PointerKind::UniqueBorrowed => false,
-                        PointerKind::UniqueOwned => true,
+                        PointerKind::UniqueOwned => noalias_for_box,
                         PointerKind::Frozen => !is_return,
                     };
                     if no_alias {
