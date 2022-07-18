@@ -211,6 +211,10 @@ pub fn path_to_string(segment: &hir::Path<'_>) -> String {
     to_string(NO_ANN, |s| s.print_path(segment, false))
 }
 
+pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_qpath(segment, false))
+}
+
 pub fn fn_to_string(
     decl: &hir::FnDecl<'_>,
     header: hir::FnHeader,
