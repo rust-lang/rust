@@ -2858,9 +2858,10 @@ impl ClashingExternDeclarations {
                             let a_poly_sig = a.fn_sig(tcx);
                             let b_poly_sig = b.fn_sig(tcx);
 
-                            // As we don't compare regions, skip_binder is fine.
-                            let a_sig = a_poly_sig.skip_binder();
-                            let b_sig = b_poly_sig.skip_binder();
+                            // We don't compare regions, but leaving bound regions around ICEs, so
+                            // we erase them.
+                            let a_sig = tcx.erase_late_bound_regions(a_poly_sig);
+                            let b_sig = tcx.erase_late_bound_regions(b_poly_sig);
 
                             (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
                                 == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
