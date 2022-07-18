@@ -2070,42 +2070,16 @@ void SelectOptimization(Function *F) {
     }
   }
 }
-void PreProcessCache::optimizeIntermediate(Function *F) {
-  PromotePass().run(*F, FAM);
-#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
-  GVNPass().run(*F, FAM);
-#else
-  GVN().run(*F, FAM);
-#endif
-#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
-  SROAPass().run(*F, FAM);
-#else
-  SROA().run(*F, FAM);
-#endif
 
-  if (EnzymeSelectOpt) {
-#if LLVM_VERSION_MAJOR >= 12
-    SimplifyCFGOptions scfgo;
-#else
-    SimplifyCFGOptions scfgo(
-        /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
-        /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
-        /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
-#endif
-    SimplifyCFGPass(scfgo).run(*F, FAM);
-    CorrelatedValuePropagationPass().run(*F, FAM);
-    SelectOptimization(F);
-  }
-  // EarlyCSEPass(/*memoryssa*/ true).run(*F, FAM);
-
-  for (Function &Impl : *F->getParent()) {
+void ReplaceFunctionImplementation(Module &M) {
+  for (Function &Impl : M) {
     for (auto attr : {"implements", "implements2"}) {
       if (!Impl.hasFnAttribute(attr))
         continue;
       const Attribute &A = Impl.getFnAttribute(attr);
 
       const StringRef SpecificationName = A.getValueAsString();
-      Function *Specification = F->getParent()->getFunction(SpecificationName);
+      Function *Specification = M.getFunction(SpecificationName);
       if (!Specification) {
         LLVM_DEBUG(dbgs() << "Found implementation '" << Impl.getName()
                           << "' but no matching specification with name '"
@@ -2139,9 +2113,40 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
       }
     }
   }
+}
+
+void PreProcessCache::optimizeIntermediate(Function *F) {
+  PromotePass().run(*F, FAM);
+#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+  GVNPass().run(*F, FAM);
+#else
+  GVN().run(*F, FAM);
+#endif
+#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
+  SROAPass().run(*F, FAM);
+#else
+  SROA().run(*F, FAM);
+#endif
+
+  if (EnzymeSelectOpt) {
+#if LLVM_VERSION_MAJOR >= 12
+    SimplifyCFGOptions scfgo;
+#else
+    SimplifyCFGOptions scfgo(
+        /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
+        /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
+        /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+#endif
+    SimplifyCFGPass(scfgo).run(*F, FAM);
+    CorrelatedValuePropagationPass().run(*F, FAM);
+    SelectOptimization(F);
+  }
+  // EarlyCSEPass(/*memoryssa*/ true).run(*F, FAM);
 
   if (EnzymeCoalese)
     CoaleseTrivialMallocs(*F, FAM.getResult<DominatorTreeAnalysis>(*F));
+
+  ReplaceFunctionImplementation(*F->getParent());
 
   PreservedAnalyses PA;
   FAM.invalidate(*F, PA);

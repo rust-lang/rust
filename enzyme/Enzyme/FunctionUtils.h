@@ -346,11 +346,14 @@ static inline void calculateUnusedStores(
   }
 }
 
+void ReplaceFunctionImplementation(llvm::Module &M);
+
 /// Is the use of value val as an argument of call CI potentially captured
 bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val);
-#endif
 
 llvm::FunctionType *getFunctionTypeForClone(
     llvm::FunctionType *FTy, DerivativeMode mode, unsigned width,
     llvm::Type *additionalArg, llvm::ArrayRef<DIFFE_TYPE> constant_args,
     bool diffeReturnArg, ReturnType returnValue, DIFFE_TYPE returnType);
+
+#endif
