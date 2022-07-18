@@ -418,6 +418,7 @@ store.register_lints(&[
     only_used_in_recursion::ONLY_USED_IN_RECURSION,
     open_options::NONSENSICAL_OPEN_OPTIONS,
     operators::ABSURD_EXTREME_COMPARISONS,
+    operators::ARITHMETIC,
     operators::ASSIGN_OP_PATTERN,
     operators::BAD_BIT_MASK,
     operators::CMP_NAN,
