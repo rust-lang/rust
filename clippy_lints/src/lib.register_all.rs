@@ -124,6 +124,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(main_recursion::MAIN_RECURSION),
     LintId::of(manual_async_fn::MANUAL_ASYNC_FN),
     LintId::of(manual_bits::MANUAL_BITS),
+    LintId::of(manual_empty_string_creations::MANUAL_EMPTY_STRING_CREATIONS),
     LintId::of(manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
     LintId::of(manual_rem_euclid::MANUAL_REM_EUCLID),
     LintId::of(manual_retain::MANUAL_RETAIN),

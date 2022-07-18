@@ -244,6 +244,7 @@ store.register_lints(&[
     manual_assert::MANUAL_ASSERT,
     manual_async_fn::MANUAL_ASYNC_FN,
     manual_bits::MANUAL_BITS,
+    manual_empty_string_creations::MANUAL_EMPTY_STRING_CREATIONS,
     manual_instant_elapsed::MANUAL_INSTANT_ELAPSED,
     manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
     manual_ok_or::MANUAL_OK_OR,
