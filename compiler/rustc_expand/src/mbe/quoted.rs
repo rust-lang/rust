@@ -2,6 +2,7 @@ use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
 use rustc_ast::token::{self, Delimiter, Token};
+use rustc_ast::tokenstream::Cursor;
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -136,7 +137,7 @@ fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &ParseSess, 
 /// - `features`: language features so we can do feature gating.
 fn parse_tree(
     tree: tokenstream::TokenTree,
-    outer_trees: &mut impl Iterator<Item = tokenstream::TokenTree>,
+    outer_trees: &mut Cursor,
     parsing_patterns: bool,
     sess: &ParseSess,
     node_id: NodeId,
@@ -150,13 +151,13 @@ fn parse_tree(
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
-            let mut trees: Box<dyn Iterator<Item = tokenstream::TokenTree>>;
+            let mut trees_owned = None;
             if let Some(tokenstream::TokenTree::Delimited(_, Delimiter::Invisible, tts)) = next {
-                trees = Box::new(tts.into_trees());
-                next = trees.next();
-            } else {
-                trees = Box::new(outer_trees);
+                let mut local_trees = tts.into_trees();
+                next = local_trees.next();
+                trees_owned = Some(local_trees);
             }
+            let trees = if let Some(ref mut elem) = trees_owned { elem } else { outer_trees };
 
             match next {
                 // `tree` is followed by a delimited set of token trees.
@@ -205,7 +206,7 @@ fn parse_tree(
                     let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
-                        parse_sep_and_kleene_op(&mut trees, delim_span.entire(), sess);
+                        parse_sep_and_kleene_op(trees, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
                     let num_captures =
                         if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
@@ -235,9 +236,18 @@ fn parse_tree(
                             &Token { kind: token::Dollar, span },
                         );
                     }
+                    if let Some(tokenstream::TokenTree::Token(ref token)) = trees.look_ahead(0)
+                        && let Some((ident, is_raw)) = token.ident()
+                        && ident.name == kw::Crate && !is_raw
+                    {
+                        sess.span_diagnostic.span_err(
+                            token.span,
+                            &format!("unexpected token: {}", pprust::token_to_string(token))
+                        );
+                        sess.span_diagnostic.note_without_error("`$$crate` is not allowed in any context");
+                    }
                     TokenTree::token(token::Dollar, span)
                 }
-
                 // `tree` is followed by some other token. This is an error.
                 Some(tokenstream::TokenTree::Token(token)) => {
                     let msg = format!(

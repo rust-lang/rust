@@ -1,0 +1,16 @@
+error: unexpected token: crate
+  --> $DIR/dollar_dollar_crate.rs:9:19
+   |
+LL |                 $$crate
+   |                   ^^^^^
+
+note: `$$crate` is not allowed in any context
+
+error: expected expression, found `$`
+  --> $DIR/dollar_dollar_crate.rs:18:29
+   |
+LL |         const _FOO: usize = $d$d crate::IDX;
+   |                             ^^ expected expression
+
+error: aborting due to 2 previous errors
+
