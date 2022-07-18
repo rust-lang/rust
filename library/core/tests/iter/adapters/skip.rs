@@ -196,5 +196,8 @@ fn test_skip_nth_back() {
 #[test]
 fn test_skip_non_fused() {
     let non_fused = Unfuse::new(0..10);
+
+    // `Skip` would previously exhaust the iterator in this `next` call and then erroneously try to
+    // advance it further. `Unfuse` tests that this doesn't happen by panicking in that scenario.
     let _ = non_fused.skip(20).next();
 }
