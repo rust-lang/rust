@@ -6,34 +6,35 @@
 (function() {
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
-const itemTypes = [
-    "mod",
-    "externcrate",
-    "import",
-    "struct",
-    "enum",
-    "fn",
-    "type",
-    "static",
-    "trait",
-    "impl",
-    "tymethod",
-    "method",
-    "structfield",
-    "variant",
-    "macro",
-    "primitive",
-    "associatedtype",
-    "constant",
-    "associatedconstant",
-    "union",
-    "foreigntype",
-    "keyword",
-    "existential",
-    "attr",
-    "derive",
-    "traitalias",
+const itemTypesMatching = [
+    ["module", "mod"],
+    ["extern crate", "externcrate"],
+    ["import", "import"],
+    ["struct", "struct"],
+    ["enum", "enum"],
+    ["function", "fn"],
+    ["type", "type"],
+    ["static", "static"],
+    ["trait", "trait"],
+    ["impl", "impl"],
+    ["trait method", "tymethod"],
+    ["method", "method"],
+    ["struct field", "structfield"],
+    ["enum variant", "variant"],
+    ["macro", "macro"],
+    ["primitive", "primitive"],
+    ["associated type", "associatedtype"],
+    ["constant", "constant"],
+    ["associated constant", "associatedconstant"],
+    ["union", "union"],
+    ["foreign type", "foreigntype"],
+    ["keyword", "keyword"],
+    ["existential", "existential"],
+    ["attribute", "attr"],
+    ["derive", "derive"],
+    ["trait alias", "traitalias"],
 ];
+const itemTypes = itemTypesMatching.map(elem => elem[1]);
 
 // used for special search precedence
 const TY_PRIMITIVE = itemTypes.indexOf("primitive");
@@ -109,6 +110,157 @@ function levenshtein(s1, s2) {
         return b;
     }
     return s1_len + s2_len;
+}
+
+function extractInformationFromElem(container, className) {
+    return Array.from(container.querySelectorAll(`.${className} .argument`)).map(elem => {
+        const text = elem.querySelector(".arg").value.trim();
+        const generics = elem.querySelector(".generic").value.trim();
+
+        if (generics.length !== 0) {
+            return `${text}<${generics}>`;
+        }
+        return text;
+    }).filter(text => text.length !== 0);
+}
+
+function generateSearch(literalSearch) {
+    const container = document.getElementById("search-helper");
+    const filter = container.querySelector("select").value;
+    const args = extractInformationFromElem(container, "search-arguments");
+    const returned = extractInformationFromElem(container, "search-returned");
+
+    let query = "";
+
+    if (args.length === 0 && returned.length === 0) {
+        return;
+    }
+
+    if (filter.length !== 0) {
+        query += `${filter}:`;
+    }
+
+    if (literalSearch) {
+        if (args.length !== 0) {
+            query += `"${args[0]}"`;
+        } else {
+            if (query.length !== 0) {
+                query += " ";
+            }
+            query += `-> "${returned[0]}"`;
+        }
+    } else {
+        query += args.join(", ");
+        if (returned.length !== 0) {
+            if (query.length !== 0) {
+                query += " ";
+            }
+            query += `-> ${returned.join(", ")}`;
+        }
+    }
+    document.querySelector(".search-container .search-input").value = query;
+    // Now collapsing the advanced search.
+    container.removeAttribute("open");
+}
+
+function addAdvancedSearchUI() {
+    const filters = itemTypesMatching.map(elem => `<option value=${elem[1]}>${elem[0]}</option>`);
+    const detailsElem = document.createElement("details");
+    let literalSearch = false;
+
+    detailsElem.id = "search-helper";
+    detailsElem.innerHTML = `\
+<summary>Advanced search helper</summary>
+<form>
+    <select>
+        <option value="">&lt;no filter&gt;</option>
+    ${filters.join("")}
+    </select>
+    <div class="search-literal">
+        <input type="checkbox">
+        <label>Enable literal search</label>
+    </div>
+    <div class="search-arguments">
+        <label>Arguments</label>
+        <div class="argument">
+            <input placeholder="function/method arguments" class="arg">
+            <div class="generics">
+                <label>Generics for this argument</label>
+                <input placeholder="gen1, gen2, gen3..." class="generic">
+            </div>
+        </div>
+        <div class="search-buttons">
+            <button class="add">Add new argument</button>
+            <button class="remove" disabled>Remove last argument</button>
+        </div>
+    </div>
+    <div class="search-returned">
+        <label>Returned types</label>
+        <div class="argument">
+            <input placeholder="function/method returned types" class="arg">
+            <div class="generics">
+                <label>Generics for this returned type</label>
+                <input placeholder="gen1, gen2, gen3..." class="generic">
+            </div>
+        </div>
+        <div class="search-buttons">
+            <button class="add">Add new returned value</button>
+            <button class="remove" disabled>Remove last returned value</button>
+        </div>
+    </div>
+    <div class="search-buttons end-buttons">
+        <button class="run-search">Generate and run search</button>
+        <button class="clear-search">Clear search</button>
+    </div>
+</form>`;
+
+    onEachLazy(detailsElem.querySelectorAll(".search-buttons .add"), elem => {
+        elem.addEventListener("click", () => {
+            const parent = elem.parentElement;
+            const container = parent.parentElement;
+            const newElem = container.querySelector(".argument").cloneNode(true);
+            onEachLazy(newElem.querySelectorAll("input"), elem => {
+                elem.value = "";
+            });
+            parent.insertAdjacentElement("beforebegin", newElem);
+            parent.querySelector(".remove").disabled = false;
+        });
+    });
+    onEachLazy(detailsElem.querySelectorAll(".search-buttons .remove"), elem => {
+        elem.addEventListener("click", () => {
+            const container = elem.parentElement.parentElement;
+            const elemToRemove = Array.from(container.querySelectorAll(".argument")).pop();
+            container.removeChild(elemToRemove);
+            elem.disabled = container.querySelectorAll(".argument").length < 2;
+        });
+    });
+    detailsElem.querySelector(".clear-search").addEventListener("click", () => {
+        const elem = document.getElementById("search-helper");
+        elem.parentNode.removeChild(elem);
+        addAdvancedSearchUI();
+    });
+    detailsElem.querySelector(".search-literal").addEventListener("click", () => {
+        const container = document.getElementById("search-helper");
+        const elem = container.querySelector(".search-literal input");
+        elem.checked = !elem.checked;
+        literalSearch = elem.checked;
+        const call = literalSearch ? addClass : removeClass;
+        onEachLazy(container.querySelectorAll(".argument:not(:first-of-type)"), elem => {
+            call(elem, "hidden");
+        });
+    });
+    detailsElem.querySelector(".search-literal input").addEventListener("change", event => {
+        literalSearch = event.target.value;
+    });
+    detailsElem.querySelector(".run-search").addEventListener("click", () => {
+        generateSearch(literalSearch);
+    });
+    detailsElem.querySelector("form").addEventListener("submit", event => {
+        event.preventDefault();
+        generateSearch(literalSearch);
+    });
+
+    document.querySelector(".search-form").parentElement.appendChild(detailsElem);
 }
 
 function initSearch(rawSearchIndex) {
@@ -2287,6 +2439,7 @@ if (typeof window !== "undefined") {
     if (window.searchIndex !== undefined) {
         initSearch(window.searchIndex);
     }
+    addAdvancedSearchUI();
 } else {
     // Running in Node, not a browser. Run initSearch just to produce the
     // exports.

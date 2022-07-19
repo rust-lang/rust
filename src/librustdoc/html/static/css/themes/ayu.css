@@ -182,14 +182,18 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
+#crate-search, .search-input, #search-helper input, #search-helper button, #search-helper select {
 	background-color: #141920;
+}
+
+#crate-search {
 	/* Without the `!important`, the border-color is ignored for `<select>`... */
 	border-color: #424c57 !important;
 }
 
-.search-input {
+.search-input, #search-helper input, #search-helper button, #search-helper select {
 	color: #ffffff;
+	border-color: #424c57;
 }
 
 .module-item .stab,
@@ -486,7 +490,8 @@ kbd {
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > button:hover, #help-button > button:focus {
+#help-button > button:hover, #help-button > button:focus,
+#search-helper button:focus, #search-helper button:hover {
 	border-color: #e0e0e0;
 }
 

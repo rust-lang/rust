@@ -946,7 +946,7 @@ table,
 	font-weight: 500;
 	margin-bottom: 20px;
 }
-#crate-search {
+#crate-search, #search-helper select {
 	min-width: 115px;
 	margin-top: 5px;
 	padding-left: 0.3125em;
@@ -971,7 +971,7 @@ table,
 .search-container {
 	margin-top: 4px;
 }
-.search-input {
+.search-input, #search-helper input:not([type="checkbox"]), #search-helper button {
 	/* Override Normalize.css: it has a rule that sets
 	   -webkit-appearance: textfield for search inputs. That
 	   causes rounded corners and no border on iOS Safari. */
@@ -988,6 +988,45 @@ table,
 	font-size: 1rem;
 	transition: border-color 300ms ease;
 	width: 100%;
+}
+
+#search-helper {
+	margin-top: 6px;
+}
+#search-helper summary {
+	font-size: 1.15rem;
+}
+#search-helper select {
+	padding-top: 4px;
+	padding-bottom: 4px;
+	margin-bottom: 5px;
+}
+#search-helper .end-buttons {
+	padding-top: 5px;
+}
+#search-helper select, #search-helper button, #search-helper summary {
+	cursor: pointer;
+}
+#search-helper > *:not(input) {
+	width: 100%;
+}
+#search-helper .search-buttons {
+	display: flex;
+}
+#search-helper .search-returned, #search-helper .search-arguments {
+	margin: 15px 0;
+}
+#search-helper .search-arguments > *, #search-helper .search-returned > *, #search-helper .search-buttons {
+	margin-top: 5px;
+}
+#search-helper .search-buttons button:not(:last-of-type) {
+	margin-right: 5px;
+}
+#search-helper .generics {
+	padding-left: 14px;
+}
+#search-helper .search-literal, #search-helper .search-literal > * {
+	cursor: pointer;
 }
 
 .search-results {
@@ -2110,7 +2149,7 @@ in storage.js plus the media query with (min-width: 701px)
 		width: 50%;
 	}
 
-	#crate-search {
+	#crate-search, #search-helper select {
 		border-radius: 4px;
 	}
 
