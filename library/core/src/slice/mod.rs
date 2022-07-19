@@ -972,7 +972,6 @@ impl<T> [T] {
     ///
     /// This may only be called when
     /// - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
-    /// - `N != 0`.
     ///
     /// # Examples
     ///
@@ -990,14 +989,28 @@ impl<T> [T] {
     ///
     /// // These would be unsound:
     /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked() // The slice length is not a multiple of 5
-    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked() // Zero-length chunks are never allowed
     /// ```
+    ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(slice_as_chunks)]
+    /// const N: usize = 0;
+    /// let slice = [1, 2, 3, 4];
+    /// let _ = unsafe{
+    ///     slice.as_chunks_unchecked::<N>()
+    /// };
+    /// ```
+    ///
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         let this = self;
-        // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
+        // SAFETY: Caller must guarantee that `N` exactly divides the slice length
+        // `N` cannot be zero because we checked it using compile assert above.
         let new_len = unsafe {
             assert_unsafe_precondition!(
                 "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
@@ -1013,11 +1026,6 @@ impl<T> [T] {
     /// Splits the slice into a slice of `N`-element arrays,
     /// starting at the beginning of the slice,
     /// and a remainder slice with length strictly less than `N`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
     ///
     /// # Examples
     ///
@@ -1039,16 +1047,28 @@ impl<T> [T] {
     /// };
     /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
     /// ```
+    ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(slice_as_chunks)]
+    /// const N: usize = 0;
+    /// let slice = [1, 2, 3, 4];
+    /// let _ = slice.as_chunks::<N>();
+    /// ```
+    ///
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
     pub const fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]) {
-        assert!(N != 0, "chunk size must be non-zero");
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at(len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
+        // SAFETY: It is ensured by construction
         // that the length of the subslice is a multiple of N.
+        // `N` cannot be zero because we checked it using compile assert above.
         let array_slice = unsafe { multiple_of_n.as_chunks_unchecked() };
         (array_slice, remainder)
     }
@@ -1071,16 +1091,28 @@ impl<T> [T] {
     /// assert_eq!(remainder, &['l']);
     /// assert_eq!(chunks, &[['o', 'r'], ['e', 'm']]);
     /// ```
+    ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(slice_as_chunks)]
+    /// const N: usize = 0;
+    /// let slice = [1, 2, 3, 4];
+    /// let _ = slice.as_rchunks::<N>();
+    /// ```
+    ///
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
     pub const fn as_rchunks<const N: usize>(&self) -> (&[T], &[[T; N]]) {
-        assert!(N != 0, "chunk size must be non-zero");
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at(self.len() - len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
+        // SAFETY: It is ensured by construction
         // that the length of the subslice is a multiple of N.
+        // `N` cannot be zero because we checked it using compile assert above.
         let array_slice = unsafe { multiple_of_n.as_chunks_unchecked() };
         (remainder, array_slice)
     }
@@ -1094,11 +1126,6 @@ impl<T> [T] {
     ///
     /// This method is the const generic equivalent of [`chunks_exact`].
     ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
     /// # Examples
     ///
     /// ```
@@ -1111,12 +1138,22 @@ impl<T> [T] {
     /// assert_eq!(iter.remainder(), &['m']);
     /// ```
     ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(array_chunks)]
+    /// const N: usize = 0;
+    /// let slice = [1, 2, 3, 4];
+    /// let _ = slice.array_chunks::<N>();
+    /// ```
+    ///
     /// [`chunks_exact`]: slice::chunks_exact
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
-        assert!(N != 0, "chunk size must be non-zero");
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         ArrayChunks::new(self)
     }
 
@@ -1127,7 +1164,6 @@ impl<T> [T] {
     ///
     /// This may only be called when
     /// - The slice splits exactly into `N`-element chunks (aka `self.len() % N == 0`).
-    /// - `N != 0`.
     ///
     /// # Examples
     ///
@@ -1147,14 +1183,28 @@ impl<T> [T] {
     ///
     /// // These would be unsound:
     /// // let chunks: &[[_; 5]] = slice.as_chunks_unchecked_mut() // The slice length is not a multiple of 5
-    /// // let chunks: &[[_; 0]] = slice.as_chunks_unchecked_mut() // Zero-length chunks are never allowed
     /// ```
+    ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(slice_as_chunks)]
+    /// const N: usize = 0;
+    /// let mut slice = [1, 2, 3, 4];
+    /// let _ = unsafe{
+    ///     slice.as_chunks_unchecked_mut::<N>();
+    /// };
+    /// ```
+    ///
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         let this = &*self;
-        // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
+        // SAFETY: Caller must guarantee that `N` exactly divides the slice length
+        // `N` cannot be zero because we checked it using compile assert above.
         let new_len = unsafe {
             assert_unsafe_precondition!(
                 "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
@@ -1171,11 +1221,6 @@ impl<T> [T] {
     /// starting at the beginning of the slice,
     /// and a remainder slice with length strictly less than `N`.
     ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
-    ///
     /// # Examples
     ///
     /// ```
@@ -1191,16 +1236,28 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[1, 1, 2, 2, 9]);
     /// ```
+    ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(slice_as_chunks)]
+    /// const N: usize = 0;
+    /// let mut slice = [1, 2, 3, 4];
+    /// let _ = slice.as_chunks_mut::<N>();
+    /// ```
+    ///
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
     pub const fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]) {
-        assert!(N != 0, "chunk size must be non-zero");
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         let len = self.len() / N;
         let (multiple_of_n, remainder) = self.split_at_mut(len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
+        // SAFETY: It is ensured by construction
         // that the length of the subslice is a multiple of N.
+        // `N` cannot be zero because we checked it using compile assert above.
         let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
         (array_slice, remainder)
     }
@@ -1208,11 +1265,6 @@ impl<T> [T] {
     /// Splits the slice into a slice of `N`-element arrays,
     /// starting at the end of the slice,
     /// and a remainder slice with length strictly less than `N`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
     ///
     /// # Examples
     ///
@@ -1229,16 +1281,28 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[9, 1, 1, 2, 2]);
     /// ```
+    ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(slice_as_chunks)]
+    /// const N: usize = 0;
+    /// let mut slice = [1, 2, 3, 4];
+    /// let _ = slice.as_rchunks_mut::<N>();
+    /// ```
+    ///
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     #[must_use]
     pub const fn as_rchunks_mut<const N: usize>(&mut self) -> (&mut [T], &mut [[T; N]]) {
-        assert!(N != 0, "chunk size must be non-zero");
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         let len = self.len() / N;
         let (remainder, multiple_of_n) = self.split_at_mut(self.len() - len * N);
-        // SAFETY: We already panicked for zero, and ensured by construction
+        // SAFETY: It is ensured by construction
         // that the length of the subslice is a multiple of N.
+        // `N` cannot be zero because we checked it using compile assert above.
         let array_slice = unsafe { multiple_of_n.as_chunks_unchecked_mut() };
         (remainder, array_slice)
     }
@@ -1251,11 +1315,6 @@ impl<T> [T] {
     /// can be retrieved from the `into_remainder` function of the iterator.
     ///
     /// This method is the const generic equivalent of [`chunks_exact_mut`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
     ///
     /// # Examples
     ///
@@ -1271,12 +1330,22 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 0]);
     /// ```
     ///
+    /// It doesn't compile if chunk size is zero:
+    /// ```compile_fail
+    /// #![feature(array_chunks)]
+    /// const N: usize = 0;
+    /// let mut slice = [1, 2, 3, 4];
+    /// let _ = slice.array_chunks_mut::<N>();
+    /// ```
+    ///
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     #[track_caller]
     pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
-        assert!(N != 0, "chunk size must be non-zero");
+        const {
+            assert!(N != 0, "chunk size must be non-zero");
+        }
         ArrayChunksMut::new(self)
     }
 
@@ -1286,11 +1355,6 @@ impl<T> [T] {
     /// This is the const generic equivalent of [`windows`].
     ///
     /// If `N` is greater than the size of the slice, it will return no windows.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
-    /// error before this method gets stabilized.
     ///
     /// # Examples
     ///
@@ -1304,12 +1368,22 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
+    /// It doesn't compile if window size is zero:
+    /// ```compile_fail
+    /// #![feature(array_windows)]
+    /// const N: usize = 0;
+    /// let slice = [0, 1, 2, 3];
+    /// let _ = slice.array_windows::<N>();
+    /// ```
+    ///
     /// [`windows`]: slice::windows
     #[unstable(feature = "array_windows", issue = "75027")]
     #[inline]
     #[track_caller]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
-        assert!(N != 0, "window size must be non-zero");
+        const {
+            assert!(N != 0, "window size must be non-zero");
+        }
         ArrayWindows::new(self)
     }
 
