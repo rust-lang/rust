@@ -472,7 +472,9 @@ impl<'tcx> Collector<'tcx> {
                 Abi::Fastcall { .. } => {
                     DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
                 }
-                // Vectorcall is intentionally not supported at this time.
+                Abi::Vectorcall { .. } => {
+                    DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
+                }
                 _ => {
                     self.tcx.sess.span_fatal(
                         item.span,
