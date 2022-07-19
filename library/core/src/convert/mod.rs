@@ -150,6 +150,14 @@ pub const fn identity<T>(x: T) -> T {
 /// follows:
 ///
 /// ```
+/// # use core::ops::Deref;
+/// # struct SomeType;
+/// # impl Deref for SomeType {
+/// #     type Target = [u8];
+/// #     fn deref(&self) -> &[u8] {
+/// #         &[]
+/// #     }
+/// # }
 /// impl<T> AsRef<T> for SomeType
 /// where
 ///     T: ?Sized,
@@ -245,6 +253,19 @@ pub trait AsRef<T: ?Sized> {
 /// implementation of `AsMut` as follows:
 ///
 /// ```
+/// # use core::ops::{Deref, DerefMut};
+/// # struct SomeType;
+/// # impl Deref for SomeType {
+/// #     type Target = [u8];
+/// #     fn deref(&self) -> &[u8] {
+/// #         &[]
+/// #     }
+/// # }
+/// # impl DerefMut for SomeType {
+/// #     fn deref_mut(&mut self) -> &mut [u8] {
+/// #         &mut []
+/// #     }
+/// # }
 /// impl<T> AsMut<T> for SomeType
 /// where
 ///     <SomeType as Deref>::Target: AsMut<T>,
