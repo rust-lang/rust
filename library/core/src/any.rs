@@ -125,7 +125,7 @@
 //! impl dyn MyTrait + '_ {
 //!     /// Get a reference to a field of the implementing struct.
 //!     pub fn get_context_by_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
-//!         request_ref::<T, _>(self)
+//!         request_ref::<T>(self)
 //!     }
 //! }
 //!
@@ -799,7 +799,7 @@ pub trait Provider {
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref::<str>(&self.field)
-    ///             .provide_value::<i32, _>(|| self.num_field);
+    ///             .provide_value::<i32>(|| self.num_field);
     ///     }
     /// }
     /// ```
@@ -817,17 +817,16 @@ pub trait Provider {
 /// # #![feature(provide_any)]
 /// use std::any::{Provider, request_value};
 ///
-/// fn get_string<P: Provider>(provider: &P) -> String {
-///     request_value::<String, _>(provider).unwrap()
+/// fn get_string(provider: &impl Provider) -> String {
+///     request_value::<String>(provider).unwrap()
 /// }
 /// ```
 #[unstable(feature = "provide_any", issue = "96024")]
-pub fn request_value<'a, T, P>(provider: &'a P) -> Option<T>
+pub fn request_value<'a, T>(provider: &'a (impl Provider + ?Sized)) -> Option<T>
 where
     T: 'static,
-    P: Provider + ?Sized,
 {
-    request_by_type_tag::<'a, tags::Value<T>, P>(provider)
+    request_by_type_tag::<'a, tags::Value<T>>(provider)
 }
 
 /// Request a reference from the `Provider`.
@@ -840,24 +839,22 @@ where
 /// # #![feature(provide_any)]
 /// use std::any::{Provider, request_ref};
 ///
-/// fn get_str<P: Provider>(provider: &P) -> &str {
-///     request_ref::<str, _>(provider).unwrap()
+/// fn get_str(provider: &impl Provider) -> &str {
+///     request_ref::<str>(provider).unwrap()
 /// }
 /// ```
 #[unstable(feature = "provide_any", issue = "96024")]
-pub fn request_ref<'a, T, P>(provider: &'a P) -> Option<&'a T>
+pub fn request_ref<'a, T>(provider: &'a (impl Provider + ?Sized)) -> Option<&'a T>
 where
     T: 'static + ?Sized,
-    P: Provider + ?Sized,
 {
-    request_by_type_tag::<'a, tags::Ref<tags::MaybeSizedValue<T>>, P>(provider)
+    request_by_type_tag::<'a, tags::Ref<tags::MaybeSizedValue<T>>>(provider)
 }
 
 /// Request a specific value by tag from the `Provider`.
-fn request_by_type_tag<'a, I, P>(provider: &'a P) -> Option<I::Reified>
+fn request_by_type_tag<'a, I>(provider: &'a (impl Provider + ?Sized)) -> Option<I::Reified>
 where
     I: tags::Type<'a>,
-    P: Provider + ?Sized,
 {
     let mut tagged = TaggedOption::<'a, I>(None);
     provider.provide(tagged.as_demand());
@@ -896,17 +893,16 @@ impl<'a> Demand<'a> {
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_value::<String, _>(|| self.field.clone());
+    ///         demand.provide_value::<String>(|| self.field.clone());
     ///     }
     /// }
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
-    pub fn provide_value<T, F>(&mut self, fulfil: F) -> &mut Self
+    pub fn provide_value<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
     where
         T: 'static,
-        F: FnOnce() -> T,
     {
-        self.provide_with::<tags::Value<T>, F>(fulfil)
+        self.provide_with::<tags::Value<T>>(fulfil)
     }
 
     /// Provide a reference, note that the referee type must be bounded by `'static`,
@@ -944,10 +940,9 @@ impl<'a> Demand<'a> {
     }
 
     /// Provide a value with the given `Type` tag, using a closure to prevent unnecessary work.
-    fn provide_with<I, F>(&mut self, fulfil: F) -> &mut Self
+    fn provide_with<I>(&mut self, fulfil: impl FnOnce() -> I::Reified) -> &mut Self
     where
         I: tags::Type<'a>,
-        F: FnOnce() -> I::Reified,
     {
         if let Some(res @ TaggedOption(None)) = self.0.downcast_mut::<I>() {
             res.0 = Some(fulfil());
