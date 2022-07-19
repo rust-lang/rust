@@ -1061,7 +1061,7 @@ impl Step for RustAnalyzer {
             .ensure(tool::RustAnalyzer {
                 compiler,
                 target,
-                extra_features: vec!["in-rust-tree".to_owned()]
+                extra_features: vec!["in-rust-tree".to_owned()],
             })
             .expect("rust-analyzer always builds");
 

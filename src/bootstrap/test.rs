@@ -381,7 +381,7 @@ impl Step for RustAnalyzer {
             .ensure(tool::RustAnalyzer {
                 compiler,
                 target: self.host,
-                extra_features: vec!["in-rust-tree".to_owned()]
+                extra_features: vec!["in-rust-tree".to_owned()],
             })
             .expect("in-tree tool");
 

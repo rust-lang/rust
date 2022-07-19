@@ -621,6 +621,7 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::Rls,
+                check::RustAnalyzer,
                 check::Rustfmt,
                 check::Bootstrap
             ),
