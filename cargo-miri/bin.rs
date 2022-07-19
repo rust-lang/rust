@@ -319,6 +319,23 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
     }
 }
 
+/// Writes the given content to the given file *cross-process atomically*, in the sense that another
+/// process concurrently reading that file will see either the old content or the new content, but
+/// not some intermediate (e.g., empty) state.
+///
+/// We assume no other parts of this same process are trying to read or write that file.
+fn write_to_file(filename: &Path, content: &str) {
+    // Create a temporary file with the desired contents.
+    let mut temp_filename = filename.as_os_str().to_os_string();
+    temp_filename.push(&format!(".{}", std::process::id()));
+    let mut temp_file = File::create(&temp_filename).unwrap();
+    temp_file.write_all(content.as_bytes()).unwrap();
+    drop(temp_file);
+
+    // Move file to the desired location.
+    fs::rename(temp_filename, filename).unwrap();
+}
+
 /// Performs the setup required to make `cargo miri` work: Getting a custom-built libstd. Then sets
 /// `MIRI_SYSROOT`. Skipped if `MIRI_SYSROOT` is already set, in which case we expect the user has
 /// done all this already.
@@ -398,28 +415,25 @@ fn setup(subcommand: MiriCommand) {
     if !dir.exists() {
         fs::create_dir_all(&dir).unwrap();
     }
-    let mut xargo_toml = File::create(dir.join("Xargo.toml")).unwrap();
-    if std::env::var_os("MIRI_NO_STD").is_none() {
-        // The interesting bit: Xargo.toml (only needs content if we actually need std)
-        xargo_toml
-            .write_all(
-                br#"
+    // The interesting bit: Xargo.toml (only needs content if we actually need std)
+    let xargo_toml = if std::env::var_os("MIRI_NO_STD").is_some() {
+        ""
+    } else {
+        r#"
 [dependencies.std]
 default_features = false
 # We support unwinding, so enable that panic runtime.
 features = ["panic_unwind", "backtrace"]
 
 [dependencies.test]
-"#,
-            )
-            .unwrap();
-    }
+"#
+    };
+    write_to_file(&dir.join("Xargo.toml"), xargo_toml);
     // The boring bits: a dummy project for xargo.
     // FIXME: With xargo-check, can we avoid doing this?
-    File::create(dir.join("Cargo.toml"))
-        .unwrap()
-        .write_all(
-            br#"
+    write_to_file(
+        &dir.join("Cargo.toml"),
+        r#"
 [package]
 name = "miri-xargo"
 description = "A dummy project for building libstd with xargo."
@@ -428,9 +442,8 @@ version = "0.0.0"
 [lib]
 path = "lib.rs"
 "#,
-        )
-        .unwrap();
-    File::create(dir.join("lib.rs")).unwrap().write_all(b"#![no_std]").unwrap();
+    );
+    write_to_file(&dir.join("lib.rs"), "#![no_std]");
 
     // Determine architectures.
     // We always need to set a target so rustc bootstrap can tell apart host from target crates.
