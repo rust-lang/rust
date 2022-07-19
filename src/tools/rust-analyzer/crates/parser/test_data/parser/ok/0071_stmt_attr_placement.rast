@@ -1,0 +1,72 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            ATTR
+              POUND "#"
+              L_BRACK "["
+              META
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "A"
+              R_BRACK "]"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              TRY_EXPR
+                ATTR
+                  POUND "#"
+                  L_BRACK "["
+                  META
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "B"
+                  R_BRACK "]"
+                WHITESPACE " "
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "bar"
+                    BANG "!"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      R_PAREN ")"
+                QUESTION "?"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        REF_EXPR
+          ATTR
+            POUND "#"
+            L_BRACK "["
+            META
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "C"
+            R_BRACK "]"
+          WHITESPACE " "
+          AMP "&"
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
