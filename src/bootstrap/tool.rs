@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
@@ -249,6 +249,10 @@ pub fn prepare_tool_cargo(
             features.push("rustc-workspace-hack/all-static".to_string());
         }
     }
+
+    // cargo doesn't set this env var yet, but it's needed by expect-test
+    // to build correct absolute paths for test_data files
+    cargo.env("CARGO_WORKSPACE_DIR", &dir);
 
     // clippy tests need to know about the stage sysroot. Set them consistently while building to
     // avoid rebuilding when running tests.
@@ -780,7 +784,9 @@ tool_extended!((self, builder),
     // and this is close enough for now.
     RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
-    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=true, submodule="rust-analyzer", {};
+    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=true, in_tree=true, tool_std=true, {
+        self.extra_features.push("in-rust-tree".to_owned());
+    };
 );
 
 impl<'a> Builder<'a> {

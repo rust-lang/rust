@@ -22,7 +22,7 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 //     if !(x == 4 && y >= 3.14) {}
 // }
 // ```
-pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();

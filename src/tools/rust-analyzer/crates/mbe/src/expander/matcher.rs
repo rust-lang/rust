@@ -522,7 +522,7 @@ fn match_loop_inner<'t>(
 
 fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
     let mut src = TtIter::new(src);
-    let mut stack: SmallVec<[TtIter; 1]> = SmallVec::new();
+    let mut stack: SmallVec<[TtIter<'_>; 1]> = SmallVec::new();
     let mut res = Match::default();
     let mut error_recover_item = None;
 
@@ -656,7 +656,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
     }
 }
 
-fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
+fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter<'_>) -> Result<(), ExpandError> {
     let rhs = src
         .expect_leaf()
         .map_err(|()| ExpandError::binding_error(format!("expected leaf: `{lhs}`")))?;
@@ -677,7 +677,7 @@ fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
     }
 }
 
-fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
+fn match_meta_var(kind: &str, input: &mut TtIter<'_>) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
         "path" => parser::PrefixEntryPoint::Path,
         "ty" => parser::PrefixEntryPoint::Ty,

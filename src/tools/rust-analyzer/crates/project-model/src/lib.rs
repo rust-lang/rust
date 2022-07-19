@@ -14,6 +14,7 @@
 //! * Custom build steps (`build.rs` code generation and compilation of
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 mod manifest_path;
 mod cargo_workspace;

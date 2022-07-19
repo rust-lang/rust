@@ -36,7 +36,10 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_enum_try_into_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_enum_try_into_method(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     generate_enum_projection_method(
         acc,
         ctx,
@@ -80,7 +83,7 @@ pub(crate) fn generate_enum_try_into_method(acc: &mut Assists, ctx: &AssistConte
 //     }
 // }
 // ```
-pub(crate) fn generate_enum_as_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_enum_as_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     generate_enum_projection_method(
         acc,
         ctx,
@@ -108,7 +111,7 @@ struct ProjectionProps {
 
 fn generate_enum_projection_method(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     assist_id: &'static str,
     assist_description: &str,
     props: ProjectionProps,

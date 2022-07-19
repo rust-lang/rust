@@ -15,7 +15,10 @@ use crate::MatchFinder;
 /// Attempts to build an SSR MatchFinder from a comment at the given file
 /// range. If successful, returns the MatchFinder and a TextRange covering
 /// comment.
-pub fn ssr_from_comment(db: &RootDatabase, frange: FileRange) -> Option<(MatchFinder, TextRange)> {
+pub fn ssr_from_comment(
+    db: &RootDatabase,
+    frange: FileRange,
+) -> Option<(MatchFinder<'_>, TextRange)> {
     let comment = {
         let file = db.parse(frange.file_id);
         file.tree().syntax().token_at_offset(frange.range.start()).find_map(ast::Comment::cast)

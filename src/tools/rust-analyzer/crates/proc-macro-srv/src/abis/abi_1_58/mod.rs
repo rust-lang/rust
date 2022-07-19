@@ -25,7 +25,7 @@ impl From<proc_macro::bridge::PanicMessage> for PanicMessage {
 
 impl Abi {
     pub unsafe fn from_lib(lib: &Library, symbol_name: String) -> Result<Abi, libloading::Error> {
-        let macros: libloading::Symbol<&&[proc_macro::bridge::client::ProcMacro]> =
+        let macros: libloading::Symbol<'_, &&[proc_macro::bridge::client::ProcMacro]> =
             lib.get(symbol_name.as_bytes())?;
         Ok(Self { exported_macros: macros.to_vec() })
     }

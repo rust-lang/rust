@@ -40,7 +40,7 @@ use crate::{
 //     bar();
 // }
 // ```
-pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let if_expr: ast::IfExpr = ctx.find_node_at_offset()?;
     if if_expr.else_branch().is_some() {
         return None;

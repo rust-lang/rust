@@ -89,7 +89,7 @@ pub(crate) fn get_match(
     rule: &ResolvedRule,
     code: &SyntaxNode,
     restrict_range: &Option<FileRange>,
-    sema: &Semantics<ide_db::RootDatabase>,
+    sema: &Semantics<'_, ide_db::RootDatabase>,
 ) -> Result<Match, MatchFailed> {
     record_match_fails_reasons_scope(debug_active, || {
         Matcher::try_match(rule, code, restrict_range, sema)
@@ -165,7 +165,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_node(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
@@ -218,7 +218,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_node_children(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
@@ -231,7 +231,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_sequences(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern_it: PatternIterator,
         mut code_it: SyntaxElementChildren,
     ) -> Result<(), MatchFailed> {
@@ -260,7 +260,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_token(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: &mut Peekable<PatternIterator>,
         code: &syntax::SyntaxToken,
     ) -> Result<(), MatchFailed> {
@@ -332,7 +332,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     /// differently.
     fn attempt_match_path(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
@@ -372,7 +372,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_opt<T: AstNode>(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: Option<T>,
         code: Option<T>,
     ) -> Result<(), MatchFailed> {
@@ -390,7 +390,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     /// them.
     fn attempt_match_record_field_list(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: &SyntaxNode,
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
@@ -440,7 +440,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     /// expanded the macro.
     fn attempt_match_token_tree(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern: &SyntaxNode,
         code: &syntax::SyntaxNode,
     ) -> Result<(), MatchFailed> {
@@ -521,7 +521,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_ufcs_to_method_call(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern_ufcs: &UfcsCallInfo,
         code: &ast::MethodCallExpr,
     ) -> Result<(), MatchFailed> {
@@ -581,7 +581,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 
     fn attempt_match_ufcs_to_ufcs(
         &self,
-        phase: &mut Phase,
+        phase: &mut Phase<'_>,
         pattern_ufcs: &UfcsCallInfo,
         code: &ast::CallExpr,
     ) -> Result<(), MatchFailed> {
@@ -640,7 +640,7 @@ impl Match {
     fn render_template_paths(
         &mut self,
         template: &ResolvedPattern,
-        sema: &Semantics<ide_db::RootDatabase>,
+        sema: &Semantics<'_, ide_db::RootDatabase>,
     ) -> Result<(), MatchFailed> {
         let module = sema
             .scope(&self.matched_node)

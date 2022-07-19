@@ -10,7 +10,7 @@ use crate::{
 
 pub(crate) fn complete_record_pattern_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) {
     if let PatternContext { record_pat: Some(record_pat), .. } = pattern_ctx {
@@ -20,7 +20,7 @@ pub(crate) fn complete_record_pattern_fields(
 
 pub(crate) fn complete_record_expr_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     record_expr: &ast::RecordExpr,
     &dot_prefix: &bool,
 ) {
@@ -59,7 +59,7 @@ pub(crate) fn complete_record_expr_fields(
 // FIXME: This should probably be part of complete_path_expr
 pub(crate) fn complete_record_expr_func_update(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
     expr_ctx: &ExprCtx,
 ) {
@@ -81,7 +81,7 @@ pub(crate) fn complete_record_expr_func_update(
 
 fn add_default_update(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     ty: Option<hir::TypeInfo>,
     missing_fields: &[(hir::Field, hir::Type)],
 ) {
@@ -105,7 +105,7 @@ fn add_default_update(
 
 fn complete_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     missing_fields: Vec<(hir::Field, hir::Type)>,
 ) {
     for (field, ty) in missing_fields {

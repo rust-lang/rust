@@ -6,7 +6,7 @@ use crate::{context::CompletionContext, item::CompletionItem, Completions};
 
 pub(super) fn complete_lint(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     is_qualified: bool,
     existing_lints: &[ast::Path],
     lints_completions: &[Lint],

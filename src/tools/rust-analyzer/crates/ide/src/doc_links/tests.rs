@@ -52,7 +52,7 @@ fn check_doc_links(ra_fixture: &str) {
 }
 
 fn def_under_cursor(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     position: &FilePosition,
 ) -> (Definition, hir::Documentation) {
     let (docs, def) = sema
@@ -70,7 +70,7 @@ fn def_under_cursor(
 }
 
 fn node_to_def(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     node: &SyntaxNode,
 ) -> Option<Option<(Option<hir::Documentation>, Definition)>> {
     Some(match_ast! {

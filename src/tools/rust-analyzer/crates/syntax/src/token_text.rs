@@ -42,7 +42,7 @@ impl AsRef<str> for TokenText<'_> {
 }
 
 impl From<TokenText<'_>> for String {
-    fn from(token_text: TokenText) -> Self {
+    fn from(token_text: TokenText<'_>) -> Self {
         token_text.as_str().into()
     }
 }
@@ -53,7 +53,7 @@ impl PartialEq<&'_ str> for TokenText<'_> {
     }
 }
 impl PartialEq<TokenText<'_>> for &'_ str {
-    fn eq(&self, other: &TokenText) -> bool {
+    fn eq(&self, other: &TokenText<'_>) -> bool {
         other == self
     }
 }
@@ -63,12 +63,12 @@ impl PartialEq<String> for TokenText<'_> {
     }
 }
 impl PartialEq<TokenText<'_>> for String {
-    fn eq(&self, other: &TokenText) -> bool {
+    fn eq(&self, other: &TokenText<'_>) -> bool {
         other == self
     }
 }
 impl PartialEq for TokenText<'_> {
-    fn eq(&self, other: &TokenText) -> bool {
+    fn eq(&self, other: &TokenText<'_>) -> bool {
         self.as_str() == other.as_str()
     }
 }

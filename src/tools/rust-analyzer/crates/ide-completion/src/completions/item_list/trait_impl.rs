@@ -57,7 +57,7 @@ enum ImplCompletionKind {
 
 pub(crate) fn complete_trait_impl_const(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     name: &Option<ast::Name>,
 ) -> Option<()> {
     complete_trait_impl_name(acc, ctx, name, ImplCompletionKind::Const)
@@ -65,7 +65,7 @@ pub(crate) fn complete_trait_impl_const(
 
 pub(crate) fn complete_trait_impl_type_alias(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     name: &Option<ast::Name>,
 ) -> Option<()> {
     complete_trait_impl_name(acc, ctx, name, ImplCompletionKind::TypeAlias)
@@ -73,7 +73,7 @@ pub(crate) fn complete_trait_impl_type_alias(
 
 pub(crate) fn complete_trait_impl_fn(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     name: &Option<ast::Name>,
 ) -> Option<()> {
     complete_trait_impl_name(acc, ctx, name, ImplCompletionKind::Fn)
@@ -81,7 +81,7 @@ pub(crate) fn complete_trait_impl_fn(
 
 fn complete_trait_impl_name(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     name: &Option<ast::Name>,
     kind: ImplCompletionKind,
 ) -> Option<()> {
@@ -104,7 +104,7 @@ fn complete_trait_impl_name(
 
 pub(crate) fn complete_trait_impl_item_by_name(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
     name_ref: &Option<ast::NameRef>,
     impl_: &Option<ast::Impl>,
@@ -128,7 +128,7 @@ pub(crate) fn complete_trait_impl_item_by_name(
 
 fn complete_trait_impl(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     kind: ImplCompletionKind,
     replacement_range: TextRange,
     impl_def: &ast::Impl,
@@ -154,7 +154,7 @@ fn complete_trait_impl(
 
 fn add_function_impl(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     replacement_range: TextRange,
     func: hir::Function,
     impl_def: hir::Impl,
@@ -204,7 +204,7 @@ fn add_function_impl(
 
 /// Transform a relevant associated item to inline generics from the impl, remove attrs and docs, etc.
 fn get_transformed_assoc_item(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     assoc_item: ast::AssocItem,
     impl_def: hir::Impl,
 ) -> Option<ast::AssocItem> {
@@ -228,7 +228,7 @@ fn get_transformed_assoc_item(
 
 fn add_type_alias_impl(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     replacement_range: TextRange,
     type_alias: hir::TypeAlias,
 ) {
@@ -252,7 +252,7 @@ fn add_type_alias_impl(
 
 fn add_const_impl(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     replacement_range: TextRange,
     const_: hir::Const,
     impl_def: hir::Impl,
@@ -340,7 +340,7 @@ fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
     syntax.trim_end().to_owned()
 }
 
-fn replacement_range(ctx: &CompletionContext, item: &SyntaxNode) -> TextRange {
+fn replacement_range(ctx: &CompletionContext<'_>, item: &SyntaxNode) -> TextRange {
     let first_child = item
         .children_with_tokens()
         .find(|child| {

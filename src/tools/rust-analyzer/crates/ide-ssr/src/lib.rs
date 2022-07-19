@@ -66,6 +66,7 @@
 // // Place the cursor on the line below to see the assist 💡.
 // // foo($a, $b) ==>> ($a).foo($b)
 // ```
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 mod from_comment;
 mod matching;

@@ -44,7 +44,7 @@ fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     local_name: Option<hir::Name>,
     func: hir::Function,
-    func_kind: FuncKind,
+    func_kind: FuncKind<'_>,
 ) -> Builder {
     let db = completion.db;
 
@@ -150,7 +150,7 @@ fn render(
 
 pub(super) fn add_call_parens<'b>(
     builder: &'b mut Builder,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     cap: SnippetCap,
     name: SmolStr,
     escaped_name: SmolStr,
@@ -211,7 +211,7 @@ pub(super) fn add_call_parens<'b>(
     builder.label(SmolStr::from_iter([&name, label_suffix])).insert_snippet(cap, snippet)
 }
 
-fn ref_of_param(ctx: &CompletionContext, arg: &str, ty: &hir::Type) -> &'static str {
+fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'static str {
     if let Some(derefed_ty) = ty.remove_ref() {
         for (name, local) in ctx.locals.iter() {
             if name.as_text().as_deref() == Some(arg) {
@@ -278,7 +278,7 @@ fn params_display(db: &dyn HirDatabase, func: hir::Function) -> String {
 fn params(
     ctx: &CompletionContext<'_>,
     func: hir::Function,
-    func_kind: &FuncKind,
+    func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param>)> {
     if ctx.config.callable.is_none() {

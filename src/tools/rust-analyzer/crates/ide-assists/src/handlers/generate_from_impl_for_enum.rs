@@ -20,7 +20,10 @@ use crate::{utils::generate_trait_impl_text, AssistContext, AssistId, AssistKind
 //     }
 // }
 // ```
-pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_from_impl_for_enum(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
     let enum_ = ast::Adt::Enum(variant.parent_enum());

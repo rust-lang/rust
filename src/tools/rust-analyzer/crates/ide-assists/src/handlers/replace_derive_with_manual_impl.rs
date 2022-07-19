@@ -42,7 +42,7 @@ use crate::{
 // ```
 pub(crate) fn replace_derive_with_manual_impl(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
     let attr = ctx.find_node_at_offset_with_descend::<ast::Attr>()?;
     let path = attr.path()?;
@@ -113,7 +113,7 @@ pub(crate) fn replace_derive_with_manual_impl(
 
 fn add_assist(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     attr: &ast::Attr,
     old_derives: &[ast::Path],
     old_tree: &ast::TokenTree,
@@ -170,7 +170,7 @@ fn add_assist(
 }
 
 fn impl_def_from_trait(
-    sema: &hir::Semantics<ide_db::RootDatabase>,
+    sema: &hir::Semantics<'_, ide_db::RootDatabase>,
     adt: &ast::Adt,
     annotated_name: &ast::Name,
     trait_: Option<hir::Trait>,

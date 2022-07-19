@@ -86,7 +86,7 @@ pub struct TraitRef {
 
 impl TraitRef {
     /// Converts an `ast::PathType` to a `hir::TraitRef`.
-    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Option<Self> {
+    pub(crate) fn from_ast(ctx: &LowerCtx<'_>, node: ast::Type) -> Option<Self> {
         // FIXME: Use `Path::from_src`
         match node {
             ast::Type::PathType(path) => {
@@ -159,7 +159,7 @@ pub enum TraitBoundModifier {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
+    pub fn from_ast(ctx: &LowerCtx<'_>, node: ast::Type) -> Self {
         match node {
             ast::Type::ParenType(inner) => TypeRef::from_ast_opt(ctx, inner.ty()),
             ast::Type::TupleType(inner) => {
@@ -245,7 +245,7 @@ impl TypeRef {
         }
     }
 
-    pub(crate) fn from_ast_opt(ctx: &LowerCtx, node: Option<ast::Type>) -> Self {
+    pub(crate) fn from_ast_opt(ctx: &LowerCtx<'_>, node: Option<ast::Type>) -> Self {
         match node {
             Some(node) => TypeRef::from_ast(ctx, node),
             None => TypeRef::Error,
@@ -320,7 +320,7 @@ impl TypeRef {
 }
 
 pub(crate) fn type_bounds_from_ast(
-    lower_ctx: &LowerCtx,
+    lower_ctx: &LowerCtx<'_>,
     type_bounds_opt: Option<ast::TypeBoundList>,
 ) -> Vec<Interned<TypeBound>> {
     if let Some(type_bounds) = type_bounds_opt {
@@ -331,7 +331,7 @@ pub(crate) fn type_bounds_from_ast(
 }
 
 impl TypeBound {
-    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::TypeBound) -> Self {
+    pub(crate) fn from_ast(ctx: &LowerCtx<'_>, node: ast::TypeBound) -> Self {
         let lower_path_type = |path_type: ast::PathType| ctx.lower_path(path_type.path()?);
 
         match node.kind() {

@@ -1,18 +1,18 @@
 use super::*;
 
-pub(super) fn inner_attrs(p: &mut Parser) {
+pub(super) fn inner_attrs(p: &mut Parser<'_>) {
     while p.at(T![#]) && p.nth(1) == T![!] {
         attr(p, true);
     }
 }
 
-pub(super) fn outer_attrs(p: &mut Parser) {
+pub(super) fn outer_attrs(p: &mut Parser<'_>) {
     while p.at(T![#]) {
         attr(p, false);
     }
 }
 
-fn attr(p: &mut Parser, inner: bool) {
+fn attr(p: &mut Parser<'_>, inner: bool) {
     assert!(p.at(T![#]));
 
     let attr = p.start();
@@ -34,7 +34,7 @@ fn attr(p: &mut Parser, inner: bool) {
     attr.complete(p, ATTR);
 }
 
-pub(super) fn meta(p: &mut Parser) {
+pub(super) fn meta(p: &mut Parser<'_>) {
     let meta = p.start();
     paths::use_path(p);
 

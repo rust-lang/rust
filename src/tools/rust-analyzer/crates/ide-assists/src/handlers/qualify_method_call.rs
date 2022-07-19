@@ -32,7 +32,7 @@ use crate::{
 //     Foo::foo(&foo);
 // }
 // ```
-pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let name: ast::NameRef = ctx.find_node_at_offset()?;
     let call = name.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
 

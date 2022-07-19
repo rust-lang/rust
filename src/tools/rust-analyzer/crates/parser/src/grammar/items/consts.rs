@@ -2,17 +2,17 @@ use super::*;
 
 // test const_item
 // const C: u32 = 92;
-pub(super) fn konst(p: &mut Parser, m: Marker) {
+pub(super) fn konst(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![const]);
     const_or_static(p, m, true);
 }
 
-pub(super) fn static_(p: &mut Parser, m: Marker) {
+pub(super) fn static_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![static]);
     const_or_static(p, m, false);
 }
 
-fn const_or_static(p: &mut Parser, m: Marker, is_const: bool) {
+fn const_or_static(p: &mut Parser<'_>, m: Marker, is_const: bool) {
     p.eat(T![mut]);
 
     if is_const && p.eat(T![_]) {

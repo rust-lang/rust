@@ -5,6 +5,7 @@
 //! * Rich text comparison, which outputs a diff.
 //! * Extracting markup (mainly, `$0` markers) out of fixture strings.
 //! * marks (see the eponymous module).
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 pub mod bench_fixture;
 mod fixture;
@@ -405,7 +406,7 @@ pub fn project_root() -> PathBuf {
     PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
 }
 
-pub fn format_diff(chunks: Vec<dissimilar::Chunk>) -> String {
+pub fn format_diff(chunks: Vec<dissimilar::Chunk<'_>>) -> String {
     let mut buf = String::new();
     for chunk in chunks {
         let formatted = match chunk {

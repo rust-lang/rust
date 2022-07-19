@@ -35,7 +35,7 @@ use crate::{
 //     };
 // }
 // ```
-pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
 
     let op_kind = assign_expr.op_kind()?;
@@ -151,7 +151,7 @@ impl<'a> AssignmentsCollector<'a> {
 }
 
 fn is_equivalent(
-    sema: &hir::Semantics<ide_db::RootDatabase>,
+    sema: &hir::Semantics<'_, ide_db::RootDatabase>,
     expr0: &ast::Expr,
     expr1: &ast::Expr,
 ) -> bool {

@@ -16,7 +16,7 @@ use crate::{
     Highlight, HlMod, HlTag,
 };
 
-pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Highlight> {
+pub(super) fn token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Highlight> {
     if let Some(comment) = ast::Comment::cast(token.clone()) {
         let h = HlTag::Comment;
         return Some(match comment.kind().doc {
@@ -46,7 +46,7 @@ pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Optio
 }
 
 pub(super) fn name_like(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     syntactic_name_ref_highlighting: bool,
@@ -79,7 +79,11 @@ pub(super) fn name_like(
     Some((highlight, binding_hash))
 }
 
-fn punctuation(sema: &Semantics<RootDatabase>, token: SyntaxToken, kind: SyntaxKind) -> Highlight {
+fn punctuation(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+    kind: SyntaxKind,
+) -> Highlight {
     let parent = token.parent();
     let parent_kind = parent.as_ref().map_or(EOF, SyntaxNode::kind);
     match (kind, parent_kind) {
@@ -151,7 +155,7 @@ fn punctuation(sema: &Semantics<RootDatabase>, token: SyntaxToken, kind: SyntaxK
 }
 
 fn keyword(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
     kind: SyntaxKind,
 ) -> Option<Highlight> {
@@ -190,7 +194,7 @@ fn keyword(
 }
 
 fn highlight_name_ref(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     binding_hash: &mut Option<u64>,
@@ -274,7 +278,7 @@ fn highlight_name_ref(
 }
 
 fn highlight_name(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     binding_hash: &mut Option<u64>,
     krate: hir::Crate,
@@ -321,7 +325,11 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     hash((name, shadow_count))
 }
 
-fn highlight_def(sema: &Semantics<RootDatabase>, krate: hir::Crate, def: Definition) -> Highlight {
+fn highlight_def(
+    sema: &Semantics<'_, RootDatabase>,
+    krate: hir::Crate,
+    def: Definition,
+) -> Highlight {
     let db = sema.db;
     let mut h = match def {
         Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),
@@ -486,7 +494,7 @@ fn highlight_def(sema: &Semantics<RootDatabase>, krate: hir::Crate, def: Definit
 }
 
 fn highlight_method_call_by_name_ref(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     name_ref: &ast::NameRef,
 ) -> Option<Highlight> {
@@ -495,7 +503,7 @@ fn highlight_method_call_by_name_ref(
 }
 
 fn highlight_method_call(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
@@ -584,7 +592,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
 
 fn highlight_name_ref_by_syntax(
     name: ast::NameRef,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     krate: hir::Crate,
 ) -> Highlight {
     let default = HlTag::UnresolvedReference;

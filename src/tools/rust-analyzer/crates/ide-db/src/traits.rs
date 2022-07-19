@@ -7,7 +7,7 @@ use syntax::{ast, AstNode};
 
 /// Given the `impl` block, attempts to find the trait this `impl` corresponds to.
 pub fn resolve_target_trait(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     impl_def: &ast::Impl,
 ) -> Option<hir::Trait> {
     let ast_path =
@@ -22,7 +22,7 @@ pub fn resolve_target_trait(
 /// Given the `impl` block, returns the list of associated items (e.g. functions or types) that are
 /// missing in this `impl` block.
 pub fn get_missing_assoc_items(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     impl_def: &ast::Impl,
 ) -> Vec<hir::AssocItem> {
     let imp = match sema.to_def(impl_def) {

@@ -20,7 +20,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     f(x)
 // }
 // ```
-pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn move_bounds_to_where_clause(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let type_param_list = ctx.find_node_at_offset::<ast::GenericParamList>()?;
 
     let mut type_params = type_param_list.type_or_const_params();

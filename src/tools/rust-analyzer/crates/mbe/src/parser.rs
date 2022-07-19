@@ -194,7 +194,7 @@ fn is_boolean_literal(lit: &tt::Literal) -> bool {
     matches!(lit.text.as_str(), "true" | "false")
 }
 
-fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), ParseError> {
+fn parse_repeat(src: &mut TtIter<'_>) -> Result<(Option<Separator>, RepeatKind), ParseError> {
     let mut separator = Separator::Puncts(SmallVec::new());
     for tt in src {
         let tt = match tt {
@@ -231,7 +231,7 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Par
     Err(ParseError::InvalidRepeat)
 }
 
-fn parse_metavar_expr(src: &mut TtIter) -> Result<Op, ()> {
+fn parse_metavar_expr(src: &mut TtIter<'_>) -> Result<Op, ()> {
     let func = src.expect_ident()?;
     let args = src.expect_subtree()?;
 

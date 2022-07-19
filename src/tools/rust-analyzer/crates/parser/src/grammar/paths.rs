@@ -3,11 +3,11 @@ use super::*;
 pub(super) const PATH_FIRST: TokenSet =
     TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
 
-pub(super) fn is_path_start(p: &Parser) -> bool {
+pub(super) fn is_path_start(p: &Parser<'_>) -> bool {
     is_use_path_start(p) || p.at(T![<]) || p.at(T![Self])
 }
 
-pub(super) fn is_use_path_start(p: &Parser) -> bool {
+pub(super) fn is_use_path_start(p: &Parser<'_>) -> bool {
     match p.current() {
         IDENT | T![self] | T![super] | T![crate] => true,
         T![:] if p.at(T![::]) => true,
@@ -15,19 +15,22 @@ pub(super) fn is_use_path_start(p: &Parser) -> bool {
     }
 }
 
-pub(super) fn use_path(p: &mut Parser) {
+pub(super) fn use_path(p: &mut Parser<'_>) {
     path(p, Mode::Use);
 }
 
-pub(crate) fn type_path(p: &mut Parser) {
+pub(crate) fn type_path(p: &mut Parser<'_>) {
     path(p, Mode::Type);
 }
 
-pub(super) fn expr_path(p: &mut Parser) {
+pub(super) fn expr_path(p: &mut Parser<'_>) {
     path(p, Mode::Expr);
 }
 
-pub(crate) fn type_path_for_qualifier(p: &mut Parser, qual: CompletedMarker) -> CompletedMarker {
+pub(crate) fn type_path_for_qualifier(
+    p: &mut Parser<'_>,
+    qual: CompletedMarker,
+) -> CompletedMarker {
     path_for_qualifier(p, Mode::Type, qual)
 }
 
@@ -38,14 +41,18 @@ enum Mode {
     Expr,
 }
 
-fn path(p: &mut Parser, mode: Mode) {
+fn path(p: &mut Parser<'_>, mode: Mode) {
     let path = p.start();
     path_segment(p, mode, true);
     let qual = path.complete(p, PATH);
     path_for_qualifier(p, mode, qual);
 }
 
-fn path_for_qualifier(p: &mut Parser, mode: Mode, mut qual: CompletedMarker) -> CompletedMarker {
+fn path_for_qualifier(
+    p: &mut Parser<'_>,
+    mode: Mode,
+    mut qual: CompletedMarker,
+) -> CompletedMarker {
     loop {
         let use_tree = matches!(p.nth(2), T![*] | T!['{']);
         if p.at(T![::]) && !use_tree {
@@ -60,7 +67,7 @@ fn path_for_qualifier(p: &mut Parser, mode: Mode, mut qual: CompletedMarker) -> 
     }
 }
 
-fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
+fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
     let m = p.start();
     // test qual_paths
     // type X = <A as B>::Output;
@@ -107,7 +114,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
     m.complete(p, PATH_SEGMENT);
 }
 
-fn opt_path_type_args(p: &mut Parser, mode: Mode) {
+fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
     match mode {
         Mode::Use => {}
         Mode::Type => {

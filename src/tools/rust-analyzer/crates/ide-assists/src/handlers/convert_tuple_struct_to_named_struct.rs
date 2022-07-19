@@ -48,7 +48,7 @@ use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, 
 // ```
 pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
     let strukt = ctx
         .find_node_at_offset::<ast::Struct>()
@@ -79,7 +79,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
 }
 
 fn edit_struct_def(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     edit: &mut AssistBuilder,
     strukt: &Either<ast::Struct, ast::Variant>,
     tuple_fields: ast::TupleFieldList,
@@ -121,7 +121,7 @@ fn edit_struct_def(
 }
 
 fn edit_struct_references(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     edit: &mut AssistBuilder,
     strukt: Either<hir::Struct, hir::Variant>,
     names: &[ast::Name],
@@ -202,7 +202,7 @@ fn edit_struct_references(
 }
 
 fn edit_field_references(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     edit: &mut AssistBuilder,
     fields: impl Iterator<Item = ast::TupleField>,
     names: &[ast::Name],

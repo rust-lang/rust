@@ -156,7 +156,10 @@ pub(crate) fn render_tuple_field(
     item.build()
 }
 
-pub(crate) fn render_type_inference(ty_string: String, ctx: &CompletionContext) -> CompletionItem {
+pub(crate) fn render_type_inference(
+    ty_string: String,
+    ctx: &CompletionContext<'_>,
+) -> CompletionItem {
     let mut builder =
         CompletionItem::new(CompletionItemKind::InferredType, ctx.source_range(), ty_string);
     builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });
@@ -204,7 +207,7 @@ pub(crate) fn render_resolution_with_import_pat(
 
 fn scope_def_to_name(
     resolution: ScopeDef,
-    ctx: &RenderContext,
+    ctx: &RenderContext<'_>,
     import_edit: &LocatedImport,
 ) -> Option<hir::Name> {
     Some(match resolution {
@@ -398,7 +401,7 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
 }
 
 fn compute_type_match(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     completion_ty: &hir::Type,
 ) -> Option<CompletionRelevanceTypeMatch> {
     let expected_type = ctx.expected_type.as_ref()?;
@@ -418,12 +421,12 @@ fn compute_type_match(
     }
 }
 
-fn compute_exact_name_match(ctx: &CompletionContext, completion_name: &str) -> bool {
+fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
     ctx.expected_name.as_ref().map_or(false, |name| name.text() == completion_name)
 }
 
 fn compute_ref_match(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     completion_ty: &hir::Type,
 ) -> Option<hir::Mutability> {
     let expected_type = ctx.expected_type.as_ref()?;

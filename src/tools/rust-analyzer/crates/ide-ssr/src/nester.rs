@@ -14,7 +14,7 @@ use crate::{Match, SsrMatches};
 
 pub(crate) fn nest_and_remove_collisions(
     mut matches: Vec<Match>,
-    sema: &hir::Semantics<ide_db::RootDatabase>,
+    sema: &hir::Semantics<'_, ide_db::RootDatabase>,
 ) -> SsrMatches {
     // We sort the matches by depth then by rule index. Sorting by depth means that by the time we
     // see a match, any parent matches or conflicting matches will have already been seen. Sorting
@@ -37,7 +37,7 @@ impl MatchCollector {
     /// Attempts to add `m` to matches. If it conflicts with an existing match, it is discarded. If
     /// it is entirely within the a placeholder of an existing match, then it is added as a child
     /// match of the existing match.
-    fn add_match(&mut self, m: Match, sema: &hir::Semantics<ide_db::RootDatabase>) {
+    fn add_match(&mut self, m: Match, sema: &hir::Semantics<'_, ide_db::RootDatabase>) {
         let matched_node = m.matched_node.clone();
         if let Some(existing) = self.matches_by_node.get_mut(&matched_node) {
             try_add_sub_match(m, existing, sema);
@@ -54,7 +54,11 @@ impl MatchCollector {
 }
 
 /// Attempts to add `m` as a sub-match of `existing`.
-fn try_add_sub_match(m: Match, existing: &mut Match, sema: &hir::Semantics<ide_db::RootDatabase>) {
+fn try_add_sub_match(
+    m: Match,
+    existing: &mut Match,
+    sema: &hir::Semantics<'_, ide_db::RootDatabase>,
+) {
     for p in existing.placeholder_values.values_mut() {
         // Note, no need to check if p.range.file is equal to m.range.file, since we
         // already know we're within `existing`.

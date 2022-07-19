@@ -87,7 +87,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
-pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
     let mut proposed_imports =
         import_assets.search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind);
@@ -142,7 +142,9 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     Some(())
 }
 
-pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets, SyntaxElement)> {
+pub(super) fn find_importable_node(
+    ctx: &AssistContext<'_>,
+) -> Option<(ImportAssets, SyntaxElement)> {
     if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
         ImportAssets::for_exact_path(&path_under_caret, &ctx.sema)
             .zip(Some(path_under_caret.syntax().clone().into()))
@@ -177,7 +179,7 @@ fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
 /// Determine how relevant a given import is in the current context. Higher scores are more
 /// relevant.
 fn relevance_score(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     import: &LocatedImport,
     current_module: Option<&Module>,
 ) -> i32 {

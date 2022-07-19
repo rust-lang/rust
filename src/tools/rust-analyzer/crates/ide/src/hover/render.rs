@@ -26,7 +26,7 @@ use crate::{
 };
 
 pub(super) fn type_info(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
 ) -> Option<HoverResult> {
@@ -71,7 +71,7 @@ pub(super) fn type_info(
 }
 
 pub(super) fn try_expr(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
     try_expr: &ast::TryExpr,
 ) -> Option<HoverResult> {
@@ -162,7 +162,7 @@ pub(super) fn try_expr(
 }
 
 pub(super) fn deref_expr(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
     deref_expr: &ast::PrefixExpr,
 ) -> Option<HoverResult> {
@@ -226,7 +226,7 @@ pub(super) fn deref_expr(
 }
 
 pub(super) fn keyword(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
     token: &SyntaxToken,
 ) -> Option<HoverResult> {
@@ -335,7 +335,7 @@ pub(super) fn path(db: &RootDatabase, module: hir::Module, item_name: Option<Str
 pub(super) fn definition(
     db: &RootDatabase,
     def: Definition,
-    famous_defs: Option<&FamousDefs>,
+    famous_defs: Option<&FamousDefs<'_, '_>>,
     config: &HoverConfig,
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
@@ -460,7 +460,7 @@ fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Optio
     Some(buf.into())
 }
 
-fn builtin(famous_defs: &FamousDefs, builtin: hir::BuiltinType) -> Option<Markup> {
+fn builtin(famous_defs: &FamousDefs<'_, '_>, builtin: hir::BuiltinType) -> Option<Markup> {
     // std exposes prim_{} modules with docstrings on the root to document the builtins
     let primitive_mod = format!("prim_{}", builtin.name());
     let doc_owner = find_std_module(famous_defs, &primitive_mod)?;
@@ -468,7 +468,7 @@ fn builtin(famous_defs: &FamousDefs, builtin: hir::BuiltinType) -> Option<Markup
     markup(Some(docs.into()), builtin.name().to_string(), None)
 }
 
-fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> {
+fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::Module> {
     let db = famous_defs.0.db;
     let std_crate = famous_defs.std()?;
     let std_root_module = std_crate.root_module(db);
@@ -513,7 +513,7 @@ impl KeywordHint {
 }
 
 fn keyword_hints(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     token: &SyntaxToken,
     parent: syntax::SyntaxNode,
 ) -> KeywordHint {

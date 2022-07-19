@@ -27,7 +27,7 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 //     var_name * 4;
 // }
 // ```
-pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if ctx.has_empty_selection() {
         return None;
     }
@@ -164,7 +164,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     }
 }
 
-fn get_receiver_type(ctx: &AssistContext, expression: &ast::Expr) -> Option<hir::Type> {
+fn get_receiver_type(ctx: &AssistContext<'_>, expression: &ast::Expr) -> Option<hir::Type> {
     let receiver = get_receiver(expression.clone())?;
     Some(ctx.sema.type_of_expr(&receiver)?.original())
 }

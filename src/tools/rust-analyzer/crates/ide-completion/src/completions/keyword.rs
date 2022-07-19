@@ -6,7 +6,7 @@ use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_for_and_where(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     keyword_item: &ast::Item,
 ) {
     let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);

@@ -109,7 +109,7 @@ impl<'t> TokenBuffer<'t> {
         Cursor::create(self, EntryPtr(EntryId(0), 0))
     }
 
-    fn entry(&self, ptr: &EntryPtr) -> Option<&Entry> {
+    fn entry(&self, ptr: &EntryPtr) -> Option<&Entry<'_>> {
         let id = ptr.0;
         self.buffers[id.0].get(ptr.1)
     }
@@ -141,7 +141,7 @@ pub struct Cursor<'a> {
 }
 
 impl<'a> PartialEq for Cursor<'a> {
-    fn eq(&self, other: &Cursor) -> bool {
+    fn eq(&self, other: &Cursor<'_>) -> bool {
         self.ptr == other.ptr && std::ptr::eq(self.buffer, other.buffer)
     }
 }
@@ -198,7 +198,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn create(buffer: &'a TokenBuffer, ptr: EntryPtr) -> Cursor<'a> {
+    fn create(buffer: &'a TokenBuffer<'_>, ptr: EntryPtr) -> Cursor<'a> {
         Cursor { buffer, ptr }
     }
 

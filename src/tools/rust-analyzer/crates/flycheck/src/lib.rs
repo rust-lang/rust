@@ -1,6 +1,7 @@
 //! Flycheck provides the functionality needed to run `cargo check` or
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 use std::{
     fmt, io,

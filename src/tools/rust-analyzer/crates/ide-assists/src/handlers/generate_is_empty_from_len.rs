@@ -39,7 +39,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let fn_node = ctx.find_node_at_offset::<ast::Fn>()?;
     let fn_name = fn_node.name()?;
 
@@ -86,7 +86,7 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext)
 }
 
 fn get_impl_method(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     impl_: &ast::Impl,
     fn_name: &Name,
 ) -> Option<hir::Function> {

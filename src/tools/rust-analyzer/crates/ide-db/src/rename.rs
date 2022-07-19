@@ -66,7 +66,11 @@ macro_rules! _bail {
 pub use _bail as bail;
 
 impl Definition {
-    pub fn rename(&self, sema: &Semantics<RootDatabase>, new_name: &str) -> Result<SourceChange> {
+    pub fn rename(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+        new_name: &str,
+    ) -> Result<SourceChange> {
         match *self {
             Definition::Module(module) => rename_mod(sema, module, new_name),
             Definition::BuiltinType(_) => {
@@ -80,7 +84,7 @@ impl Definition {
     /// Textual range of the identifier which will change when renaming this
     /// `Definition`. Note that some definitions, like buitin types, can't be
     /// renamed.
-    pub fn range_for_rename(self, sema: &Semantics<RootDatabase>) -> Option<FileRange> {
+    pub fn range_for_rename(self, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange> {
         let res = match self {
             Definition::Macro(mac) => {
                 let src = mac.source(sema.db)?;
@@ -155,7 +159,7 @@ impl Definition {
         };
         return res;
 
-        fn name_range<D>(def: D, sema: &Semantics<RootDatabase>) -> Option<FileRange>
+        fn name_range<D>(def: D, sema: &Semantics<'_, RootDatabase>) -> Option<FileRange>
         where
             D: HasSource,
             D::Ast: ast::HasName,
@@ -168,7 +172,7 @@ impl Definition {
 }
 
 fn rename_mod(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     module: hir::Module,
     new_name: &str,
 ) -> Result<SourceChange> {
@@ -248,7 +252,7 @@ fn rename_mod(
 }
 
 fn rename_reference(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     def: Definition,
     new_name: &str,
 ) -> Result<SourceChange> {
@@ -448,7 +452,7 @@ fn source_edit_from_name_ref(
 }
 
 fn source_edit_from_def(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     def: Definition,
     new_name: &str,
 ) -> Result<(FileId, TextEdit)> {

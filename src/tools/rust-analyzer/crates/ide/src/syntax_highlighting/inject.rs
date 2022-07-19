@@ -20,7 +20,7 @@ use crate::{
 
 pub(super) fn ra_fixture(
     hl: &mut Highlights,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     literal: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
@@ -84,7 +84,7 @@ const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(
     hl: &mut Highlights,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     InFile { file_id: src_file_id, value: node }: InFile<&SyntaxNode>,
 ) {
     let (attributes, def) = match doc_attributes(sema, node) {

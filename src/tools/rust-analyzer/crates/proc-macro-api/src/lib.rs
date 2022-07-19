@@ -4,6 +4,7 @@
 //! different implementations (e.g. wasm or dylib loading). And this crate
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 pub mod msg;
 mod process;

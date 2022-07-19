@@ -163,7 +163,7 @@ pub(crate) fn hover(
 }
 
 pub(crate) fn hover_for_definition(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     definition: Definition,
     node: &SyntaxNode,
@@ -189,7 +189,7 @@ pub(crate) fn hover_for_definition(
 fn hover_ranged(
     file: &SyntaxNode,
     range: syntax::TextRange,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     // FIXME: make this work in attributes
@@ -222,7 +222,7 @@ fn hover_ranged(
 }
 
 fn hover_type_fallback(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &HoverConfig,
     token: &SyntaxToken,
     original_token: &SyntaxToken,
@@ -281,7 +281,7 @@ fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<Hover
 }
 
 fn runnable_action(
-    sema: &hir::Semantics<RootDatabase>,
+    sema: &hir::Semantics<'_, RootDatabase>,
     def: Definition,
     file_id: FileId,
 ) -> Option<HoverAction> {

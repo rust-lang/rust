@@ -27,7 +27,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::RecordField>()?;
 

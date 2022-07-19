@@ -144,7 +144,7 @@ impl IntRange {
         }
     }
 
-    fn to_pat(&self, _cx: &MatchCheckCtx, ty: Ty) -> Pat {
+    fn to_pat(&self, _cx: &MatchCheckCtx<'_, '_>, ty: Ty) -> Pat {
         match ty.kind(Interner) {
             TyKind::Scalar(Scalar::Bool) => {
                 let kind = match self.boundaries() {

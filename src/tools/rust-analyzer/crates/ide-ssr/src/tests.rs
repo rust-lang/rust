@@ -113,7 +113,7 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     expected.assert_eq(&actual);
 }
 
-fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: &str) {
+fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: FileId, snippet: &str) {
     let debug_info = match_finder.debug_where_text_equal(file_id, snippet);
     println!(
         "Match debug info: {} nodes had text exactly equal to '{}'",

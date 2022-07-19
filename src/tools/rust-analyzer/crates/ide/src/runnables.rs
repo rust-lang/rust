@@ -35,7 +35,7 @@ pub enum TestId {
 }
 
 impl fmt::Display for TestId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TestId::Name(name) => name.fmt(f),
             TestId::Path(path) => path.fmt(f),
@@ -219,7 +219,7 @@ pub(crate) fn related_tests(
 }
 
 fn find_related_tests(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
     search_scope: Option<SearchScope>,
@@ -259,7 +259,7 @@ fn find_related_tests(
 }
 
 fn find_related_tests_in_module(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     fn_def: &ast::Fn,
     parent_module: &hir::Module,
@@ -282,7 +282,7 @@ fn find_related_tests_in_module(
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
 
-fn as_test_runnable(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Option<Runnable> {
+fn as_test_runnable(sema: &Semantics<'_, RootDatabase>, fn_def: &ast::Fn) -> Option<Runnable> {
     if test_related_attribute(fn_def).is_some() {
         let function = sema.to_def(fn_def)?;
         runnable_fn(sema, function)
@@ -291,7 +291,7 @@ fn as_test_runnable(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Option<
     }
 }
 
-fn parent_test_module(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Option<hir::Module> {
+fn parent_test_module(sema: &Semantics<'_, RootDatabase>, fn_def: &ast::Fn) -> Option<hir::Module> {
     fn_def.syntax().ancestors().find_map(|node| {
         let module = ast::Module::cast(node)?;
         let module = sema.to_def(&module)?;
@@ -304,7 +304,10 @@ fn parent_test_module(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Optio
     })
 }
 
-pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
+pub(crate) fn runnable_fn(
+    sema: &Semantics<'_, RootDatabase>,
+    def: hir::Function,
+) -> Option<Runnable> {
     let func = def.source(sema.db)?;
     let name = def.name(sema.db).to_smol_str();
 
@@ -340,7 +343,10 @@ pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) ->
     Some(Runnable { use_name_in_title: false, nav, kind, cfg })
 }
 
-pub(crate) fn runnable_mod(sema: &Semantics<RootDatabase>, def: hir::Module) -> Option<Runnable> {
+pub(crate) fn runnable_mod(
+    sema: &Semantics<'_, RootDatabase>,
+    def: hir::Module,
+) -> Option<Runnable> {
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
@@ -353,7 +359,10 @@ pub(crate) fn runnable_mod(sema: &Semantics<RootDatabase>, def: hir::Module) -> 
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
-pub(crate) fn runnable_impl(sema: &Semantics<RootDatabase>, def: &hir::Impl) -> Option<Runnable> {
+pub(crate) fn runnable_impl(
+    sema: &Semantics<'_, RootDatabase>,
+    def: &hir::Impl,
+) -> Option<Runnable> {
     let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(&attrs) {
         return None;
@@ -375,7 +384,7 @@ pub(crate) fn runnable_impl(sema: &Semantics<RootDatabase>, def: &hir::Impl) -> 
 
 /// Creates a test mod runnable for outline modules at the top of their definition.
 fn runnable_mod_outline_definition(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     def: hir::Module,
 ) -> Option<Runnable> {
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
@@ -509,7 +518,7 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
 // We could create runnables for modules with number_of_test_submodules > 0,
 // but that bloats the runnables for no real benefit, since all tests can be run by the submodule already
 fn has_test_function_or_multiple_test_submodules(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     module: &hir::Module,
 ) -> bool {
     let mut number_of_test_submodules = 0;

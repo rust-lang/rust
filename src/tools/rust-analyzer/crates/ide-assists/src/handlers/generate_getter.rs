@@ -43,7 +43,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     generate_getter_impl(acc, ctx, false)
 }
 
@@ -68,13 +68,13 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<
 //     }
 // }
 // ```
-pub(crate) fn generate_getter_mut(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_getter_mut(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     generate_getter_impl(acc, ctx, true)
 }
 
 pub(crate) fn generate_getter_impl(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     mutable: bool,
 ) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;

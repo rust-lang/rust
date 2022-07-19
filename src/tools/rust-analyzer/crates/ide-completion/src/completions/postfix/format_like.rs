@@ -38,7 +38,7 @@ static KINDS: &[(&str, &str)] = &[
 
 pub(crate) fn add_format_like_completions(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     dot_receiver: &ast::Expr,
     cap: SnippetCap,
     receiver_text: &ast::String,

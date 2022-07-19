@@ -21,7 +21,7 @@ use crate::{
 /// Also complete parameters for closure or local functions from the surrounding defined locals.
 pub(crate) fn complete_fn_param(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
     let (ParamContext { param_list, kind, .. }, impl_) = match pattern_ctx {
@@ -59,7 +59,7 @@ pub(crate) fn complete_fn_param(
 }
 
 fn fill_fn_params(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     function: &ast::Fn,
     param_list: &ast::ParamList,
     impl_: &Option<ast::Impl>,
@@ -113,7 +113,7 @@ fn fill_fn_params(
 }
 
 fn params_from_stmt_list_scope(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     stmt_list: ast::StmtList,
     mut cb: impl FnMut(hir::Name, String),
 ) {
@@ -170,7 +170,7 @@ fn should_add_self_completions(
     }
 }
 
-fn comma_wrapper(ctx: &CompletionContext) -> Option<(impl Fn(&str) -> String, TextRange)> {
+fn comma_wrapper(ctx: &CompletionContext<'_>) -> Option<(impl Fn(&str) -> String, TextRange)> {
     let param = ctx.token.parent_ancestors().find(|node| node.kind() == SyntaxKind::PARAM)?;
 
     let next_token_kind = {

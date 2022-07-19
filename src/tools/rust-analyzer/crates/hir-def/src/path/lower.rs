@@ -15,7 +15,7 @@ use crate::{
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
-pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
+pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
@@ -149,7 +149,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
 }
 
 pub(super) fn lower_generic_args(
-    lower_ctx: &LowerCtx,
+    lower_ctx: &LowerCtx<'_>,
     node: ast::GenericArgList,
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
@@ -196,7 +196,7 @@ pub(super) fn lower_generic_args(
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
 /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
 fn lower_generic_args_from_fn_path(
-    ctx: &LowerCtx,
+    ctx: &LowerCtx<'_>,
     params: Option<ast::ParamList>,
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {

@@ -53,7 +53,7 @@ use super::remove_unused_param::range_to_remove;
 //     name + 2
 // }
 // ```
-pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if ctx.has_empty_selection() {
         return None;
     }
@@ -234,7 +234,7 @@ fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Modul
 impl Module {
     fn get_usages_and_record_fields(
         &self,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
     ) -> (HashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
         let mut adt_fields = Vec::new();
         let mut refs: HashMap<FileId, Vec<(TextRange, String)>> = HashMap::new();
@@ -318,7 +318,7 @@ impl Module {
 
     fn expand_and_group_usages_file_wise(
         &self,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         node_def: Definition,
         refs_in_files: &mut HashMap<FileId, Vec<(TextRange, String)>>,
     ) {
@@ -387,7 +387,7 @@ impl Module {
     fn resolve_imports(
         &mut self,
         curr_parent_module: Option<ast::Module>,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
     ) -> Vec<TextRange> {
         let mut import_paths_to_be_removed: Vec<TextRange> = vec![];
         let mut node_set: HashSet<String> = HashSet::new();
@@ -462,7 +462,7 @@ impl Module {
         def: Definition,
         node_syntax: &SyntaxNode,
         curr_parent_module: &Option<ast::Module>,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
     ) -> Option<TextRange> {
         //We only need to find in the current file
         let selection_range = ctx.selection_trimmed();
@@ -675,7 +675,7 @@ fn check_intersection_and_push(
 
 fn does_source_exists_outside_sel_in_same_mod(
     def: Definition,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     curr_parent_module: &Option<ast::Module>,
     selection_range: TextRange,
     curr_file_id: FileId,
@@ -895,7 +895,7 @@ fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax
 fn compare_hir_and_ast_module(
     ast_module: &ast::Module,
     hir_module: hir::Module,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
     let hir_mod_name = hir_module.name(ctx.db())?;
     let ast_mod_name = ast_module.name()?;

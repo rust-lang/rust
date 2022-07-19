@@ -25,15 +25,15 @@ const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![pub],
 ]);
 
-pub(crate) fn type_(p: &mut Parser) {
+pub(crate) fn type_(p: &mut Parser<'_>) {
     type_with_bounds_cond(p, true);
 }
 
-pub(super) fn type_no_bounds(p: &mut Parser) {
+pub(super) fn type_no_bounds(p: &mut Parser<'_>) {
     type_with_bounds_cond(p, false);
 }
 
-fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
+fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
     match p.current() {
         T!['('] => paren_or_tuple_type(p),
         T![!] => never_type(p),
@@ -54,7 +54,7 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
     }
 }
 
-pub(super) fn ascription(p: &mut Parser) {
+pub(super) fn ascription(p: &mut Parser<'_>) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
     if p.at(T![=]) {
@@ -66,7 +66,7 @@ pub(super) fn ascription(p: &mut Parser) {
     type_(p);
 }
 
-fn paren_or_tuple_type(p: &mut Parser) {
+fn paren_or_tuple_type(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
     let m = p.start();
     p.bump(T!['(']);
@@ -101,14 +101,14 @@ fn paren_or_tuple_type(p: &mut Parser) {
 
 // test never_type
 // type Never = !;
-fn never_type(p: &mut Parser) {
+fn never_type(p: &mut Parser<'_>) {
     assert!(p.at(T![!]));
     let m = p.start();
     p.bump(T![!]);
     m.complete(p, NEVER_TYPE);
 }
 
-fn ptr_type(p: &mut Parser) {
+fn ptr_type(p: &mut Parser<'_>) {
     assert!(p.at(T![*]));
     let m = p.start();
     p.bump(T![*]);
@@ -132,7 +132,7 @@ fn ptr_type(p: &mut Parser) {
     m.complete(p, PTR_TYPE);
 }
 
-fn array_or_slice_type(p: &mut Parser) {
+fn array_or_slice_type(p: &mut Parser<'_>) {
     assert!(p.at(T!['[']));
     let m = p.start();
     p.bump(T!['[']);
@@ -168,7 +168,7 @@ fn array_or_slice_type(p: &mut Parser) {
 // type A = &();
 // type B = &'static ();
 // type C = &mut ();
-fn ref_type(p: &mut Parser) {
+fn ref_type(p: &mut Parser<'_>) {
     assert!(p.at(T![&]));
     let m = p.start();
     p.bump(T![&]);
@@ -182,7 +182,7 @@ fn ref_type(p: &mut Parser) {
 
 // test placeholder_type
 // type Placeholder = _;
-fn infer_type(p: &mut Parser) {
+fn infer_type(p: &mut Parser<'_>) {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
@@ -194,7 +194,7 @@ fn infer_type(p: &mut Parser) {
 // type B = unsafe fn();
 // type C = unsafe extern "C" fn();
 // type D = extern "C" fn ( u8 , ... ) -> u8;
-fn fn_ptr_type(p: &mut Parser) {
+fn fn_ptr_type(p: &mut Parser<'_>) {
     let m = p.start();
     p.eat(T![unsafe]);
     if p.at(T![extern]) {
@@ -218,7 +218,7 @@ fn fn_ptr_type(p: &mut Parser) {
     m.complete(p, FN_PTR_TYPE);
 }
 
-pub(super) fn for_binder(p: &mut Parser) {
+pub(super) fn for_binder(p: &mut Parser<'_>) {
     assert!(p.at(T![for]));
     p.bump(T![for]);
     if p.at(T![<]) {
@@ -232,7 +232,7 @@ pub(super) fn for_binder(p: &mut Parser) {
 // type A = for<'a> fn() -> ();
 // type B = for<'a> unsafe extern "C" fn(&'a ()) -> ();
 // type Obj = for<'a> PartialEq<&'a i32>;
-pub(super) fn for_type(p: &mut Parser, allow_bounds: bool) {
+pub(super) fn for_type(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(p.at(T![for]));
     let m = p.start();
     for_binder(p);
@@ -256,7 +256,7 @@ pub(super) fn for_type(p: &mut Parser, allow_bounds: bool) {
 
 // test impl_trait_type
 // type A = impl Iterator<Item=Foo<'a>> + 'a;
-fn impl_trait_type(p: &mut Parser) {
+fn impl_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![impl]));
     let m = p.start();
     p.bump(T![impl]);
@@ -266,7 +266,7 @@ fn impl_trait_type(p: &mut Parser) {
 
 // test dyn_trait_type
 // type A = dyn Iterator<Item=Foo<'a>> + 'a;
-fn dyn_trait_type(p: &mut Parser) {
+fn dyn_trait_type(p: &mut Parser<'_>) {
     assert!(p.at(T![dyn]));
     let m = p.start();
     p.bump(T![dyn]);
@@ -279,14 +279,14 @@ fn dyn_trait_type(p: &mut Parser) {
 // type B = ::Foo;
 // type C = self::Foo;
 // type D = super::Foo;
-pub(super) fn path_type(p: &mut Parser) {
+pub(super) fn path_type(p: &mut Parser<'_>) {
     path_type_(p, true);
 }
 
 // test macro_call_type
 // type A = foo!();
 // type B = crate::foo!();
-fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
+fn path_or_macro_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
     let r = p.start();
     let m = p.start();
@@ -309,7 +309,7 @@ fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
     }
 }
 
-pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
+pub(super) fn path_type_(p: &mut Parser<'_>, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
@@ -325,7 +325,7 @@ pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
 
 /// This turns a parsed PATH_TYPE or FOR_TYPE optionally into a DYN_TRAIT_TYPE
 /// with a TYPE_BOUND_LIST
-fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser, type_marker: CompletedMarker) {
+fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser<'_>, type_marker: CompletedMarker) {
     assert!(matches!(
         type_marker.kind(),
         SyntaxKind::PATH_TYPE | SyntaxKind::FOR_TYPE | SyntaxKind::MACRO_TYPE

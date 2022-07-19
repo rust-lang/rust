@@ -50,36 +50,36 @@ pub(crate) mod entry {
     pub(crate) mod prefix {
         use super::*;
 
-        pub(crate) fn vis(p: &mut Parser) {
+        pub(crate) fn vis(p: &mut Parser<'_>) {
             let _ = opt_visibility(p, false);
         }
 
-        pub(crate) fn block(p: &mut Parser) {
+        pub(crate) fn block(p: &mut Parser<'_>) {
             expressions::block_expr(p);
         }
 
-        pub(crate) fn stmt(p: &mut Parser) {
+        pub(crate) fn stmt(p: &mut Parser<'_>) {
             expressions::stmt(p, expressions::Semicolon::Forbidden);
         }
 
-        pub(crate) fn pat(p: &mut Parser) {
+        pub(crate) fn pat(p: &mut Parser<'_>) {
             patterns::pattern_single(p);
         }
 
-        pub(crate) fn ty(p: &mut Parser) {
+        pub(crate) fn ty(p: &mut Parser<'_>) {
             types::type_(p);
         }
-        pub(crate) fn expr(p: &mut Parser) {
+        pub(crate) fn expr(p: &mut Parser<'_>) {
             let _ = expressions::expr(p);
         }
-        pub(crate) fn path(p: &mut Parser) {
+        pub(crate) fn path(p: &mut Parser<'_>) {
             let _ = paths::type_path(p);
         }
-        pub(crate) fn item(p: &mut Parser) {
+        pub(crate) fn item(p: &mut Parser<'_>) {
             items::item_or_macro(p, true);
         }
         // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
-        pub(crate) fn meta_item(p: &mut Parser) {
+        pub(crate) fn meta_item(p: &mut Parser<'_>) {
             attributes::meta(p);
         }
     }
@@ -87,14 +87,14 @@ pub(crate) mod entry {
     pub(crate) mod top {
         use super::*;
 
-        pub(crate) fn source_file(p: &mut Parser) {
+        pub(crate) fn source_file(p: &mut Parser<'_>) {
             let m = p.start();
             p.eat(SHEBANG);
             items::mod_contents(p, false);
             m.complete(p, SOURCE_FILE);
         }
 
-        pub(crate) fn macro_stmts(p: &mut Parser) {
+        pub(crate) fn macro_stmts(p: &mut Parser<'_>) {
             let m = p.start();
 
             while !p.at(EOF) {
@@ -104,13 +104,13 @@ pub(crate) mod entry {
             m.complete(p, MACRO_STMTS);
         }
 
-        pub(crate) fn macro_items(p: &mut Parser) {
+        pub(crate) fn macro_items(p: &mut Parser<'_>) {
             let m = p.start();
             items::mod_contents(p, false);
             m.complete(p, MACRO_ITEMS);
         }
 
-        pub(crate) fn pattern(p: &mut Parser) {
+        pub(crate) fn pattern(p: &mut Parser<'_>) {
             let m = p.start();
             patterns::pattern_top(p);
             if p.at(EOF) {
@@ -123,7 +123,7 @@ pub(crate) mod entry {
             m.complete(p, ERROR);
         }
 
-        pub(crate) fn type_(p: &mut Parser) {
+        pub(crate) fn type_(p: &mut Parser<'_>) {
             let m = p.start();
             types::type_(p);
             if p.at(EOF) {
@@ -136,7 +136,7 @@ pub(crate) mod entry {
             m.complete(p, ERROR);
         }
 
-        pub(crate) fn expr(p: &mut Parser) {
+        pub(crate) fn expr(p: &mut Parser<'_>) {
             let m = p.start();
             expressions::expr(p);
             if p.at(EOF) {
@@ -149,7 +149,7 @@ pub(crate) mod entry {
             m.complete(p, ERROR);
         }
 
-        pub(crate) fn meta_item(p: &mut Parser) {
+        pub(crate) fn meta_item(p: &mut Parser<'_>) {
             let m = p.start();
             attributes::meta(p);
             if p.at(EOF) {
@@ -168,7 +168,7 @@ pub(crate) fn reparser(
     node: SyntaxKind,
     first_child: Option<SyntaxKind>,
     parent: Option<SyntaxKind>,
-) -> Option<fn(&mut Parser)> {
+) -> Option<fn(&mut Parser<'_>)> {
     let res = match node {
         BLOCK_EXPR => expressions::block_expr,
         RECORD_FIELD_LIST => items::record_field_list,
@@ -200,7 +200,7 @@ impl BlockLike {
     }
 }
 
-fn opt_visibility(p: &mut Parser, in_tuple_field: bool) -> bool {
+fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
     match p.current() {
         T![pub] => {
             let m = p.start();
@@ -262,7 +262,7 @@ fn opt_visibility(p: &mut Parser, in_tuple_field: bool) -> bool {
     }
 }
 
-fn opt_rename(p: &mut Parser) {
+fn opt_rename(p: &mut Parser<'_>) {
     if p.at(T![as]) {
         let m = p.start();
         p.bump(T![as]);
@@ -273,7 +273,7 @@ fn opt_rename(p: &mut Parser) {
     }
 }
 
-fn abi(p: &mut Parser) {
+fn abi(p: &mut Parser<'_>) {
     assert!(p.at(T![extern]));
     let abi = p.start();
     p.bump(T![extern]);
@@ -281,7 +281,7 @@ fn abi(p: &mut Parser) {
     abi.complete(p, ABI);
 }
 
-fn opt_ret_type(p: &mut Parser) -> bool {
+fn opt_ret_type(p: &mut Parser<'_>) -> bool {
     if p.at(T![->]) {
         let m = p.start();
         p.bump(T![->]);
@@ -293,7 +293,7 @@ fn opt_ret_type(p: &mut Parser) -> bool {
     }
 }
 
-fn name_r(p: &mut Parser, recovery: TokenSet) {
+fn name_r(p: &mut Parser<'_>, recovery: TokenSet) {
     if p.at(IDENT) {
         let m = p.start();
         p.bump(IDENT);
@@ -303,11 +303,11 @@ fn name_r(p: &mut Parser, recovery: TokenSet) {
     }
 }
 
-fn name(p: &mut Parser) {
+fn name(p: &mut Parser<'_>) {
     name_r(p, TokenSet::EMPTY);
 }
 
-fn name_ref(p: &mut Parser) {
+fn name_ref(p: &mut Parser<'_>) {
     if p.at(IDENT) {
         let m = p.start();
         p.bump(IDENT);
@@ -317,21 +317,21 @@ fn name_ref(p: &mut Parser) {
     }
 }
 
-fn name_ref_or_index(p: &mut Parser) {
+fn name_ref_or_index(p: &mut Parser<'_>) {
     assert!(p.at(IDENT) || p.at(INT_NUMBER));
     let m = p.start();
     p.bump_any();
     m.complete(p, NAME_REF);
 }
 
-fn lifetime(p: &mut Parser) {
+fn lifetime(p: &mut Parser<'_>) {
     assert!(p.at(LIFETIME_IDENT));
     let m = p.start();
     p.bump(LIFETIME_IDENT);
     m.complete(p, LIFETIME);
 }
 
-fn error_block(p: &mut Parser, message: &str) {
+fn error_block(p: &mut Parser<'_>, message: &str) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.error(message);

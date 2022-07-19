@@ -111,7 +111,7 @@ impl<D> TyBuilder<D> {
         this
     }
 
-    pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable) -> Self {
+    pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable<'_>) -> Self {
         self.fill(|x| match x {
             ParamKind::Type => GenericArgData::Ty(table.new_type_var()).intern(Interner),
             ParamKind::Const(ty) => {

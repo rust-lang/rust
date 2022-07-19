@@ -59,7 +59,7 @@ use crate::{
 //     };
 // }
 // ```
-pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let def_file = ctx.file_id();
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
@@ -174,7 +174,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext) -> Opt
 //         };
 // }
 // ```
-pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
     let call_info = CallInfo::from_name_ref(name_ref.clone())?;
     let (function, label) = match &call_info.node {
@@ -294,7 +294,7 @@ fn get_fn_params(
 }
 
 fn inline(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     function_def_file_id: FileId,
     function: hir::Function,
     fn_body: &ast::BlockExpr,

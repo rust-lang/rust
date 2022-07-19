@@ -307,7 +307,7 @@ impl Definition {
         }
     }
 
-    pub fn usages<'a>(self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
+    pub fn usages<'a>(self, sema: &'a Semantics<'_, RootDatabase>) -> FindUsages<'a> {
         FindUsages {
             local_repr: match self {
                 Definition::Local(local) => Some(local.representative(sema.db)),
@@ -423,7 +423,7 @@ impl<'a> FindUsages<'a> {
         }
 
         fn scope_files<'a>(
-            sema: &'a Semantics<RootDatabase>,
+            sema: &'a Semantics<'_, RootDatabase>,
             scope: &'a SearchScope,
         ) -> impl Iterator<Item = (Arc<String>, FileId, TextRange)> + 'a {
             scope.entries.iter().map(|(&file_id, &search_range)| {
@@ -741,7 +741,7 @@ impl<'a> FindUsages<'a> {
     }
 }
 
-fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Type> {
+fn def_to_ty(sema: &Semantics<'_, RootDatabase>, def: &Definition) -> Option<hir::Type> {
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),

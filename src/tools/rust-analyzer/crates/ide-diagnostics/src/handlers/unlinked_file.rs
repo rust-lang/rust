@@ -18,7 +18,11 @@ use crate::{fix, Assist, Diagnostic, DiagnosticsContext, Severity};
 //
 // This diagnostic is shown for files that are not included in any crate, or files that are part of
 // crates rust-analyzer failed to discover. The file will not have IDE features available.
-pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, acc: &mut Vec<Diagnostic>, file_id: FileId) {
+pub(crate) fn unlinked_file(
+    ctx: &DiagnosticsContext<'_>,
+    acc: &mut Vec<Diagnostic>,
+    file_id: FileId,
+) {
     // Limit diagnostic to the first few characters in the file. This matches how VS Code
     // renders it with the full span, but on other editors, and is less invasive.
     let range = ctx.sema.db.parse(file_id).syntax_node().text_range();
@@ -32,7 +36,7 @@ pub(crate) fn unlinked_file(ctx: &DiagnosticsContext, acc: &mut Vec<Diagnostic>,
     );
 }
 
-fn fixes(ctx: &DiagnosticsContext, file_id: FileId) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
     // If there's an existing module that could add `mod` or `pub mod` items to include the unlinked file,
     // suggest that as a fix.
 

@@ -8,7 +8,7 @@ use syntax::SyntaxKind;
 
 use crate::{completions::Completions, context::CompletionContext, CompletionItem};
 
-pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
     let add_completion = |item: &str| {
         let mut completion = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item);
         completion.insert_text(format!(r#""{}""#, item));

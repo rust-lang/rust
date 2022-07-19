@@ -142,6 +142,7 @@ fn check_cargo_toml(path: &Path, text: String) {
     }
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn check_merge_commits() {
     let sh = &Shell::new().unwrap();

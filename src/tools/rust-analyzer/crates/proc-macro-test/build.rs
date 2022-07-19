@@ -29,7 +29,12 @@ fn main() {
         .arg(&target_dir)
         .output()
         .unwrap();
-    assert!(output.status.success());
+    if !output.status.success() {
+        println!("proc-macro-test failed to build, detailed output follows:");
+        println!("=== nested cargo stdout ===\n{}\n", String::from_utf8_lossy(&output.stdout));
+        println!("=== nested cargo stderr ===\n{}\n", String::from_utf8_lossy(&output.stderr));
+        panic!("proc-macro-test failed to build");
+    }
 
     let mut artifact_path = None;
     for message in Message::parse_stream(output.stdout.as_slice()) {
