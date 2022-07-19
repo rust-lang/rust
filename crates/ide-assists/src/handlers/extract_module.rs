@@ -382,19 +382,10 @@ impl Module {
         for (vis, syntax) in replacements {
             let item = syntax.children_with_tokens().find(|node_or_token| {
                 match node_or_token.kind() {
-                    // We're looking for the start of functions, impls, structs, traits, and other documentable/attribute
-                    // macroable items that would have pub(crate) in front of it
-                    SyntaxKind::FN_KW
-                    | SyntaxKind::STRUCT_KW
-                    | SyntaxKind::ENUM_KW
-                    | SyntaxKind::TRAIT_KW
-                    | SyntaxKind::TYPE_KW
-                    | SyntaxKind::CONST_KW
-                    | SyntaxKind::MOD_KW => true,
-                    // If we didn't find a keyword, we want to cover the record fields in a struct
-                    SyntaxKind::NAME => true,
-                    // Otherwise, the token shouldn't have pub(crate) before it
-                    _ => false,
+                    // We're skipping comments, doc comments, and attribute macros that may precede the keyword
+                    // that the visibility should be placed before.
+                    SyntaxKind::COMMENT | SyntaxKind::ATTR | SyntaxKind::WHITESPACE => false,
+                    _ => true,
                 }
             });
 
