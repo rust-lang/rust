@@ -389,6 +389,7 @@ impl Module {
                     | SyntaxKind::ENUM_KW
                     | SyntaxKind::TRAIT_KW
                     | SyntaxKind::TYPE_KW
+                    | SyntaxKind::CONST_KW
                     | SyntaxKind::MOD_KW => true,
                     // If we didn't find a keyword, we want to cover the record fields in a struct
                     SyntaxKind::NAME => true,
@@ -1682,7 +1683,10 @@ mod modname {
                 A,
                 /// Another variant
                 B { x: i32, y: i32 }
-            }$0
+            }
+
+            /// Documented const
+            const MY_CONST: i32 = 0;$0
         ",
             r"
             mod modname {
@@ -1765,6 +1769,9 @@ mod modname {
                     /// Another variant
                     B { x: i32, y: i32 }
                 }
+
+                /// Documented const
+                pub(crate) const MY_CONST: i32 = 0;
             }
         ",
         )
