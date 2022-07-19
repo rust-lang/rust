@@ -5,7 +5,6 @@
 // the page, so we don't see major layout changes during the load of the page.
 "use strict";
 
-const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
@@ -228,14 +227,6 @@ function switchToSavedTheme() {
 }
 
 if (isUsingSystemTheme() && window.matchMedia) {
-    // update the preferred dark theme if the user is already using a dark theme
-    // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
-    if (getTheme() === null
-        && getSettingValue("preferred-dark-theme") === null
-        && darkThemes.indexOf(getTheme()) >= 0) {
-        updateLocalStorage("preferred-dark-theme", getTheme());
-    }
-
     // call the function to initialize the theme at least once!
     updateSystemTheme();
 } else {
