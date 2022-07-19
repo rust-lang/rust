@@ -12,7 +12,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
 use rustc_middle::ty::ReStatic;
@@ -533,7 +533,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn member_constraint(
         &mut self,
-        opaque_type_def_id: DefId,
+        opaque_type_def_id: LocalDefId,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         member_region: ty::Region<'tcx>,

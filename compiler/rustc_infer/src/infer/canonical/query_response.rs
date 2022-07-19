@@ -153,7 +153,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             .opaque_type_storage
             .take_opaque_types()
             .into_iter()
-            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id, k.substs), v.hidden_type.ty))
+            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
             .collect()
     }
 
