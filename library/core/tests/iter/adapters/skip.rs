@@ -1,5 +1,7 @@
 use core::iter::*;
 
+use super::Unfuse;
+
 #[test]
 fn test_iterator_skip() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
@@ -189,4 +191,13 @@ fn test_skip_nth_back() {
     let mut it = xs.iter();
     it.by_ref().skip(2).nth_back(10);
     assert_eq!(it.next_back(), Some(&1));
+}
+
+#[test]
+fn test_skip_non_fused() {
+    let non_fused = Unfuse::new(0..10);
+
+    // `Skip` would previously exhaust the iterator in this `next` call and then erroneously try to
+    // advance it further. `Unfuse` tests that this doesn't happen by panicking in that scenario.
+    let _ = non_fused.skip(20).next();
 }
