@@ -328,19 +328,6 @@ fn main() {
                 "WARNING: the flag `-Zmiri-check-number-validity` no longer has any effect \
                         since it is now enabled by default"
             );
-        } else if arg == "-Zmiri-allow-uninit-numbers" {
-            eprintln!(
-                "WARNING: `-Zmiri-allow-uninit-numbers` is deprecated and planned to be removed. \
-                Please let us know at <https://github.com/rust-lang/miri/issues/2187> if you rely on this flag."
-            );
-            miri_config.allow_uninit_numbers = true;
-        } else if arg == "-Zmiri-allow-ptr-int-transmute" {
-            eprintln!(
-                "WARNING: `-Zmiri-allow-ptr-int-transmute` is deprecated and planned to be removed. \
-                Please let us know at <https://github.com/rust-lang/miri/issues/2188> if you rely on this flag."
-            );
-            miri_config.allow_ptr_int_transmute = true;
-            miri_config.provenance_mode = ProvenanceMode::Permissive;
         } else if arg == "-Zmiri-disable-abi-check" {
             miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
@@ -378,7 +365,6 @@ fn main() {
             eprintln!("WARNING: `-Zmiri-tag-raw-pointers` has no effect; it is enabled by default");
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
-            miri_config.allow_ptr_int_transmute = false;
         } else if arg == "-Zmiri-permissive-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Permissive;
         } else if arg == "-Zmiri-mute-stdout-stderr" {
