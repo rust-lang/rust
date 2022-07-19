@@ -626,7 +626,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
     if tcx.is_closure(def.did.to_def_id()) {
         let hir = tcx.hir();
         let owner = hir.enclosing_body_owner(hir.local_def_id_to_hir_id(def.did));
-        tcx.ensure().thir_check_unsafety(hir.local_def_id(owner));
+        tcx.ensure().thir_check_unsafety(owner);
         return;
     }
 

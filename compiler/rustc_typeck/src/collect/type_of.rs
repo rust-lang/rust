@@ -100,7 +100,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 ExprKind::MethodCall(segment, ..) | ExprKind::Path(QPath::TypeRelative(_, segment)),
             ..
         }) => {
-            let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
+            let body_owner = tcx.hir().enclosing_body_owner(hir_id);
             let tables = tcx.typeck(body_owner);
             // This may fail in case the method/path does not actually exist.
             // As there is no relevant param for `def_id`, we simply return
@@ -134,7 +134,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         | ExprKind::Struct(&QPath::Resolved(_, path), ..),
                     ..
                 }) => {
-                    let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
+                    let body_owner = tcx.hir().enclosing_body_owner(hir_id);
                     let _tables = tcx.typeck(body_owner);
                     &*path
                 }

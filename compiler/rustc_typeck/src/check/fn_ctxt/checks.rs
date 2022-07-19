@@ -58,7 +58,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
-            InlineAsmCtxt::new_in_fn(self).check_asm(asm, enclosing_id);
+            InlineAsmCtxt::new_in_fn(self)
+                .check_asm(asm, self.tcx.hir().local_def_id_to_hir_id(enclosing_id));
         }
     }
 
