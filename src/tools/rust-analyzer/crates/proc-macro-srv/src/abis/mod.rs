@@ -32,10 +32,10 @@ mod abi_1_64;
 mod abi_sysroot;
 
 // Used by `test/utils.rs`
-#[cfg(all(test, feature = "in-rust-tree"))]
-pub(crate) use abi_sysroot::TokenStream as TestTokenStream;
 #[cfg(all(test, not(feature = "in-rust-tree")))]
 pub(crate) use abi_1_64::TokenStream as TestTokenStream;
+#[cfg(all(test, feature = "in-rust-tree"))]
+pub(crate) use abi_sysroot::TokenStream as TestTokenStream;
 
 use super::dylib::LoadProcMacroDylibError;
 #[cfg(not(feature = "in-rust-tree"))]

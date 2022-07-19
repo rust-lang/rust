@@ -13,12 +13,12 @@ use super::proc_macro::{
     bridge::{self, server},
 };
 
-use std::{collections::HashMap, sync::Mutex};
+use once_cell::sync::Lazy;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use once_cell::sync::Lazy;
-use std::vec::IntoIter;
 use std::ops::Bound;
+use std::vec::IntoIter;
+use std::{collections::HashMap, sync::Mutex};
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
@@ -284,7 +284,10 @@ impl server::FreeFunctions for Rustc {
         // https://github.com/rust-lang/rust/pull/71858
     }
     fn track_path(&mut self, _path: &str) {}
-    fn literal_from_str(&mut self, _s: &str) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+    fn literal_from_str(
+        &mut self,
+        _s: &str,
+    ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
         todo!("implement literal_from_str")
     }
 }
@@ -334,10 +337,7 @@ impl server::TokenStream for Rustc {
                     symbol
                 };
 
-                let literal = tt::Literal {
-                    text,
-                    id: literal.span,
-                };
+                let literal = tt::Literal { text, id: literal.span };
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(vec![tree])
@@ -413,7 +413,7 @@ impl server::TokenStream for Rustc {
                         suffix: None,
                         span: lit.id,
                     })
-                },
+                }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
                     bridge::TokenTree::Punct(bridge::Punct {
                         ch: punct.char as _,
@@ -674,7 +674,12 @@ impl server::Span for Rustc {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)
     }
-    fn subspan(&mut self, _span: Self::Span, _start: Bound<usize>, _end: Bound<usize>) -> Option<Self::Span> {
+    fn subspan(
+        &mut self,
+        _span: Self::Span,
+        _start: Bound<usize>,
+        _end: Bound<usize>,
+    ) -> Option<Self::Span> {
         // Just return the first span again, because some macros will unwrap the result.
         Some(_span)
     }
@@ -705,7 +710,7 @@ impl server::MultiSpan for Rustc {
 }
 
 impl server::Symbol for Rustc {
-    fn normalize_and_validate_ident(&mut self, _string: &str) -> Result<Self::Symbol,()> {
+    fn normalize_and_validate_ident(&mut self, _string: &str) -> Result<Self::Symbol, ()> {
         todo!()
     }
 }

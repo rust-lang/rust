@@ -11,7 +11,6 @@ use proc_macro_api::ProcMacroKind;
 
 use super::PanicMessage;
 
-
 pub use rustc_server::TokenStream;
 
 pub(crate) struct Abi {
