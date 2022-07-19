@@ -37,10 +37,10 @@ talk about later in this section.
 ## expect
 
 Sometimes, it can be helpful to suppress lints, but at the same time ensure that
-the code in question still emits them. The 'expect' level does exactly this, with
-it a lint can be expected. If the lint in question is not an emitted, a new lint
-`unfulfilled_lint_expectation` at the attribute notifying you that the expectation,
-is no longer fulfilled.
+the code in question still emits them. The 'expect' level does exactly this. If
+the lint in question is not emitted, the `unfulfilled_lint_expectation` lint
+triggers on the `expect` attribute, notifying you that the expectation is no
+longer fulfilled.
 
 ```rust
 fn main() {
@@ -48,7 +48,7 @@ fn main() {
     let unused = "Everyone ignores me";
 
     #[expect(unused_variables)]
-    let used = "I'm usefull";
+    let used = "I'm useful";
     println!("The `used` value is equal to: {:?}", used);
 }
 ```
@@ -67,7 +67,6 @@ warning: this lint expectation is unfulfilled
 
 This level can only be defined via the `#[expect]` attribute and not via the
 console. Lints with the special 'force-warn' lint will still be emitted as usual.
-The fulfillment of expectations is still tracked.
 
 ## warn
 
