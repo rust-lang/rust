@@ -10,6 +10,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::meth;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
@@ -364,17 +365,13 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::vtable_size | sym::vtable_align => {
-                let ptr = args[0].immediate();
-                let layout = self.layout_of(self.tcx.types.usize);
-                let type_ = self.backend_type(layout);
-                let offset = match name {
-                    sym::vtable_size => 1,
-                    sym::vtable_align => 2,
+                let vtable = args[0].immediate();
+                let idx = match name {
+                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
+                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let offset = self.const_int(type_, offset);
-                let vtable_field_ptr = self.inbounds_gep(type_, ptr, &[offset]);
-                self.load(type_, vtable_field_ptr, layout.align.abi)
+                meth::VirtualIndex::from_index(idx).get_usize(self, vtable)
             }
 
             _ if name.as_str().starts_with("simd_") => {

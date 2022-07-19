@@ -297,32 +297,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
                 self.write_immediate(val, dest)
             }
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
-                let val = self.read_immediate(src)?;
-                let (old_data, old_vptr) = val.to_scalar_pair()?;
+            (&ty::Dynamic(ref _data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+                let (old_data, old_vptr) = self.read_immediate(src)?.to_scalar_pair()?;
                 let old_vptr = self.scalar_to_ptr(old_vptr)?;
-                if data_a.principal_def_id() == data_b.principal_def_id() {
-                    return self.write_immediate(*val, dest);
-                }
-                // trait upcasting coercion
-                let Some(vptr_entry_idx) = self.tcx.vtable_trait_upcasting_coercion_new_vptr_slot((
-                    src_pointee_ty,
-                    dest_pointee_ty,
-                )) else {
-                    return self.write_immediate(*val, dest);
-                };
-
                 let (ty, _) = self.get_ptr_vtable(old_vptr)?;
-                let Some(ty::VtblEntry::TraitVPtr(new_trait)) = self.get_vtable_entries(old_vptr)?.get(vptr_entry_idx) else {
-                    throw_ub_format!(
-                        "upcasting to index {vptr_entry_idx} of vtable {old_vptr} but \
-                        that vtable is too small or does not have an upcast-vtable at that index"
-                    )
-                };
-                let new_trait = new_trait.map_bound(|trait_ref| {
-                    ty::ExistentialTraitRef::erase_self_ty(*self.tcx, trait_ref)
-                });
-                let new_vptr = self.get_vtable_ptr(ty, Some(new_trait))?;
+                let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
             (_, &ty::Dynamic(ref data, _)) => {

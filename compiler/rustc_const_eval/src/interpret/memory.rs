@@ -875,7 +875,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                             write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;
                         }
                         Some(GlobalAlloc::Vtable(ty, None)) => {
-                            write!(fmt, " (vtable: impl ? for {ty})")?;
+                            write!(fmt, " (vtable: impl <auto trait> for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;

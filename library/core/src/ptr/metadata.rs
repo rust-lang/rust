@@ -204,6 +204,9 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
     /// Returns the size of the type associated with this vtable.
     #[inline]
     pub fn size_of(self) -> usize {
+        // Note that "size stored in vtable" is *not* the same as "result of size_of_val_raw".
+        // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
+        // `Send` part!
         #[cfg(bootstrap)]
         return self.vtable_ptr.size_of;
         #[cfg(not(bootstrap))]

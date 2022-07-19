@@ -10,9 +10,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///
-    /// The `trait_ref` encodes the erased self type. Hence, if we are
-    /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
-    /// `trait_ref` would map `T: Trait`.
+    /// The `trait_ref` encodes the erased self type. Hence, if we are making an object `Foo<Trait>`
+    /// from a value of type `Foo<T>`, then `trait_ref` would map `T: Trait`. `None` here means that
+    /// this is an auto trait without any methods, so we only need the basic vtable (drop, size,
+    /// align).
     pub fn get_vtable_ptr(
         &self,
         ty: Ty<'tcx>,
