@@ -1,7 +1,10 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::iter;
+use std::panic::{self, AssertUnwindSafe};
+use std::thread;
 
 use log::info;
 
@@ -14,8 +17,6 @@ use rustc_middle::ty::{
 use rustc_target::spec::abi::Abi;
 
 use rustc_session::config::EntryFnType;
-
-use std::collections::HashSet;
 
 use crate::*;
 
@@ -332,7 +333,7 @@ pub fn eval_entry<'tcx>(
     };
 
     // Perform the main execution.
-    let res: InterpResult<'_, i64> = (|| {
+    let res: thread::Result<InterpResult<'_, i64>> = panic::catch_unwind(AssertUnwindSafe(|| {
         // Main loop.
         loop {
             let info = ecx.preprocess_diagnostics();
@@ -362,7 +363,11 @@ pub fn eval_entry<'tcx>(
         }
         let return_code = ecx.read_scalar(&ret_place.into())?.to_machine_isize(&ecx)?;
         Ok(return_code)
-    })();
+    }));
+    let res = res.unwrap_or_else(|panic_payload| {
+        ecx.handle_ice();
+        panic::resume_unwind(panic_payload)
+    });
 
     // Machine cleanup.
     // Execution of the program has halted so any memory access we do here
