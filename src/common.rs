@@ -185,7 +185,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 let (alloc_id, offset) = ptr.into_parts();
                 // For vtables, get the underlying data allocation.
                 let alloc_id = match self.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Vtable(ty, trait_ref) => {
+                    GlobalAlloc::VTable(ty, trait_ref) => {
                         self.tcx.vtable_allocation((ty, trait_ref))
                     }
                     _ => alloc_id,
@@ -208,7 +208,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAlloc::Function(fn_instance) => {
                             self.get_fn_addr(fn_instance)
                         },
-                        GlobalAlloc::Vtable(..) => panic!("vtables are already handled"),
+                        GlobalAlloc::VTable(..) => panic!("vtables are already handled"),
                         GlobalAlloc::Static(def_id) => {
                             assert!(self.tcx.is_static(def_id));
                             self.get_static(def_id).get_address(None)
