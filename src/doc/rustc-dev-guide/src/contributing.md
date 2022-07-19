@@ -227,7 +227,7 @@ Luckily you can just abort this without any consequences by throwing away either
 in rustc or the pushed branch on the remote and try again. It is usually fairly obvious
 that this is happening because you suddenly get thousands of commits that want to be synchronized.
 
-[clippy-sync-docs]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/infrastructure/sync.md
+[clippy-sync-docs]: https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html
 
 #### Creating a new subtree dependency
 
