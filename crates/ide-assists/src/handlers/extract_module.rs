@@ -385,12 +385,12 @@ impl Module {
                     // We're looking for the start of functions, impls, structs, traits, and other documentable/attribute
                     // macroable items that would have pub(crate) in front of it
                     SyntaxKind::FN_KW
-                    | SyntaxKind::IMPL_KW
                     | SyntaxKind::STRUCT_KW
+                    | SyntaxKind::ENUM_KW
                     | SyntaxKind::TRAIT_KW
                     | SyntaxKind::TYPE_KW
                     | SyntaxKind::MOD_KW => true,
-                    // If we didn't find a keyword, we want to cover the record fields
+                    // If we didn't find a keyword, we want to cover the record fields in a struct
                     SyntaxKind::NAME => true,
                     // Otherwise, the token shouldn't have pub(crate) before it
                     _ => false,
@@ -1659,7 +1659,30 @@ mod modname {
 
             // A macroed type
             #[cfg(test)]
-            type MacroedType = i32;$0
+            type MacroedType = i32;
+            
+            /// A module to move
+            mod module {}
+            
+            /// An impl to move
+            impl NormalStruct {
+                /// A method
+                fn new() {}
+            }
+
+            /// A documented trait
+            trait DocTrait {
+                /// Inner function
+                fn doc() {}
+            }
+
+            /// An enum
+            enum DocumentedEnum {
+                /// A variant
+                A,
+                /// Another variant
+                B { x: i32, y: i32 }
+            }$0
         ",
             r"
             mod modname {
@@ -1719,6 +1742,29 @@ mod modname {
                 // A macroed type
                 #[cfg(test)]
                 pub(crate) type MacroedType = i32;
+
+                /// A module to move
+                pub(crate) mod module {}
+
+                /// An impl to move
+                impl NormalStruct {
+                    /// A method
+                    pub(crate) fn new() {}
+                }
+
+                /// A documented trait
+                pub(crate) trait DocTrait {
+                    /// Inner function
+                    fn doc() {}
+                }
+
+                /// An enum
+                pub(crate) enum DocumentedEnum {
+                    /// A variant
+                    A,
+                    /// Another variant
+                    B { x: i32, y: i32 }
+                }
             }
         ",
         )
