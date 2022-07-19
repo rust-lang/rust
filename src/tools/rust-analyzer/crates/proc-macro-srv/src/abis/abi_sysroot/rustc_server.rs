@@ -13,7 +13,7 @@ use super::proc_macro::{
     bridge::{self, server},
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
 use std::hash::Hash;
 use std::iter::FromIterator;
 use once_cell::sync::Lazy;
@@ -129,38 +129,30 @@ impl Diagnostic {
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct SymbolId(u32);
 
-#[derive(Clone, Hash, Eq, PartialEq)]
-struct SymbolData(tt::SmolStr);
-
 #[derive(Default)]
 struct SymbolInterner {
-    idents: HashMap<SymbolData, u32>,
-    ident_data: Vec<SymbolData>,
+    idents: HashMap<tt::SmolStr, u32>,
+    ident_data: Vec<tt::SmolStr>,
 }
 
 impl SymbolInterner {
-    fn intern(&mut self, data: &SymbolData) -> u32 {
-        if let Some(index) = self.idents.get(data) {
-            return *index;
+    fn intern(&mut self, data: &tt::SmolStr) -> SymbolId {
+        if let Some(index) = self.idents.get(data.as_str()) {
+            return SymbolId(*index);
         }
 
         let index = self.idents.len() as u32;
         self.ident_data.push(data.clone());
         self.idents.insert(data.clone(), index);
-        index
+        SymbolId(index)
     }
 
-    fn get(&self, index: u32) -> &SymbolData {
-        &self.ident_data[index as usize]
-    }
-
-    #[allow(unused)]
-    fn get_mut(&mut self, index: u32) -> &mut SymbolData {
-        self.ident_data.get_mut(index as usize).expect("Should be consistent")
+    fn get(&self, index: &SymbolId) -> &tt::SmolStr {
+        &self.ident_data[index.0 as usize]
     }
 }
 
-static SYMBOL_INTERNER: Lazy<SymbolInterner> = Lazy::new(|| SymbolInterner::default());
+static SYMBOL_INTERNER: Lazy<Mutex<SymbolInterner>> = Lazy::new(|| Default::default());
 
 pub struct TokenStreamBuilder {
     acc: TokenStream,
@@ -292,7 +284,7 @@ impl server::FreeFunctions for Rustc {
         // https://github.com/rust-lang/rust/pull/71858
     }
     fn track_path(&mut self, _path: &str) {}
-    fn literal_from_str(&mut self, s: &str) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+    fn literal_from_str(&mut self, _s: &str) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
         todo!("implement literal_from_str")
     }
 }
@@ -325,7 +317,7 @@ impl server::TokenStream for Rustc {
 
             bridge::TokenTree::Ident(ident) => {
                 // TODO: what about raw idents?
-                let SymbolData(text) = SYMBOL_INTERNER.get(ident.sym.0).clone();
+                let text = SYMBOL_INTERNER.lock().unwrap().get(&ident.sym).clone();
                 let ident: tt::Ident = tt::Ident { text, id: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
@@ -333,10 +325,10 @@ impl server::TokenStream for Rustc {
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let SymbolData(symbol) = SYMBOL_INTERNER.get(literal.symbol.0).clone();
+                let symbol = SYMBOL_INTERNER.lock().unwrap().get(&literal.symbol).clone();
 
                 let text: tt::SmolStr = if let Some(suffix) = literal.suffix {
-                    let SymbolData(suffix) = SYMBOL_INTERNER.get(suffix.0).clone();
+                    let suffix = SYMBOL_INTERNER.lock().unwrap().get(&suffix).clone();
                     format!("{symbol}{suffix}").into()
                 } else {
                     symbol
@@ -406,9 +398,22 @@ impl server::TokenStream for Rustc {
             .into_iter()
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(SymbolId(self.symbol_interner.intern(&SymbolData(ident))))
+                    bridge::TokenTree::Ident(bridge::Ident {
+                        sym: SYMBOL_INTERNER.lock().unwrap().intern(&ident.text),
+                        // TODO: handle raw idents
+                        is_raw: false,
+                        span: ident.id,
+                    })
                 }
-                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => bridge::TokenTree::Literal(lit),
+                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                    bridge::TokenTree::Literal(bridge::Literal {
+                        // TODO: implement literal_from_str
+                        kind: bridge::LitKind::Err,
+                        symbol: SYMBOL_INTERNER.lock().unwrap().intern(&lit.text),
+                        suffix: None,
+                        span: lit.id,
+                    })
+                },
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
                     bridge::TokenTree::Punct(bridge::Punct {
                         ch: punct.char as _,
@@ -669,7 +674,7 @@ impl server::Span for Rustc {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)
     }
-    fn subspan(&mut self, _span: Self::Span, start: Bound<usize>, end: Bound<usize>) -> Option<Self::Span> {
+    fn subspan(&mut self, _span: Self::Span, _start: Bound<usize>, _end: Bound<usize>) -> Option<Self::Span> {
         // Just return the first span again, because some macros will unwrap the result.
         Some(_span)
     }
@@ -700,7 +705,7 @@ impl server::MultiSpan for Rustc {
 }
 
 impl server::Symbol for Rustc {
-    fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol,()> {
+    fn normalize_and_validate_ident(&mut self, _string: &str) -> Result<Self::Symbol,()> {
         todo!()
     }
 }
@@ -715,13 +720,11 @@ impl server::Server for Rustc {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        SymbolId(SYMBOL_INTERNER.intern(&SymbolData(
-            tt::SmolStr::from(ident)
-        )))
+        SYMBOL_INTERNER.lock().unwrap().intern(&tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(SYMBOL_INTERNER.get(symbol.0).0.as_str())
+        f(SYMBOL_INTERNER.lock().unwrap().get(symbol).as_str())
     }
 }
 

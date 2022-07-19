@@ -81,6 +81,7 @@ fn load_library(file: &Path) -> Result<Library, libloading::Error> {
 pub enum LoadProcMacroDylibError {
     Io(io::Error),
     LibLoading(libloading::Error),
+    #[cfg(not(feature = "in-rust-tree"))]
     UnsupportedABI,
 }
 
@@ -88,6 +89,7 @@ impl fmt::Display for LoadProcMacroDylibError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(e) => e.fmt(f),
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::UnsupportedABI => write!(f, "unsupported ABI version"),
             Self::LibLoading(e) => e.fmt(f),
         }

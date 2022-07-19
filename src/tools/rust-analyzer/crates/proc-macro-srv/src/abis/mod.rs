@@ -87,6 +87,9 @@ impl Abi {
     ) -> Result<Abi, LoadProcMacroDylibError> {
         #[cfg(feature = "in-rust-tree")]
         {
+            // gets rid of unused warning
+            let _ = info;
+
             let inner = unsafe { AbiSysroot::from_lib(lib, symbol_name) }?;
             return Ok(Abi::AbiSysroot(inner));
         }
