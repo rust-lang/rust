@@ -591,11 +591,7 @@ fn lit_kind_for_patch(patch: &str) -> StrLitKind {
     let has_dquote = patch.chars().any(|c| c == '"');
     if !has_dquote {
         let has_bslash_or_newline = patch.chars().any(|c| matches!(c, '\\' | '\n'));
-        return if has_bslash_or_newline {
-            StrLitKind::Raw(1)
-        } else {
-            StrLitKind::Normal
-        };
+        return if has_bslash_or_newline { StrLitKind::Raw(1) } else { StrLitKind::Normal };
     }
 
     // Find the maximum number of hashes that follow a double quote in the string.
@@ -649,9 +645,15 @@ fn to_abs_ws_path(path: &Path) -> PathBuf {
     static WORKSPACE_ROOT: OnceCell<PathBuf> = OnceCell::new();
     WORKSPACE_ROOT
         .get_or_try_init(|| {
-            let my_manifest = env::var("CARGO_MANIFEST_DIR")?;
+            // Until https://github.com/rust-lang/cargo/issues/3946 is resolved, this
+            // is set with a hack like https://github.com/rust-lang/cargo/issues/3946#issuecomment-973132993
+            if let Ok(workspace_root) = env::var("CARGO_WORKSPACE_DIR") {
+                return Ok(workspace_root.into());
+            }
 
-            // Heuristic, see https://github.com/rust-lang/cargo/issues/3946
+            // If a hack isn't used, we use a heuristic to find the "top-level" workspace.
+            // This fails in some cases, see https://github.com/rust-analyzer/expect-test/issues/33
+            let my_manifest = env::var("CARGO_MANIFEST_DIR")?;
             let workspace_root = Path::new(&my_manifest)
                 .ancestors()
                 .filter(|it| it.join("Cargo.toml").exists())
