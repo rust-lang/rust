@@ -6,6 +6,7 @@ use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::parse::{feature_err, ParseSess};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::{kw, sym, Ident};
 
 use rustc_span::edition::Edition;
@@ -238,11 +239,19 @@ fn parse_tree(
                         // is actually defining this macro (the current local crate). This is
                         // most easily accomplished with a macro expanded macro_rules! which
                         // uses `$$crate` to get a `$crate` in the expanded macro definition.
-                        let mut expn = span.ctxt().outer_expn_data();
-                        expn.parent = ExpnId::root();
-                        let span =
-                            span.with_call_site_ctxt(LocalExpnId::fresh(expn, ctx).to_expn_id());
-                        TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
+                        let mut expn_data = span.ctxt().outer_expn_data();
+                        expn_data.parent = ExpnId::root();
+                        let local_span = span.fresh_expansion(LocalExpnId::fresh(expn_data, ctx));
+
+                        if span.ctxt().outer_mark().0.krate != LOCAL_CRATE {
+                            let old = span.ctxt().outer_mark().0.krate.as_def_id();
+                            let new = LOCAL_CRATE.as_def_id();
+                            tracing::debug!(
+                                "$crate changed its target crate from {old:?} to {new:?}"
+                            );
+                        }
+
+                        TokenTree::token(token::Ident(kw::DollarCrate, is_raw), local_span)
                     } else {
                         TokenTree::MetaVar(span, ident)
                     }
