@@ -797,8 +797,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         if let Some(list) = must_implement_one_of_functions.as_deref() {
             write!(
                 w,
-                "<div class=\"stab must_implement\">At least one of {} methods is required.</div>",
-                list.iter().join(", ")
+                "<div class=\"stab must_implement\">At least one of `{}` methods is required.</div>",
+                list.iter().join("`, `")
             );
         }
 
