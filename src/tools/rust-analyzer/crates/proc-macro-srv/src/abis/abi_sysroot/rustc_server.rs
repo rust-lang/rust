@@ -16,8 +16,8 @@ use super::proc_macro::{
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use std::ops::Bound;
-use std::{ascii, vec::IntoIter};
+use once_cell::sync::Lazy;
+use std::vec::IntoIter;
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
@@ -125,22 +125,20 @@ impl Diagnostic {
     }
 }
 
-// Rustc Server Ident has to be `Copyable`
-// We use a stub here for bypassing
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
-pub struct IdentId(u32);
+pub struct SymbolId(u32);
 
 #[derive(Clone, Hash, Eq, PartialEq)]
-struct IdentData(tt::Ident);
+struct SymbolData(tt::SmolStr);
 
 #[derive(Default)]
-struct IdentInterner {
-    idents: HashMap<IdentData, u32>,
-    ident_data: Vec<IdentData>,
+struct SymbolInterner {
+    idents: HashMap<SymbolData, u32>,
+    ident_data: Vec<SymbolData>,
 }
 
-impl IdentInterner {
-    fn intern(&mut self, data: &IdentData) -> u32 {
+impl SymbolInterner {
+    fn intern(&mut self, data: &SymbolData) -> u32 {
         if let Some(index) = self.idents.get(data) {
             return *index;
         }
@@ -151,15 +149,17 @@ impl IdentInterner {
         index
     }
 
-    fn get(&self, index: u32) -> &IdentData {
+    fn get(&self, index: u32) -> &SymbolData {
         &self.ident_data[index as usize]
     }
 
     #[allow(unused)]
-    fn get_mut(&mut self, index: u32) -> &mut IdentData {
+    fn get_mut(&mut self, index: u32) -> &mut SymbolData {
         self.ident_data.get_mut(index as usize).expect("Should be consistent")
     }
 }
+
+static SYMBOL_INTERNER: Lazy<SymbolInterner> = Lazy::new(|| SymbolInterner::default());
 
 pub struct TokenStreamBuilder {
     acc: TokenStream,
@@ -272,19 +272,18 @@ pub struct TokenStreamIter {
 
 #[derive(Default)]
 pub struct Rustc {
-    ident_interner: IdentInterner,
+    symbol_interner: SymbolInterner,
     // FIXME: store span information here.
 }
 
 impl server::Types for Rustc {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type Ident = IdentId;
-    type Literal = Literal;
     type SourceFile = SourceFile;
+    type MultiSpan = Vec<Span>;
     type Diagnostic = Diagnostic;
     type Span = Span;
-    type MultiSpan = Vec<Span>;
+    type Symbol = SymbolId;
 }
 
 impl server::FreeFunctions for Rustc {
@@ -293,6 +292,9 @@ impl server::FreeFunctions for Rustc {
         // https://github.com/rust-lang/rust/pull/71858
     }
     fn track_path(&mut self, _path: &str) {}
+    fn literal_from_str(&mut self, s: &str) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+        todo!("implement literal_from_str")
+    }
 }
 
 impl server::TokenStream for Rustc {
@@ -309,7 +311,7 @@ impl server::TokenStream for Rustc {
     }
     fn from_token_tree(
         &mut self,
-        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>,
+        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
         match tree {
             bridge::TokenTree::Group(group) => {
@@ -321,8 +323,8 @@ impl server::TokenStream for Rustc {
                 Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Ident(IdentId(index)) => {
-                let IdentData(ident) = self.ident_interner.get(index).clone();
+            bridge::TokenTree::Ident(SymbolId(index)) => {
+                let SymbolData(ident) = self.symbol_interner.get(index).clone();
                 let ident: tt::Ident = ident;
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
@@ -355,7 +357,7 @@ impl server::TokenStream for Rustc {
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>>,
+        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
         let mut builder = TokenStreamBuilder::new();
         if let Some(base) = base {
@@ -385,12 +387,12 @@ impl server::TokenStream for Rustc {
     fn into_trees(
         &mut self,
         stream: Self::TokenStream,
-    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>> {
+    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
         stream
             .into_iter()
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(IdentId(self.ident_interner.intern(&IdentData(ident))))
+                    bridge::TokenTree::Ident(SymbolId(self.symbol_interner.intern(&SymbolData(ident))))
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => bridge::TokenTree::Literal(lit),
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
@@ -447,131 +449,131 @@ fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     }
 }
 
-impl server::Ident for Rustc {
-    fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
-        IdentId(self.ident_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
-    }
+// impl server::Ident for Rustc {
+//     fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
+//         IdentId(self.symbol_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
+//     }
 
-    fn span(&mut self, ident: Self::Ident) -> Self::Span {
-        self.ident_interner.get(ident.0).0.id
-    }
-    fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
-        let data = self.ident_interner.get(ident.0);
-        let new = IdentData(tt::Ident { id: span, ..data.0.clone() });
-        IdentId(self.ident_interner.intern(&new))
-    }
-}
+//     fn span(&mut self, ident: Self::Ident) -> Self::Span {
+//         self.symbol_interner.get(ident.0).0.id
+//     }
+//     fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
+//         let data = self.symbol_interner.get(ident.0);
+//         let new = IdentData(tt::Ident { id: span, ..data.0.clone() });
+//         IdentId(self.symbol_interner.intern(&new))
+//     }
+// }
 
-impl server::Literal for Rustc {
-    fn debug_kind(&mut self, _literal: &Self::Literal) -> String {
-        // r-a: debug_kind and suffix are unsupported; corresponding client code has been changed to not call these.
-        // They must still be present to be ABI-compatible and work with upstream proc_macro.
-        "".to_owned()
-    }
-    fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
-        Ok(Literal { text: s.into(), id: tt::TokenId::unspecified() })
-    }
-    fn symbol(&mut self, literal: &Self::Literal) -> String {
-        literal.text.to_string()
-    }
-    fn suffix(&mut self, _literal: &Self::Literal) -> Option<String> {
-        None
-    }
+// impl server::Literal for Rustc {
+//     fn debug_kind(&mut self, _literal: &Self::Literal) -> String {
+//         // r-a: debug_kind and suffix are unsupported; corresponding client code has been changed to not call these.
+//         // They must still be present to be ABI-compatible and work with upstream proc_macro.
+//         "".to_owned()
+//     }
+//     fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
+//         Ok(Literal { text: s.into(), id: tt::TokenId::unspecified() })
+//     }
+//     fn symbol(&mut self, literal: &Self::Literal) -> String {
+//         literal.text.to_string()
+//     }
+//     fn suffix(&mut self, _literal: &Self::Literal) -> Option<String> {
+//         None
+//     }
 
-    fn to_string(&mut self, literal: &Self::Literal) -> String {
-        literal.to_string()
-    }
+//     fn to_string(&mut self, literal: &Self::Literal) -> String {
+//         literal.to_string()
+//     }
 
-    fn integer(&mut self, n: &str) -> Self::Literal {
-        let n = match n.parse::<i128>() {
-            Ok(n) => n.to_string(),
-            Err(_) => n.parse::<u128>().unwrap().to_string(),
-        };
-        Literal { text: n.into(), id: tt::TokenId::unspecified() }
-    }
+//     fn integer(&mut self, n: &str) -> Self::Literal {
+//         let n = match n.parse::<i128>() {
+//             Ok(n) => n.to_string(),
+//             Err(_) => n.parse::<u128>().unwrap().to_string(),
+//         };
+//         Literal { text: n.into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
-        macro_rules! def_suffixed_integer {
-            ($kind:ident, $($ty:ty),*) => {
-                match $kind {
-                    $(
-                        stringify!($ty) => {
-                            let n: $ty = n.parse().unwrap();
-                            format!(concat!("{}", stringify!($ty)), n)
-                        }
-                    )*
-                    _ => unimplemented!("unknown args for typed_integer: n {}, kind {}", n, $kind),
-                }
-            }
-        }
+//     fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
+//         macro_rules! def_suffixed_integer {
+//             ($kind:ident, $($ty:ty),*) => {
+//                 match $kind {
+//                     $(
+//                         stringify!($ty) => {
+//                             let n: $ty = n.parse().unwrap();
+//                             format!(concat!("{}", stringify!($ty)), n)
+//                         }
+//                     )*
+//                     _ => unimplemented!("unknown args for typed_integer: n {}, kind {}", n, $kind),
+//                 }
+//             }
+//         }
 
-        let text = def_suffixed_integer! {kind, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize};
+//         let text = def_suffixed_integer! {kind, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize};
 
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
+//         Literal { text: text.into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn float(&mut self, n: &str) -> Self::Literal {
-        let n: f64 = n.parse().unwrap();
-        let mut text = f64::to_string(&n);
-        if !text.contains('.') {
-            text += ".0"
-        }
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
+//     fn float(&mut self, n: &str) -> Self::Literal {
+//         let n: f64 = n.parse().unwrap();
+//         let mut text = f64::to_string(&n);
+//         if !text.contains('.') {
+//             text += ".0"
+//         }
+//         Literal { text: text.into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn f32(&mut self, n: &str) -> Self::Literal {
-        let n: f32 = n.parse().unwrap();
-        let text = format!("{}f32", n);
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
+//     fn f32(&mut self, n: &str) -> Self::Literal {
+//         let n: f32 = n.parse().unwrap();
+//         let text = format!("{}f32", n);
+//         Literal { text: text.into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn f64(&mut self, n: &str) -> Self::Literal {
-        let n: f64 = n.parse().unwrap();
-        let text = format!("{}f64", n);
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
+//     fn f64(&mut self, n: &str) -> Self::Literal {
+//         let n: f64 = n.parse().unwrap();
+//         let text = format!("{}f64", n);
+//         Literal { text: text.into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn string(&mut self, string: &str) -> Self::Literal {
-        let mut escaped = String::new();
-        for ch in string.chars() {
-            escaped.extend(ch.escape_debug());
-        }
-        Literal { text: format!("\"{}\"", escaped).into(), id: tt::TokenId::unspecified() }
-    }
+//     fn string(&mut self, string: &str) -> Self::Literal {
+//         let mut escaped = String::new();
+//         for ch in string.chars() {
+//             escaped.extend(ch.escape_debug());
+//         }
+//         Literal { text: format!("\"{}\"", escaped).into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn character(&mut self, ch: char) -> Self::Literal {
-        Literal { text: format!("'{}'", ch).into(), id: tt::TokenId::unspecified() }
-    }
+//     fn character(&mut self, ch: char) -> Self::Literal {
+//         Literal { text: format!("'{}'", ch).into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
-        let string = bytes
-            .iter()
-            .cloned()
-            .flat_map(ascii::escape_default)
-            .map(Into::<char>::into)
-            .collect::<String>();
+//     fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
+//         let string = bytes
+//             .iter()
+//             .cloned()
+//             .flat_map(ascii::escape_default)
+//             .map(Into::<char>::into)
+//             .collect::<String>();
 
-        Literal { text: format!("b\"{}\"", string).into(), id: tt::TokenId::unspecified() }
-    }
+//         Literal { text: format!("b\"{}\"", string).into(), id: tt::TokenId::unspecified() }
+//     }
 
-    fn span(&mut self, literal: &Self::Literal) -> Self::Span {
-        literal.id
-    }
+//     fn span(&mut self, literal: &Self::Literal) -> Self::Span {
+//         literal.id
+//     }
 
-    fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
-        literal.id = span;
-    }
+//     fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
+//         literal.id = span;
+//     }
 
-    fn subspan(
-        &mut self,
-        _literal: &Self::Literal,
-        _start: Bound<usize>,
-        _end: Bound<usize>,
-    ) -> Option<Self::Span> {
-        // FIXME handle span
-        None
-    }
-}
+//     fn subspan(
+//         &mut self,
+//         _literal: &Self::Literal,
+//         _start: Bound<usize>,
+//         _end: Bound<usize>,
+//     ) -> Option<Self::Span> {
+//         // FIXME handle span
+//         None
+//     }
+// }
 
 impl server::SourceFile for Rustc {
     // FIXME these are all stubs
@@ -679,6 +681,12 @@ impl server::MultiSpan for Rustc {
     }
 }
 
+impl server::Symbol for Rustc {
+    fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol,()> {
+        todo!()
+    }
+}
+
 impl server::Server for Rustc {
     fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
         bridge::ExpnGlobals {
@@ -687,49 +695,58 @@ impl server::Server for Rustc {
             mixed_site: tt::TokenId::unspecified(),
         }
     }
+
+    fn intern_symbol(ident: &str) -> Self::Symbol {
+        SymbolId(SYMBOL_INTERNER.intern(&SymbolData(
+            tt::SmolStr::from(ident)
+        )))
+    }
+
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        f(SYMBOL_INTERNER.get(symbol.0).0.as_str())
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::proc_macro::bridge::server::Literal;
     use super::*;
 
-    #[test]
-    fn test_rustc_server_literals() {
-        let mut srv = Rustc { ident_interner: IdentInterner::default() };
-        assert_eq!(srv.integer("1234").text, "1234");
+    // #[test]
+    // fn test_rustc_server_literals() {
+    //     let mut srv = Rustc { symbol_interner: SymbolInterner::default() };
+    //     assert_eq!(srv.integer("1234").text, "1234");
 
-        assert_eq!(srv.typed_integer("12", "u8").text, "12u8");
-        assert_eq!(srv.typed_integer("255", "u16").text, "255u16");
-        assert_eq!(srv.typed_integer("1234", "u32").text, "1234u32");
-        assert_eq!(srv.typed_integer("15846685", "u64").text, "15846685u64");
-        assert_eq!(srv.typed_integer("15846685258", "u128").text, "15846685258u128");
-        assert_eq!(srv.typed_integer("156788984", "usize").text, "156788984usize");
-        assert_eq!(srv.typed_integer("127", "i8").text, "127i8");
-        assert_eq!(srv.typed_integer("255", "i16").text, "255i16");
-        assert_eq!(srv.typed_integer("1234", "i32").text, "1234i32");
-        assert_eq!(srv.typed_integer("15846685", "i64").text, "15846685i64");
-        assert_eq!(srv.typed_integer("15846685258", "i128").text, "15846685258i128");
-        assert_eq!(srv.float("0").text, "0.0");
-        assert_eq!(srv.float("15684.5867").text, "15684.5867");
-        assert_eq!(srv.f32("15684.58").text, "15684.58f32");
-        assert_eq!(srv.f64("15684.58").text, "15684.58f64");
+    //     assert_eq!(srv.typed_integer("12", "u8").text, "12u8");
+    //     assert_eq!(srv.typed_integer("255", "u16").text, "255u16");
+    //     assert_eq!(srv.typed_integer("1234", "u32").text, "1234u32");
+    //     assert_eq!(srv.typed_integer("15846685", "u64").text, "15846685u64");
+    //     assert_eq!(srv.typed_integer("15846685258", "u128").text, "15846685258u128");
+    //     assert_eq!(srv.typed_integer("156788984", "usize").text, "156788984usize");
+    //     assert_eq!(srv.typed_integer("127", "i8").text, "127i8");
+    //     assert_eq!(srv.typed_integer("255", "i16").text, "255i16");
+    //     assert_eq!(srv.typed_integer("1234", "i32").text, "1234i32");
+    //     assert_eq!(srv.typed_integer("15846685", "i64").text, "15846685i64");
+    //     assert_eq!(srv.typed_integer("15846685258", "i128").text, "15846685258i128");
+    //     assert_eq!(srv.float("0").text, "0.0");
+    //     assert_eq!(srv.float("15684.5867").text, "15684.5867");
+    //     assert_eq!(srv.f32("15684.58").text, "15684.58f32");
+    //     assert_eq!(srv.f64("15684.58").text, "15684.58f64");
 
-        assert_eq!(srv.string("hello_world").text, "\"hello_world\"");
-        assert_eq!(srv.character('c').text, "'c'");
-        assert_eq!(srv.byte_string(b"1234586\x88").text, "b\"1234586\\x88\"");
+    //     assert_eq!(srv.string("hello_world").text, "\"hello_world\"");
+    //     assert_eq!(srv.character('c').text, "'c'");
+    //     assert_eq!(srv.byte_string(b"1234586\x88").text, "b\"1234586\\x88\"");
 
-        // u128::max
-        assert_eq!(
-            srv.integer("340282366920938463463374607431768211455").text,
-            "340282366920938463463374607431768211455"
-        );
-        // i128::min
-        assert_eq!(
-            srv.integer("-170141183460469231731687303715884105728").text,
-            "-170141183460469231731687303715884105728"
-        );
-    }
+    //     // u128::max
+    //     assert_eq!(
+    //         srv.integer("340282366920938463463374607431768211455").text,
+    //         "340282366920938463463374607431768211455"
+    //     );
+    //     // i128::min
+    //     assert_eq!(
+    //         srv.integer("-170141183460469231731687303715884105728").text,
+    //         "-170141183460469231731687303715884105728"
+    //     );
+    // }
 
     #[test]
     fn test_rustc_server_to_string() {

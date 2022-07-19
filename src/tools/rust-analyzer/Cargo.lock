@@ -1167,6 +1167,7 @@ dependencies = [
  "mbe",
  "memmap2",
  "object 0.29.0",
+ "once_cell",
  "paths",
  "proc-macro-api",
  "proc-macro-test",

@@ -32,7 +32,9 @@ mod abi_1_64;
 mod abi_sysroot;
 
 // Used by `test/utils.rs`
-#[cfg(test)]
+#[cfg(all(test, feature = "in-rust-tree"))]
+pub(crate) use abi_sysroot::TokenStream as TestTokenStream;
+#[cfg(all(test, not(feature = "in-rust-tree")))]
 pub(crate) use abi_1_64::TokenStream as TestTokenStream;
 
 use super::dylib::LoadProcMacroDylibError;
@@ -65,7 +67,7 @@ pub(crate) enum Abi {
     #[cfg(not(feature = "in-rust-tree"))]
     Abi1_64(Abi_1_64),
     #[cfg(feature = "in-rust-tree")]
-    Sysroot(AbiSysroot),
+    AbiSysroot(AbiSysroot),
 }
 
 impl Abi {
