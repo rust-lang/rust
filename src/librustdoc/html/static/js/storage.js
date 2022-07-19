@@ -43,11 +43,18 @@ function getSettingValue(settingName) {
 }
 
 function isUsingSystemTheme() {
-    const current = getSettingValue("theme");
+    const current = getTheme();
     return current === null || current === "system-preference";
 }
 
-const localStoredTheme = getSettingValue("theme");
+function getTheme() {
+    const current = getSettingValue("theme2");
+    if (current === null) {
+        // We try to get what's being used in the previous version.
+        return getSettingValue("theme");
+    }
+    return current;
+}
 
 const savedHref = [];
 
@@ -200,7 +207,7 @@ const updateSystemTheme = (function() {
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
         } else {
-            use(getSettingValue("theme"), true);
+            use(getTheme(), true);
         }
     }
 
@@ -215,7 +222,7 @@ function switchToSavedTheme() {
     switchTheme(
         window.currentTheme,
         window.mainTheme,
-        getSettingValue("theme") || "light",
+        getTheme() || "light",
         false
     );
 }
@@ -223,10 +230,10 @@ function switchToSavedTheme() {
 if (isUsingSystemTheme() && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
     // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
-    if (getSettingValue("theme") === null
+    if (getTheme() === null
         && getSettingValue("preferred-dark-theme") === null
-        && darkThemes.indexOf(localStoredTheme) >= 0) {
-        updateLocalStorage("preferred-dark-theme", localStoredTheme);
+        && darkThemes.indexOf(getTheme()) >= 0) {
+        updateLocalStorage("preferred-dark-theme", getTheme());
     }
 
     // call the function to initialize the theme at least once!
