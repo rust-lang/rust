@@ -11,6 +11,9 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 #![allow(unreachable_pub)]
+#![cfg_attr(feature = "in-rust-tree", feature(proc_macro_internals))]
+#![cfg_attr(feature = "in-rust-tree", feature(proc_macro_diagnostic))]
+#![cfg_attr(feature = "in-rust-tree", feature(proc_macro_span))]
 
 mod dylib;
 mod abis;
