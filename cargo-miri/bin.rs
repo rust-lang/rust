@@ -374,12 +374,15 @@ fn setup(subcommand: MiriCommand) {
         }
         None => {
             // Check for `rust-src` rustup component.
-            let sysroot = miri()
-                .args(&["--print", "sysroot"])
-                .output()
-                .expect("failed to determine sysroot")
-                .stdout;
-            let sysroot = std::str::from_utf8(&sysroot).unwrap();
+            let output =
+                miri().args(&["--print", "sysroot"]).output().expect("failed to determine sysroot");
+            if !output.status.success() {
+                show_error(format!(
+                    "Failed to determine sysroot; Miri said:\n{}",
+                    String::from_utf8_lossy(&output.stderr).trim_end()
+                ));
+            }
+            let sysroot = std::str::from_utf8(&output.stdout).unwrap();
             let sysroot = Path::new(sysroot.trim_end_matches('\n'));
             // Check for `$SYSROOT/lib/rustlib/src/rust/library`; test if that contains `std/Cargo.toml`.
             let rustup_src =
