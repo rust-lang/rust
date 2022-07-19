@@ -18,6 +18,7 @@ use std::hash::Hash;
 use std::iter::FromIterator;
 use once_cell::sync::Lazy;
 use std::vec::IntoIter;
+use std::ops::Bound;
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
@@ -272,7 +273,6 @@ pub struct TokenStreamIter {
 
 #[derive(Default)]
 pub struct Rustc {
-    symbol_interner: SymbolInterner,
     // FIXME: store span information here.
 }
 
@@ -323,15 +323,29 @@ impl server::TokenStream for Rustc {
                 Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Ident(SymbolId(index)) => {
-                let SymbolData(ident) = self.symbol_interner.get(index).clone();
-                let ident: tt::Ident = ident;
+            bridge::TokenTree::Ident(ident) => {
+                // TODO: what about raw idents?
+                let SymbolData(text) = SYMBOL_INTERNER.get(ident.sym.0).clone();
+                let ident: tt::Ident = tt::Ident { text, id: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(vec![tree])
             }
 
             bridge::TokenTree::Literal(literal) => {
+                let SymbolData(symbol) = SYMBOL_INTERNER.get(literal.symbol.0).clone();
+
+                let text: tt::SmolStr = if let Some(suffix) = literal.suffix {
+                    let SymbolData(suffix) = SYMBOL_INTERNER.get(suffix.0).clone();
+                    format!("{symbol}{suffix}").into()
+                } else {
+                    symbol
+                };
+
+                let literal = tt::Literal {
+                    text,
+                    id: literal.span,
+                };
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(vec![tree])
@@ -654,6 +668,10 @@ impl server::Span for Rustc {
     fn join(&mut self, first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)
+    }
+    fn subspan(&mut self, _span: Self::Span, start: Bound<usize>, end: Bound<usize>) -> Option<Self::Span> {
+        // Just return the first span again, because some macros will unwrap the result.
+        Some(_span)
     }
     fn resolved_at(&mut self, _span: Self::Span, _at: Self::Span) -> Self::Span {
         // FIXME handle span

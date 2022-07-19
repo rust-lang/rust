@@ -23,6 +23,7 @@ memmap2 = "0.5.4"
 tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
 paths = { path = "../paths", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
 proc-macro-api = { path = "../proc-macro-api", version = "0.0.0" }
 once_cell = "1.12.0"
 
