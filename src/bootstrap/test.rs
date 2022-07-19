@@ -378,7 +378,11 @@ impl Step for RustAnalyzer {
         let compiler = builder.compiler(stage, host);
 
         builder
-            .ensure(tool::RustAnalyzer { compiler, target: self.host, extra_features: Vec::new() })
+            .ensure(tool::RustAnalyzer {
+                compiler,
+                target: self.host,
+                extra_features: vec!["in-rust-tree".to_owned()]
+            })
             .expect("in-tree tool");
 
         let mut cargo = tool::prepare_tool_cargo(

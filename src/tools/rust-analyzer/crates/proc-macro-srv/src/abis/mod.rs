@@ -22,8 +22,11 @@
 //! need to update the conditionals in `Abi::from_lib` to return your new ABI
 //! for the relevant versions of the rust compiler
 
+#[cfg(not(feature = "in-rust-tree"))]
 mod abi_1_58;
+#[cfg(not(feature = "in-rust-tree"))]
 mod abi_1_63;
+#[cfg(not(feature = "in-rust-tree"))]
 mod abi_1_64;
 #[cfg(feature = "in-rust-tree")]
 mod abi_sysroot;
@@ -33,8 +36,11 @@ mod abi_sysroot;
 pub(crate) use abi_1_64::TokenStream as TestTokenStream;
 
 use super::dylib::LoadProcMacroDylibError;
+#[cfg(not(feature = "in-rust-tree"))]
 pub(crate) use abi_1_58::Abi as Abi_1_58;
+#[cfg(not(feature = "in-rust-tree"))]
 pub(crate) use abi_1_63::Abi as Abi_1_63;
+#[cfg(not(feature = "in-rust-tree"))]
 pub(crate) use abi_1_64::Abi as Abi_1_64;
 #[cfg(feature = "in-rust-tree")]
 pub(crate) use abi_sysroot::Abi as AbiSysroot;
@@ -52,8 +58,11 @@ impl PanicMessage {
 }
 
 pub(crate) enum Abi {
+    #[cfg(not(feature = "in-rust-tree"))]
     Abi1_58(Abi_1_58),
+    #[cfg(not(feature = "in-rust-tree"))]
     Abi1_63(Abi_1_63),
+    #[cfg(not(feature = "in-rust-tree"))]
     Abi1_64(Abi_1_64),
     #[cfg(feature = "in-rust-tree")]
     Sysroot(AbiSysroot),
@@ -82,6 +91,7 @@ impl Abi {
 
         // FIXME: this should use exclusive ranges when they're stable
         // https://github.com/rust-lang/rust/issues/37854
+        #[cfg(not(feature = "in-rust-tree"))]
         match (info.version.0, info.version.1) {
             (1, 58..=62) => {
                 let inner = unsafe { Abi_1_58::from_lib(lib, symbol_name) }?;
@@ -106,8 +116,11 @@ impl Abi {
         attributes: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, PanicMessage> {
         match self {
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::Abi1_64(abi) => abi.expand(macro_name, macro_body, attributes),
             #[cfg(feature = "in-rust-tree")]
             Self::AbiSysroot(abi) => abi.expand(macro_name, macro_body, attributes),
@@ -116,8 +129,11 @@ impl Abi {
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         match self {
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::Abi1_58(abi) => abi.list_macros(),
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::Abi1_63(abi) => abi.list_macros(),
+            #[cfg(not(feature = "in-rust-tree"))]
             Self::Abi1_64(abi) => abi.list_macros(),
             #[cfg(feature = "in-rust-tree")]
             Self::AbiSysroot(abi) => abi.list_macros(),
