@@ -9,7 +9,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::symbol::{kw, sym, Ident};
 
 use rustc_span::edition::Edition;
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::{ExpnId, HashStableContext, LocalExpnId, Span, SyntaxContext};
 
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
@@ -42,6 +42,7 @@ pub(super) fn parse(
     node_id: NodeId,
     features: &Features,
     edition: Edition,
+    ctx: impl HashStableContext,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -52,7 +53,16 @@ pub(super) fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, parsing_patterns, sess, node_id, features, edition);
+        let tree = parse_tree(
+            tree,
+            &mut trees,
+            parsing_patterns,
+            sess,
+            node_id,
+            features,
+            edition,
+            ctx.clone(),
+        );
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
@@ -142,6 +152,7 @@ fn parse_tree(
     node_id: NodeId,
     features: &Features,
     edition: Edition,
+    ctx: impl HashStableContext,
 ) -> TokenTree {
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
@@ -202,7 +213,8 @@ fn parse_tree(
                     // If we didn't find a metavar expression above, then we must have a
                     // repetition sequence in the macro (e.g. `$(pat)*`).  Parse the
                     // contents of the sequence itself
-                    let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
+                    let sequence =
+                        parse(tts, parsing_patterns, sess, node_id, features, edition, ctx);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(&mut trees, delim_span.entire(), sess);
@@ -221,6 +233,15 @@ fn parse_tree(
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
                     if ident.name == kw::Crate && !is_raw {
+                        // If we use `ident.span` here, $crate will refer to the crate where
+                        // the crate token appears; we want it to refer to the crate which
+                        // is actually defining this macro (the current local crate). This is
+                        // most easily accomplished with a macro expanded macro_rules! which
+                        // uses `$$crate` to get a `$crate` in the expanded macro definition.
+                        let mut expn = span.ctxt().outer_expn_data();
+                        expn.parent = ExpnId::root();
+                        let span =
+                            span.with_call_site_ctxt(LocalExpnId::fresh(expn, ctx).to_expn_id());
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
                         TokenTree::MetaVar(span, ident)
@@ -262,7 +283,7 @@ fn parse_tree(
             span,
             Delimited {
                 delim,
-                tts: parse(tts, parsing_patterns, sess, node_id, features, edition),
+                tts: parse(tts, parsing_patterns, sess, node_id, features, edition, ctx),
             },
         ),
     }

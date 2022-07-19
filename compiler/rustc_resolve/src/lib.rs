@@ -1722,13 +1722,6 @@ impl<'a> Resolver<'a> {
         debug!("resolve_crate_root({:?})", ident);
         let mut ctxt = ident.span.ctxt();
         let mark = if ident.name == kw::DollarCrate {
-            // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
-            // we don't want to pretend that the `macro_rules!` definition is in the `macro`
-            // as described in `SyntaxContext::apply_mark`, so we ignore prepended opaque marks.
-            // FIXME: This is only a guess and it doesn't work correctly for `macro_rules!`
-            // definitions actually produced by `macro` and `macro` definitions produced by
-            // `macro_rules!`, but at least such configurations are not stable yet.
-            ctxt = ctxt.normalize_to_macro_rules();
             debug!(
                 "resolve_crate_root: marks={:?}",
                 ctxt.marks().into_iter().map(|(i, t)| (i.expn_data(), t)).collect::<Vec<_>>()

@@ -875,6 +875,7 @@ impl<'a> Resolver<'a> {
             self.session.features_untracked(),
             item,
             edition,
+            self.create_stable_hashing_context(),
         );
 
         if let Some(builtin_name) = result.builtin_name {

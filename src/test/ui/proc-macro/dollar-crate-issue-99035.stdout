@@ -1,0 +1,58 @@
+PRINT-ATTR INPUT (DISPLAY): const _ : crate :: S = m! () ;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "const",
+        span: $DIR/dollar-crate-issue-99035.rs:22:5: 22:10 (#0),
+    },
+    Ident {
+        ident: "_",
+        span: $DIR/dollar-crate-issue-99035.rs:22:11: 22:12 (#0),
+    },
+    Punct {
+        ch: ':',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-99035.rs:22:12: 22:13 (#0),
+    },
+    Ident {
+        ident: "crate",
+        span: $DIR/dollar-crate-issue-99035.rs:22:14: 22:19 (#0),
+    },
+    Punct {
+        ch: ':',
+        spacing: Joint,
+        span: $DIR/dollar-crate-issue-99035.rs:22:19: 22:21 (#0),
+    },
+    Punct {
+        ch: ':',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-99035.rs:22:19: 22:21 (#0),
+    },
+    Ident {
+        ident: "S",
+        span: $DIR/dollar-crate-issue-99035.rs:22:21: 22:22 (#0),
+    },
+    Punct {
+        ch: '=',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-99035.rs:22:23: 22:24 (#0),
+    },
+    Ident {
+        ident: "m",
+        span: $DIR/dollar-crate-issue-99035.rs:22:25: 22:26 (#0),
+    },
+    Punct {
+        ch: '!',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-99035.rs:22:26: 22:27 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/dollar-crate-issue-99035.rs:22:27: 22:29 (#0),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: $DIR/dollar-crate-issue-99035.rs:22:29: 22:30 (#0),
+    },
+]

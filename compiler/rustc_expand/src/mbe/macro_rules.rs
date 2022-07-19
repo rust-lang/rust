@@ -27,7 +27,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::{HashStableContext, Span};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -381,6 +381,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     def: &ast::Item,
     edition: Edition,
+    ctx: impl HashStableContext,
 ) -> (SyntaxExtension, Vec<(usize, Span)>) {
     debug!("compile_declarative_macro: {:?}", def);
     let mk_syn_ext = |expander| {
@@ -487,6 +488,7 @@ pub fn compile_declarative_macro(
                         def.id,
                         features,
                         edition,
+                        ctx.clone(),
                     )
                     .pop()
                     .unwrap();
@@ -511,6 +513,7 @@ pub fn compile_declarative_macro(
                         def.id,
                         features,
                         edition,
+                        ctx.clone(),
                     )
                     .pop()
                     .unwrap();

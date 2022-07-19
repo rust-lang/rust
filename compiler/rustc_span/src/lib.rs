@@ -2025,7 +2025,7 @@ impl InnerSpan {
 ///
 /// This is a hack to allow using the [`HashStable_Generic`] derive macro
 /// instead of implementing everything in rustc_middle.
-pub trait HashStableContext {
+pub trait HashStableContext: Clone {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_spans(&self) -> bool;
     /// Accesses `sess.opts.unstable_opts.incremental_ignore_spans` since
