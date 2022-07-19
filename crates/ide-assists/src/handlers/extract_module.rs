@@ -1606,49 +1606,49 @@ mod modname {
             r"
             $0/// A documented function
             fn documented_fn() {}
-            
+
             // A commented function with a #[] attribute macro
             #[cfg(test)]
             fn attribute_fn() {}
-            
+
             // A normally commented function
             fn normal_fn() {}
-            
+
             /// A documented Struct
             struct DocumentedStruct {
                 // Normal field
                 x: i32,
-            
+
                 /// Documented field
                 y: i32,
-            
+
                 // Macroed field
                 #[cfg(test)]
                 z: i32,
             }
-            
+
             // A macroed Struct
             #[cfg(test)]
             struct MacroedStruct {
                 // Normal field
                 x: i32,
-            
+
                 /// Documented field
                 y: i32,
-            
+
                 // Macroed field
                 #[cfg(test)]
                 z: i32,
             }
-            
+
             // A normal Struct
             struct NormalStruct {
                 // Normal field
                 x: i32,
-            
+
                 /// Documented field
                 y: i32,
-            
+
                 // Macroed field
                 #[cfg(test)]
                 z: i32,
@@ -1660,10 +1660,10 @@ mod modname {
             // A macroed type
             #[cfg(test)]
             type MacroedType = i32;
-            
+
             /// A module to move
             mod module {}
-            
+
             /// An impl to move
             impl NormalStruct {
                 /// A method
@@ -1688,49 +1688,49 @@ mod modname {
             mod modname {
                 /// A documented function
                 pub(crate) fn documented_fn() {}
-            
+
                 // A commented function with a #[] attribute macro
                 #[cfg(test)]
                 pub(crate) fn attribute_fn() {}
-            
+
                 // A normally commented function
                 pub(crate) fn normal_fn() {}
-            
+
                 /// A documented Struct
                 pub(crate) struct DocumentedStruct {
                     // Normal field
                     pub(crate) x: i32,
-            
+
                     /// Documented field
                     pub(crate) y: i32,
-            
+
                     // Macroed field
                     #[cfg(test)]
                     pub(crate) z: i32,
                 }
-            
+
                 // A macroed Struct
                 #[cfg(test)]
                 pub(crate) struct MacroedStruct {
                     // Normal field
                     pub(crate) x: i32,
-            
+
                     /// Documented field
                     pub(crate) y: i32,
-            
+
                     // Macroed field
                     #[cfg(test)]
                     pub(crate) z: i32,
                 }
-            
+
                 // A normal Struct
                 pub(crate) struct NormalStruct {
                     // Normal field
                     pub(crate) x: i32,
-            
+
                     /// Documented field
                     pub(crate) y: i32,
-            
+
                     // Macroed field
                     #[cfg(test)]
                     pub(crate) z: i32,
