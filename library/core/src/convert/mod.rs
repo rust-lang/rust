@@ -146,8 +146,9 @@ pub const fn identity<T>(x: T) -> T {
 /// let y: &i32 = &x;
 /// ```
 ///
-/// Types which implement [`Deref`][core::ops::Deref] should consider implementing `AsRef` as
-/// follows:
+/// Types which implement [`Deref`] should consider implementing `AsRef<T>` as follows:
+///
+/// [`Deref`]: core::ops::Deref
 ///
 /// ```
 /// # use core::ops::Deref;
@@ -172,11 +173,13 @@ pub const fn identity<T>(x: T) -> T {
 /// # Reflexivity
 ///
 /// Ideally, `AsRef` would be reflexive, that is there is an `impl<T: ?Sized> AsRef<T> for T`, with
-/// [`as_ref`][AsRef::as_ref] simply returning its argument unchanged.
+/// [`as_ref`] simply returning its argument unchanged.
 /// Such a blanket implementation is currently *not* provided due to technical restrictions of
 /// Rust's type system (it would be overlapping with another existing blanket implementation for
 /// `&T where T: AsRef<U>` which allows `AsRef` to auto-dereference, see "Generic Implementations"
 /// above).
+///
+/// [`as_ref`]: AsRef::as_ref
 ///
 /// A trivial implementation of `AsRef<T> for T` must be added explicitly for a particular type `T`
 /// where needed or desired. Note, however, that not all types from `std` contain such an
@@ -249,8 +252,10 @@ pub trait AsRef<T: ?Sized> {
 /// let y: &mut i32 = &mut x;
 /// ```
 ///
-/// Types which implement [`DerefMut`](core::ops::DerefMut) should consider to add an
-/// implementation of `AsMut` as follows:
+/// Types which implement [`DerefMut`] should consider to add an implementation of `AsMut<T>` as
+/// follows:
+///
+/// [`DerefMut`]: core::ops::DerefMut
 ///
 /// ```
 /// # use core::ops::{Deref, DerefMut};
@@ -279,11 +284,13 @@ pub trait AsRef<T: ?Sized> {
 /// # Reflexivity
 ///
 /// Ideally, `AsMut` would be reflexive, that is there is an `impl<T: ?Sized> AsMut<T> for T`, with
-/// [`as_mut`][AsMut::as_mut] simply returning its argument unchanged.
+/// [`as_mut`] simply returning its argument unchanged.
 /// Such a blanket implementation is currently *not* provided due to technical restrictions of
 /// Rust's type system (it would be overlapping with another existing blanket implementation for
 /// `&mut T where T: AsMut<U>` which allows `AsMut` to auto-dereference, see "Generic
 /// Implementations" above).
+///
+/// [`as_mut`]: AsMut::as_mut
 ///
 /// A trivial implementation of `AsMut<T> for T` must be added explicitly for a particular type `T`
 /// where needed or desired. Note, however, that not all types from `std` contain such an
@@ -298,7 +305,7 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// In the following, the example functions `caesar` and `null_terminate` provide a generic
 /// interface which work with any type that can be converted by cheap mutable-to-mutable conversion
-/// into a byte slice or byte `Vec`, respectively.
+/// into a byte slice (`[u8]`) or byte vector (`Vec<u8>`), respectively.
 ///
 /// [dereference]: core::ops::DerefMut
 /// [target type]: core::ops::Deref::Target
