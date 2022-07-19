@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let generator_body = generator_did
             .as_local()
-            .and_then(|local_did| hir.maybe_body_owned_by(local_did))
+            .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
         let is_async = match generator_did.as_local() {
             Some(_) => generator_body

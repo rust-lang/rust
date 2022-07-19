@@ -49,8 +49,8 @@ pub fn find_param_with_region<'tcx>(
     };
 
     let hir = &tcx.hir();
-    let local_did = id.as_local()?;
-    let hir_id = hir.local_def_id_to_hir_id(local_did);
+    let def_id = id.as_local()?;
+    let hir_id = hir.local_def_id_to_hir_id(def_id);
 
     // FIXME: use def_kind
     // Don't perform this on closures
@@ -61,7 +61,7 @@ pub fn find_param_with_region<'tcx>(
         _ => {}
     }
 
-    let body_id = hir.maybe_body_owned_by(local_did)?;
+    let body_id = hir.maybe_body_owned_by(def_id)?;
 
     let owner_id = hir.body_owner(body_id);
     let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
