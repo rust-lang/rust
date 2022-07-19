@@ -12,11 +12,12 @@ mod mod1 {
         // @!has - "$.index[*][?(@.name=='private_fn')]"
         fn private_fn();
     }
-    // @count - "$.index[*][?(@.name=='mod1')].inner.items[*]" 1
-    // @has - "$.index[*][?(@.name=='mod1')].inner.items[*]" $public_fn_id
+    // @ismany - "$.index[*][?(@.name=='mod1')].inner.items[*]" $public_fn_id
     // @set mod1_id = - "$.index[*][?(@.name=='mod1')].id"
 }
 
 // @is - "$.index[*][?(@.kind=='import')].inner.glob" true
 // @is - "$.index[*][?(@.kind=='import')].inner.id" $mod1_id
+// @set use_id = - "$.index[*][?(@.kind=='import')].id"
+// @ismany - "$.index[*][?(@.name=='glob_extern')].inner.items[*]" $use_id
 pub use mod1::*;

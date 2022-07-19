@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 // Test for the ICE in https://github.com/rust-lang/rust/issues/83720
 // A pub-in-private type re-exported under two different names shouldn't cause an error
 
@@ -18,6 +20,4 @@ pub use style::Color;
 // @set colour_export_id = - "$.index[*][?(@.kind=='import' && @.inner.name=='Colour')].id"
 pub use style::Color as Colour;
 
-// @count - "$.index[*][?(@.name=='private_two_names')].inner.items[*]" 2
-// @has - "$.index[*][?(@.name=='private_two_names')].inner.items[*]" $color_export_id
-// @has - "$.index[*][?(@.name=='private_two_names')].inner.items[*]" $colour_export_id
+// @ismany - "$.index[*][?(@.name=='private_two_names')].inner.items[*]" $color_export_id $colour_export_id
