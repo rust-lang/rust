@@ -55,6 +55,12 @@ macro_rules! dollar_dollar_in_the_lhs {
     };
 }
 
+macro_rules! dollar_crate_in_the_lhs {
+    ( $crate $a:ident ) => {
+    //~^ ERROR unexpected token: crate
+    };
+}
+
 macro_rules! extra_garbage_after_metavar {
     ( $( $i:ident ),* ) => {
         ${count() a b c}

@@ -221,6 +221,9 @@ fn parse_tree(
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
                     if ident.name == kw::Crate && !is_raw {
+                        if parsing_patterns {
+                            span_dollar_dollar_or_metavar_in_the_lhs_err(sess, &token);
+                        }
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
                         TokenTree::MetaVar(span, ident)
@@ -359,6 +362,6 @@ fn span_dollar_dollar_or_metavar_in_the_lhs_err<'sess>(sess: &'sess ParseSess, t
         .span_err(token.span, &format!("unexpected token: {}", pprust::token_to_string(token)));
     sess.span_diagnostic.span_note_without_error(
         token.span,
-        "`$$` and meta-variable expressions are not allowed inside macro parameter definitions",
+        "`$$`, `$crate`, and meta-variable expressions are not allowed inside macro parameter definitions",
     );
 }
