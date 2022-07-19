@@ -92,6 +92,7 @@ impl<'tcx> Stack {
             }
         }
 
+        // Check that all Unique items fall within unique_range.
         for (idx, item) in self.borrows.iter().enumerate() {
             if item.perm() == Permission::Unique {
                 assert!(
@@ -102,6 +103,18 @@ impl<'tcx> Stack {
                 );
             }
         }
+
+        // Check that the unique_range is a valid index into the borrow stack.
+        let uniques = &self.borrows[self.unique_range.clone()];
+
+        // Check that the start of the unique_range is precise.
+        if let Some(first_unique) = uniques.first() {
+            assert_eq!(first_unique.perm(), Permission::Unique);
+        }
+        // We cannot assert that the unique range is exact on the upper end.
+        // When we pop items within the unique range, setting the end of the range precisely
+        // require doing a linear search of the borrow stack, which is exactly the kind of
+        // operation that all this caching exists to avoid.
     }
 
     /// Find the item granting the given kind of access to the given tag, and return where
@@ -227,9 +240,14 @@ impl<'tcx> Stack {
             self.unique_range.end += 1;
         }
         if new.perm() == Permission::Unique {
-            // Make sure the possibly-unique range contains the new borrow
-            self.unique_range.start = self.unique_range.start.min(new_idx);
-            self.unique_range.end = self.unique_range.end.max(new_idx + 1);
+            // If this is the first Unique, set the range to contain just the new item.
+            if self.unique_range == (0..0) {
+                self.unique_range = new_idx..new_idx + 1;
+            } else {
+                // We already have other Unique items, expand the range to include the new item
+                self.unique_range.start = self.unique_range.start.min(new_idx);
+                self.unique_range.end = self.unique_range.end.max(new_idx + 1);
+            }
         }
 
         // The above insert changes the meaning of every index in the cache >= new_idx, so now
@@ -282,6 +300,10 @@ impl<'tcx> Stack {
         // cache when it has been cleared and not yet refilled.
         self.borrows.clear();
         self.unknown_bottom = Some(tag);
+        #[cfg(feature = "stack-cache")]
+        {
+            self.unique_range = 0..0;
+        }
     }
 
     /// Find all `Unique` elements in this borrow stack above `granting_idx`, pass a copy of them
@@ -298,7 +320,7 @@ impl<'tcx> Stack {
 
         if disable_start <= unique_range.end {
             let lower = unique_range.start.max(disable_start);
-            let upper = (unique_range.end + 1).min(self.borrows.len());
+            let upper = self.unique_range.end;
             for item in &mut self.borrows[lower..upper] {
                 if item.perm() == Permission::Unique {
                     log::trace!("access: disabling item {:?}", item);
@@ -315,14 +337,14 @@ impl<'tcx> Stack {
         }
 
         #[cfg(feature = "stack-cache")]
-        if disable_start < self.unique_range.start {
+        if disable_start <= self.unique_range.start {
             // We disabled all Unique items
             self.unique_range.start = 0;
             self.unique_range.end = 0;
         } else {
-            // Truncate the range to disable_start. This is + 2 because we are only removing
-            // elements after disable_start, and this range does not include the end.
-            self.unique_range.end = self.unique_range.end.min(disable_start + 1);
+            // Truncate the range to only include items up to the index that we started disabling
+            // at.
+            self.unique_range.end = self.unique_range.end.min(disable_start);
         }
 
         #[cfg(debug_assertions)]
@@ -369,12 +391,12 @@ impl<'tcx> Stack {
                 self.cache.items[i] = base_tag;
             }
 
-            if start < self.unique_range.start.saturating_sub(1) {
+            if start <= self.unique_range.start {
                 // We removed all the Unique items
                 self.unique_range = 0..0;
             } else {
                 // Ensure the range doesn't extend past the new top of the stack
-                self.unique_range.end = self.unique_range.end.min(start + 1);
+                self.unique_range.end = self.unique_range.end.min(start);
             }
         } else {
             self.unique_range = 0..0;
