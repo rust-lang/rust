@@ -51,7 +51,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return InferOk { value: ty, obligations: vec![] };
         }
         let mut obligations = vec![];
-        let replace_opaque_type = |def_id| self.opaque_type_origin(def_id, span).is_some();
+        let replace_opaque_type = |def_id: DefId| {
+            def_id
+                .as_local()
+                .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
+        };
         let value = ty.fold_with(&mut ty::fold::BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
@@ -96,6 +100,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Opaque(def_id, substs) if def_id.is_local() => {
+                let def_id = def_id.expect_local();
                 let origin = if self.defining_use_anchor.is_some() {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose
@@ -141,7 +146,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias) = self.opaque_type_origin(did2, cause.span)
+                    if let Some(OpaqueTyOrigin::TyAlias) =
+                        did2.as_local().and_then(|did2| self.opaque_type_origin(did2, cause.span))
                     {
                         self.tcx
                                 .sess
@@ -399,8 +405,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "trace")]
-    pub fn opaque_type_origin(&self, opaque_def_id: DefId, span: Span) -> Option<OpaqueTyOrigin> {
-        let def_id = opaque_def_id.as_local()?;
+    pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = self.defining_use_anchor?;
         let item_kind = &self.tcx.hir().expect_item(def_id).kind;
@@ -409,7 +414,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span_bug!(
                 span,
                 "weird opaque type: {:#?}, {:#?}",
-                opaque_def_id,
+                def_id,
                 item_kind
             )
         };
@@ -428,12 +433,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn opaque_ty_origin_unchecked(&self, opaque_def_id: DefId, span: Span) -> OpaqueTyOrigin {
-        let def_id = opaque_def_id.as_local().unwrap();
+    fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
         let origin = match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {
-                span_bug!(span, "weird opaque type: {:?}, {:#?}", opaque_def_id, itemkind)
+                span_bug!(span, "weird opaque type: {:?}, {:#?}", def_id, itemkind)
             }
         };
         trace!(?origin);
@@ -557,7 +561,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             obligations = self.at(&cause, param_env).eq(prev, hidden_ty)?.obligations;
         }
 
-        let item_bounds = tcx.bound_explicit_item_bounds(def_id);
+        let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
 
         for predicate in item_bounds.transpose_iter().map(|e| e.map_bound(|(p, _)| *p)) {
             debug!(?predicate);
@@ -579,7 +583,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
-                    ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
+                    ty::Opaque(def_id2, substs2)
+                        if def_id.to_def_id() == def_id2 && substs == substs2 =>
+                    {
                         hidden_ty
                     }
                     _ => ty,

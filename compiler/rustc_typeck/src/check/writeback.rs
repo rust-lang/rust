@@ -4,6 +4,7 @@
 
 use crate::check::FnCtxt;
 
+use hir::def_id::LocalDefId;
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -509,13 +510,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
                     let ty = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
                     struct RecursionChecker {
-                        def_id: DefId,
+                        def_id: LocalDefId,
                     }
                     impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
                         type BreakTy = ();
                         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                             if let ty::Opaque(def_id, _) = *t.kind() {
-                                if def_id == self.def_id {
+                                if def_id == self.def_id.to_def_id() {
                                     return ControlFlow::Break(());
                                 }
                             }
