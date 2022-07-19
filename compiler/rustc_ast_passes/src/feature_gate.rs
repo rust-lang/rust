@@ -62,9 +62,9 @@ impl<'a> PostExpansionVisitor<'a> {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
         if let ast::Const::Yes(_) = constness {
-            match symbol_unescaped.as_str() {
+            match symbol_unescaped {
                 // Stable
-                "Rust" | "C" => {}
+                sym::Rust | sym::C => {}
                 abi => gate_feature_post!(
                     &self,
                     const_extern_fn,

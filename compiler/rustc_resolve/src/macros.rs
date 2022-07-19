@@ -325,7 +325,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                &format!("unused macro definition: `{}`", ident.as_str()),
+                &format!("unused macro definition: `{}`", ident.name),
             );
         }
         for (&(def_id, arm_i), &(ident, rule_span)) in self.unused_macro_rules.iter() {
@@ -341,7 +341,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 &format!(
                     "{} rule of macro `{}` is never used",
                     crate::diagnostics::ordinalize(arm_i + 1),
-                    ident.as_str()
+                    ident.name
                 ),
             );
         }

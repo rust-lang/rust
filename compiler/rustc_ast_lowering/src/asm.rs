@@ -145,7 +145,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmRegOrRegClass::Reg(s) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(asm_arch, s).unwrap_or_else(|e| {
-                                let msg = format!("invalid register `{}`: {}", s.as_str(), e);
+                                let msg = format!("invalid register `{}`: {}", s, e);
                                 sess.struct_span_err(*op_sp, &msg).emit();
                                 asm::InlineAsmReg::Err
                             })
@@ -156,7 +156,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmRegOrRegClass::RegClass(s) => {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmRegClass::parse(asm_arch, s).unwrap_or_else(|e| {
-                                let msg = format!("invalid register class `{}`: {}", s.as_str(), e);
+                                let msg = format!("invalid register class `{}`: {}", s, e);
                                 sess.struct_span_err(*op_sp, &msg).emit();
                                 asm::InlineAsmRegClass::Err
                             })

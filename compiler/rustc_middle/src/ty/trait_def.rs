@@ -74,6 +74,10 @@ impl TraitImpls {
     pub fn blanket_impls(&self) -> &[DefId] {
         self.blanket_impls.as_slice()
     }
+
+    pub fn non_blanket_impls(&self) -> &FxIndexMap<SimplifiedType, Vec<DefId>> {
+        &self.non_blanket_impls
+    }
 }
 
 impl<'tcx> TraitDef {
