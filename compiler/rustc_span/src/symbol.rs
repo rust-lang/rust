@@ -257,6 +257,7 @@ symbols! {
         Result,
         Return,
         Right,
+        Rust,
         RustcDecodable,
         RustcEncodable,
         Send,

@@ -474,7 +474,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         if let Some(ref s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
-                            err.span_label(span, s.as_str());
+                            err.span_label(span, s);
                             if !matches!(trait_ref.skip_binder().self_ty().kind(), ty::Param(_)) {
                                 // When the self type is a type param We don't need to "the trait
                                 // `std::marker::Sized` is not implemented for `T`" as we will point
@@ -531,7 +531,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             let enclosing_scope_span =
                                 tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(body));
 
-                            err.span_label(enclosing_scope_span, s.as_str());
+                            err.span_label(enclosing_scope_span, s);
                         }
 
                         self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);
