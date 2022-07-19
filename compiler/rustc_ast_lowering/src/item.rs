@@ -1350,12 +1350,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
-            let bounds = self.lower_param_bounds(&param.bounds, itctx);
             self.lower_generic_bound_predicate(
                 param.ident,
                 param.id,
                 &param.kind,
-                bounds,
+                &param.bounds,
+                itctx,
                 PredicateOrigin::GenericParam,
             )
         }));
@@ -1403,13 +1403,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ident: Ident,
         id: NodeId,
         kind: &GenericParamKind,
-        bounds: &'hir [hir::GenericBound<'hir>],
+        bounds: &[GenericBound],
+        itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
         // Do not create a clause if we do not have anything inside it.
         if bounds.is_empty() {
             return None;
         }
+
+        let bounds = self.lower_param_bounds(bounds, itctx);
+
         let ident = self.lower_ident(ident);
         let param_span = ident.span;
         let span = bounds

@@ -2013,7 +2013,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Add a definition for the in-band `Param`.
         let def_id = self.local_def_id(node_id);
 
-        let hir_bounds = self.lower_param_bounds(bounds, ImplTraitContext::Universal);
         // Set the name to `impl Bound1 + Bound2`.
         let param = hir::GenericParam {
             hir_id: self.lower_node_id(node_id),
@@ -2028,7 +2027,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ident,
             node_id,
             &GenericParamKind::Type { default: None },
-            hir_bounds,
+            bounds,
+            ImplTraitContext::Universal,
             hir::PredicateOrigin::ImplTrait,
         );
 
