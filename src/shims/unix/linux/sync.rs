@@ -188,8 +188,8 @@ pub fn futex<'tcx>(
                 this.write_scalar(Scalar::from_machine_isize(0, this), dest)?;
                 // Register a timeout callback if a timeout was specified.
                 // This callback will override the return value when the timeout triggers.
-                let dest = *dest;
                 if let Some(timeout_time) = timeout_time {
+                    let dest = dest.clone();
                     this.register_timeout_callback(
                         thread,
                         timeout_time,

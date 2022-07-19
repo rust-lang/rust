@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // when we pop this frame.
         if this.tcx.sess.panic_strategy() == PanicStrategy::Unwind {
             this.frame_mut().extra.catch_unwind =
-                Some(CatchUnwindData { catch_fn, data, dest: *dest, ret });
+                Some(CatchUnwindData { catch_fn, data, dest: dest.clone(), ret });
         }
 
         Ok(())

@@ -258,7 +258,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Push frame.
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
-            Some(dest) => *dest,
+            Some(dest) => dest.clone(),
             None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?).into(),
         };
         this.push_stack_frame(f, mir, &dest, stack_pop)?;
