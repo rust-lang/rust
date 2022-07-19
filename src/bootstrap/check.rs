@@ -312,7 +312,7 @@ impl Step for RustAnalyzer {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["src/tools/rust-analyzer", "rust-analyzer"])
+        run.paths(&["src/tools/rust-analyzer"])
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -323,12 +323,10 @@ impl Step for RustAnalyzer {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
-        builder.ensure(Rustc { target });
-
         let mut cargo = prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolRustc,
+            Mode::ToolStd,
             target,
             cargo_subcommand(builder.kind),
             "src/tools/rust-analyzer",
