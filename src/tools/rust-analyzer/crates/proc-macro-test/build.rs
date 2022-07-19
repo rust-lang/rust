@@ -20,7 +20,7 @@ fn main() {
     let target_dir = out_dir.join("target");
     let output = Command::new(toolchain::cargo())
         .current_dir("imp")
-        .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
+        .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json", "--locked"])
         // Explicit override the target directory to avoid using the same one which the parent
         // cargo is using, or we'll deadlock.
         // This can happen when `CARGO_TARGET_DIR` is set or global config forces all cargo
