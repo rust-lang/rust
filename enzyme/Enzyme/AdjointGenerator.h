@@ -940,25 +940,27 @@ public:
     if (valType->isFPOrFPVectorTy()) {
       FT = valType->getScalarType();
     } else if (!valType->isPointerTy()) {
-      if (looseTypeAnalysis) {
-        auto fp = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ false,
-                                  /*pointerIntSame*/ true);
-        if (fp.isKnown()) {
-          FT = fp.isFloat();
-        } else if (isa<ConstantInt>(orig_val) ||
-                   valType->isIntOrIntVectorTy()) {
-          llvm::errs() << "assuming type as integral for store: " << I << "\n";
-          FT = nullptr;
-        } else {
-          TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ true,
-                          /*pointerIntSame*/ true);
-          llvm::errs() << "cannot deduce type of store " << I << "\n";
-          assert(0 && "cannot deduce");
-        }
+      auto fp = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ false,
+                                /*pointerIntSame*/ true);
+      if (fp.isKnown()) {
+        FT = fp.isFloat();
+      } else if (looseTypeAnalysis && (isa<ConstantInt>(orig_val) ||
+                                       valType->isIntOrIntVectorTy())) {
+        llvm::errs() << "assuming type as integral for store: " << I << "\n";
+        FT = nullptr;
       } else {
-        FT = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ true,
-                             /*pointerIntSame*/ true)
-                 .isFloat();
+
+        if (CustomErrorHandler) {
+          std::string str;
+          raw_string_ostream ss(str);
+          ss << "Cannot deduce type of store " << I;
+          CustomErrorHandler(str.c_str(), wrap(&I), ErrorType::NoType,
+                             &TR.analyzer);
+        }
+        EmitFailure("CannotDeduceType", I.getDebugLoc(), &I,
+                    "failed to deduce type of store ", I);
+        TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/ true,
+                        /*pointerIntSame*/ true);
       }
     }
 
