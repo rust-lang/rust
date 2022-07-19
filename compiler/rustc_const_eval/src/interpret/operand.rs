@@ -4,7 +4,6 @@
 use std::fmt::Write;
 
 use rustc_hir::def::Namespace;
-use rustc_macros::HashStable;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
@@ -25,7 +24,7 @@ use super::{
 /// operations and wide pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Immediate<Tag: Provenance = AllocId> {
     /// A single scalar value (must have *initialized* `Scalar` ABI).
     /// FIXME: we also currently often use this for ZST.
@@ -112,7 +111,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
 // as input for binary and cast operations.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct ImmTy<'tcx, Tag: Provenance = AllocId> {
     imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
@@ -182,13 +181,16 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, PartialEq, Eq, HashStable, Hash, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Operand<Tag: Provenance = AllocId> {
     Immediate(Immediate<Tag>),
     Indirect(MemPlace<Tag>),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Operand, 64);
+
+#[derive(Clone, Debug)]
 pub struct OpTy<'tcx, Tag: Provenance = AllocId> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,

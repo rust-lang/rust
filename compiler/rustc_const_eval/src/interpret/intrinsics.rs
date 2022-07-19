@@ -455,8 +455,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for i in 0..dest_len {
                     let place = self.mplace_index(&dest, i)?;
-                    let value =
-                        if i == index { *elem } else { self.mplace_index(&input, i)?.into() };
+                    let value = if i == index {
+                        elem.clone()
+                    } else {
+                        self.mplace_index(&input, i)?.into()
+                    };
                     self.copy_op(&value, &place.into(), /*allow_transmute*/ false)?;
                 }
             }

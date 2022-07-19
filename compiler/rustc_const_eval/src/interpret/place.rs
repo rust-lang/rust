@@ -5,7 +5,6 @@
 use std::hash::Hash;
 
 use rustc_ast::Mutability;
-use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
@@ -17,7 +16,7 @@ use super::{
     Pointer, Provenance, Scalar, ScalarMaybeUninit,
 };
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
 pub enum MemPlaceMeta<Tag: Provenance = AllocId> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
@@ -47,7 +46,7 @@ impl<Tag: Provenance> MemPlaceMeta<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub struct MemPlace<Tag: Provenance = AllocId> {
     /// The pointer can be a pure integer, with the `None` tag.
     pub ptr: Pointer<Option<Tag>>,
@@ -60,7 +59,22 @@ pub struct MemPlace<Tag: Provenance = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(MemPlace, 40);
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStable, Debug)]
+/// A MemPlace with its layout. Constructing it is only possible in this module.
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
+pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
+    mplace: MemPlace<Tag>,
+    pub layout: TyAndLayout<'tcx>,
+    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
+    /// it needs to have a different alignment than the field type would usually have.
+    /// So we represent this here with a separate field that "overwrites" `layout.align`.
+    /// This means `layout.align` should never be used for a `MPlaceTy`!
+    pub align: Align,
+}
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
+
+#[derive(Copy, Clone, Debug)]
 pub enum Place<Tag: Provenance = AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Tag>),
@@ -73,7 +87,7 @@ pub enum Place<Tag: Provenance = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Place, 48);
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct PlaceTy<'tcx, Tag: Provenance = AllocId> {
     place: Place<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
@@ -94,21 +108,6 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for PlaceTy<'tcx, Tag> {
         &self.place
     }
 }
-
-/// A MemPlace with its layout. Constructing it is only possible in this module.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
-pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
-    mplace: MemPlace<Tag>,
-    pub layout: TyAndLayout<'tcx>,
-    /// rustc does not have a proper way to represent the type of a field of a `repr(packed)` struct:
-    /// it needs to have a different alignment than the field type would usually have.
-    /// So we represent this here with a separate field that "overwrites" `layout.align`.
-    /// This means `layout.align` should never be used for a `MPlaceTy`!
-    pub align: Align,
-}
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
 
 impl<'tcx, Tag: Provenance> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     type Target = MemPlace<Tag>;
