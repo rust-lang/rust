@@ -2308,14 +2308,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for usage of:
-    ///
-    /// - `[foo].iter()`
-    /// - `[foo].iter_mut()`
-    /// - `[foo].into_iter()`
-    /// - `Some(foo).iter()`
-    /// - `Some(foo).iter_mut()`
-    /// - `Some(foo).into_iter()`
+    /// Checks for calls to `iter`, `iter_mut` or `into_iter` on collections containing a single item
     ///
     /// ### Why is this bad?
     ///
@@ -2346,14 +2339,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for usage of:
-    ///
-    /// - `[].iter()`
-    /// - `[].iter_mut()`
-    /// - `[].into_iter()`
-    /// - `None.iter()`
-    /// - `None.iter_mut()`
-    /// - `None.into_iter()`
+    /// Checks for calls to `iter`, `iter_mut` or `into_iter` on empty collections
     ///
     /// ### Why is this bad?
     ///

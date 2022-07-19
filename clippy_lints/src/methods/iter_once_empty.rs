@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_lang_ctor;
+use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet;
 
 use rustc_errors::Applicability;
@@ -8,6 +9,22 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 
 use super::{ITER_EMPTY, ITER_ONCE};
+
+enum IterType {
+    Iter,
+    IterMut,
+    IntoIter,
+}
+
+impl IterType {
+    fn ref_prefix(&self) -> &'static str {
+        match self {
+            Self::Iter => "&",
+            Self::IterMut => "&mut ",
+            Self::IntoIter => "",
+        }
+    }
+}
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: &str, recv: &Expr<'_>) {
     let item = match &recv.kind {
@@ -32,39 +49,42 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: 
         },
         _ => return,
     };
+    let iter_type = match method_name {
+        "iter" => IterType::Iter,
+        "iter_mut" => IterType::IterMut,
+        "into_iter" => IterType::IntoIter,
+        _ => return,
+    };
 
     if let Some(i) = item {
-        let (sugg, msg) = match method_name {
-            "iter" => (
-                format!("std::iter::once(&{})", snippet(cx, i.span, "...")),
-                "this `iter` call can be replaced with std::iter::once",
-            ),
-            "iter_mut" => (
-                format!("std::iter::once(&mut {})", snippet(cx, i.span, "...")),
-                "this `iter_mut` call can be replaced with std::iter::once",
-            ),
-            "into_iter" => (
-                format!("std::iter::once({})", snippet(cx, i.span, "...")),
-                "this `into_iter` call can be replaced with std::iter::once",
-            ),
-            _ => return,
-        };
-        span_lint_and_sugg(cx, ITER_ONCE, expr.span, msg, "try", sugg, Applicability::Unspecified);
+        let sugg = format!(
+            "{}::iter::once({}{})",
+            if is_no_std_crate(cx) { "core" } else { "std" },
+            iter_type.ref_prefix(),
+            snippet(cx, i.span, "...")
+        );
+        span_lint_and_sugg(
+            cx,
+            ITER_ONCE,
+            expr.span,
+            &format!("`{method_name}` call on a collection with only one item"),
+            "try",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
     } else {
-        let msg = match method_name {
-            "iter" => "this `iter call` can be replaced with std::iter::empty",
-            "iter_mut" => "this `iter_mut` call can be replaced with std::iter::empty",
-            "into_iter" => "this `into_iter` call can be replaced with std::iter::empty",
-            _ => return,
-        };
         span_lint_and_sugg(
             cx,
             ITER_EMPTY,
             expr.span,
-            msg,
+            &format!("`{method_name}` call on an empty collection"),
             "try",
-            "std::iter::empty()".to_string(),
-            Applicability::Unspecified,
+            if is_no_std_crate(cx) {
+                "core::iter::empty()".to_string()
+            } else {
+                "std::iter::empty()".to_string()
+            },
+            Applicability::MaybeIncorrect,
         );
     }
 }
