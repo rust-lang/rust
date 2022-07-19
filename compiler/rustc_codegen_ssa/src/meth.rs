@@ -39,7 +39,7 @@ impl<'a, 'tcx> VirtualIndex {
             let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
             let ptr = bx.load(llty, gep, ptr_align);
             bx.nonnull_metadata(ptr);
-            // Vtable loads are invariant.
+            // VTable loads are invariant.
             bx.set_invariant_load(ptr);
             ptr
         }
@@ -58,7 +58,7 @@ impl<'a, 'tcx> VirtualIndex {
         let usize_align = bx.tcx().data_layout.pointer_align.abi;
         let gep = bx.inbounds_gep(llty, llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(llty, gep, usize_align);
-        // Vtable loads are invariant.
+        // VTable loads are invariant.
         bx.set_invariant_load(ptr);
         ptr
     }

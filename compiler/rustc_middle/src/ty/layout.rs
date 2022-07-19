@@ -2771,7 +2771,7 @@ impl<'tcx> ty::Instance<'tcx> {
                     _ => unreachable!(),
                 };
 
-                if let ty::InstanceDef::VtableShim(..) = self.def {
+                if let ty::InstanceDef::VTableShim(..) = self.def {
                     // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                     sig = sig.map_bound(|mut sig| {
                         let mut inputs_and_output = sig.inputs_and_output.to_vec();

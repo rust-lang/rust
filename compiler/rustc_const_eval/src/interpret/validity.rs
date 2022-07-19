@@ -318,7 +318,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.ecx.get_ptr_vtable(vtable),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(InvalidVtablePointer(..)) =>
+                    err_ub!(InvalidVTablePointer(..)) =>
                         { "{vtable}" } expected { "a vtable pointer" },
                 );
                 // FIXME: check if the type/trait match what ty::Dynamic says?

@@ -42,7 +42,7 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceDef::VtableShim(_) => Some("vtable"),
+        ty::InstanceDef::VTableShim(_) => Some("vtable"),
         ty::InstanceDef::ReifyShim(_) => Some("reify"),
 
         _ => None,

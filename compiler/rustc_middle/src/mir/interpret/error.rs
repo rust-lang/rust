@@ -266,7 +266,7 @@ pub enum UndefinedBehaviorInfo {
     // Trying to access the data behind a function pointer.
     DerefFunctionPointer(AllocId),
     // Trying to access the data behind a vtable pointer.
-    DerefVtablePointer(AllocId),
+    DerefVTablePointer(AllocId),
     /// The value validity check found a problem.
     /// Should only be thrown by `validity.rs` and always point out which part of the value
     /// is the problem.
@@ -285,7 +285,7 @@ pub enum UndefinedBehaviorInfo {
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
-    InvalidVtablePointer(Pointer),
+    InvalidVTablePointer(Pointer),
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
@@ -349,7 +349,7 @@ impl fmt::Display for UndefinedBehaviorInfo {
             ),
             WriteToReadOnly(a) => write!(f, "writing to {a:?} which is read-only"),
             DerefFunctionPointer(a) => write!(f, "accessing {a:?} which contains a function"),
-            DerefVtablePointer(a) => write!(f, "accessing {a:?} which contains a vtable"),
+            DerefVTablePointer(a) => write!(f, "accessing {a:?} which contains a vtable"),
             ValidationFailure { path: None, msg } => {
                 write!(f, "constructing invalid value: {msg}")
             }
@@ -366,7 +366,7 @@ impl fmt::Display for UndefinedBehaviorInfo {
             InvalidFunctionPointer(p) => {
                 write!(f, "using {p:?} as function pointer but it does not point to a function")
             }
-            InvalidVtablePointer(p) => {
+            InvalidVTablePointer(p) => {
                 write!(f, "using {p:?} as vtable pointer but it does not point to a vtable")
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {err}"),

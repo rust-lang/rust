@@ -1287,7 +1287,7 @@ pub trait PrettyPrinter<'tcx>:
                                     p!(write("<static({:?})>", def_id))
                                 }
                                 Some(GlobalAlloc::Function(_)) => p!("<function>"),
-                                Some(GlobalAlloc::Vtable(..)) => p!("<vtable>"),
+                                Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
                                 None => p!("<dangling pointer>"),
                             }
                             return Ok(self);

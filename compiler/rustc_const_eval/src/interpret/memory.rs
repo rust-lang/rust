@@ -63,7 +63,7 @@ pub enum AllocKind {
     /// A function allocation (that fn ptrs point to).
     Function,
     /// A (symbolic) vtable allocation.
-    Vtable,
+    VTable,
     /// A dead allocation.
     Dead,
 }
@@ -293,7 +293,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Some(GlobalAlloc::Function(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is a function")
                 }
-                Some(GlobalAlloc::Vtable(..)) => {
+                Some(GlobalAlloc::VTable(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is a vtable")
                 }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
@@ -484,7 +484,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (mem, None)
             }
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
-            Some(GlobalAlloc::Vtable(..)) => throw_ub!(DerefVtablePointer(id)),
+            Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
@@ -688,9 +688,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (alloc.size(), alloc.align, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
-            Some(GlobalAlloc::Vtable(..)) => {
+            Some(GlobalAlloc::VTable(..)) => {
                 // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::Vtable);
+                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
             }
             // The rest must be dead.
             None => {
@@ -746,11 +746,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("get_ptr_vtable({:?})", ptr);
         let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
-            throw_ub!(InvalidVtablePointer(Pointer::new(alloc_id, offset)))
+            throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
         }
         match self.tcx.try_get_global_alloc(alloc_id) {
-            Some(GlobalAlloc::Vtable(ty, trait_ref)) => Ok((ty, trait_ref)),
-            _ => throw_ub!(InvalidVtablePointer(Pointer::new(alloc_id, offset))),
+            Some(GlobalAlloc::VTable(ty, trait_ref)) => Ok((ty, trait_ref)),
+            _ => throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset))),
         }
     }
 
@@ -871,10 +871,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                         Some(GlobalAlloc::Function(func)) => {
                             write!(fmt, " (fn: {func})")?;
                         }
-                        Some(GlobalAlloc::Vtable(ty, Some(trait_ref))) => {
+                        Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
                             write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;
                         }
-                        Some(GlobalAlloc::Vtable(ty, None)) => {
+                        Some(GlobalAlloc::VTable(ty, None)) => {
                             write!(fmt, " (vtable: impl <auto trait> for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {

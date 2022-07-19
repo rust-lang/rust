@@ -101,7 +101,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
 
         let address_space = match cx.tcx.global_alloc(alloc_id) {
             GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::Vtable(..) => {
+            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
                 AddressSpace::DATA
             }
         };

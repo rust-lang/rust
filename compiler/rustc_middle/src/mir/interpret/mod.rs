@@ -196,7 +196,7 @@ impl fmt::Debug for AllocId {
 enum AllocDiscriminant {
     Alloc,
     Fn,
-    Vtable,
+    VTable,
     Static,
 }
 
@@ -216,9 +216,9 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
             AllocDiscriminant::Fn.encode(encoder);
             fn_instance.encode(encoder);
         }
-        GlobalAlloc::Vtable(ty, poly_trait_ref) => {
+        GlobalAlloc::VTable(ty, poly_trait_ref) => {
             trace!("encoding {:?} with {ty:#?}, {poly_trait_ref:#?}", alloc_id);
-            AllocDiscriminant::Vtable.encode(encoder);
+            AllocDiscriminant::VTable.encode(encoder);
             ty.encode(encoder);
             poly_trait_ref.encode(encoder);
         }
@@ -314,7 +314,7 @@ impl<'s> AllocDecodingSession<'s> {
                         }
                         AllocDiscriminant::Fn
                         | AllocDiscriminant::Static
-                        | AllocDiscriminant::Vtable => {
+                        | AllocDiscriminant::VTable => {
                             // Fns and statics cannot be cyclic, and their `AllocId`
                             // is determined later by interning.
                             *entry =
@@ -364,7 +364,7 @@ impl<'s> AllocDecodingSession<'s> {
                     let alloc_id = decoder.interner().create_fn_alloc(instance);
                     alloc_id
                 }
-                AllocDiscriminant::Vtable => {
+                AllocDiscriminant::VTable => {
                     assert!(alloc_id.is_none());
                     trace!("creating static alloc ID");
                     let ty = <Ty<'_> as Decodable<D>>::decode(decoder);
@@ -400,7 +400,7 @@ pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function(Instance<'tcx>),
     /// This alloc ID points to a symbolic (not-reified) vtable.
-    Vtable(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
+    VTable(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
     /// The alloc ID points to a "lazy" static variable that did not get computed (yet).
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
@@ -429,12 +429,12 @@ impl<'tcx> GlobalAlloc<'tcx> {
         }
     }
 
-    /// Panics if the `GlobalAlloc` is not `GlobalAlloc::Vtable`
+    /// Panics if the `GlobalAlloc` is not `GlobalAlloc::VTable`
     #[track_caller]
     #[inline]
     pub fn unwrap_vtable(&self) -> (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
         match *self {
-            GlobalAlloc::Vtable(ty, poly_trait_ref) => (ty, poly_trait_ref),
+            GlobalAlloc::VTable(ty, poly_trait_ref) => (ty, poly_trait_ref),
             _ => bug!("expected vtable, got {:?}", self),
         }
     }
@@ -490,7 +490,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn reserve_and_set_dedup(self, alloc: GlobalAlloc<'tcx>) -> AllocId {
         let mut alloc_map = self.alloc_map.lock();
         match alloc {
-            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) | GlobalAlloc::Vtable(..) => {}
+            GlobalAlloc::Function(..) | GlobalAlloc::Static(..) | GlobalAlloc::VTable(..) => {}
             GlobalAlloc::Memory(..) => bug!("Trying to dedup-reserve memory with real data!"),
         }
         if let Some(&alloc_id) = alloc_map.dedup.get(&alloc) {
@@ -541,7 +541,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
     ) -> AllocId {
-        self.reserve_and_set_dedup(GlobalAlloc::Vtable(ty, poly_trait_ref))
+        self.reserve_and_set_dedup(GlobalAlloc::VTable(ty, poly_trait_ref))
     }
 
     /// Interns the `Allocation` and return a new `AllocId`, even if there's already an identical

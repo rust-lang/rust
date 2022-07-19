@@ -394,7 +394,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::Item(_def_id) => {}
 
                         ty::InstanceDef::Intrinsic(_def_id) |
-                        ty::InstanceDef::VtableShim(_def_id) |
+                        ty::InstanceDef::VTableShim(_def_id) |
                         ty::InstanceDef::ReifyShim(_def_id) |
                         ty::InstanceDef::Virtual(_def_id, _) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
