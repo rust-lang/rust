@@ -11,4 +11,4 @@ emscripten = []
 libc = "0.2.73"
 
 [build-dependencies]
-cc = "1.0.69"
+cc = "1.0.73"
