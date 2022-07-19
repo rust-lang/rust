@@ -4,7 +4,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "openbsd".into(),
         dynamic_linking: true,
-        executables: true,
         families: cvs!["unix"],
         has_rpath: true,
         abi_return_struct_as_int: true,

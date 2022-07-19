@@ -56,7 +56,7 @@ pub fn sanitize_attrs<'ll>(
     no_sanitize: SanitizerSet,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = cx.tcx.sess.opts.debugging_opts.sanitizer - no_sanitize;
+    let enabled = cx.tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
     if enabled.contains(SanitizerSet::ADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -136,7 +136,7 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     if cx
         .sess()
         .opts
-        .debugging_opts
+        .unstable_opts
         .sanitizer
         .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
     {
@@ -149,7 +149,7 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     }
 
     // probestack doesn't play nice either with gcov profiling.
-    if cx.sess().opts.debugging_opts.profile {
+    if cx.sess().opts.unstable_opts.profile {
         return None;
     }
 
@@ -275,7 +275,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(uwtable_attr(cx.llcx));
     }
 
-    if cx.sess().opts.debugging_opts.profile_sample_use.is_some() {
+    if cx.sess().opts.unstable_opts.profile_sample_use.is_some() {
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
@@ -299,6 +299,12 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
+        // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
+        // And it is a module-level attribute, so the alternative is pulling naked functions into new LLVM modules.
+        // Otherwise LLVM's "naked" functions come with endbr prefixes per https://github.com/rust-lang/rust/issues/98768
+        to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
+        // Need this for AArch64.
+        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
         // apply to return place instead of function (unlike all other attributes applied in this function)

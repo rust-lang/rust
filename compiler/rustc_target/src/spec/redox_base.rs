@@ -5,7 +5,6 @@ pub fn opts() -> TargetOptions {
         os: "redox".into(),
         env: "relibc".into(),
         dynamic_linking: true,
-        executables: true,
         families: cvs!["unix"],
         has_rpath: true,
         position_independent_executables: true,

@@ -147,7 +147,6 @@ pub(crate) fn deref_mir_constant<'tcx>(
 
     let ty = match mplace.meta {
         MemPlaceMeta::None => mplace.layout.ty,
-        MemPlaceMeta::Poison => bug!("poison metadata in `deref_mir_constant`: {:#?}", mplace),
         // In case of unsized types, figure out the real type behind.
         MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
             ty::Str => bug!("there's no sized equivalent of a `str`"),

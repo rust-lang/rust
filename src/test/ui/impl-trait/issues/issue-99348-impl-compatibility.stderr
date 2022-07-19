@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-99348-impl-compatibility.rs:8:17
+   |
+LL | type Tait = impl Sized;
+   |             ---------- the expected opaque type
+...
+LL |     type Item = Concrete;
+   |                 ^^^^^^^^ types differ
+   |
+   = note: expected opaque type `Tait`
+                   found struct `Concrete`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -37,6 +37,8 @@ enum SubdiagnosticKind {
     Note,
     /// `#[help(...)]`
     Help,
+    /// `#[warn_(...)]`
+    Warn,
     /// `#[suggestion{,_short,_hidden,_verbose}]`
     Suggestion(SubdiagnosticSuggestionKind),
 }
@@ -49,6 +51,7 @@ impl FromStr for SubdiagnosticKind {
             "label" => Ok(SubdiagnosticKind::Label),
             "note" => Ok(SubdiagnosticKind::Note),
             "help" => Ok(SubdiagnosticKind::Help),
+            "warn_" => Ok(SubdiagnosticKind::Warn),
             "suggestion" => Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Normal)),
             "suggestion_short" => {
                 Ok(SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Short))
@@ -70,6 +73,7 @@ impl quote::IdentFragment for SubdiagnosticKind {
             SubdiagnosticKind::Label => write!(f, "label"),
             SubdiagnosticKind::Note => write!(f, "note"),
             SubdiagnosticKind::Help => write!(f, "help"),
+            SubdiagnosticKind::Warn => write!(f, "warn"),
             SubdiagnosticKind::Suggestion(SubdiagnosticSuggestionKind::Normal) => {
                 write!(f, "suggestion")
             }

@@ -2,8 +2,13 @@
 	--main-background-color: #353535;
 	--main-color: #ddd;
 	--settings-input-color: #2196f3;
-	--sidebar-background-color: #565656;
+	--sidebar-background-color: #505050;
 	--sidebar-background-color-hover: #676767;
+	--code-block-background-color: #2A2A2A;
+	--scrollbar-track-background-color: #717171;
+	--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
+	--scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
+	--headings-border-bottom-color: #d2d2d2;
 }
 
 .slider {
@@ -16,26 +21,8 @@ input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
-h1.fqn {
-	border-bottom-color: #d2d2d2;
-}
-h2, h3, h4 {
-	border-bottom-color: #d2d2d2;
-}
-
 .in-band {
 	background-color: #353535;
-}
-
-.docblock code, .docblock-short code {
-	background-color: #2A2A2A;
-}
-pre, .rustdoc.source .example-wrap {
-	background-color: #2A2A2A;
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: #505050;
 }
 
 .rust-logo {
@@ -43,28 +30,6 @@ pre, .rustdoc.source .example-wrap {
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
 		drop-shadow(0 -1px 0 #fff)
-}
-
-/* Improve the scrollbar display on firefox */
-* {
-	scrollbar-color: rgb(64, 65, 67) #717171;
-}
-.sidebar {
-	scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
-}
-
-/* Improve the scrollbar display on webkit-based browsers */
-::-webkit-scrollbar-track {
-	background-color: #717171;
-}
-::-webkit-scrollbar-thumb {
-	background-color: rgba(32, 34, 37, .6);
-}
-.sidebar::-webkit-scrollbar-track {
-	background-color: #717171;
-}
-.sidebar::-webkit-scrollbar-thumb {
-	background-color: rgba(32, 34, 37, .6);
 }
 
 .sidebar .current,
@@ -178,21 +143,16 @@ a {
 	color: #D2991D;
 }
 
-a.test-arrow {
-	color: #dedede;
-}
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
 
 details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
@@ -216,20 +176,6 @@ details.undocumented > summary::before {
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability > code { background: none; }
-
-#help > div {
-	background: #4d4d4d;
-	border-color: #bfbfbf;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #bfbfbf;
-}
-
-#help dt {
-	border-color: #bfbfbf;
-	background: rgba(0,0,0,0);
-}
 
 .rightside,
 .out-of-band {
@@ -255,6 +201,7 @@ pre.rust .question-mark {
 }
 
 a.test-arrow {
+	color: #dedede;
 	background-color: rgba(78, 139, 202, 0.2);
 }
 
@@ -358,20 +305,8 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 @media (max-width: 700px) {
-	.sidebar-menu {
-		background-color: #505050;
-		border-bottom-color: #e0e0e0;
-		border-right-color: #e0e0e0;
-	}
-
 	.sidebar-elems {
-		background-color: #505050;
 		border-right-color: #000;
-	}
-
-	#sidebar-filler {
-		background-color: #505050;
-		border-bottom-color: #e0e0e0;
 	}
 }
 

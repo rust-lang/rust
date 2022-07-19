@@ -295,6 +295,9 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// This function will create a file if it does not exist,
 /// and will entirely replace its contents if it does.
 ///
+/// Depending on the platform, this function may fail if the
+/// full directory path does not exist.
+///
 /// This is a convenience function for using [`File::create`] and [`write_all`]
 /// with fewer imports.
 ///
@@ -348,6 +351,9 @@ impl File {
     ///
     /// This function will create a file if it does not exist,
     /// and will truncate it if it does.
+    ///
+    /// Depending on the platform, this function may fail if the
+    /// full directory path does not exist.
     ///
     /// See the [`OpenOptions::open`] function for more details.
     ///

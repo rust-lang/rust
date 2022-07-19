@@ -9,8 +9,8 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin,
-    TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, LifetimeParamKind, ParamName, PolyTraitRef,
+    PredicateOrigin, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
@@ -338,7 +338,10 @@ fn could_use_elision<'tcx>(
 fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
     let mut allowed_lts = FxHashSet::default();
     for par in named_generics.iter() {
-        if let GenericParamKind::Lifetime { .. } = par.kind {
+        if let GenericParamKind::Lifetime {
+            kind: LifetimeParamKind::Explicit,
+        } = par.kind
+        {
             allowed_lts.insert(RefLt::Named(par.name.ident().name));
         }
     }
@@ -379,6 +382,7 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
                 self.lts.push(RefLt::Static);
             } else if let LifetimeName::Param(_, ParamName::Fresh) = lt.name {
                 // Fresh lifetimes generated should be ignored.
+                self.lts.push(RefLt::Unnamed);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
             } else {

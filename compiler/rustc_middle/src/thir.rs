@@ -30,7 +30,6 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
 
-pub mod abstract_const;
 pub mod visit;
 
 newtype_index! {
@@ -181,6 +180,9 @@ pub enum StmtKind<'tcx> {
 
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
+
+        /// `let pat: ty = <INIT> else { <ELSE> }
+        else_block: Option<Block>,
 
         /// The lint level for this `let` statement.
         lint_level: LintLevel,

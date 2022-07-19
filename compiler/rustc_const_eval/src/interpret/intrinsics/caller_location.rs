@@ -80,7 +80,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         line: u32,
         col: u32,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let loc_details = &self.tcx.sess.opts.debugging_opts.location_detail;
+        let loc_details = &self.tcx.sess.opts.unstable_opts.location_detail;
         let file = if loc_details.file {
             self.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
         } else {

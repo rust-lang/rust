@@ -153,7 +153,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             .opaque_type_storage
             .take_opaque_types()
             .into_iter()
-            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id, k.substs), v.hidden_type.ty))
+            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
             .collect()
     }
 
@@ -714,10 +714,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
     }
 
     fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {
-        span_bug!(
-            self.cause.span(self.infcx.tcx),
-            "generic_const_exprs: unreachable `const_equate`"
-        );
+        span_bug!(self.cause.span(), "generic_const_exprs: unreachable `const_equate`");
     }
 
     fn normalization() -> NormalizationStrategy {

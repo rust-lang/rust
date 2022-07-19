@@ -597,6 +597,13 @@ impl SourceMap {
         local_begin.sf.src.is_some() && local_end.sf.src.is_some()
     }
 
+    pub fn is_span_accessible(&self, sp: Span) -> bool {
+        self.span_to_source(sp, |src, start_index, end_index| {
+            Ok(src.get(start_index..end_index).is_some())
+        })
+        .map_or(false, |is_accessible| is_accessible)
+    }
+
     /// Returns the source snippet as `String` corresponding to the given `Span`.
     pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
         self.span_to_source(sp, |src, start_index, end_index| {

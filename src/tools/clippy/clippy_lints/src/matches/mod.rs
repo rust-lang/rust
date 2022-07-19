@@ -1041,7 +1041,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-        self.infallible_destructuring_match_linted |= infallible_destructuring_match::check(cx, local);
+        self.infallible_destructuring_match_linted |=
+            local.els.is_none() && infallible_destructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
@@ -1061,7 +1062,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     let start = scrutinee_span.hi();
     let mut arm_spans = arms.iter().map(|arm| {
         let data = arm.span.data();
-        (data.ctxt == SyntaxContext::root()).then(|| (data.lo, data.hi))
+        (data.ctxt == SyntaxContext::root()).then_some((data.lo, data.hi))
     });
     let end = e.span.hi();
 
@@ -1095,7 +1096,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
             parent: None,
         }
         .span();
-        (!span_contains_cfg(cx, span)).then(|| next_start).ok_or(())
+        (!span_contains_cfg(cx, span)).then_some(next_start).ok_or(())
     });
     match found {
         Ok(start) => {

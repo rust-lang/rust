@@ -122,6 +122,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Ref(region, bk, place) => {
                 Ref(region.try_fold_with(folder)?, bk, place.try_fold_with(folder)?)
             }
+            CopyForDeref(place) => CopyForDeref(place.try_fold_with(folder)?),
             AddressOf(mutability, place) => AddressOf(mutability, place.try_fold_with(folder)?),
             Len(place) => Len(place.try_fold_with(folder)?),
             Cast(kind, op, ty) => Cast(kind, op.try_fold_with(folder)?, ty.try_fold_with(folder)?),
@@ -181,6 +182,7 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
         Ok(match self {
             Deref => Deref,
             Field(f, ty) => Field(f, ty.try_fold_with(folder)?),
+            OpaqueCast(ty) => OpaqueCast(ty.try_fold_with(folder)?),
             Index(v) => Index(v.try_fold_with(folder)?),
             Downcast(symbol, variantidx) => Downcast(symbol, variantidx),
             ConstantIndex { offset, min_length, from_end } => {

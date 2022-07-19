@@ -191,11 +191,11 @@ mod inheritance {
         stable_mod::unstable(); //~ ERROR use of unstable library feature
         stable_mod::stable();
 
-        unstable_mod::deprecated();
+        unstable_mod::deprecated(); //~ ERROR use of unstable library feature
         unstable_mod::unstable(); //~ ERROR use of unstable library feature
 
         let _ = Unstable::UnstableVariant; //~ ERROR use of unstable library feature
-        let _ = Unstable::StableVariant;
+        let _ = Unstable::StableVariant; //~ ERROR use of unstable library feature
 
         let x: usize = 0;
         x.stable();

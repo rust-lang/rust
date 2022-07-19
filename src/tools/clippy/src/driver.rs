@@ -117,7 +117,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         // run on the unoptimized MIR. On the other hand this results in some false negatives. If
         // MIR passes can be enabled / disabled separately, we should figure out, what passes to
         // use for Clippy.
-        config.opts.debugging_opts.mir_opt_level = Some(0);
+        config.opts.unstable_opts.mir_opt_level = Some(0);
     }
 }
 

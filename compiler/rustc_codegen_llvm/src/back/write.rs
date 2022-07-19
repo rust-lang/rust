@@ -107,7 +107,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(()).split_dwarf_path(
             tcx.sess.split_debuginfo(),
-            tcx.sess.opts.debugging_opts.split_dwarf_kind,
+            tcx.sess.opts.unstable_opts.split_dwarf_kind,
             Some(mod_name),
         )
     } else {
@@ -182,9 +182,9 @@ pub fn target_machine_factory(
     let use_softfp = sess.opts.cg.soft_float;
 
     let ffunction_sections =
-        sess.opts.debugging_opts.function_sections.unwrap_or(sess.target.function_sections);
+        sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections);
     let fdata_sections = ffunction_sections;
-    let funique_section_names = !sess.opts.debugging_opts.no_unique_section_names;
+    let funique_section_names = !sess.opts.unstable_opts.no_unique_section_names;
 
     let code_model = to_llvm_code_model(sess.code_model());
 
@@ -202,15 +202,15 @@ pub fn target_machine_factory(
     let features = CString::new(target_features.join(",")).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
     let trap_unreachable =
-        sess.opts.debugging_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
-    let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
+        sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
+    let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
     let relax_elf_relocations =
-        sess.opts.debugging_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
+        sess.opts.unstable_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
     let use_init_array =
-        !sess.opts.debugging_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
+        !sess.opts.unstable_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
     let path_mapping = sess.source_map().path_mapping().clone();
 

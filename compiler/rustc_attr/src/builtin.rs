@@ -137,7 +137,7 @@ impl ConstStability {
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol },
+    Stable { since: Symbol, allowed_through_unstable_modules: bool },
 }
 
 impl StabilityLevel {
@@ -172,6 +172,7 @@ where
     let mut stab: Option<(Stability, Span)> = None;
     let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
+    let mut allowed_through_unstable_modules = false;
 
     let diagnostic = &sess.parse_sess.span_diagnostic;
 
@@ -182,6 +183,7 @@ where
             sym::unstable,
             sym::stable,
             sym::rustc_promotable,
+            sym::rustc_allowed_through_unstable_modules,
         ]
         .iter()
         .any(|&s| attr.has_name(s))
@@ -193,6 +195,8 @@ where
 
         if attr.has_name(sym::rustc_promotable) {
             promotable = true;
+        } else if attr.has_name(sym::rustc_allowed_through_unstable_modules) {
+            allowed_through_unstable_modules = true;
         }
         // attributes with data
         else if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta {
@@ -406,7 +410,7 @@ where
 
                     match (feature, since) {
                         (Some(feature), Some(since)) => {
-                            let level = Stable { since };
+                            let level = Stable { since, allowed_through_unstable_modules: false };
                             if sym::stable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
                             } else {
@@ -442,6 +446,27 @@ where
                 E0717,
                 "`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` \
                 or a `rustc_const_stable` attribute"
+            )
+            .emit();
+        }
+    }
+
+    if allowed_through_unstable_modules {
+        if let Some((
+            Stability {
+                level: StabilityLevel::Stable { ref mut allowed_through_unstable_modules, .. },
+                ..
+            },
+            _,
+        )) = stab
+        {
+            *allowed_through_unstable_modules = true;
+        } else {
+            struct_span_err!(
+                diagnostic,
+                item_sp,
+                E0789,
+                "`rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute"
             )
             .emit();
         }
@@ -856,7 +881,6 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),
-    ReprNoNiche,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -904,7 +928,6 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     sym::packed => Some(ReprPacked(1)),
                     sym::simd => Some(ReprSimd),
                     sym::transparent => Some(ReprTransparent),
-                    sym::no_niche => Some(ReprNoNiche),
                     sym::align => {
                         let mut err = struct_span_err!(
                             diagnostic,
@@ -943,7 +966,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         Ok(literal) => acc.push(ReprPacked(literal)),
                         Err(message) => literal_error = Some(message),
                     };
-                } else if matches!(name, sym::C | sym::simd | sym::transparent | sym::no_niche)
+                } else if matches!(name, sym::C | sym::simd | sym::transparent)
                     || int_type_of_word(name).is_some()
                 {
                     recognised = true;
@@ -1001,7 +1024,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     } else {
                         if matches!(
                             meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent | sym::no_niche
+                            sym::C | sym::simd | sym::transparent
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
@@ -1039,7 +1062,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         .emit();
                     } else if matches!(
                         meta_item.name_or_empty(),
-                        sym::C | sym::simd | sym::transparent | sym::no_niche
+                        sym::C | sym::simd | sym::transparent
                     ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                     {
                         recognised = true;

@@ -4,8 +4,10 @@ use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
+use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{
@@ -27,8 +29,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::opaque::MemEncoder;
-use rustc_serialize::{Encodable, Encoder};
+use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
@@ -39,12 +40,14 @@ use rustc_span::{
 use rustc_target::abi::VariantIdx;
 use std::borrow::Borrow;
 use std::hash::Hash;
+use std::io::{Read, Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
 use tracing::{debug, trace};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
-    opaque: MemEncoder,
+    opaque: opaque::FileEncoder,
     tcx: TyCtxt<'tcx>,
     feat: &'tcx rustc_feature::Features,
 
@@ -665,7 +668,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hash: tcx.crate_hash(LOCAL_CRATE),
             stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
             required_panic_strategy: tcx.required_panic_strategy(LOCAL_CRATE),
-            panic_in_drop_strategy: tcx.sess.opts.debugging_opts.panic_in_drop,
+            panic_in_drop_strategy: tcx.sess.opts.unstable_opts.panic_in_drop,
             edition: tcx.sess.edition(),
             has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
             has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
@@ -729,12 +732,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         assert_eq!(total_bytes, computed_total_bytes);
 
         if tcx.sess.meta_stats() {
+            self.opaque.flush();
+
+            // Rewind and re-read all the metadata to count the zero bytes we wrote.
+            let pos_before_rewind = self.opaque.file().stream_position().unwrap();
             let mut zero_bytes = 0;
-            for e in self.opaque.data.iter() {
-                if *e == 0 {
+            self.opaque.file().rewind().unwrap();
+            let file = std::io::BufReader::new(self.opaque.file());
+            for e in file.bytes() {
+                if e.unwrap() == 0 {
                     zero_bytes += 1;
                 }
             }
+            assert_eq!(self.opaque.file().stream_position().unwrap(), pos_before_rewind);
 
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
             let p = |label, bytes| {
@@ -862,7 +872,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         // Constructors
         DefKind::Ctor(_, _) => {
             let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
-                || tcx.sess.opts.debugging_opts.always_encode_mir;
+                || tcx.sess.opts.unstable_opts.always_encode_mir;
             (true, mir_opt_base)
         }
         // Constants
@@ -880,7 +890,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());
-            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            let always_encode_mir = tcx.sess.opts.unstable_opts.always_encode_mir;
             (is_const_fn, needs_inline || always_encode_mir)
         }
         // Closures can't be const fn.
@@ -889,7 +899,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             let needs_inline = (generics.requires_monomorphization(tcx)
                 || tcx.codegen_fn_attrs(def_id).requests_inline())
                 && tcx.sess.opts.output_types.should_codegen();
-            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            let always_encode_mir = tcx.sess.opts.unstable_opts.always_encode_mir;
             (false, needs_inline || always_encode_mir)
         }
         // Generators require optimized MIR to compute layout.
@@ -1360,7 +1370,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api || self.tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+        if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             if let Some(stab) = self.tcx.lookup_stability(def_id) {
                 record!(self.tables.lookup_stability[def_id] <- stab)
             }
@@ -1372,7 +1382,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // The query lookup can take a measurable amount of time in crates with many items. Check if
         // the stability attributes are even enabled before using their queries.
-        if self.feat.staged_api || self.tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
+        if self.feat.staged_api || self.tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
             if let Some(stab) = self.tcx.lookup_const_stability(def_id) {
                 record!(self.tables.lookup_const_stability[def_id] <- stab)
             }
@@ -2133,24 +2143,58 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-#[derive(Encodable, Decodable)]
 pub struct EncodedMetadata {
-    raw_data: Vec<u8>,
+    // The declaration order matters because `mmap` should be dropped before `_temp_dir`.
+    mmap: Option<Mmap>,
+    // We need to carry MaybeTempDir to avoid deleting the temporary
+    // directory while accessing the Mmap.
+    _temp_dir: Option<MaybeTempDir>,
 }
 
 impl EncodedMetadata {
     #[inline]
-    pub fn new() -> EncodedMetadata {
-        EncodedMetadata { raw_data: Vec::new() }
+    pub fn from_path(path: PathBuf, temp_dir: Option<MaybeTempDir>) -> std::io::Result<Self> {
+        let file = std::fs::File::open(&path)?;
+        let file_metadata = file.metadata()?;
+        if file_metadata.len() == 0 {
+            return Ok(Self { mmap: None, _temp_dir: None });
+        }
+        let mmap = unsafe { Some(Mmap::map(file)?) };
+        Ok(Self { mmap, _temp_dir: temp_dir })
     }
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
-        &self.raw_data
+        self.mmap.as_ref().map(|mmap| mmap.as_ref()).unwrap_or_default()
     }
 }
 
-pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+impl<S: Encoder> Encodable<S> for EncodedMetadata {
+    fn encode(&self, s: &mut S) {
+        let slice = self.raw_data();
+        slice.encode(s)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for EncodedMetadata {
+    fn decode(d: &mut D) -> Self {
+        let len = d.read_usize();
+        let mmap = if len > 0 {
+            let mut mmap = MmapMut::map_anon(len).unwrap();
+            for _ in 0..len {
+                (&mut mmap[..]).write(&[d.read_u8()]).unwrap();
+            }
+            mmap.flush().unwrap();
+            Some(mmap.make_read_only().unwrap())
+        } else {
+            None
+        };
+
+        Self { mmap, _temp_dir: None }
+    }
+}
+
+pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
     // Since encoding metadata is not in a query, and nothing is cached,
@@ -2158,7 +2202,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     tcx.dep_graph.assert_ignored();
 
     join(
-        || encode_metadata_impl(tcx),
+        || encode_metadata_impl(tcx, path),
         || {
             if tcx.sess.threads() == 1 {
                 return;
@@ -2168,12 +2212,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
             // It can be removed if it turns out to cause trouble or be detrimental to performance.
             join(|| prefetch_mir(tcx), || tcx.exported_symbols(LOCAL_CRATE));
         },
-    )
-    .0
+    );
 }
 
-fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
-    let mut encoder = MemEncoder::new();
+fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
+    let mut encoder = opaque::FileEncoder::new(path)
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to create file encoder: {}", err)));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
@@ -2208,20 +2252,29 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();
 
-    let mut result = ecx.opaque.finish();
+    ecx.opaque.flush();
+
+    let mut file = ecx.opaque.file();
+    // We will return to this position after writing the root position.
+    let pos_before_seek = file.stream_position().unwrap();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
+    file.seek(std::io::SeekFrom::Start(header as u64))
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to seek the file: {}", err)));
     let pos = root.position.get();
-    result[header + 0] = (pos >> 24) as u8;
-    result[header + 1] = (pos >> 16) as u8;
-    result[header + 2] = (pos >> 8) as u8;
-    result[header + 3] = (pos >> 0) as u8;
+    file.write_all(&[(pos >> 24) as u8, (pos >> 16) as u8, (pos >> 8) as u8, (pos >> 0) as u8])
+        .unwrap_or_else(|err| tcx.sess.fatal(&format!("failed to write to the file: {}", err)));
+
+    // Return to the position where we are before writing the root position.
+    file.seek(std::io::SeekFrom::Start(pos_before_seek)).unwrap();
 
     // Record metadata size for self-profiling
-    tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
-
-    EncodedMetadata { raw_data: result }
+    tcx.prof.artifact_size(
+        "crate_metadata",
+        "crate_metadata",
+        file.metadata().unwrap().len() as u64,
+    );
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -2242,5 +2295,5 @@ pub fn provide(providers: &mut Providers) {
         },
 
         ..*providers
-    };
+    }
 }

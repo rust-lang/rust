@@ -2,7 +2,7 @@
 
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -231,7 +231,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
-    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.debugging_opts.polonius;
+    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.unstable_opts.polonius;
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -1236,6 +1236,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
                 self.consume_operand(location, (operand, span), flow_state)
             }
+            Rvalue::CopyForDeref(place) => {
+                self.access_place(
+                    location,
+                    (place, span),
+                    (Deep, Read(ReadKind::Copy)),
+                    LocalMutationIsAllowed::No,
+                    flow_state,
+                );
+
+                // Finally, check if path was already moved.
+                self.check_if_path_or_subpath_is_moved(
+                    location,
+                    InitializationRequiringAction::Use,
+                    (place.as_ref(), span),
+                    flow_state,
+                );
+            }
 
             Rvalue::Len(place) | Rvalue::Discriminant(place) => {
                 let af = match *rvalue {
@@ -1771,6 +1788,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
+                ProjectionElem::OpaqueCast(_) |
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
                 ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
@@ -2162,6 +2180,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ProjectionElem::Index(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {

@@ -39,7 +39,11 @@ fn missing_tool(tool_name: &str, skip: bool) {
     if skip {
         println!("Unable to build {}, skipping dist", tool_name)
     } else {
-        panic!("Unable to build {}", tool_name)
+        let help = "note: not all tools are available on all nightlies\nhelp: see https://forge.rust-lang.org/infra/toolstate.html for more information";
+        panic!(
+            "Unable to build submodule tool {} (use `missing-tools = true` to ignore this failure)\n{}",
+            tool_name, help
+        )
     }
 }
 

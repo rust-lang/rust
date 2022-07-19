@@ -25,6 +25,7 @@ use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
+use crate::util::get_clang_cl_resource_dir;
 use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
 use crate::LLVM_TOOLS;
 use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
@@ -104,7 +105,7 @@ impl Step for Std {
             || builder.config.keep_stage_std.contains(&compiler.stage)
         {
             builder.info("Warning: Using a potentially old libstd. This may not behave well.");
-            builder.ensure(StdLink { compiler, target_compiler: compiler, target });
+            builder.ensure(StdLink::from_std(self, compiler));
             return;
         }
 
@@ -122,11 +123,7 @@ impl Step for Std {
             copy_third_party_objects(builder, &compiler, target);
             copy_self_contained_objects(builder, &compiler, target);
 
-            builder.ensure(StdLink {
-                compiler: compiler_to_use,
-                target_compiler: compiler,
-                target,
-            });
+            builder.ensure(StdLink::from_std(self, compiler_to_use));
             return;
         }
 
@@ -149,11 +146,10 @@ impl Step for Std {
             false,
         );
 
-        builder.ensure(StdLink {
-            compiler: builder.compiler(compiler.stage, builder.config.build),
-            target_compiler: compiler,
-            target,
-        });
+        builder.ensure(StdLink::from_std(
+            self,
+            builder.compiler(compiler.stage, builder.config.build),
+        ));
     }
 }
 
@@ -394,6 +390,19 @@ struct StdLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
+    /// Not actually used; only present to make sure the cache invalidation is correct.
+    crates: Interned<Vec<String>>,
+}
+
+impl StdLink {
+    fn from_std(std: Std, host_compiler: Compiler) -> Self {
+        Self {
+            compiler: host_compiler,
+            target_compiler: std.compiler,
+            target: std.target,
+            crates: std.crates,
+        }
+    }
 }
 
 impl Step for StdLink {
@@ -614,7 +623,7 @@ impl Step for Rustc {
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
             builder.info("Warning: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
-            builder.ensure(RustcLink { compiler, target_compiler: compiler, target });
+            builder.ensure(RustcLink::from_rustc(self, compiler));
             return;
         }
 
@@ -623,11 +632,7 @@ impl Step for Rustc {
             builder.ensure(Rustc::new(compiler_to_use, target));
             builder
                 .info(&format!("Uplifting stage1 rustc ({} -> {})", builder.config.build, target));
-            builder.ensure(RustcLink {
-                compiler: compiler_to_use,
-                target_compiler: compiler,
-                target,
-            });
+            builder.ensure(RustcLink::from_rustc(self, compiler_to_use));
             return;
         }
 
@@ -688,11 +693,10 @@ impl Step for Rustc {
             false,
         );
 
-        builder.ensure(RustcLink {
-            compiler: builder.compiler(compiler.stage, builder.config.build),
-            target_compiler: compiler,
-            target,
-        });
+        builder.ensure(RustcLink::from_rustc(
+            self,
+            builder.compiler(compiler.stage, builder.config.build),
+        ));
     }
 }
 
@@ -769,10 +773,38 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
         }
-        // Some LLVM linker flags (-L and -l) may be needed to link rustc_llvm.
-        if let Some(ref s) = builder.config.llvm_ldflags {
-            cargo.env("LLVM_LINKER_FLAGS", s);
+
+        // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
+        // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by
+        // whitespace.
+        //
+        // For example:
+        // - on windows, when `clang-cl` is used with instrumentation, we need to manually add
+        // clang's runtime library resource directory so that the profiler runtime library can be
+        // found. This is to avoid the linker errors about undefined references to
+        // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
+        let mut llvm_linker_flags = String::new();
+        if builder.config.llvm_profile_generate && target.contains("msvc") {
+            if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
+                // Add clang's runtime library directory to the search path
+                let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+                llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
+            }
         }
+
+        // The config can also specify its own llvm linker flags.
+        if let Some(ref s) = builder.config.llvm_ldflags {
+            if !llvm_linker_flags.is_empty() {
+                llvm_linker_flags.push_str(" ");
+            }
+            llvm_linker_flags.push_str(s);
+        }
+
+        // Set the linker flags via the env var that `rustc_llvm`'s build script will read.
+        if !llvm_linker_flags.is_empty() {
+            cargo.env("LLVM_LINKER_FLAGS", llvm_linker_flags);
+        }
+
         // Building with a static libstdc++ is only supported on linux right now,
         // not for MSVC or macOS
         if builder.config.llvm_static_stdcpp
@@ -807,6 +839,19 @@ struct RustcLink {
     pub compiler: Compiler,
     pub target_compiler: Compiler,
     pub target: TargetSelection,
+    /// Not actually used; only present to make sure the cache invalidation is correct.
+    crates: Interned<Vec<String>>,
+}
+
+impl RustcLink {
+    fn from_rustc(rustc: Rustc, host_compiler: Compiler) -> Self {
+        Self {
+            compiler: host_compiler,
+            target_compiler: rustc.compiler,
+            target: rustc.target,
+            crates: rustc.crates,
+        }
+    }
 }
 
 impl Step for RustcLink {

@@ -81,14 +81,14 @@ where
         if let Some((_, last_pat_opt, last_expr, _)) = iter.next_back();
         let iter_without_last = iter.clone();
         if let Some((first_attrs, _, first_expr, first_guard)) = iter.next();
-        if let Some(b0) = find_bool_lit(&first_expr.kind, is_if_let);
-        if let Some(b1) = find_bool_lit(&last_expr.kind, is_if_let);
+        if let Some(b0) = find_bool_lit(&first_expr.kind);
+        if let Some(b1) = find_bool_lit(&last_expr.kind);
         if b0 != b1;
         if first_guard.is_none() || iter.len() == 0;
         if first_attrs.is_empty();
         if iter
             .all(|arm| {
-                find_bool_lit(&arm.2.kind, is_if_let).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty()
+                find_bool_lit(&arm.2.kind).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty()
             });
         then {
             if let Some(last_pat) = last_pat_opt {
@@ -144,7 +144,7 @@ where
 }
 
 /// Extract a `bool` or `{ bool }`
-fn find_bool_lit(ex: &ExprKind<'_>, is_if_let: bool) -> Option<bool> {
+fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
     match ex {
         ExprKind::Lit(Spanned {
             node: LitKind::Bool(b), ..
@@ -156,7 +156,7 @@ fn find_bool_lit(ex: &ExprKind<'_>, is_if_let: bool) -> Option<bool> {
                 ..
             },
             _,
-        ) if is_if_let => {
+        ) => {
             if let ExprKind::Lit(Spanned {
                 node: LitKind::Bool(b), ..
             }) = exp.kind

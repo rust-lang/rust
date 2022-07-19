@@ -419,7 +419,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             }
 
             let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);
-            if tcx.sess.opts.debugging_opts.panic_in_drop != found_drop_strategy {
+            if tcx.sess.opts.unstable_opts.panic_in_drop != found_drop_strategy {
                 sess.err(&format!(
                     "the crate `{}` is compiled with the \
                                panic-in-drop strategy `{}` which is \
@@ -427,7 +427,7 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
                                strategy of `{}`",
                     tcx.crate_name(cnum),
                     found_drop_strategy.desc(),
-                    tcx.sess.opts.debugging_opts.panic_in_drop.desc()
+                    tcx.sess.opts.unstable_opts.panic_in_drop.desc()
                 ));
             }
         }

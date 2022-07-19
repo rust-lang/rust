@@ -957,7 +957,7 @@ fn create_generator_drop_shim<'tcx>(
         tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
-    if tcx.sess.opts.debugging_opts.mir_emit_retag {
+    if tcx.sess.opts.unstable_opts.mir_emit_retag {
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             0,
@@ -1386,7 +1386,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         sanitize_witness(tcx, body, interior, upvars, &liveness_info.saved_locals);
 
-        if tcx.sess.opts.debugging_opts.validate_mir {
+        if tcx.sess.opts.unstable_opts.validate_mir {
             let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
                 assigned_local: None,
                 saved_locals: &liveness_info.saved_locals,

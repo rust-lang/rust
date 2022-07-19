@@ -265,14 +265,28 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
     }
 }
 
+fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
+    let body = cx.enclosing_body?;
+    let map = cx.tcx.hir();
+    let mut span = map.body(body).value.span;
+    for (_, node) in map.parent_iter(body.hir_id) {
+        match node {
+            Node::Expr(e) => span = e.span,
+            Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::Local(_) => (),
+            _ => break,
+        }
+    }
+    Some(span)
+}
+
 fn span_in_body_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     let source_map = cx.sess().source_map();
     let ctxt = span.ctxt();
     if ctxt == SyntaxContext::root()
-        && let Some(body) = cx.enclosing_body
+        && let Some(search_span) = get_body_search_span(cx)
     {
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
-            && let Some(body_span) = walk_span_to_context(cx.tcx.hir().body(body).value.span, SyntaxContext::root())
+            && let Some(body_span) = walk_span_to_context(search_span, SyntaxContext::root())
             && let Ok(body_line) = source_map.lookup_line(body_span.lo())
             && Lrc::ptr_eq(&unsafe_line.sf, &body_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()

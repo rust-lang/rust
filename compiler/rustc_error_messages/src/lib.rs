@@ -1,4 +1,4 @@
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
@@ -33,11 +33,13 @@ pub use unic_langid::{langid, LanguageIdentifier};
 fluent_messages! {
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
+    const_eval => "../locales/en-US/const_eval.ftl",
+    expand => "../locales/en-US/expand.ftl",
     lint => "../locales/en-US/lint.ftl",
     parser => "../locales/en-US/parser.ftl",
+    passes => "../locales/en-US/passes.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
-    const_eval => "../locales/en-US/const_eval.ftl",
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};

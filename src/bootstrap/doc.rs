@@ -74,6 +74,7 @@ macro_rules! book {
 // and checking against it?).
 book!(
     CargoBook, "src/tools/cargo/src/doc", "cargo", submodule = "src/tools/cargo";
+    ClippyBook, "src/tools/clippy/book", "clippy";
     EditionGuide, "src/doc/edition-guide", "edition-guide", submodule;
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", submodule;
     Nomicon, "src/doc/nomicon", "nomicon", submodule;

@@ -529,7 +529,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_place = loop {
                     match receiver.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
-                        ty::Dynamic(..) => break receiver.assert_mem_place(),
+                        ty::Dynamic(..) => break receiver.assert_mem_place(), // no immediate unsized values
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             let mut non_zst_field = None;
@@ -617,16 +617,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             place.to_ref(self),
             self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
         );
-
-        let ty = self.tcx.mk_unit(); // return type is ()
-        let dest = MPlaceTy::dangling(self.layout_of(ty)?);
+        let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.eval_fn_call(
             FnVal::Instance(instance),
             (Abi::Rust, fn_abi),
             &[arg.into()],
             false,
-            &dest.into(),
+            &ret.into(),
             Some(target),
             match unwind {
                 Some(cleanup) => StackPopUnwind::Cleanup(cleanup),

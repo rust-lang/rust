@@ -37,7 +37,6 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
-    WellFormedLoc,
 };
 
 use std::collections::hash_map::Entry;
@@ -375,29 +374,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (result, spans)
     }
 
-    /// Convenience method which tracks extra diagnostic information for normalization
-    /// that occurs as a result of WF checking. The `hir_id` is the `HirId` of the hir item
-    /// whose type is being wf-checked - this is used to construct a more precise span if
-    /// an error occurs.
-    ///
-    /// It is never necessary to call this method - calling `normalize_associated_types_in` will
-    /// just result in a slightly worse diagnostic span, and will still be sound.
-    pub(in super::super) fn normalize_associated_types_in_wf<T>(
-        &self,
-        span: Span,
-        value: T,
-        loc: WellFormedLoc,
-    ) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        self.inh.normalize_associated_types_in_with_cause(
-            ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(Some(loc))),
-            self.param_env,
-            value,
-        )
-    }
-
     pub(in super::super) fn normalize_associated_types_in<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -437,6 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_span: opt_input_expr.map(|expr| expr.span),
                     is_lit: opt_input_expr
                         .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
+                    output_pred: None,
                 },
             ),
             self.param_env,
@@ -786,12 +763,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // src/test/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
         if formal_ret.has_infer_types() {
             for ty in ret_ty.walk() {
-                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
-                    if let ty::Opaque(def_id, _) = *ty.kind() {
-                        if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
-                            return None;
-                        }
-                    }
+                if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
+                    && let ty::Opaque(def_id, _) = *ty.kind()
+                    && let Some(def_id) = def_id.as_local()
+                    && self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                    return None;
                 }
             }
         }
@@ -1426,7 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Const { has_default } => {
                         if !infer_args && has_default {
-                            EarlyBinder(tcx.const_param_default(param.def_id))
+                            tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
                                 .into()
                         } else {

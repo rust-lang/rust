@@ -52,6 +52,8 @@ pub enum MirPhase {
     /// of the `mir_promoted` query), these promoted elements are available in the `promoted_mir`
     /// query.
     ConstsPromoted = 2,
+    /// After this projections may only contain deref projections as the first element.
+    Derefered = 3,
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::DropAndReplace`]
     /// * [`TerminatorKind::FalseUnwind`]
@@ -66,9 +68,7 @@ pub enum MirPhase {
     /// Furthermore, `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop`
     /// terminator means that the auto-generated drop glue will be invoked. Also, `Copy` operands
     /// are allowed for non-`Copy` types.
-    DropsLowered = 3,
-    /// After this projections may only contain deref projections as the first element.
-    Derefered = 4,
+    DropsLowered = 4,
     /// Beginning with this phase, the following variant is disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     ///
@@ -754,6 +754,9 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    generator has more than one variant, the parent place's variant index must be set, indicating
 ///    which variant is being used. If it has just one variant, the variant index may or may not be
 ///    included - the single possible variant is inferred if it is not included.
+///  - [`OpaqueCast`](ProjectionElem::OpaqueCast): This projection changes the place's type to the
+///    given one, and makes no other changes. A `OpaqueCast` projection on any type other than an
+///    opaque type from the current crate is not well-formed.
 ///  - [`ConstantIndex`](ProjectionElem::ConstantIndex): Computes an offset in units of `T` into the
 ///    place as described in the documentation for the `ProjectionElem`. The resulting address is
 ///    the parent's address plus that offset, and the type is `T`. This is only legal if the parent
@@ -856,6 +859,10 @@ pub enum ProjectionElem<V, T> {
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
+
+    /// Like an explicit cast from an opaque type to a concrete type, but without
+    /// requiring an intermediate variable.
+    OpaqueCast(T),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
@@ -1051,6 +1058,16 @@ pub enum Rvalue<'tcx> {
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
     ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
+
+    /// A CopyForDeref is equivalent to a read from a place at the
+    /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
+    /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
+    /// that the only use of the returned value is a deref operation, immediately
+    /// followed by one or more projections. Drop elaboration treats this rvalue as if the
+    /// read never happened and just projects further. This allows simplifying various MIR
+    /// optimizations and codegen backends that previously had to handle deref operations anywhere
+    /// in a place.
+    CopyForDeref(Place<'tcx>),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]

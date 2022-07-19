@@ -226,6 +226,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ProjectionElem::Downcast(..) if including_downcast.0 => return None,
                 ProjectionElem::Downcast(..) => (),
+                ProjectionElem::OpaqueCast(..) => (),
                 ProjectionElem::Field(field, _ty) => {
                     // FIXME(project-rfc_2229#36): print capture precisely here.
                     if let Some(field) = self.is_upvar_field_projection(PlaceRef {
@@ -286,6 +287,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
                 ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
+                ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(*ty),
                 ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
             },
         };
@@ -891,7 +893,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(local_did);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure { body, fn_decl_span, .. } = expr {
+        if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
             for (captured_place, place) in self
                 .infcx
                 .tcx
@@ -904,11 +906,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if target_place == place.as_ref() =>
                     {
                         debug!("closure_span: found captured local {:?}", place);
-                        let body = self.infcx.tcx.hir().body(*body);
+                        let body = self.infcx.tcx.hir().body(body);
                         let generator_kind = body.generator_kind();
 
                         return Some((
-                            *fn_decl_span,
+                            fn_decl_span,
                             generator_kind,
                             captured_place.get_capture_kind_span(self.infcx.tcx),
                             captured_place.get_path_span(self.infcx.tcx),
@@ -975,14 +977,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if self.fn_self_span_reported.insert(fn_span) {
                         err.span_note(
                             // Check whether the source is accessible
-                            if self
-                                .infcx
-                                .tcx
-                                .sess
-                                .source_map()
-                                .span_to_snippet(self_arg.span)
-                                .is_ok()
-                            {
+                            if self.infcx.tcx.sess.source_map().is_span_accessible(self_arg.span) {
                                 self_arg.span
                             } else {
                                 fn_call_span

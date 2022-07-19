@@ -247,11 +247,6 @@ lint-atomic-ordering-invalid = `{$method}`'s failure ordering may not be `Releas
     .label = invalid failure ordering
     .help = consider using `Acquire` or `Relaxed` failure ordering instead
 
-lint-atomic-ordering-invalid-fail-success = `{$method}`'s success ordering must be at least as strong as its failure ordering
-    .fail-label = `{$fail_ordering}` failure ordering
-    .success-label = `{$success_ordering}` success ordering
-    .suggestion = consider using `{$success_suggestion}` success ordering instead
-
 lint-unused-op = unused {$op} that must be used
     .label = the {$op} produces a value
     .suggestion = use `let _ = ...` to ignore the resulting value

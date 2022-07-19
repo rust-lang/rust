@@ -289,7 +289,7 @@ where
             io::BufWriter::new(fs::File::create(&path)?)
         }
 
-        None if tcx.sess.opts.debugging_opts.dump_mir_dataflow
+        None if tcx.sess.opts.unstable_opts.dump_mir_dataflow
             && dump_enabled(tcx, A::NAME, def_id) =>
         {
             create_dump_file(
@@ -314,8 +314,8 @@ where
 
     let graphviz = graphviz::Formatter::new(body, results, style);
     let mut render_opts =
-        vec![dot::RenderOption::Fontname(tcx.sess.opts.debugging_opts.graphviz_font.clone())];
-    if tcx.sess.opts.debugging_opts.graphviz_dark_mode {
+        vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
+    if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
     dot::render_opts(&graphviz, &mut buf, &render_opts)?;

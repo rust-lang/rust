@@ -164,10 +164,62 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 suggested_name,
                 Applicability::MaybeIncorrect,
             );
-        } else {
-            err.span_label(span, format!("associated type `{}` not found", assoc_name));
+            return err.emit();
         }
 
+        // If we didn't find a good item in the supertraits (or couldn't get
+        // the supertraits), like in ItemCtxt, then look more generally from
+        // all visible traits. If there's one clear winner, just suggest that.
+
+        let visible_traits: Vec<_> = self
+            .tcx()
+            .all_traits()
+            .filter(|trait_def_id| {
+                let viz = self.tcx().visibility(*trait_def_id);
+                if let Some(def_id) = self.item_def_id() {
+                    viz.is_accessible_from(def_id, self.tcx())
+                } else {
+                    viz.is_visible_locally()
+                }
+            })
+            .collect();
+
+        let wider_candidate_names: Vec<_> = visible_traits
+            .iter()
+            .flat_map(|trait_def_id| {
+                self.tcx().associated_items(*trait_def_id).in_definition_order()
+            })
+            .filter_map(
+                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
+            )
+            .collect();
+
+        if let (Some(suggested_name), true) = (
+            find_best_match_for_name(&wider_candidate_names, assoc_name.name, None),
+            assoc_name.span != DUMMY_SP,
+        ) {
+            if let [best_trait] = visible_traits
+                .iter()
+                .filter(|trait_def_id| {
+                    self.tcx()
+                        .associated_items(*trait_def_id)
+                        .filter_by_name_unhygienic(suggested_name)
+                        .any(|item| item.kind == ty::AssocKind::Type)
+                })
+                .collect::<Vec<_>>()[..]
+            {
+                err.span_label(
+                    assoc_name.span,
+                    format!(
+                        "there is a similarly named associated type `{suggested_name}` in the trait `{}`",
+                        self.tcx().def_path_str(*best_trait)
+                    ),
+                );
+                return err.emit();
+            }
+        }
+
+        err.span_label(span, format!("associated type `{}` not found", assoc_name));
         err.emit()
     }
 

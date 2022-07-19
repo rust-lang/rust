@@ -25,7 +25,7 @@ can be broken down into several distinct phases:
 
 - regionck: after main is complete, the regionck pass goes over all
   types looking for regions and making sure that they did not escape
-  into places they are not in scope.  This may also influence the
+  into places where they are not in scope.  This may also influence the
   final assignments of the various region variables if there is some
   flexibility.
 
@@ -534,7 +534,7 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: Span) {
+fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
@@ -560,7 +560,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-        tcx.sess.span_err(span, msg);
+        tcx.sess.span_err(tcx.def_span(id), msg);
     }
 }
 
@@ -621,9 +621,8 @@ fn missing_items_err(
     // adding the associated item at the end of its body.
     let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
     // Obtain the level of indentation ending in `sugg_sp`.
-    let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
-    // Make the whitespace that will make the suggestion have the right indentation.
-    let padding: String = " ".repeat(indentation);
+    let padding =
+        tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
 
     for trait_item in missing_items {
         let snippet = suggestion_signature(trait_item, tcx);
@@ -864,17 +863,14 @@ fn bad_non_zero_sized_fields<'tcx>(
     err.emit();
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
+fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'_>, span: Span) {
     struct_span_err!(
         tcx.sess,
         span,
         E0533,
-        "expected unit struct, unit variant or constant, found {}{}",
+        "expected unit struct, unit variant or constant, found {} `{}`",
         res.descr(),
-        tcx.sess
-            .source_map()
-            .span_to_snippet(span)
-            .map_or_else(|_| String::new(), |s| format!(" `{s}`",)),
+        rustc_hir_pretty::qpath_to_string(qpath),
     )
     .emit();
 }

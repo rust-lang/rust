@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::BuiltinLintDiagnostics;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session, SessionDiagnostic};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -988,6 +988,8 @@ pub struct ExtCtxt<'a> {
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Used for running pre-expansion lints on freshly loaded modules.
     pub(super) lint_store: LintStoreExpandDyn<'a>,
+    /// Used for storing lints generated during expansion, like `NAMED_ARGUMENTS_USED_POSITIONALLY`
+    pub buffered_early_lint: Vec<BufferedEarlyLint>,
     /// When we 'expand' an inert attribute, we leave it
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
@@ -1020,6 +1022,7 @@ impl<'a> ExtCtxt<'a> {
             force_mode: false,
             expansions: FxHashMap::default(),
             expanded_inert_attrs: MarkedAttrs::new(),
+            buffered_early_lint: vec![],
         }
     }
 

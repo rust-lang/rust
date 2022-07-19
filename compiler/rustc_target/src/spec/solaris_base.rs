@@ -4,7 +4,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "solaris".into(),
         dynamic_linking: true,
-        executables: true,
         has_rpath: true,
         families: cvs!["unix"],
         is_like_solaris: true,

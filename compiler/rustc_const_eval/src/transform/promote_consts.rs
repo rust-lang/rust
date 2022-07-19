@@ -361,7 +361,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             return Err(Unpromotable);
                         }
                     }
-                    ProjectionElem::Downcast(..) => {
+                    ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 
@@ -493,6 +493,10 @@ impl<'tcx> Validator<'_, 'tcx> {
         match rvalue {
             Rvalue::Use(operand) | Rvalue::Repeat(operand, _) => {
                 self.validate_operand(operand)?;
+            }
+            Rvalue::CopyForDeref(place) => {
+                let op = &Operand::Copy(*place);
+                self.validate_operand(op)?
             }
 
             Rvalue::Discriminant(place) | Rvalue::Len(place) => {

@@ -48,6 +48,8 @@ impl<'tcx> Cx<'tcx> {
             _ => None,
         };
 
+        trace!(?expr.ty);
+
         // Now apply adjustments, if any.
         for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
             trace!(?expr, ?adjustment);
@@ -55,6 +57,8 @@ impl<'tcx> Cx<'tcx> {
             expr =
                 self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
         }
+
+        trace!(?expr.ty, "after adjustments");
 
         // Next, wrap this up in the expr's scope.
         expr = Expr {

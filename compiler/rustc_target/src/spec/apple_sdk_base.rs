@@ -54,7 +54,6 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         abi: target_abi(arch).into(),
         cpu: target_cpu(arch).into(),
         dynamic_linking: false,
-        executables: true,
         link_env_remove: link_env_remove(arch),
         has_thread_local: false,
         ..super::apple_base::opts(os)

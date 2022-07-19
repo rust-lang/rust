@@ -23,7 +23,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::span_bug;
-use rustc_middle::thir::abstract_const::Node as ACNode;
+use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst, Node as ACNode};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
@@ -32,15 +32,14 @@ use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
 
 use errors::{
-    FieldIsPrivate, FieldIsPrivateLabel, InPublicInterface, InPublicInterfaceTraits, ItemIsPrivate,
-    UnnamedItemIsPrivate,
+    FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
+    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, UnnamedItemIsPrivate,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +163,7 @@ where
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
-        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
+        walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
             ACNode::Leaf(leaf) => self.visit_const(leaf),
             ACNode::Cast(_, _, ty) => self.visit_ty(ty),
             ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
@@ -1717,19 +1716,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.struct_span_lint_hir(
+            self.tcx.emit_spanned_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                 self.tcx.hir().local_def_id_to_hir_id(self.item_def_id),
                 self.tcx.def_span(self.item_def_id.to_def_id()),
-                |lint| {
-                    lint.build(&format!(
-                        "{} `{}` from private dependency '{}' in public \
-                                                interface",
-                        kind,
-                        descr,
-                        self.tcx.crate_name(def_id.krate)
-                    ))
-                    .emit();
+                FromPrivateDependencyInPublicInterface {
+                    kind,
+                    descr: descr.to_string(),
+                    krate: self.tcx.crate_name(def_id.krate),
                 },
             );
         }
@@ -1755,6 +1749,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
+            let descr = descr.to_string();
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
@@ -1780,19 +1775,11 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     });
                 }
             } else {
-                let err_code = if kind == "trait" { "E0445" } else { "E0446" };
-                self.tcx.struct_span_lint_hir(
+                self.tcx.emit_spanned_lint(
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    |lint| {
-                        lint.build(&format!(
-                            "{} (error {})",
-                            format!("{} {} `{}` in public interface", vis_descr, kind, descr),
-                            err_code
-                        ))
-                        .emit();
-                    },
+                    PrivateInPublicLint { vis_descr, kind, descr },
                 );
             }
         }

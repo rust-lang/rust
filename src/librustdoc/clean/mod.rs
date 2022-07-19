@@ -57,11 +57,43 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
                 .map(|(item, renamed)| clean_maybe_renamed_foreign_item(cx, item, *renamed)),
         );
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(
-            self.items
-                .iter()
-                .flat_map(|(item, renamed)| clean_maybe_renamed_item(cx, item, *renamed)),
-        );
+
+        // Split up imports from all other items.
+        //
+        // This covers the case where somebody does an import which should pull in an item,
+        // but there's already an item with the same namespace and same name. Rust gives
+        // priority to the not-imported one, so we should, too.
+        let mut inserted = FxHashSet::default();
+        items.extend(self.items.iter().flat_map(|(item, renamed)| {
+            // First, lower everything other than imports.
+            if matches!(item.kind, hir::ItemKind::Use(..)) {
+                return Vec::new();
+            }
+            let v = clean_maybe_renamed_item(cx, item, *renamed);
+            for item in &v {
+                if let Some(name) = item.name {
+                    inserted.insert((item.type_(), name));
+                }
+            }
+            v
+        }));
+        items.extend(self.items.iter().flat_map(|(item, renamed)| {
+            // Now we actually lower the imports, skipping everything else.
+            if !matches!(item.kind, hir::ItemKind::Use(..)) {
+                return Vec::new();
+            }
+            let mut v = clean_maybe_renamed_item(cx, item, *renamed);
+            v.drain_filter(|item| {
+                if let Some(name) = item.name {
+                    // If an item with the same type and name already exists,
+                    // it takes priority over the inlined stuff.
+                    !inserted.insert((item.type_(), name))
+                } else {
+                    false
+                }
+            });
+            v
+        }));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -403,7 +435,7 @@ fn clean_projection<'tcx>(
     Type::QPath {
         assoc: Box::new(projection_to_path_segment(ty, cx)),
         should_show_cast,
-        self_type: box self_type,
+        self_type: Box::new(self_type),
         trait_,
     }
 }
@@ -1321,7 +1353,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             Type::QPath {
                 assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
                 should_show_cast,
-                self_type: box self_type,
+                self_type: Box::new(self_type),
                 trait_,
             }
         }
@@ -1341,7 +1373,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             Type::QPath {
                 assoc: Box::new(segment.clean(cx)),
                 should_show_cast,
-                self_type: box self_type,
+                self_type: Box::new(self_type),
                 trait_,
             }
         }
@@ -1441,7 +1473,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
 
         match self.kind {
             TyKind::Never => Primitive(PrimitiveType::Never),
-            TyKind::Ptr(ref m) => RawPointer(m.mutbl, box m.ty.clean(cx)),
+            TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(m.ty.clean(cx))),
             TyKind::Rptr(ref l, ref m) => {
                 // There are two times a `Fresh` lifetime can be created:
                 // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
@@ -1453,9 +1485,9 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                 let elided =
                     l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
                 let lifetime = if elided { None } else { Some(l.clean(cx)) };
-                BorrowedRef { lifetime, mutability: m.mutbl, type_: box m.ty.clean(cx) }
+                BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(m.ty.clean(cx)) }
             }
-            TyKind::Slice(ty) => Slice(box ty.clean(cx)),
+            TyKind::Slice(ty) => Slice(Box::new(ty.clean(cx))),
             TyKind::Array(ty, ref length) => {
                 let length = match length {
                     hir::ArrayLen::Infer(_, _) => "_".to_string(),
@@ -1474,7 +1506,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                     }
                 };
 
-                Array(box ty.clean(cx), length)
+                Array(Box::new(ty.clean(cx)), length)
             }
             TyKind::Tup(tys) => Tuple(tys.iter().map(|x| x.clean(cx)).collect()),
             TyKind::OpaqueDef(item_id, _) => {
@@ -1491,7 +1523,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
                 let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
                 DynTrait(bounds, lifetime)
             }
-            TyKind::BareFn(barefn) => BareFunction(box barefn.clean(cx)),
+            TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
             // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
@@ -1502,7 +1534,7 @@ impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
 /// Returns `None` if the type could not be normalized
 fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
-    if !cx.tcx.sess.opts.debugging_opts.normalize_docs {
+    if !cx.tcx.sess.opts.unstable_opts.normalize_docs {
         return None;
     }
 
@@ -1541,27 +1573,27 @@ fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefI
         ty::Uint(uint_ty) => Primitive(uint_ty.into()),
         ty::Float(float_ty) => Primitive(float_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
-        ty::Slice(ty) => Slice(box ty.clean(cx)),
+        ty::Slice(ty) => Slice(Box::new(ty.clean(cx))),
         ty::Array(ty, n) => {
             let mut n = cx.tcx.lift(n).expect("array lift failed");
             n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
-            Array(box ty.clean(cx), n)
+            Array(Box::new(ty.clean(cx)), n)
         }
-        ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
+        ty::RawPtr(mt) => RawPointer(mt.mutbl, Box::new(mt.ty.clean(cx))),
         ty::Ref(r, ty, mutbl) => {
-            BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: box ty.clean(cx) }
+            BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: Box::new(ty.clean(cx)) }
         }
         ty::FnDef(..) | ty::FnPtr(_) => {
             let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
             let sig = ty.fn_sig(cx.tcx);
             let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
-            BareFunction(box BareFunctionDecl {
+            BareFunction(Box::new(BareFunctionDecl {
                 unsafety: sig.unsafety(),
                 generic_params: Vec::new(),
                 decl,
                 abi: sig.abi(),
-            })
+            }))
         }
         ty::Adt(def, substs) => {
             let did = def.did();
@@ -2062,7 +2094,7 @@ fn clean_extern_crate<'tcx>(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: box attrs.clean(cx),
+        attrs: Box::new(attrs.clean(cx)),
         item_id: crate_def_id.into(),
         visibility: ty_vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
@@ -2120,8 +2152,9 @@ fn clean_use_statement<'tcx>(
     // forcefully don't inline if this is not public or if the
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-    let mut denied = !(visibility.is_public()
-        || (cx.render_options.document_private && is_visible_from_parent_mod))
+    let mut denied = cx.output_format.is_json()
+        || !(visibility.is_public()
+            || (cx.render_options.document_private && is_visible_from_parent_mod))
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)

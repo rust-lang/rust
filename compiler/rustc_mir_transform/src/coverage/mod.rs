@@ -160,8 +160,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut debug_used_expressions = debug::UsedExpressions::new();
 
         let dump_mir = dump_enabled(tcx, self.pass_name, def_id);
-        let dump_graphviz = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_graphviz;
-        let dump_spanview = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_spanview.is_some();
+        let dump_graphviz = dump_mir && tcx.sess.opts.unstable_opts.dump_mir_graphviz;
+        let dump_spanview = dump_mir && tcx.sess.opts.unstable_opts.dump_mir_spanview.is_some();
 
         if dump_graphviz {
             graphviz_data.enable();

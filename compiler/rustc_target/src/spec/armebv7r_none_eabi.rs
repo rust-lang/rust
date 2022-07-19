@@ -14,7 +14,6 @@ pub fn target() -> Target {
             abi: "eabi".into(),
             endian: Endian::Big,
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-            executables: true,
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,

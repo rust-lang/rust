@@ -17,6 +17,7 @@
     - [Template for Target-specific Documentation](platform-support/TEMPLATE.md)
     - [aarch64-apple-ios-sim](platform-support/aarch64-apple-ios-sim.md)
     - [\*-apple-watchos\*](platform-support/apple-watchos.md)
+    - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
     - [armv6k-nintendo-3ds](platform-support/armv6k-nintendo-3ds.md)
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)

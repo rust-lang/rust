@@ -10,7 +10,7 @@ mod suggest;
 pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
-use crate::check::FnCtxt;
+use crate::check::{Expectation, FnCtxt};
 use crate::ObligationCause;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -20,8 +20,10 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{
+    self, AssocKind, DefIdTree, GenericParamDefKind, ProjectionPredicate, ProjectionTy, Term,
+    ToPredicate, Ty, TypeVisitable,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -221,7 +223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let candidates = match self.lookup_probe(
+            let mut candidates = match self.lookup_probe(
                 span,
                 segment.ident,
                 self_ty,
@@ -243,6 +245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .collect(),
                 _ => Vec::new(),
             };
+            candidates.retain(|candidate| *candidate != self.tcx.parent(result.callee.def_id));
 
             return Err(IllegalSizedBound(candidates, needs_mut, span));
         }
@@ -317,6 +320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         opt_input_type: Option<Ty<'tcx>>,
         opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+        expected: Expectation<'tcx>,
     ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
     {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
@@ -338,6 +342,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
+        let opt_output_ty =
+            expected.only_has_type(self).and_then(|ty| (!ty.needs_infer()).then(|| ty));
+        let opt_output_assoc_item = self.tcx.associated_items(trait_def_id).find_by_name_and_kind(
+            self.tcx,
+            Ident::from_str("Output"),
+            AssocKind::Type,
+            trait_def_id,
+        );
+        let output_pred =
+            opt_output_ty.zip(opt_output_assoc_item).map(|(output_ty, output_assoc_item)| {
+                ty::Binder::dummy(ty::PredicateKind::Projection(ProjectionPredicate {
+                    projection_ty: ProjectionTy { substs, item_def_id: output_assoc_item.def_id },
+                    term: Term::Ty(output_ty),
+                }))
+                .to_predicate(self.tcx)
+            });
+
         (
             traits::Obligation::new(
                 traits::ObligationCause::new(
@@ -347,6 +368,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rhs_span: opt_input_expr.map(|expr| expr.span),
                         is_lit: opt_input_expr
                             .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                        output_pred,
                     },
                 ),
                 self.param_env,
@@ -396,6 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         opt_input_type: Option<Ty<'tcx>>,
         opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+        expected: Expectation<'tcx>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         let (obligation, substs) = self.obligation_for_op_method(
             span,
@@ -403,6 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             opt_input_type,
             opt_input_expr,
+            expected,
         );
         self.construct_obligation_for_trait(
             span,
@@ -504,6 +528,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     rhs_span: opt_input_expr.map(|expr| expr.span),
                     is_lit: opt_input_expr
                         .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                    output_pred: None,
                 },
             )
         } else {

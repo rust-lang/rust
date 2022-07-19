@@ -21,6 +21,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
+use rustc_middle::ty::abstract_const::AbstractConst;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
@@ -937,7 +938,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn member_constraint(
         &self,
-        opaque_type_def_id: DefId,
+        opaque_type_def_id: LocalDefId,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
@@ -1300,7 +1301,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions_and_report_errors(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+    pub fn resolve_regions_and_report_errors(
+        &self,
+        generic_param_scope: LocalDefId,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
         let errors = self.resolve_regions(outlives_env);
 
         if !self.is_tainted_by_errors() {
@@ -1309,7 +1314,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(&errors);
+            self.report_region_errors(generic_param_scope, &errors);
         }
     }
 
@@ -1651,14 +1656,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
-        let substs = self.resolve_vars_if_possible(unevaluated.substs);
+        let mut substs = self.resolve_vars_if_possible(unevaluated.substs);
         debug!(?substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
-            debug!("substs have infer types or consts: {:?}", substs);
-            return Err(ErrorHandled::TooGeneric);
+            let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
+            if let Ok(None) = ac {
+                substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
+            } else {
+                return Err(ErrorHandled::TooGeneric);
+            }
         }
 
         let param_env_erased = self.tcx.erase_regions(param_env);

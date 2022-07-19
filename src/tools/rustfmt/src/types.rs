@@ -1067,7 +1067,7 @@ pub(crate) fn can_be_overflowed_type(
 }
 
 /// Returns `None` if there is no `LifetimeDef` in the given generic parameters.
-fn rewrite_lifetime_param(
+pub(crate) fn rewrite_lifetime_param(
     context: &RewriteContext<'_>,
     shape: Shape,
     generic_params: &[ast::GenericParam],

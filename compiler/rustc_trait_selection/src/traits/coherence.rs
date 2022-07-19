@@ -13,7 +13,7 @@ use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
     PredicateObligations, SelectionContext,
 };
-//use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -44,7 +44,7 @@ pub enum Conflict {
 
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
-    pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
 
     /// `true` if the overlap might've been permitted before the shift
     /// to universes.

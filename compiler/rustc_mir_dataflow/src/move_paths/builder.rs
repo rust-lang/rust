@@ -1,3 +1,4 @@
+use crate::un_derefer::UnDerefer;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
@@ -19,6 +20,7 @@ struct MoveDataBuilder<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
     errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
+    un_derefer: UnDerefer<'tcx>,
 }
 
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
@@ -32,6 +34,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             tcx,
             param_env,
             errors: Vec::new(),
+            un_derefer: UnDerefer { tcx: tcx, derefer_sidetable: Default::default() },
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
@@ -94,6 +97,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, place: Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
+        if let Some(new_place) = self.builder.un_derefer.derefer(place.as_ref(), self.builder.body)
+        {
+            return self.move_path_for(new_place);
+        }
+
         debug!("lookup({:?})", place);
         let mut base = self.builder.data.rev_lookup.locals[place.local];
 
@@ -276,6 +284,12 @@ struct Gatherer<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
+            StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
+                assert!(place.projection.is_empty());
+                if self.builder.body.local_decls[place.local].is_deref_temp() {
+                    self.builder.un_derefer.derefer_sidetable.insert(place.local, *reffed);
+                }
+            }
             StatementKind::Assign(box (place, rval)) => {
                 self.create_move_path(*place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
@@ -294,7 +308,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(Place::from(*local));
+                // DerefTemp locals (results of CopyForDeref) don't actually move anything.
+                if !self.builder.un_derefer.derefer_sidetable.contains_key(&local) {
+                    self.gather_move(Place::from(*local));
+                }
             }
             StatementKind::SetDiscriminant { .. } | StatementKind::Deinit(..) => {
                 span_bug!(
@@ -328,6 +345,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_operand(operand);
                 }
             }
+            Rvalue::CopyForDeref(..) => unreachable!(),
             Rvalue::Ref(..)
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
@@ -439,6 +457,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_move(&mut self, place: Place<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, place);
+        if let Some(new_place) = self.builder.un_derefer.derefer(place.as_ref(), self.builder.body)
+        {
+            self.gather_move(new_place);
+            return;
+        }
 
         if let [ref base @ .., ProjectionElem::Subslice { from, to, from_end: false }] =
             **place.projection
@@ -493,6 +516,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_init(&mut self, place: PlaceRef<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
+
+        if let Some(new_place) = self.builder.un_derefer.derefer(place, self.builder.body) {
+            self.gather_init(new_place.as_ref(), kind);
+            return;
+        }
 
         let mut place = place;
 

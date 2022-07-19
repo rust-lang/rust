@@ -6,7 +6,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
+use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -138,7 +138,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPr
         if let TypeVariableOriginKind::TypeParameterDefinition(name, _) =
             infcx.inner.borrow_mut().type_variables().var_origin(ty_vid).kind
         {
-            Some(name.to_string())
+            Some(name)
         } else {
             None
         }
@@ -151,7 +151,7 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'_, 'tcx>, ns: Namespace) -> FmtPr
         if let ConstVariableOriginKind::ConstParameterDefinition(name, _) =
             infcx.inner.borrow_mut().const_unification_table().probe_value(ct_vid).origin.kind
         {
-            return Some(name.to_string());
+            return Some(name);
         } else {
             None
         }
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
         if let Some(node_ty) = self.opt_node_type(expr.hir_id) {
             if let (
-                &ExprKind::Closure { fn_decl, body, fn_decl_span, .. },
+                &ExprKind::Closure(&Closure { fn_decl, body, fn_decl_span, .. }),
                 ty::Closure(_, substs),
             ) = (&expr.kind, node_ty.kind())
             {

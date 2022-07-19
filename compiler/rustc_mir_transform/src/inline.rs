@@ -40,7 +40,7 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        if let Some(enabled) = sess.opts.debugging_opts.inline_mir {
+        if let Some(enabled) = sess.opts.unstable_opts.inline_mir {
             return enabled;
         }
 
@@ -395,9 +395,9 @@ impl<'tcx> Inliner<'tcx> {
         let tcx = self.tcx;
 
         let mut threshold = if callee_attrs.requests_inline() {
-            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold.unwrap_or(100)
+            self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
-            self.tcx.sess.opts.debugging_opts.inline_mir_threshold.unwrap_or(50)
+            self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
         };
 
         // Give a bonus functions with a small number of blocks,

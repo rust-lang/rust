@@ -28,6 +28,7 @@ fn is_stable(place: PlaceRef<'_>) -> bool {
             ProjectionElem::Field { .. } |
             ProjectionElem::ConstantIndex { .. } |
             ProjectionElem::Subslice { .. } |
+            ProjectionElem::OpaqueCast { .. } |
             ProjectionElem::Downcast { .. } => true,
         }
     })
@@ -70,20 +71,9 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
     }
 }
 
-/// Determines whether or not this LocalDecl is temp, if not it needs retagging.
-fn is_not_temp<'tcx>(local_decl: &LocalDecl<'tcx>) -> bool {
-    if let Some(local_info) = &local_decl.local_info {
-        match local_info.as_ref() {
-            LocalInfo::DerefTemp => return false,
-            _ => (),
-        };
-    }
-    return true;
-}
-
 impl<'tcx> MirPass<'tcx> for AddRetag {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.debugging_opts.mir_emit_retag
+        sess.opts.unstable_opts.mir_emit_retag
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -98,7 +88,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // a temporary and retag on that.
             is_stable(place.as_ref())
                 && may_contain_reference(place.ty(&*local_decls, tcx).ty, /*depth*/ 3, tcx)
-                && is_not_temp(&local_decls[place.local])
+                && !local_decls[place.local].is_deref_temp()
         };
         let place_base_raw = |place: &Place<'tcx>| {
             // If this is a `Deref`, get the type of what we are deref'ing.

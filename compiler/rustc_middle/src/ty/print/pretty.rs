@@ -297,7 +297,7 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         def_id: DefId,
     ) -> Result<(Self::Path, bool), Self::Error> {
-        if !self.tcx().sess.opts.debugging_opts.trim_diagnostic_paths
+        if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
             || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
             || NO_TRIMMED_PATH.with(|flag| flag.get())
             || SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get())
@@ -712,7 +712,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("closure"));
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
-                        if self.tcx().sess.opts.debugging_opts.span_free_formats {
+                        if self.tcx().sess.opts.unstable_opts.span_free_formats {
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().def_span(did);
@@ -1030,11 +1030,11 @@ pub trait PrettyPrinter<'tcx>:
         }
     }
 
-    fn ty_infer_name(&self, _: ty::TyVid) -> Option<String> {
+    fn ty_infer_name(&self, _: ty::TyVid) -> Option<Symbol> {
         None
     }
 
-    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<String> {
+    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<Symbol> {
         None
     }
 
@@ -1550,8 +1550,8 @@ pub struct FmtPrinterData<'a, 'tcx> {
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
-    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<String> + 'a>>,
-    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<String> + 'a>>,
+    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<Symbol> + 'a>>,
+    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<Symbol> + 'a>>,
 }
 
 impl<'a, 'tcx> Deref for FmtPrinter<'a, 'tcx> {
@@ -1841,11 +1841,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 }
 
 impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
-    fn ty_infer_name(&self, id: ty::TyVid) -> Option<String> {
+    fn ty_infer_name(&self, id: ty::TyVid) -> Option<Symbol> {
         self.0.ty_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
-    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<String> {
+    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<Symbol> {
         self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
@@ -1919,7 +1919,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
-        let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
+        let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
             ty::ReEarlyBound(ref data) => {
@@ -1992,7 +1992,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             return Ok(self);
         }
 
-        let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
+        let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         // These printouts are concise.  They do not contain all the information
         // the user might want to diagnose an error, but there is basically no way

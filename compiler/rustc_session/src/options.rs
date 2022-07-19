@@ -104,7 +104,7 @@ macro_rules! top_level_options {
 
 impl Options {
     pub fn mir_opt_level(&self) -> usize {
-        self.debugging_opts
+        self.unstable_opts
             .mir_opt_level
             .unwrap_or_else(|| if self.optimize != OptLevel::No { 2 } else { 1 })
     }
@@ -177,7 +177,7 @@ top_level_options!(
         incremental: Option<PathBuf> [UNTRACKED],
         assert_incr_state: Option<IncrementalStateAssertion> [UNTRACKED],
 
-        debugging_opts: DebuggingOptions [SUBSTRUCT],
+        unstable_opts: UnstableOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
         cg: CodegenOptions [SUBSTRUCT],
         externs: Externs [UNTRACKED],
@@ -1187,12 +1187,13 @@ options! {
 }
 
 options! {
-    DebuggingOptions, DB_OPTIONS, dbopts, "Z", "debugging",
+    UnstableOptions, Z_OPTIONS, dbopts, "Z", "unstable",
 
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
+    // - src/doc/unstable-book/src/compiler-flags
 
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
@@ -1580,6 +1581,8 @@ options! {
         `mir` (the MIR), or `mir-cfg` (graphviz formatted MIR)"),
     unsound_mir_opts: bool = (false, parse_bool, [TRACKED],
         "enable unsound and buggy MIR optimizations (default: no)"),
+    /// This name is kind of confusing: Most unstable options enable something themselves, while
+    /// this just allows "normal" options to be feature-gated.
     unstable_options: bool = (false, parse_bool, [UNTRACKED],
         "adds unstable command line options to rustc interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],

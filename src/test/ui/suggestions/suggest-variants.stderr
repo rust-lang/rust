@@ -2,7 +2,7 @@ error[E0599]: no variant named `Squareee` found for enum `Shape`
   --> $DIR/suggest-variants.rs:12:41
    |
 LL | enum Shape {
-   | ---------- variant `Squareee` not found for this enum
+   | ---------- variant `Squareee` not found here
 ...
 LL |     println!("My shape is {:?}", Shape::Squareee { size: 5});
    |                                         ^^^^^^^^ help: there is a variant with a similar name: `Square`
@@ -11,7 +11,7 @@ error[E0599]: no variant named `Circl` found for enum `Shape`
   --> $DIR/suggest-variants.rs:13:41
    |
 LL | enum Shape {
-   | ---------- variant `Circl` not found for this enum
+   | ---------- variant `Circl` not found here
 ...
 LL |     println!("My shape is {:?}", Shape::Circl { size: 5});
    |                                         ^^^^^ help: there is a variant with a similar name: `Circle`
@@ -20,7 +20,7 @@ error[E0599]: no variant named `Rombus` found for enum `Shape`
   --> $DIR/suggest-variants.rs:14:41
    |
 LL | enum Shape {
-   | ---------- variant `Rombus` not found for this enum
+   | ---------- variant `Rombus` not found here
 ...
 LL |     println!("My shape is {:?}", Shape::Rombus{ size: 5});
    |                                         ^^^^^^ variant not found in `Shape`

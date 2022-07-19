@@ -1390,7 +1390,7 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(ClosureBinder, CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
@@ -1516,6 +1516,31 @@ pub enum Movability {
     Static,
     /// Must not contain self-references, `Unpin`.
     Movable,
+}
+
+/// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum ClosureBinder {
+    /// The binder is not present, all closure lifetimes are inferred.
+    NotPresent,
+    /// The binder is present.
+    For {
+        /// Span of the whole `for<>` clause
+        ///
+        /// ```text
+        /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
+        /// ^^^^^^^^^^^ -- this
+        /// ```
+        span: Span,
+
+        /// Lifetimes in the `for<>` closure
+        ///
+        /// ```text
+        /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
+        ///     ^^^^^^ -- this
+        /// ```
+        generic_params: P<[GenericParam]>,
+    },
 }
 
 /// Represents a macro invocation. The `path` indicates which macro

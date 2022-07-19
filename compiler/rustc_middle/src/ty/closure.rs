@@ -128,6 +128,14 @@ impl<'tcx> ClosureKind {
             None
         }
     }
+
+    pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
+        match self {
+            ClosureKind::Fn => tcx.lang_items().fn_once_trait().unwrap(),
+            ClosureKind::FnMut => tcx.lang_items().fn_mut_trait().unwrap(),
+            ClosureKind::FnOnce => tcx.lang_items().fn_trait().unwrap(),
+        }
+    }
 }
 
 /// A composite describing a `Place` that is captured by a closure.
@@ -174,7 +182,11 @@ impl<'tcx> CapturedPlace<'tcx> {
                         .unwrap();
                     }
                     ty => {
-                        bug!("Unexpected type {:?} for `Field` projection", ty)
+                        span_bug!(
+                            self.get_capture_kind_span(tcx),
+                            "Unexpected type {:?} for `Field` projection",
+                            ty
+                        )
                     }
                 },
 

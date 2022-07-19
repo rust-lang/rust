@@ -8,12 +8,11 @@ use super::client::HandleStore;
 pub trait Types {
     type FreeFunctions: 'static;
     type TokenStream: 'static + Clone;
-    type Ident: 'static + Copy + Eq + Hash;
-    type Literal: 'static + Clone;
     type SourceFile: 'static + Clone;
     type MultiSpan: 'static;
     type Diagnostic: 'static;
     type Span: 'static + Copy + Eq + Hash;
+    type Symbol: 'static;
 }
 
 /// Declare an associated fn of one of the traits below, adding necessary
@@ -38,6 +37,12 @@ macro_rules! declare_server_traits {
 
         pub trait Server: Types $(+ $name)* {
             fn globals(&mut self) -> ExpnGlobals<Self::Span>;
+
+            /// Intern a symbol received from RPC
+            fn intern_symbol(ident: &str) -> Self::Symbol;
+
+            /// Recover the string value of a symbol, and invoke a callback with it.
+            fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str));
         }
     }
 }
@@ -48,6 +53,12 @@ pub(super) struct MarkedTypes<S: Types>(S);
 impl<S: Server> Server for MarkedTypes<S> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
         <_>::mark(Server::globals(&mut self.0))
+    }
+    fn intern_symbol(ident: &str) -> Self::Symbol {
+        <_>::mark(S::intern_symbol(ident))
+    }
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        S::with_symbol_string(symbol.unmark(), f)
     }
 }
 
@@ -81,11 +92,13 @@ macro_rules! define_dispatcher_impl {
         pub trait DispatcherTrait {
             // HACK(eddyb) these are here to allow `Self::$name` to work below.
             $(type $name;)*
+
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
         impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
+
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
                 let Dispatcher { handle_store, server } = self;
 

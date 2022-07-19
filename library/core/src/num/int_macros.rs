@@ -2,9 +2,10 @@ macro_rules! int_impl {
     ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $BITS_MINUS_ONE:expr, $Min:expr, $Max:expr,
      $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
      $reversed:expr, $le_bytes:expr, $be_bytes:expr,
-     $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
-        /// The smallest value that can be represented by this integer type,
-        #[doc = concat!("&minus;2<sup>", $BITS_MINUS_ONE, "</sup>.")]
+     $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
+     $bound_condition:expr) => {
+        /// The smallest value that can be represented by this integer type
+        #[doc = concat!("(&minus;2<sup>", $BITS_MINUS_ONE, "</sup>", $bound_condition, ")")]
         ///
         /// # Examples
         ///
@@ -16,8 +17,8 @@ macro_rules! int_impl {
         #[stable(feature = "assoc_int_consts", since = "1.43.0")]
         pub const MIN: Self = !0 ^ ((!0 as $UnsignedT) >> 1) as Self;
 
-        /// The largest value that can be represented by this integer type,
-        #[doc = concat!("2<sup>", $BITS_MINUS_ONE, "</sup> &minus; 1.")]
+        /// The largest value that can be represented by this integer type
+        #[doc = concat!("(2<sup>", $BITS_MINUS_ONE, "</sup> &minus; 1", $bound_condition, ")")]
         ///
         /// # Examples
         ///

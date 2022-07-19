@@ -351,7 +351,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const(
         key: DefId
-    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
         desc {
             |tcx| "building an abstract representation for {}", tcx.def_path_str(key),
         }
@@ -360,7 +360,7 @@ rustc_queries! {
     /// Try to build an abstract representation of the given constant.
     query thir_abstract_const_of_const_arg(
         key: (LocalDefId, DefId)
-    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
+    ) -> Result<Option<&'tcx [ty::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
         desc {
             |tcx|
             "building an abstract representation for the const argument {}",
@@ -2052,5 +2052,13 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "looking up generator diagnostic data of `{}`", tcx.def_path_str(key) }
         separate_provide_extern
+    }
+
+    query permits_uninit_init(key: TyAndLayout<'tcx>) -> bool {
+        desc { "checking to see if {:?} permits being left uninit", key.ty }
+    }
+
+    query permits_zero_init(key: TyAndLayout<'tcx>) -> bool {
+        desc { "checking to see if {:?} permits being left zeroed", key.ty }
     }
 }

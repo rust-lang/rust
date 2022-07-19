@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// For types that implement `Copy`, the suggestion to `Box` a variant's
     /// data would require removing the trait impl. The types can of course
     /// still be `Clone`, but that is worse ergonomically. Depending on the
-    /// use case it may be possible to store the large data in an auxillary
+    /// use case it may be possible to store the large data in an auxiliary
     /// structure (e.g. Arena or ECS).
     ///
     /// The lint will ignore generic types if the layout depends on the

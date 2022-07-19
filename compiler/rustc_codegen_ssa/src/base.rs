@@ -521,7 +521,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
-    if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
+    if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
         let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
 
         ongoing_codegen.codegen_finished(tcx);

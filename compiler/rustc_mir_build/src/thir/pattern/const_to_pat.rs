@@ -120,32 +120,37 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
-        traits::search_for_structural_match_violation(self.span, self.tcx(), ty).map(|non_sm_ty| {
-            with_no_trimmed_paths!(match non_sm_ty.kind {
-                traits::NonStructuralMatchTyKind::Adt(adt) => self.adt_derive_msg(adt),
-                traits::NonStructuralMatchTyKind::Dynamic => {
-                    "trait objects cannot be used in patterns".to_string()
-                }
-                traits::NonStructuralMatchTyKind::Opaque => {
-                    "opaque types cannot be used in patterns".to_string()
-                }
-                traits::NonStructuralMatchTyKind::Closure => {
-                    "closures cannot be used in patterns".to_string()
-                }
-                traits::NonStructuralMatchTyKind::Generator => {
-                    "generators cannot be used in patterns".to_string()
-                }
-                traits::NonStructuralMatchTyKind::Param => {
-                    bug!("use of a constant whose type is a parameter inside a pattern")
-                }
-                traits::NonStructuralMatchTyKind::Projection => {
-                    bug!("use of a constant whose type is a projection inside a pattern")
-                }
-                traits::NonStructuralMatchTyKind::Foreign => {
-                    bug!("use of a value of a foreign type inside a pattern")
-                }
-            })
-        })
+        traits::search_for_structural_match_violation(self.span, self.tcx(), ty, true).map(
+            |non_sm_ty| {
+                with_no_trimmed_paths!(match non_sm_ty.kind {
+                    traits::NonStructuralMatchTyKind::Adt(adt) => self.adt_derive_msg(adt),
+                    traits::NonStructuralMatchTyKind::Dynamic => {
+                        "trait objects cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::Opaque => {
+                        "opaque types cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::Closure => {
+                        "closures cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::Generator => {
+                        "generators cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::Float => {
+                        "floating-point numbers cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::Param => {
+                        bug!("use of a constant whose type is a parameter inside a pattern")
+                    }
+                    traits::NonStructuralMatchTyKind::Projection => {
+                        bug!("use of a constant whose type is a projection inside a pattern")
+                    }
+                    traits::NonStructuralMatchTyKind::Foreign => {
+                        bug!("use of a value of a foreign type inside a pattern")
+                    }
+                })
+            },
+        )
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {

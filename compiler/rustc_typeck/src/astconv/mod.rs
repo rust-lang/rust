@@ -439,7 +439,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // as the rest of the type. As such, we ignore missing
                                 // stability attributes.
                             },
-                        )
+                        );
                     }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
                         self.inferred_params.push(ty.span);
@@ -550,7 +550,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
                         if !infer_args && has_default {
-                            EarlyBinder(tcx.const_param_default(param.def_id))
+                            tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
                                 .into()
                         } else {
@@ -1958,11 +1958,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
 
-                    if adt_def.did().is_local() {
-                        err.span_label(
-                            tcx.def_span(adt_def.did()),
-                            format!("variant `{assoc_ident}` not found for this enum"),
-                        );
+                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
+                        err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
                     err.emit()
@@ -2489,7 +2486,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         concrete type's name `{type_name}` instead if you want to \
                                         specify its type parameters"
                                     ),
-                                    type_name.to_string(),
+                                    type_name,
                                     Applicability::MaybeIncorrect,
                                 );
                             }

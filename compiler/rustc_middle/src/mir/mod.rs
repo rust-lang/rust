@@ -61,7 +61,7 @@ mod syntax;
 pub use syntax::*;
 mod switch_sources;
 pub mod tcx;
-mod terminator;
+pub mod terminator;
 pub use terminator::*;
 
 pub mod traversal;
@@ -925,6 +925,15 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
+    /// Returns `true` if this is a DerefTemp
+    pub fn is_deref_temp(&self) -> bool {
+        match self.local_info {
+            Some(box LocalInfo::DerefTemp) => return true,
+            _ => (),
+        }
+        return false;
+    }
+
     /// Returns `true` is the local is from a compiler desugaring, e.g.,
     /// `__next` from a `for` loop.
     #[inline]
@@ -1388,6 +1397,7 @@ impl<V, T> ProjectionElem<V, T> {
 
             Self::Field(_, _)
             | Self::Index(_)
+            | Self::OpaqueCast(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _) => false,
@@ -1565,7 +1575,9 @@ impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         for elem in self.projection.iter().rev() {
             match elem {
-                ProjectionElem::Downcast(_, _) | ProjectionElem::Field(_, _) => {
+                ProjectionElem::OpaqueCast(_)
+                | ProjectionElem::Downcast(_, _)
+                | ProjectionElem::Field(_, _) => {
                     write!(fmt, "(").unwrap();
                 }
                 ProjectionElem::Deref => {
@@ -1581,6 +1593,9 @@ impl Debug for Place<'_> {
 
         for elem in self.projection.iter() {
             match elem {
+                ProjectionElem::OpaqueCast(ty) => {
+                    write!(fmt, " as {})", ty)?;
+                }
                 ProjectionElem::Downcast(Some(name), _index) => {
                     write!(fmt, " as {})", name)?;
                 }
@@ -1795,6 +1810,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
 
             Rvalue::Use(_)
+            | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
@@ -1874,7 +1890,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                 // When printing regions, add trailing space if necessary.
                 let print_region = ty::tls::with(|tcx| {
-                    tcx.sess.verbose() || tcx.sess.opts.debugging_opts.identify_regions
+                    tcx.sess.verbose() || tcx.sess.opts.unstable_opts.identify_regions
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
@@ -1888,6 +1904,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, place)
             }
+
+            CopyForDeref(ref place) => write!(fmt, "deref_copy {:#?}", place),
 
             AddressOf(mutability, ref place) => {
                 let kind_str = match mutability {
@@ -1942,7 +1960,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
                         if let Some(def_id) = def_id.as_local() {
-                            let name = if tcx.sess.opts.debugging_opts.span_free_formats {
+                            let name = if tcx.sess.opts.unstable_opts.span_free_formats {
                                 let substs = tcx.lift(substs).unwrap();
                                 format!(
                                     "[closure@{}]",

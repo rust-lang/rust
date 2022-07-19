@@ -1,6 +1,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -217,7 +217,7 @@ fn mir_const<'tcx>(
     }
 
     // Unsafety check uses the raw mir, so make sure it is run.
-    if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         if let Some(param_did) = def.const_param_did {
             tcx.ensure().unsafety_check_result_for_const_arg((def.did, param_did));
         } else {
@@ -420,6 +420,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
         &simplify::SimplifyCfg::new("early-opt"),
+        &deref_separator::Derefer,
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
@@ -432,7 +433,6 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
-        &deref_separator::Derefer,
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &add_retag::AddRetag,
         &lower_intrinsics::LowerIntrinsics,

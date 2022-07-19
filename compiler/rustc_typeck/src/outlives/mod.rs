@@ -88,9 +88,7 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
     // for the type.
 
     // Compute the inferred predicates
-    let mut exp_map = explicit::ExplicitPredicatesMap::new();
-
-    let global_inferred_outlives = implicit_infer::infer_predicates(tcx, &mut exp_map);
+    let global_inferred_outlives = implicit_infer::infer_predicates(tcx);
 
     // Convert the inferred predicates into the "collected" form the
     // global data structure expects.
@@ -100,7 +98,7 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
     let predicates = global_inferred_outlives
         .iter()
         .map(|(&def_id, set)| {
-            let predicates = &*tcx.arena.alloc_from_iter(set.iter().filter_map(
+            let predicates = &*tcx.arena.alloc_from_iter(set.0.iter().filter_map(
                 |(ty::OutlivesPredicate(kind1, region2), &span)| {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((

@@ -1035,6 +1035,8 @@ supported_targets! {
 
     ("armv6k-nintendo-3ds", armv6k_nintendo_3ds),
 
+    ("aarch64-nintendo-switch-freestanding", aarch64_nintendo_switch_freestanding),
+
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
@@ -1212,8 +1214,7 @@ pub struct TargetOptions {
     pub dynamic_linking: bool,
     /// If dynamic linking is available, whether only cdylibs are supported.
     pub only_cdylib: bool,
-    /// Whether executables are available on this target. iOS, for example, only allows static
-    /// libraries. Defaults to false.
+    /// Whether executables are available on this target. Defaults to true.
     pub executables: bool,
     /// Relocation model to use in object file. Corresponds to `llc
     /// -relocation-model=$relocation_model`. Defaults to `Pic`.
@@ -1520,7 +1521,7 @@ impl Default for TargetOptions {
             features: "".into(),
             dynamic_linking: false,
             only_cdylib: false,
-            executables: false,
+            executables: true,
             relocation_model: RelocModel::Pic,
             code_model: None,
             tls_model: TlsModel::GeneralDynamic,

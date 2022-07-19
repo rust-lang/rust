@@ -12,7 +12,6 @@ use crate::mir::{
     self,
     interpret::{AllocId, ConstAllocation},
 };
-use crate::thir;
 use crate::traits;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtDef, Ty};
@@ -346,7 +345,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
 }
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for [thir::abstract_const::Node<'tcx>]
+    for [ty::abstract_const::Node<'tcx>]
 {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().arena.alloc_from_iter(
@@ -356,7 +355,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
 }
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D>
-    for [thir::abstract_const::NodeId]
+    for [ty::abstract_const::NodeId]
 {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.interner().arena.alloc_from_iter(

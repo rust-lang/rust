@@ -932,6 +932,10 @@ impl<T> EarlyBinder<T> {
         let value = f(self.0)?;
         Ok(EarlyBinder(value))
     }
+
+    pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
+        EarlyBinder(value)
+    }
 }
 
 impl<T> EarlyBinder<Option<T>> {
@@ -1700,13 +1704,6 @@ impl<'tcx> Ty<'tcx> {
             Array(ty, _) | Slice(ty) => *ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
-        }
-    }
-
-    pub fn expect_opaque_type(self) -> ty::OpaqueTypeKey<'tcx> {
-        match *self.kind() {
-            Opaque(def_id, substs) => ty::OpaqueTypeKey { def_id, substs },
-            _ => bug!("`expect_opaque_type` called on non-opaque type: {}", self),
         }
     }
 

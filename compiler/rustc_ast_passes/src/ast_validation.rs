@@ -119,33 +119,23 @@ impl<'a> AstValidator<'a> {
 
     /// Emits an error banning the `let` expression provided in the given location.
     fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
-        let sess = &self.session;
-        if sess.opts.unstable_features.is_nightly_build() {
-            let err = "`let` expressions are not supported here";
-            let mut diag = sess.struct_span_err(expr.span, err);
-            diag.note("only supported directly in conditions of `if` and `while` expressions");
-            match forbidden_let_reason {
-                ForbiddenLetReason::GenericForbidden => {}
-                ForbiddenLetReason::NotSupportedOr(span) => {
-                    diag.span_note(
-                        span,
-                        "`||` operators are not supported in let chain expressions",
-                    );
-                }
-                ForbiddenLetReason::NotSupportedParentheses(span) => {
-                    diag.span_note(
-                        span,
-                        "`let`s wrapped in parentheses are not supported in a context with let \
-                        chains",
-                    );
-                }
+        let err = "`let` expressions are not supported here";
+        let mut diag = self.session.struct_span_err(expr.span, err);
+        diag.note("only supported directly in conditions of `if` and `while` expressions");
+        match forbidden_let_reason {
+            ForbiddenLetReason::GenericForbidden => {}
+            ForbiddenLetReason::NotSupportedOr(span) => {
+                diag.span_note(span, "`||` operators are not supported in let chain expressions");
             }
-            diag.emit();
-        } else {
-            sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")
-                .note("variable declaration using `let` is a statement")
-                .emit();
+            ForbiddenLetReason::NotSupportedParentheses(span) => {
+                diag.span_note(
+                    span,
+                    "`let`s wrapped in parentheses are not supported in a context with let \
+                    chains",
+                );
+            }
         }
+        diag.emit();
     }
 
     fn check_gat_where(
@@ -1595,6 +1585,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 .span_label(*aspan, "`async` because of this")
                 .span_label(span, "") // Point at the fn header.
                 .emit();
+        }
+
+        if let FnKind::Closure(ClosureBinder::For { generic_params, .. }, ..) = fk {
+            self.check_late_bound_lifetime_defs(generic_params);
         }
 
         if let FnKind::Fn(

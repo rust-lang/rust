@@ -176,7 +176,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     if ty.is_some() {
         // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::from(Local::new(1 + 0));
-        if tcx.sess.opts.debugging_opts.mir_emit_retag {
+        if tcx.sess.opts.unstable_opts.mir_emit_retag {
             // Function arguments should be retagged, and we make this one raw.
             body.basic_blocks_mut()[START_BLOCK].statements.insert(
                 0,
@@ -537,13 +537,12 @@ fn build_call_shim<'tcx>(
     };
 
     let def_id = instance.def_id();
-    let sig = tcx.fn_sig(def_id);
-    let mut sig = tcx.erase_late_bound_regions(sig);
+    let sig = tcx.bound_fn_sig(def_id);
+    let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
-    if let Some(sig_substs) = sig_substs {
-        sig = EarlyBinder(sig).subst(tcx, sig_substs);
-    }
+    let mut sig =
+        if let Some(sig_substs) = sig_substs { sig.subst(tcx, sig_substs) } else { sig.0 };
 
     if let CallKind::Indirect(fnty) = call_kind {
         // `sig` determines our local decls, and thus the callee type in the `Call` terminator. This

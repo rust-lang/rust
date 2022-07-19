@@ -23,30 +23,6 @@ LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
    |              ^^
 
 error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:30:23
-   |
-LL |     let _ = [0; faz::<'a>(&())];
-   |                       ^^
-   |
-note: the late bound lifetime parameter is introduced here
-  --> $DIR/const-arg-in-const-arg.rs:8:14
-   |
-LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
-   |              ^^
-
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/const-arg-in-const-arg.rs:33:23
-   |
-LL |     let _ = [0; faz::<'b>(&())];
-   |                       ^^
-   |
-note: the late bound lifetime parameter is introduced here
-  --> $DIR/const-arg-in-const-arg.rs:8:14
-   |
-LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
-   |              ^^
-
-error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
   --> $DIR/const-arg-in-const-arg.rs:41:24
    |
 LL |     let _: Foo<{ faz::<'a>(&()) }>;
@@ -117,6 +93,30 @@ LL |     let _ = [0; bar::<N>()];
    |                 ^^^^^^^^^^
    |
    = help: try adding a `where` bound using this expression: `where [(); bar::<N>()]:`
+
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/const-arg-in-const-arg.rs:30:23
+   |
+LL |     let _ = [0; faz::<'a>(&())];
+   |                       ^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/const-arg-in-const-arg.rs:8:14
+   |
+LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
+   |              ^^
+
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/const-arg-in-const-arg.rs:33:23
+   |
+LL |     let _ = [0; faz::<'b>(&())];
+   |                       ^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/const-arg-in-const-arg.rs:8:14
+   |
+LL | const fn faz<'a>(_: &'a ()) -> usize { 13 }
+   |              ^^
 
 error: unconstrained generic constant
   --> $DIR/const-arg-in-const-arg.rs:47:19

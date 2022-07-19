@@ -103,7 +103,7 @@ impl<'tcx> InheritedBuilder<'tcx> {
 }
 
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
-    pub(super) fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
+    fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
@@ -113,7 +113,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
                 maybe_typeck_results: infcx.in_progress_typeck_results,
             },
             infcx,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
+            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new_ignoring_regions(tcx)),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),

@@ -12,6 +12,7 @@ macro_rules! arena_types {
             [] asm_operand: (rustc_hir::InlineAsmOperand<'tcx>, rustc_span::Span),
             [] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [] attribute: rustc_ast::Attribute,
+            [] closure: rustc_hir::Closure<'tcx>,
             [] block: rustc_hir::Block<'tcx>,
             [] bare_fn_ty: rustc_hir::BareFnTy<'tcx>,
             [] body: rustc_hir::Body<'tcx>,

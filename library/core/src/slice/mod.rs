@@ -1340,7 +1340,7 @@ impl<T> [T] {
     /// from the `remainder` function of the iterator.
     ///
     /// Due to each chunk having exactly `chunk_size` elements, the compiler can often optimize the
-    /// resulting code better than in the case of [`chunks`].
+    /// resulting code better than in the case of [`rchunks`].
     ///
     /// See [`rchunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the

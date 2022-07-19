@@ -116,7 +116,7 @@ declare_clippy_lint! {
     /// let x = Foo;
     /// std::mem::drop(x);
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub DROP_NON_DROP,
     suspicious,
     "call to `std::mem::drop` with a value which does not implement `Drop`"
@@ -136,7 +136,7 @@ declare_clippy_lint! {
     /// let x = Foo;
     /// std::mem::forget(x);
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub FORGET_NON_DROP,
     suspicious,
     "call to `std::mem::forget` with a value which does not implement `Drop`"

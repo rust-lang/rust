@@ -6,9 +6,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
-    ArrayLen, BinOpKind, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
-    InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath, Stmt,
-    StmtKind, Ty, TyKind, TypeBinding,
+    ArrayLen, BinOpKind, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard,
+    HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath,
+    Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -117,6 +117,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 // these only get added if the init and type is equal.
                 both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
+                    && both(&l.els, &r.els, |l, r| self.eq_block(l, r))
                     && self.eq_pat(l.pat, r.pat)
             },
             (&StmtKind::Expr(l), &StmtKind::Expr(r)) | (&StmtKind::Semi(l), &StmtKind::Semi(r)) => self.eq_expr(l, r),
@@ -662,9 +663,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },
-            ExprKind::Closure {
+            ExprKind::Closure(&Closure {
                 capture_clause, body, ..
-            } => {
+            }) => {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(&self.cx.tcx.hir().body(body).value);
@@ -925,6 +926,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_pat(local.pat);
                 if let Some(init) = local.init {
                     self.hash_expr(init);
+                }
+                if let Some(els) = local.els {
+                    self.hash_block(els);
                 }
             },
             StmtKind::Item(..) => {},

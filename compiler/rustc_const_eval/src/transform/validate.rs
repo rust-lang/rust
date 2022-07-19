@@ -223,7 +223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
-        if self.tcx.sess.opts.debugging_opts.validate_mir && self.mir_phase < MirPhase::DropsLowered
+        if self.tcx.sess.opts.unstable_opts.validate_mir && self.mir_phase < MirPhase::DropsLowered
         {
             // `Operand::Copy` is only supposed to be used with `Copy` types.
             if let Operand::Copy(place) = operand {
@@ -382,7 +382,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) => {}
+            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
             Rvalue::Aggregate(agg_kind, _) => {
                 let disallowed = match **agg_kind {
                     AggregateKind::Array(..) => false,
@@ -591,6 +591,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             statement.kind, left_ty, right_ty,
                         ),
                     );
+                }
+                if let Rvalue::CopyForDeref(place) = rvalue {
+                    if !place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_some()
+                    {
+                        self.fail(
+                            location,
+                            "`CopyForDeref` should only be used for dereferenceable types",
+                        )
+                    }
                 }
                 // FIXME(JakobDegen): Check this for all rvalues, not just this one.
                 if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {

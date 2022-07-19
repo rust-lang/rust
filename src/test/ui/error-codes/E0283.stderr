@@ -1,6 +1,9 @@
-error[E0283]: type annotations needed
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/E0283.rs:30:21
    |
+LL |     fn create() -> u32;
+   |     ------------------- `Generator::create` defined here
+...
 LL |     let cont: u32 = Generator::create();
    |                     ^^^^^^^^^^^^^^^^^ cannot call trait method as a free function
 
@@ -12,4 +15,5 @@ LL |     let bar = foo_impl.into() * 1u32;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0283`.
+Some errors have detailed explanations: E0283, E0790.
+For more information about an error, try `rustc --explain E0283`.

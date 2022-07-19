@@ -142,7 +142,7 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
-            hir::ExprKind::Closure { capture_clause, body: body_id, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
                 let body = self.fcx.tcx.hir().body(body_id);
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
@@ -315,7 +315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
-        if self.tcx.sess.opts.debugging_opts.profile_closures {
+        if self.tcx.sess.opts.unstable_opts.profile_closures {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {

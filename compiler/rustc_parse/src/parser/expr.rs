@@ -15,10 +15,10 @@ use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
-use rustc_ast::StmtKind;
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
+use rustc_ast::{ClosureBinder, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -1343,11 +1343,7 @@ impl<'a> Parser<'a> {
             self.parse_if_expr(attrs)
         } else if self.check_keyword(kw::For) {
             if self.choose_generics_over_qpath(1) {
-                // NOTE(Centril, eddyb): DO NOT REMOVE! Beyond providing parser recovery,
-                // this is an insurance policy in case we allow qpaths in (tuple-)struct patterns.
-                // When `for <Foo as Bar>::Proj in $expr $block` is wanted,
-                // you can disambiguate in favor of a pattern with `(...)`.
-                self.recover_quantified_closure_expr(attrs)
+                self.parse_closure_expr(attrs)
             } else {
                 assert!(self.eat_keyword(kw::For));
                 self.parse_for_expr(None, self.prev_token.span, attrs)
@@ -1393,7 +1389,9 @@ impl<'a> Parser<'a> {
             self.parse_yield_expr(attrs)
         } else if self.is_do_yeet() {
             self.parse_yeet_expr(attrs)
-        } else if self.eat_keyword(kw::Let) {
+        } else if self.check_keyword(kw::Let) {
+            self.manage_let_chains_context();
+            self.bump();
             self.parse_let_expr(attrs)
         } else if self.eat_keyword(kw::Underscore) {
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore, attrs))
@@ -2094,29 +2092,21 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()))
     }
 
-    /// Recover on an explicitly quantified closure expression, e.g., `for<'a> |x: &'a u8| *x + 1`.
-    fn recover_quantified_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
-        let lo = self.token.span;
-        let _ = self.parse_late_bound_lifetime_defs()?;
-        let span_for = lo.to(self.prev_token.span);
-        let closure = self.parse_closure_expr(attrs)?;
-
-        self.struct_span_err(span_for, "cannot introduce explicit parameters for a closure")
-            .span_label(closure.span, "the parameters are attached to this closure")
-            .span_suggestion(
-                span_for,
-                "remove the parameters",
-                "",
-                Applicability::MachineApplicable,
-            )
-            .emit();
-
-        Ok(self.mk_expr_err(lo.to(closure.span)))
-    }
-
     /// Parses a closure expression (e.g., `move |args| expr`).
     fn parse_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
+
+        let binder = if self.check_keyword(kw::For) {
+            let lo = self.token.span;
+            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+            let span = lo.to(self.prev_token.span);
+
+            self.sess.gated_spans.gate(sym::closure_lifetime_binder, span);
+
+            ClosureBinder::For { span, generic_params: P::from_vec(lifetime_defs) }
+        } else {
+            ClosureBinder::NotPresent
+        };
 
         let movability =
             if self.eat_keyword(kw::Static) { Movability::Static } else { Movability::Movable };
@@ -2160,7 +2150,15 @@ impl<'a> Parser<'a> {
 
         let closure = self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(capture_clause, asyncness, movability, decl, body, lo.to(decl_hi)),
+            ExprKind::Closure(
+                binder,
+                capture_clause,
+                asyncness,
+                movability,
+                decl,
+                body,
+                lo.to(decl_hi),
+            ),
             attrs,
         );
 
@@ -2343,28 +2341,35 @@ impl<'a> Parser<'a> {
 
     /// Parses the condition of a `if` or `while` expression.
     fn parse_cond_expr(&mut self) -> PResult<'a, P<Expr>> {
-        let cond = self.with_let_management(true, |local_self| {
+        self.with_let_management(true, |local_self| {
             local_self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)
-        })?;
+        })
+    }
 
-        if let ExprKind::Let(..) = cond.kind {
-            // Remove the last feature gating of a `let` expression since it's stable.
-            self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+    // Checks if `let` is in an invalid position like `let x = let y = 1;` or
+    // if the current `let` is in a let_chains context but nested in another
+    // expression like `if let Some(_) = _opt && [1, 2, 3][let _ = ()] = 1`.
+    //
+    // This method expects that the current token is `let`.
+    fn manage_let_chains_context(&mut self) {
+        debug_assert!(matches!(self.token.kind, TokenKind::Ident(kw::Let, _)));
+        let is_in_a_let_chains_context_but_nested_in_other_expr = self.let_expr_allowed
+            && !matches!(
+                self.prev_token.kind,
+                TokenKind::AndAnd
+                    | TokenKind::CloseDelim(Delimiter::Brace)
+                    | TokenKind::Ident(kw::If, _)
+                    | TokenKind::Ident(kw::While, _)
+            );
+        if !self.let_expr_allowed || is_in_a_let_chains_context_but_nested_in_other_expr {
+            self.struct_span_err(self.token.span, "expected expression, found `let` statement")
+                .emit();
         }
-
-        Ok(cond)
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
-        if !self.let_expr_allowed {
-            self.struct_span_err(
-                self.prev_token.span,
-                "expected expression, found `let` statement",
-            )
-            .emit();
-        }
         let lo = self.prev_token.span;
         let pat = self.parse_pat_allow_top_alt(
             None,
@@ -2377,7 +2382,6 @@ impl<'a> Parser<'a> {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
         let span = lo.to(expr.span);
-        self.sess.gated_spans.gate(sym::let_chains, span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span), attrs))
     }
 
@@ -2683,15 +2687,11 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         // Used to check the `let_chains` and `if_let_guard` features mostly by scaning
         // `&&` tokens.
-        fn check_let_expr(expr: &Expr) -> (bool, bool) {
+        fn check_let_expr(expr: &Expr) -> bool {
             match expr.kind {
-                ExprKind::Binary(_, ref lhs, ref rhs) => {
-                    let lhs_rslt = check_let_expr(lhs);
-                    let rhs_rslt = check_let_expr(rhs);
-                    (lhs_rslt.0 || rhs_rslt.0, false)
-                }
-                ExprKind::Let(..) => (true, true),
-                _ => (false, true),
+                ExprKind::Binary(_, ref lhs, ref rhs) => check_let_expr(lhs) || check_let_expr(rhs),
+                ExprKind::Let(..) => true,
+                _ => false,
             }
         }
         let attrs = self.parse_outer_attributes()?;
@@ -2706,12 +2706,8 @@ impl<'a> Parser<'a> {
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
                 let cond = this.with_let_management(true, |local_this| local_this.parse_expr())?;
-                let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
+                let has_let_expr = check_let_expr(&cond);
                 if has_let_expr {
-                    if does_not_have_bin_op {
-                        // Remove the last feature gating of a `let` expression since it's stable.
-                        this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
-                    }
                     let span = if_span.to(cond.span);
                     this.sess.gated_spans.gate(sym::if_let_guard, span);
                 }
@@ -3012,6 +3008,11 @@ impl<'a> Parser<'a> {
                 }
             };
 
+            let is_shorthand = parsed_field.as_ref().map_or(false, |f| f.is_shorthand);
+            // A shorthand field can be turned into a full field with `:`.
+            // We should point this out.
+            self.check_or_expected(!is_shorthand, TokenType::Token(token::Colon));
+
             match self.expect_one_of(&[token::Comma], &[token::CloseDelim(close_delim)]) {
                 Ok(_) => {
                     if let Some(f) = parsed_field.or(recovery_field) {
@@ -3031,6 +3032,19 @@ impl<'a> Parser<'a> {
                                 "try adding a comma",
                                 ",",
                                 Applicability::MachineApplicable,
+                            );
+                        } else if is_shorthand
+                            && (AssocOp::from_token(&self.token).is_some()
+                                || matches!(&self.token.kind, token::OpenDelim(_))
+                                || self.token.kind == token::Dot)
+                        {
+                            // Looks like they tried to write a shorthand, complex expression.
+                            let ident = parsed_field.expect("is_shorthand implies Some").ident;
+                            e.span_suggestion(
+                                ident.span.shrink_to_lo(),
+                                "try naming a field",
+                                &format!("{ident}: "),
+                                Applicability::HasPlaceholders,
                             );
                         }
                     }

@@ -51,22 +51,32 @@ pub(super) fn check<'tcx>(
                 _ => ""
             };
 
+            let sugg = format!("{arg_snippet}{copied}.flatten()");
+
+            // If suggestion is not a one-liner, it won't be shown inline within the error message. In that case,
+            // it will be shown in the extra `help` message at the end, which is why the first `help_msg` needs
+            // to refer to the correct relative position of the suggestion.
+            let help_msg = if sugg.contains('\n') {
+                "remove the `if let` statement in the for loop and then..."
+            } else {
+                "...and remove the `if let` statement in the for loop"
+            };
+
             span_lint_and_then(
                 cx,
                 MANUAL_FLATTEN,
                 span,
                 &msg,
                 |diag| {
-                    let sugg = format!("{}{}.flatten()", arg_snippet, copied);
                     diag.span_suggestion(
                         arg.span,
                         "try",
                         sugg,
-                        Applicability::MaybeIncorrect,
+                        applicability,
                     );
                     diag.span_help(
                         inner_expr.span,
-                        "...and remove the `if let` statement in the for loop",
+                        help_msg,
                     );
                 }
             );

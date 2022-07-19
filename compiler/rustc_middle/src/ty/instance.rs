@@ -605,7 +605,7 @@ impl<'tcx> Instance<'tcx> {
     /// identity parameters if they are determined to be unused in `instance.def`.
     pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
         debug!("polymorphize: running polymorphization analysis");
-        if !tcx.sess.opts.debugging_opts.polymorphize {
+        if !tcx.sess.opts.unstable_opts.polymorphize {
             return self;
         }
 

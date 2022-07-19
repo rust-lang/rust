@@ -30,6 +30,7 @@ fn main() {
     let ext_opt = Some(42);
     let nested_opt = Some(Some(42));
     let nested_tuple_opt = Some(Some((42, 43)));
+    let cond = true;
 
     // Should lint - Option
     let _ = opt.unwrap_or_else(|| 2);
@@ -42,6 +43,7 @@ fn main() {
     let _ = opt.get_or_insert_with(|| 2);
     let _ = opt.ok_or_else(|| 2);
     let _ = nested_tuple_opt.unwrap_or_else(|| Some((1, 2)));
+    let _ = cond.then(|| astronomers_pi);
 
     // Cases when unwrap is not called on a simple variable
     let _ = Some(10).unwrap_or_else(|| 2);

@@ -35,7 +35,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath};
+use rustc_hir::{Closure, ExprKind, HirId, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
@@ -48,7 +48,7 @@ use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TypeVisitable};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
@@ -271,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self, expr), level = "debug")]
-    pub(super) fn check_expr_kind(
+    fn check_expr_kind(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
@@ -282,11 +282,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match expr.kind {
             ExprKind::Box(subexpr) => self.check_expr_box(subexpr, expected),
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
-            ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs),
+            ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
-            ExprKind::AssignOp(op, lhs, rhs) => self.check_binop_assign(expr, op, lhs, rhs),
+            ExprKind::AssignOp(op, lhs, rhs) => {
+                self.check_binop_assign(expr, op, lhs, rhs, expected)
+            }
             ExprKind::Unary(unop, oprnd) => self.check_expr_unary(unop, oprnd, expected, expr),
             ExprKind::AddrOf(kind, mutbl, oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
@@ -319,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_match(expr, &discrim, arms, expected, match_src)
             }
-            ExprKind::Closure { capture_clause, fn_decl, body, movability, .. } => {
+            ExprKind::Closure(&Closure { capture_clause, fn_decl, body, movability, .. }) => {
                 self.check_expr_closure(expr, capture_clause, &fn_decl, body, movability, expected)
             }
             ExprKind::Block(body, _) => self.check_block_with_expected(&body, expected),
@@ -404,14 +406,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
                 hir::UnOp::Not => {
-                    let result = self.check_user_unop(expr, oprnd_t, unop);
+                    let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                     // If it's builtin, we can reuse the type, this helps inference.
                     if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
                         oprnd_t = result;
                     }
                 }
                 hir::UnOp::Neg => {
-                    let result = self.check_user_unop(expr, oprnd_t, unop);
+                    let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                     // If it's builtin, we can reuse the type, this helps inference.
                     if !oprnd_t.is_numeric() {
                         oprnd_t = result;
@@ -529,7 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.ty_error()
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
-                report_unexpected_variant_res(tcx, res, expr.span);
+                report_unexpected_variant_res(tcx, res, qpath, expr.span);
                 tcx.ty_error()
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
@@ -997,26 +999,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
         if let Some(else_expr) = opt_else_expr {
-            let else_ty = if sp.desugaring_kind() == Some(DesugaringKind::LetElse) {
-                // todo introduce `check_expr_with_expectation(.., Expectation::LetElse)`
-                //   for errors that point to the offending expression rather than the entire block.
-                //   We could use `check_expr_eq_type(.., tcx.types.never)`, but then there is no
-                //   way to detect that the expected type originated from let-else and provide
-                //   a customized error.
-                let else_ty = self.check_expr(else_expr);
-                let cause = self.cause(else_expr.span, ObligationCauseCode::LetElse);
-
-                if let Some(mut err) =
-                    self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
-                {
-                    err.emit();
-                    self.tcx.ty_error()
-                } else {
-                    else_ty
-                }
-            } else {
-                self.check_expr_with_expectation(else_expr, expected)
-            };
+            let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
 
             let opt_suggest_box_span = self.opt_suggest_box_span(else_ty, orig_expected);
@@ -1873,7 +1856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let remaining_private_fields_len = remaining_private_fields.len();
             let names = match &remaining_private_fields
                 .iter()
-                .map(|(name, _, _)| name.to_string())
+                .map(|(name, _, _)| name)
                 .collect::<Vec<_>>()[..]
             {
                 _ if remaining_private_fields_len > 6 => String::new(),
@@ -2162,14 +2145,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if !expr_t.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, expr_t);
         } else {
-            type_error_struct!(
+            let field_name = field.to_string();
+            let mut err = type_error_struct!(
                 self.tcx().sess,
                 field.span,
                 expr_t,
                 E0610,
                 "`{expr_t}` is a primitive type and therefore doesn't have fields",
-            )
-            .emit();
+            );
+            let is_valid_suffix = |field: String| {
+                if field == "f32" || field == "f64" {
+                    return true;
+                }
+                let mut chars = field.chars().peekable();
+                match chars.peek() {
+                    Some('e') | Some('E') => {
+                        chars.next();
+                        if let Some(c) = chars.peek()
+                            && !c.is_numeric() && *c != '-' && *c != '+'
+                        {
+                            return false;
+                        }
+                        while let Some(c) = chars.peek() {
+                            if !c.is_numeric() {
+                                break;
+                            }
+                            chars.next();
+                        }
+                    }
+                    _ => (),
+                }
+                let suffix = chars.collect::<String>();
+                suffix.is_empty() || suffix == "f32" || suffix == "f64"
+            };
+            if let ty::Infer(ty::IntVar(_)) = expr_t.kind()
+                && let ExprKind::Lit(Spanned {
+                    node: ast::LitKind::Int(_, ast::LitIntType::Unsuffixed),
+                    ..
+                }) = base.kind
+                && !base.span.from_expansion()
+                && is_valid_suffix(field_name)
+            {
+                err.span_suggestion_verbose(
+                    field.span.shrink_to_lo(),
+                    "If the number is meant to be a floating point number, consider adding a `0` after the period",
+                    '0',
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            err.emit();
         }
 
         self.tcx().ty_error()

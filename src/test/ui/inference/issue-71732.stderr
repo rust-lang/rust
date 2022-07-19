@@ -13,10 +13,6 @@ note: required by a bound in `HashMap::<K, V, S>::get`
    |
 LL |         K: Borrow<Q>,
    |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
-help: consider specifying the generic argument
-   |
-LL |         .get::<Q>(&"key".into())
-   |             +++++
 help: consider specifying the type argument in the function call
    |
 LL |         .get::<Q>(&"key".into())

@@ -60,6 +60,8 @@ impl EarlyProps {
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
+    // Regexes that should be expected, in order, on standard out
+    pub regex_error_patterns: Vec<String>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -163,6 +165,7 @@ pub struct TestProps {
 
 mod directives {
     pub const ERROR_PATTERN: &'static str = "error-pattern";
+    pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
     pub const COMPILE_FLAGS: &'static str = "compile-flags";
     pub const RUN_FLAGS: &'static str = "run-flags";
     pub const SHOULD_ICE: &'static str = "should-ice";
@@ -200,6 +203,7 @@ impl TestProps {
     pub fn new() -> Self {
         TestProps {
             error_patterns: vec![],
+            regex_error_patterns: vec![],
             compile_flags: vec![],
             run_flags: None,
             pp_exact: None,
@@ -285,6 +289,12 @@ impl TestProps {
                     &mut self.error_patterns,
                     |r| r,
                 );
+                config.push_name_value_directive(
+                    ln,
+                    REGEX_ERROR_PATTERN,
+                    &mut self.regex_error_patterns,
+                    |r| r,
+                );
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
@@ -294,7 +304,7 @@ impl TestProps {
                 }
 
                 if let Some(edition) = config.parse_edition(ln) {
-                    self.compile_flags.push(format!("--edition={}", edition));
+                    self.compile_flags.push(format!("--edition={}", edition.trim()));
                     has_edition = true;
                 }
 

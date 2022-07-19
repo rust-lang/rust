@@ -6,7 +6,7 @@ use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProce
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
@@ -295,6 +295,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     /// This is called much less often than `needs_process_obligation`, so we
     /// never inline it.
     #[inline(never)]
+    #[instrument(level = "debug", skip(self, pending_obligation))]
     fn process_obligation(
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
@@ -303,7 +304,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let obligation = &mut pending_obligation.obligation;
 
-        debug!(?obligation, "process_obligation pre-resolve");
+        debug!(?obligation, "pre-resolve");
 
         if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
@@ -311,8 +312,6 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         let obligation = &pending_obligation.obligation;
-
-        debug!(?obligation, ?obligation.cause, "process_obligation");
 
         let infcx = self.selcx.infcx();
 
@@ -603,7 +602,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         ),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
-                                obligation.cause.span(self.selcx.tcx()),
+                                obligation.cause.span(),
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }

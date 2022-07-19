@@ -136,7 +136,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     println!();
 
-    t!(install_git_hook_maybe(&config.src));
+    t!(install_git_hook_maybe(&config));
 
     println!();
 
@@ -302,7 +302,7 @@ pub fn interactive_path() -> io::Result<Profile> {
 }
 
 // install a git hook to automatically run tidy --bless, if they want
-fn install_git_hook_maybe(src_path: &Path) -> io::Result<()> {
+fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
     let mut input = String::new();
     println!(
         "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
@@ -328,13 +328,12 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     };
 
     if should_install {
-        let src = src_path.join("src").join("etc").join("pre-push.sh");
-        let git = t!(Command::new("git").args(&["rev-parse", "--git-common-dir"]).output().map(
-            |output| {
+        let src = config.src.join("src").join("etc").join("pre-push.sh");
+        let git =
+            t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
                 assert!(output.status.success(), "failed to run `git`");
                 PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-            }
-        ));
+            }));
         let dst = git.join("hooks").join("pre-push");
         match fs::hard_link(src, &dst) {
             Err(e) => eprintln!(

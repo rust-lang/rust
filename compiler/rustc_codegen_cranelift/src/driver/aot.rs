@@ -33,7 +33,7 @@ fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectM
     // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
     // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
     // can easily double the amount of time necessary to perform linking.
-    builder.per_function_section(sess.opts.debugging_opts.function_sections.unwrap_or(false));
+    builder.per_function_section(sess.opts.unstable_opts.function_sections.unwrap_or(false));
     ObjectModule::new(builder)
 }
 

@@ -1114,7 +1114,7 @@ impl Thread {
     // Used only internally to construct a thread object without spawning
     // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<CString>) -> Thread {
-        // We have to use `unsafe` here to constuct the `Parker` in-place,
+        // We have to use `unsafe` here to construct the `Parker` in-place,
         // which is required for the UNIX implementation.
         //
         // SAFETY: We pin the Arc immediately after creation, so its address never

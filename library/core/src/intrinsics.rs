@@ -63,6 +63,7 @@ use crate::mem;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -1457,6 +1458,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
@@ -2434,6 +2436,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
@@ -2519,6 +2522,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
@@ -2608,6 +2612,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
@@ -2649,6 +2654,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// Here is an example of how this could cause a problem:
 /// ```no_run
 /// #![feature(const_eval_select)]
+/// #![feature(core_intrinsics)]
 /// use std::hint::unreachable_unchecked;
 /// use std::intrinsics::const_eval_select;
 ///

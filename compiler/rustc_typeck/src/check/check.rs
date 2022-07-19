@@ -1,10 +1,9 @@
-use crate::check::wfcheck::for_item;
+use crate::check::intrinsicck::InlineAsmCtxt;
 
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
 use super::*;
-
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -17,6 +16,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
+use rustc_lint::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
@@ -28,8 +28,8 @@ use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVE
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 use rustc_ty_utils::representability::{self, Representability};
 
 use std::iter;
@@ -374,8 +374,9 @@ fn check_alloc_error_fn(
     }
 }
 
-fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
+fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
+    let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
@@ -387,8 +388,9 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     check_packed(tcx, span, def);
 }
 
-fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
+fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
+    let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
     check_transparent(tcx, span, def);
@@ -401,11 +403,37 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
     let item_type = tcx.type_of(item_def_id);
     if let ty::Adt(def, substs) = item_type.kind() {
         assert!(def.is_union());
-        let fields = &def.non_enum_variant().fields;
+
+        fn allowed_union_field<'tcx>(
+            ty: Ty<'tcx>,
+            tcx: TyCtxt<'tcx>,
+            param_env: ty::ParamEnv<'tcx>,
+            span: Span,
+        ) -> bool {
+            // We don't just accept all !needs_drop fields, due to semver concerns.
+            match ty.kind() {
+                ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
+                ty::Tuple(tys) => {
+                    // allow tuples of allowed types
+                    tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env, span))
+                }
+                ty::Array(elem, _len) => {
+                    // Like `Copy`, we do *not* special-case length 0.
+                    allowed_union_field(*elem, tcx, param_env, span)
+                }
+                _ => {
+                    // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
+                    ty.ty_adt_def().is_some_and(|adt_def| adt_def.is_manually_drop())
+                        || ty.is_copy_modulo_regions(tcx.at(span), param_env)
+                }
+            }
+        }
+
         let param_env = tcx.param_env(item_def_id);
-        for field in fields {
+        for field in &def.non_enum_variant().fields {
             let field_ty = field.ty(tcx, substs);
-            if field_ty.needs_drop(tcx, param_env) {
+
+            if !allowed_union_field(field_ty, tcx, param_env, span) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
                     // We are currently checking the type this field came from, so it must be local.
                     Some(Node::Field(field)) => (field.span, field.ty.span),
@@ -432,6 +460,9 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 )
                 .emit();
                 return false;
+            } else if field_ty.needs_drop(tcx, param_env) {
+                // This should never happen. But we can get here e.g. in case of name resolution errors.
+                tcx.sess.delay_span_bug(span, "we should never accept maybe-dropping union fields");
             }
         }
     } else {
@@ -441,13 +472,14 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 }
 
 /// Check that a `static` is inhabited.
-fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
+fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     // Make sure statics are inhabited.
     // Other parts of the compiler assume that there are no uninhabited places. In principle it
     // would be enough to check this for `extern` statics, as statics with an initializer will
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id);
+    let span = tcx.def_span(def_id);
     let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
@@ -494,9 +526,9 @@ pub(super) fn check_opaque<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     substs: SubstsRef<'tcx>,
-    span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
+    let span = tcx.def_span(def_id);
     check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
     if tcx.type_of(def_id).references_error() {
         return;
@@ -700,14 +732,13 @@ fn check_opaque_meets_bounds<'tcx>(
     let param_env = tcx.param_env(defining_use_anchor);
 
     tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).enter(move |infcx| {
-        let inh = Inherited::new(infcx, def_id);
-        let infcx = &inh.infcx;
+        let ocx = ObligationCtxt::new(&infcx);
         let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
         let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
         match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_type) {
-            Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
+            Ok(infer_ok) => ocx.register_infer_ok_obligations(infer_ok),
             Err(ty_err) => {
                 tcx.sess.delay_span_bug(
                     span,
@@ -721,11 +752,11 @@ fn check_opaque_meets_bounds<'tcx>(
         // hidden type is well formed even without those bounds.
         let predicate =
             ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_type.into())).to_predicate(tcx);
-        inh.register_predicate(Obligation::new(misc_cause, param_env, predicate));
+        ocx.register_obligation(Obligation::new(misc_cause, param_env, predicate));
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
         }
@@ -736,7 +767,10 @@ fn check_opaque_meets_bounds<'tcx>(
             // Can have different predicates to their defining use
             hir::OpaqueTyOrigin::TyAlias => {
                 let outlives_environment = OutlivesEnvironment::new(param_env);
-                infcx.check_region_obligations_and_report_errors(&outlives_environment);
+                infcx.check_region_obligations_and_report_errors(
+                    defining_use_anchor,
+                    &outlives_environment,
+                );
             }
         }
 
@@ -755,8 +789,8 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
     match tcx.def_kind(id.def_id) {
         DefKind::Static(..) => {
             tcx.ensure().typeck(id.def_id);
-            maybe_check_static_with_link_section(tcx, id.def_id, tcx.def_span(id.def_id));
-            check_static_inhabited(tcx, id.def_id, tcx.def_span(id.def_id));
+            maybe_check_static_with_link_section(tcx, id.def_id);
+            check_static_inhabited(tcx, id.def_id);
         }
         DefKind::Const => {
             tcx.ensure().typeck(id.def_id);
@@ -766,7 +800,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             let hir::ItemKind::Enum(ref enum_definition, _) = item.kind else {
                 return;
             };
-            check_enum(tcx, item.span, &enum_definition.variants, item.def_id);
+            check_enum(tcx, &enum_definition.variants, item.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl => {
@@ -817,10 +851,10 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.def_id, tcx.def_span(id.def_id));
+            check_struct(tcx, id.def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.def_id, tcx.def_span(id.def_id));
+            check_union(tcx, id.def_id);
         }
         DefKind::OpaqueTy => {
             let item = tcx.hir().item(id);
@@ -833,7 +867,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
                 let substs = InternalSubsts::identity_for_item(tcx, item.def_id.to_def_id());
-                check_opaque(tcx, item.def_id, substs, item.span, &origin);
+                check_opaque(tcx, item.def_id, substs, &origin);
             }
         }
         DefKind::TyAlias => {
@@ -897,7 +931,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                             require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
                         }
                         hir::ForeignItemKind::Static(..) => {
-                            check_static_inhabited(tcx, def_id, item.span);
+                            check_static_inhabited(tcx, def_id);
                         }
                         _ => {}
                     }
@@ -907,10 +941,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
         DefKind::GlobalAsm => {
             let it = tcx.hir().item(id);
             let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
-            for_item(tcx, it).with_fcx(|fcx| {
-                fcx.check_asm(asm, it.hir_id());
-                Default::default()
-            })
+            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.hir_id());
         }
         _ => {}
     }
@@ -1298,7 +1329,6 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
     if !adt.repr().transparent() {
         return;
     }
-    let sp = tcx.sess.source_map().guess_head_span(sp);
 
     if adt.is_union() && !tcx.features().transparent_unions {
         feature_err(
@@ -1318,7 +1348,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         }
     }
 
-    // For each field, figure out if it's known to be a ZST and align(1)
+    // For each field, figure out if it's known to be a ZST and align(1), with "known"
+    // respecting #[non_exhaustive] attributes.
     let field_infos = adt.all_fields().map(|field| {
         let ty = field.ty(tcx, InternalSubsts::identity_for_item(tcx, field.did));
         let param_env = tcx.param_env(field.did);
@@ -1327,16 +1358,56 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
         let span = tcx.hir().span_if_local(field.did).unwrap();
         let zst = layout.map_or(false, |layout| layout.is_zst());
         let align1 = layout.map_or(false, |layout| layout.align.abi.bytes() == 1);
-        (span, zst, align1)
+        if !zst {
+            return (span, zst, align1, None);
+        }
+
+        fn check_non_exhaustive<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            t: Ty<'tcx>,
+        ) -> ControlFlow<(&'static str, DefId, SubstsRef<'tcx>, bool)> {
+            match t.kind() {
+                ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
+                ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
+                ty::Adt(def, subst) => {
+                    if !def.did().is_local() {
+                        let non_exhaustive = def.is_variant_list_non_exhaustive()
+                            || def
+                                .variants()
+                                .iter()
+                                .any(ty::VariantDef::is_field_list_non_exhaustive);
+                        let has_priv = def.all_fields().any(|f| !f.vis.is_public());
+                        if non_exhaustive || has_priv {
+                            return ControlFlow::Break((
+                                def.descr(),
+                                def.did(),
+                                subst,
+                                non_exhaustive,
+                            ));
+                        }
+                    }
+                    def.all_fields()
+                        .map(|field| field.ty(tcx, subst))
+                        .try_for_each(|t| check_non_exhaustive(tcx, t))
+                }
+                _ => ControlFlow::Continue(()),
+            }
+        }
+
+        (span, zst, align1, check_non_exhaustive(tcx, ty).break_value())
     });
 
-    let non_zst_fields =
-        field_infos.clone().filter_map(|(span, zst, _align1)| if !zst { Some(span) } else { None });
+    let non_zst_fields = field_infos
+        .clone()
+        .filter_map(|(span, zst, _align1, _non_exhaustive)| if !zst { Some(span) } else { None });
     let non_zst_count = non_zst_fields.clone().count();
     if non_zst_count >= 2 {
         bad_non_zero_sized_fields(tcx, adt, non_zst_count, non_zst_fields, sp);
     }
-    for (span, zst, align1) in field_infos {
+    let incompatible_zst_fields =
+        field_infos.clone().filter(|(_, _, _, opt)| opt.is_some()).count();
+    let incompat = incompatible_zst_fields + non_zst_count >= 2 && non_zst_count < 2;
+    for (span, zst, align1, non_exhaustive) in field_infos {
         if zst && !align1 {
             struct_span_err!(
                 tcx.sess,
@@ -1348,17 +1419,32 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
             .span_label(span, "has alignment larger than 1")
             .emit();
         }
+        if incompat && let Some((descr, def_id, substs, non_exhaustive)) = non_exhaustive {
+            tcx.struct_span_lint_hir(
+                REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+                tcx.hir().local_def_id_to_hir_id(adt.did().expect_local()),
+                span,
+                |lint| {
+                    let note = if non_exhaustive {
+                        "is marked with `#[non_exhaustive]`"
+                    } else {
+                        "contains private fields"
+                    };
+                    let field_ty = tcx.def_path_str_with_substs(def_id, substs);
+                    lint.build("zero-sized fields in repr(transparent) cannot contain external non-exhaustive types")
+                        .note(format!("this {descr} contains `{field_ty}`, which {note}, \
+                            and makes it not a breaking change to become non-zero-sized in the future."))
+                        .emit();
+                },
+            )
+        }
     }
 }
 
 #[allow(trivial_numeric_casts)]
-fn check_enum<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    sp: Span,
-    vs: &'tcx [hir::Variant<'tcx>],
-    def_id: LocalDefId,
-) {
+fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
+    let sp = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() {

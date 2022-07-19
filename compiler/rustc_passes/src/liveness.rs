@@ -278,7 +278,7 @@ impl<'tcx> IrMaps<'tcx> {
                     pats.extend(inner_pat.iter());
                 }
                 Struct(_, fields, _) => {
-                    let (short, not_short): (Vec<&_>, Vec<&_>) =
+                    let (short, not_short): (Vec<_>, _) =
                         fields.iter().partition(|f| f.is_shorthand);
                     shorthand_field_ids.extend(short.iter().map(|f| f.pat.hir_id));
                     pats.extend(not_short.iter().map(|f| f.pat));
@@ -298,7 +298,7 @@ impl<'tcx> IrMaps<'tcx> {
             }
         }
 
-        return shorthand_field_ids;
+        shorthand_field_ids
     }
 
     fn add_from_pat(&mut self, pat: &hir::Pat<'tcx>) {
@@ -368,6 +368,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.add_from_pat(&local.pat);
+        if local.els.is_some() {
+            self.add_live_node_for_node(local.hir_id, ExprNode(local.span, local.hir_id));
+        }
         intravisit::walk_local(self, local);
     }
 
@@ -800,8 +803,40 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // initialization, which is mildly more complex than checking
                 // once at the func header but otherwise equivalent.
 
-                let succ = self.propagate_through_opt_expr(local.init, succ);
-                self.define_bindings_in_pat(&local.pat, succ)
+                if let Some(els) = local.els {
+                    // Eventually, `let pat: ty = init else { els };` is mostly equivalent to
+                    // `let (bindings, ...) = match init { pat => (bindings, ...), _ => els };`
+                    // except that extended lifetime applies at the `init` location.
+                    //
+                    //       (e)
+                    //        |
+                    //        v
+                    //      (expr)
+                    //      /   \
+                    //     |     |
+                    //     v     v
+                    // bindings  els
+                    //     |
+                    //     v
+                    // ( succ )
+                    //
+                    if let Some(init) = local.init {
+                        let else_ln = self.propagate_through_block(els, succ);
+                        let ln = self.live_node(local.hir_id, local.span);
+                        self.init_from_succ(ln, succ);
+                        self.merge_from_succ(ln, else_ln);
+                        let succ = self.propagate_through_expr(init, ln);
+                        self.define_bindings_in_pat(&local.pat, succ)
+                    } else {
+                        span_bug!(
+                            stmt.span,
+                            "variable is uninitialized but an unexpected else branch is found"
+                        )
+                    }
+                } else {
+                    let succ = self.propagate_through_opt_expr(local.init, succ);
+                    self.define_bindings_in_pat(&local.pat, succ)
+                }
             }
             hir::StmtKind::Item(..) => succ,
             hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
@@ -1121,7 +1156,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //     (rvalue)          ||       (rvalue)
         //         |             ||           |
         //         v             ||           v
-        // (write of place)     ||   (place components)
+        // (write of place)      ||   (place components)
         //         |             ||           |
         //         v             ||           v
         //      (succ)           ||        (succ)

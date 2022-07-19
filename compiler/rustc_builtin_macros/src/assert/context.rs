@@ -294,7 +294,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Block(_, _)
             | ExprKind::Box(_)
             | ExprKind::Break(_, _)
-            | ExprKind::Closure(_, _, _, _, _, _)
+            | ExprKind::Closure(_, _, _, _, _, _, _)
             | ExprKind::ConstBlock(_)
             | ExprKind::Continue(_)
             | ExprKind::Err

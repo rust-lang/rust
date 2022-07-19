@@ -854,7 +854,7 @@ fn render_stability_since_raw(
     }
 
     let const_title_and_stability = match const_stability {
-        Some(ConstStability { level: StabilityLevel::Stable { since }, .. })
+        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
             if Some(since) != containing_const_ver =>
         {
             Some((format!("const since {}", since), format!("const: {}", since)))

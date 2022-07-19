@@ -14,7 +14,7 @@ use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
-use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use tracing::debug;
@@ -69,7 +69,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                                 yield_data.expr_and_pat_count, self.expr_count, source_span
                             );
 
-                            if self.fcx.sess().opts.debugging_opts.drop_tracking
+                            if self.fcx.sess().opts.unstable_opts.drop_tracking
                                 && self
                                     .drop_ranges
                                     .is_dropped_at(hir_id, yield_data.expr_and_pat_count)
@@ -376,6 +376,17 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         debug!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
 
+        let ty = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr);
+        let may_need_drop = |ty: Ty<'tcx>| {
+            // Avoid ICEs in needs_drop.
+            let ty = self.fcx.resolve_vars_if_possible(ty);
+            let ty = self.fcx.tcx.erase_regions(ty);
+            if ty.needs_infer() {
+                return true;
+            }
+            ty.needs_drop(self.fcx.tcx, self.fcx.param_env)
+        };
+
         // Typically, the value produced by an expression is consumed by its parent in some way,
         // so we only have to check if the parent contains a yield (note that the parent may, for
         // example, store the value into a local variable, but then we already consider local
@@ -384,7 +395,18 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // However, in the case of temporary values, we are going to store the value into a
         // temporary on the stack that is live for the current temporary scope and then return a
         // reference to it. That value may be live across the entire temporary scope.
-        let scope = if self.drop_ranges.is_borrowed_temporary(expr) {
+        //
+        // There's another subtlety: if the type has an observable drop, it must be dropped after
+        // the yield, even if it's not borrowed or referenced after the yield. Ideally this would
+        // *only* happen for types with observable drop, not all types which wrap them, but that
+        // doesn't match the behavior of MIR borrowck and causes ICEs. See the FIXME comment in
+        // src/test/ui/generator/drop-tracking-parent-expression.rs.
+        let scope = if self.drop_ranges.is_borrowed_temporary(expr)
+            || ty.map_or(true, |ty| {
+                let needs_drop = may_need_drop(ty);
+                debug!(?needs_drop, ?ty);
+                needs_drop
+            }) {
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {
             debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
@@ -398,7 +420,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
-        if let Some(adjusted_ty) = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr) {
+        if let Some(adjusted_ty) = ty {
             self.record(adjusted_ty, expr.hir_id, scope, Some(expr), expr.span);
         }
 

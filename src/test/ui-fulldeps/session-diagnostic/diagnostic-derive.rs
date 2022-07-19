@@ -23,7 +23,7 @@ extern crate rustc_middle;
 use rustc_middle::ty::Ty;
 
 extern crate rustc_errors;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 
 extern crate rustc_session;
 
@@ -140,7 +140,7 @@ struct CodeNotProvided {}
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct MessageWrongType {
     #[primary_span]
-    //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     foo: String,
 }
 
@@ -165,7 +165,7 @@ struct ErrorWithField {
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithMessageAppliedToField {
     #[label(typeck::label)]
-    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     name: String,
 }
 
@@ -208,7 +208,7 @@ struct LabelOnSpan {
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelOnNonSpan {
     #[label(typeck::label)]
-    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     id: u32,
 }
 
@@ -538,7 +538,7 @@ struct LabelWithTrailingList {
 
 #[derive(SessionDiagnostic)]
 #[lint(typeck::ambiguous_lifetime_bound)]
-//~^ ERROR only `#[error(..)]` and `#[warn(..)]` are supported
+//~^ ERROR only `#[error(..)]` and `#[warning(..)]` are supported
 struct LintsBad {
 }
 
@@ -551,4 +551,18 @@ struct LintsGood {
 #[error(typeck::ambiguous_lifetime_bound)]
 //~^ ERROR only `#[lint(..)]` is supported
 struct ErrorsBad {
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct ErrorWithMultiSpan {
+    #[primary_span]
+    span: MultiSpan,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[warn_]
+struct ErrorWithWarn {
+    val: String,
 }

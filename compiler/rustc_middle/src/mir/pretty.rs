@@ -90,7 +90,7 @@ pub fn dump_mir<'tcx, F>(
 }
 
 pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
-    let Some(ref filters) = tcx.sess.opts.debugging_opts.dump_mir else {
+    let Some(ref filters) = tcx.sess.opts.unstable_opts.dump_mir else {
         return false;
     };
     // see notes on #41697 below
@@ -141,7 +141,7 @@ fn dump_matched_mir_node<'tcx, F>(
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
 
-    if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
+    if tcx.sess.opts.unstable_opts.dump_mir_graphviz {
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body.source)?;
@@ -149,7 +149,7 @@ fn dump_matched_mir_node<'tcx, F>(
         };
     }
 
-    if let Some(spanview) = tcx.sess.opts.debugging_opts.dump_mir_spanview {
+    if let Some(spanview) = tcx.sess.opts.unstable_opts.dump_mir_spanview {
         let _: io::Result<()> = try {
             let file_basename =
                 dump_file_basename(tcx, pass_num, pass_name, disambiguator, body.source);
@@ -175,7 +175,7 @@ fn dump_file_basename<'tcx>(
         None => String::new(),
     };
 
-    let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
+    let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
     } else {
         match pass_num {
@@ -214,7 +214,7 @@ fn dump_file_basename<'tcx>(
 /// graphviz data or other things.
 fn dump_path(tcx: TyCtxt<'_>, basename: &str, extension: &str) -> PathBuf {
     let mut file_path = PathBuf::new();
-    file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
+    file_path.push(Path::new(&tcx.sess.opts.unstable_opts.dump_mir_dir));
 
     let file_name = format!("{}.{}", basename, extension,);
 

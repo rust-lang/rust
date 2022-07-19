@@ -287,7 +287,7 @@ fn encodable_substructure(
                 fn_emit_enum_path,
                 vec![encoder, cx.expr_str(trait_span, substr.type_ident.name), blk],
             );
-            BlockOrExpr::new_mixed(vec![me], expr)
+            BlockOrExpr::new_mixed(vec![me], Some(expr))
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),

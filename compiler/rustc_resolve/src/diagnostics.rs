@@ -508,7 +508,7 @@ impl<'a> Resolver<'a> {
                     E0401,
                     "can't use generic parameters from outer function",
                 );
-                err.span_label(span, "use of generic parameter from outer function".to_string());
+                err.span_label(span, "use of generic parameter from outer function");
 
                 let sm = self.session.source_map();
                 match outer_res {
@@ -990,7 +990,7 @@ impl<'a> Resolver<'a> {
                     E0735,
                     "generic parameters cannot use `Self` in their defaults"
                 );
-                err.span_label(span, "`Self` in generic parameter default".to_string());
+                err.span_label(span, "`Self` in generic parameter default");
                 err
             }
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
@@ -1627,7 +1627,7 @@ impl<'a> Resolver<'a> {
                     "{}{} `{}` defined here",
                     prefix,
                     suggestion.res.descr(),
-                    suggestion.candidate.as_str(),
+                    suggestion.candidate,
                 ),
             );
         }
@@ -1647,7 +1647,7 @@ impl<'a> Resolver<'a> {
 
     fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
         let res = b.res();
-        if b.span.is_dummy() || self.session.source_map().span_to_snippet(b.span).is_err() {
+        if b.span.is_dummy() || !self.session.source_map().is_span_accessible(b.span) {
             // These already contain the "built-in" prefix or look bad with it.
             let add_built_in =
                 !matches!(b.res(), Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod);

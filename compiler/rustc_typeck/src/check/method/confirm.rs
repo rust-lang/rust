@@ -81,10 +81,24 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
         let all_substs = self.instantiate_method_substs(&pick, segment, rcvr_substs);
 
-        debug!("all_substs={:?}", all_substs);
+        debug!("rcvr_substs={rcvr_substs:?}, all_substs={all_substs:?}");
 
         // Create the final signature for the method, replacing late-bound regions.
         let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
+
+        // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
+        // something which derefs to `Self` actually implements the trait and the caller
+        // wanted to make a static dispatch on it but forgot to import the trait.
+        // See test `src/test/ui/issue-35976.rs`.
+        //
+        // In that case, we'll error anyway, but we'll also re-run the search with all traits
+        // in scope, and if we find another method which can be used, we'll output an
+        // appropriate hint suggesting to import the trait.
+        let filler_substs = rcvr_substs
+            .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
+        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
+            &self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_substs),
+        );
 
         // Unify the (adjusted) self type with what the method expects.
         //
@@ -105,16 +119,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
-
-        // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
-        // something which derefs to `Self` actually implements the trait and the caller
-        // wanted to make a static dispatch on it but forgot to import the trait.
-        // See test `src/test/ui/issue-35976.rs`.
-        //
-        // In that case, we'll error anyway, but we'll also re-run the search with all traits
-        // in scope, and if we find another method which can be used, we'll output an
-        // appropriate hint suggesting to import the trait.
-        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(&method_predicates);
 
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use

@@ -1577,8 +1577,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let parent = fcx.tcx.hir().get(parent_id);
         if let Some(expr) = expression
-            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure { body, .. }, .. }) = parent
-            && !matches!(fcx.tcx.hir().body(*body).value.kind, hir::ExprKind::Block(..))
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(&hir::Closure { body, .. }), .. }) = parent
+            && !matches!(fcx.tcx.hir().body(body).value.kind, hir::ExprKind::Block(..))
         {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
         }

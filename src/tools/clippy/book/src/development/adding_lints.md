@@ -13,7 +13,6 @@ because that's clearly a non-descriptive name.
   - [Testing](#testing)
     - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
-  - [Edition 2018 tests](#edition-2018-tests)
   - [Testing manually](#testing-manually)
   - [Lint declaration](#lint-declaration)
   - [Lint registration](#lint-registration)
@@ -402,9 +401,8 @@ need to ensure that the MSRV configured for the project is >= the MSRV of the
 required Rust feature. If multiple features are required, just use the one with
 a lower MSRV.
 
-First, add an MSRV alias for the required feature in
-[`clippy_utils::msrvs`](/clippy_utils/src/msrvs.rs). This can be accessed later
-as `msrvs::STR_STRIP_PREFIX`, for example.
+First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`].
+This can be accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
 msrv_aliases! {
@@ -467,6 +465,8 @@ define_Conf! {
     ...
 }
 ```
+
+[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/msrvs/index.html
 
 ## Author lint
 
@@ -583,8 +583,7 @@ the workspace directory. Adding a configuration to a lint can be useful for
 thresholds or to constrain some behavior that can be seen as a false positive
 for some users. Adding a configuration is done in the following steps:
 
-1. Adding a new configuration entry to
-   [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs) like this:
+1. Adding a new configuration entry to [`clippy_lints::utils::conf`] like this:
 
    ```rust
    /// Lint: LINT_NAME.
@@ -635,9 +634,9 @@ for some users. Adding a configuration is done in the following steps:
        ```
 3. Passing the configuration value to the lint impl struct:
 
-   First find the struct construction in the [clippy_lints lib
-   file](/clippy_lints/src/lib.rs). The configuration value is now cloned or
-   copied into a local value that is then passed to the impl struct like this:
+   First find the struct construction in the [`clippy_lints` lib file]. The
+   configuration value is now cloned or copied into a local value that is then
+   passed to the impl struct like this:
 
    ```rust
    // Default generated registration:
@@ -653,12 +652,16 @@ for some users. Adding a configuration is done in the following steps:
 
 4. Adding tests:
     1. The default configured value can be tested like any normal lint in
-       [`tests/ui`](/tests/ui).
-    2. The configuration itself will be tested separately in
-       [`tests/ui-toml`](/tests/ui-toml). Simply add a new subfolder with a
-       fitting name. This folder contains a `clippy.toml` file with the
-       configuration value and a rust file that should be linted by Clippy. The
-       test can otherwise be written as usual.
+       [`tests/ui`].
+    2. The configuration itself will be tested separately in [`tests/ui-toml`].
+       Simply add a new subfolder with a fitting name. This folder contains a
+       `clippy.toml` file with the configuration value and a rust file that
+       should be linted by Clippy. The test can otherwise be written as usual.
+
+[`clippy_lints::utils::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/conf.rs
+[`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
+[`tests/ui`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui
+[`tests/ui-toml`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui-toml
 
 ## Cheat Sheet
 

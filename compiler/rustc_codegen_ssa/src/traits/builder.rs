@@ -221,7 +221,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         assert!(matches!(self.cx().type_kind(float_ty), TypeKind::Float | TypeKind::Double));
         assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
 
-        if let Some(false) = self.cx().sess().opts.debugging_opts.saturating_float_casts {
+        if let Some(false) = self.cx().sess().opts.unstable_opts.saturating_float_casts {
             return if signed { self.fptosi(x, dest_ty) } else { self.fptoui(x, dest_ty) };
         }
 

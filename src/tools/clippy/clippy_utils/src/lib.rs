@@ -1,7 +1,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -79,10 +79,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
-    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node,
-    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
-    UnOp,
+    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Constness, Destination, Expr,
+    ExprKind, FnDecl, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
+    Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
@@ -93,7 +93,9 @@ use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
     ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
-use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture};
+use rustc_middle::ty::{
+    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture,
+};
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
@@ -105,7 +107,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
-use crate::ty::{can_partially_move_ty, is_copy, is_recursively_primitive_type};
+use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::expr_visitor_no_bodies;
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
@@ -890,7 +892,7 @@ pub fn capture_local_usage<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Captur
             Node::Expr(e) => match e.kind {
                 ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(mutability),
                 ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, _) => capture = CaptureKind::Ref(Mutability::Not),
-                ExprKind::Assign(lhs, ..) | ExprKind::Assign(_, lhs, _) if lhs.hir_id == child_id => {
+                ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) if lhs.hir_id == child_id => {
                     return CaptureKind::Ref(Mutability::Mut);
                 },
                 ExprKind::Field(..) => {
@@ -1016,7 +1018,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
         captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
-    v.allow_closure.then(|| v.captures)
+    v.allow_closure.then_some(v.captures)
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
@@ -1197,16 +1199,54 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
 }
 
 /// Gets the loop or closure enclosing the given expression, if any.
-pub fn get_enclosing_loop_or_closure<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
+pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &Expr<'_>,
+) -> Option<&'tcx Expr<'tcx>> {
+    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match node {
-            Node::Expr(
-                e @ Expr {
-                    kind: ExprKind::Loop(..) | ExprKind::Closure { .. },
-                    ..
+            Node::Expr(e) => match e.kind {
+                ExprKind::Closure { .. } => {
+                    if let rustc_ty::Closure(_, subs) = cx.typeck_results().expr_ty(e).kind()
+                        && subs.as_closure().kind() == ClosureKind::FnOnce
+                    {
+                        continue;
+                    }
+                    let is_once = walk_to_expr_usage(cx, e, |node, id| {
+                        let Node::Expr(e) = node else {
+                            return None;
+                        };
+                        match e.kind {
+                            ExprKind::Call(f, _) if f.hir_id == id => Some(()),
+                            ExprKind::Call(f, args) => {
+                                let i = args.iter().position(|arg| arg.hir_id == id)?;
+                                let sig = expr_sig(cx, f)?;
+                                let predicates = sig
+                                    .predicates_id()
+                                    .map_or(cx.param_env, |id| cx.tcx.param_env(id))
+                                    .caller_bounds();
+                                sig.input(i).and_then(|ty| {
+                                    ty_is_fn_once_param(cx.tcx, ty.skip_binder(), predicates).then_some(())
+                                })
+                            },
+                            ExprKind::MethodCall(_, args, _) => {
+                                let i = args.iter().position(|arg| arg.hir_id == id)?;
+                                let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
+                                let ty = cx.tcx.fn_sig(id).skip_binder().inputs()[i];
+                                ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
+                            },
+                            _ => None,
+                        }
+                    })
+                    .is_some();
+                    if !is_once {
+                        return Some(e);
+                    }
                 },
-            ) => return Some(e),
-            Node::Expr(_) | Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
+                ExprKind::Loop(..) => return Some(e),
+                _ => (),
+            },
+            Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
             _ => break,
         }
     }
@@ -1699,7 +1739,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
         _,
         &[
             Expr {
-                kind: ExprKind::Closure { body, .. },
+                kind: ExprKind::Closure(&Closure { body, .. }),
                 ..
             },
         ],
@@ -1786,7 +1826,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
     }
 
     match expr.kind {
-        ExprKind::Closure { body, .. } => is_body_identity_function(cx, cx.tcx.hir().body(body)),
+        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir().body(body)),
         _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }

@@ -96,7 +96,7 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
         // NOTE: Rust relies on LLVM not doing TBAA (https://github.com/rust-lang/unsafe-code-guidelines/issues/292).
         context.add_command_line_option("-fno-strict-aliasing");
 
-        if tcx.sess.opts.debugging_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
+        if tcx.sess.opts.unstable_opts.function_sections.unwrap_or(tcx.sess.target.function_sections) {
             context.add_command_line_option("-ffunction-sections");
             context.add_command_line_option("-fdata-sections");
         }

@@ -351,7 +351,7 @@ fn string_to_io_error(s: String) -> io::Error {
 
 fn find_binutils_dlltool(sess: &Session) -> OsString {
     assert!(sess.target.options.is_like_windows && !sess.target.options.is_like_msvc);
-    if let Some(dlltool_path) = &sess.opts.debugging_opts.dlltool {
+    if let Some(dlltool_path) = &sess.opts.unstable_opts.dlltool {
         return dlltool_path.clone().into_os_string();
     }
 

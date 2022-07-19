@@ -378,7 +378,7 @@ fn optimization_applies<'tcx>(
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // FIXME(77359): This optimization can result in unsoundness.
-        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+        if !tcx.sess.opts.unstable_opts.unsound_mir_opts {
             return;
         }
 
@@ -551,7 +551,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // This optimization is disabled by default for now due to
         // soundness concerns; see issue #89485 and PR #89489.
-        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+        if !tcx.sess.opts.unstable_opts.unsound_mir_opts {
             return;
         }
 

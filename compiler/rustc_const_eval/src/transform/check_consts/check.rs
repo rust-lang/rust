@@ -312,7 +312,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Status::Forbidden => None,
         };
 
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+        if self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.miri_unleashed_feature(span, gate);
             return;
         }
@@ -446,6 +446,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
+            | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_)
@@ -651,6 +652,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Downcast(..)
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {}

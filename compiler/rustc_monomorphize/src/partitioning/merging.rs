@@ -83,7 +83,7 @@ pub fn merge_codegen_units<'tcx>(
 
         for cgu in codegen_units.iter_mut() {
             if let Some(new_cgu_name) = new_cgu_names.get(&cgu.name()) {
-                if cx.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+                if cx.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
                     cgu.set_name(Symbol::intern(&new_cgu_name));
                 } else {
                     // If we don't require CGU names to be human-readable, we

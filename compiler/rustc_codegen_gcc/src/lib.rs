@@ -140,8 +140,8 @@ impl CodegenBackend for GccCodegenBackend {
         )
     }
 
-    fn target_features(&self, sess: &Session) -> Vec<Symbol> {
-        target_features(sess)
+    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features(sess, allow_unstable)
     }
 }
 
@@ -298,12 +298,12 @@ pub fn target_cpu(sess: &Session) -> &str {
     }
 }
 
-pub fn target_features(sess: &Session) -> Vec<Symbol> {
+pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     supported_target_features(sess)
         .iter()
         .filter_map(
             |&(feature, gate)| {
-                if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
+                if sess.is_nightly_build() || allow_unstable || gate.is_none() { Some(feature) } else { None }
             },
         )
         .filter(|_feature| {

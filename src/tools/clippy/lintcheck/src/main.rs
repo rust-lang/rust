@@ -545,7 +545,7 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
 fn main() {
     // assert that we launch lintcheck from the repo root (via cargo lintcheck)
     if std::fs::metadata("lintcheck/Cargo.toml").is_err() {
-        eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo lintcheck` alternatively.");
+        eprintln!("lintcheck needs to be run from clippy's repo root!\nUse `cargo lintcheck` alternatively.");
         std::process::exit(3);
     }
 
@@ -586,7 +586,7 @@ fn main() {
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .expect("could not get clippy version!");
 
-    // download and extract the crates, then run clippy on them and collect clippys warnings
+    // download and extract the crates, then run clippy on them and collect clippy's warnings
     // flatten into one big list of warnings
 
     let crates = read_crates(&config.sources_toml_path);

@@ -141,7 +141,7 @@ trait Partitioner<'tcx> {
 }
 
 fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
-    let strategy = match &tcx.sess.opts.debugging_opts.cgu_partitioning_strategy {
+    let strategy = match &tcx.sess.opts.unstable_opts.cgu_partitioning_strategy {
         None => "default",
         Some(s) => &s[..],
     };
@@ -345,7 +345,7 @@ fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
 ) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-    let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
+    let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
@@ -413,7 +413,7 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
-    if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
+    if tcx.sess.opts.unstable_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
         for cgu in codegen_units {

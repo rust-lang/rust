@@ -1,4 +1,4 @@
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -11,6 +11,7 @@ extern crate rustc_lexer;
 use std::path::PathBuf;
 
 pub mod bless;
+pub mod dogfood;
 pub mod fmt;
 pub mod lint;
 pub mod new_lint;

@@ -85,7 +85,13 @@ pub(crate) fn report_error_if_not_applied_to_span(
     attr: &Attribute,
     info: &FieldInfo<'_>,
 ) -> Result<(), DiagnosticDeriveError> {
-    report_error_if_not_applied_to_ty(attr, info, &["rustc_span", "Span"], "`Span`")
+    if !type_matches_path(&info.ty, &["rustc_span", "Span"])
+        && !type_matches_path(&info.ty, &["rustc_errors", "MultiSpan"])
+    {
+        report_type_error(attr, "`Span` or `MultiSpan`")?;
+    }
+
+    Ok(())
 }
 
 /// Inner type of a field and type of wrapper.

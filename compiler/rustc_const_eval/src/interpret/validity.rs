@@ -821,7 +821,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Special check preventing `UnsafeCell` in the inner part of constants
         if let Some(def) = op.layout.ty.ty_adt_def() {
             if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. }))
-                && Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type()
+                && def.is_unsafe_cell()
             {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
             }
@@ -847,15 +847,20 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 );
             }
             Abi::Scalar(scalar_layout) => {
+                // We use a 'forced' read because we always need a `Immediate` here
+                // and treating "partially uninit" as "fully uninit" is fine for us.
                 let scalar = self.read_immediate_forced(op)?.to_scalar_or_uninit();
                 self.visit_scalar(scalar, scalar_layout)?;
             }
             Abi::ScalarPair(a_layout, b_layout) => {
-                // We would validate these things as we descend into the fields,
+                // There is no `rustc_layout_scalar_valid_range_start` for pairs, so
+                // we would validate these things as we descend into the fields,
                 // but that can miss bugs in layout computation. Layout computation
                 // is subtle due to enums having ScalarPair layout, where one field
                 // is the discriminant.
                 if cfg!(debug_assertions) {
+                    // We use a 'forced' read because we always need a `Immediate` here
+                    // and treating "partially uninit" as "fully uninit" is fine for us.
                     let (a, b) = self.read_immediate_forced(op)?.to_scalar_or_uninit_pair();
                     self.visit_scalar(a, a_layout)?;
                     self.visit_scalar(b, b_layout)?;
@@ -863,7 +868,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             }
             Abi::Vector { .. } => {
                 // No checks here, we assume layout computation gets this right.
-                // (This is harder to check since Miri does not represent these as `Immediate`.)
+                // (This is harder to check since Miri does not represent these as `Immediate`. We
+                // also cannot use field projections since this might be a newtype around a vector.)
             }
             Abi::Aggregate { .. } => {
                 // Nothing to do.
@@ -880,7 +886,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         match op.layout.ty.kind() {
             ty::Str => {
-                let mplace = op.assert_mem_place(); // strings are never immediate
+                let mplace = op.assert_mem_place(); // strings are unsized and hence never immediate
                 let len = mplace.len(self.ecx)?;
                 try_validation!(
                     self.ecx.read_bytes_ptr(mplace.ptr, Size::from_bytes(len)),
@@ -900,14 +906,27 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             {
                 // Optimized handling for arrays of integer/float type.
 
-                // Arrays cannot be immediate, slices are never immediate.
-                let mplace = op.assert_mem_place();
                 // This is the length of the array/slice.
-                let len = mplace.len(self.ecx)?;
+                let len = op.len(self.ecx)?;
                 // This is the element type size.
                 let layout = self.ecx.layout_of(*tys)?;
                 // This is the size in bytes of the whole array. (This checks for overflow.)
                 let size = layout.size * len;
+                // If the size is 0, there is nothing to check.
+                // (`size` can only be 0 of `len` is 0, and empty arrays are always valid.)
+                if size == Size::ZERO {
+                    return Ok(());
+                }
+                // Now that we definitely have a non-ZST array, we know it lives in memory.
+                let mplace = match op.try_as_mplace() {
+                    Ok(mplace) => mplace,
+                    Err(imm) => match *imm {
+                        Immediate::Uninit =>
+                            throw_validation_failure!(self.path, { "uninitialized bytes" }),
+                        Immediate::Scalar(..) | Immediate::ScalarPair(..) =>
+                            bug!("arrays/slices can never have Scalar/ScalarPair layout"),
+                    }
+                };
 
                 // Optimization: we just check the entire range at once.
                 // NOTE: Keep this in sync with the handling of integer and float
@@ -919,10 +938,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept uninit, for consistency with the slow path.
-                let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, mplace.align)? else {
-                    // Size 0, nothing more to check.
-                    return Ok(());
-                };
+                let alloc = self.ecx.get_ptr_alloc(mplace.ptr, size, mplace.align)?.expect("we already excluded size 0");
 
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),

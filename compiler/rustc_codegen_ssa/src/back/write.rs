@@ -179,24 +179,24 @@ impl ModuleConfig {
                 SwitchWithOptPath::Disabled
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
-            pgo_sample_use: if_regular!(sess.opts.debugging_opts.profile_sample_use.clone(), None),
-            debug_info_for_profiling: sess.opts.debugging_opts.debug_info_for_profiling,
+            pgo_sample_use: if_regular!(sess.opts.unstable_opts.profile_sample_use.clone(), None),
+            debug_info_for_profiling: sess.opts.unstable_opts.debug_info_for_profiling,
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
             instrument_gcov: if_regular!(
                 // compiler_builtins overrides the codegen-units settings,
                 // which is incompatible with -Zprofile which requires that
                 // only a single codegen unit is used per crate.
-                sess.opts.debugging_opts.profile && !is_compiler_builtins,
+                sess.opts.unstable_opts.profile && !is_compiler_builtins,
                 false
             ),
 
-            sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
+            sanitizer: if_regular!(sess.opts.unstable_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
-                sess.opts.debugging_opts.sanitizer_recover,
+                sess.opts.unstable_opts.sanitizer_recover,
                 SanitizerSet::empty()
             ),
             sanitizer_memory_track_origins: if_regular!(
-                sess.opts.debugging_opts.sanitizer_memory_track_origins,
+                sess.opts.unstable_opts.sanitizer_memory_track_origins,
                 0
             ),
 
@@ -247,7 +247,7 @@ impl ModuleConfig {
             // O2 and O3) since it can be useful for reducing code size.
             merge_functions: match sess
                 .opts
-                .debugging_opts
+                .unstable_opts
                 .merge_functions
                 .unwrap_or(sess.target.merge_functions)
             {
@@ -259,9 +259,9 @@ impl ModuleConfig {
             },
 
             inline_threshold: sess.opts.cg.inline_threshold,
-            new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
+            new_llvm_pass_manager: sess.opts.unstable_opts.new_llvm_pass_manager,
             emit_lifetime_markers: sess.emit_lifetime_markers(),
-            llvm_plugins: if_regular!(sess.opts.debugging_opts.llvm_plugins.clone(), vec![]),
+            llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
         }
     }
 
@@ -926,7 +926,7 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
 ) -> Result<WorkItemResult<B>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
 
-    if !cgcx.opts.debugging_opts.combine_cgu
+    if !cgcx.opts.unstable_opts.combine_cgu
         || module.kind == ModuleKind::Metadata
         || module.kind == ModuleKind::Allocator
     {
@@ -1048,14 +1048,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
-    let ol = if tcx.sess.opts.debugging_opts.no_codegen
-        || !tcx.sess.opts.output_types.should_codegen()
-    {
-        // If we know that we won’t be doing codegen, create target machines without optimisation.
-        config::OptLevel::No
-    } else {
-        tcx.backend_optimization_level(())
-    };
+    let ol =
+        if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
+            // If we know that we won’t be doing codegen, create target machines without optimisation.
+            config::OptLevel::No
+        } else {
+            tcx.backend_optimization_level(())
+        };
     let backend_features = tcx.global_backend_features(());
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
@@ -1064,7 +1063,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         lto: sess.lto(),
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
-        time_trace: sess.opts.debugging_opts.llvm_time_trace,
+        time_trace: sess.opts.unstable_opts.llvm_time_trace,
         opts: Arc::new(sess.opts.clone()),
         prof: sess.prof.clone(),
         exported_symbols,
@@ -1087,7 +1086,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         target_arch: tcx.sess.target.arch.to_string(),
         debuginfo: tcx.sess.opts.debuginfo,
         split_debuginfo: tcx.sess.split_debuginfo(),
-        split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf_kind,
+        split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1346,7 +1345,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
                         work_items.insert(insertion_index, (work, cost));
-                        if !cgcx.opts.debugging_opts.no_parallel_llvm {
+                        if !cgcx.opts.unstable_opts.no_parallel_llvm {
                             helper.request_token();
                         }
                     }
@@ -1466,7 +1465,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if !cgcx.opts.debugging_opts.no_parallel_llvm {
+                    if !cgcx.opts.unstable_opts.no_parallel_llvm {
                         helper.request_token();
                     }
                     assert!(!codegen_aborted);

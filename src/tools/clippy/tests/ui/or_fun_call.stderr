@@ -7,10 +7,10 @@ LL |     with_constructor.unwrap_or(make());
    = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:52:5
+  --> $DIR/or_fun_call.rs:52:14
    |
 LL |     with_new.unwrap_or(Vec::new());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
+   |              ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:55:21
@@ -31,16 +31,16 @@ LL |     with_err_args.unwrap_or(Vec::with_capacity(12));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:64:5
+  --> $DIR/or_fun_call.rs:64:24
    |
 LL |     with_default_trait.unwrap_or(Default::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:67:5
+  --> $DIR/or_fun_call.rs:67:23
    |
 LL |     with_default_type.unwrap_or(u64::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:70:18
@@ -49,16 +49,16 @@ LL |     self_default.unwrap_or(<FakeDefault>::default());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(<FakeDefault>::default)`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:73:5
+  --> $DIR/or_fun_call.rs:73:18
    |
 LL |     real_default.unwrap_or(<FakeDefault as Default>::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `real_default.unwrap_or_default()`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:76:5
+  --> $DIR/or_fun_call.rs:76:14
    |
 LL |     with_vec.unwrap_or(vec![]);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_default()`
+   |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:79:21
@@ -109,90 +109,28 @@ LL |         None.unwrap_or( unsafe { ptr_to_ref(s) }    );
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { ptr_to_ref(s) })`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:182:9
+  --> $DIR/or_fun_call.rs:189:14
    |
-LL | /         frames
-LL | |             .iter()
-LL | |             .map(|f: &String| f.to_lowercase())
-LL | |             .reduce(|mut acc, f| {
-...  |
-LL | |             })
-LL | |             .unwrap_or(String::new());
-   | |_____________________________________^
-   |
-help: try this
-   |
-LL ~         frames
-LL +             .iter()
-LL +             .map(|f: &String| f.to_lowercase())
-LL +             .reduce(|mut acc, f| {
-LL +                 acc.push_str(&f);
-LL +                 acc
-LL ~             }).unwrap_or_default();
-   |
+LL |             .unwrap_or(String::new());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:195:9
+  --> $DIR/or_fun_call.rs:202:14
    |
-LL | /         iter.map(|f: &String| f.to_lowercase())
-LL | |             .reduce(|mut acc, f| {
-LL | |                 let _ = "";
-LL | |                 let _ = "";
-...  |
-LL | |             })
-LL | |             .unwrap_or(String::new());
-   | |_____________________________________^
-   |
-help: try this
-   |
-LL ~         iter.map(|f: &String| f.to_lowercase())
-LL +             .reduce(|mut acc, f| {
-LL +                 let _ = "";
-LL +                 let _ = "";
-LL +                 acc.push_str(&f);
-LL +                 acc
-LL ~             }).unwrap_or_default();
-   |
+LL |             .unwrap_or(String::new());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:208:9
+  --> $DIR/or_fun_call.rs:214:14
    |
-LL | /         iter.map(|f: &String| f.to_lowercase())
-LL | |             .reduce(|mut acc, f| {
-LL | |                 let _ = "";
-LL | |                 acc.push_str(&f);
-LL | |                 acc
-LL | |             })
-LL | |             .unwrap_or(String::new());
-   | |_____________________________________^
-   |
-help: try this
-   |
-LL ~         iter.map(|f: &String| f.to_lowercase())
-LL +             .reduce(|mut acc, f| {
-LL +                 let _ = "";
-LL +                 acc.push_str(&f);
-LL +                 acc
-LL ~             }).unwrap_or_default();
-   |
+LL |             .unwrap_or(String::new());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:221:9
+  --> $DIR/or_fun_call.rs:225:10
    |
-LL | /         map.reduce(|mut acc, f| {
-LL | |             acc.push_str(&f);
-LL | |             acc
-LL | |         })
-LL | |         .unwrap_or(String::new());
-   | |_________________________________^
-   |
-help: try this
-   |
-LL ~         map.reduce(|mut acc, f| {
-LL +             acc.push_str(&f);
-LL +             acc
-LL ~         }).unwrap_or_default();
-   |
+LL |         .unwrap_or(String::new());
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: aborting due to 22 previous errors
 

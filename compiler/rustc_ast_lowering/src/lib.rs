@@ -31,7 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![feature(box_patterns)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
@@ -427,7 +427,7 @@ pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
     sess.time("drop_ast", || std::mem::drop(krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
-    if !sess.opts.debugging_opts.keep_hygiene_data {
+    if !sess.opts.unstable_opts.keep_hygiene_data {
         rustc_span::hygiene::clear_syntax_context_map();
     }
 
@@ -699,7 +699,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.debugging_opts.incremental_relative_spans {
+        if self.tcx.sess.opts.unstable_opts.incremental_relative_spans {
             span.with_parent(Some(self.current_hir_id_owner))
         } else {
             // Do not make spans relative when not using incremental compilation.
@@ -1159,6 +1159,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         itctx: ImplTraitContext,
     ) -> hir::Ty<'hir> {
+        // Check whether we should interpret this as a bare trait object.
+        // This check mirrors the one in late resolution.  We only introduce this special case in
+        // the rare occurence we need to lower `Fresh` anonymous lifetimes.
+        // The other cases when a qpath should be opportunistically made a trait object are handled
+        // by `ty_path`.
+        if qself.is_none()
+            && let Some(partial_res) = self.resolver.get_partial_res(t.id)
+            && partial_res.unresolved_segments() == 0
+            && let Res::Def(DefKind::Trait | DefKind::TraitAlias, _) = partial_res.base_res()
+        {
+            let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
+                let bound = this.lower_poly_trait_ref(
+                    &PolyTraitRef {
+                        bound_generic_params: vec![],
+                        trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
+                        span: t.span
+                    },
+                    itctx,
+                );
+                let bounds = this.arena.alloc_from_iter([bound]);
+                let lifetime_bound = this.elided_dyn_bound(t.span);
+                (bounds, lifetime_bound)
+            });
+            let kind = hir::TyKind::TraitObject(bounds, lifetime_bound, TraitObjectSyntax::None);
+            return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
+        }
+
         let id = self.lower_node_id(t.id);
         let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx);
         self.ty_path(id, t.span, qpath)
@@ -2119,7 +2146,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(!a.is_empty());
             self.attrs.insert(hir_id.local_id, a);
         }
-        let local = hir::Local { hir_id, init, pat, source, span: self.lower_span(span), ty: None };
+        let local = hir::Local {
+            hir_id,
+            init,
+            pat,
+            els: None,
+            source,
+            span: self.lower_span(span),
+            ty: None,
+        };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 

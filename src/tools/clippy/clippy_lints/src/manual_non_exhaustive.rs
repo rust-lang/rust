@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
                 (matches!(v.data, hir::VariantData::Unit(_))
                     && v.ident.as_str().starts_with('_')
                     && is_doc_hidden(cx.tcx.hir().attrs(v.id)))
-                .then(|| (id, v.span))
+                .then_some((id, v.span))
             });
             if let Some((id, span)) = iter.next()
                 && iter.next().is_none()
