@@ -634,7 +634,7 @@ version = "3.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c11d40217d16aee8508cc8e5fde8b4ff24639758608e5374e731b53f85749fb9"
 dependencies = [
- "heck 0.4.0",
+ "heck",
  "proc-macro-error",
  "proc-macro2",
  "quote",
@@ -1202,17 +1202,14 @@ checksum = "cd56b59865bce947ac5958779cfa508f6c3b9497cc762b7e24a12d11ccde2c4f"
 
 [[package]]
 name = "elasticlunr-rs"
-version = "2.3.9"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35622eb004c8f0c5e7e2032815f3314a93df0db30a1ce5c94e62c1ecc81e22b9"
+checksum = "e6dae5cac90640734ee881bc5f21b6e5123f4e5235e52428db114abffc2391d6"
 dependencies = [
- "lazy_static",
  "regex",
  "serde",
  "serde_derive",
  "serde_json",
- "strum",
- "strum_macros",
 ]
 
 [[package]]
@@ -1733,15 +1730,6 @@ dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "heck"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
-dependencies = [
- "unicode-segmentation",
 ]
 
 [[package]]
@@ -2360,9 +2348,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.18"
+version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74612ae81a3e5ee509854049dfa4c7975ae033c06f5fc4735c7dfbe60ee2a39d"
+checksum = "13cdad8057b09a519c6c63e6d7c93ea854f5d7fbfe284df864d5e1140d215a2d"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -2370,7 +2358,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "elasticlunr-rs",
- "env_logger 0.7.1",
+ "env_logger 0.9.0",
  "handlebars",
  "lazy_static",
  "log",
@@ -2379,7 +2367,6 @@ dependencies = [
  "pulldown-cmark",
  "regex",
  "serde",
- "serde_derive",
  "serde_json",
  "shlex",
  "tempfile",
@@ -3335,7 +3322,7 @@ dependencies = [
  "difference",
  "env_logger 0.9.0",
  "futures 0.3.19",
- "heck 0.4.0",
+ "heck",
  "home",
  "itertools",
  "jsonrpc-core",
@@ -5133,24 +5120,6 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
-name = "strum"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
-
-[[package]]
-name = "strum_macros"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87c85aa3f8ea653bfd3ddf25f7ee357ee4d204731f6aa9ad04002306f6e2774c"
-dependencies = [
- "heck 0.3.1",
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "syn"
