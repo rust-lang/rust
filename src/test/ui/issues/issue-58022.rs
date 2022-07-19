@@ -2,7 +2,7 @@ pub trait Foo: Sized {
     const SIZE: usize;
 
     fn new(slice: &[u8; Foo::SIZE]) -> Self;
-    //~^ ERROR: type annotations needed
+    //~^ ERROR: E0789
 }
 
 pub struct Bar<T: ?Sized>(T);

@@ -1,5 +1,5 @@
 const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-//~^ ERROR type annotations needed
+//~^ ERROR E0789
 
 trait Tt {
     const fn const_val<T: Sized>() -> usize {
