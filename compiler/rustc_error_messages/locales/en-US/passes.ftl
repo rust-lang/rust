@@ -81,8 +81,8 @@ passes-doc-keyword-not-mod = `#[doc(keyword = "...")]` should be used on modules
 
 passes-doc-keyword-invalid-ident = `{$doc_keyword}` is not a valid identifier
 
-passes-doc-tuple-variadic-not-first =
-    `#[doc(tuple_variadic)]` must be used on the first of a set of tuple trait impls with varying arity
+passes-doc-fake-variadic-not-valid =
+    `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
 
 passes-doc-keyword-only-impl = `#[doc(keyword = "...")]` should be used on impl blocks
 

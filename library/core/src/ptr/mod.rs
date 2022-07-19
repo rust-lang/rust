@@ -1819,6 +1819,27 @@ pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
     hashee.hash(into);
 }
 
+// If this is a unary fn pointer, it adds a doc comment.
+// Otherwise, it hides the docs entirely.
+macro_rules! maybe_fnptr_doc {
+    (@ #[$meta:meta] $item:item) => {
+        #[doc(hidden)]
+        #[$meta]
+        $item
+    };
+    ($a:ident @ #[$meta:meta] $item:item) => {
+        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+        #[doc = "This trait is implemented for function pointers with up to twelve arguments."]
+        #[$meta]
+        $item
+    };
+    ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+        #[doc(hidden)]
+        #[$meta]
+        $item
+    };
+}
+
 // FIXME(strict_provenance_magic): function pointers have buggy codegen that
 // necessitates casting to a usize to get the backend to do the right thing.
 // for now I will break AVR to silence *a billion* lints. We should probably
@@ -1827,51 +1848,72 @@ pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> PartialEq for $FnTy {
-            #[inline]
-            fn eq(&self, other: &Self) -> bool {
-                *self as usize == *other as usize
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> PartialEq for $FnTy {
+                #[inline]
+                fn eq(&self, other: &Self) -> bool {
+                    *self as usize == *other as usize
+                }
             }
         }
 
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> Eq for $FnTy {}
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> Eq for $FnTy {}
+        }
 
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> PartialOrd for $FnTy {
-            #[inline]
-            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                (*self as usize).partial_cmp(&(*other as usize))
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> PartialOrd for $FnTy {
+                #[inline]
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                    (*self as usize).partial_cmp(&(*other as usize))
+                }
             }
         }
 
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> Ord for $FnTy {
-            #[inline]
-            fn cmp(&self, other: &Self) -> Ordering {
-                (*self as usize).cmp(&(*other as usize))
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> Ord for $FnTy {
+                #[inline]
+                fn cmp(&self, other: &Self) -> Ordering {
+                    (*self as usize).cmp(&(*other as usize))
+                }
             }
         }
 
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> hash::Hash for $FnTy {
-            fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
-                state.write_usize(*self as usize)
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> hash::Hash for $FnTy {
+                fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
+                    state.write_usize(*self as usize)
+                }
             }
         }
 
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::pointer_fmt_inner(*self as usize, f)
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    fmt::pointer_fmt_inner(*self as usize, f)
+                }
             }
         }
 
-        #[stable(feature = "fnptr_impls", since = "1.4.0")]
-        impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::pointer_fmt_inner(*self as usize, f)
+        maybe_fnptr_doc! {
+            $($Arg)* @
+            #[stable(feature = "fnptr_impls", since = "1.4.0")]
+            impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    fmt::pointer_fmt_inner(*self as usize, f)
+                }
             }
         }
     }
@@ -1896,7 +1938,7 @@ macro_rules! fnptr_impls_args {
 }
 
 fnptr_impls_args! {}
-fnptr_impls_args! { A }
+fnptr_impls_args! { T }
 fnptr_impls_args! { A, B }
 fnptr_impls_args! { A, B, C }
 fnptr_impls_args! { A, B, C, D }
