@@ -353,6 +353,60 @@ impl Step for Rls {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustAnalyzer {
+    stage: u32,
+    host: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self { stage: run.builder.top_stage, host: run.target });
+    }
+
+    /// Runs `cargo test` for rust-analyzer.
+    fn run(self, builder: &Builder<'_>) {
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        let build_result = builder.ensure(tool::RustAnalyzer {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if build_result.is_none() {
+            eprintln!("failed to test rust-analyzer: could not build");
+            return;
+        }
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "test",
+            "src/tools/rust-analyzer",
+            SourceType::Submodule,
+            &[],
+        );
+
+        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        if try_run(builder, &mut cargo.into()) {
+            builder.save_toolstate("rust-analyzer", ToolState::TestPass);
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt {
     stage: u32,
     host: TargetSelection,
