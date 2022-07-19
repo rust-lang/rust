@@ -33,6 +33,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
+        self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty);
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
             return;
         }
@@ -347,7 +348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            let compatible_variants: Vec<String> = expected_adt
+            let compatible_variants: Vec<(String, Option<String>)> = expected_adt
                 .variants()
                 .iter()
                 .filter(|variant| {
@@ -355,6 +356,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.fields[0];
+
+                    let field_is_local = sole_field.did.is_local();
+                    let field_is_accessible =
+                        sole_field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx);
+
+                    if !field_is_local && !field_is_accessible {
+                        return None;
+                    }
+
+                    let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
+                        .then(|| format!(" (its field is private, but it's local to this crate and its privacy can be changed)"));
+
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
                         let variant_path =
@@ -363,9 +376,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
                         {
-                            return Some(path.to_string());
+                            return Some((path.to_string(), note_about_variant_field_privacy));
                         }
-                        Some(variant_path)
+                        Some((variant_path, note_about_variant_field_privacy))
                     } else {
                         None
                     }
@@ -379,10 +392,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             match &compatible_variants[..] {
                 [] => { /* No variants to format */ }
-                [variant] => {
+                [(variant, note)] => {
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
-                        &format!("try wrapping the expression in `{variant}`"),
+                        &format!(
+                            "try wrapping the expression in `{variant}`{note}",
+                            note = note.as_deref().unwrap_or("")
+                        ),
                         vec![
                             (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
                             (expr.span.shrink_to_hi(), ")".to_string()),
@@ -397,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "try wrapping the expression in a variant of `{}`",
                             self.tcx.def_path_str(expected_adt.did())
                         ),
-                        compatible_variants.into_iter().map(|variant| {
+                        compatible_variants.into_iter().map(|(variant, _)| {
                             vec![
                                 (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
                                 (expr.span.shrink_to_hi(), ")".to_string()),
@@ -408,6 +424,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn suggest_non_zero_new_unwrap(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected: Ty<'tcx>,
+        expr_ty: Ty<'tcx>,
+    ) {
+        let tcx = self.tcx;
+        let (adt, unwrap) = match expected.kind() {
+            // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
+            ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+                // Unwrap option
+                let ty::Adt(adt, _) = substs.type_at(0).kind() else { return };
+
+                (adt, "")
+            }
+            // In case NonZero* is wanted, but * is provided also add `.unwrap()` to satisfy types
+            ty::Adt(adt, _) => (adt, ".unwrap()"),
+            _ => return,
+        };
+
+        let map = [
+            (sym::NonZeroU8, tcx.types.u8),
+            (sym::NonZeroU16, tcx.types.u16),
+            (sym::NonZeroU32, tcx.types.u32),
+            (sym::NonZeroU64, tcx.types.u64),
+            (sym::NonZeroU128, tcx.types.u128),
+            (sym::NonZeroI8, tcx.types.i8),
+            (sym::NonZeroI16, tcx.types.i16),
+            (sym::NonZeroI32, tcx.types.i32),
+            (sym::NonZeroI64, tcx.types.i64),
+            (sym::NonZeroI128, tcx.types.i128),
+        ];
+
+        let Some((s, _)) = map
+            .iter()
+            .find(|&&(s, t)| self.tcx.is_diagnostic_item(s, adt.did()) && self.can_coerce(expr_ty, t))
+            else { return };
+
+        let path = self.tcx.def_path_str(adt.non_enum_variant().def_id);
+
+        err.multipart_suggestion(
+            format!("consider calling `{s}::new`"),
+            vec![
+                (expr.span.shrink_to_lo(), format!("{path}::new(")),
+                (expr.span.shrink_to_hi(), format!("){unwrap}")),
+            ],
+            Applicability::MaybeIncorrect,
+        );
     }
 
     pub fn get_conversion_methods(
