@@ -1,4 +1,4 @@
-# Documenting rustc
+# Building documentation
 
 You might want to build documentation of the various components
 available like the standard library. There’s two ways to go about this.

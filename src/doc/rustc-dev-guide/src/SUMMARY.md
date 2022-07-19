@@ -12,7 +12,7 @@
     - [Prerequisites](./building/prerequisites.md)
     - [Suggested Workflows](./building/suggested.md)
     - [Distribution artifacts](./building/build-install-distribution-artifacts.md)
-    - [Documenting Compiler](./building/compiler-documenting.md)
+    - [Building Documentation](./building/compiler-documenting.md)
     - [Rustdoc overview](./rustdoc.md)
     - [Adding a new target](./building/new-target.md)
 - [Testing the compiler](./tests/intro.md)
