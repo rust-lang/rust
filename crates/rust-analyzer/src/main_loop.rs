@@ -487,7 +487,21 @@ impl GlobalState {
                 }
 
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
-                let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
+                let mut diagnostics =
+                    self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
+                // https://github.com/rust-lang/rust-analyzer/issues/11404
+                for d in &mut diagnostics {
+                    if d.message.is_empty() {
+                        d.message = " ".to_string();
+                    }
+                    if let Some(rds) = d.related_information.as_mut() {
+                        for rd in rds {
+                            if rd.message.is_empty() {
+                                rd.message = " ".to_string();
+                            }
+                        }
+                    }
+                }
                 let version = from_proto::vfs_path(&url)
                     .map(|path| self.mem_docs.get(&path).map(|it| it.version))
                     .unwrap_or_default();
