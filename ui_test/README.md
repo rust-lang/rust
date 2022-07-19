@@ -23,12 +23,11 @@ In order to change how a single test is tested, you can add various `//@` commen
 Any other comments will be ignored, and all `//@` comments must be formatted precisely as
 their command specifies, or the test will fail without even being run.
 
-* `//@ignore-XXX` avoids running the test on targets whose triple contains `XXX`
-    * `XXX` can also be one of `64bit`, `32bit` or `16bit`
-    * `XXX` can also be `on-host`, which will only run the test during cross compilation testing.
-* `//@only-XXX` avoids running the test on targets whose triple **does not** contain `XXX`
-    * `XXX` can also be one of `64bit`, `32bit` or `16bit`
-    * `XXX` can also be `on-host`, which will not run the test during cross compilation testing
+* `//@ignore-C` avoids running the test when condition `C` is met.
+    * `C` can be `target-XXX`, which checks whether the target triple contains `XXX`.
+    * `C` can also be one of `64bit`, `32bit` or `16bit`.
+    * `C` can also be `on-host`, which will only run the test during cross compilation testing.
+* `//@only-C` **only** runs the test when condition `C` is met. The conditions are the same as with `ignore`.
 * `//@stderr-per-bitwidth` produces one stderr file per bitwidth, as they may differ significantly sometimes
 * `//@error-pattern: XXX` make sure the stderr output contains `XXX`
 * `//@revisions: XXX YYY` runs the test once for each space separated name in the list
@@ -46,5 +45,5 @@ their command specifies, or the test will fail without even being run.
 
 ## Significant differences to compiletest-rs
 
-* `ignore-*` and `only-*` opereate solely on the triple, instead of supporting things like `macos`
+* `ignore-target-*` and `only-target-*` opereate solely on the triple, instead of supporting things like `macos`
 * only `//~` comments can be individualized per revision
