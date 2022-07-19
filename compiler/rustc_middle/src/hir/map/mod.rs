@@ -491,9 +491,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-
-        par_iter(&self.tcx.hir_crate_items(()).body_owners[..]).for_each(|&def_id| f(def_id));
+        par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
     pub fn ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
