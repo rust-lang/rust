@@ -1,5 +1,5 @@
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_macros::{LintDiagnostic, SessionDiagnostic};
+use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(LintDiagnostic)]
@@ -359,4 +359,269 @@ pub struct Cold {
 pub struct Link {
     #[label]
     pub span: Option<Span>,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::link_name)]
+#[warn_]
+pub struct LinkName<'a> {
+    #[help]
+    pub attr_span: Option<Span>,
+    #[label]
+    pub span: Span,
+    pub value: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::no_link)]
+pub struct NoLink {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::export_name)]
+pub struct ExportName {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_layout_scalar_valid_range_not_struct)]
+pub struct RustcLayoutScalarValidRangeNotStruct {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_layout_scalar_valid_range_arg)]
+pub struct RustcLayoutScalarValidRangeArg {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_legacy_const_generics_only)]
+pub struct RustcLegacyConstGenericsOnly {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub param_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_legacy_const_generics_index)]
+pub struct RustcLegacyConstGenericsIndex {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub generics_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_legacy_const_generics_index_exceed)]
+pub struct RustcLegacyConstGenericsIndexExceed {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub arg_count: usize,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_legacy_const_generics_index_negative)]
+pub struct RustcLegacyConstGenericsIndexNegative {
+    #[primary_span]
+    pub invalid_args: Vec<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_dirty_clean)]
+pub struct RustcDirtyClean {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::link_section)]
+#[warn_]
+pub struct LinkSection {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::no_mangle_foreign)]
+#[warn_]
+#[note]
+pub struct NoMangleForeign {
+    #[label]
+    pub span: Span,
+    #[suggestion(applicability = "machine-applicable")]
+    pub attr_span: Span,
+    pub foreign_item_kind: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::no_mangle)]
+#[warn_]
+pub struct NoMangle {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::repr_ident, code = "E0565")]
+pub struct ReprIdent {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::repr_conflicting, code = "E0566")]
+pub struct ReprConflicting;
+
+#[derive(SessionDiagnostic)]
+#[error(passes::used_static)]
+pub struct UsedStatic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::used_compiler_linker)]
+pub struct UsedCompilerLinker {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::allow_internal_unstable)]
+pub struct AllowInternalUnstable {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::debug_visualizer_placement)]
+pub struct DebugVisualizerPlacement {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::debug_visualizer_invalid)]
+#[note(passes::note_1)]
+#[note(passes::note_2)]
+#[note(passes::note_3)]
+pub struct DebugVisualizerInvalid {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_allow_const_fn_unstable)]
+pub struct RustcAllowConstFnUnstable {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_std_internal_symbol)]
+pub struct RustcStdInternalSymbol {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::const_trait)]
+pub struct ConstTrait {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::stability_promotable)]
+pub struct StabilityPromotable {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::deprecated)]
+pub struct Deprecated;
+
+#[derive(LintDiagnostic)]
+#[lint(passes::macro_use)]
+pub struct MacroUse {
+    pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::macro_export)]
+pub struct MacroExport;
+
+#[derive(LintDiagnostic)]
+#[lint(passes::plugin_registrar)]
+pub struct PluginRegistrar;
+
+#[derive(SessionSubdiagnostic)]
+pub enum UnusedNote {
+    #[note(passes::unused_empty_lints_note)]
+    EmptyList { name: Symbol },
+    #[note(passes::unused_no_lints_note)]
+    NoLints { name: Symbol },
+    #[note(passes::unused_default_method_body_const_note)]
+    DefaultMethodBodyConst,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::unused)]
+pub struct Unused {
+    #[suggestion(applicability = "machine-applicable")]
+    pub attr_span: Span,
+    #[subdiagnostic]
+    pub note: UnusedNote,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::non_exported_macro_invalid_attrs, code = "E0518")]
+pub struct NonExportedMacroInvalidAttrs {
+    #[primary_span]
+    #[label]
+    pub attr_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[lint(passes::unused_duplicate)]
+pub struct UnusedDuplicate {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note]
+    pub other: Span,
+    #[warn_]
+    pub warning: Option<()>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::unused_multiple)]
+pub struct UnusedMultiple {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note]
+    pub other: Span,
+    pub name: Symbol,
 }
