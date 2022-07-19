@@ -197,7 +197,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
                 // For vtables, get the underlying data allocation.
                 let alloc_id = match fx.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::Vtable(ty, trait_ref) => fx.tcx.vtable_allocation((ty, trait_ref)),
+                    GlobalAlloc::VTable(ty, trait_ref) => fx.tcx.vtable_allocation((ty, trait_ref)),
                     _ => alloc_id,
                 };
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
@@ -221,7 +221,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                         fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                     }
-                    GlobalAlloc::Vtable(..) => bug!("vtables are already handled"),
+                    GlobalAlloc::VTable(..) => bug!("vtables are already handled"),
                     GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
                         let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
@@ -364,7 +364,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 //println!("alloc_id {}", alloc_id);
                 let alloc = match tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => alloc,
-                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::Vtable(..) => {
+                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
                 };
@@ -442,7 +442,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Memory(target_alloc) => {
                     data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
-                GlobalAlloc::Vtable(ty, trait_ref) => {
+                GlobalAlloc::VTable(ty, trait_ref) => {
                     let alloc_id = tcx.vtable_allocation((ty, trait_ref));
                     data_id_for_alloc_id(cx, module, alloc_id, Mutability::Not)
                 }
