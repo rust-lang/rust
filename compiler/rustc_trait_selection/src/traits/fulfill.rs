@@ -295,6 +295,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     /// This is called much less often than `needs_process_obligation`, so we
     /// never inline it.
     #[inline(never)]
+    #[instrument(level = "debug", skip(self, pending_obligation))]
     fn process_obligation(
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
@@ -303,7 +304,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let obligation = &mut pending_obligation.obligation;
 
-        debug!(?obligation, "process_obligation pre-resolve");
+        debug!(?obligation, "pre-resolve");
 
         if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
@@ -311,8 +312,6 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         let obligation = &pending_obligation.obligation;
-
-        debug!(?obligation, ?obligation.cause, "process_obligation");
 
         let infcx = self.selcx.infcx();
 
