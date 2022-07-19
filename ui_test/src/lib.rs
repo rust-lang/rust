@@ -172,7 +172,6 @@ pub fn run_tests(config: Config) -> Result<()> {
             eprintln!();
             eprintln!("command: {:?}", miri);
             eprintln!();
-            let mut dump_stderr = true;
             for error in errors {
                 match error {
                     Error::ExitStatus(mode, exit_status) => eprintln!("{mode:?} got {exit_status}"),
@@ -194,9 +193,6 @@ pub fn run_tests(config: Config) -> Result<()> {
                     Error::PatternFoundInPassTest =>
                         eprintln!("{}", "error pattern found in success test".red()),
                     Error::OutputDiffers { path, actual, expected } => {
-                        if path.extension().unwrap() == "stderr" {
-                            dump_stderr = false;
-                        }
                         eprintln!("actual output differed from expected {}", path.display());
                         eprintln!("{}", pretty_assertions::StrComparison::new(expected, actual));
                         eprintln!()
@@ -223,12 +219,9 @@ pub fn run_tests(config: Config) -> Result<()> {
                 }
                 eprintln!();
             }
-            // Unless we already dumped the stderr via an OutputDiffers diff, let's dump it here.
-            if dump_stderr {
-                eprintln!("actual stderr:");
-                eprintln!("{}", stderr);
-                eprintln!();
-            }
+            eprintln!("full stderr:");
+            eprintln!("{}", stderr);
+            eprintln!();
         }
         eprintln!("{}", "failures:".red().underline());
         for (path, _miri, _revision, _errors, _stderr) in &failures {
