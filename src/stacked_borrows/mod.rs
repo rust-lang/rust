@@ -985,7 +985,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
         let size = match size {
             Some(size) => size,
-            None => return Ok(*val),
+            None => return Ok(val.clone()),
         };
 
         // Compute new borrow.
@@ -1116,13 +1116,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// explicit. Also see <https://github.com/rust-lang/rust/issues/71117>.
     fn retag_return_place(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let return_place = this.frame_mut().return_place;
+        let return_place = &this.frame().return_place;
         if return_place.layout.is_zst() {
             // There may not be any memory here, nothing to do.
             return Ok(());
         }
         // We need this to be in-memory to use tagged pointers.
-        let return_place = this.force_allocation(&return_place)?;
+        let return_place = this.force_allocation(&return_place.clone())?;
 
         // We have to turn the place into a pointer to use the existing code.
         // (The pointer type does not matter, so we use a raw pointer.)

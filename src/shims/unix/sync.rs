@@ -828,9 +828,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // We return success for now and override it in the timeout callback.
         this.write_scalar(Scalar::from_i32(0), dest)?;
 
-        let dest = *dest;
-
         // Register the timeout callback.
+        let dest = dest.clone();
         this.register_timeout_callback(
             active_thread,
             timeout_time,
