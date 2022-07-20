@@ -1,18 +1,21 @@
-use std::collections::HashMap;
+use once_cell::sync::Lazy;
+use std::{collections::HashMap, sync::Mutex};
 use tt::SmolStr;
 
-// Identifier for an interned symbol.
+pub(super) static SYMBOL_INTERNER: Lazy<Mutex<SymbolInterner>> = Lazy::new(|| Default::default());
+
+// ID for an interned symbol.
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Symbol(u32);
 
 #[derive(Default)]
-struct IdentInterner {
+pub(super) struct SymbolInterner {
     idents: HashMap<SmolStr, u32>,
     ident_data: Vec<SmolStr>,
 }
 
-impl IdentInterner {
-    fn intern(&mut self, data: &str) -> Symbol {
+impl SymbolInterner {
+    pub(super) fn intern(&mut self, data: &str) -> Symbol {
         if let Some(index) = self.idents.get(data) {
             return Symbol(*index);
         }
@@ -24,12 +27,7 @@ impl IdentInterner {
         Symbol(index)
     }
 
-    fn get(&self, index: u32) -> &SmolStr {
-        &self.ident_data[index as usize]
-    }
-
-    #[allow(unused)]
-    fn get_mut(&mut self, index: u32) -> &mut SmolStr {
-        self.ident_data.get_mut(index as usize).expect("Should be consistent")
+    pub(super) fn get(&self, index: &Symbol) -> &SmolStr {
+        &self.ident_data[index.0 as usize]
     }
 }

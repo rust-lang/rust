@@ -115,20 +115,29 @@ impl server::TokenStream for RustAnalyzer {
                 Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Ident(_symbol) => {
-                todo!("convert Ident bridge=>TokenStream");
-                // let IdentData(ident) = self.ident_interner.get(index).clone();
-                // let ident: tt::Ident = ident;
-                // let leaf = tt::Leaf::from(ident);
-                // let tree = TokenTree::from(leaf);
-                // Self::TokenStream::from_iter(vec![tree])
+            bridge::TokenTree::Ident(ident) => {
+                // FIXME: handle raw idents
+                let text = SYMBOL_INTERNER.lock().unwrap().get(&ident.sym).clone();
+                let ident: tt::Ident = tt::Ident { text, id: ident.span };
+                let leaf = tt::Leaf::from(ident);
+                let tree = TokenTree::from(leaf);
+                Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Literal(_literal) => {
-                todo!("convert Literal bridge=>TokenStream");
-                // let leaf = tt::Leaf::from(literal);
-                // let tree = TokenTree::from(leaf);
-                // Self::TokenStream::from_iter(vec![tree])
+            bridge::TokenTree::Literal(literal) => {
+                let symbol = SYMBOL_INTERNER.lock().unwrap().get(&literal.symbol).clone();
+
+                let text: tt::SmolStr = if let Some(suffix) = literal.suffix {
+                    let suffix = SYMBOL_INTERNER.lock().unwrap().get(&suffix).clone();
+                    format!("{symbol}{suffix}").into()
+                } else {
+                    symbol
+                };
+
+                let literal = tt::Literal { text, id: literal.span };
+                let leaf = tt::Leaf::from(literal);
+                let tree = TokenTree::from(leaf);
+                Self::TokenStream::from_iter(vec![tree])
             }
 
             bridge::TokenTree::Punct(p) => {
@@ -185,13 +194,23 @@ impl server::TokenStream for RustAnalyzer {
         stream
             .into_iter()
             .map(|tree| match tree {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(_ident)) => {
-                    todo!("convert Ident tt=>bridge");
-                    // bridge::TokenTree::Ident(Symbol(self.ident_interner.intern(&IdentData(ident))))
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    bridge::TokenTree::Ident(bridge::Ident {
+                        sym: SYMBOL_INTERNER.lock().unwrap().intern(&ident.text),
+                        // FIXME: handle raw idents
+                        is_raw: false,
+                        span: ident.id,
+                    })
                 }
-                tt::TokenTree::Leaf(tt::Leaf::Literal(_lit)) => {
-                    todo!("convert Literal tt=>bridge");
-                    // bridge::TokenTree::Literal(lit)
+                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                    bridge::TokenTree::Literal(bridge::Literal {
+                        // FIXME: handle literal kinds
+                        kind: bridge::LitKind::Err,
+                        symbol: SYMBOL_INTERNER.lock().unwrap().intern(&lit.text),
+                        // FIXME: handle suffixes
+                        suffix: None,
+                        span: lit.id,
+                    })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
                     bridge::TokenTree::Punct(bridge::Punct {
@@ -379,12 +398,12 @@ impl server::Server for RustAnalyzer {
         }
     }
 
-    fn intern_symbol(_ident: &str) -> Self::Symbol {
-        todo!("intern_symbol")
+    fn intern_symbol(ident: &str) -> Self::Symbol {
+        SYMBOL_INTERNER.lock().unwrap().intern(&tt::SmolStr::from(ident))
     }
 
-    fn with_symbol_string(_symbol: &Self::Symbol, _f: impl FnOnce(&str)) {
-        todo!("with_symbol_string")
+    fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
+        f(SYMBOL_INTERNER.lock().unwrap().get(symbol).as_str())
     }
 }
 

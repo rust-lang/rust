@@ -37,6 +37,8 @@ use super::dylib::LoadProcMacroDylibError;
 pub(crate) use abi_1_58::Abi as Abi_1_58;
 pub(crate) use abi_1_63::Abi as Abi_1_63;
 pub(crate) use abi_1_64::Abi as Abi_1_64;
+#[cfg(feature = "sysroot-abi")]
+pub(crate) use abi_sysroot::Abi as Abi_Sysroot;
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
 
@@ -54,6 +56,8 @@ pub(crate) enum Abi {
     Abi1_58(Abi_1_58),
     Abi1_63(Abi_1_63),
     Abi1_64(Abi_1_64),
+    #[cfg(feature = "sysroot-abi")]
+    AbiSysroot(Abi_Sysroot),
 }
 
 impl Abi {
@@ -71,6 +75,14 @@ impl Abi {
         symbol_name: String,
         info: RustCInfo,
     ) -> Result<Abi, LoadProcMacroDylibError> {
+        // Gated behind an env var for now to avoid a change in behavior for
+        // rustup-installed rust-analyzer
+        #[cfg(feature = "sysroot-abi")]
+        if std::env::var("PROC_MACRO_SRV_SYSROOT_ABI").is_ok() {
+            let inner = unsafe { Abi_Sysroot::from_lib(lib, symbol_name) }?;
+            return Ok(Abi::AbiSysroot(inner));
+        }
+
         // FIXME: this should use exclusive ranges when they're stable
         // https://github.com/rust-lang/rust/issues/37854
         match (info.version.0, info.version.1) {
@@ -100,6 +112,8 @@ impl Abi {
             Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_64(abi) => abi.expand(macro_name, macro_body, attributes),
+            #[cfg(feature = "sysroot-abi")]
+            Self::AbiSysroot(abi) => abi.expand(macro_name, macro_body, attributes),
         }
     }
 
@@ -108,6 +122,8 @@ impl Abi {
             Self::Abi1_58(abi) => abi.list_macros(),
             Self::Abi1_63(abi) => abi.list_macros(),
             Self::Abi1_64(abi) => abi.list_macros(),
+            #[cfg(feature = "sysroot-abi")]
+            Self::AbiSysroot(abi) => abi.list_macros(),
         }
     }
 }
