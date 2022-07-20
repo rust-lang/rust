@@ -288,7 +288,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .substs
                 .const_at(i)
                 .try_eval_bool(self.tcx(), obligation.param_env)
-                .unwrap()
+                .unwrap_or(true)
         };
 
         let src_and_dst = predicate.map_bound(|p| rustc_transmute::Types {
