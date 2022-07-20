@@ -5,8 +5,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() {
     unsafe {
         libc::close(1); //~ ERROR: stdout cannot be closed

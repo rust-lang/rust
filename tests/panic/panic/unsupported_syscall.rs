@@ -3,8 +3,6 @@
 //@compile-flags: -Zmiri-panic-on-unsupported
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() {
     unsafe {
         libc::syscall(0);

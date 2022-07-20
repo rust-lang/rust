@@ -1,7 +1,6 @@
 //@ignore-target-windows: No libc on Windows
 
 #![feature(rustc_private)]
-extern crate libc;
 
 use std::mem;
 use std::ptr;

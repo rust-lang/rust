@@ -2,8 +2,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::cell::UnsafeCell;
 use std::sync::Arc;
 use std::thread;

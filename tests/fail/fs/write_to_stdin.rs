@@ -2,8 +2,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() -> std::io::Result<()> {
     let bytes = b"hello";
     unsafe {

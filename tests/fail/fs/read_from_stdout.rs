@@ -3,8 +3,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() -> std::io::Result<()> {
     let mut bytes = [0u8; 512];
     unsafe {

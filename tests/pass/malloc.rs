@@ -2,8 +2,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use core::{ptr, slice};
 
 fn main() {

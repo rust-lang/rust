@@ -5,8 +5,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::{mem, ptr};
 
 extern "C" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {

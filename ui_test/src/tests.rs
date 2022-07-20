@@ -16,6 +16,8 @@ fn config() -> Config {
         path_filter: vec![],
         program: PathBuf::from("cake"),
         output_conflict_handling: OutputConflictHandling::Error,
+        dependencies_crate_manifest_path: None,
+        dependency_builder: None,
     }
 }
 

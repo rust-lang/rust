@@ -3,8 +3,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() {
     test_file_open_missing_needed_mode();
 }

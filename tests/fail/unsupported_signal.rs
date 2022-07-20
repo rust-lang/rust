@@ -3,8 +3,6 @@
 //@ignore-target-windows: No libc on Windows
 #![feature(rustc_private)]
 
-extern crate libc;
-
 fn main() {
     unsafe {
         libc::signal(libc::SIGPIPE, libc::SIG_IGN);

@@ -6,8 +6,6 @@
 
 /// Test that conditional variable timeouts are working properly with both
 /// monotonic and system clocks.
-extern crate libc;
-
 use std::mem::MaybeUninit;
 use std::time::Instant;
 

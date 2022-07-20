@@ -5,8 +5,6 @@
 use std::fs::{remove_file, File};
 use std::os::unix::io::AsRawFd;
 
-extern crate libc;
-
 fn tmp() -> std::path::PathBuf {
     std::env::var("MIRI_TEMP")
         .map(std::path::PathBuf::from)

@@ -4,8 +4,6 @@
 
 #![feature(rustc_private)]
 
-extern crate libc;
-
 use std::ffi::CString;
 use std::fs::{self, File};
 use std::io::{Error, ErrorKind};

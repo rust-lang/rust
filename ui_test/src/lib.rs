@@ -1,6 +1,7 @@
 #![allow(clippy::enum_variant_names, clippy::useless_format, clippy::too_many_arguments)]
 
 use std::collections::VecDeque;
+use std::ffi::OsString;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
@@ -14,8 +15,10 @@ use parser::{ErrorMatch, Pattern};
 use regex::Regex;
 use rustc_stderr::{Level, Message};
 
+use crate::dependencies::build_dependencies;
 use crate::parser::{Comments, Condition};
 
+mod dependencies;
 mod parser;
 mod rustc_stderr;
 #[cfg(test)]
@@ -24,7 +27,7 @@ mod tests;
 #[derive(Debug)]
 pub struct Config {
     /// Arguments passed to the binary that is executed.
-    pub args: Vec<String>,
+    pub args: Vec<OsString>,
     /// `None` to run on the host, otherwise a target triple
     pub target: Option<String>,
     /// Filters applied to stderr output before processing it
@@ -38,6 +41,18 @@ pub struct Config {
     pub output_conflict_handling: OutputConflictHandling,
     /// Only run tests with one of these strings in their path/name
     pub path_filter: Vec<String>,
+    /// Path to a `Cargo.toml` that describes which dependencies the tests can access.
+    pub dependencies_crate_manifest_path: Option<PathBuf>,
+    /// Can be used to override what command to run instead of `cargo` to build the
+    /// dependencies in `manifest_path`
+    pub dependency_builder: Option<DependencyBuilder>,
+}
+
+#[derive(Debug)]
+pub struct DependencyBuilder {
+    pub program: PathBuf,
+    pub args: Vec<String>,
+    pub envs: Vec<(String, String)>,
 }
 
 #[derive(Debug)]
@@ -53,11 +68,25 @@ pub enum OutputConflictHandling {
 
 pub type Filter = Vec<(Regex, &'static str)>;
 
-pub fn run_tests(config: Config) -> Result<()> {
+pub fn run_tests(mut config: Config) -> Result<()> {
     eprintln!("   Compiler flags: {:?}", config.args);
 
     // Get the triple with which to run the tests
     let target = config.target.clone().unwrap_or_else(|| config.get_host());
+
+    let dependencies = build_dependencies(&config)?;
+    for (name, dependency) in dependencies.dependencies {
+        config.args.push("--extern".into());
+        let mut dep = OsString::from(name);
+        dep.push("=");
+        dep.push(dependency);
+        config.args.push(dep);
+    }
+    for import_path in dependencies.import_paths {
+        config.args.push("-L".into());
+        config.args.push(import_path.into());
+    }
+    let config = config;
 
     // A channel for files to process
     let (submit, receive) = crossbeam::channel::unbounded();
@@ -294,9 +323,7 @@ fn run_test(
     for arg in &comments.compile_flags {
         miri.arg(arg);
     }
-    for (k, v) in &comments.env_vars {
-        miri.env(k, v);
-    }
+    miri.envs(comments.env_vars.iter().map(|(k, v)| (k, v)));
     let output = miri.output().expect("could not execute miri");
     let mut errors = config.mode.ok(output.status);
     let stderr = check_test_result(
