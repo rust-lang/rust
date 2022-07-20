@@ -838,3 +838,13 @@ mod copy_impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Copy for &T {}
 }
+
+/// A common trait implemented by all function pointers.
+#[unstable(feature = "fn_ptr_trait", issue = "none", reason = "recently added")]
+#[lang = "fn_ptr_trait"]
+#[cfg(not(bootstrap))]
+pub trait FnPtr {
+    /// Returns the adress of the function pointer.
+    #[lang = "fn_ptr_addr"]
+    fn addr(self) -> usize;
+}

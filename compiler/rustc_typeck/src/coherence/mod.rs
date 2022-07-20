@@ -68,6 +68,18 @@ fn enforce_trait_manually_implementable(
         return;
     }
 
+    if did == li.fn_ptr_trait() {
+        struct_span_err!(
+            tcx.sess,
+            impl_header_span,
+            E0322,
+            "explicit impls for the `FnPtr` trait are not permitted"
+        )
+        .span_label(impl_header_span, "impl of `FnPtr` not allowed")
+        .emit();
+        return;
+    }
+
     if did == li.sized_trait() {
         struct_span_err!(
             tcx.sess,

@@ -640,6 +640,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
             ty::InstanceDef::CloneShim(def_id, ty) => {
                 Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?))
             }
+            ty::InstanceDef::FnPtrAddrShim(def_id, ty) => {
+                Some(ty::InstanceDef::FnPtrAddrShim(def_id, tcx.lift(ty)?))
+            }
         }
     }
 }
@@ -943,6 +946,9 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                 CloneShim(did, ty) => {
                     CloneShim(did.try_fold_with(folder)?, ty.try_fold_with(folder)?)
                 }
+                FnPtrAddrShim(did, ty) => {
+                    FnPtrAddrShim(did.try_fold_with(folder)?, ty.try_fold_with(folder)?)
+                }
             },
         })
     }
@@ -957,7 +963,7 @@ impl<'tcx> TypeVisitable<'tcx> for ty::instance::Instance<'tcx> {
             VTableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
                 did.visit_with(visitor)
             }
-            FnPtrShim(did, ty) | CloneShim(did, ty) => {
+            FnPtrShim(did, ty) | CloneShim(did, ty) | FnPtrAddrShim(did, ty) => {
                 did.visit_with(visitor)?;
                 ty.visit_with(visitor)
             }

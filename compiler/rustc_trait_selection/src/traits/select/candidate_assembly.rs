@@ -323,6 +323,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if lang_items.destruct_trait() == Some(def_id) {
                 self.assemble_const_destruct_candidates(obligation, &mut candidates);
+            } else if lang_items.fn_ptr_trait() == Some(def_id) {
+                self.assemble_candidates_for_fn_ptr_trait(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -997,6 +999,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            ty::Infer(_) => {
+                candidates.ambiguous = true;
+            }
+        }
+    }
+
+    fn assemble_candidates_for_fn_ptr_trait(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = self.infcx().shallow_resolve(obligation.self_ty());
+        match self_ty.skip_binder().kind() {
+            ty::FnPtr(_) => candidates.vec.push(BuiltinCandidate { has_nested: false }),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(..)
+            | ty::Foreign(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::Placeholder(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Projection(..)
+            | ty::Opaque(..)
+            | ty::Param(..)
+            | ty::Bound(..)
+            | ty::Error(_) => {}
             ty::Infer(_) => {
                 candidates.ambiguous = true;
             }
