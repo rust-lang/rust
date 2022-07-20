@@ -183,13 +183,6 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
-                // For vtables, get the underlying data allocation.
-                let alloc_id = match self.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::VTable(ty, trait_ref) => {
-                        self.tcx.vtable_allocation((ty, trait_ref))
-                    }
-                    _ => alloc_id,
-                };
                 let base_addr =
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Memory(alloc) => {
@@ -208,7 +201,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAlloc::Function(fn_instance) => {
                             self.get_fn_addr(fn_instance)
                         },
-                        GlobalAlloc::VTable(..) => panic!("vtables are already handled"),
+                        GlobalAlloc::VTable(ty, trait_ref) => {
+                            let alloc = self.tcx.global_alloc(self.tcx.vtable_allocation((ty, trait_ref))).unwrap_memory();
+                            let init = const_alloc_to_gcc(self, alloc);
+                            self.static_addr_of(init, alloc.inner().align, None)
+                        }
                         GlobalAlloc::Static(def_id) => {
                             assert!(self.tcx.is_static(def_id));
                             self.get_static(def_id).get_address(None)
