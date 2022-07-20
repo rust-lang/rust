@@ -122,7 +122,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
+        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx, ty::Predicate<'tcx>>>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
