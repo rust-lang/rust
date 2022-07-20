@@ -4,32 +4,24 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::ops::Range;
 
-
 impl RawEmitter {
     pub fn emit_cascading_map(&mut self, ranges: &[Range<u32>]) -> bool {
-
         let mut map: [u8; 256] = [
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ];
 
-        let points = ranges.iter().flat_map(
-            |r| (r.start..r.end).into_iter().collect::<Vec<u32>>()
-        ).collect::<Vec<u32>>();
+        let points = ranges
+            .iter()
+            .flat_map(|r| (r.start..r.end).into_iter().collect::<Vec<u32>>())
+            .collect::<Vec<u32>>();
 
         println!("there are {} points", points.len());
 
@@ -46,7 +38,8 @@ impl RawEmitter {
         let mut bit_for_high_byte = 1u8;
         let mut arms = Vec::<String>::new();
 
-        let mut high_bytes: Vec<usize> = codepoints_by_high_bytes.keys().map(|k| k.clone()).collect();
+        let mut high_bytes: Vec<usize> =
+            codepoints_by_high_bytes.keys().map(|k| k.clone()).collect();
         high_bytes.sort();
         for high_byte in high_bytes {
             let codepoints = codepoints_by_high_bytes.get_mut(&high_byte).unwrap();
@@ -61,20 +54,14 @@ impl RawEmitter {
             }
             arms.push(format!(
                 "{} => WHITESPACE_MAP[c as usize & 0xff] & {} != 0",
-                high_byte,
-                bit_for_high_byte)
-            );
+                high_byte, bit_for_high_byte
+            ));
             bit_for_high_byte <<= 1;
         }
 
-        writeln!(
-            &mut self.file,
-            "static WHITESPACE_MAP: [u8; 256] = [{}];",
-            fmt_list(map.iter())
-        )
-        .unwrap();
+        writeln!(&mut self.file, "static WHITESPACE_MAP: [u8; 256] = [{}];", fmt_list(map.iter()))
+            .unwrap();
         self.bytes_used += 256;
-
 
         writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
         writeln!(&mut self.file, "    match c as u32 >> 8 {{").unwrap();

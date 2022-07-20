@@ -177,7 +177,6 @@ pub fn emit_whitespace(emitter: &mut RawEmitter, ranges: &[Range<u32>]) {
     cascading.emit_cascading_map(&ranges);
     *emitter = cascading;
     emitter.desc = String::from("cascading");
-
 }
 
 struct Canonicalized {
