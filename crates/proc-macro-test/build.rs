@@ -2,6 +2,10 @@
 //! `OUT_DIR`.
 //!
 //! `proc-macro-test` itself contains only a path to that artifact.
+//!
+//! The `PROC_MACRO_TEST_TOOLCHAIN` environment variable can be exported to use
+//! a specific rustup toolchain: this allows testing against older ABIs (e.g.
+//! 1.58) and future ABIs (stage1, nightly)
 
 use std::{
     env, fs,
@@ -13,6 +17,7 @@ use cargo_metadata::Message;
 
 fn main() {
     println!("cargo:rerun-if-changed=imp");
+    println!("cargo:rerun-if-env-changed=PROC_MACRO_TEST_TOOLCHAIN");
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
@@ -47,7 +52,17 @@ fn main() {
     }
 
     let target_dir = out_dir.join("target");
-    let output = Command::new(toolchain::cargo())
+
+    let mut cmd = if let Ok(toolchain) = std::env::var("PROC_MACRO_TEST_TOOLCHAIN") {
+        // leverage rustup to find user-specific toolchain
+        let mut cmd = Command::new("cargo");
+        cmd.arg(format!("+{toolchain}"));
+        cmd
+    } else {
+        Command::new(toolchain::cargo())
+    };
+
+    let output = cmd
         .current_dir(&staging_dir)
         .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
