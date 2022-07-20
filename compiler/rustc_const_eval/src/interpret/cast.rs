@@ -297,10 +297,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
                 self.write_immediate(val, dest)
             }
-            (&ty::Dynamic(ref _data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
                 let (old_data, old_vptr) = self.read_immediate(src)?.to_scalar_pair()?;
                 let old_vptr = self.scalar_to_ptr(old_vptr)?;
-                let (ty, _) = self.get_ptr_vtable(old_vptr)?;
+                let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
+                if old_trait != data_a.principal() {
+                    throw_ub_format!("upcast on a pointer whose vtable does not match its type");
+                }
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
