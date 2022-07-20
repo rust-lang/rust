@@ -638,12 +638,35 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Pointer<Provenance>> {
         let link_name = ecx.item_link_name(def_id);
         if let Some(&ptr) = ecx.machine.extern_statics.get(&link_name) {
+            // Various parts of the engine rely on `get_alloc_info` for size and alignment
+            // information. That uses the type information of this static.
+            // Make sure it matches the Miri allocation for this.
+            let Provenance::Concrete { alloc_id, .. } = ptr.provenance else {
+                panic!("extern_statics cannot contain wildcards")
+            };
+            let (shim_size, shim_align, _kind) = ecx.get_alloc_info(alloc_id);
+            let extern_decl_layout =
+                ecx.tcx.layout_of(ty::ParamEnv::empty().and(ecx.tcx.type_of(def_id))).unwrap();
+            if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
+                throw_unsup_format!(
+                    "`extern` static `{name}` from crate `{krate}` has been declared \
+                    with a size of {decl_size} bytes and alignment of {decl_align} bytes, \
+                    but Miri emulates it via an extern static shim \
+                    with a size of {shim_size} bytes and alignment of {shim_align} bytes",
+                    name = ecx.tcx.def_path_str(def_id),
+                    krate = ecx.tcx.crate_name(def_id.krate),
+                    decl_size = extern_decl_layout.size.bytes(),
+                    decl_align = extern_decl_layout.align.abi.bytes(),
+                    shim_size = shim_size.bytes(),
+                    shim_align = shim_align.bytes(),
+                )
+            }
             Ok(ptr)
         } else {
             throw_unsup_format!(
-                "`extern` static `{}` from crate `{}` is not supported by Miri",
-                ecx.tcx.def_path_str(def_id),
-                ecx.tcx.crate_name(def_id.krate),
+                "`extern` static `{name}` from crate `{krate}` is not supported by Miri",
+                name = ecx.tcx.def_path_str(def_id),
+                krate = ecx.tcx.crate_name(def_id.krate),
             )
         }
     }
