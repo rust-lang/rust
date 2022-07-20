@@ -245,7 +245,9 @@ impl<T> Drop for DropNoUnwindSameAnyTypeId<T> {
 
         impl Drop for AbortOnDrop {
             fn drop(&mut self) {
-                crate::intrinsics::abort();
+                crate::panicking::panic_abort(Some(&format_args!(
+                    "fatal runtime error: drop of the panic payload panicked"
+                )))
             }
         }
 
