@@ -165,7 +165,7 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTraitBounds {
                         cx.struct_span_lint(DUP_TRAIT_BOUNDS, span, |lint| {
                             let msg = format!("duplicate trait bound");
                             lint.build(&msg)
-                                .span_help(span, "Remove this duplicate trait bound")
+                                .span_help(span, "remove the duplicate trait bound")
                                 .emit();
                         });
                     };
