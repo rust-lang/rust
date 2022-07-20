@@ -25,7 +25,7 @@ fn main() {
     let staging_dir = out_dir.join("proc-macro-test-imp-staging");
     // this'll error out if the staging dir didn't previously. using
     // `std::fs::exists` would suffer from TOCTOU so just do our best to
-    // wip it and ignore errors.
+    // wipe it and ignore errors.
     let _ = std::fs::remove_dir_all(&staging_dir);
 
     println!("Creating {}", staging_dir.display());
