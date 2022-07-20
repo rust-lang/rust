@@ -25,7 +25,7 @@ use super::{
 mod caller_location;
 mod type_name;
 
-fn numeric_intrinsic<Tag>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Tag> {
+fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Prov> {
     let size = match kind {
         Primitive::Int(integer, _) => integer.size(),
         _ => bug!("invalid `{}` argument: {:?}", name, bits),
@@ -114,8 +114,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn emulate_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, M::PointerTag>],
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &PlaceTy<'tcx, M::Provenance>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
@@ -502,9 +502,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn exact_div(
         &mut self,
-        a: &ImmTy<'tcx, M::PointerTag>,
-        b: &ImmTy<'tcx, M::PointerTag>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        a: &ImmTy<'tcx, M::Provenance>,
+        b: &ImmTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
@@ -521,9 +521,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn saturating_arith(
         &self,
         mir_op: BinOp,
-        l: &ImmTy<'tcx, M::PointerTag>,
-        r: &ImmTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+        l: &ImmTy<'tcx, M::Provenance>,
+        r: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         assert!(matches!(mir_op, BinOp::Add | BinOp::Sub));
         let (val, overflowed, _ty) = self.overflowing_binary_op(mir_op, l, r)?;
         Ok(if overflowed {
@@ -566,10 +566,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// 0, so offset-by-0 (and only 0) is okay -- except that null cannot be offset by _any_ value.
     pub fn ptr_offset_inbounds(
         &self,
-        ptr: Pointer<Option<M::PointerTag>>,
+        ptr: Pointer<Option<M::Provenance>>,
         pointee_ty: Ty<'tcx>,
         offset_count: i64,
-    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         // We cannot overflow i64 as a type's size must be <= isize::MAX.
         let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
         // The computed offset, in bytes, must not overflow an isize.
@@ -597,9 +597,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
     pub(crate) fn copy_intrinsic(
         &mut self,
-        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
@@ -622,9 +622,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn write_bytes_intrinsic(
         &mut self,
-        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        byte: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        byte: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
         let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap().ty)?;
 
@@ -645,9 +645,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub(crate) fn raw_eq_intrinsic(
         &mut self,
-        lhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+        lhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+        rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
         assert!(!layout.is_unsized());
 

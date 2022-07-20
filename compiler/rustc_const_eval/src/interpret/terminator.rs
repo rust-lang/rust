@@ -267,10 +267,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn pass_argument<'x, 'y>(
         &mut self,
         caller_args: &mut impl Iterator<
-            Item = (&'x OpTy<'tcx, M::PointerTag>, &'y ArgAbi<'tcx, Ty<'tcx>>),
+            Item = (&'x OpTy<'tcx, M::Provenance>, &'y ArgAbi<'tcx, Ty<'tcx>>),
         >,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
-        callee_arg: &PlaceTy<'tcx, M::PointerTag>,
+        callee_arg: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx>
     where
         'tcx: 'x,
@@ -336,9 +336,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
-        args: &[OpTy<'tcx, M::PointerTag>],
+        args: &[OpTy<'tcx, M::Provenance>],
         with_caller_location: bool,
-        destination: &PlaceTy<'tcx, M::PointerTag>,
+        destination: &PlaceTy<'tcx, M::Provenance>,
         target: Option<mir::BasicBlock>,
         mut unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -437,7 +437,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // last incoming argument.  These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
-                    let caller_args: Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
+                    let caller_args: Cow<'_, [OpTy<'tcx, M::Provenance>]> =
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
                             let (untuple_arg, args) = args.split_last().unwrap();
@@ -449,7 +449,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                         (0..untuple_arg.layout.fields.count())
                                             .map(|i| self.operand_field(untuple_arg, i)),
                                     )
-                                    .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::PointerTag>>>>(
+                                    .collect::<InterpResult<'_, Vec<OpTy<'tcx, M::Provenance>>>>(
                                     )?,
                             )
                         } else {
@@ -593,7 +593,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn drop_in_place(
         &mut self,
-        place: &PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::Provenance>,
         instance: ty::Instance<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,

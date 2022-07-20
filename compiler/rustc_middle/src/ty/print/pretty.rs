@@ -1377,9 +1377,9 @@ pub trait PrettyPrinter<'tcx>:
 
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
-    fn pretty_print_const_pointer<Tag: Provenance>(
+    fn pretty_print_const_pointer<Prov: Provenance>(
         mut self,
-        _: Pointer<Tag>,
+        _: Pointer<Prov>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
@@ -1952,9 +1952,9 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         }
     }
 
-    fn pretty_print_const_pointer<Tag: Provenance>(
+    fn pretty_print_const_pointer<Prov: Provenance>(
         self,
-        p: Pointer<Tag>,
+        p: Pointer<Prov>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {

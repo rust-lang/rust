@@ -33,7 +33,7 @@ pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
     'mir,
     'tcx,
     MemoryKind = T,
-    PointerTag = AllocId,
+    Provenance = AllocId,
     ExtraFnVal = !,
     FrameExtra = (),
     AllocExtra = (),
@@ -474,7 +474,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(
             &mut InterpCx<'mir, 'tcx, M>,
-            &PlaceTy<'tcx, M::PointerTag>,
+            &PlaceTy<'tcx, M::Provenance>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;

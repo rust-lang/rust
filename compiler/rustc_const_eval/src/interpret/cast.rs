@@ -18,10 +18,10 @@ use super::{
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::Provenance>,
         cast_kind: CastKind,
         cast_ty: Ty<'tcx>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::CastKind::*;
         // FIXME: In which cases should we trigger UB when the source is uninit?
@@ -114,9 +114,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn misc_cast(
         &mut self,
-        src: &ImmTy<'tcx, M::PointerTag>,
+        src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         use rustc_type_ir::sty::TyKind::*;
         trace!("Casting {:?}: {:?} to {:?}", *src, src.layout.ty, cast_ty);
 
@@ -173,9 +173,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn pointer_expose_address_cast(
         &mut self,
-        src: &ImmTy<'tcx, M::PointerTag>,
+        src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         assert_matches!(src.layout.ty.kind(), ty::RawPtr(_) | ty::FnPtr(_));
         assert!(cast_ty.is_integral());
 
@@ -190,9 +190,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn pointer_from_exposed_address_cast(
         &mut self,
-        src: &ImmTy<'tcx, M::PointerTag>,
+        src: &ImmTy<'tcx, M::Provenance>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Immediate<M::Provenance>> {
         assert!(src.layout.ty.is_integral());
         assert_matches!(cast_ty.kind(), ty::RawPtr(_));
 
@@ -208,10 +208,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn cast_from_int_like(
         &self,
-        scalar: Scalar<M::PointerTag>, // input value (there is no ScalarTy so we separate data+layout)
+        scalar: Scalar<M::Provenance>, // input value (there is no ScalarTy so we separate data+layout)
         src_layout: TyAndLayout<'tcx>,
         cast_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
 
@@ -245,9 +245,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
-    fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::PointerTag>
+    fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::Provenance>
     where
-        F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
+        F: Float + Into<Scalar<M::Provenance>> + FloatConvert<Single> + FloatConvert<Double>,
     {
         use rustc_type_ir::sty::TyKind::*;
         match *dest_ty.kind() {
@@ -279,8 +279,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn unsize_into_ptr(
         &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::Provenance>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
         // The pointee types
         source_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
@@ -335,9 +335,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn unsize_into(
         &mut self,
-        src: &OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::Provenance>,
         cast_ty: TyAndLayout<'tcx>,
-        dest: &PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {

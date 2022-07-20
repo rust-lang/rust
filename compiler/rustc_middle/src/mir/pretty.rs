@@ -767,21 +767,21 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints relocations adequately.
-pub fn display_allocation<'a, 'tcx, Tag, Extra>(
+pub fn display_allocation<'a, 'tcx, Prov, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Tag, Extra>,
-) -> RenderAllocation<'a, 'tcx, Tag, Extra> {
+    alloc: &'a Allocation<Prov, Extra>,
+) -> RenderAllocation<'a, 'tcx, Prov, Extra> {
     RenderAllocation { tcx, alloc }
 }
 
 #[doc(hidden)]
-pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
+pub struct RenderAllocation<'a, 'tcx, Prov, Extra> {
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Tag, Extra>,
+    alloc: &'a Allocation<Prov, Extra>,
 }
 
-impl<'a, 'tcx, Tag: Provenance, Extra> std::fmt::Display
-    for RenderAllocation<'a, 'tcx, Tag, Extra>
+impl<'a, 'tcx, Prov: Provenance, Extra> std::fmt::Display
+    for RenderAllocation<'a, 'tcx, Prov, Extra>
 {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
@@ -825,9 +825,9 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
+fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &Allocation<Tag, Extra>,
+    alloc: &Allocation<Prov, Extra>,
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {
@@ -861,7 +861,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&tag) = alloc.relocations().get(&i) {
+        if let Some(&prov) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
@@ -870,7 +870,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
-            let ptr = Pointer::new(tag, offset);
+            let ptr = Pointer::new(prov, offset);
             let mut target = format!("{:?}", ptr);
             if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.
