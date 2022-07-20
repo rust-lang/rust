@@ -27,7 +27,7 @@ fn test_derive_error() {
 }
 
 #[test]
-fn test_fn_like_macro() {
+fn test_fn_like_macro_noop() {
     assert_expand(
         "fn_like_noop",
         r#"ident, 0, 1, []"#,
@@ -44,7 +44,7 @@ fn test_fn_like_macro() {
 }
 
 #[test]
-fn test_fn_like_macro2() {
+fn test_fn_like_macro_clone_ident_subtree() {
     assert_expand(
         "fn_like_clone_tokens",
         r#"ident, []"#,
@@ -53,6 +53,26 @@ fn test_fn_like_macro2() {
               IDENT   ident 4294967295
               PUNCH   , [alone] 4294967295
               SUBTREE [] 4294967295"#]],
+    );
+}
+
+#[test]
+fn test_fn_like_macro_clone_literals() {
+    assert_expand(
+        "fn_like_clone_tokens",
+        r#"1u16, 2_u32, -4i64, 3.14f32, "hello bridge""#,
+        expect![[r#"
+            SUBTREE $
+              LITERAL 1u16 4294967295
+              PUNCH   , [alone] 4294967295
+              LITERAL 2_u32 4294967295
+              PUNCH   , [alone] 4294967295
+              PUNCH   - [alone] 4294967295
+              LITERAL 4i64 4294967295
+              PUNCH   , [alone] 4294967295
+              LITERAL 3.14f32 4294967295
+              PUNCH   , [alone] 4294967295
+              LITERAL "hello bridge" 4294967295"#]],
     );
 }
 

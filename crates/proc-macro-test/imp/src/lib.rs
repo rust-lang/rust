@@ -2,7 +2,7 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
-use proc_macro::{Group, Ident, Punct, TokenStream, TokenTree};
+use proc_macro::{Group, Ident, Literal, Punct, TokenStream, TokenTree};
 
 #[proc_macro]
 pub fn fn_like_noop(args: TokenStream) -> TokenStream {
@@ -71,6 +71,12 @@ fn clone_tree(t: TokenTree) -> TokenTree {
             new.set_span(orig.span());
             TokenTree::Punct(new)
         }
-        TokenTree::Literal(_orig) => unimplemented!(),
+        TokenTree::Literal(orig) => {
+            // this goes through `literal_from_str` as of 2022-07-18, cf.
+            // https://github.com/rust-lang/rust/commit/b34c79f8f1ef4d0149ad4bf77e1759c07a9a01a8
+            let mut new: Literal = orig.to_string().parse().unwrap();
+            new.set_span(orig.span());
+            TokenTree::Literal(new)
+        }
     }
 }
