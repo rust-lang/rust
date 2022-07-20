@@ -90,6 +90,7 @@ pub mod thread;
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "ios",
+    target_os = "watchos",
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd"
