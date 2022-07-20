@@ -129,7 +129,7 @@ impl Mutex {
                         ZX_ERR_INVALID_ARGS | ZX_ERR_BAD_HANDLE | ZX_ERR_WRONG_TYPE => {
                             panic!(
                                 "either the current thread is trying to lock a mutex it has
-                                already locked, or the previous uowner did not unlock the mutex
+                                already locked, or the previous owner did not unlock the mutex
                                 before exiting"
                             )
                         }
