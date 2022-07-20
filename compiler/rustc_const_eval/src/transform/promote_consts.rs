@@ -361,7 +361,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             return Err(Unpromotable);
                         }
                     }
-                    ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
+                    ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 

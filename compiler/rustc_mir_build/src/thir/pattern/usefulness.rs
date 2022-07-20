@@ -411,12 +411,12 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// This is roughly the inverse of `Constructor::apply`.
     fn pop_head_constructor(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(pcx, ctor);
+        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(cx, ctor);
         new_fields.extend_from_slice(&self.pats[1..]);
         PatStack::from_vec(new_fields)
     }
@@ -475,7 +475,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let mut matrix = Matrix::empty();
         for row in &self.patterns {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx, ctor);
+                let new_row = row.pop_head_constructor(pcx.cx, ctor);
                 matrix.push(new_row);
             }
         }
@@ -786,7 +786,7 @@ fn is_useful<'p, 'tcx>(
     is_under_guard: bool,
     is_top_level: bool,
 ) -> Usefulness<'p, 'tcx> {
-    debug!(?matrix, ?v);
+    debug!("matrix,v={:?}{:?}", matrix, v);
     let Matrix { patterns: rows, .. } = matrix;
 
     // The base case. We are pattern-matching on () and the return value is
@@ -805,6 +805,11 @@ fn is_useful<'p, 'tcx>(
     }
 
     debug_assert!(rows.iter().all(|r| r.len() == v.len()));
+
+    let ty = v.head().ty();
+    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+    debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
+    let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 
     // If the first pattern is an or-pattern, expand it.
     let mut ret = Usefulness::new_not_useful(witness_preference);
@@ -827,19 +832,6 @@ fn is_useful<'p, 'tcx>(
             }
         }
     } else {
-        let mut ty = v.head().ty();
-
-        // Opaque types can't get destructured/split, but the patterns can
-        // actually hint at hidden types, so we use the patterns' types instead.
-        if let ty::Opaque(..) = v.head().ty().kind() {
-            if let Some(row) = rows.first() {
-                ty = row.head().ty();
-            }
-        }
-        let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-        debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
-        let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
-
         let v_ctor = v.head().ctor();
         debug!(?v_ctor);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
@@ -861,7 +853,7 @@ fn is_useful<'p, 'tcx>(
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
-            let v = v.pop_head_constructor(pcx, &ctor);
+            let v = v.pop_head_constructor(cx, &ctor);
             let usefulness = ensure_sufficient_stack(|| {
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false)
             });

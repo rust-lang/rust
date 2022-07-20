@@ -255,7 +255,6 @@ fn place_components_conflict<'tcx>(
                 | (ProjectionElem::Index { .. }, _, _)
                 | (ProjectionElem::ConstantIndex { .. }, _, _)
                 | (ProjectionElem::Subslice { .. }, _, _)
-                | (ProjectionElem::OpaqueCast { .. }, _, _)
                 | (ProjectionElem::Downcast { .. }, _, _) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
@@ -322,17 +321,6 @@ fn place_projection_conflict<'tcx>(
             // derefs (e.g., `*x` vs. `*x`) - recur.
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
             Overlap::EqualOrDisjoint
-        }
-        (ProjectionElem::OpaqueCast(v1), ProjectionElem::OpaqueCast(v2)) => {
-            if v1 == v2 {
-                // same type - recur.
-                debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
-                Overlap::EqualOrDisjoint
-            } else {
-                // Different types. Disjoint!
-                debug!("place_element_conflict: DISJOINT-OPAQUE");
-                Overlap::Disjoint
-            }
         }
         (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
             if f1 == f2 {
@@ -537,7 +525,6 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::OpaqueCast { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..),
             _,

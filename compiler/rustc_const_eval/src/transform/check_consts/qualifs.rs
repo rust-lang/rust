@@ -316,7 +316,6 @@ where
 
             ProjectionElem::Deref
             | ProjectionElem::Field(_, _)
-            | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(_, _)

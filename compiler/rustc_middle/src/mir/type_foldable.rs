@@ -182,7 +182,6 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
         Ok(match self {
             Deref => Deref,
             Field(f, ty) => Field(f, ty.try_fold_with(folder)?),
-            OpaqueCast(ty) => OpaqueCast(ty.try_fold_with(folder)?),
             Index(v) => Index(v.try_fold_with(folder)?),
             Downcast(symbol, variantidx) => Downcast(symbol, variantidx),
             ConstantIndex { offset, min_length, from_end } => {
