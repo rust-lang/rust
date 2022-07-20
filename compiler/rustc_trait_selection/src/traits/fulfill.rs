@@ -359,15 +359,10 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
                 ty::PredicateKind::RegionOutlives(data) => {
                     if infcx.considering_regions || data.has_placeholders() {
-                        match infcx
-                            .region_outlives_predicate(&obligation.cause, Binder::dummy(data))
-                        {
-                            Ok(()) => ProcessResult::Changed(vec![]),
-                            Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
-                        }
-                    } else {
-                        ProcessResult::Changed(vec![])
+                        infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
+
+                    ProcessResult::Changed(vec![])
                 }
 
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
