@@ -179,6 +179,23 @@ fn format_counts() {
         })],
     );
     same(
+        "{1:0$.10x}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(1),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIs(10),
+                width: CountIsParam(0),
+                precision_span: None,
+                width_span: Some(InnerSpan::new(4, 6)),
+                ty: "x",
+                ty_span: None,
+            },
+        })],
+    );
+    same(
         "{:.*x}",
         &[NextArgument(Argument {
             position: ArgumentImplicitlyIs(1),
