@@ -452,9 +452,9 @@ fn main() {
 
 ## Revisions
 
-Certain classes of tests support "revisions" (as of <!-- date: 2022-02 --> February 2022,
-this includes UI, assembly, codegen, incremental, and rustdoc UI tests, though
-incremental tests are somewhat different).
+Certain classes of tests support "revisions" (as of <!-- date: 2022-07 --> July 2022,
+this includes UI, assembly, codegen, debuginfo, incremental, and rustdoc UI tests,
+though incremental tests are somewhat different).
 Revisions allow a single test file to be used for multiple tests.
 This is done by adding a special header at the top of the file:
 
