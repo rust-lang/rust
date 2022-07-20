@@ -117,7 +117,6 @@ pub fn create_session(
 
     let mut check_cfg = config::to_crate_check_config(check_cfg);
     check_cfg.fill_well_known();
-    check_cfg.fill_actual(&cfg);
 
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
