@@ -1,0 +1,48 @@
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:5:17
+   |
+LL | fn a(i: i32) -> i32 {}
+   |    -            ^^^ expected `i32`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `i`
+   |
+LL | fn a(i: i32) -> i32 { i }
+   |                       +
+
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:9:46
+   |
+LL |       let s: String = if let Some(s) = opt_str {
+   |  ______________________________________________^
+LL | |
+LL | |     } else {
+   | |_____^ expected struct `String`, found `()`
+   |
+help: consider returning the local binding `s`
+   |
+LL ~     let s: String = if let Some(s) = opt_str {
+LL +         s
+LL ~
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/return-bindings.rs:16:11
+   |
+LL | fn c() -> Option<i32> {
+   |    -      ^^^^^^^^^^^ expected enum `Option`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note:   expected enum `Option<i32>`
+           found unit type `()`
+help: consider returning the local binding `x`
+   |
+LL ~     let x = Some(1);
+LL +     x
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
