@@ -1810,7 +1810,6 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Cast(CastKind::PointerExposeAddress, _, _) => false,
 
             Rvalue::Use(_)
-            | Rvalue::CopyForDeref(_)
             | Rvalue::Repeat(_, _)
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
@@ -1904,8 +1903,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 };
                 write!(fmt, "&{}{}{:?}", region, kind_str, place)
             }
-
-            CopyForDeref(ref place) => write!(fmt, "deref_copy {:#?}", place),
 
             AddressOf(mutability, ref place) => {
                 let kind_str = match mutability {

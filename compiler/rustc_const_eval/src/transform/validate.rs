@@ -227,11 +227,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         {
             // `Operand::Copy` is only supposed to be used with `Copy` types.
             if let Operand::Copy(place) = operand {
-                let ty = place.ty(&self.body.local_decls, self.tcx).ty;
-                let span = self.body.source_info(location).span;
+                // We skip `DerefTemp` values
+                let mut check = true;
+                if let Some(stmt) = self.body.stmt_at(location).left() {
+                    if let StatementKind::Assign(box (dest, Rvalue::Use(Operand::Copy(_)))) =
+                        stmt.kind
+                    {
+                        if self.body.local_decls[dest.local].is_deref_temp() {
+                            check = false;
+                        }
+                    }
+                }
+                if check {
+                    let ty = place.ty(&self.body.local_decls, self.tcx).ty;
+                    let span = self.body.source_info(location).span;
 
-                if !ty.is_copy_modulo_regions(self.tcx.at(span), self.param_env) {
-                    self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
+                    if !ty.is_copy_modulo_regions(self.tcx.at(span), self.param_env) {
+                        self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
+                    }
                 }
             }
         }
@@ -382,7 +395,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
+            Rvalue::Use(_) => {}
             Rvalue::Aggregate(agg_kind, _) => {
                 let disallowed = match **agg_kind {
                     AggregateKind::Array(..) => false,
@@ -592,17 +605,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                if let Rvalue::CopyForDeref(place) = rvalue {
-                    if !place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_some()
-                    {
-                        self.fail(
-                            location,
-                            "`CopyForDeref` should only be used for dereferenceable types",
-                        )
-                    }
-                }
                 // FIXME(JakobDegen): Check this for all rvalues, not just this one.
                 if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                    if !src.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_some() {}
                     // The sides of an assignment must not alias. Currently this just checks whether
                     // the places are identical.
                     if dest == src {

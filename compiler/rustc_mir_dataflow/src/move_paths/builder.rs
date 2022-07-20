@@ -284,31 +284,30 @@ struct Gatherer<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
-            StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
-                assert!(place.projection.is_empty());
-                if self.builder.body.local_decls[place.local].is_deref_temp() {
-                    self.builder.un_derefer.derefer_sidetable.insert(place.local, *reffed);
-                }
-            }
             StatementKind::Assign(box (place, rval)) => {
-                self.create_move_path(*place);
-                if let RvalueInitializationState::Shallow = rval.initialization_state() {
-                    // Box starts out uninitialized - need to create a separate
-                    // move-path for the interior so it will be separate from
-                    // the exterior.
-                    self.create_move_path(self.builder.tcx.mk_place_deref(*place));
-                    self.gather_init(place.as_ref(), InitKind::Shallow);
+                if self.builder.body.local_decls[place.local].is_deref_temp() {
+                    if let Rvalue::Use(Operand::Copy(reffed)) = rval {
+                        self.builder.un_derefer.derefer_sidetable.insert(place.local, *reffed);
+                    }
                 } else {
-                    self.gather_init(place.as_ref(), InitKind::Deep);
+                    self.create_move_path(*place);
+                    if let RvalueInitializationState::Shallow = rval.initialization_state() {
+                        // Box starts out uninitialized - need to create a separate
+                        // move-path for the interior so it will be separate from
+                        // the exterior.
+                        self.create_move_path(self.builder.tcx.mk_place_deref(*place));
+                        self.gather_init(place.as_ref(), InitKind::Shallow);
+                    } else {
+                        self.gather_init(place.as_ref(), InitKind::Deep);
+                    }
+                    self.gather_rvalue(rval);
                 }
-                self.gather_rvalue(rval);
             }
             StatementKind::FakeRead(box (_, place)) => {
                 self.create_move_path(*place);
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                // DerefTemp locals (results of CopyForDeref) don't actually move anything.
                 if !self.builder.un_derefer.derefer_sidetable.contains_key(&local) {
                     self.gather_move(Place::from(*local));
                 }
@@ -345,7 +344,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_operand(operand);
                 }
             }
-            Rvalue::CopyForDeref(..) => unreachable!(),
             Rvalue::Ref(..)
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)

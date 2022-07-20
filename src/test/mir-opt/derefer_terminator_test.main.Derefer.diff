@@ -56,12 +56,12 @@
           _4 = &_5;                        // scope 2 at $DIR/derefer_terminator_test.rs:7:15: 7:22
 -         switchInt((*(*(*(*_4))))) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
 +         StorageLive(_10);                // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
-+         _10 = deref_copy (*_4);          // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
++         _10 = (*_4);                     // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
 +         StorageLive(_11);                // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
-+         _11 = deref_copy (*_10);         // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
++         _11 = (*_10);                    // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
 +         StorageDead(_10);                // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
 +         StorageLive(_12);                // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
-+         _12 = deref_copy (*_11);         // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
++         _12 = (*_11);                    // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
 +         StorageDead(_11);                // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
 +         switchInt((*_12)) -> [false: bb3, otherwise: bb4]; // scope 2 at $DIR/derefer_terminator_test.rs:7:5: 7:22
       }

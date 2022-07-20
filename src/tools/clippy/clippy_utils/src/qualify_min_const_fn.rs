@@ -124,7 +124,6 @@ fn check_rvalue<'tcx>(
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             check_place(tcx, *place, span, body)
         },
-        Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
         | Rvalue::Cast(

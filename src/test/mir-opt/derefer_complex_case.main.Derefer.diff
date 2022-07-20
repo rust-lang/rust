@@ -69,7 +69,7 @@
           StorageLive(_12);                // scope 1 at $DIR/derefer_complex_case.rs:5:10: 5:13
 -         _12 = (*((_7 as Some).0: &i32)); // scope 1 at $DIR/derefer_complex_case.rs:5:10: 5:13
 +         StorageLive(_15);                // scope 1 at $DIR/derefer_complex_case.rs:5:10: 5:13
-+         _15 = deref_copy ((_7 as Some).0: &i32); // scope 1 at $DIR/derefer_complex_case.rs:5:10: 5:13
++         _15 = ((_7 as Some).0: &i32);    // scope 1 at $DIR/derefer_complex_case.rs:5:10: 5:13
 +         _12 = (*_15);                    // scope 1 at $DIR/derefer_complex_case.rs:5:10: 5:13
 +         StorageDead(_15);                // scope 2 at $DIR/derefer_complex_case.rs:5:34: 5:37
           StorageLive(_13);                // scope 2 at $DIR/derefer_complex_case.rs:5:34: 5:37

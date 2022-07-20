@@ -1058,16 +1058,6 @@ pub enum Rvalue<'tcx> {
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
     ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
-
-    /// A CopyForDeref is equivalent to a read from a place at the
-    /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
-    /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
-    /// that the only use of the returned value is a deref operation, immediately
-    /// followed by one or more projections. Drop elaboration treats this rvalue as if the
-    /// read never happened and just projects further. This allows simplifying various MIR
-    /// optimizations and codegen backends that previously had to handle deref operations anywhere
-    /// in a place.
-    CopyForDeref(Place<'tcx>),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]

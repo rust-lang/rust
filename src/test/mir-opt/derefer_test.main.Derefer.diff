@@ -34,13 +34,13 @@
           StorageLive(_4);                 // scope 2 at $DIR/derefer_test.rs:5:9: 5:10
 -         _4 = &mut ((*(_2.1: &mut (i32, i32))).0: i32); // scope 2 at $DIR/derefer_test.rs:5:13: 5:26
 +         StorageLive(_6);                 // scope 2 at $DIR/derefer_test.rs:5:13: 5:26
-+         _6 = deref_copy (_2.1: &mut (i32, i32)); // scope 2 at $DIR/derefer_test.rs:5:13: 5:26
++         _6 = (_2.1: &mut (i32, i32));    // scope 2 at $DIR/derefer_test.rs:5:13: 5:26
 +         _4 = &mut ((*_6).0: i32);        // scope 2 at $DIR/derefer_test.rs:5:13: 5:26
 +         StorageDead(_6);                 // scope 3 at $DIR/derefer_test.rs:6:9: 6:10
           StorageLive(_5);                 // scope 3 at $DIR/derefer_test.rs:6:9: 6:10
 -         _5 = &mut ((*(_2.1: &mut (i32, i32))).1: i32); // scope 3 at $DIR/derefer_test.rs:6:13: 6:26
 +         StorageLive(_7);                 // scope 3 at $DIR/derefer_test.rs:6:13: 6:26
-+         _7 = deref_copy (_2.1: &mut (i32, i32)); // scope 3 at $DIR/derefer_test.rs:6:13: 6:26
++         _7 = (_2.1: &mut (i32, i32));    // scope 3 at $DIR/derefer_test.rs:6:13: 6:26
 +         _5 = &mut ((*_7).1: i32);        // scope 3 at $DIR/derefer_test.rs:6:13: 6:26
 +         StorageDead(_7);                 // scope 0 at $DIR/derefer_test.rs:2:11: 7:2
           _0 = const ();                   // scope 0 at $DIR/derefer_test.rs:2:11: 7:2

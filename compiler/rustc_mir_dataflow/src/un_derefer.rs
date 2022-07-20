@@ -23,7 +23,7 @@ impl<'tcx> UnDerefer<'tcx> {
         for (_bb, data) in body.basic_blocks().iter_enumerated() {
             for stmt in data.statements.iter() {
                 match stmt.kind {
-                    StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
+                    StatementKind::Assign(box (place, Rvalue::Use(Operand::Copy(reffed)))) => {
                         if body.local_decls[place.local].is_deref_temp() {
                             self.derefer_sidetable.insert(place.local, reffed);
                         }

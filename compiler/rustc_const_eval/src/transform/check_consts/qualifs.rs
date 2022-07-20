@@ -260,8 +260,6 @@ where
             in_place::<Q, _>(cx, in_local, place.as_ref())
         }
 
-        Rvalue::CopyForDeref(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
-
         Rvalue::Use(operand)
         | Rvalue::Repeat(operand, _)
         | Rvalue::UnaryOp(_, operand)

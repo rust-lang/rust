@@ -446,7 +446,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
-            | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_)
