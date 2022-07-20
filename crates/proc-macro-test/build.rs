@@ -12,6 +12,8 @@ use std::{
 use cargo_metadata::Message;
 
 fn main() {
+    println!("cargo:rerun-if-changed=imp");
+
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
 
@@ -19,9 +21,19 @@ fn main() {
     let version = "0.0.0";
 
     let imp_dir = std::env::current_dir().unwrap().join("imp");
-    let staging_dir = out_dir.join("staging");
+
+    let staging_dir = out_dir.join("proc-macro-test-imp-staging");
+    // this'll error out if the staging dir didn't previously. using
+    // `std::fs::exists` would suffer from TOCTOU so just do our best to
+    // wip it and ignore errors.
+    let _ = std::fs::remove_dir_all(&staging_dir);
+
+    println!("Creating {}", staging_dir.display());
     std::fs::create_dir_all(&staging_dir).unwrap();
-    std::fs::create_dir_all(staging_dir.join("src")).unwrap();
+
+    let src_dir = staging_dir.join("src");
+    println!("Creating {}", src_dir.display());
+    std::fs::create_dir_all(src_dir).unwrap();
 
     for item_els in [&["Cargo.toml"][..], &["Cargo.lock"], &["src", "lib.rs"]] {
         let mut src = imp_dir.clone();
@@ -30,6 +42,7 @@ fn main() {
             src.push(el);
             dst.push(el);
         }
+        println!("Copying {} to {}", src.display(), dst.display());
         std::fs::copy(src, dst).unwrap();
     }
 
