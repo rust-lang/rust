@@ -485,7 +485,7 @@ impl<'a, 'b> Context<'a, 'b> {
             if let Some(span) = fmt.width_span {
                 let span = self.fmtsp.from_inner(InnerSpan::new(span.start, span.end));
                 match fmt.width {
-                    parse::CountIsParam(pos) if pos > self.num_args() => {
+                    parse::CountIsParam(pos) if pos >= self.num_args() => {
                         e.span_label(
                             span,
                             &format!(
@@ -1004,9 +1004,7 @@ fn lint_named_arguments_used_positionally(
                 node_id: ast::CRATE_NODE_ID,
                 lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
                 diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally(
-                    arg_span,
-                    span,
-                    symbol.to_string(),
+                    arg_span, span, symbol,
                 ),
             });
         }

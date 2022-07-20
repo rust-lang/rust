@@ -572,9 +572,10 @@ impl<'a> Parser<'a> {
             // '0' flag and then an ill-formatted format string with just a '$'
             // and no count, but this is better if we instead interpret this as
             // no '0' flag and '0$' as the width instead.
-            if self.consume('$') {
+            if let Some(end) = self.consume_pos('$') {
                 spec.width = CountIsParam(0);
                 havewidth = true;
+                spec.width_span = Some(self.to_span_index(end - 1).to(self.to_span_index(end + 1)));
             } else {
                 spec.flags |= 1 << (FlagSignAwareZeroPad as u32);
             }

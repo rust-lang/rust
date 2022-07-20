@@ -535,6 +535,29 @@ impl TestProps {
     }
 }
 
+pub fn line_directive<'line>(
+    comment: &str,
+    ln: &'line str,
+) -> Option<(Option<&'line str>, &'line str)> {
+    if ln.starts_with(comment) {
+        let ln = ln[comment.len()..].trim_start();
+        if ln.starts_with('[') {
+            // A comment like `//[foo]` is specific to revision `foo`
+            if let Some(close_brace) = ln.find(']') {
+                let lncfg = &ln[1..close_brace];
+
+                Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
+            } else {
+                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
+            }
+        } else {
+            Some((None, ln))
+        }
+    } else {
+        None
+    }
+}
+
 fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str)) {
     if testfile.is_dir() {
         return;
@@ -557,17 +580,8 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with(comment) && ln[comment.len()..].trim_start().starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1..close_brace];
-                it(Some(lncfg), ln[(close_brace + 1)..].trim_start());
-            } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
-            }
-        } else if ln.starts_with(comment) {
-            it(None, ln[comment.len()..].trim_start());
+        } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
+            it(lncfg, ln);
         }
     }
 }
