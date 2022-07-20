@@ -21,6 +21,7 @@
     - [armv6k-nintendo-3ds](platform-support/armv6k-nintendo-3ds.md)
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
+    - [\*-fuchsia](platform-support/fuchsia.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
