@@ -6,14 +6,14 @@ mod proc_macro;
 
 #[allow(dead_code)]
 #[doc(hidden)]
-mod rustc_server;
+mod ra_server;
 
 use libloading::Library;
 use proc_macro_api::ProcMacroKind;
 
 use super::PanicMessage;
 
-pub use rustc_server::TokenStream;
+pub use ra_server::TokenStream;
 
 pub(crate) struct Abi {
     exported_macros: Vec<proc_macro::bridge::client::ProcMacro>,
@@ -50,7 +50,7 @@ impl Abi {
                 } if *trait_name == macro_name => {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        rustc_server::Rustc::default(),
+                        ra_server::RustAnalyzer::default(),
                         parsed_body,
                         true,
                     );
@@ -61,7 +61,7 @@ impl Abi {
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        rustc_server::Rustc::default(),
+                        ra_server::RustAnalyzer::default(),
                         parsed_body,
                         true,
                     );
@@ -72,7 +72,7 @@ impl Abi {
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        rustc_server::Rustc::default(),
+                        ra_server::RustAnalyzer::default(),
                         parsed_attributes,
                         parsed_body,
                         true,

@@ -6,7 +6,7 @@ mod proc_macro;
 
 #[allow(dead_code)]
 #[doc(hidden)]
-mod rustc_server;
+mod ra_server;
 
 use libloading::Library;
 use proc_macro_api::ProcMacroKind;
@@ -36,10 +36,10 @@ impl Abi {
         macro_body: &tt::Subtree,
         attributes: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, PanicMessage> {
-        let parsed_body = rustc_server::TokenStream::with_subtree(macro_body.clone());
+        let parsed_body = ra_server::TokenStream::with_subtree(macro_body.clone());
 
-        let parsed_attributes = attributes.map_or(rustc_server::TokenStream::new(), |attr| {
-            rustc_server::TokenStream::with_subtree(attr.clone())
+        let parsed_attributes = attributes.map_or(ra_server::TokenStream::new(), |attr| {
+            ra_server::TokenStream::with_subtree(attr.clone())
         });
 
         for proc_macro in &self.exported_macros {
@@ -49,7 +49,7 @@ impl Abi {
                 } if *trait_name == macro_name => {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        rustc_server::Rustc::default(),
+                        ra_server::RustAnalyzer::default(),
                         parsed_body,
                         true,
                     );
@@ -60,7 +60,7 @@ impl Abi {
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        rustc_server::Rustc::default(),
+                        ra_server::RustAnalyzer::default(),
                         parsed_body,
                         true,
                     );
@@ -71,7 +71,7 @@ impl Abi {
                 {
                     let res = client.run(
                         &proc_macro::bridge::server::SameThread,
-                        rustc_server::Rustc::default(),
+                        ra_server::RustAnalyzer::default(),
                         parsed_attributes,
                         parsed_body,
                         true,
