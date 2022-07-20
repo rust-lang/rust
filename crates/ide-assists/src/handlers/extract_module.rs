@@ -19,7 +19,7 @@ use syntax::{
         make, HasName, HasVisibility,
     },
     match_ast, ted, AstNode, SourceFile,
-    SyntaxKind::WHITESPACE,
+    SyntaxKind::{self, WHITESPACE},
     SyntaxNode, TextRange,
 };
 
@@ -380,7 +380,16 @@ impl Module {
         }
 
         for (vis, syntax) in replacements {
-            add_change_vis(vis, syntax.first_child_or_token());
+            let item = syntax.children_with_tokens().find(|node_or_token| {
+                match node_or_token.kind() {
+                    // We're skipping comments, doc comments, and attribute macros that may precede the keyword
+                    // that the visibility should be placed before.
+                    SyntaxKind::COMMENT | SyntaxKind::ATTR | SyntaxKind::WHITESPACE => false,
+                    _ => true,
+                }
+            });
+
+            add_change_vis(vis, item);
         }
     }
 
@@ -1577,6 +1586,183 @@ mod modname {
                 use super::x::Foo;
 
                 pub(crate) type A = (Foo, Bar);
+            }
+        ",
+        )
+    }
+
+    #[test]
+    fn test_issue_12790() {
+        check_assist(
+            extract_module,
+            r"
+            $0/// A documented function
+            fn documented_fn() {}
+
+            // A commented function with a #[] attribute macro
+            #[cfg(test)]
+            fn attribute_fn() {}
+
+            // A normally commented function
+            fn normal_fn() {}
+
+            /// A documented Struct
+            struct DocumentedStruct {
+                // Normal field
+                x: i32,
+
+                /// Documented field
+                y: i32,
+
+                // Macroed field
+                #[cfg(test)]
+                z: i32,
+            }
+
+            // A macroed Struct
+            #[cfg(test)]
+            struct MacroedStruct {
+                // Normal field
+                x: i32,
+
+                /// Documented field
+                y: i32,
+
+                // Macroed field
+                #[cfg(test)]
+                z: i32,
+            }
+
+            // A normal Struct
+            struct NormalStruct {
+                // Normal field
+                x: i32,
+
+                /// Documented field
+                y: i32,
+
+                // Macroed field
+                #[cfg(test)]
+                z: i32,
+            }
+
+            /// A documented type
+            type DocumentedType = i32;
+
+            // A macroed type
+            #[cfg(test)]
+            type MacroedType = i32;
+
+            /// A module to move
+            mod module {}
+
+            /// An impl to move
+            impl NormalStruct {
+                /// A method
+                fn new() {}
+            }
+
+            /// A documented trait
+            trait DocTrait {
+                /// Inner function
+                fn doc() {}
+            }
+
+            /// An enum
+            enum DocumentedEnum {
+                /// A variant
+                A,
+                /// Another variant
+                B { x: i32, y: i32 }
+            }
+
+            /// Documented const
+            const MY_CONST: i32 = 0;$0
+        ",
+            r"
+            mod modname {
+                /// A documented function
+                pub(crate) fn documented_fn() {}
+
+                // A commented function with a #[] attribute macro
+                #[cfg(test)]
+                pub(crate) fn attribute_fn() {}
+
+                // A normally commented function
+                pub(crate) fn normal_fn() {}
+
+                /// A documented Struct
+                pub(crate) struct DocumentedStruct {
+                    // Normal field
+                    pub(crate) x: i32,
+
+                    /// Documented field
+                    pub(crate) y: i32,
+
+                    // Macroed field
+                    #[cfg(test)]
+                    pub(crate) z: i32,
+                }
+
+                // A macroed Struct
+                #[cfg(test)]
+                pub(crate) struct MacroedStruct {
+                    // Normal field
+                    pub(crate) x: i32,
+
+                    /// Documented field
+                    pub(crate) y: i32,
+
+                    // Macroed field
+                    #[cfg(test)]
+                    pub(crate) z: i32,
+                }
+
+                // A normal Struct
+                pub(crate) struct NormalStruct {
+                    // Normal field
+                    pub(crate) x: i32,
+
+                    /// Documented field
+                    pub(crate) y: i32,
+
+                    // Macroed field
+                    #[cfg(test)]
+                    pub(crate) z: i32,
+                }
+
+                /// A documented type
+                pub(crate) type DocumentedType = i32;
+
+                // A macroed type
+                #[cfg(test)]
+                pub(crate) type MacroedType = i32;
+
+                /// A module to move
+                pub(crate) mod module {}
+
+                /// An impl to move
+                impl NormalStruct {
+                    /// A method
+                    pub(crate) fn new() {}
+                }
+
+                /// A documented trait
+                pub(crate) trait DocTrait {
+                    /// Inner function
+                    fn doc() {}
+                }
+
+                /// An enum
+                pub(crate) enum DocumentedEnum {
+                    /// A variant
+                    A,
+                    /// Another variant
+                    B { x: i32, y: i32 }
+                }
+
+                /// Documented const
+                pub(crate) const MY_CONST: i32 = 0;
             }
         ",
         )
