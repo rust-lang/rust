@@ -195,11 +195,6 @@ pub(crate) fn codegen_const_value<'tcx>(
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
-                // For vtables, get the underlying data allocation.
-                let alloc_id = match fx.tcx.global_alloc(alloc_id) {
-                    GlobalAlloc::VTable(ty, trait_ref) => fx.tcx.vtable_allocation((ty, trait_ref)),
-                    _ => alloc_id,
-                };
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let data_id = data_id_for_alloc_id(
@@ -221,7 +216,20 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                         fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                     }
-                    GlobalAlloc::VTable(..) => bug!("vtables are already handled"),
+                    GlobalAlloc::VTable(ty, trait_ref) => {
+                        let alloc_id = fx.tcx.vtable_allocation((ty, trait_ref));
+                        let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
+                        // FIXME: factor this common code with the `Memory` arm into a function?
+                        let data_id = data_id_for_alloc_id(
+                            &mut fx.constants_cx,
+                            fx.module,
+                            alloc_id,
+                            alloc.inner().mutability,
+                        );
+                        let local_data_id =
+                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                    }
                     GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
                         let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
