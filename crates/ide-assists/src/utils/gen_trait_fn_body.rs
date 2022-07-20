@@ -394,6 +394,9 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
 fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    if func.name().map_or(false, |name| name.text() == "ne") {
+        return None;
+    }
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
             Some(expr) => Some(make::expr_bin_op(expr, BinaryOp::LogicOp(LogicOp::And), cmp)),
@@ -424,7 +427,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     // generate this code `Self` for the time being.
 
     let body = match adt {
-        // `Hash` cannot be derived for unions, so no default impl can be provided.
+        // `PartialEq` cannot be derived for unions, so no default impl can be provided.
         ast::Adt::Union(_) => return None,
 
         ast::Adt::Enum(enum_) => {

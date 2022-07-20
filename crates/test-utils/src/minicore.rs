@@ -354,6 +354,9 @@ pub mod cmp {
     #[lang = "eq"]
     pub trait PartialEq<Rhs: ?Sized = Self> {
         fn eq(&self, other: &Rhs) -> bool;
+        fn ne(&self, other: &Rhs) -> bool {
+            !self.eq(other)
+        }
     }
 
     pub trait Eq: PartialEq<Self> {}
