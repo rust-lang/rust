@@ -83,7 +83,8 @@ use rustc_const_eval::interpret::{
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::{
-    AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, Tag, ThreadManager, VClock, VTimestamp, VectorIdx,
+    AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, Provenance, ThreadManager, VClock, VTimestamp,
+    VectorIdx,
 };
 
 use super::{
@@ -127,7 +128,7 @@ struct StoreElement {
     // FIXME: this means the store is either fully initialized or fully uninitialized;
     // we will have to change this if we want to support atomics on
     // partially initialized data.
-    val: ScalarMaybeUninit<Tag>,
+    val: ScalarMaybeUninit<Provenance>,
 
     /// Timestamp of first loads from this store element by each thread
     /// Behind a RefCell to keep load op take &self
@@ -174,7 +175,7 @@ impl StoreBufferAlloc {
     fn get_or_create_store_buffer<'tcx>(
         &self,
         range: AllocRange,
-        init: ScalarMaybeUninit<Tag>,
+        init: ScalarMaybeUninit<Provenance>,
     ) -> InterpResult<'tcx, Ref<'_, StoreBuffer>> {
         let access_type = self.store_buffers.borrow().access_type(range);
         let pos = match access_type {
@@ -199,7 +200,7 @@ impl StoreBufferAlloc {
     fn get_or_create_store_buffer_mut<'tcx>(
         &mut self,
         range: AllocRange,
-        init: ScalarMaybeUninit<Tag>,
+        init: ScalarMaybeUninit<Provenance>,
     ) -> InterpResult<'tcx, &mut StoreBuffer> {
         let buffers = self.store_buffers.get_mut();
         let access_type = buffers.access_type(range);
@@ -220,7 +221,7 @@ impl StoreBufferAlloc {
 }
 
 impl<'mir, 'tcx: 'mir> StoreBuffer {
-    fn new(init: ScalarMaybeUninit<Tag>) -> Self {
+    fn new(init: ScalarMaybeUninit<Provenance>) -> Self {
         let mut buffer = VecDeque::new();
         buffer.reserve(STORE_BUFFER_LIMIT);
         let mut ret = Self { buffer };
@@ -253,7 +254,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         is_seqcst: bool,
         rng: &mut (impl rand::Rng + ?Sized),
         validate: impl FnOnce() -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         // Having a live borrow to store_buffer while calling validate_atomic_load is fine
         // because the race detector doesn't touch store_buffer
 
@@ -278,7 +279,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
 
     fn buffered_write(
         &mut self,
-        val: ScalarMaybeUninit<Tag>,
+        val: ScalarMaybeUninit<Provenance>,
         global: &DataRaceState,
         thread_mgr: &ThreadManager<'_, '_>,
         is_seqcst: bool,
@@ -366,7 +367,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
     /// ATOMIC STORE IMPL in the paper (except we don't need the location's vector clock)
     fn store_impl(
         &mut self,
-        val: ScalarMaybeUninit<Tag>,
+        val: ScalarMaybeUninit<Provenance>,
         index: VectorIdx,
         thread_clock: &VClock,
         is_seqcst: bool,
@@ -408,7 +409,11 @@ impl StoreElement {
     /// buffer regardless of subsequent loads by the same thread; if the earliest load of another
     /// thread doesn't happen before the current one, then no subsequent load by the other thread
     /// can happen before the current one.
-    fn load_impl(&self, index: VectorIdx, clocks: &ThreadClockSet) -> ScalarMaybeUninit<Tag> {
+    fn load_impl(
+        &self,
+        index: VectorIdx,
+        clocks: &ThreadClockSet,
+    ) -> ScalarMaybeUninit<Provenance> {
         let _ = self.loads.borrow_mut().try_insert(index, clocks.clock[index]);
         self.val
     }
@@ -421,7 +426,10 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     // If weak memory emulation is enabled, check if this atomic op imperfectly overlaps with a previous
     // atomic read or write. If it does, then we require it to be ordered (non-racy) with all previous atomic
     // accesses on all the bytes in range
-    fn validate_overlapping_atomic(&self, place: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn validate_overlapping_atomic(
+        &self,
+        place: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
         if let crate::AllocExtra {
@@ -448,10 +456,10 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
     fn buffered_atomic_rmw(
         &mut self,
-        new_val: ScalarMaybeUninit<Tag>,
-        place: &MPlaceTy<'tcx, Tag>,
+        new_val: ScalarMaybeUninit<Provenance>,
+        place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicRwOrd,
-        init: ScalarMaybeUninit<Tag>,
+        init: ScalarMaybeUninit<Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
@@ -474,11 +482,11 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
     fn buffered_atomic_read(
         &self,
-        place: &MPlaceTy<'tcx, Tag>,
+        place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicReadOrd,
-        latest_in_mo: ScalarMaybeUninit<Tag>,
+        latest_in_mo: ScalarMaybeUninit<Provenance>,
         validate: impl FnOnce() -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         let this = self.eval_context_ref();
         if let Some(global) = &this.machine.data_race {
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
@@ -510,10 +518,10 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
     fn buffered_atomic_write(
         &mut self,
-        val: ScalarMaybeUninit<Tag>,
-        dest: &MPlaceTy<'tcx, Tag>,
+        val: ScalarMaybeUninit<Provenance>,
+        dest: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicWriteOrd,
-        init: ScalarMaybeUninit<Tag>,
+        init: ScalarMaybeUninit<Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr)?;
@@ -555,9 +563,9 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     /// to perform load_impl on the latest store element
     fn perform_read_on_buffered_latest(
         &self,
-        place: &MPlaceTy<'tcx, Tag>,
+        place: &MPlaceTy<'tcx, Provenance>,
         atomic: AtomicReadOrd,
-        init: ScalarMaybeUninit<Tag>,
+        init: ScalarMaybeUninit<Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
 

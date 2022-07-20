@@ -11,8 +11,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         abi: Abi,
         link_name: Symbol,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let [flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -31,8 +31,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         abi: Abi,
         link_name: Symbol,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
@@ -117,7 +117,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn resolve_frame_pointer(
         &mut self,
-        ptr: &OpTy<'tcx, Tag>,
+        ptr: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, (Instance<'tcx>, Loc, String, String)> {
         let this = self.eval_context_mut();
 
@@ -145,8 +145,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         abi: Abi,
         link_name: Symbol,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let [ptr, flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -228,7 +228,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         abi: Abi,
         link_name: Symbol,
-        args: &[OpTy<'tcx, Tag>],
+        args: &[OpTy<'tcx, Provenance>],
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 

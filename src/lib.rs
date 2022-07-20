@@ -57,7 +57,7 @@ mod vector_clock;
 // Make all those symbols available in the same place as our own.
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
-pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy};
+pub use rustc_const_eval::interpret::{self, AllocMap, PlaceTy, Provenance as _};
 
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as _};
 pub use crate::shims::env::{EnvVars, EvalContextExt as _};
@@ -83,15 +83,14 @@ pub use crate::eval::{
 pub use crate::helpers::{CurrentSpan, EvalContextExt as HelpersEvalContextExt};
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
-    AllocExtra, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, Tag,
-    NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    AllocExtra, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind,
+    Provenance, ProvenanceExtra, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
-    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, SbTagExtra, Stack,
-    Stacks,
+    CallId, EvalContextExt as StackedBorEvalContextExt, Item, Permission, SbTag, Stack, Stacks,
 };
 pub use crate::sync::{CondvarId, EvalContextExt as SyncEvalContextExt, MutexId, RwLockId};
 pub use crate::thread::{

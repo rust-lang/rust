@@ -7,8 +7,8 @@ use std::time::{Instant, SystemTime};
 /// `args` is the arguments *after* the syscall number.
 pub fn futex<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
-    args: &[OpTy<'tcx, Tag>],
-    dest: &PlaceTy<'tcx, Tag>,
+    args: &[OpTy<'tcx, Provenance>],
+    dest: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {
     // The amount of arguments used depends on the type of futex operation.
     // The full futex syscall takes six arguments (excluding the syscall

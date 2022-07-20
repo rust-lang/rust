@@ -9,18 +9,18 @@ pub trait EvalContextExt<'tcx> {
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: &ImmTy<'tcx, Tag>,
-        right: &ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)>;
+        left: &ImmTy<'tcx, Provenance>,
+        right: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)>;
 }
 
 impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: &ImmTy<'tcx, Tag>,
-        right: &ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)> {
+        left: &ImmTy<'tcx, Provenance>,
+        right: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)> {
         use rustc_middle::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);

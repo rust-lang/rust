@@ -84,7 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&self, path: &[&str]) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn eval_path_scalar(&self, path: &[&str]) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
@@ -94,7 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
-    fn eval_libc(&self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn eval_libc(&self, name: &str) -> InterpResult<'tcx, Scalar<Provenance>> {
         self.eval_path_scalar(&["libc", name])
     }
 
@@ -105,7 +105,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Helper function to get a `windows` constant as a `Scalar`.
-    fn eval_windows(&self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn eval_windows(&self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Provenance>> {
         self.eval_context_ref().eval_path_scalar(&["std", "sys", "windows", module, name])
     }
 
@@ -134,9 +134,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Project to the given *named* field of the mplace (which must be a struct or union type).
     fn mplace_field_named(
         &self,
-        mplace: &MPlaceTy<'tcx, Tag>,
+        mplace: &MPlaceTy<'tcx, Provenance>,
         name: &str,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
         let adt = mplace.layout.ty.ty_adt_def().unwrap();
         for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
@@ -150,7 +150,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
     /// we try to do the right thing anyway. `i128` can fit all integer types except for `u128` so
     /// this method is fine for almost all integer types.
-    fn write_int(&mut self, i: impl Into<i128>, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn write_int(
+        &mut self,
+        i: impl Into<i128>,
+        dest: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
         assert!(dest.layout.abi.is_scalar(), "write_int on non-scalar type {}", dest.layout.ty);
         let val = if dest.layout.abi.is_signed() {
             Scalar::from_int(i, dest.layout.size)
@@ -164,7 +168,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_int_fields(
         &mut self,
         values: &[i128],
-        dest: &MPlaceTy<'tcx, Tag>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
@@ -178,7 +182,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_int_fields_named(
         &mut self,
         values: &[(&str, i128)],
-        dest: &MPlaceTy<'tcx, Tag>,
+        dest: &MPlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for &(name, val) in values.iter() {
@@ -189,24 +193,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Write a 0 of the appropriate size to `dest`.
-    fn write_null(&mut self, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn write_null(&mut self, dest: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         self.write_int(0, dest)
     }
 
     /// Test if this pointer equals 0.
-    fn ptr_is_null(&self, ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, bool> {
+    fn ptr_is_null(&self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, bool> {
         Ok(ptr.addr().bytes() == 0)
     }
 
     /// Get the `Place` for a local
-    fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Tag>> {
+    fn local_place(&mut self, local: mir::Local) -> InterpResult<'tcx, PlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         let place = mir::Place { local, projection: List::empty() };
         this.eval_place(place)
     }
 
     /// Generate some random bytes, and write them to `dest`.
-    fn gen_random(&mut self, ptr: Pointer<Option<Tag>>, len: u64) -> InterpResult<'tcx> {
+    fn gen_random(&mut self, ptr: Pointer<Option<Provenance>>, len: u64) -> InterpResult<'tcx> {
         // Some programs pass in a null pointer and a length of 0
         // to their platform's random-generation function (e.g. getrandom())
         // on Linux. For compatibility with these programs, we don't perform
@@ -240,8 +244,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         f: ty::Instance<'tcx>,
         caller_abi: Abi,
-        args: &[Immediate<Tag>],
-        dest: Option<&PlaceTy<'tcx, Tag>>,
+        args: &[Immediate<Provenance>],
+        dest: Option<&PlaceTy<'tcx, Provenance>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -285,7 +289,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// The range is relative to `place`.
     fn visit_freeze_sensitive(
         &self,
-        place: &MPlaceTy<'tcx, Tag>,
+        place: &MPlaceTy<'tcx, Provenance>,
         size: Size,
         mut action: impl FnMut(AllocRange, bool) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -304,7 +308,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let mut cur_addr = start_addr;
         // Called when we detected an `UnsafeCell` at the given offset and size.
         // Calls `action` and advances `cur_ptr`.
-        let mut unsafe_cell_action = |unsafe_cell_ptr: &Pointer<Option<Tag>>,
+        let mut unsafe_cell_action = |unsafe_cell_ptr: &Pointer<Option<Provenance>>,
                                       unsafe_cell_size: Size| {
             // We assume that we are given the fields in increasing offset order,
             // and nothing else changes.
@@ -359,7 +363,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         /// whether we are inside an `UnsafeCell` or not.
         struct UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
         where
-            F: FnMut(&MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>,
+            F: FnMut(&MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx>,
         {
             ecx: &'ecx MiriEvalContext<'mir, 'tcx>,
             unsafe_cell_action: F,
@@ -368,9 +372,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         impl<'ecx, 'mir, 'tcx: 'mir, F> ValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
             for UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
         where
-            F: FnMut(&MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>,
+            F: FnMut(&MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx>,
         {
-            type V = MPlaceTy<'tcx, Tag>;
+            type V = MPlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
             fn ecx(&self) -> &MiriEvalContext<'mir, 'tcx> {
@@ -378,7 +382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Hook to detect `UnsafeCell`.
-            fn visit_value(&mut self, v: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_value(&mut self, v: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 trace!("UnsafeCellVisitor: {:?} {:?}", *v, v.layout.ty);
                 let is_unsafe_cell = match v.layout.ty.kind() {
                     ty::Adt(adt, _) =>
@@ -421,8 +425,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Make sure we visit aggregrates in increasing offset order.
             fn visit_aggregate(
                 &mut self,
-                place: &MPlaceTy<'tcx, Tag>,
-                fields: impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>>,
+                place: &MPlaceTy<'tcx, Provenance>,
+                fields: impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Provenance>>>,
             ) -> InterpResult<'tcx> {
                 match place.layout.fields {
                     FieldsShape::Array { .. } => {
@@ -432,8 +436,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                     FieldsShape::Arbitrary { .. } => {
                         // Gather the subplaces and sort them before visiting.
-                        let mut places =
-                            fields.collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Tag>>>>()?;
+                        let mut places = fields
+                            .collect::<InterpResult<'tcx, Vec<MPlaceTy<'tcx, Provenance>>>>()?;
                         // we just compare offsets, the abs. value never matters
                         places.sort_by_key(|place| place.ptr.addr());
                         self.walk_aggregate(place, places.into_iter().map(Ok))
@@ -447,7 +451,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             fn visit_union(
                 &mut self,
-                _v: &MPlaceTy<'tcx, Tag>,
+                _v: &MPlaceTy<'tcx, Provenance>,
                 _fields: NonZeroUsize,
             ) -> InterpResult<'tcx> {
                 bug!("we should have already handled unions in `visit_value`")
@@ -511,7 +515,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Get last error variable as a place, lazily allocating thread-local storage for it if
     /// necessary.
-    fn last_error_place(&mut self) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+    fn last_error_place(&mut self) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         if let Some(errno_place) = this.active_thread_ref().last_error {
             Ok(errno_place)
@@ -526,14 +530,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Sets the last error variable.
-    fn set_last_error(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx> {
+    fn set_last_error(&mut self, scalar: Scalar<Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let errno_place = this.last_error_place()?;
         this.write_scalar(scalar, &errno_place.into())
     }
 
     /// Gets the last error variable.
-    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn get_last_error(&mut self) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         let errno_place = this.last_error_place()?;
         this.read_scalar(&errno_place.into())?.check_init()
@@ -541,7 +545,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// This function tries to produce the most similar OS error from the `std::io::ErrorKind`
     /// as a platform-specific errnum.
-    fn io_error_to_errnum(&self, err_kind: std::io::ErrorKind) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn io_error_to_errnum(
+        &self,
+        err_kind: std::io::ErrorKind,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
         if target.families.iter().any(|f| f == "unix") {
@@ -575,7 +582,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// The inverse of `io_error_to_errnum`.
-    fn errnum_to_io_error(&self, errnum: Scalar<Tag>) -> InterpResult<'tcx, std::io::ErrorKind> {
+    fn errnum_to_io_error(
+        &self,
+        errnum: Scalar<Provenance>,
+    ) -> InterpResult<'tcx, std::io::ErrorKind> {
         let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
         if target.families.iter().any(|f| f == "unix") {
@@ -621,10 +631,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Calculates the MPlaceTy given the offset and layout of an access on an operand
     fn deref_operand_and_offset(
         &self,
-        op: &OpTy<'tcx, Tag>,
+        op: &OpTy<'tcx, Provenance>,
         offset: u64,
         layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Provenance>> {
         let this = self.eval_context_ref();
         let op_place = this.deref_operand(op)?;
         let offset = Size::from_bytes(offset);
@@ -637,10 +647,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn read_scalar_at_offset(
         &self,
-        op: &OpTy<'tcx, Tag>,
+        op: &OpTy<'tcx, Provenance>,
         offset: u64,
         layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         let this = self.eval_context_ref();
         let value_place = this.deref_operand_and_offset(op, offset, layout)?;
         this.read_scalar(&value_place.into())
@@ -648,9 +658,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn write_scalar_at_offset(
         &mut self,
-        op: &OpTy<'tcx, Tag>,
+        op: &OpTy<'tcx, Provenance>,
         offset: u64,
-        value: impl Into<ScalarMaybeUninit<Tag>>,
+        value: impl Into<ScalarMaybeUninit<Provenance>>,
         layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
@@ -661,7 +671,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Parse a `timespec` struct and return it as a `std::time::Duration`. It returns `None`
     /// if the value in the `timespec` struct is invalid. Some libc functions will return
     /// `EINVAL` in this case.
-    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx, Option<Duration>> {
+    fn read_timespec(
+        &mut self,
+        tp: &MPlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
         let seconds_place = this.mplace_field(tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
@@ -683,7 +696,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         })
     }
 
-    fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, &'a [u8]>
+    fn read_c_str<'a>(&'a self, ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, &'a [u8]>
     where
         'tcx: 'a,
         'mir: 'a,
@@ -709,7 +722,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.read_bytes_ptr(ptr, len)
     }
 
-    fn read_wide_str(&self, mut ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, Vec<u16>> {
+    fn read_wide_str(&self, mut ptr: Pointer<Option<Provenance>>) -> InterpResult<'tcx, Vec<u16>> {
         let this = self.eval_context_ref();
         let size2 = Size::from_bytes(2);
         let align2 = Align::from_bytes(2).unwrap();
@@ -801,17 +814,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         abi: Abi,
         exp_abi: Abi,
         link_name: Symbol,
-        args: &'a [OpTy<'tcx, Tag>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx, Tag>; N]>
+        args: &'a [OpTy<'tcx, Provenance>],
+    ) -> InterpResult<'tcx, &'a [OpTy<'tcx, Provenance>; N]>
     where
-        &'a [OpTy<'tcx, Tag>; N]: TryFrom<&'a [OpTy<'tcx, Tag>]>,
+        &'a [OpTy<'tcx, Provenance>; N]: TryFrom<&'a [OpTy<'tcx, Provenance>]>,
     {
         self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
         check_arg_count(args)
     }
 
     /// Mark a machine allocation that was just created as immutable.
-    fn mark_immutable(&mut self, mplace: &MemPlace<Tag>) {
+    fn mark_immutable(&mut self, mplace: &MemPlace<Provenance>) {
         let this = self.eval_context_mut();
         // This got just allocated, so there definitely is a pointer here.
         let provenance = mplace.ptr.into_pointer_or_addr().unwrap().provenance;
@@ -866,10 +879,10 @@ impl<'a, 'mir, 'tcx> CurrentSpan<'a, 'mir, 'tcx> {
 
 /// Check that the number of args is what we expect.
 pub fn check_arg_count<'a, 'tcx, const N: usize>(
-    args: &'a [OpTy<'tcx, Tag>],
-) -> InterpResult<'tcx, &'a [OpTy<'tcx, Tag>; N]>
+    args: &'a [OpTy<'tcx, Provenance>],
+) -> InterpResult<'tcx, &'a [OpTy<'tcx, Provenance>; N]>
 where
-    &'a [OpTy<'tcx, Tag>; N]: TryFrom<&'a [OpTy<'tcx, Tag>]>,
+    &'a [OpTy<'tcx, Provenance>; N]: TryFrom<&'a [OpTy<'tcx, Provenance>]>,
 {
     if let Ok(ops) = args.try_into() {
         return Ok(ops);

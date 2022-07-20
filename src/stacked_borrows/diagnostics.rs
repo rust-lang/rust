@@ -5,11 +5,8 @@ use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
 use crate::helpers::CurrentSpan;
-use crate::stacked_borrows::{err_sb_ub, AccessKind, Permission};
-use crate::Item;
-use crate::SbTag;
-use crate::SbTagExtra;
-use crate::Stack;
+use crate::stacked_borrows::{err_sb_ub, AccessKind};
+use crate::*;
 
 use rustc_middle::mir::interpret::InterpError;
 
@@ -132,7 +129,7 @@ impl AllocHistory {
     /// Report a descriptive error when `new` could not be granted from `derived_from`.
     pub fn grant_error<'tcx>(
         &self,
-        derived_from: SbTagExtra,
+        derived_from: ProvenanceExtra,
         new: Item,
         alloc_id: AllocId,
         alloc_range: AllocRange,
@@ -155,7 +152,7 @@ impl AllocHistory {
     pub fn access_error<'tcx>(
         &self,
         access: AccessKind,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
@@ -181,8 +178,8 @@ fn operation_summary(
     format!("this error occurs as part of {operation} at {alloc_id:?}{alloc_range:?}")
 }
 
-fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
-    if let SbTagExtra::Concrete(tag) = tag {
+fn error_cause(stack: &Stack, prov_extra: ProvenanceExtra) -> &'static str {
+    if let ProvenanceExtra::Concrete(tag) = prov_extra {
         if (0..stack.len())
             .map(|i| stack.get(i).unwrap())
             .any(|item| item.tag() == tag && item.perm() != Permission::Disabled)

@@ -1,7 +1,10 @@
-use crate::stacked_borrows::{AccessKind, Item, Permission, SbTag, SbTagExtra};
-use rustc_data_structures::fx::FxHashSet;
 #[cfg(feature = "stack-cache")]
 use std::ops::Range;
+
+use rustc_data_structures::fx::FxHashSet;
+
+use crate::stacked_borrows::{AccessKind, Item, Permission, SbTag};
+use crate::ProvenanceExtra;
 
 /// Exactly what cache size we should use is a difficult tradeoff. There will always be some
 /// workload which has a `SbTag` working set which exceeds the size of the cache, and ends up
@@ -126,13 +129,13 @@ impl<'tcx> Stack {
     pub(super) fn find_granting(
         &mut self,
         access: AccessKind,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> Result<Option<usize>, ()> {
         #[cfg(debug_assertions)]
         self.verify_cache_consistency();
 
-        let SbTagExtra::Concrete(tag) = tag else {
+        let ProvenanceExtra::Concrete(tag) = tag else {
             // Handle the wildcard case.
             // Go search the stack for an exposed tag.
             if let Some(idx) =

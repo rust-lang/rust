@@ -30,10 +30,10 @@ fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
 pub struct EnvVars<'tcx> {
     /// Stores pointers to the environment variables. These variables must be stored as
     /// null-terminated target strings (c_str or wide_str) with the `"{name}={value}"` format.
-    map: FxHashMap<OsString, Pointer<Option<Tag>>>,
+    map: FxHashMap<OsString, Pointer<Option<Provenance>>>,
 
     /// Place where the `environ` static is stored. Lazily initialized, but then never changes.
-    pub(crate) environ: Option<MPlaceTy<'tcx, Tag>>,
+    pub(crate) environ: Option<MPlaceTy<'tcx, Provenance>>,
 }
 
 impl<'tcx> EnvVars<'tcx> {
@@ -92,7 +92,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
     ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
@@ -103,7 +103,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
     ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
     name_osstring.push(value);
@@ -112,7 +112,10 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn getenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    fn getenv(
+        &mut self,
+        name_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("getenv");
 
@@ -133,9 +136,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn GetEnvironmentVariableW(
         &mut self,
-        name_op: &OpTy<'tcx, Tag>, // LPCWSTR
-        buf_op: &OpTy<'tcx, Tag>,  // LPWSTR
-        size_op: &OpTy<'tcx, Tag>, // DWORD
+        name_op: &OpTy<'tcx, Provenance>, // LPCWSTR
+        buf_op: &OpTy<'tcx, Provenance>,  // LPWSTR
+        size_op: &OpTy<'tcx, Provenance>, // DWORD
     ) -> InterpResult<'tcx, u32> {
         // ^ Returns DWORD (u32 on Windows)
 
@@ -168,7 +171,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    fn GetEnvironmentStringsW(&mut self) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentStringsW");
 
@@ -191,7 +194,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn FreeEnvironmentStringsW(
         &mut self,
-        env_block_op: &OpTy<'tcx, Tag>,
+        env_block_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "FreeEnvironmentStringsW");
@@ -204,8 +207,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn setenv(
         &mut self,
-        name_op: &OpTy<'tcx, Tag>,
-        value_op: &OpTy<'tcx, Tag>,
+        name_op: &OpTy<'tcx, Provenance>,
+        value_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("setenv");
@@ -239,8 +242,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn SetEnvironmentVariableW(
         &mut self,
-        name_op: &OpTy<'tcx, Tag>,  // LPCWSTR
-        value_op: &OpTy<'tcx, Tag>, // LPCWSTR
+        name_op: &OpTy<'tcx, Provenance>,  // LPCWSTR
+        value_op: &OpTy<'tcx, Provenance>, // LPCWSTR
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetEnvironmentVariableW");
@@ -276,7 +279,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn unsetenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn unsetenv(&mut self, name_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("unsetenv");
 
@@ -304,9 +307,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn getcwd(
         &mut self,
-        buf_op: &OpTy<'tcx, Tag>,
-        size_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+        buf_op: &OpTy<'tcx, Provenance>,
+        size_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("getcwd");
 
@@ -337,8 +340,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn GetCurrentDirectoryW(
         &mut self,
-        size_op: &OpTy<'tcx, Tag>, // DWORD
-        buf_op: &OpTy<'tcx, Tag>,  // LPTSTR
+        size_op: &OpTy<'tcx, Provenance>, // DWORD
+        buf_op: &OpTy<'tcx, Provenance>,  // LPTSTR
     ) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentDirectoryW");
@@ -361,7 +364,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn chdir(&mut self, path_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn chdir(&mut self, path_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("chdir");
 
@@ -386,7 +389,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn SetCurrentDirectoryW(
         &mut self,
-        path_op: &OpTy<'tcx, Tag>, // LPCTSTR
+        path_op: &OpTy<'tcx, Provenance>, // LPCTSTR
     ) -> InterpResult<'tcx, i32> {
         // ^ Returns BOOL (i32 on Windows)
 
@@ -428,7 +431,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Collect all the pointers to each variable in a vector.
-        let mut vars: Vec<Pointer<Option<Tag>>> =
+        let mut vars: Vec<Pointer<Option<Provenance>>> =
             this.machine.env_vars.map.values().copied().collect();
         // Add the trailing null pointer.
         vars.push(Pointer::null());

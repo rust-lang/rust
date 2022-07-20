@@ -6,10 +6,10 @@ impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tc
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn pthread_create(
         &mut self,
-        thread: &OpTy<'tcx, Tag>,
-        _attr: &OpTy<'tcx, Tag>,
-        start_routine: &OpTy<'tcx, Tag>,
-        arg: &OpTy<'tcx, Tag>,
+        thread: &OpTy<'tcx, Provenance>,
+        _attr: &OpTy<'tcx, Provenance>,
+        start_routine: &OpTy<'tcx, Provenance>,
+        arg: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -59,8 +59,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_join(
         &mut self,
-        thread: &OpTy<'tcx, Tag>,
-        retval: &OpTy<'tcx, Tag>,
+        thread: &OpTy<'tcx, Provenance>,
+        retval: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -75,7 +75,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn pthread_detach(&mut self, thread: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn pthread_detach(&mut self, thread: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let thread_id = this.read_scalar(thread)?.to_machine_usize(this)?;
@@ -84,14 +84,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn pthread_self(&mut self, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn pthread_self(&mut self, dest: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let thread_id = this.get_active_thread();
         this.write_scalar(Scalar::from_uint(thread_id.to_u32(), dest.layout.size), dest)
     }
 
-    fn prctl(&mut self, args: &[OpTy<'tcx, Tag>]) -> InterpResult<'tcx, i32> {
+    fn prctl(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os("linux", "prctl");
 
@@ -138,7 +138,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn pthread_setname_np(&mut self, name: Pointer<Option<Tag>>) -> InterpResult<'tcx> {
+    fn pthread_setname_np(&mut self, name: Pointer<Option<Provenance>>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "pthread_setname_np");
 

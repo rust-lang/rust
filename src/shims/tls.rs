@@ -19,7 +19,7 @@ pub type TlsKey = u128;
 pub struct TlsEntry<'tcx> {
     /// The data for this key. None is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
-    data: BTreeMap<ThreadId, Scalar<Tag>>,
+    data: BTreeMap<ThreadId, Scalar<Provenance>>,
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -41,7 +41,7 @@ pub struct TlsData<'tcx> {
 
     /// A single per thread destructor of the thread local storage (that's how
     /// things work on macOS) with a data argument.
-    macos_thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
+    macos_thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Provenance>)>,
 
     /// State for currently running TLS dtors. If this map contains a key for a
     /// specific thread, it means that we are in the "destruct" phase, during
@@ -94,7 +94,7 @@ impl<'tcx> TlsData<'tcx> {
         key: TlsKey,
         thread_id: ThreadId,
         cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Scalar<Tag>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         match self.keys.get(&key) {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
@@ -109,7 +109,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
-        new_data: Scalar<Tag>,
+        new_data: Scalar<Provenance>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
@@ -140,7 +140,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
-        data: Scalar<Tag>,
+        data: Scalar<Provenance>,
     ) -> InterpResult<'tcx> {
         if self.dtors_running.contains_key(&thread) {
             // UB, according to libstd docs.
@@ -179,7 +179,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
-    ) -> Option<(ty::Instance<'tcx>, Scalar<Tag>, TlsKey)> {
+    ) -> Option<(ty::Instance<'tcx>, Scalar<Provenance>, TlsKey)> {
         use std::ops::Bound::*;
 
         let thread_local = &mut self.keys;

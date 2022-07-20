@@ -14,8 +14,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 
@@ -165,10 +165,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 // Shims the linux `getrandom` syscall.
 fn getrandom<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
-    ptr: &OpTy<'tcx, Tag>,
-    len: &OpTy<'tcx, Tag>,
-    flags: &OpTy<'tcx, Tag>,
-    dest: &PlaceTy<'tcx, Tag>,
+    ptr: &OpTy<'tcx, Provenance>,
+    len: &OpTy<'tcx, Provenance>,
+    flags: &OpTy<'tcx, Provenance>,
+    dest: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {
     let ptr = this.read_pointer(ptr)?;
     let len = this.read_scalar(len)?.to_machine_usize(this)?;

@@ -20,8 +20,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -58,8 +58,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_intrinsic_by_name(
         &mut self,
         intrinsic_name: &str,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -375,9 +375,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &self,
         f: F,
         dest_ty: ty::Ty<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<Tag>>
+    ) -> InterpResult<'tcx, Scalar<Provenance>>
     where
-        F: Float + Into<Scalar<Tag>>,
+        F: Float + Into<Scalar<Provenance>>,
     {
         let this = self.eval_context_ref();
 

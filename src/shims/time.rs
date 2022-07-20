@@ -13,8 +13,8 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn clock_gettime(
         &mut self,
-        clk_id_op: &OpTy<'tcx, Tag>,
-        tp_op: &OpTy<'tcx, Tag>,
+        clk_id_op: &OpTy<'tcx, Provenance>,
+        tp_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         // This clock support is deliberately minimal because a lot of clock types have fiddly
         // properties (is it possible for Miri to be suspended independently of the host?). If you
@@ -59,8 +59,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn gettimeofday(
         &mut self,
-        tv_op: &OpTy<'tcx, Tag>,
-        tz_op: &OpTy<'tcx, Tag>,
+        tv_op: &OpTy<'tcx, Provenance>,
+        tz_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -85,7 +85,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn GetSystemTimeAsFileTime(&mut self, LPFILETIME_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn GetSystemTimeAsFileTime(
+        &mut self,
+        LPFILETIME_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "GetSystemTimeAsFileTime");
@@ -115,7 +118,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn QueryPerformanceCounter(
         &mut self,
-        lpPerformanceCount_op: &OpTy<'tcx, Tag>,
+        lpPerformanceCount_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -138,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn QueryPerformanceFrequency(
         &mut self,
-        lpFrequency_op: &OpTy<'tcx, Tag>,
+        lpFrequency_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -172,7 +175,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         })
     }
 
-    fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "mach_timebase_info");
@@ -190,8 +193,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn nanosleep(
         &mut self,
-        req_op: &OpTy<'tcx, Tag>,
-        _rem: &OpTy<'tcx, Tag>,
+        req_op: &OpTy<'tcx, Provenance>,
+        _rem: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         // Signal handlers are not supported, so rem will never be written to.
 

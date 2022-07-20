@@ -55,32 +55,6 @@ impl fmt::Debug for SbTag {
     }
 }
 
-/// The "extra" information an SB pointer has over a regular AllocId.
-/// Newtype for `Option<SbTag>`.
-#[derive(Copy, Clone)]
-pub enum SbTagExtra {
-    Concrete(SbTag),
-    Wildcard,
-}
-
-impl fmt::Debug for SbTagExtra {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SbTagExtra::Concrete(pid) => write!(f, "{pid:?}"),
-            SbTagExtra::Wildcard => write!(f, "<wildcard>"),
-        }
-    }
-}
-
-impl SbTagExtra {
-    fn and_then<T>(self, f: impl FnOnce(SbTag) -> Option<T>) -> Option<T> {
-        match self {
-            SbTagExtra::Concrete(pid) => f(pid),
-            SbTagExtra::Wildcard => None,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct FrameExtra {
     /// The ID of the call this frame corresponds to.
@@ -311,7 +285,7 @@ impl<'tcx> Stack {
     /// currently checking.
     fn item_popped(
         item: &Item,
-        provoking_access: Option<(SbTagExtra, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
+        provoking_access: Option<(ProvenanceExtra, AllocRange, Size, AccessKind)>, // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
         threads: &ThreadManager<'_, 'tcx>,
@@ -322,7 +296,7 @@ impl<'tcx> Stack {
             #[inline(never)] // cold path
             fn check_tracked(
                 item: &Item,
-                provoking_access: &Option<(SbTagExtra, AllocRange, Size, AccessKind)>,
+                provoking_access: &Option<(ProvenanceExtra, AllocRange, Size, AccessKind)>,
                 global: &GlobalStateInner,
             ) {
                 if global.tracked_pointer_tags.contains(&item.tag()) {
@@ -357,7 +331,7 @@ impl<'tcx> Stack {
             #[inline(never)] // cold path
             fn protector_error<'tcx>(
                 item: &Item,
-                provoking_access: &Option<(SbTagExtra, AllocRange, Size, AccessKind)>,
+                provoking_access: &Option<(ProvenanceExtra, AllocRange, Size, AccessKind)>,
                 alloc_history: &mut AllocHistory,
                 threads: &ThreadManager<'_, 'tcx>,
             ) -> InterpErrorInfo<'tcx> {
@@ -410,7 +384,7 @@ impl<'tcx> Stack {
     fn access(
         &mut self,
         access: AccessKind,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &mut GlobalStateInner,
         current_span: &mut CurrentSpan<'_, '_, 'tcx>,
@@ -482,7 +456,7 @@ impl<'tcx> Stack {
         }
 
         // If this was an approximate action, we now collapse everything into an unknown.
-        if granting_idx.is_none() || matches!(tag, SbTagExtra::Wildcard) {
+        if granting_idx.is_none() || matches!(tag, ProvenanceExtra::Wildcard) {
             // Compute the upper bound of the items that remain.
             // (This is why we did all the work above: to reduce the items we have to consider here.)
             let mut max = NonZeroU64::new(1).unwrap();
@@ -512,7 +486,7 @@ impl<'tcx> Stack {
     /// active protectors at all because we will remove all items.
     fn dealloc(
         &mut self,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         (alloc_id, _alloc_range, _offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &GlobalStateInner,
         alloc_history: &mut AllocHistory,
@@ -546,7 +520,7 @@ impl<'tcx> Stack {
     /// `range` that we are currently checking.
     fn grant(
         &mut self,
-        derived_from: SbTagExtra,
+        derived_from: ProvenanceExtra,
         new: Item,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &mut GlobalStateInner,
@@ -575,7 +549,7 @@ impl<'tcx> Stack {
                 "this case only makes sense for stack-like accesses"
             );
 
-            let (Some(granting_idx), SbTagExtra::Concrete(_)) = (granting_idx, derived_from) else {
+            let (Some(granting_idx), ProvenanceExtra::Concrete(_)) = (granting_idx, derived_from) else {
                 // The parent is a wildcard pointer or matched the unknown bottom.
                 // This is approximate. Nobody knows what happened, so forget everything.
                 // The new thing is SRW anyway, so we cannot push it "on top of the unkown part"
@@ -686,7 +660,7 @@ impl Stacks {
     pub fn memory_read<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         range: AllocRange,
         state: &GlobalState,
         mut current_span: CurrentSpan<'_, '_, 'tcx>,
@@ -717,7 +691,7 @@ impl Stacks {
     pub fn memory_written<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         range: AllocRange,
         state: &GlobalState,
         mut current_span: CurrentSpan<'_, '_, 'tcx>,
@@ -748,7 +722,7 @@ impl Stacks {
     pub fn memory_deallocated<'tcx>(
         &mut self,
         alloc_id: AllocId,
-        tag: SbTagExtra,
+        tag: ProvenanceExtra,
         range: AllocRange,
         state: &GlobalState,
         threads: &ThreadManager<'_, 'tcx>,
@@ -770,7 +744,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// happened.
     fn reborrow(
         &mut self,
-        place: &MPlaceTy<'tcx, Tag>,
+        place: &MPlaceTy<'tcx, Provenance>,
         size: Size,
         kind: RefKind,
         new_tag: SbTag,
@@ -782,7 +756,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
                             current_span: &mut CurrentSpan<'_, 'mir, 'tcx>,
-                            loc: Option<(AllocId, Size, SbTagExtra)>| // alloc_id, base_offset, orig_tag
+                            loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
             let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
             if global.tracked_pointer_tags.contains(&new_tag) {
@@ -798,7 +772,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             };
 
             // The SB history tracking needs a parent tag, so skip if we come from a wildcard.
-            let SbTagExtra::Concrete(orig_tag) = orig_tag else {
+            let ProvenanceExtra::Concrete(orig_tag) = orig_tag else {
                 // FIXME: should we log this?
                 return Ok(())
             };
@@ -972,10 +946,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// `mutbl` can be `None` to make this a raw pointer.
     fn retag_reference(
         &mut self,
-        val: &ImmTy<'tcx, Tag>,
+        val: &ImmTy<'tcx, Provenance>,
         kind: RefKind,
         protect: bool,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
         let place = this.ref_to_mplace(val)?;
@@ -1001,12 +975,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Some(alloc_id) => {
                         // If `reborrow` could figure out the AllocId of this ptr, hard-code it into the new one.
                         // Even if we started out with a wildcard, this newly retagged pointer is tied to that allocation.
-                        Tag::Concrete { alloc_id, sb: new_tag }
+                        Provenance::Concrete { alloc_id, sb: new_tag }
                     }
                     None => {
                         // Looks like this has to stay a wildcard pointer.
-                        assert!(matches!(prov, Tag::Wildcard));
-                        Tag::Wildcard
+                        assert!(matches!(prov, Provenance::Wildcard));
+                        Provenance::Wildcard
                     }
                 }
             })
@@ -1019,7 +993,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn retag(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn retag(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.stacked_borrows.as_mut().unwrap().get_mut().retag_fields;
         let mut visitor = RetagVisitor { ecx: this, kind, retag_fields };
@@ -1057,7 +1031,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             #[inline(always)] // yes this helps in our benchmarks
             fn retag_place(
                 &mut self,
-                place: &PlaceTy<'tcx, Tag>,
+                place: &PlaceTy<'tcx, Provenance>,
                 ref_kind: RefKind,
                 protector: bool,
             ) -> InterpResult<'tcx> {
@@ -1070,14 +1044,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         impl<'ecx, 'mir, 'tcx> MutValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
             for RetagVisitor<'ecx, 'mir, 'tcx>
         {
-            type V = PlaceTy<'tcx, Tag>;
+            type V = PlaceTy<'tcx, Provenance>;
 
             #[inline(always)]
             fn ecx(&mut self) -> &mut MiriEvalContext<'mir, 'tcx> {
                 self.ecx
             }
 
-            fn visit_box(&mut self, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 // Boxes do not get a protector: protectors reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
                 self.retag_place(
@@ -1087,7 +1061,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )
             }
 
-            fn visit_value(&mut self, place: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+            fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 if let Some((ref_kind, protector)) = qualify(place.layout.ty, self.kind) {
                     self.retag_place(place, ref_kind, protector)?;
                 } else if matches!(place.layout.ty.kind(), ty::RawPtr(..)) {
