@@ -6,6 +6,8 @@
 //! * Extracting markup (mainly, `$0` markers) out of fixture strings.
 //! * marks (see the eponymous module).
 
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 pub mod bench_fixture;
 mod fixture;
 mod assert_linear;

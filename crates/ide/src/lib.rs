@@ -9,6 +9,7 @@
 
 // For proving that RootDatabase is RefUnwindSafe.
 #![recursion_limit = "128"]
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
 #[allow(unused)]
 macro_rules! eprintln {

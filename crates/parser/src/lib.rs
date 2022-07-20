@@ -16,6 +16,8 @@
 //! Tests for this crate live in the `syntax` crate.
 //!
 //! [`Parser`]: crate::parser::Parser
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 #![allow(rustdoc::private_intra_doc_links)]
 
 mod lexed_str;

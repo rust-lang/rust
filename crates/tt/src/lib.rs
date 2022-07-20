@@ -1,6 +1,9 @@
 //! `tt` crate defines a `TokenTree` data structure: this is the interface (both
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 use std::fmt;
 
 use stdx::impl_from;
