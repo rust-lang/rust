@@ -1,6 +1,6 @@
 //! Exports a few trivial procedural macros for testing.
 
-use proc_macro::{Group, Ident, Punct, TokenStream, TokenTree};
+use proc_macro::{Group, Ident, Punct, TokenStream, TokenTree, Literal};
 
 #[proc_macro]
 pub fn fn_like_noop(args: TokenStream) -> TokenStream {
@@ -69,6 +69,10 @@ fn clone_tree(t: TokenTree) -> TokenTree {
             new.set_span(orig.span());
             TokenTree::Punct(new)
         }
-        TokenTree::Literal(_orig) => unimplemented!(),
+        TokenTree::Literal(orig) => {
+            let mut lit: Literal = orig.to_string().parse().unwrap();
+            lit.set_span(orig.span());
+            TokenTree::Literal(lit)
+        },
     }
 }

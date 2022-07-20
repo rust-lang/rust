@@ -57,6 +57,19 @@ fn test_fn_like_macro2() {
 }
 
 #[test]
+fn test_fn_like_clone_literal() {
+    assert_expand(
+        "fn_like_clone_tokens",
+        r#"42_u64"#,
+        expect![[r#"
+            SUBTREE $
+              IDENT   ident 4294967295
+              PUNCH   , [alone] 4294967295
+              SUBTREE [] 4294967295"#]],
+    );
+}
+
+#[test]
 fn test_attr_macro() {
     // Corresponds to
     //    #[proc_macro_test::attr_error(some arguments)]

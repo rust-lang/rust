@@ -288,7 +288,7 @@ impl server::FreeFunctions for Rustc {
         &mut self,
         _s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        todo!("implement literal_from_str")
+        panic!("FIXME: implement literal_from_str")
     }
 }
 
@@ -319,7 +319,7 @@ impl server::TokenStream for Rustc {
             }
 
             bridge::TokenTree::Ident(ident) => {
-                // TODO: what about raw idents?
+                // FIXME: handle raw idents?
                 let text = SYMBOL_INTERNER.lock().unwrap().get(&ident.sym).clone();
                 let ident: tt::Ident = tt::Ident { text, id: ident.span };
                 let leaf = tt::Leaf::from(ident);
@@ -400,14 +400,14 @@ impl server::TokenStream for Rustc {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
                         sym: SYMBOL_INTERNER.lock().unwrap().intern(&ident.text),
-                        // TODO: handle raw idents
+                        // FIXME: handle raw idents
                         is_raw: false,
                         span: ident.id,
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
-                        // TODO: implement literal_from_str
+                        // FIXME: implement literal_from_str
                         kind: bridge::LitKind::Err,
                         symbol: SYMBOL_INTERNER.lock().unwrap().intern(&lit.text),
                         suffix: None,
@@ -711,7 +711,7 @@ impl server::MultiSpan for Rustc {
 
 impl server::Symbol for Rustc {
     fn normalize_and_validate_ident(&mut self, _string: &str) -> Result<Self::Symbol, ()> {
-        todo!()
+        panic!("FIXME: normalize and validate ident")
     }
 }
 
