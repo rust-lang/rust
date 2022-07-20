@@ -1004,9 +1004,7 @@ fn lint_named_arguments_used_positionally(
                 node_id: ast::CRATE_NODE_ID,
                 lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
                 diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally(
-                    arg_span,
-                    span,
-                    symbol.to_string(),
+                    arg_span, span, symbol,
                 ),
             });
         }
