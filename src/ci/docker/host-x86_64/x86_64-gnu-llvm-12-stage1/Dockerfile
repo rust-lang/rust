@@ -41,13 +41,4 @@ ENV SCRIPT python2.7 ../x.py --stage 1 test --exclude src/tools/tidy && \
     # It will also detect tests lacking `// EMIT_MIR_FOR_EACH_BIT_WIDTH`,
     # despite having different output on 32-bit vs 64-bit targets.
     python2.7 ../x.py --stage 1 test src/test/mir-opt \
-    --host='' --target=i686-unknown-linux-gnu && \
-    # Run the UI test suite again, but in `--pass=check` mode
-    #
-    # This is intended to make sure that both `--pass=check` continues to
-    # work.
-    #
-    python2.7 ../x.py --stage 1 test src/test/ui --pass=check \
-    --host='' --target=i686-unknown-linux-gnu && \
-    # Run tidy at the very end, after all the other tests.
-    python2.7 ../x.py --stage 1 test src/tools/tidy
+    --host='' --target=i686-unknown-linux-gnu
