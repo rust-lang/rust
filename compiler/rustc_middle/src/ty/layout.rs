@@ -3564,10 +3564,16 @@ where
                 // fix (0.11, 0.12, 0.13) would panic, as they make uninit &[u8] and &str.
                 InitKind::Uninit => {
                     if let ty::Ref(_, inner, _) = this.ty.kind() {
-                        let penv = ty::ParamEnv::reveal_all().and(*inner);
-                        if let Ok(l) = cx.tcx().layout_of(penv) {
-                            return l.layout.align().abi == Align::ONE
-                                && l.layout.size() == Size::ZERO;
+                        if let ty::Slice(slice_inner) = inner.kind() {
+                            let penv = ty::ParamEnv::reveal_all().and(*slice_inner);
+
+                            if let Ok(l) = cx.tcx().layout_of(penv) {
+                                return l.layout.align().abi == Align::ONE;
+                            }
+                        }
+
+                        if ty::Str == *inner.kind() {
+                            return true;
                         }
                     }
                 }

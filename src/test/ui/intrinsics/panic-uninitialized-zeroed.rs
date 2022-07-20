@@ -284,25 +284,23 @@ fn main() {
             "attempted to leave type `[core::ptr::non_null::NonNull<()>; 1]` uninitialized, which is invalid"
         );
 
-        test_strict_panic_msg(
-            || mem::zeroed::<LR_NonZero>(),
-            "attempted to zero-initialize type `LR_NonZero`, which is invalid"
-        );
-
-        test_strict_panic_msg(
-            || mem::zeroed::<[LR_NonZero; 1]>(),
-            "attempted to zero-initialize type `[LR_NonZero; 1]`, which is invalid"
-        );
-
-        test_strict_panic_msg(
-            || mem::zeroed::<ManuallyDrop<LR_NonZero>>(),
-            "attempted to zero-initialize type `core::mem::manually_drop::ManuallyDrop<LR_NonZero>`, \
-             which is invalid"
+        test_panic_msg(
+            || mem::uninitialized::<(&[u8], &str, &())>(),
+            "attempted to leave type `(&[u8], &str, &())` uninitialized, which is invalid"
         );
 
         test_panic_msg(
-            || mem::uninitialized::<(&'static [u8], &'static str)>(),
-            "attempted to leave type `(&[u8], &str)` uninitialized, which is invalid"
+            || mem::uninitialized::<[&(); 1]>(),
+            "attempted to leave type `[&(); 1]` uninitialized, which is invalid"
+        );
+
+        test_panic_msg(
+            || mem::uninitialized::<[&dyn Send; 1]>(),
+            "attempted to leave type `[&dyn core::marker::Send; 1]` uninitialized, which is invalid"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[*const dyn Send; 1]>(),
+            "attempted to leave type `[*const dyn core::marker::Send; 1]` uninitialized, which is invalid"
         );
 
         // Some things that should work.
@@ -339,19 +337,36 @@ fn main() {
             "attempted to leave type `[i32; 1]` uninitialized, which is invalid"
         );
 
+        // These are UB, but making them panic breaks too many crates at the moment.
         test_strict_panic_msg(
-            || mem::uninitialized::<[(&'static [u8], &'static str, &()); 1]>(),
-            "attempted to leave type `[(&[u8], &str, &()); 1]` uninitialized, which is invalid"
+            || mem::zeroed::<[(&[u8], &str); 1]>(),
+            "attempted to zero-initialize type `[(&[u8], &str); 1]`, which is invalid"
         );
 
         test_strict_panic_msg(
-            || mem::zeroed::<[(&'static [u8], &'static str); 1]>(),
-            "attempted to zero-initialize type `[(&[u8], &str); 1]`, which is invalid"
+            || mem::uninitialized::<[(&[u8], &str); 1]>(),
+            "attempted to leave type `[(&[u8], &str); 1]` uninitialized, which is invalid"
         );
 
         test_strict_panic_msg(
             || mem::zeroed::<[NonNull<()>; 1]>(),
             "attempted to zero-initialize type `[core::ptr::non_null::NonNull<()>; 1]`, which is invalid"
+        );
+
+        test_strict_panic_msg(
+            || mem::zeroed::<LR_NonZero>(),
+            "attempted to zero-initialize type `LR_NonZero`, which is invalid"
+        );
+
+        test_strict_panic_msg(
+            || mem::zeroed::<[LR_NonZero; 1]>(),
+            "attempted to zero-initialize type `[LR_NonZero; 1]`, which is invalid"
+        );
+
+        test_strict_panic_msg(
+            || mem::zeroed::<ManuallyDrop<LR_NonZero>>(),
+            "attempted to zero-initialize type `core::mem::manually_drop::ManuallyDrop<LR_NonZero>`, \
+             which is invalid"
         );
     }
 }
