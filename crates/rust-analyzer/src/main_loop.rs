@@ -745,25 +745,24 @@ impl GlobalState {
                         let workspace_ids =
                             this.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
                                 project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                                    cargo.packages().filter(|&pkg| cargo[pkg].is_member).any(
-                                        |pkg| {
-                                            cargo[pkg].targets.iter().any(|&it| {
-                                                paths.contains(&cargo[it].root.as_path())
-                                            })
-                                        },
-                                    )
+                                    cargo.packages().any(|pkg| {
+                                        cargo[pkg]
+                                            .targets
+                                            .iter()
+                                            .any(|&it| paths.contains(&cargo[it].root.as_path()))
+                                    })
                                 }
                                 project_model::ProjectWorkspace::Json { project, .. } => project
                                     .crates()
                                     .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
                                 project_model::ProjectWorkspace::DetachedFiles { .. } => false,
                             });
-                        'workspace: for (id, _) in workspace_ids {
-                            for flycheck in &this.flycheck {
+                        for flycheck in &this.flycheck {
+                            for (id, _) in workspace_ids.clone() {
                                 if id == flycheck.id() {
                                     updated = true;
                                     flycheck.update();
-                                    continue 'workspace;
+                                    continue;
                                 }
                             }
                         }
