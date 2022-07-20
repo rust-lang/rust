@@ -184,7 +184,13 @@ details.rustdoc-toggle > summary::before {
 
 #crate-search, .search-input {
 	background-color: #141920;
-	/* Without the `!important`, the border-color is ignored for `<select>`... */
+	border-color: #424c57;
+}
+
+#crate-search {
+	/* Without the `!important`, the border-color is ignored for `<select>`...
+	   It cannot be in the group above because `.search-input` has a different border color on
+	   hover. */
 	border-color: #424c57 !important;
 }
 
