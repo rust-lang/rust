@@ -372,7 +372,7 @@ impl GlobalState {
                 let _p = profile::span("GlobalState::handle_event/flycheck");
                 loop {
                     match task {
-                        flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
+                        flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
                             let snap = self.snapshot();
                             let diagnostics =
                                 crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
@@ -384,6 +384,7 @@ impl GlobalState {
                             for diag in diagnostics {
                                 match url_to_file_id(&self.vfs.read().0, &diag.url) {
                                     Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                                        id,
                                         file_id,
                                         diag.diagnostic,
                                         diag.fix,
@@ -401,7 +402,7 @@ impl GlobalState {
                         flycheck::Message::Progress { id, progress } => {
                             let (state, message) = match progress {
                                 flycheck::Progress::DidStart => {
-                                    self.diagnostics.clear_check();
+                                    self.diagnostics.clear_check(id);
                                     (Progress::Begin, None)
                                 }
                                 flycheck::Progress::DidCheckCrate(target) => {

@@ -201,6 +201,7 @@ impl GlobalState {
                     }
                 }
 
+                // Clear native diagnostics when their file gets deleted
                 if !file.exists() {
                     self.diagnostics.clear_native_for(file.file_id);
                 }
