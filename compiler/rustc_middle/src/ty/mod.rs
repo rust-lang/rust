@@ -1724,23 +1724,56 @@ impl VariantDef {
     }
 }
 
-/// There should be only one VariantDef for each `def_id`, therefore
-/// it is fine to implement `PartialEq` only based on `def_id`.
 impl PartialEq for VariantDef {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.def_id == other.def_id
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `VariantDef` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self {
+            def_id: lhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = &self;
+
+        let Self {
+            def_id: rhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = other;
+
+        lhs_def_id == rhs_def_id
     }
 }
 
 impl Eq for VariantDef {}
 
-/// There should be only one VariantDef for each `def_id`, therefore
-/// it is fine to implement `Hash` only based on `def_id`.
 impl Hash for VariantDef {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.def_id.hash(s)
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `Hash` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `VariantDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { def_id, ctor_def_id: _, name: _, discr: _, fields: _, ctor_kind: _, flags: _ } =
+            &self;
+
+        def_id.hash(s)
     }
 }
 
@@ -1764,23 +1797,39 @@ pub struct FieldDef {
     pub vis: Visibility,
 }
 
-/// There should be only one FieldDef for each `did`, therefore
-/// it is fine to implement `PartialEq` only based on `did`.
 impl PartialEq for FieldDef {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.did == other.did
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `PartialEq` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did: lhs_did, name: _, vis: _ } = &self;
+
+        let Self { did: rhs_did, name: _, vis: _ } = other;
+
+        lhs_did == rhs_did
     }
 }
 
 impl Eq for FieldDef {}
 
-/// There should be only one FieldDef for each `did`, therefore
-/// it is fine to implement `Hash` only based on `did`.
 impl Hash for FieldDef {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.did.hash(s)
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `Hash` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did, name: _, vis: _ } = &self;
+
+        did.hash(s)
     }
 }
 
