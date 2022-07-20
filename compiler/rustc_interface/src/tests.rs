@@ -718,6 +718,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
+    tracked!(box_noalias, Some(false));
     tracked!(
         branch_protection,
         Some(BranchProtection {
