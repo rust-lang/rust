@@ -609,8 +609,30 @@ fn phase_cargo_miri(mut args: env::Args) {
         MiriCommand::Forward(s) => s,
         MiriCommand::Setup => return, // `cargo miri setup` stops here.
     };
+    let metadata = get_cargo_metadata();
     let mut cmd = cargo();
     cmd.arg(cargo_cmd);
+
+    // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
+    let mut target_dir = None;
+    for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
+        match arg {
+            Ok(value) => {
+                if target_dir.is_some() {
+                    show_error(format!("`--target-dir` is provided more than once"));
+                }
+                target_dir = Some(value.into());
+            }
+            Err(arg) => {
+                cmd.arg(arg);
+            }
+        }
+    }
+    // Detect the target directory if it's not specified via `--target-dir`.
+    let target_dir = target_dir.get_or_insert_with(|| metadata.target_directory.clone());
+    // Set `--target-dir` to `miri` inside the original target directory.
+    target_dir.push("miri");
+    cmd.arg("--target-dir").arg(target_dir);
 
     // Make sure we know the build target, and cargo does, too.
     // This is needed to make the `CARGO_TARGET_*_RUNNER` env var do something,
@@ -626,32 +648,6 @@ fn phase_cargo_miri(mut args: env::Args) {
         cmd.arg(&host);
         &host
     };
-
-    let mut target_dir = None;
-
-    // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
-    for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
-        match arg {
-            Ok(value) => {
-                if target_dir.is_some() {
-                    show_error(format!("`--target-dir` is provided more than once"));
-                }
-                target_dir = Some(value.into());
-            }
-            Err(arg) => {
-                cmd.arg(arg);
-            }
-        }
-    }
-
-    let metadata = get_cargo_metadata();
-
-    // Detect the target directory if it's not specified via `--target-dir`.
-    let target_dir = target_dir.get_or_insert_with(|| metadata.target_directory.clone());
-
-    // Set `--target-dir` to `miri` inside the original target directory.
-    target_dir.push("miri");
-    cmd.arg("--target-dir").arg(target_dir);
 
     // Forward all further arguments after `--` to cargo.
     cmd.arg("--").args(args);
