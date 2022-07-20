@@ -79,17 +79,16 @@ pub fn env() -> Env {
 }
 
 // FIXME: Use GetVariable() method
-pub fn getenv(_: &OsStr) -> Option<OsString> {
-    None
+pub fn getenv(key: &OsStr) -> Option<OsString> {
+    uefi_vars::get_variable(key)
 }
 
-// FIXME: Use SetVariable() method
-pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot set env vars on this platform"))
+pub fn setenv(key: &OsStr, val: &OsStr) -> io::Result<()> {
+    uefi_vars::set_variable(key, val)
 }
 
-pub fn unsetenv(_: &OsStr) -> io::Result<()> {
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "cannot unset env vars on this platform"))
+pub fn unsetenv(key: &OsStr) -> io::Result<()> {
+    uefi_vars::set_variable(key, OsStr::new(""))
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -118,4 +117,92 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     panic!("no pids on this platform")
+}
+
+mod uefi_vars {
+    // It is possible to directly store and use UTF-8 data. So no need to convert to and from UCS-2
+    use super::super::common;
+    use crate::ffi::{OsStr, OsString};
+    use crate::io;
+    use crate::os::uefi;
+    use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+
+    const ENVIRONMENT_GUID: uefi::raw::Guid = uefi::raw::Guid::from_fields(
+        0x49bb4029,
+        0x7d2b,
+        0x4bf7,
+        0xa1,
+        0x95,
+        &[0x0f, 0x18, 0xa1, 0xa8, 0x85, 0xc9],
+    );
+
+    pub fn set_variable(key: &OsStr, val: &OsStr) -> io::Result<()> {
+        set_variable_inner(key, val.bytes(), uefi::raw::VARIABLE_BOOTSERVICE_ACCESS)
+    }
+
+    pub fn append_variable(key: &OsStr, val: &[u8]) -> io::Result<()> {
+        set_variable_inner(
+            key,
+            val,
+            uefi::raw::VARIABLE_BOOTSERVICE_ACCESS | uefi::raw::VARIABLE_APPEND_WRITE,
+        )
+    }
+
+    fn set_variable_inner(key: &OsStr, val: &[u8], attr: u32) -> io::Result<()> {
+        let runtime_services = uefi::env::get_runtime_services().ok_or(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "Failed to Acquire Runtime Services",
+        ))?;
+        // Store a copy of data since it is technically possible to manipulate it from other
+        // applications
+        let mut val_copy = val.to_vec();
+        let val_len = val_copy.len();
+        let r = unsafe {
+            ((*runtime_services.as_ptr()).set_variable)(
+                key.to_ffi_string().as_mut_ptr(),
+                &mut ENVIRONMENT_GUID,
+                attr,
+                val_len,
+                val_copy.as_mut_ptr().cast(),
+            )
+        };
+
+        if r.is_error() { Err(common::status_to_io_error(&r)) } else { Ok(()) }
+    }
+
+    pub fn get_variable(key: &OsStr) -> Option<OsString> {
+        let runtime_services = uefi::env::get_runtime_services()?;
+        let mut buf_size = 0;
+        let r = unsafe {
+            ((*runtime_services.as_ptr()).get_variable)(
+                key.to_ffi_string().as_mut_ptr(),
+                &mut ENVIRONMENT_GUID,
+                crate::ptr::null_mut(),
+                &mut buf_size,
+                crate::ptr::null_mut(),
+            )
+        };
+
+        if r.is_error() && r != uefi::raw::Status::BUFFER_TOO_SMALL {
+            return None;
+        }
+
+        let mut buf: Vec<u8> = Vec::with_capacity(buf_size);
+        let r = unsafe {
+            ((*runtime_services.as_ptr()).get_variable)(
+                key.to_ffi_string().as_mut_ptr(),
+                &mut ENVIRONMENT_GUID,
+                crate::ptr::null_mut(),
+                &mut buf_size,
+                buf.as_mut_ptr().cast(),
+            )
+        };
+
+        if r.is_error() {
+            None
+        } else {
+            unsafe { buf.set_len(buf_size) };
+            Some(OsString::from(String::from_utf8(buf).ok()?))
+        }
+    }
 }

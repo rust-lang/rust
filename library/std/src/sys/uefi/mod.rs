@@ -1,4 +1,4 @@
-//! Platform-specific extensions to `std` for Unix platforms.
+//! Platform-specific extensions to `std` for UEFI platforms.
 //!
 //! Provides access to platform-level information on Unix platforms, and
 //! exposes Unix-specific functions that would otherwise be inappropriate as
@@ -29,7 +29,6 @@ pub mod os_str;
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod stdio;
 #[path = "../unsupported/thread.rs"]
@@ -37,6 +36,8 @@ pub mod thread;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
 pub mod time;
+
+pub(crate) mod common;
 
 #[cfg(test)]
 mod tests;
