@@ -142,7 +142,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 ///                 let begin = variant_field.field("DISCR_BEGIN");
 ///                 let end = variant_field.field("DISCR_END");
 ///
-///                 if tag >= begin && tag <= end {
+///                 if is_in_range(tag, begin, end) {
 ///                     return (variant_field.field("NAME"), variant_field.value);
 ///                 }
 ///             }
@@ -169,7 +169,7 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 ///                 let end = (variant_field.field("DISCR128_END_LO").value as u128) |
 ///                           (variant_field.field("DISCR128_END_HI").value as u128 << 64);
 ///
-///                 if tag >= begin && tag <= end {
+///                 if is_in_range(tag, begin, end) {
 ///                     return (variant_field.field("NAME"), variant_field.value);
 ///                 }
 ///             }
@@ -178,6 +178,16 @@ const SINGLE_VARIANT_VIRTUAL_DISR: u64 = 0;
 ///
 ///     // We should have found an active variant at this point.
 ///     unreachable!();
+/// }
+///
+/// // Check if a value is within the given range
+/// // (where the range might wrap around the value space)
+/// fn is_in_range(value, start, end) -> bool {
+///     if start < end {
+///         value >= start && value <= end
+///     } else {
+///         value >= start || value <= end
+///     }
 /// }
 ///
 /// ```
