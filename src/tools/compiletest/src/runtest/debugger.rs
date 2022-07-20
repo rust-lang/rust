@@ -1,4 +1,5 @@
 use crate::common::Config;
+use crate::header::line_directive;
 use crate::runtest::ProcRes;
 
 use std::fs::File;
@@ -32,26 +33,7 @@ impl DebuggerCommands {
             counter += 1;
             match line {
                 Ok(line) => {
-                    let (line, lnrev) = if line.starts_with("//") {
-                        let line = line[2..].trim_start();
-                        if line.starts_with('[') {
-                            if let Some(close_brace) = line.find(']') {
-                                let open_brace = line.find('[').unwrap();
-                                let lnrev = &line[open_brace + 1..close_brace];
-                                let line = line[(close_brace + 1)..].trim_start();
-                                (line, Some(lnrev))
-                            } else {
-                                panic!(
-                                    "malformed condition direction: expected `//[foo]`, found `{}`",
-                                    line
-                                )
-                            }
-                        } else {
-                            (line, None)
-                        }
-                    } else {
-                        (line.as_str(), None)
-                    };
+                    let (lnrev, line) = line_directive("//", &line).unwrap_or((None, &line));
 
                     // Skip any revision specific directive that doesn't match the current
                     // revision being tested
