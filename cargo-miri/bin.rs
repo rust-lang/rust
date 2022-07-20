@@ -1,3 +1,4 @@
+#![feature(let_else)]
 #![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq)]
 
 mod version;
@@ -34,11 +35,12 @@ Examples:
     cargo miri test -- test-suite-filter
 "#;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 enum MiriCommand {
-    Run,
-    Test,
+    /// Our own special 'setup' command.
     Setup,
+    /// A command to be forwarded to cargo.
+    Forward(String),
 }
 
 /// The information to run a crate with the given environment.
@@ -339,9 +341,10 @@ fn write_to_file(filename: &Path, content: &str) {
 /// Performs the setup required to make `cargo miri` work: Getting a custom-built libstd. Then sets
 /// `MIRI_SYSROOT`. Skipped if `MIRI_SYSROOT` is already set, in which case we expect the user has
 /// done all this already.
-fn setup(subcommand: MiriCommand) {
+fn setup(subcommand: &MiriCommand) {
+    let only_setup = matches!(subcommand, MiriCommand::Setup);
     if std::env::var_os("MIRI_SYSROOT").is_some() {
-        if subcommand == MiriCommand::Setup {
+        if only_setup {
             println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
         }
         return;
@@ -349,7 +352,7 @@ fn setup(subcommand: MiriCommand) {
 
     // Subcommands other than `setup` will do a setup if necessary, but
     // interactively confirm first.
-    let ask_user = subcommand != MiriCommand::Setup;
+    let ask_user = !only_setup;
 
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
@@ -495,11 +498,11 @@ path = "lib.rs"
     let sysroot = if target == &host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
     // Figure out what to print.
-    let print_sysroot = subcommand == MiriCommand::Setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     if print_sysroot {
         // Print just the sysroot and nothing else; this way we do not need any escaping.
         println!("{}", sysroot.display());
-    } else if subcommand == MiriCommand::Setup {
+    } else if only_setup {
         println!("A libstd for Miri is now available in `{}`.", sysroot.display());
     }
 }
@@ -573,10 +576,12 @@ fn phase_cargo_miri(mut args: env::Args) {
     // Require a subcommand before any flags.
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
-    let subcommand = match args.next().as_deref() {
-        Some("test" | "t") => MiriCommand::Test,
-        Some("run" | "r") => MiriCommand::Run,
-        Some("setup") => MiriCommand::Setup,
+    let Some(subcommand) = args.next() else {
+        show_error(format!("`cargo miri` needs to be called with a subcommand (`run`, `test`)"));
+    };
+    let subcommand = match &*subcommand {
+        "setup" => MiriCommand::Setup,
+        "test" | "t" | "run" | "r" => MiriCommand::Forward(subcommand),
         // Invalid command.
         _ =>
             show_error(format!(
@@ -586,7 +591,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     let verbose = has_arg_flag("-v");
 
     // We always setup.
-    setup(subcommand);
+    setup(&subcommand);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -596,8 +601,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     // harder.
     let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     let cargo_cmd = match subcommand {
-        MiriCommand::Test => "test",
-        MiriCommand::Run => "run",
+        MiriCommand::Forward(s) => s,
         MiriCommand::Setup => return, // `cargo miri setup` stops here.
     };
     let mut cmd = cargo();
