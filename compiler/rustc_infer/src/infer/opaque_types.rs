@@ -433,7 +433,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
+    pub fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
         let origin = match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {
