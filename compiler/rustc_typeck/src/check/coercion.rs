@@ -737,7 +737,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
-        self.commit_unconditionally(|snapshot| {
+        self.commit_if_ok(|snapshot| {
             let result = if let ty::FnPtr(fn_ty_b) = b.kind()
                 && let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
                     (fn_ty_a.unsafety(), fn_ty_b.unsafety())
