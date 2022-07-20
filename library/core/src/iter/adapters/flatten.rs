@@ -393,6 +393,35 @@ impl<I, U> FlattenCompat<I, U>
 where
     I: DoubleEndedIterator<Item: IntoIterator<IntoIter = U>>,
 {
+    /// Folds the inner iterators into an accumulator by applying an operation, starting form the
+    /// back.
+    ///
+    /// Folds over the inner iterators, not over their elements. Is used by the `rfold` method.
+    #[inline]
+    fn iter_rfold<Acc, Fold>(self, mut acc: Acc, mut fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, U) -> Acc,
+    {
+        #[inline]
+        fn flatten<T: IntoIterator, Acc>(
+            fold: &mut impl FnMut(Acc, T::IntoIter) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc + '_ {
+            move |acc, iter| fold(acc, iter.into_iter())
+        }
+
+        if let Some(iter) = self.backiter {
+            acc = fold(acc, iter);
+        }
+
+        acc = self.iter.rfold(acc, flatten(&mut fold));
+
+        if let Some(iter) = self.frontiter {
+            acc = fold(acc, iter);
+        }
+
+        acc
+    }
+
     /// Folds over the inner iterators in reverse order as long as the given function returns
     /// successfully, always storing the most recent inner iterator in `self.backiter`.
     ///
@@ -579,31 +608,18 @@ where
     }
 
     #[inline]
-    fn rfold<Acc, Fold>(self, mut init: Acc, mut fold: Fold) -> Acc
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         #[inline]
-        fn flatten<T: IntoIterator, Acc>(
-            fold: &mut impl FnMut(Acc, T::Item) -> Acc,
-        ) -> impl FnMut(Acc, T) -> Acc + '_
-        where
-            T::IntoIter: DoubleEndedIterator,
-        {
-            move |acc, x| x.into_iter().rfold(acc, &mut *fold)
+        fn flatten<U: DoubleEndedIterator, Acc>(
+            mut fold: impl FnMut(Acc, U::Item) -> Acc,
+        ) -> impl FnMut(Acc, U) -> Acc {
+            move |acc, iter| iter.rfold(acc, &mut fold)
         }
 
-        if let Some(back) = self.backiter {
-            init = back.rfold(init, &mut fold);
-        }
-
-        init = self.iter.rfold(init, flatten(&mut fold));
-
-        if let Some(front) = self.frontiter {
-            init = front.rfold(init, &mut fold);
-        }
-
-        init
+        self.iter_rfold(init, flatten(fold))
     }
 
     #[inline]
