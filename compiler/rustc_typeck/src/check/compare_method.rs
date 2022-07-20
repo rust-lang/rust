@@ -1460,6 +1460,7 @@ pub fn check_type_bounds<'tcx>(
             .map(|e| e.map_bound(|e| *e).transpose_tuple2())
             .map(|(bound, span)| {
                 debug!(?bound);
+                // this is where opaque type is found
                 let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
@@ -1481,7 +1482,6 @@ pub fn check_type_bounds<'tcx>(
             ocx.register_obligations(obligations);
             ocx.register_obligation(obligation);
         }
-
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = ocx.select_all_or_error();

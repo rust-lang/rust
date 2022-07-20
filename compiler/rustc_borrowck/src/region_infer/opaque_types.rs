@@ -3,8 +3,8 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
-use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
+use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts};
@@ -269,59 +269,65 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
             let param_env = self.tcx.param_env(def_id);
             let body_id = self.tcx.local_def_id_to_hir_id(def_id);
-            self.tcx.infer_ctxt().enter(move |infcx| {
-                // Require the hidden type to be well-formed with only the generics of the opaque type.
-                // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
-                // hidden type is well formed even without those bounds.
-                let predicate =
-                    ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
-                        .to_predicate(infcx.tcx);
-                let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+            // HACK This bubble is required for this tests to pass:
+            // type-alias-impl-trait/issue-67844-nested-opaque.rs
+            self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter(
+                move |infcx| {
+                    // Require the hidden type to be well-formed with only the generics of the opaque type.
+                    // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
+                    // hidden type is well formed even without those bounds.
+                    let predicate =
+                        ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
+                            .to_predicate(infcx.tcx);
+                    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
 
-                // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
-                // the bounds that the function supplies.
-                match infcx.register_hidden_type(
-                    OpaqueTypeKey { def_id, substs: id_substs },
-                    ObligationCause::misc(instantiated_ty.span, body_id),
-                    param_env,
-                    definition_ty,
-                    origin,
-                ) {
-                    Ok(infer_ok) => {
-                        for obligation in infer_ok.obligations {
-                            fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                    // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
+                    // the bounds that the function supplies.
+                    match infcx.register_hidden_type(
+                        OpaqueTypeKey { def_id, substs: id_substs },
+                        ObligationCause::misc(instantiated_ty.span, body_id),
+                        param_env,
+                        definition_ty,
+                        origin,
+                    ) {
+                        Ok(infer_ok) => {
+                            for obligation in infer_ok.obligations {
+                                fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+                            }
+                        }
+                        Err(err) => {
+                            infcx
+                                .report_mismatched_types(
+                                    &ObligationCause::misc(instantiated_ty.span, body_id),
+                                    self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
+                                    definition_ty,
+                                    err,
+                                )
+                                .emit();
                         }
                     }
-                    Err(err) => {
-                        infcx
-                            .report_mismatched_types(
-                                &ObligationCause::misc(instantiated_ty.span, body_id),
-                                self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
-                                definition_ty,
-                                err,
-                            )
-                            .emit();
+
+                    fulfillment_cx.register_predicate_obligation(
+                        &infcx,
+                        Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
+                    );
+
+                    // Check that all obligations are satisfied by the implementation's
+                    // version.
+                    let errors = fulfillment_cx.select_all_or_error(&infcx);
+
+                    // This is still required for many(half of the tests in ui/type-alias-impl-trait)
+                    // tests to pass
+                    let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
+                    if errors.is_empty() {
+                        definition_ty
+                    } else {
+                        infcx.report_fulfillment_errors(&errors, None, false);
+                        self.tcx.ty_error()
                     }
-                }
-
-                fulfillment_cx.register_predicate_obligation(
-                    &infcx,
-                    Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
-                );
-
-                // Check that all obligations are satisfied by the implementation's
-                // version.
-                let errors = fulfillment_cx.select_all_or_error(&infcx);
-
-                let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-
-                if errors.is_empty() {
-                    definition_ty
-                } else {
-                    infcx.report_fulfillment_errors(&errors, None, false);
-                    self.tcx.ty_error()
-                }
-            })
+                },
+            )
         } else {
             definition_ty
         }
