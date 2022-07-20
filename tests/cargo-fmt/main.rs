@@ -98,3 +98,22 @@ fn cargo_fmt_out_of_line_test_modules() {
         assert!(stdout.contains(&format!("Diff in {}", path.display())))
     }
 }
+
+#[rustfmt_only_ci_test]
+#[test]
+fn cargo_fmt_emits_error_on_line_overflow_true() {
+    // See also https://github.com/rust-lang/rustfmt/issues/3164
+    let args = [
+        "--check",
+        "--manifest-path",
+        "tests/cargo-fmt/source/issue_3164/Cargo.toml",
+        "--",
+        "--config",
+        "error_on_line_overflow=true",
+    ];
+
+    let (_stdout, stderr) = cargo_fmt(&args);
+    assert!(stderr.contains(
+        "line formatted, but exceeded maximum width (maximum: 100 (see `max_width` option)"
+    ))
+}
