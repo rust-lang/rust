@@ -9,7 +9,7 @@ use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::abi::{WrappingRange, call::{FnAbi, PassMode}};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -110,7 +110,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                meth::VirtualIndex::from_index(idx).get_usize(bx, vtable)
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                if name == sym::vtable_align {
+                    // Alignment is always nonzero.
+                    bx.range_metadata(value, WrappingRange { start: 1, end: !0 });
+                };
+                value
             }
             sym::pref_align_of
             | sym::needs_drop
