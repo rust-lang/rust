@@ -142,57 +142,6 @@ fn check_cargo_toml(path: &Path, text: String) {
     }
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
-#[test]
-fn check_merge_commits() {
-    let sh = &Shell::new().unwrap();
-
-    let bors = cmd!(sh, "git rev-list --merges --author 'bors' HEAD~19..").read().unwrap();
-    let all = cmd!(sh, "git rev-list --merges HEAD~19..").read().unwrap();
-    if bors != all {
-        panic!(
-            "
-Merge commits are not allowed in the history.
-
-When updating a pull-request, please rebase your feature branch
-on top of master by running `git rebase master`. If rebase fails,
-you can re-apply your changes like this:
-
-  # Just look around to see the current state.
-  $ git status
-  $ git log
-
-  # Abort in-progress rebase and merges, if any.
-  $ git rebase --abort
-  $ git merge --abort
-
-  # Make the branch point to the latest commit from master,
-  # while maintaining your local changes uncommited.
-  $ git reset --soft origin/master
-
-  # Commit all changes in a single batch.
-  $ git commit -am'My changes'
-
-  # Verify that everything looks alright.
-  $ git status
-  $ git log
-
-  # Push the changes. We did a rebase, so we need `--force` option.
-  # `--force-with-lease` is a more safe (Rusty) version of `--force`.
-  $ git push --force-with-lease
-
-  # Verify that both local and remote branch point to the same commit.
-  $ git log
-
-And don't fear to mess something up during a rebase -- you can
-always restore the previous state using `git ref-log`:
-
-https://github.blog/2015-06-08-how-to-undo-almost-anything-with-git/#redo-after-undo-local
-"
-        );
-    }
-}
-
 fn deny_clippy(path: &Path, text: &str) {
     let ignore = &[
         // The documentation in string literals may contain anything for its own purposes
