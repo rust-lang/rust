@@ -72,7 +72,7 @@ impl LspError {
 }
 
 impl fmt::Display for LspError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Language Server request failed with {}. ({})", self.code, self.message)
     }
 }
