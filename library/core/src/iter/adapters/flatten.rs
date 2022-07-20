@@ -108,6 +108,11 @@ where
     {
         self.inner.rfold(init, fold)
     }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.inner.advance_back_by(n)
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -254,6 +259,11 @@ where
     {
         self.inner.rfold(init, fold)
     }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.inner.advance_back_by(n)
+    }
 }
 
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
@@ -325,6 +335,46 @@ where
             acc = fold(acc, iter)?;
         }
         self.backiter = None;
+
+        try { acc }
+    }
+}
+
+impl<I, U> FlattenCompat<I, U>
+where
+    I: DoubleEndedIterator<Item: IntoIterator<IntoIter = U>>,
+{
+    /// Folds over the inner iterators in reverse order as long as the given function returns
+    /// successfully, always storing the most recent inner iterator in `self.backiter`.
+    ///
+    /// Folds over the inner iterators, not over their elements. Is used by the `try_rfold` and
+    /// `advance_back_by` methods.
+    #[inline]
+    fn iter_try_rfold<Acc, Fold, R>(&mut self, mut acc: Acc, mut fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, &mut U) -> R,
+        R: Try<Output = Acc>,
+    {
+        #[inline]
+        fn flatten<'a, T: IntoIterator, Acc, R: Try>(
+            backiter: &'a mut Option<T::IntoIter>,
+            fold: &'a mut impl FnMut(Acc, &mut T::IntoIter) -> R,
+        ) -> impl FnMut(Acc, T) -> R + 'a {
+            move |acc, iter| fold(acc, backiter.insert(iter.into_iter()))
+        }
+
+        if let Some(iter) = &mut self.backiter {
+            acc = fold(acc, iter)?;
+        }
+        self.backiter = None;
+
+        acc = self.iter.try_rfold(acc, flatten(&mut self.backiter, &mut fold))?;
+        self.backiter = None;
+
+        if let Some(iter) = &mut self.frontiter {
+            acc = fold(acc, iter)?;
+        }
+        self.frontiter = None;
 
         try { acc }
     }
@@ -452,42 +502,20 @@ where
     }
 
     #[inline]
-    fn try_rfold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
-            backiter: &'a mut Option<T::IntoIter>,
-            fold: &'a mut impl FnMut(Acc, T::Item) -> R,
-        ) -> impl FnMut(Acc, T) -> R + 'a
-        where
-            T::IntoIter: DoubleEndedIterator,
-        {
-            move |acc, x| {
-                let mut mid = x.into_iter();
-                let r = mid.try_rfold(acc, &mut *fold);
-                *backiter = Some(mid);
-                r
-            }
+        fn flatten<U: DoubleEndedIterator, Acc, R: Try<Output = Acc>>(
+            mut fold: impl FnMut(Acc, U::Item) -> R,
+        ) -> impl FnMut(Acc, &mut U) -> R {
+            move |acc, iter| iter.try_rfold(acc, &mut fold)
         }
 
-        if let Some(ref mut back) = self.backiter {
-            init = back.try_rfold(init, &mut fold)?;
-        }
-        self.backiter = None;
-
-        init = self.iter.try_rfold(init, flatten(&mut self.backiter, &mut fold))?;
-        self.backiter = None;
-
-        if let Some(ref mut front) = self.frontiter {
-            init = front.try_rfold(init, &mut fold)?;
-        }
-        self.frontiter = None;
-
-        try { init }
+        self.iter_try_rfold(init, flatten(fold))
     }
 
     #[inline]
@@ -521,36 +549,19 @@ where
     #[inline]
     #[rustc_inherit_overflow_checks]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-        loop {
-            if let Some(ref mut back) = self.backiter {
-                match back.advance_back_by(rem) {
-                    ret @ Ok(_) => return ret,
-                    Err(advanced) => rem -= advanced,
-                }
-            }
-            match self.iter.next_back() {
-                Some(iterable) => self.backiter = Some(iterable.into_iter()),
-                _ => break,
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
+            match iter.advance_back_by(n) {
+                Ok(()) => ControlFlow::BREAK,
+                Err(advanced) => ControlFlow::Continue(n - advanced),
             }
         }
 
-        self.backiter = None;
-
-        if let Some(ref mut front) = self.frontiter {
-            match front.advance_back_by(rem) {
-                ret @ Ok(_) => return ret,
-                Err(advanced) => rem -= advanced,
-            }
+        match self.iter_try_rfold(n, advance) {
+            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
+            _ => Ok(()),
         }
-
-        if rem > 0 {
-            return Err(n - rem);
-        }
-
-        self.frontiter = None;
-
-        Ok(())
     }
 }
 
