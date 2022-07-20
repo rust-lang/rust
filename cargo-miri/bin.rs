@@ -27,6 +27,7 @@ Usage:
 Subcommands:
     run, r                   Run binaries
     test, t                  Run tests
+    nextest                  Run tests with nextest (requires cargo-nextest installed)
     setup                    Only perform automatic setup, but without asking questions (for getting a proper libstd)
 
 The cargo options are exactly the same as for `cargo run` and `cargo test`, respectively.
@@ -586,11 +587,10 @@ fn phase_cargo_miri(mut args: env::Args) {
     };
     let subcommand = match &*subcommand {
         "setup" => MiriCommand::Setup,
-        "test" | "t" | "run" | "r" => MiriCommand::Forward(subcommand),
-        // Invalid command.
+        "test" | "t" | "run" | "r" | "nextest" => MiriCommand::Forward(subcommand),
         _ =>
             show_error(format!(
-                "`cargo miri` supports the following subcommands: `run`, `test`, and `setup`."
+                "`cargo miri` supports the following subcommands: `run`, `test`, `nextest`, and `setup`."
             )),
     };
     let verbose = num_arg_flag("-v");
