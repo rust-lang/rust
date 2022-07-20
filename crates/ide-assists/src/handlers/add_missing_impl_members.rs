@@ -1305,4 +1305,30 @@ impl Trait<u32> for Impl {
 }"#,
         );
     }
+
+    #[test]
+    fn test_default_partial_eq() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+//- minicore: eq
+struct SomeStruct {
+    data: usize,
+    field: (usize, usize),
+}
+impl PartialEq for SomeStruct {$0}
+"#,
+            r#"
+struct SomeStruct {
+    data: usize,
+    field: (usize, usize),
+}
+impl PartialEq for SomeStruct {
+    $0fn ne(&self, other: &Self) -> bool {
+            !self.eq(other)
+        }
+}
+"#,
+        );
+    }
 }
