@@ -158,7 +158,10 @@ pub(crate) fn render_tuple_field(
     item.build()
 }
 
-pub(crate) fn render_type_inference(ty_string: String, ctx: &CompletionContext<'_>) -> CompletionItem {
+pub(crate) fn render_type_inference(
+    ty_string: String,
+    ctx: &CompletionContext<'_>,
+) -> CompletionItem {
     let mut builder =
         CompletionItem::new(CompletionItemKind::InferredType, ctx.source_range(), ty_string);
     builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });

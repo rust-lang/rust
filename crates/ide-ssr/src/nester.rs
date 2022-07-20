@@ -54,7 +54,11 @@ impl MatchCollector {
 }
 
 /// Attempts to add `m` as a sub-match of `existing`.
-fn try_add_sub_match(m: Match, existing: &mut Match, sema: &hir::Semantics<'_, ide_db::RootDatabase>) {
+fn try_add_sub_match(
+    m: Match,
+    existing: &mut Match,
+    sema: &hir::Semantics<'_, ide_db::RootDatabase>,
+) {
     for p in existing.placeholder_values.values_mut() {
         // Note, no need to check if p.range.file is equal to m.range.file, since we
         // already know we're within `existing`.

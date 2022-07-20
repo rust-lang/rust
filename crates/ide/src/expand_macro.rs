@@ -107,7 +107,10 @@ fn expand_macro_recur(
     expand(sema, expanded, ast::MacroCall::cast, expand_macro_recur)
 }
 
-fn expand_attr_macro_recur(sema: &Semantics<'_, RootDatabase>, item: &ast::Item) -> Option<SyntaxNode> {
+fn expand_attr_macro_recur(
+    sema: &Semantics<'_, RootDatabase>,
+    item: &ast::Item,
+) -> Option<SyntaxNode> {
     let expanded = sema.expand_attr_macro(item)?.clone_for_update();
     expand(sema, expanded, ast::Item::cast, expand_attr_macro_recur)
 }

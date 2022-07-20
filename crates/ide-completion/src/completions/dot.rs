@@ -8,7 +8,11 @@ use crate::{
 };
 
 /// Complete dot accesses, i.e. fields or methods.
-pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext<'_>, dot_access: &DotAccess) {
+pub(crate) fn complete_dot(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    dot_access: &DotAccess,
+) {
     let receiver_ty = match dot_access {
         DotAccess { receiver_ty: Some(receiver_ty), .. } => &receiver_ty.original,
         _ => return,

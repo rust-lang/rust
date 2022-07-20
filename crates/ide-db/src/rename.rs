@@ -66,7 +66,11 @@ macro_rules! _bail {
 pub use _bail as bail;
 
 impl Definition {
-    pub fn rename(&self, sema: &Semantics<'_, RootDatabase>, new_name: &str) -> Result<SourceChange> {
+    pub fn rename(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+        new_name: &str,
+    ) -> Result<SourceChange> {
         match *self {
             Definition::Module(module) => rename_mod(sema, module, new_name),
             Definition::BuiltinType(_) => {

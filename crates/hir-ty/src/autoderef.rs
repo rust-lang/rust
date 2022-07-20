@@ -70,7 +70,10 @@ impl Iterator for Autoderef<'_, '_> {
     }
 }
 
-pub(crate) fn autoderef_step(table: &mut InferenceTable<'_>, ty: Ty) -> Option<(AutoderefKind, Ty)> {
+pub(crate) fn autoderef_step(
+    table: &mut InferenceTable<'_>,
+    ty: Ty,
+) -> Option<(AutoderefKind, Ty)> {
     if let Some(derefed) = builtin_deref(&ty) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {

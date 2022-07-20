@@ -1042,7 +1042,11 @@ fn generic_parents(parent: &SyntaxNode) -> Vec<GenericParent> {
 }
 
 /// checks if relevant var is used with `&mut` access inside body
-fn has_exclusive_usages(ctx: &AssistContext<'_>, usages: &LocalUsages, body: &FunctionBody) -> bool {
+fn has_exclusive_usages(
+    ctx: &AssistContext<'_>,
+    usages: &LocalUsages,
+    body: &FunctionBody,
+) -> bool {
     usages
         .iter()
         .filter(|reference| body.contains_range(reference.range))

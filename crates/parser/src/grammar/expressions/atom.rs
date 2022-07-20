@@ -60,7 +60,10 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
 
 const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![let]]);
 
-pub(super) fn atom_expr(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
+pub(super) fn atom_expr(
+    p: &mut Parser<'_>,
+    r: Restrictions,
+) -> Option<(CompletedMarker, BlockLike)> {
     if let Some(m) = literal(p) {
         return Some((m, BlockLike::NotBlock));
     }

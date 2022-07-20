@@ -289,7 +289,10 @@ impl HirDisplay for ConstParam {
     }
 }
 
-fn write_generic_params(def: GenericDefId, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+fn write_generic_params(
+    def: GenericDefId,
+    f: &mut HirFormatter<'_>,
+) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
     if params.lifetimes.is_empty()
         && params.type_or_consts.iter().all(|x| x.1.const_param().is_none())
@@ -381,8 +384,9 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter<'_>) -> Result<(),
         let prev_pred =
             if pred_idx == 0 { None } else { Some(&params.where_predicates[pred_idx - 1]) };
 
-        let new_predicate =
-            |f: &mut HirFormatter<'_>| f.write_str(if pred_idx == 0 { "\n    " } else { ",\n    " });
+        let new_predicate = |f: &mut HirFormatter<'_>| {
+            f.write_str(if pred_idx == 0 { "\n    " } else { ",\n    " })
+        };
 
         match pred {
             WherePredicate::TypeBound { target, .. } if is_unnamed_type_target(target) => {}

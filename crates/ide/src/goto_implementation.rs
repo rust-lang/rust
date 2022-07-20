@@ -90,7 +90,10 @@ fn impls_for_ty(sema: &Semantics<'_, RootDatabase>, ty: hir::Type) -> Vec<Naviga
     Impl::all_for_type(sema.db, ty).into_iter().filter_map(|imp| imp.try_to_nav(sema.db)).collect()
 }
 
-fn impls_for_trait(sema: &Semantics<'_, RootDatabase>, trait_: hir::Trait) -> Vec<NavigationTarget> {
+fn impls_for_trait(
+    sema: &Semantics<'_, RootDatabase>,
+    trait_: hir::Trait,
+) -> Vec<NavigationTarget> {
     Impl::all_for_trait(sema.db, trait_)
         .into_iter()
         .filter_map(|imp| imp.try_to_nav(sema.db))

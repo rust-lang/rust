@@ -304,7 +304,10 @@ fn parent_test_module(sema: &Semantics<'_, RootDatabase>, fn_def: &ast::Fn) -> O
     })
 }
 
-pub(crate) fn runnable_fn(sema: &Semantics<'_, RootDatabase>, def: hir::Function) -> Option<Runnable> {
+pub(crate) fn runnable_fn(
+    sema: &Semantics<'_, RootDatabase>,
+    def: hir::Function,
+) -> Option<Runnable> {
     let func = def.source(sema.db)?;
     let name = def.name(sema.db).to_smol_str();
 
@@ -340,7 +343,10 @@ pub(crate) fn runnable_fn(sema: &Semantics<'_, RootDatabase>, def: hir::Function
     Some(Runnable { use_name_in_title: false, nav, kind, cfg })
 }
 
-pub(crate) fn runnable_mod(sema: &Semantics<'_, RootDatabase>, def: hir::Module) -> Option<Runnable> {
+pub(crate) fn runnable_mod(
+    sema: &Semantics<'_, RootDatabase>,
+    def: hir::Module,
+) -> Option<Runnable> {
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
@@ -353,7 +359,10 @@ pub(crate) fn runnable_mod(sema: &Semantics<'_, RootDatabase>, def: hir::Module)
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
-pub(crate) fn runnable_impl(sema: &Semantics<'_, RootDatabase>, def: &hir::Impl) -> Option<Runnable> {
+pub(crate) fn runnable_impl(
+    sema: &Semantics<'_, RootDatabase>,
+    def: &hir::Impl,
+) -> Option<Runnable> {
     let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(&attrs) {
         return None;

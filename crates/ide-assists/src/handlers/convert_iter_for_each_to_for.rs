@@ -32,7 +32,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     }
 // }
 // ```
-pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_iter_for_each_to_for(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let method = ctx.find_node_at_offset::<ast::MethodCallExpr>()?;
 
     let closure = match method.arg_list()?.args().next()? {
@@ -91,7 +94,10 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
 //     });
 // }
 // ```
-pub(crate) fn convert_for_loop_with_for_each(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_for_loop_with_for_each(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let for_loop = ctx.find_node_at_offset::<ast::ForExpr>()?;
     let iterable = for_loop.iterable()?;
     let pat = for_loop.pat()?;

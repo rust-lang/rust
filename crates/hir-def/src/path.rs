@@ -188,7 +188,10 @@ impl<'a> PathSegments<'a> {
 }
 
 impl GenericArgs {
-    pub(crate) fn from_ast(lower_ctx: &LowerCtx<'_>, node: ast::GenericArgList) -> Option<GenericArgs> {
+    pub(crate) fn from_ast(
+        lower_ctx: &LowerCtx<'_>,
+        node: ast::GenericArgList,
+    ) -> Option<GenericArgs> {
         lower::lower_generic_args(lower_ctx, node)
     }
 

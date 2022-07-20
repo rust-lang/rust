@@ -140,7 +140,12 @@ trait PatLike: Into<ExprOrPatId> + Copy {
 impl PatLike for ExprId {
     type BindingMode = ();
 
-    fn infer(this: &mut InferenceContext<'_>, id: Self, expected_ty: &Ty, _: Self::BindingMode) -> Ty {
+    fn infer(
+        this: &mut InferenceContext<'_>,
+        id: Self,
+        expected_ty: &Ty,
+        _: Self::BindingMode,
+    ) -> Ty {
         this.infer_assignee_expr(id, expected_ty)
     }
 }

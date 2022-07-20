@@ -91,7 +91,10 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
 //     }
 // }
 // ```
-pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn move_arm_cond_to_match_guard(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let match_pat = match_arm.pat()?;
     let arm_body = match_arm.expr()?;

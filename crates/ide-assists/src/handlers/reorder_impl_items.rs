@@ -93,7 +93,10 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     )
 }
 
-fn compute_item_ranks(path: &ast::Path, ctx: &AssistContext<'_>) -> Option<FxHashMap<String, usize>> {
+fn compute_item_ranks(
+    path: &ast::Path,
+    ctx: &AssistContext<'_>,
+) -> Option<FxHashMap<String, usize>> {
     let td = trait_definition(path, &ctx.sema)?;
 
     Some(

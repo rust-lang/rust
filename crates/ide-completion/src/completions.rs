@@ -144,7 +144,12 @@ impl Completions {
         item.add_to(self);
     }
 
-    pub(crate) fn add_keyword_snippet(&mut self, ctx: &CompletionContext<'_>, kw: &str, snippet: &str) {
+    pub(crate) fn add_keyword_snippet(
+        &mut self,
+        ctx: &CompletionContext<'_>,
+        kw: &str,
+        snippet: &str,
+    ) {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
         match ctx.config.snippet_cap {
@@ -348,7 +353,11 @@ impl Completions {
         ));
     }
 
-    pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext<'_>, type_alias: hir::TypeAlias) {
+    pub(crate) fn add_type_alias(
+        &mut self,
+        ctx: &CompletionContext<'_>,
+        type_alias: hir::TypeAlias,
+    ) {
         let is_private_editable = match ctx.is_visible(&type_alias) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -661,7 +670,11 @@ pub(super) fn complete_name_ref(
     }
 }
 
-fn complete_patterns(acc: &mut Completions, ctx: &CompletionContext<'_>, pattern_ctx: &PatternContext) {
+fn complete_patterns(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    pattern_ctx: &PatternContext,
+) {
     flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
     fn_param::complete_fn_param(acc, ctx, pattern_ctx);
     pattern::complete_pattern(acc, ctx, pattern_ctx);

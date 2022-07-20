@@ -130,7 +130,10 @@ pub enum IdentClass {
 }
 
 impl IdentClass {
-    pub fn classify_node(sema: &Semantics<'_, RootDatabase>, node: &SyntaxNode) -> Option<IdentClass> {
+    pub fn classify_node(
+        sema: &Semantics<'_, RootDatabase>,
+        node: &SyntaxNode,
+    ) -> Option<IdentClass> {
         match_ast! {
             match node {
                 ast::Name(name) => NameClass::classify(sema, &name).map(IdentClass::NameClass),
@@ -238,7 +241,10 @@ impl NameClass {
         };
         return Some(NameClass::Definition(definition));
 
-        fn classify_item(sema: &Semantics<'_, RootDatabase>, item: ast::Item) -> Option<Definition> {
+        fn classify_item(
+            sema: &Semantics<'_, RootDatabase>,
+            item: ast::Item,
+        ) -> Option<Definition> {
             let definition = match item {
                 ast::Item::MacroRules(it) => {
                     Definition::Macro(sema.to_def(&ast::Macro::MacroRules(it))?)

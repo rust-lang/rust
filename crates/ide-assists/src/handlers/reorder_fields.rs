@@ -86,7 +86,10 @@ fn replace<T: AstNode + PartialEq>(
     });
 }
 
-fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext<'_>) -> Option<FxHashMap<String, usize>> {
+fn compute_fields_ranks(
+    path: &ast::Path,
+    ctx: &AssistContext<'_>,
+) -> Option<FxHashMap<String, usize>> {
     let strukt = match ctx.sema.resolve_path(path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(it)))) => it,
         _ => return None,

@@ -19,7 +19,10 @@ pub(super) fn expr(p: &mut Parser<'_>) -> bool {
     expr_bp(p, None, r, 1).is_some()
 }
 
-pub(super) fn expr_stmt(p: &mut Parser<'_>, m: Option<Marker>) -> Option<(CompletedMarker, BlockLike)> {
+pub(super) fn expr_stmt(
+    p: &mut Parser<'_>,
+    m: Option<Marker>,
+) -> Option<(CompletedMarker, BlockLike)> {
     let r = Restrictions { forbid_structs: false, prefer_stmt: true };
     expr_bp(p, m, r, 1)
 }

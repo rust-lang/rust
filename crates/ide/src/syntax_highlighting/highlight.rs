@@ -79,7 +79,11 @@ pub(super) fn name_like(
     Some((highlight, binding_hash))
 }
 
-fn punctuation(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken, kind: SyntaxKind) -> Highlight {
+fn punctuation(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+    kind: SyntaxKind,
+) -> Highlight {
     let parent = token.parent();
     let parent_kind = parent.as_ref().map_or(EOF, SyntaxNode::kind);
     match (kind, parent_kind) {
@@ -321,7 +325,11 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     hash((name, shadow_count))
 }
 
-fn highlight_def(sema: &Semantics<'_, RootDatabase>, krate: hir::Crate, def: Definition) -> Highlight {
+fn highlight_def(
+    sema: &Semantics<'_, RootDatabase>,
+    krate: hir::Crate,
+    def: Definition,
+) -> Highlight {
     let db = sema.db;
     let mut h = match def {
         Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),

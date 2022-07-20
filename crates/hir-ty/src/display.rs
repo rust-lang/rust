@@ -952,7 +952,11 @@ fn write_bounds_like_dyn_trait(
     Ok(())
 }
 
-fn fmt_trait_ref(tr: &TraitRef, f: &mut HirFormatter<'_>, use_as: bool) -> Result<(), HirDisplayError> {
+fn fmt_trait_ref(
+    tr: &TraitRef,
+    f: &mut HirFormatter<'_>,
+    use_as: bool,
+) -> Result<(), HirDisplayError> {
     if f.should_truncate() {
         return write!(f, "{}", TYPE_HINT_TRUNCATION);
     }

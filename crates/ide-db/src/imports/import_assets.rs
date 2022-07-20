@@ -218,7 +218,10 @@ impl ImportAssets {
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
-    pub fn search_for_relative_paths(&self, sema: &Semantics<'_, RootDatabase>) -> Vec<LocatedImport> {
+    pub fn search_for_relative_paths(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None)
     }

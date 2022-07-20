@@ -85,7 +85,10 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_
 //     $0fn bar(&self) {}
 // }
 // ```
-pub(crate) fn add_missing_default_members(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_missing_default_members(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     add_missing_impl_members_inner(
         acc,
         ctx,
