@@ -31,9 +31,7 @@ use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{
-    self, ObligationCauseCode, SelectionContext, StatementAsExpression,
-};
+use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
 use std::slice;
@@ -1410,7 +1408,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &self.misc(sp),
                         &mut |err| {
                             if let Some(expected_ty) = expected.only_has_type(self) {
-                                self.consider_hint_about_removing_semicolon(blk, expected_ty, err);
+                                if !self.consider_removing_semicolon(blk, expected_ty, err) {
+                                    self.consider_returning_binding(blk, expected_ty, err);
+                                }
                                 if expected_ty == self.tcx.types.bool {
                                     // If this is caused by a missing `let` in a `while let`,
                                     // silence this redundant error, as we already emit E0070.
@@ -1476,42 +1476,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.ps.set(prev);
         ty
-    }
-
-    /// A common error is to add an extra semicolon:
-    ///
-    /// ```compile_fail,E0308
-    /// fn foo() -> usize {
-    ///     22;
-    /// }
-    /// ```
-    ///
-    /// This routine checks if the final statement in a block is an
-    /// expression with an explicit semicolon whose type is compatible
-    /// with `expected_ty`. If so, it suggests removing the semicolon.
-    fn consider_hint_about_removing_semicolon(
-        &self,
-        blk: &'tcx hir::Block<'tcx>,
-        expected_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
-    ) {
-        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
-            if let StatementAsExpression::NeedsBoxing = boxed {
-                err.span_suggestion_verbose(
-                    span_semi,
-                    "consider removing this semicolon and boxing the expression",
-                    "",
-                    Applicability::HasPlaceholders,
-                );
-            } else {
-                err.span_suggestion_short(
-                    span_semi,
-                    "remove this semicolon",
-                    "",
-                    Applicability::MachineApplicable,
-                );
-            }
-        }
     }
 
     fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
