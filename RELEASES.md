@@ -4,7 +4,6 @@ Version 1.63.0 (2022-08-11)
 Language
 --------
 - [Remove migrate borrowck mode.][95565]
-- [Stabilize `$$` in Rust 1.63.0.][95860]
 - [Modify MIR building to drop repeat expressions with length zero.][95953]
 - [Remove label/lifetime shadowing warnings.][96296]
 - [Stabilize `explicit_generic_args_with_impl_trait`.][96868]
@@ -33,7 +32,6 @@ Libraries
 - [Implement `Hash` for `core::alloc::Layout`.][97034]
 - [os str capacity documentation.][97202]
 - [Put a bound on collection misbehavior.][97316]
-- [Stabilize checked slice->str conversion functions.][97367]
 - [Make `std::mem::needs_drop` accept `?Sized`.][97675]
 - [`impl Termination for Infallible` and then make the `Result` impls of `Termination` more generic.][97803]
 - [Document Rust's stance on `/proc/self/mem`.][97837]
@@ -47,8 +45,8 @@ Stabilized APIs
 - [`BinaryHeap::try_reserve`]
 - [`OsString::try_reserve`]
 - [`OsString::try_reserve_exact`]
-- [`Path::try_reserve`]
-- [`Path::try_reserve_exact`]
+- [`PathBuf::try_reserve`]
+- [`PathBuf::try_reserve_exact`]
 - [`Path::try_exists`]
 - [`Ref::filter_map`]
 - [`RefMut::filter_map`]
@@ -117,7 +115,6 @@ and related tools.
 [95565]: https://github.com/rust-lang/rust/pull/95565/
 [95632]: https://github.com/rust-lang/rust/pull/95632/
 [95818]: https://github.com/rust-lang/rust/pull/95818/
-[95860]: https://github.com/rust-lang/rust/pull/95860/
 [95897]: https://github.com/rust-lang/rust/pull/95897/
 [95953]: https://github.com/rust-lang/rust/pull/95953/
 [96296]: https://github.com/rust-lang/rust/pull/96296/
@@ -130,7 +127,6 @@ and related tools.
 [97034]: https://github.com/rust-lang/rust/pull/97034/
 [97202]: https://github.com/rust-lang/rust/pull/97202/
 [97316]: https://github.com/rust-lang/rust/pull/97316/
-[97367]: https://github.com/rust-lang/rust/pull/97367/
 [97652]: https://github.com/rust-lang/rust/pull/97652/
 [97675]: https://github.com/rust-lang/rust/pull/97675/
 [97803]: https://github.com/rust-lang/rust/pull/97803/
