@@ -80,9 +80,16 @@ impl server::FreeFunctions for RustAnalyzer {
 
     fn literal_from_str(
         &mut self,
-        _s: &str,
+        s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        todo!()
+        // TODO: keep track of LitKind and Suffix
+        let symbol = SYMBOL_INTERNER.lock().unwrap().intern(s);
+        Ok(bridge::Literal {
+            kind: bridge::LitKind::Err,
+            symbol,
+            suffix: None,
+            span: tt::TokenId::unspecified(),
+        })
     }
 }
 
