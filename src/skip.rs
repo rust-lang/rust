@@ -11,7 +11,7 @@ use std::collections::HashSet;
 /// - attributes slice
 /// - manually feeding values into the underlying contexts
 ///
-/// Query this context to know if you need skip a block.
+/// Query this context to know if you need to skip a block.
 #[derive(Default, Clone)]
 pub(crate) struct SkipContext {
     pub(crate) macros: SkipNameContext,
@@ -20,8 +20,8 @@ pub(crate) struct SkipContext {
 
 impl SkipContext {
     pub(crate) fn update_with_attrs(&mut self, attrs: &[ast::Attribute]) {
-        self.macros.append(get_skip_names("macros", attrs));
-        self.attributes.append(get_skip_names("attributes", attrs));
+        self.macros.extend(get_skip_names("macros", attrs));
+        self.attributes.extend(get_skip_names("attributes", attrs));
     }
 
     pub(crate) fn update(&mut self, other: SkipContext) {
@@ -34,28 +34,52 @@ impl SkipContext {
 /// Track which names to skip.
 ///
 /// Query this context with a string to know whether to skip it.
-#[derive(Default, Clone)]
-pub(crate) struct SkipNameContext {
-    all: bool,
-    values: HashSet<String>,
+#[derive(Clone)]
+pub(crate) enum SkipNameContext {
+    All,
+    Values(HashSet<String>),
+}
+
+impl Default for SkipNameContext {
+    fn default() -> Self {
+        Self::Values(Default::default())
+    }
+}
+
+impl Extend<String> for SkipNameContext {
+    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
+        match self {
+            Self::All => {}
+            Self::Values(values) => values.extend(iter),
+        }
+    }
 }
 
 impl SkipNameContext {
-    pub(crate) fn append(&mut self, values: Vec<String>) {
-        self.values.extend(values);
-    }
-
     pub(crate) fn update(&mut self, other: Self) {
-        self.all = self.all || other.all;
-        self.values.extend(other.values);
+        match (self, other) {
+            // If we're already skipping everything, nothing more can be added
+            (Self::All, _) => {}
+            // If we want to skip all, set it
+            (this, Self::All) => {
+                *this = Self::All;
+            }
+            // If we have some new values to skip, add them
+            (Self::Values(existing_values), Self::Values(new_values)) => {
+                existing_values.extend(new_values)
+            }
+        }
     }
 
     pub(crate) fn skip(&self, name: &str) -> bool {
-        self.all || self.values.contains(name)
+        match self {
+            Self::All => true,
+            Self::Values(values) => values.contains(name),
+        }
     }
 
-    pub(crate) fn set_all(&mut self, all: bool) {
-        self.all = all;
+    pub(crate) fn skip_all(&mut self) {
+        *self = Self::All;
     }
 }
 
