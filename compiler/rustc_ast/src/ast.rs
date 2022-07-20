@@ -25,7 +25,9 @@ pub use UnsafeSource::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
+use crate::visit::{self, BoundKind, LifetimeCtxt, Visitor};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
@@ -64,7 +66,7 @@ impl fmt::Debug for Label {
 
 /// A "Lifetime" is an annotation of the scope in which variable
 /// can be used, e.g. `'a` in `&'a i32`.
-#[derive(Clone, Encodable, Decodable, Copy)]
+#[derive(Clone, Encodable, Decodable, Copy, PartialEq, Eq)]
 pub struct Lifetime {
     pub id: NodeId,
     pub ident: Ident,
@@ -322,6 +324,63 @@ impl GenericBound {
 }
 
 pub type GenericBounds = Vec<GenericBound>;
+
+struct LifetimeCollectVisitor<'ast> {
+    current_binders: Vec<NodeId>,
+    binders_to_ignore: FxHashMap<NodeId, Vec<NodeId>>,
+    collected_lifetimes: Vec<&'ast Lifetime>,
+}
+
+impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
+    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) {
+        if !self.collected_lifetimes.contains(&lifetime) {
+            self.collected_lifetimes.push(lifetime);
+        }
+        self.binders_to_ignore.insert(lifetime.id, self.current_binders.clone());
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
+        self.current_binders.push(t.trait_ref.ref_id);
+
+        visit::walk_poly_trait_ref(self, t, m);
+
+        self.current_binders.pop();
+    }
+
+    fn visit_ty(&mut self, t: &'ast Ty) {
+        if let TyKind::BareFn(_) = t.kind {
+            self.current_binders.push(t.id);
+        }
+        visit::walk_ty(self, t);
+        if let TyKind::BareFn(_) = t.kind {
+            self.current_binders.pop();
+        }
+    }
+}
+
+pub fn lifetimes_in_ret_ty(ret_ty: &FnRetTy) -> (Vec<&Lifetime>, FxHashMap<NodeId, Vec<NodeId>>) {
+    let mut visitor = LifetimeCollectVisitor {
+        current_binders: Vec::new(),
+        binders_to_ignore: FxHashMap::default(),
+        collected_lifetimes: Vec::new(),
+    };
+    visitor.visit_fn_ret_ty(ret_ty);
+    (visitor.collected_lifetimes, visitor.binders_to_ignore)
+}
+
+pub fn lifetimes_in_bounds(
+    bounds: &GenericBounds,
+) -> (Vec<&Lifetime>, FxHashMap<NodeId, Vec<NodeId>>) {
+    let mut visitor = LifetimeCollectVisitor {
+        current_binders: Vec::new(),
+        binders_to_ignore: FxHashMap::default(),
+        collected_lifetimes: Vec::new(),
+    };
+    for bound in bounds {
+        visitor.visit_param_bound(bound, BoundKind::Bound);
+    }
+    (visitor.collected_lifetimes, visitor.binders_to_ignore)
+}
 
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and

@@ -1304,17 +1304,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { origin } => self
-                        .lower_opaque_impl_trait(span, origin, def_node_id, |this| {
-                            this.lower_param_bounds(bounds, itctx, true)
-                        }),
+                    ImplTraitContext::ReturnPositionOpaqueTy { origin } => {
+                        self.lower_opaque_impl_trait(span, origin, def_node_id, bounds, itctx)
+                    }
                     ImplTraitContext::TypeAliasesOpaqueTy => {
                         let nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy;
                         self.lower_opaque_impl_trait(
                             span,
                             hir::OpaqueTyOrigin::TyAlias,
                             def_node_id,
-                            |this| this.lower_param_bounds(bounds, nested_itctx, true),
+                            bounds,
+                            nested_itctx,
                         )
                     }
                     ImplTraitContext::Universal => {
@@ -1354,13 +1354,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
     }
 
-    #[tracing::instrument(level = "debug", skip(self, lower_bounds))]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn lower_opaque_impl_trait(
         &mut self,
         span: Span,
         origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
-        lower_bounds: impl FnOnce(&mut Self) -> hir::GenericBounds<'hir>,
+        bounds: &GenericBounds,
+        itctx: ImplTraitContext,
     ) -> hir::TyKind<'hir> {
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
@@ -1374,23 +1375,122 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut collected_lifetimes = FxHashMap::default();
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             let hir_bounds = if origin == hir::OpaqueTyOrigin::TyAlias {
-                lower_bounds(lctx)
+                lctx.lower_param_bounds(bounds, itctx, true)
             } else {
-                let lifetime_stash = std::mem::replace(
-                    &mut lctx.captured_lifetimes,
-                    Some(LifetimeCaptureContext {
-                        parent_def_id: opaque_ty_def_id,
-                        captures: std::mem::take(&mut collected_lifetimes),
-                        binders_to_ignore: Default::default(),
-                    }),
-                );
+                if std::env::var("NEW_COLLECT_LIFETIMES").is_ok() {
+                    let lifetime_stash = std::mem::replace(
+                        &mut lctx.captured_lifetimes,
+                        Some(LifetimeCaptureContext {
+                            parent_def_id: opaque_ty_def_id,
+                            captures: std::mem::take(&mut collected_lifetimes),
+                            binders_to_ignore: Default::default(),
+                        }),
+                    );
 
-                let ret = lower_bounds(lctx);
+                    let (lifetimes_in_bounds, binders_to_ignore) = ast::lifetimes_in_bounds(bounds);
 
-                let ctxt = std::mem::replace(&mut lctx.captured_lifetimes, lifetime_stash).unwrap();
-                collected_lifetimes = ctxt.captures;
+                    for lifetime in &lifetimes_in_bounds {
+                        let ident = lifetime.ident;
+                        let span = ident.span;
 
-                ret
+                        let res = lctx
+                            .resolver
+                            .get_lifetime_res(lifetime.id)
+                            .unwrap_or(LifetimeRes::Error);
+
+                        if let Some(mut captured_lifetimes) = lctx.captured_lifetimes.take() {
+                            match res {
+                                LifetimeRes::Param { param, binder } => {
+                                    if !captured_lifetimes.binders_to_ignore.contains(&binder)
+                                        && !binders_to_ignore
+                                            .get(&lifetime.id)
+                                            .unwrap_or(&Vec::new())
+                                            .contains(&binder)
+                                    {
+                                        match captured_lifetimes.captures.entry(param) {
+                                            Entry::Occupied(_) => {}
+                                            Entry::Vacant(v) => {
+                                                let node_id = lctx.next_node_id();
+                                                let name = ParamName::Plain(ident);
+
+                                                lctx.create_def(
+                                                    captured_lifetimes.parent_def_id,
+                                                    node_id,
+                                                    DefPathData::LifetimeNs(name.ident().name),
+                                                );
+
+                                                v.insert((span, node_id, name, res));
+                                            }
+                                        }
+                                    }
+                                }
+
+                                LifetimeRes::Fresh { param, binder } => {
+                                    debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                                    if !captured_lifetimes.binders_to_ignore.contains(&binder)
+                                        && !binders_to_ignore
+                                            .get(&lifetime.id)
+                                            .unwrap_or(&Vec::new())
+                                            .contains(&binder)
+                                    {
+                                        let param = lctx.local_def_id(param);
+                                        match captured_lifetimes.captures.entry(param) {
+                                            Entry::Occupied(_) => {}
+                                            Entry::Vacant(v) => {
+                                                let node_id = lctx.next_node_id();
+
+                                                let name = ParamName::Fresh;
+
+                                                lctx.create_def(
+                                                    captured_lifetimes.parent_def_id,
+                                                    node_id,
+                                                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                                                );
+
+                                                v.insert((span, node_id, name, res));
+                                            }
+                                        }
+                                    }
+                                }
+
+                                LifetimeRes::Infer | LifetimeRes::Static | LifetimeRes::Error => {}
+
+                                res => panic!(
+                                    "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                                    res, lifetime.ident, lifetime.ident.span
+                                ),
+                            }
+
+                            lctx.captured_lifetimes = Some(captured_lifetimes);
+                        }
+                    }
+
+                    let ret = lctx.lower_param_bounds(bounds, itctx, false);
+
+                    let ctxt =
+                        std::mem::replace(&mut lctx.captured_lifetimes, lifetime_stash).unwrap();
+
+                    collected_lifetimes = ctxt.captures;
+
+                    ret
+                } else {
+                    let lifetime_stash = std::mem::replace(
+                        &mut lctx.captured_lifetimes,
+                        Some(LifetimeCaptureContext {
+                            parent_def_id: opaque_ty_def_id,
+                            captures: std::mem::take(&mut collected_lifetimes),
+                            binders_to_ignore: Default::default(),
+                        }),
+                    );
+
+                    let ret = lctx.lower_param_bounds(bounds, itctx, true);
+
+                    let ctxt =
+                        std::mem::replace(&mut lctx.captured_lifetimes, lifetime_stash).unwrap();
+                    collected_lifetimes = ctxt.captures;
+
+                    ret
+                }
             };
             debug!(?collected_lifetimes);
 
@@ -1855,16 +1955,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         captures: bool,
     ) -> hir::Lifetime {
         debug!(?self.captured_lifetimes);
+
         let name = match res {
             LifetimeRes::Param { mut param, binder } => {
                 let p_name = ParamName::Plain(ident);
-                if captures {
-                    if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                    if captures {
                         if !captured_lifetimes.binders_to_ignore.contains(&binder) {
                             match captured_lifetimes.captures.entry(param) {
                                 Entry::Occupied(o) => param = self.local_def_id(o.get().1),
                                 Entry::Vacant(v) => {
                                     let p_id = self.next_node_id();
+
                                     let p_def_id = self.create_def(
                                         captured_lifetimes.parent_def_id,
                                         p_id,
@@ -1876,36 +1978,40 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 }
                             }
                         }
-
-                        self.captured_lifetimes = Some(captured_lifetimes);
+                    } else {
+                        if let Entry::Occupied(o) = captured_lifetimes.captures.entry(param) {
+                            param = self.local_def_id(o.get().1);
+                        }
                     }
+                    self.captured_lifetimes = Some(captured_lifetimes);
                 }
+
                 hir::LifetimeName::Param(param, p_name)
             }
             LifetimeRes::Fresh { param, binder } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                let mut param = self.local_def_id(param);
-                if captures {
-                    if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
-                        if !captured_lifetimes.binders_to_ignore.contains(&binder) {
-                            match captured_lifetimes.captures.entry(param) {
-                                Entry::Occupied(o) => param = self.local_def_id(o.get().1),
-                                Entry::Vacant(v) => {
-                                    let p_id = self.next_node_id();
-                                    let p_def_id = self.create_def(
-                                        captured_lifetimes.parent_def_id,
-                                        p_id,
-                                        DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                                    );
 
-                                    v.insert((span, p_id, ParamName::Fresh, res));
-                                    param = p_def_id;
-                                }
+                let mut param = self.local_def_id(param);
+                if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
+                        match captured_lifetimes.captures.entry(param) {
+                            Entry::Occupied(o) => param = self.local_def_id(o.get().1),
+                            Entry::Vacant(v) => {
+                                let p_id = self.next_node_id();
+
+                                let p_def_id = self.create_def(
+                                    captured_lifetimes.parent_def_id,
+                                    p_id,
+                                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                                );
+
+                                v.insert((span, p_id, ParamName::Fresh, res));
+                                param = p_def_id;
                             }
                         }
-
-                        self.captured_lifetimes = Some(captured_lifetimes);
                     }
+
+                    self.captured_lifetimes = Some(captured_lifetimes);
                 }
                 hir::LifetimeName::Param(param, ParamName::Fresh)
             }
