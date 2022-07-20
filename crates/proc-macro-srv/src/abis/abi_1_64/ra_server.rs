@@ -268,12 +268,12 @@ pub struct TokenStreamIter {
 }
 
 #[derive(Default)]
-pub struct Rustc {
+pub struct RustAnalyzer {
     ident_interner: IdentInterner,
     // FIXME: store span information here.
 }
 
-impl server::Types for Rustc {
+impl server::Types for RustAnalyzer {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
     type Ident = IdentId;
@@ -284,7 +284,7 @@ impl server::Types for Rustc {
     type MultiSpan = Vec<Span>;
 }
 
-impl server::FreeFunctions for Rustc {
+impl server::FreeFunctions for RustAnalyzer {
     fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {
         // FIXME: track env var accesses
         // https://github.com/rust-lang/rust/pull/71858
@@ -292,7 +292,7 @@ impl server::FreeFunctions for Rustc {
     fn track_path(&mut self, _path: &str) {}
 }
 
-impl server::TokenStream for Rustc {
+impl server::TokenStream for RustAnalyzer {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -449,7 +449,7 @@ fn spacing_to_external(spacing: Spacing) -> bridge::Spacing {
     }
 }
 
-impl server::Ident for Rustc {
+impl server::Ident for RustAnalyzer {
     fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
         IdentId(self.ident_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
     }
@@ -464,7 +464,7 @@ impl server::Ident for Rustc {
     }
 }
 
-impl server::Literal for Rustc {
+impl server::Literal for RustAnalyzer {
     fn debug_kind(&mut self, _literal: &Self::Literal) -> String {
         // r-a: debug_kind and suffix are unsupported; corresponding client code has been changed to not call these.
         // They must still be present to be ABI-compatible and work with upstream proc_macro.
@@ -575,7 +575,7 @@ impl server::Literal for Rustc {
     }
 }
 
-impl server::SourceFile for Rustc {
+impl server::SourceFile for RustAnalyzer {
     // FIXME these are all stubs
     fn eq(&mut self, _file1: &Self::SourceFile, _file2: &Self::SourceFile) -> bool {
         true
@@ -588,7 +588,7 @@ impl server::SourceFile for Rustc {
     }
 }
 
-impl server::Diagnostic for Rustc {
+impl server::Diagnostic for RustAnalyzer {
     fn new(&mut self, level: Level, msg: &str, spans: Self::MultiSpan) -> Self::Diagnostic {
         let mut diag = Diagnostic::new(level, msg);
         diag.spans = spans;
@@ -612,7 +612,7 @@ impl server::Diagnostic for Rustc {
     }
 }
 
-impl server::Span for Rustc {
+impl server::Span for RustAnalyzer {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span.0)
     }
@@ -669,7 +669,7 @@ impl server::Span for Rustc {
     }
 }
 
-impl server::MultiSpan for Rustc {
+impl server::MultiSpan for RustAnalyzer {
     fn new(&mut self) -> Self::MultiSpan {
         // FIXME handle span
         vec![]
@@ -681,7 +681,7 @@ impl server::MultiSpan for Rustc {
     }
 }
 
-impl server::Server for Rustc {
+impl server::Server for RustAnalyzer {
     fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
         bridge::ExpnGlobals {
             def_site: Span::unspecified(),
@@ -697,8 +697,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rustc_server_literals() {
-        let mut srv = Rustc { ident_interner: IdentInterner::default() };
+    fn test_ra_server_literals() {
+        let mut srv = RustAnalyzer { ident_interner: IdentInterner::default() };
         assert_eq!(srv.integer("1234").text, "1234");
 
         assert_eq!(srv.typed_integer("12", "u8").text, "12u8");
@@ -734,7 +734,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rustc_server_to_string() {
+    fn test_ra_server_to_string() {
         let s = TokenStream {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
@@ -759,7 +759,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rustc_server_from_str() {
+    fn test_ra_server_from_str() {
         use std::str::FromStr;
         let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
             delimiter: Some(tt::Delimiter {

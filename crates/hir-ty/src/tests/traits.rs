@@ -2430,29 +2430,29 @@ macro_rules! declare_server_traits {
 with_api!(Self, self_, declare_server_traits);
 struct G {}
 struct T {}
-struct Rustc;
-impl Types for Rustc {
+struct RustAnalyzer;
+impl Types for RustAnalyzer {
     type TokenStream = T;
     type Group = G;
 }
 
 fn make<T>() -> T { loop {} }
-impl TokenStream for Rustc {
+impl TokenStream for RustAnalyzer {
     fn new() -> Self::TokenStream {
         let group: Self::Group = make();
         make()
     }
 }"#,
         expect![[r#"
-            1061..1072 '{ loop {} }': T
-            1063..1070 'loop {}': !
-            1068..1070 '{}': ()
-            1136..1199 '{     ...     }': T
-            1150..1155 'group': G
-            1171..1175 'make': fn make<G>() -> G
-            1171..1177 'make()': G
-            1187..1191 'make': fn make<T>() -> T
-            1187..1193 'make()': T
+            1075..1086 '{ loop {} }': T
+            1077..1084 'loop {}': !
+            1082..1084 '{}': ()
+            1157..1220 '{     ...     }': T
+            1171..1176 'group': G
+            1192..1196 'make': fn make<G>() -> G
+            1192..1198 'make()': G
+            1208..1212 'make': fn make<T>() -> T
+            1208..1214 'make()': T
         "#]],
     );
 }

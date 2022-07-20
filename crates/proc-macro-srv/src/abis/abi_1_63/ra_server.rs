@@ -23,14 +23,14 @@ type Spacing = tt::Spacing;
 type Literal = tt::Literal;
 type Span = tt::TokenId;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct TokenStream {
     pub token_trees: Vec<TokenTree>,
 }
 
 impl TokenStream {
     pub fn new() -> Self {
-        TokenStream { token_trees: Default::default() }
+        TokenStream::default()
     }
 
     pub fn with_subtree(subtree: tt::Subtree) -> Self {
@@ -268,16 +268,14 @@ pub struct TokenStreamIter {
 }
 
 #[derive(Default)]
-pub struct Rustc {
+pub struct RustAnalyzer {
     ident_interner: IdentInterner,
     // FIXME: store span information here.
 }
 
-impl server::Types for Rustc {
+impl server::Types for RustAnalyzer {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type TokenStreamBuilder = TokenStreamBuilder;
-    type TokenStreamIter = TokenStreamIter;
     type Group = Group;
     type Punct = Punct;
     type Ident = IdentId;
@@ -288,7 +286,7 @@ impl server::Types for Rustc {
     type MultiSpan = Vec<Span>;
 }
 
-impl server::FreeFunctions for Rustc {
+impl server::FreeFunctions for RustAnalyzer {
     fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {
         // FIXME: track env var accesses
         // https://github.com/rust-lang/rust/pull/71858
@@ -296,11 +294,7 @@ impl server::FreeFunctions for Rustc {
     fn track_path(&mut self, _path: &str) {}
 }
 
-impl server::TokenStream for Rustc {
-    fn new(&mut self) -> Self::TokenStream {
-        Self::TokenStream::new()
-    }
-
+impl server::TokenStream for RustAnalyzer {
     fn is_empty(&mut self, stream: &Self::TokenStream) -> bool {
         stream.is_empty()
     }
@@ -344,41 +338,55 @@ impl server::TokenStream for Rustc {
         }
     }
 
-    fn into_iter(&mut self, stream: Self::TokenStream) -> Self::TokenStreamIter {
-        let trees: Vec<TokenTree> = stream.into_iter().collect();
-        TokenStreamIter { trees: trees.into_iter() }
-    }
-
     fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
         Ok(self_.clone())
     }
-}
 
-impl server::TokenStreamBuilder for Rustc {
-    fn new(&mut self) -> Self::TokenStreamBuilder {
-        Self::TokenStreamBuilder::new()
-    }
-    fn push(&mut self, builder: &mut Self::TokenStreamBuilder, stream: Self::TokenStream) {
-        builder.push(stream)
-    }
-    fn build(&mut self, builder: Self::TokenStreamBuilder) -> Self::TokenStream {
+    fn concat_trees(
+        &mut self,
+        base: Option<Self::TokenStream>,
+        trees: Vec<bridge::TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>>,
+    ) -> Self::TokenStream {
+        let mut builder = TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for tree in trees {
+            builder.push(self.from_token_tree(tree));
+        }
         builder.build()
     }
-}
 
-impl server::TokenStreamIter for Rustc {
-    fn next(
+    fn concat_streams(
         &mut self,
-        iter: &mut Self::TokenStreamIter,
-    ) -> Option<bridge::TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
-        iter.trees.next().map(|tree| match tree {
-            TokenTree::Subtree(group) => bridge::TokenTree::Group(group),
-            TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                bridge::TokenTree::Ident(IdentId(self.ident_interner.intern(&IdentData(ident))))
-            }
-            TokenTree::Leaf(tt::Leaf::Literal(literal)) => bridge::TokenTree::Literal(literal),
-            TokenTree::Leaf(tt::Leaf::Punct(punct)) => bridge::TokenTree::Punct(punct),
-        })
+        base: Option<Self::TokenStream>,
+        streams: Vec<Self::TokenStream>,
+    ) -> Self::TokenStream {
+        let mut builder = TokenStreamBuilder::new();
+        if let Some(base) = base {
+            builder.push(base);
+        }
+        for stream in streams {
+            builder.push(stream);
+        }
+        builder.build()
+    }
+
+    fn into_trees(
+        &mut self,
+        stream: Self::TokenStream,
+    ) -> Vec<bridge::TokenTree<Self::Group, Self::Punct, Self::Ident, Self::Literal>> {
+        stream
+            .into_iter()
+            .map(|tree| match tree {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    bridge::TokenTree::Ident(IdentId(self.ident_interner.intern(&IdentData(ident))))
+                }
+                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => bridge::TokenTree::Literal(lit),
+                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => bridge::TokenTree::Punct(punct),
+                tt::TokenTree::Subtree(subtree) => bridge::TokenTree::Group(subtree),
+            })
+            .collect()
     }
 }
 
@@ -415,9 +423,16 @@ fn spacing_to_external(spacing: Spacing) -> bridge::Spacing {
     }
 }
 
-impl server::Group for Rustc {
-    fn new(&mut self, delimiter: bridge::Delimiter, stream: Self::TokenStream) -> Self::Group {
-        Self::Group { delimiter: delim_to_internal(delimiter), token_trees: stream.token_trees }
+impl server::Group for RustAnalyzer {
+    fn new(
+        &mut self,
+        delimiter: bridge::Delimiter,
+        stream: Option<Self::TokenStream>,
+    ) -> Self::Group {
+        Self::Group {
+            delimiter: delim_to_internal(delimiter),
+            token_trees: stream.unwrap_or_default().token_trees,
+        }
     }
     fn delimiter(&mut self, group: &Self::Group) -> bridge::Delimiter {
         delim_to_external(group.delimiter)
@@ -449,7 +464,7 @@ impl server::Group for Rustc {
     }
 }
 
-impl server::Punct for Rustc {
+impl server::Punct for RustAnalyzer {
     fn new(&mut self, ch: char, spacing: bridge::Spacing) -> Self::Punct {
         tt::Punct {
             char: ch,
@@ -471,7 +486,7 @@ impl server::Punct for Rustc {
     }
 }
 
-impl server::Ident for Rustc {
+impl server::Ident for RustAnalyzer {
     fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
         IdentId(self.ident_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
     }
@@ -486,7 +501,7 @@ impl server::Ident for Rustc {
     }
 }
 
-impl server::Literal for Rustc {
+impl server::Literal for RustAnalyzer {
     fn debug_kind(&mut self, _literal: &Self::Literal) -> String {
         // r-a: debug_kind and suffix are unsupported; corresponding client code has been changed to not call these.
         // They must still be present to be ABI-compatible and work with upstream proc_macro.
@@ -597,7 +612,7 @@ impl server::Literal for Rustc {
     }
 }
 
-impl server::SourceFile for Rustc {
+impl server::SourceFile for RustAnalyzer {
     // FIXME these are all stubs
     fn eq(&mut self, _file1: &Self::SourceFile, _file2: &Self::SourceFile) -> bool {
         true
@@ -610,7 +625,7 @@ impl server::SourceFile for Rustc {
     }
 }
 
-impl server::Diagnostic for Rustc {
+impl server::Diagnostic for RustAnalyzer {
     fn new(&mut self, level: Level, msg: &str, spans: Self::MultiSpan) -> Self::Diagnostic {
         let mut diag = Diagnostic::new(level, msg);
         diag.spans = spans;
@@ -634,7 +649,7 @@ impl server::Diagnostic for Rustc {
     }
 }
 
-impl server::Span for Rustc {
+impl server::Span for RustAnalyzer {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span.0)
     }
@@ -706,7 +721,7 @@ impl server::Span for Rustc {
     }
 }
 
-impl server::MultiSpan for Rustc {
+impl server::MultiSpan for RustAnalyzer {
     fn new(&mut self) -> Self::MultiSpan {
         // FIXME handle span
         vec![]
@@ -724,8 +739,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rustc_server_literals() {
-        let mut srv = Rustc { ident_interner: IdentInterner::default() };
+    fn test_ra_server_literals() {
+        let mut srv = RustAnalyzer { ident_interner: IdentInterner::default() };
         assert_eq!(srv.integer("1234").text, "1234");
 
         assert_eq!(srv.typed_integer("12", "u8").text, "12u8");
@@ -761,7 +776,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rustc_server_to_string() {
+    fn test_ra_server_to_string() {
         let s = TokenStream {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
@@ -786,7 +801,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rustc_server_from_str() {
+    fn test_ra_server_from_str() {
         use std::str::FromStr;
         let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
             delimiter: Some(tt::Delimiter {
