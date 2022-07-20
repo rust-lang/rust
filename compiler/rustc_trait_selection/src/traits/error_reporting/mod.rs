@@ -22,7 +22,6 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
-use rustc_infer::infer::error_reporting::same_type_modulo_infer;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -640,7 +639,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                             if expected.len() == 1 { "" } else { "s" },
                                         )
                                     );
-                                } else if !same_type_modulo_infer(given_ty, expected_ty) {
+                                } else if !self.same_type_modulo_infer(given_ty, expected_ty) {
                                     // Print type mismatch
                                     let (expected_args, given_args) =
                                         self.cmp(given_ty, expected_ty);
