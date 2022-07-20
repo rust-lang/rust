@@ -15,8 +15,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 

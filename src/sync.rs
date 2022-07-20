@@ -42,7 +42,7 @@ macro_rules! declare_id {
         }
 
         impl $name {
-            pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
+            pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Provenance> {
                 Scalar::from_u32(self.0.get())
             }
         }

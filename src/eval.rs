@@ -165,7 +165,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     entry_id: DefId,
     entry_type: EntryFnType,
     config: &MiriConfig,
-) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Tag>)> {
+) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Provenance>)> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
@@ -202,7 +202,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.
-        let mut argvs = Vec::<Immediate<Tag>>::new();
+        let mut argvs = Vec::<Immediate<Provenance>>::new();
         for arg in config.args.iter() {
             // Make space for `0` terminator.
             let size = u64::try_from(arg.len()).unwrap().checked_add(1).unwrap();

@@ -74,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
         zero_init: bool,
         kind: MiriMemoryKind,
-    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         if size == 0 {
             Ok(Pointer::null())
@@ -89,7 +89,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn free(&mut self, ptr: Pointer<Option<Tag>>, kind: MiriMemoryKind) -> InterpResult<'tcx> {
+    fn free(
+        &mut self,
+        ptr: Pointer<Option<Provenance>>,
+        kind: MiriMemoryKind,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.ptr_is_null(ptr)? {
             this.deallocate_ptr(ptr, None, kind.into())?;
@@ -99,10 +103,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn realloc(
         &mut self,
-        old_ptr: Pointer<Option<Tag>>,
+        old_ptr: Pointer<Option<Provenance>>,
         new_size: u64,
         kind: MiriMemoryKind,
-    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
         let new_align = this.min_align(new_size, kind);
         if this.ptr_is_null(old_ptr)? {
@@ -231,8 +235,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         def_id: DefId,
         abi: Abi,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -353,8 +357,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         link_name: Symbol,
         abi: Abi,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
 

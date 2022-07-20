@@ -18,8 +18,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_atomic_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -121,8 +121,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_load(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -150,7 +150,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_store(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
+        args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -177,7 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn compiler_fence(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
+        args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let [] = check_arg_count(args)?;
@@ -188,7 +188,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_fence(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
+        args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -199,8 +199,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_op(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         atomic_op: AtomicOp,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
@@ -252,8 +252,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_exchange(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -280,8 +280,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_compare_exchange_impl(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
         can_fail_spuriously: bool,
@@ -320,8 +320,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_compare_exchange(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
@@ -330,8 +330,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn atomic_compare_exchange_weak(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         success: AtomicRwOrd,
         fail: AtomicReadOrd,
     ) -> InterpResult<'tcx> {

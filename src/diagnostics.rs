@@ -65,7 +65,7 @@ pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZeroU64, Option<(AllocId, AllocRange)>),
     /// This `Item` was popped from the borrow stack, either due to an access with the given tag or
     /// a deallocation when the second argument is `None`.
-    PoppedPointerTag(Item, Option<(SbTagExtra, AccessKind)>),
+    PoppedPointerTag(Item, Option<(ProvenanceExtra, AccessKind)>),
     CreatedCallId(CallId),
     CreatedAlloc(AllocId, Size, Align, MemoryKind<MiriMemoryKind>),
     FreedAlloc(AllocId),

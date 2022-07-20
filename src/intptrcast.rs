@@ -109,7 +109,7 @@ impl<'mir, 'tcx> GlobalStateInner {
     pub fn ptr_from_addr_transmute(
         _ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
-    ) -> Pointer<Option<Tag>> {
+    ) -> Pointer<Option<Provenance>> {
         trace!("Transmuting {:#x} to a pointer", addr);
 
         // We consider transmuted pointers to be "invalid" (`None` provenance).
@@ -119,7 +119,7 @@ impl<'mir, 'tcx> GlobalStateInner {
     pub fn ptr_from_addr_cast(
         ecx: &MiriEvalContext<'mir, 'tcx>,
         addr: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         trace!("Casting {:#x} to a pointer", addr);
 
         let global_state = ecx.machine.intptrcast.borrow();
@@ -146,7 +146,7 @@ impl<'mir, 'tcx> GlobalStateInner {
         }
 
         // This is how wildcard pointers are born.
-        Ok(Pointer::new(Some(Tag::Wildcard), Size::from_bytes(addr)))
+        Ok(Pointer::new(Some(Provenance::Wildcard), Size::from_bytes(addr)))
     }
 
     fn alloc_base_addr(ecx: &MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId) -> u64 {
@@ -208,11 +208,11 @@ impl<'mir, 'tcx> GlobalStateInner {
     /// access is going.
     pub fn abs_ptr_to_rel(
         ecx: &MiriEvalContext<'mir, 'tcx>,
-        ptr: Pointer<Tag>,
+        ptr: Pointer<Provenance>,
     ) -> Option<(AllocId, Size)> {
         let (tag, addr) = ptr.into_parts(); // addr is absolute (Tag provenance)
 
-        let alloc_id = if let Tag::Concrete { alloc_id, .. } = tag {
+        let alloc_id = if let Provenance::Concrete { alloc_id, .. } = tag {
             alloc_id
         } else {
             // A wildcard pointer.

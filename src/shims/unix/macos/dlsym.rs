@@ -27,8 +27,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_dlsym(
         &mut self,
         dlsym: Dlsym,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

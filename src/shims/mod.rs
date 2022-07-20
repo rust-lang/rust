@@ -27,8 +27,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         instance: ty::Instance<'tcx>,
         abi: Abi,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -62,9 +62,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// the actual MIR of `align_offset`.
     fn align_offset(
         &mut self,
-        ptr_op: &OpTy<'tcx, Tag>,
-        align_op: &OpTy<'tcx, Tag>,
-        dest: &PlaceTy<'tcx, Tag>,
+        ptr_op: &OpTy<'tcx, Provenance>,
+        align_op: &OpTy<'tcx, Provenance>,
+        dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, bool> {

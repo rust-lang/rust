@@ -52,7 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(
         &'a self,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
     ) -> InterpResult<'tcx, &'a OsStr>
     where
         'tcx: 'a,
@@ -67,7 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// which is what the Windows APIs usually handle.
     fn read_os_str_from_wide_str<'a>(
         &'a self,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
     ) -> InterpResult<'tcx, OsString>
     where
         'tcx: 'a,
@@ -96,7 +96,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_os_str_to_c_str(
         &mut self,
         os_str: &OsStr,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let bytes = os_str_to_bytes(os_str)?;
@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(windows)]
@@ -165,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         os_str: &OsStr,
         memkind: MemoryKind<MiriMemoryKind>,
-    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0` terminator.
         let this = self.eval_context_mut();
 
@@ -180,7 +180,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         os_str: &OsStr,
         memkind: MemoryKind<MiriMemoryKind>,
-    ) -> InterpResult<'tcx, Pointer<Option<Tag>>> {
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let size = u64::try_from(os_str.len()).unwrap().checked_add(1).unwrap(); // Make space for `0x0000` terminator.
         let this = self.eval_context_mut();
 
@@ -193,7 +193,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Read a null-terminated sequence of bytes, and perform path separator conversion if needed.
     fn read_path_from_c_str<'a>(
         &'a self,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
     ) -> InterpResult<'tcx, Cow<'a, Path>>
     where
         'tcx: 'a,
@@ -209,7 +209,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Read a null-terminated sequence of `u16`s, and perform path separator conversion if needed.
-    fn read_path_from_wide_str(&self, ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, PathBuf> {
+    fn read_path_from_wide_str(
+        &self,
+        ptr: Pointer<Option<Provenance>>,
+    ) -> InterpResult<'tcx, PathBuf> {
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(ptr)?;
 
@@ -224,7 +227,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_path_to_c_str(
         &mut self,
         path: &Path,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
@@ -238,7 +241,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_path_to_wide_str(
         &mut self,
         path: &Path,
-        ptr: Pointer<Option<Tag>>,
+        ptr: Pointer<Option<Provenance>>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();

@@ -26,11 +26,11 @@ use helpers::check_arg_count;
 #[derive(Debug)]
 pub struct CatchUnwindData<'tcx> {
     /// The `catch_fn` callback to call in case of a panic.
-    catch_fn: Scalar<Tag>,
+    catch_fn: Scalar<Provenance>,
     /// The `data` argument for that callback.
-    data: Scalar<Tag>,
+    data: Scalar<Provenance>,
     /// The return place from the original call to `try`.
-    dest: PlaceTy<'tcx, Tag>,
+    dest: PlaceTy<'tcx, Provenance>,
     /// The return block from the original call to `try`.
     ret: mir::BasicBlock,
 }
@@ -43,7 +43,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         abi: Abi,
         link_name: Symbol,
-        args: &[OpTy<'tcx, Tag>],
+        args: &[OpTy<'tcx, Provenance>],
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
@@ -65,8 +65,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
     fn handle_try(
         &mut self,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
         ret: mir::BasicBlock,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();

@@ -12,8 +12,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_simd_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
+        args: &[OpTy<'tcx, Provenance>],
+        dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         match intrinsic_name {
@@ -557,13 +557,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 }
 
-fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Tag> {
+fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Provenance> {
     // SIMD uses all-1 as pattern for "true"
     let val = if b { -1 } else { 0 };
     Scalar::from_int(val, size)
 }
 
-fn simd_element_to_bool(elem: ImmTy<'_, Tag>) -> InterpResult<'_, bool> {
+fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<'_, bool> {
     let val = elem.to_scalar()?.to_int(elem.layout.size)?;
     Ok(match val {
         0 => false,
@@ -581,9 +581,9 @@ fn simd_bitmask_index(idx: u64, vec_len: u64, endianess: Endian) -> u64 {
 }
 
 fn fmax_op<'tcx>(
-    left: &ImmTy<'tcx, Tag>,
-    right: &ImmTy<'tcx, Tag>,
-) -> InterpResult<'tcx, Scalar<Tag>> {
+    left: &ImmTy<'tcx, Provenance>,
+    right: &ImmTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     assert_eq!(left.layout.ty, right.layout.ty);
     let ty::Float(float_ty) = left.layout.ty.kind() else {
         bug!("fmax operand is not a float")
@@ -597,9 +597,9 @@ fn fmax_op<'tcx>(
 }
 
 fn fmin_op<'tcx>(
-    left: &ImmTy<'tcx, Tag>,
-    right: &ImmTy<'tcx, Tag>,
-) -> InterpResult<'tcx, Scalar<Tag>> {
+    left: &ImmTy<'tcx, Provenance>,
+    right: &ImmTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     assert_eq!(left.layout.ty, right.layout.ty);
     let ty::Float(float_ty) = left.layout.ty.kind() else {
         bug!("fmin operand is not a float")
