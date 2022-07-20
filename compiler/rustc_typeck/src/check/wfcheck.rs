@@ -1913,7 +1913,7 @@ impl<'a, 'tcx> WfCheckingCtxt<'a, 'tcx> {
     }
 }
 
-pub(super) fn impl_implied_bounds<'tcx>(
+pub fn impl_implied_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: LocalDefId,

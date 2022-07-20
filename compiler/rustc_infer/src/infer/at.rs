@@ -65,6 +65,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         Self {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
+            considering_regions: self.considering_regions,
             in_progress_typeck_results: self.in_progress_typeck_results,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
