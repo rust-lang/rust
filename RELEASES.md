@@ -1,3 +1,144 @@
+Version 1.63.0 (2022-08-11)
+==========================
+
+Language
+--------
+- [Remove migrate borrowck mode.][95565]
+- [Stabilize `$$` in Rust 1.63.0.][95860]
+- [Modify MIR building to drop repeat expressions with length zero.][95953]
+- [Remove label/lifetime shadowing warnings.][96296]
+- [Stabilize `explicit_generic_args_with_impl_trait`.][96868]
+- [make `cenum_impl_drop_cast` deny-by-default.][97652]
+- [Prevent unwinding when `-C panic=abort` is used regardless declared ABI.][96959]
+- [lub: don't bail out due to empty binders.][97867]
+
+Compiler
+--------
+- [Stabilize the `bundle` native library modifier,][95818] also removing the
+  deprecated `static-nobundle` linking kind.
+- [Add Apple WatchOS compile targets\*.][95243]
+- [Add Windows application manifest to rustc-main.][96737]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+- [Implement `Copy`, `Clone`, `PartialEq` and `Eq` for `core::fmt::Alignment`.][94530]
+- [Extend `ptr::null` and `null_mut` to all thin (including extern) types.][94954]
+- [`impl Read and Write for VecDeque<u8>`.][95632]
+- [STD support for the Nintendo 3DS.][95897]
+- [Make write/print macros eagerly drop temporaries.][96455]
+- [Implement `[OsStr]::join`.][96881]
+- [Implement `Hash` for `core::alloc::Layout`.][97034]
+- [os str capacity documentation.][97202]
+- [Put a bound on collection misbehavior.][97316]
+- [Stabilize checked slice->str conversion functions.][97367]
+- [Make `std::mem::needs_drop` accept `?Sized`.][97675]
+- [`impl Termination for Infallible` and then make the `Result` impls of `Termination` more generic.][97803]
+- [Document Rust's stance on `/proc/self/mem`.][97837]
+
+Stabilized APIs
+---------------
+
+- [`array::from_fn`]
+- [`Box::into_pin`]
+- [`BinaryHeap::try_reserve_exact`]
+- [`BinaryHeap::try_reserve`]
+- [`OsString::try_reserve`]
+- [`OsString::try_reserve_exact`]
+- [`Path::try_reserve`]
+- [`Path::try_reserve_exact`]
+- [`Path::try_exists`]
+- [`Ref::filter_map`]
+- [`RefMut::filter_map`]
+- [`NonNull::<[T]>::len`]
+- [`ToOwned::clone_into`]
+- [`Ipv6Addr::to_ipv4_mapped`]
+- [`unix::io::AsFd`]
+- [`unix::io::BorrowedFd<'fd>`]
+- [`unix::io::OwnedFd`]
+- [`windows::io::AsHandle`]
+- [`windows::io::BorrowedHandle<'handle>`]
+- [`windows::io::OwnedHandle`]
+- [`windows::io::HandleOrInvalid`]
+- [`windows::io::HandleOrNull`]
+- [`windows::io::InvalidHandleError`]
+- [`windows::io::NullHandleError`]
+- [`windows::io::AsSocket`]
+- [`windows::io::BorrowedSocket<'handle>`]
+- [`windows::io::OwnedSocket`]
+- [`thread::scope`]
+- [`thread::Scope`]
+- [`thread::ScopedJoinHandle`]
+
+These APIs are now usable in const contexts:
+
+- [`array::from_ref`]
+- [`slice::from_ref`]
+- [`intrinsics::copy`]
+- [`intrinsics::copy_nonoverlapping`]
+- [`<*const T>::copy_to`]
+- [`<*const T>::copy_to_nonoverlapping`]
+- [`<*mut T>::copy_to`]
+- [`<*mut T>::copy_to_nonoverlapping`]
+- [`<*mut T>::copy_from`]
+- [`<*mut T>::copy_from_nonoverlapping`]
+- [`str::from_utf8`]
+- [`Utf8Error::error_len`]
+- [`Utf8Error::valid_up_to`]
+- [`Condvar::new`]
+- [`Mutex::new`]
+- [`RwLock::new`]
+
+Cargo
+-----
+- [Stabilize config-cli.][cargo/10755]
+- [Expose rust-version through env var.][cargo/10713]
+
+Compatibility Notes
+-------------------
+
+- [rustc: Stricter checking for #[link] attributes.][96885]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Prepare Rust for LLVM opaque pointers.][94214]
+
+[94214]: https://github.com/rust-lang/rust/pull/94214/
+[94530]: https://github.com/rust-lang/rust/pull/94530/
+[94954]: https://github.com/rust-lang/rust/pull/94954/
+[95243]: https://github.com/rust-lang/rust/pull/95243/
+[95565]: https://github.com/rust-lang/rust/pull/95565/
+[95632]: https://github.com/rust-lang/rust/pull/95632/
+[95818]: https://github.com/rust-lang/rust/pull/95818/
+[95860]: https://github.com/rust-lang/rust/pull/95860/
+[95897]: https://github.com/rust-lang/rust/pull/95897/
+[95953]: https://github.com/rust-lang/rust/pull/95953/
+[96296]: https://github.com/rust-lang/rust/pull/96296/
+[96455]: https://github.com/rust-lang/rust/pull/96455/
+[96737]: https://github.com/rust-lang/rust/pull/96737/
+[96868]: https://github.com/rust-lang/rust/pull/96868/
+[96881]: https://github.com/rust-lang/rust/pull/96881/
+[96885]: https://github.com/rust-lang/rust/pull/96885/
+[96959]: https://github.com/rust-lang/rust/pull/96959/
+[97034]: https://github.com/rust-lang/rust/pull/97034/
+[97202]: https://github.com/rust-lang/rust/pull/97202/
+[97316]: https://github.com/rust-lang/rust/pull/97316/
+[97367]: https://github.com/rust-lang/rust/pull/97367/
+[97652]: https://github.com/rust-lang/rust/pull/97652/
+[97675]: https://github.com/rust-lang/rust/pull/97675/
+[97803]: https://github.com/rust-lang/rust/pull/97803/
+[97837]: https://github.com/rust-lang/rust/pull/97837/
+[97867]: https://github.com/rust-lang/rust/pull/97867/
+[cargo/10713]: https://github.com/rust-lang/cargo/pull/10713/
+[cargo/10755]: https://github.com/rust-lang/cargo/pull/10755/
+
 Version 1.62.1 (2022-07-19)
 ==========================
 
