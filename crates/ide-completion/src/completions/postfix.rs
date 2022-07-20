@@ -529,6 +529,11 @@ fn main() { ControlFlow::Break(42) }
 "#,
         );
 
+        // The receiver texts should be escaped, see comments in `get_receiver_text()`
+        // for detail.
+        //
+        // Note that the last argument is what *lsp clients would see* rather than
+        // what users would see. Unescaping happens thereafter.
         check_edit_with_config(
             config.clone(),
             "break",
