@@ -3,7 +3,7 @@
 
 use attr::StabilityLevel;
 use rustc_attr::{self as attr, ConstStability, Stability, Unstable};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -952,39 +952,51 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     remaining_lib_features.remove(&sym::libc);
     remaining_lib_features.remove(&sym::test);
 
+    // We always collect the lib features declared in the current crate, even if there are
+    // no unknown features, because the collection also does feature attribute validation.
+    let local_defined_features = tcx.lib_features(());
+    let mut all_lib_features: FxHashMap<_, _> =
+        local_defined_features.to_vec().iter().map(|el| *el).collect();
     let mut implications = tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE).clone();
     for &cnum in tcx.crates(()) {
         implications.extend(tcx.stability_implications(cnum));
+        all_lib_features.extend(tcx.defined_lib_features(cnum).iter().map(|el| *el));
     }
 
-    let check_features = |remaining_lib_features: &mut FxIndexMap<_, _>, defined_features: &[_]| {
-        for &(feature, since) in defined_features {
+    // Check that every feature referenced by an `implied_by` exists (for features defined in the
+    // local crate).
+    for (implied_by, feature) in tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE) {
+        // Only `implied_by` needs to be checked, `feature` is guaranteed to exist.
+        if !all_lib_features.contains_key(implied_by) {
+            let span = local_defined_features
+                .stable
+                .get(feature)
+                .map(|(_, span)| span)
+                .or_else(|| local_defined_features.unstable.get(feature))
+                .expect("feature that implied another does not exist");
+            tcx.sess
+                .struct_span_err(
+                    *span,
+                    format!("feature `{implied_by}` implying `{feature}` does not exist"),
+                )
+                .emit();
+        }
+    }
+
+    if !remaining_lib_features.is_empty() {
+        for (feature, since) in all_lib_features.iter() {
             if let Some(since) = since && let Some(span) = remaining_lib_features.get(&feature) {
                 // Warn if the user has enabled an already-stable lib feature.
                 if let Some(implies) = implications.get(&feature) {
-                    unnecessary_partially_stable_feature_lint(tcx, *span, feature, *implies, since);
+                    unnecessary_partially_stable_feature_lint(tcx, *span, *feature, *implies, *since);
                 } else {
-                    unnecessary_stable_feature_lint(tcx, *span, feature, since);
+                    unnecessary_stable_feature_lint(tcx, *span, *feature, *since);
                 }
             }
             remaining_lib_features.remove(&feature);
             if remaining_lib_features.is_empty() {
                 break;
             }
-        }
-    };
-
-    // We always collect the lib features declared in the current crate, even if there are
-    // no unknown features, because the collection also does feature attribute validation.
-    let local_defined_features = tcx.lib_features(()).to_vec();
-    if !remaining_lib_features.is_empty() {
-        check_features(&mut remaining_lib_features, &local_defined_features);
-
-        for &cnum in tcx.crates(()) {
-            if remaining_lib_features.is_empty() {
-                break;
-            }
-            check_features(&mut remaining_lib_features, tcx.defined_lib_features(cnum));
         }
     }
 
