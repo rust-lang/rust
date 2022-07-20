@@ -754,15 +754,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Provenance::Concrete { alloc_id, sb } => {
-                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, sb);
-            }
+            Provenance::Concrete { alloc_id, sb } =>
+                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, sb),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
+                Ok(())
             }
         }
-        Ok(())
     }
 
     /// Convert a pointer with provenance into an allocation-offset pair,

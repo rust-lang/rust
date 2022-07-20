@@ -777,20 +777,31 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Ok(())
             };
 
-            let extra = this.get_alloc_extra(alloc_id)?;
-            let mut stacked_borrows = extra
-                .stacked_borrows
-                .as_ref()
-                .expect("we should have Stacked Borrows data")
-                .borrow_mut();
-            stacked_borrows.history.log_creation(
-                Some(orig_tag),
-                new_tag,
-                alloc_range(base_offset, size),
-                current_span,
-            );
-            if protect {
-                stacked_borrows.history.log_protector(orig_tag, new_tag, current_span);
+            let (_size, _align, kind) = this.get_alloc_info(alloc_id);
+            match kind {
+                AllocKind::LiveData => {
+                    // This should have alloc_extra data, but `get_alloc_extra` can still fail
+                    // if converting this alloc_id from a global to a local one
+                    // uncovers a non-supported `extern static`.
+                    let extra = this.get_alloc_extra(alloc_id)?;
+                    let mut stacked_borrows = extra
+                        .stacked_borrows
+                        .as_ref()
+                        .expect("we should have Stacked Borrows data")
+                        .borrow_mut();
+                    stacked_borrows.history.log_creation(
+                        Some(orig_tag),
+                        new_tag,
+                        alloc_range(base_offset, size),
+                        current_span,
+                    );
+                    if protect {
+                        stacked_borrows.history.log_protector(orig_tag, new_tag, current_span);
+                    }
+                }
+                AllocKind::Function | AllocKind::Dead => {
+                    // No stacked borrows on these allocations.
+                }
             }
             Ok(())
         };
@@ -1116,7 +1127,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
-    fn expose_tag(&mut self, alloc_id: AllocId, tag: SbTag) {
+    fn expose_tag(&mut self, alloc_id: AllocId, tag: SbTag) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
@@ -1125,8 +1136,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (_size, _align, kind) = this.get_alloc_info(alloc_id);
         match kind {
             AllocKind::LiveData => {
-                // This should have alloc_extra data.
-                let alloc_extra = this.get_alloc_extra(alloc_id).unwrap();
+                // This should have alloc_extra data, but `get_alloc_extra` can still fail
+                // if converting this alloc_id from a global to a local one
+                // uncovers a non-supported `extern static`.
+                let alloc_extra = this.get_alloc_extra(alloc_id)?;
                 trace!("Stacked Borrows tag {tag:?} exposed in {alloc_id:?}");
                 alloc_extra.stacked_borrows.as_ref().unwrap().borrow_mut().exposed_tags.insert(tag);
             }
@@ -1134,5 +1147,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // No stacked borrows on these allocations.
             }
         }
+        Ok(())
     }
 }
