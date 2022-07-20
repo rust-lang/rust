@@ -2615,6 +2615,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
