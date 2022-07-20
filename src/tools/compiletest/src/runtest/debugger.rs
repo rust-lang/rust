@@ -16,6 +16,7 @@ impl DebuggerCommands {
         file: &Path,
         config: &Config,
         debugger_prefixes: &[&str],
+        rev: Option<&str>,
     ) -> Result<Self, String> {
         let directives = debugger_prefixes
             .iter()
@@ -25,13 +26,38 @@ impl DebuggerCommands {
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
         let mut check_lines = vec![];
-        let mut counter = 1;
+        let mut counter = 0;
         let reader = BufReader::new(File::open(file).unwrap());
         for line in reader.lines() {
+            counter += 1;
             match line {
                 Ok(line) => {
-                    let line =
-                        if line.starts_with("//") { line[2..].trim_start() } else { line.as_str() };
+                    let (line, lnrev) = if line.starts_with("//") {
+                        let line = line[2..].trim_start();
+                        if line.starts_with('[') {
+                            if let Some(close_brace) = line.find(']') {
+                                let open_brace = line.find('[').unwrap();
+                                let lnrev = &line[open_brace + 1..close_brace];
+                                let line = line[(close_brace + 1)..].trim_start();
+                                (line, Some(lnrev))
+                            } else {
+                                panic!(
+                                    "malformed condition direction: expected `//[foo]`, found `{}`",
+                                    line
+                                )
+                            }
+                        } else {
+                            (line, None)
+                        }
+                    } else {
+                        (line.as_str(), None)
+                    };
+
+                    // Skip any revision specific directive that doesn't match the current
+                    // revision being tested
+                    if lnrev.is_some() && lnrev != rev {
+                        continue;
+                    }
 
                     if line.contains("#break") {
                         breakpoint_lines.push(counter);
@@ -49,7 +75,6 @@ impl DebuggerCommands {
                 }
                 Err(e) => return Err(format!("Error while parsing debugger commands: {}", e)),
             }
-            counter += 1;
         }
 
         Ok(Self { commands, check_lines, breakpoint_lines })
