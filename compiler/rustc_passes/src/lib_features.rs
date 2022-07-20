@@ -1,8 +1,8 @@
-// Detecting lib features (i.e., features that are not lang features).
-//
-// These are declared using stability attributes (e.g., `#[stable (..)]`
-// and `#[unstable (..)]`), but are not declared in one single location
-// (unlike lang features), which means we need to collect them instead.
+//! Detecting lib features (i.e., features that are not lang features).
+//!
+//! These are declared using stability attributes (e.g., `#[stable (..)]` and `#[unstable (..)]`),
+//! but are not declared in one single location (unlike lang features), which means we need to
+//! collect them instead.
 
 use rustc_ast::{Attribute, MetaItemKind};
 use rustc_errors::struct_span_err;
@@ -71,11 +71,11 @@ impl<'tcx> LibFeatureCollector<'tcx> {
 
     fn collect_feature(&mut self, feature: Symbol, since: Option<Symbol>, span: Span) {
         let already_in_stable = self.lib_features.stable.contains_key(&feature);
-        let already_in_unstable = self.lib_features.unstable.contains(&feature);
+        let already_in_unstable = self.lib_features.unstable.contains_key(&feature);
 
         match (since, already_in_stable, already_in_unstable) {
             (Some(since), _, false) => {
-                if let Some(prev_since) = self.lib_features.stable.get(&feature) {
+                if let Some((prev_since, _)) = self.lib_features.stable.get(&feature) {
                     if *prev_since != since {
                         self.span_feature_error(
                             span,
@@ -89,10 +89,10 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     }
                 }
 
-                self.lib_features.stable.insert(feature, since);
+                self.lib_features.stable.insert(feature, (since, span));
             }
             (None, false, _) => {
-                self.lib_features.unstable.insert(feature);
+                self.lib_features.unstable.insert(feature, span);
             }
             (Some(_), _, true) | (None, true, _) => {
                 self.span_feature_error(

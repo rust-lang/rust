@@ -2,9 +2,9 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use attr::StabilityLevel;
-use rustc_attr::{self as attr, ConstStability, Stability};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::struct_span_err;
+use rustc_attr::{self as attr, ConstStability, Stability, Unstable};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -29,13 +29,13 @@ use std::num::NonZeroU32;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
-    // Annotation is required if not inherited from unstable parents
+    /// Annotation is required if not inherited from unstable parents.
     Required,
-    // Annotation is useless, reject it
+    /// Annotation is useless, reject it.
     Prohibited,
-    // Deprecation annotation is useless, reject it. (Stability attribute is still required.)
+    /// Deprecation annotation is useless, reject it. (Stability attribute is still required.)
     DeprecationProhibited,
-    // Annotation itself is useless, but it can be propagated to children
+    /// Annotation itself is useless, but it can be propagated to children.
     Container,
 }
 
@@ -83,7 +83,7 @@ impl InheritStability {
     }
 }
 
-// A private tree-walker for producing an Index.
+/// A private tree-walker for producing an `Index`.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index,
@@ -94,9 +94,9 @@ struct Annotator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Annotator<'a, 'tcx> {
-    // Determine the stability for a node based on its attributes and inherited
-    // stability. The stability is recorded in the index and used as the parent.
-    // If the node is a function, `fn_sig` is its signature
+    /// Determine the stability for a node based on its attributes and inherited stability. The
+    /// stability is recorded in the index and used as the parent. If the node is a function,
+    /// `fn_sig` is its signature.
     fn annotate<F>(
         &mut self,
         def_id: LocalDefId,
@@ -263,6 +263,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                         },
                     }
                 }
+            }
+
+            if let Stability { level: Unstable { implied_by: Some(implied_by), .. }, feature } = stab {
+                self.index.implications.insert(implied_by, feature);
             }
 
             self.index.stab_map.insert(def_id, stab);
@@ -610,6 +614,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
         depr_map: Default::default(),
+        implications: Default::default(),
     };
 
     {
@@ -637,6 +642,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
                     reason: Some(Symbol::intern(reason)),
                     issue: NonZeroU32::new(27812),
                     is_soft: false,
+                    implied_by: None,
                 },
                 feature: sym::rustc_private,
             };
@@ -667,6 +673,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         check_mod_unstable_api_usage,
         stability_index,
+        stability_implications: |tcx, _| tcx.stability().implications.clone(),
         lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
         lookup_deprecation_entry: |tcx, id| {
@@ -945,32 +952,51 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     remaining_lib_features.remove(&sym::libc);
     remaining_lib_features.remove(&sym::test);
 
-    let check_features = |remaining_lib_features: &mut FxIndexMap<_, _>, defined_features: &[_]| {
-        for &(feature, since) in defined_features {
-            if let Some(since) = since {
-                if let Some(span) = remaining_lib_features.get(&feature) {
-                    // Warn if the user has enabled an already-stable lib feature.
-                    unnecessary_stable_feature_lint(tcx, *span, feature, since);
+    // We always collect the lib features declared in the current crate, even if there are
+    // no unknown features, because the collection also does feature attribute validation.
+    let local_defined_features = tcx.lib_features(());
+    let mut all_lib_features: FxHashMap<_, _> =
+        local_defined_features.to_vec().iter().map(|el| *el).collect();
+    let mut implications = tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE).clone();
+    for &cnum in tcx.crates(()) {
+        implications.extend(tcx.stability_implications(cnum));
+        all_lib_features.extend(tcx.defined_lib_features(cnum).iter().map(|el| *el));
+    }
+
+    // Check that every feature referenced by an `implied_by` exists (for features defined in the
+    // local crate).
+    for (implied_by, feature) in tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE) {
+        // Only `implied_by` needs to be checked, `feature` is guaranteed to exist.
+        if !all_lib_features.contains_key(implied_by) {
+            let span = local_defined_features
+                .stable
+                .get(feature)
+                .map(|(_, span)| span)
+                .or_else(|| local_defined_features.unstable.get(feature))
+                .expect("feature that implied another does not exist");
+            tcx.sess
+                .struct_span_err(
+                    *span,
+                    format!("feature `{implied_by}` implying `{feature}` does not exist"),
+                )
+                .emit();
+        }
+    }
+
+    if !remaining_lib_features.is_empty() {
+        for (feature, since) in all_lib_features.iter() {
+            if let Some(since) = since && let Some(span) = remaining_lib_features.get(&feature) {
+                // Warn if the user has enabled an already-stable lib feature.
+                if let Some(implies) = implications.get(&feature) {
+                    unnecessary_partially_stable_feature_lint(tcx, *span, *feature, *implies, *since);
+                } else {
+                    unnecessary_stable_feature_lint(tcx, *span, *feature, *since);
                 }
             }
             remaining_lib_features.remove(&feature);
             if remaining_lib_features.is_empty() {
                 break;
             }
-        }
-    };
-
-    // We always collect the lib features declared in the current crate, even if there are
-    // no unknown features, because the collection also does feature attribute validation.
-    let local_defined_features = tcx.lib_features(()).to_vec();
-    if !remaining_lib_features.is_empty() {
-        check_features(&mut remaining_lib_features, &local_defined_features);
-
-        for &cnum in tcx.crates(()) {
-            if remaining_lib_features.is_empty() {
-                break;
-            }
-            check_features(&mut remaining_lib_features, tcx.defined_lib_features(cnum));
         }
     }
 
@@ -982,12 +1008,41 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // don't lint about unused features. We should re-enable this one day!
 }
 
+fn unnecessary_partially_stable_feature_lint(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    feature: Symbol,
+    implies: Symbol,
+    since: Symbol,
+) {
+    tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, |lint| {
+        lint.build(&format!(
+            "the feature `{feature}` has been partially stabilized since {since} and is succeeded \
+             by the feature `{implies}`"
+        ))
+        .span_suggestion(
+            span,
+            &format!(
+                "if you are using features which are still unstable, change to using `{implies}`"
+            ),
+            implies,
+            Applicability::MaybeIncorrect,
+        )
+        .span_suggestion(
+            tcx.sess.source_map().span_extend_to_line(span),
+            "if you are using features which are now stable, remove this line",
+            "",
+            Applicability::MaybeIncorrect,
+        )
+        .emit();
+    });
+}
+
 fn unnecessary_stable_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol, since: Symbol) {
     tcx.struct_span_lint_hir(lint::builtin::STABLE_FEATURES, hir::CRATE_HIR_ID, span, |lint| {
         lint.build(&format!(
-            "the feature `{}` has been stable since {} and no longer requires \
-                      an attribute to enable",
-            feature, since
+            "the feature `{feature}` has been stable since {since} and no longer requires an \
+             attribute to enable",
         ))
         .emit();
     });

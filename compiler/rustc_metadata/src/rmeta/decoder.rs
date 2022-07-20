@@ -951,6 +951,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
     }
 
+    /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute
+    /// has an `implied_by` meta item, then the mapping from the implied feature to the actual
+    /// feature is a stability implication).
+    fn get_stability_implications(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Symbol)] {
+        tcx.arena.alloc_from_iter(self.root.stability_implications.decode(self))
+    }
+
     /// Iterates over the language items in the given crate.
     fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
         tcx.arena.alloc_from_iter(
