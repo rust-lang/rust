@@ -23,7 +23,7 @@ fn main() {
     let imp_dir = std::env::current_dir().unwrap().join("imp");
 
     let staging_dir = out_dir.join("proc-macro-test-imp-staging");
-    // this'll error out if the staging dir didn't previously. using
+    // this'll error out if the staging dir didn't previously exist. using
     // `std::fs::exists` would suffer from TOCTOU so just do our best to
     // wipe it and ignore errors.
     let _ = std::fs::remove_dir_all(&staging_dir);
