@@ -10,11 +10,14 @@
 
 use super::proc_macro::bridge::{self, server};
 
+mod token_stream;
+pub use token_stream::*;
+
+use std::ascii;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use std::ops::Bound;
-use std::{ascii, vec::IntoIter};
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
@@ -22,80 +25,6 @@ type Punct = tt::Punct;
 type Spacing = tt::Spacing;
 type Literal = tt::Literal;
 type Span = tt::TokenId;
-
-#[derive(Debug, Default, Clone)]
-pub struct TokenStream {
-    pub token_trees: Vec<TokenTree>,
-}
-
-impl TokenStream {
-    pub fn new() -> Self {
-        TokenStream::default()
-    }
-
-    pub fn with_subtree(subtree: tt::Subtree) -> Self {
-        if subtree.delimiter.is_some() {
-            TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
-        } else {
-            TokenStream { token_trees: subtree.token_trees }
-        }
-    }
-
-    pub fn into_subtree(self) -> tt::Subtree {
-        tt::Subtree { delimiter: None, token_trees: self.token_trees }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.token_trees.is_empty()
-    }
-}
-
-/// Creates a token stream containing a single token tree.
-impl From<TokenTree> for TokenStream {
-    fn from(tree: TokenTree) -> TokenStream {
-        TokenStream { token_trees: vec![tree] }
-    }
-}
-
-/// Collects a number of token trees into a single stream.
-impl FromIterator<TokenTree> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
-        trees.into_iter().map(TokenStream::from).collect()
-    }
-}
-
-/// A "flattening" operation on token streams, collects token trees
-/// from multiple token streams into a single stream.
-impl FromIterator<TokenStream> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
-        let mut builder = TokenStreamBuilder::new();
-        streams.into_iter().for_each(|stream| builder.push(stream));
-        builder.build()
-    }
-}
-
-impl Extend<TokenTree> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
-        self.extend(trees.into_iter().map(TokenStream::from));
-    }
-}
-
-impl Extend<TokenStream> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
-        for item in streams {
-            for tkn in item {
-                match tkn {
-                    tt::TokenTree::Subtree(subtree) if subtree.delimiter.is_none() => {
-                        self.token_trees.extend(subtree.token_trees);
-                    }
-                    _ => {
-                        self.token_trees.push(tkn);
-                    }
-                }
-            }
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct SourceFile {
@@ -158,130 +87,21 @@ impl IdentInterner {
     }
 }
 
-pub struct TokenStreamBuilder {
-    acc: TokenStream,
-}
-
-/// Public implementation details for the `TokenStream` type, such as iterators.
-pub mod token_stream {
-    use std::str::FromStr;
-
-    use super::{TokenStream, TokenTree};
-
-    /// An iterator over `TokenStream`'s `TokenTree`s.
-    /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
-    /// and returns whole groups as token trees.
-    impl IntoIterator for TokenStream {
-        type Item = TokenTree;
-        type IntoIter = super::IntoIter<TokenTree>;
-
-        fn into_iter(self) -> Self::IntoIter {
-            self.token_trees.into_iter()
-        }
-    }
-
-    type LexError = String;
-
-    /// Attempts to break the string into tokens and parse those tokens into a token stream.
-    /// May fail for a number of reasons, for example, if the string contains unbalanced delimiters
-    /// or characters not existing in the language.
-    /// All tokens in the parsed stream get `Span::call_site()` spans.
-    ///
-    /// NOTE: some errors may cause panics instead of returning `LexError`. We reserve the right to
-    /// change these errors into `LexError`s later.
-    impl FromStr for TokenStream {
-        type Err = LexError;
-
-        fn from_str(src: &str) -> Result<TokenStream, LexError> {
-            let (subtree, _token_map) =
-                mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
-
-            let subtree = subtree_replace_token_ids_with_unspecified(subtree);
-            Ok(TokenStream::with_subtree(subtree))
-        }
-    }
-
-    impl ToString for TokenStream {
-        fn to_string(&self) -> String {
-            tt::pretty(&self.token_trees)
-        }
-    }
-
-    fn subtree_replace_token_ids_with_unspecified(subtree: tt::Subtree) -> tt::Subtree {
-        tt::Subtree {
-            delimiter: subtree
-                .delimiter
-                .map(|d| tt::Delimiter { id: tt::TokenId::unspecified(), ..d }),
-            token_trees: subtree
-                .token_trees
-                .into_iter()
-                .map(token_tree_replace_token_ids_with_unspecified)
-                .collect(),
-        }
-    }
-
-    fn token_tree_replace_token_ids_with_unspecified(tt: tt::TokenTree) -> tt::TokenTree {
-        match tt {
-            tt::TokenTree::Leaf(leaf) => {
-                tt::TokenTree::Leaf(leaf_replace_token_ids_with_unspecified(leaf))
-            }
-            tt::TokenTree::Subtree(subtree) => {
-                tt::TokenTree::Subtree(subtree_replace_token_ids_with_unspecified(subtree))
-            }
-        }
-    }
-
-    fn leaf_replace_token_ids_with_unspecified(leaf: tt::Leaf) -> tt::Leaf {
-        match leaf {
-            tt::Leaf::Literal(lit) => {
-                tt::Leaf::Literal(tt::Literal { id: tt::TokenId::unspecified(), ..lit })
-            }
-            tt::Leaf::Punct(punct) => {
-                tt::Leaf::Punct(tt::Punct { id: tt::TokenId::unspecified(), ..punct })
-            }
-            tt::Leaf::Ident(ident) => {
-                tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), ..ident })
-            }
-        }
-    }
-}
-
-impl TokenStreamBuilder {
-    fn new() -> TokenStreamBuilder {
-        TokenStreamBuilder { acc: TokenStream::new() }
-    }
-
-    fn push(&mut self, stream: TokenStream) {
-        self.acc.extend(stream.into_iter())
-    }
-
-    fn build(self) -> TokenStream {
-        self.acc
-    }
-}
-
 pub struct FreeFunctions;
-
-#[derive(Clone)]
-pub struct TokenStreamIter {
-    trees: IntoIter<TokenTree>,
-}
 
 #[derive(Default)]
 pub struct RustAnalyzer {
-    ident_interner: IdentInterner,
     // FIXME: store span information here.
 }
 
 impl server::Types for RustAnalyzer {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type Ident = IdentId;
-    type Literal = Literal;
     type SourceFile = SourceFile;
+    type MultiSpan = Vec<Span>;
     type Diagnostic = Diagnostic;
     type Span = Span;
-    type MultiSpan = Vec<Span>;
+    type Symbol = Symbol;
 }
 
 impl server::FreeFunctions for RustAnalyzer {
@@ -693,45 +513,7 @@ impl server::Server for RustAnalyzer {
 
 #[cfg(test)]
 mod tests {
-    use super::super::proc_macro::bridge::server::Literal;
     use super::*;
-
-    #[test]
-    fn test_ra_server_literals() {
-        let mut srv = RustAnalyzer { ident_interner: IdentInterner::default() };
-        assert_eq!(srv.integer("1234").text, "1234");
-
-        assert_eq!(srv.typed_integer("12", "u8").text, "12u8");
-        assert_eq!(srv.typed_integer("255", "u16").text, "255u16");
-        assert_eq!(srv.typed_integer("1234", "u32").text, "1234u32");
-        assert_eq!(srv.typed_integer("15846685", "u64").text, "15846685u64");
-        assert_eq!(srv.typed_integer("15846685258", "u128").text, "15846685258u128");
-        assert_eq!(srv.typed_integer("156788984", "usize").text, "156788984usize");
-        assert_eq!(srv.typed_integer("127", "i8").text, "127i8");
-        assert_eq!(srv.typed_integer("255", "i16").text, "255i16");
-        assert_eq!(srv.typed_integer("1234", "i32").text, "1234i32");
-        assert_eq!(srv.typed_integer("15846685", "i64").text, "15846685i64");
-        assert_eq!(srv.typed_integer("15846685258", "i128").text, "15846685258i128");
-        assert_eq!(srv.float("0").text, "0.0");
-        assert_eq!(srv.float("15684.5867").text, "15684.5867");
-        assert_eq!(srv.f32("15684.58").text, "15684.58f32");
-        assert_eq!(srv.f64("15684.58").text, "15684.58f64");
-
-        assert_eq!(srv.string("hello_world").text, "\"hello_world\"");
-        assert_eq!(srv.character('c').text, "'c'");
-        assert_eq!(srv.byte_string(b"1234586\x88").text, "b\"1234586\\x88\"");
-
-        // u128::max
-        assert_eq!(
-            srv.integer("340282366920938463463374607431768211455").text,
-            "340282366920938463463374607431768211455"
-        );
-        // i128::min
-        assert_eq!(
-            srv.integer("-170141183460469231731687303715884105728").text,
-            "-170141183460469231731687303715884105728"
-        );
-    }
 
     #[test]
     fn test_ra_server_to_string() {
