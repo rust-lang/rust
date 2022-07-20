@@ -949,7 +949,7 @@ table,
 #crate-search {
 	min-width: 115px;
 	margin-top: 5px;
-	padding-left: 0.3125em;
+	padding-left: 0.15em;
 	padding-right: 23px;
 	border: 1px solid;
 	border-radius: 4px;
@@ -958,8 +958,6 @@ table,
 	-moz-appearance: none;
 	-webkit-appearance: none;
 	/* Removes default arrow from firefox */
-	text-indent: 0.01px;
-	text-overflow: "";
 	background-repeat: no-repeat;
 	background-color: transparent;
 	background-size: 20px;
@@ -986,7 +984,6 @@ table,
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
-	transition: border-color 300ms ease;
 	width: 100%;
 }
 

@@ -18,7 +18,7 @@ assert-css: (".search-results div.desc", {"width": "570px"})
 size: (900, 900)
 
 // First we check the current width and position.
-assert-css: ("#crate-search", {"width": "222px"})
+assert-css: ("#crate-search", {"width": "218px"})
 compare-elements-position-near: (
     "#crate-search",
     "#search-settings .search-results-title",
