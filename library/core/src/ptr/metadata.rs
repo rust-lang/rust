@@ -185,8 +185,7 @@ extern "C" {
     /// Opaque type for accessing vtables.
     ///
     /// Private implementation detail of `DynMetadata::size_of` etc.
-    /// Must be zero-sized since there is conceptually not actually any Abstract Machine memory behind this pointer.
-    /// However, we can require pointer alignment.
+    /// There is conceptually not actually any Abstract Machine memory behind this pointer.
     type VTable;
 }
 

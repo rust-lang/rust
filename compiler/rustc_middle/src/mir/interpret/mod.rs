@@ -366,7 +366,7 @@ impl<'s> AllocDecodingSession<'s> {
                 }
                 AllocDiscriminant::VTable => {
                     assert!(alloc_id.is_none());
-                    trace!("creating static alloc ID");
+                    trace!("creating vtable alloc ID");
                     let ty = <Ty<'_> as Decodable<D>>::decode(decoder);
                     let poly_trait_ref =
                         <Option<ty::PolyExistentialTraitRef<'_>> as Decodable<D>>::decode(decoder);

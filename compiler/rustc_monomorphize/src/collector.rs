@@ -1428,9 +1428,6 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
             }
         }
         GlobalAlloc::VTable(ty, trait_ref) => {
-            // FIXME(RJ) no ideas if this is correct. There is this nice
-            // `create_mono_items_for_vtable_methods` method but I wouldn't know how to call it from
-            // here. So instead we just generate the actual vtable and recurse.
             let alloc_id = tcx.vtable_allocation((ty, trait_ref));
             collect_miri(tcx, alloc_id, output)
         }

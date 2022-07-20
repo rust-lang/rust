@@ -9,7 +9,10 @@ use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
-use rustc_target::abi::{WrappingRange, call::{FnAbi, PassMode}};
+use rustc_target::abi::{
+    call::{FnAbi, PassMode},
+    WrappingRange,
+};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
