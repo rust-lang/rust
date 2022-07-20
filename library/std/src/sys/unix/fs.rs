@@ -17,6 +17,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "watchos",
 ))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "macos")]
@@ -27,6 +28,7 @@ use libc::{c_int, mode_t};
 #[cfg(any(
     target_os = "macos",
     target_os = "ios",
+    target_os = "watchos",
     all(target_os = "linux", target_env = "gnu")
 ))]
 use libc::c_char;
@@ -443,7 +445,8 @@ impl FileAttr {
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "macos",
-        target_os = "ios"
+        target_os = "ios",
+        target_os = "watchos",
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64))
@@ -453,7 +456,8 @@ impl FileAttr {
         target_os = "freebsd",
         target_os = "openbsd",
         target_os = "macos",
-        target_os = "ios"
+        target_os = "ios",
+        target_os = "watchos",
     )))]
     pub fn created(&self) -> io::Result<SystemTime> {
         cfg_has_statx! {
@@ -707,6 +711,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "linux",
         target_os = "emscripten",
         target_os = "android",
@@ -737,6 +742,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
@@ -754,6 +760,7 @@ impl DirEntry {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",
@@ -911,11 +918,11 @@ impl File {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
@@ -925,7 +932,7 @@ impl File {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
@@ -946,7 +953,8 @@ impl File {
             target_os = "linux",
             target_os = "macos",
             target_os = "netbsd",
-            target_os = "openbsd"
+            target_os = "openbsd",
+            target_os = "watchos",
         )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
@@ -1396,7 +1404,8 @@ fn open_to_and_set_permissions(
     target_os = "linux",
     target_os = "android",
     target_os = "macos",
-    target_os = "ios"
+    target_os = "ios",
+    target_os = "watchos",
 )))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let (mut reader, reader_metadata) = open_from(from)?;
@@ -1423,7 +1432,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::sync::atomic::{AtomicBool, Ordering};
 

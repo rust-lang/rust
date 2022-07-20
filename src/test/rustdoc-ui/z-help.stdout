@@ -4,6 +4,7 @@
     -Z                            asm-comments=val -- generate comments into the assembly (may change behavior) (default: no)
     -Z                       assert-incr-state=val -- assert that the incremental cache is in given state: either `loaded` or `not-loaded`.
     -Z                      binary-dep-depinfo=val -- include artifacts (sysroot, crate dependencies) used during compilation in dep-info (default: no)
+    -Z                             box-noalias=val -- emit noalias metadata for box (default: yes)
     -Z                       branch-protection=val -- set options for branch target identification and pointer authentication on AArch64
     -Z                           cf-protection=val -- instrument control-flow architecture protection
     -Z               cgu-partitioning-strategy=val -- the codegen unit partitioning strategy to use

@@ -3,7 +3,7 @@
 type Foo = impl Fn() -> Foo;
 
 fn foo() -> Foo {
-//~^ ERROR: overflow evaluating the requirement `fn() -> Foo {foo}: Sized`
+//~^ ERROR: overflow evaluating the requirement
     foo
 }
 

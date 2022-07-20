@@ -25,42 +25,35 @@ extern crate std;
 // Empty struct.
 struct Empty;
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Empty {
     #[inline]
     fn clone(&self) -> Empty { *self }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for Empty { }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Empty {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "Empty")
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for Empty {
     #[inline]
     fn default() -> Empty { Empty {} }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Empty {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 impl ::core::marker::StructuralPartialEq for Empty {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Empty {
     #[inline]
     fn eq(&self, other: &Empty) -> bool { true }
 }
 impl ::core::marker::StructuralEq for Empty {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Empty {
     #[inline]
     #[doc(hidden)]
@@ -68,7 +61,6 @@ impl ::core::cmp::Eq for Empty {
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Empty {
     #[inline]
     fn partial_cmp(&self, other: &Empty)
@@ -77,7 +69,6 @@ impl ::core::cmp::PartialOrd for Empty {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Empty {
     #[inline]
     fn cmp(&self, other: &Empty) -> ::core::cmp::Ordering {
@@ -91,7 +82,6 @@ struct Point {
     y: u32,
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Point {
     #[inline]
     fn clone(&self) -> Point {
@@ -100,10 +90,8 @@ impl ::core::clone::Clone for Point {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for Point { }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Point {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
@@ -111,7 +99,6 @@ impl ::core::fmt::Debug for Point {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for Point {
     #[inline]
     fn default() -> Point {
@@ -122,7 +109,6 @@ impl ::core::default::Default for Point {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Point {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.x, state);
@@ -131,7 +117,6 @@ impl ::core::hash::Hash for Point {
 }
 impl ::core::marker::StructuralPartialEq for Point {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Point {
     #[inline]
     fn eq(&self, other: &Point) -> bool {
@@ -144,7 +129,6 @@ impl ::core::cmp::PartialEq for Point {
 }
 impl ::core::marker::StructuralEq for Point {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Point {
     #[inline]
     #[doc(hidden)]
@@ -154,7 +138,6 @@ impl ::core::cmp::Eq for Point {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Point {
     #[inline]
     fn partial_cmp(&self, other: &Point)
@@ -167,7 +150,6 @@ impl ::core::cmp::PartialOrd for Point {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Point {
     #[inline]
     fn cmp(&self, other: &Point) -> ::core::cmp::Ordering {
@@ -191,7 +173,6 @@ struct Big {
     b8: u32,
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Big {
     #[inline]
     fn clone(&self) -> Big {
@@ -208,7 +189,6 @@ impl ::core::clone::Clone for Big {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Big {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let names: &'static _ =
@@ -221,7 +201,6 @@ impl ::core::fmt::Debug for Big {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for Big {
     #[inline]
     fn default() -> Big {
@@ -238,7 +217,6 @@ impl ::core::default::Default for Big {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Big {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.b1, state);
@@ -253,7 +231,6 @@ impl ::core::hash::Hash for Big {
 }
 impl ::core::marker::StructuralPartialEq for Big {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Big {
     #[inline]
     fn eq(&self, other: &Big) -> bool {
@@ -272,7 +249,6 @@ impl ::core::cmp::PartialEq for Big {
 }
 impl ::core::marker::StructuralEq for Big {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Big {
     #[inline]
     #[doc(hidden)]
@@ -282,7 +258,6 @@ impl ::core::cmp::Eq for Big {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Big {
     #[inline]
     fn partial_cmp(&self, other: &Big)
@@ -331,7 +306,6 @@ impl ::core::cmp::PartialOrd for Big {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Big {
     #[inline]
     fn cmp(&self, other: &Big) -> ::core::cmp::Ordering {
@@ -370,7 +344,6 @@ impl ::core::cmp::Ord for Big {
 // A struct with an unsized field. Some derives are not usable in this case.
 struct Unsized([u32]);
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Unsized {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
@@ -378,7 +351,6 @@ impl ::core::fmt::Debug for Unsized {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Unsized {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&self.0, state)
@@ -386,7 +358,6 @@ impl ::core::hash::Hash for Unsized {
 }
 impl ::core::marker::StructuralPartialEq for Unsized {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Unsized {
     #[inline]
     fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
@@ -395,7 +366,6 @@ impl ::core::cmp::PartialEq for Unsized {
 }
 impl ::core::marker::StructuralEq for Unsized {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Unsized {
     #[inline]
     #[doc(hidden)]
@@ -405,7 +375,6 @@ impl ::core::cmp::Eq for Unsized {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Unsized {
     #[inline]
     fn partial_cmp(&self, other: &Unsized)
@@ -414,7 +383,6 @@ impl ::core::cmp::PartialOrd for Unsized {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Unsized {
     #[inline]
     fn cmp(&self, other: &Unsized) -> ::core::cmp::Ordering {
@@ -426,7 +394,6 @@ impl ::core::cmp::Ord for Unsized {
 #[repr(packed)]
 struct PackedCopy(u32);
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for PackedCopy {
     #[inline]
     fn clone(&self) -> PackedCopy {
@@ -435,10 +402,8 @@ impl ::core::clone::Clone for PackedCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for PackedCopy { }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for PackedCopy {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "PackedCopy",
@@ -446,7 +411,6 @@ impl ::core::fmt::Debug for PackedCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for PackedCopy {
     #[inline]
     fn default() -> PackedCopy {
@@ -454,7 +418,6 @@ impl ::core::default::Default for PackedCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for PackedCopy {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         ::core::hash::Hash::hash(&{ self.0 }, state)
@@ -462,7 +425,6 @@ impl ::core::hash::Hash for PackedCopy {
 }
 impl ::core::marker::StructuralPartialEq for PackedCopy {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for PackedCopy {
     #[inline]
     fn eq(&self, other: &PackedCopy) -> bool { { self.0 } == { other.0 } }
@@ -471,7 +433,6 @@ impl ::core::cmp::PartialEq for PackedCopy {
 }
 impl ::core::marker::StructuralEq for PackedCopy {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for PackedCopy {
     #[inline]
     #[doc(hidden)]
@@ -481,7 +442,6 @@ impl ::core::cmp::Eq for PackedCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for PackedCopy {
     #[inline]
     fn partial_cmp(&self, other: &PackedCopy)
@@ -490,7 +450,6 @@ impl ::core::cmp::PartialOrd for PackedCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for PackedCopy {
     #[inline]
     fn cmp(&self, other: &PackedCopy) -> ::core::cmp::Ordering {
@@ -506,7 +465,6 @@ impl ::core::cmp::Ord for PackedCopy {
 #[repr(packed)]
 struct PackedNonCopy(u8);
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for PackedNonCopy {
     #[inline]
     fn clone(&self) -> PackedNonCopy {
@@ -515,7 +473,6 @@ impl ::core::clone::Clone for PackedNonCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for PackedNonCopy {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let Self(ref __self_0_0) = *self;
@@ -524,7 +481,6 @@ impl ::core::fmt::Debug for PackedNonCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for PackedNonCopy {
     #[inline]
     fn default() -> PackedNonCopy {
@@ -532,7 +488,6 @@ impl ::core::default::Default for PackedNonCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for PackedNonCopy {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let Self(ref __self_0_0) = *self;
@@ -541,7 +496,6 @@ impl ::core::hash::Hash for PackedNonCopy {
 }
 impl ::core::marker::StructuralPartialEq for PackedNonCopy {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for PackedNonCopy {
     #[inline]
     fn eq(&self, other: &PackedNonCopy) -> bool {
@@ -558,7 +512,6 @@ impl ::core::cmp::PartialEq for PackedNonCopy {
 }
 impl ::core::marker::StructuralEq for PackedNonCopy {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for PackedNonCopy {
     #[inline]
     #[doc(hidden)]
@@ -568,7 +521,6 @@ impl ::core::cmp::Eq for PackedNonCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for PackedNonCopy {
     #[inline]
     fn partial_cmp(&self, other: &PackedNonCopy)
@@ -579,7 +531,6 @@ impl ::core::cmp::PartialOrd for PackedNonCopy {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for PackedNonCopy {
     #[inline]
     fn cmp(&self, other: &PackedNonCopy) -> ::core::cmp::Ordering {
@@ -592,23 +543,19 @@ impl ::core::cmp::Ord for PackedNonCopy {
 // An empty enum.
 enum Enum0 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Enum0 {
     #[inline]
     fn clone(&self) -> Enum0 { *self }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for Enum0 { }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Enum0 {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         unsafe { ::core::intrinsics::unreachable() }
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Enum0 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         unsafe { ::core::intrinsics::unreachable() }
@@ -616,7 +563,6 @@ impl ::core::hash::Hash for Enum0 {
 }
 impl ::core::marker::StructuralPartialEq for Enum0 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Enum0 {
     #[inline]
     fn eq(&self, other: &Enum0) -> bool {
@@ -625,7 +571,6 @@ impl ::core::cmp::PartialEq for Enum0 {
 }
 impl ::core::marker::StructuralEq for Enum0 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Enum0 {
     #[inline]
     #[doc(hidden)]
@@ -633,7 +578,6 @@ impl ::core::cmp::Eq for Enum0 {
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Enum0 {
     #[inline]
     fn partial_cmp(&self, other: &Enum0)
@@ -642,7 +586,6 @@ impl ::core::cmp::PartialOrd for Enum0 {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Enum0 {
     #[inline]
     fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering {
@@ -657,7 +600,6 @@ enum Enum1 {
     },
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Enum1 {
     #[inline]
     fn clone(&self) -> Enum1 {
@@ -668,7 +610,6 @@ impl ::core::clone::Clone for Enum1 {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Enum1 {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
@@ -679,7 +620,6 @@ impl ::core::fmt::Debug for Enum1 {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Enum1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         match self {
@@ -690,7 +630,6 @@ impl ::core::hash::Hash for Enum1 {
 }
 impl ::core::marker::StructuralPartialEq for Enum1 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Enum1 {
     #[inline]
     fn eq(&self, other: &Enum1) -> bool {
@@ -709,7 +648,6 @@ impl ::core::cmp::PartialEq for Enum1 {
 }
 impl ::core::marker::StructuralEq for Enum1 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Enum1 {
     #[inline]
     #[doc(hidden)]
@@ -719,7 +657,6 @@ impl ::core::cmp::Eq for Enum1 {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Enum1 {
     #[inline]
     fn partial_cmp(&self, other: &Enum1)
@@ -731,7 +668,6 @@ impl ::core::cmp::PartialOrd for Enum1 {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Enum1 {
     #[inline]
     fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
@@ -749,39 +685,33 @@ enum Fieldless1 {
     A,
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Fieldless1 {
     #[inline]
     fn clone(&self) -> Fieldless1 { Fieldless1::A }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fieldless1 {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "A")
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for Fieldless1 {
     #[inline]
     fn default() -> Fieldless1 { Self::A }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fieldless1 {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
 }
 impl ::core::marker::StructuralPartialEq for Fieldless1 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Fieldless1 {
     #[inline]
     fn eq(&self, other: &Fieldless1) -> bool { true }
 }
 impl ::core::marker::StructuralEq for Fieldless1 {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Fieldless1 {
     #[inline]
     #[doc(hidden)]
@@ -789,7 +719,6 @@ impl ::core::cmp::Eq for Fieldless1 {
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Fieldless1 {
     #[inline]
     fn partial_cmp(&self, other: &Fieldless1)
@@ -798,7 +727,6 @@ impl ::core::cmp::PartialOrd for Fieldless1 {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Fieldless1 {
     #[inline]
     fn cmp(&self, other: &Fieldless1) -> ::core::cmp::Ordering {
@@ -815,16 +743,13 @@ enum Fieldless {
     C,
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Fieldless {
     #[inline]
     fn clone(&self) -> Fieldless { *self }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for Fieldless { }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fieldless {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
@@ -835,13 +760,11 @@ impl ::core::fmt::Debug for Fieldless {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for Fieldless {
     #[inline]
     fn default() -> Fieldless { Self::A }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fieldless {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
@@ -850,7 +773,6 @@ impl ::core::hash::Hash for Fieldless {
 }
 impl ::core::marker::StructuralPartialEq for Fieldless {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Fieldless {
     #[inline]
     fn eq(&self, other: &Fieldless) -> bool {
@@ -861,7 +783,6 @@ impl ::core::cmp::PartialEq for Fieldless {
 }
 impl ::core::marker::StructuralEq for Fieldless {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Fieldless {
     #[inline]
     #[doc(hidden)]
@@ -869,7 +790,6 @@ impl ::core::cmp::Eq for Fieldless {
     fn assert_receiver_is_total_eq(&self) -> () {}
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Fieldless {
     #[inline]
     fn partial_cmp(&self, other: &Fieldless)
@@ -880,7 +800,6 @@ impl ::core::cmp::PartialOrd for Fieldless {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Fieldless {
     #[inline]
     fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
@@ -903,7 +822,6 @@ enum Mixed {
     },
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Mixed {
     #[inline]
     fn clone(&self) -> Mixed {
@@ -912,10 +830,8 @@ impl ::core::clone::Clone for Mixed {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for Mixed { }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Mixed {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
@@ -931,13 +847,11 @@ impl ::core::fmt::Debug for Mixed {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::default::Default for Mixed {
     #[inline]
     fn default() -> Mixed { Self::P }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Mixed {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
@@ -954,7 +868,6 @@ impl ::core::hash::Hash for Mixed {
 }
 impl ::core::marker::StructuralPartialEq for Mixed {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Mixed {
     #[inline]
     fn eq(&self, other: &Mixed) -> bool {
@@ -987,7 +900,6 @@ impl ::core::cmp::PartialEq for Mixed {
 }
 impl ::core::marker::StructuralEq for Mixed {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Mixed {
     #[inline]
     #[doc(hidden)]
@@ -997,7 +909,6 @@ impl ::core::cmp::Eq for Mixed {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Mixed {
     #[inline]
     fn partial_cmp(&self, other: &Mixed)
@@ -1025,7 +936,6 @@ impl ::core::cmp::PartialOrd for Mixed {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Mixed {
     #[inline]
     fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
@@ -1054,7 +964,6 @@ impl ::core::cmp::Ord for Mixed {
 // for this enum.
 enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Fielded {
     #[inline]
     fn clone(&self) -> Fielded {
@@ -1069,7 +978,6 @@ impl ::core::clone::Clone for Fielded {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::fmt::Debug for Fielded {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
@@ -1086,7 +994,6 @@ impl ::core::fmt::Debug for Fielded {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::hash::Hash for Fielded {
     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
         let __self_tag = ::core::intrinsics::discriminant_value(self);
@@ -1100,7 +1007,6 @@ impl ::core::hash::Hash for Fielded {
 }
 impl ::core::marker::StructuralPartialEq for Fielded {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialEq for Fielded {
     #[inline]
     fn eq(&self, other: &Fielded) -> bool {
@@ -1135,7 +1041,6 @@ impl ::core::cmp::PartialEq for Fielded {
 }
 impl ::core::marker::StructuralEq for Fielded {}
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Eq for Fielded {
     #[inline]
     #[doc(hidden)]
@@ -1147,7 +1052,6 @@ impl ::core::cmp::Eq for Fielded {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::PartialOrd for Fielded {
     #[inline]
     fn partial_cmp(&self, other: &Fielded)
@@ -1170,7 +1074,6 @@ impl ::core::cmp::PartialOrd for Fielded {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::cmp::Ord for Fielded {
     #[inline]
     fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
@@ -1199,7 +1102,6 @@ pub union Union {
     pub i: i32,
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::clone::Clone for Union {
     #[inline]
     fn clone(&self) -> Union {
@@ -1208,5 +1110,4 @@ impl ::core::clone::Clone for Union {
     }
 }
 #[automatically_derived]
-#[allow(unused_qualifications)]
 impl ::core::marker::Copy for Union { }

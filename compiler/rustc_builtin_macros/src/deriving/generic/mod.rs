@@ -727,16 +727,8 @@ impl<'a> TraitDef<'a> {
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
         let opt_trait_ref = Some(trait_ref);
-        let unused_qual = {
-            let word = rustc_ast::attr::mk_nested_word_item(Ident::new(
-                sym::unused_qualifications,
-                self.span,
-            ));
-            let list = rustc_ast::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
-            cx.attribute(list)
-        };
 
-        let mut a = vec![attr, unused_qual];
+        let mut a = vec![attr];
         a.extend(self.attributes.iter().cloned());
 
         cx.item(

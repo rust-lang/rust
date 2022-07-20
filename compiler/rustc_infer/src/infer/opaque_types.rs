@@ -1,4 +1,4 @@
-use crate::infer::{InferCtxt, InferOk};
+use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
 use hir::def_id::{DefId, LocalDefId};
 use hir::{HirId, OpaqueTyOrigin};
@@ -101,44 +101,46 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Opaque(def_id, substs) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                let origin = if self.defining_use_anchor.is_some() {
-                    // Check that this is `impl Trait` type is
-                    // declared by `parent_def_id` -- i.e., one whose
-                    // value we are inferring.  At present, this is
-                    // always true during the first phase of
-                    // type-check, but not always true later on during
-                    // NLL. Once we support named opaque types more fully,
-                    // this same scenario will be able to arise during all phases.
-                    //
-                    // Here is an example using type alias `impl Trait`
-                    // that indicates the distinction we are checking for:
-                    //
-                    // ```rust
-                    // mod a {
-                    //   pub type Foo = impl Iterator;
-                    //   pub fn make_foo() -> Foo { .. }
-                    // }
-                    //
-                    // mod b {
-                    //   fn foo() -> a::Foo { a::make_foo() }
-                    // }
-                    // ```
-                    //
-                    // Here, the return type of `foo` references an
-                    // `Opaque` indeed, but not one whose value is
-                    // presently being inferred. You can get into a
-                    // similar situation with closure return types
-                    // today:
-                    //
-                    // ```rust
-                    // fn foo() -> impl Iterator { .. }
-                    // fn bar() {
-                    //     let x = || foo(); // returns the Opaque assoc with `foo`
-                    // }
-                    // ```
-                    self.opaque_type_origin(def_id, cause.span)?
-                } else {
-                    self.opaque_ty_origin_unchecked(def_id, cause.span)
+                let origin = match self.defining_use_anchor {
+                    DefiningAnchor::Bind(_) => {
+                        // Check that this is `impl Trait` type is
+                        // declared by `parent_def_id` -- i.e., one whose
+                        // value we are inferring.  At present, this is
+                        // always true during the first phase of
+                        // type-check, but not always true later on during
+                        // NLL. Once we support named opaque types more fully,
+                        // this same scenario will be able to arise during all phases.
+                        //
+                        // Here is an example using type alias `impl Trait`
+                        // that indicates the distinction we are checking for:
+                        //
+                        // ```rust
+                        // mod a {
+                        //   pub type Foo = impl Iterator;
+                        //   pub fn make_foo() -> Foo { .. }
+                        // }
+                        //
+                        // mod b {
+                        //   fn foo() -> a::Foo { a::make_foo() }
+                        // }
+                        // ```
+                        //
+                        // Here, the return type of `foo` references an
+                        // `Opaque` indeed, but not one whose value is
+                        // presently being inferred. You can get into a
+                        // similar situation with closure return types
+                        // today:
+                        //
+                        // ```rust
+                        // fn foo() -> impl Iterator { .. }
+                        // fn bar() {
+                        //     let x = || foo(); // returns the Opaque assoc with `foo`
+                        // }
+                        // ```
+                        self.opaque_type_origin(def_id, cause.span)?
+                    }
+                    DefiningAnchor::Bubble => self.opaque_ty_origin_unchecked(def_id, cause.span),
+                    DefiningAnchor::Error => return None,
                 };
                 if let ty::Opaque(did2, _) = *b.kind() {
                     // We could accept this, but there are various ways to handle this situation, and we don't
@@ -407,7 +409,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "trace")]
     pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-        let parent_def_id = self.defining_use_anchor?;
+        let parent_def_id = match self.defining_use_anchor {
+            DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
+            DefiningAnchor::Bind(bind) => bind,
+        };
         let item_kind = &self.tcx.hir().expect_item(def_id).kind;
 
         let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, ..  }) = item_kind else {
@@ -433,7 +438,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
+    pub fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
         let origin = match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {

@@ -52,7 +52,12 @@ unsafe fn wait_timeout(
 ) {
     // Use the system clock on systems that do not support pthread_condattr_setclock.
     // This unfortunately results in problems when the system time changes.
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "espidf"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "espidf"
+    ))]
     let (now, dur) = {
         use super::time::SystemTime;
         use crate::cmp::min;
@@ -73,7 +78,12 @@ unsafe fn wait_timeout(
         (now, dur)
     };
     // Use the monotonic clock on other systems.
-    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "espidf")))]
+    #[cfg(not(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "espidf"
+    )))]
     let (now, dur) = {
         use super::time::Timespec;
 
@@ -111,6 +121,7 @@ impl Parker {
             if #[cfg(any(
                 target_os = "macos",
                 target_os = "ios",
+                target_os = "watchos",
                 target_os = "l4re",
                 target_os = "android",
                 target_os = "redox"
