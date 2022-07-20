@@ -14,13 +14,14 @@ struct IdentInterner {
 impl IdentInterner {
     fn intern(&mut self, data: &str) -> Symbol {
         if let Some(index) = self.idents.get(data) {
-            return *index;
+            return Symbol(*index);
         }
 
         let index = self.idents.len() as u32;
+        let data = SmolStr::from(data);
         self.ident_data.push(data.clone());
-        self.idents.insert(data.clone(), index);
-        index
+        self.idents.insert(data, index);
+        Symbol(index)
     }
 
     fn get(&self, index: u32) -> &SmolStr {

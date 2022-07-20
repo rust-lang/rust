@@ -163,20 +163,15 @@ pub mod token_stream {
 }
 
 impl TokenStreamBuilder {
-    fn new() -> TokenStreamBuilder {
+    pub(super) fn new() -> TokenStreamBuilder {
         TokenStreamBuilder { acc: TokenStream::new() }
     }
 
-    fn push(&mut self, stream: TokenStream) {
+    pub(super) fn push(&mut self, stream: TokenStream) {
         self.acc.extend(stream.into_iter())
     }
 
-    fn build(self) -> TokenStream {
+    pub(super) fn build(self) -> TokenStream {
         self.acc
     }
-}
-
-#[derive(Clone)]
-pub struct TokenStreamIter {
-    trees: std::vec::IntoIter<TokenTree>,
 }

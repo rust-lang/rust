@@ -14,12 +14,13 @@ use super::proc_macro::{
 };
 
 mod token_stream;
-pub use token_stream::*;
+pub use token_stream::TokenStream;
+use token_stream::TokenStreamBuilder;
 
 mod symbol;
 pub use symbol::*;
 
-use std::iter::FromIterator;
+use std::{iter::FromIterator, ops::Bound};
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
@@ -76,6 +77,13 @@ impl server::FreeFunctions for RustAnalyzer {
         // https://github.com/rust-lang/rust/pull/71858
     }
     fn track_path(&mut self, _path: &str) {}
+
+    fn literal_from_str(
+        &mut self,
+        _s: &str,
+    ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+        todo!()
+    }
 }
 
 impl server::TokenStream for RustAnalyzer {
@@ -92,7 +100,7 @@ impl server::TokenStream for RustAnalyzer {
     }
     fn from_token_tree(
         &mut self,
-        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>,
+        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
     ) -> Self::TokenStream {
         match tree {
             bridge::TokenTree::Group(group) => {
@@ -107,8 +115,8 @@ impl server::TokenStream for RustAnalyzer {
                 Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Ident(symbol) => {
-                todo!("implement");
+            bridge::TokenTree::Ident(_symbol) => {
+                todo!("convert Ident bridge=>TokenStream");
                 // let IdentData(ident) = self.ident_interner.get(index).clone();
                 // let ident: tt::Ident = ident;
                 // let leaf = tt::Leaf::from(ident);
@@ -116,10 +124,11 @@ impl server::TokenStream for RustAnalyzer {
                 // Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Literal(literal) => {
-                let leaf = tt::Leaf::from(literal);
-                let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
+            bridge::TokenTree::Literal(_literal) => {
+                todo!("convert Literal bridge=>TokenStream");
+                // let leaf = tt::Leaf::from(literal);
+                // let tree = TokenTree::from(leaf);
+                // Self::TokenStream::from_iter(vec![tree])
             }
 
             bridge::TokenTree::Punct(p) => {
@@ -142,7 +151,7 @@ impl server::TokenStream for RustAnalyzer {
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>>,
+        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
         let mut builder = TokenStreamBuilder::new();
         if let Some(base) = base {
@@ -172,15 +181,18 @@ impl server::TokenStream for RustAnalyzer {
     fn into_trees(
         &mut self,
         stream: Self::TokenStream,
-    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Ident, Self::Literal>> {
+    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
         stream
             .into_iter()
             .map(|tree| match tree {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    todo!("implement");
+                tt::TokenTree::Leaf(tt::Leaf::Ident(_ident)) => {
+                    todo!("convert Ident tt=>bridge");
                     // bridge::TokenTree::Ident(Symbol(self.ident_interner.intern(&IdentData(ident))))
                 }
-                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => bridge::TokenTree::Literal(lit),
+                tt::TokenTree::Leaf(tt::Leaf::Literal(_lit)) => {
+                    todo!("convert Literal tt=>bridge");
+                    // bridge::TokenTree::Literal(lit)
+                }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
                     bridge::TokenTree::Punct(bridge::Punct {
                         ch: punct.char as u8,
@@ -317,6 +329,15 @@ impl server::Span for RustAnalyzer {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)
     }
+    fn subspan(
+        &mut self,
+        span: Self::Span,
+        _start: Bound<usize>,
+        _end: Bound<usize>,
+    ) -> Option<Self::Span> {
+        // Just return the span again, because some macros will unwrap the result.
+        Some(span)
+    }
     fn resolved_at(&mut self, _span: Self::Span, _at: Self::Span) -> Self::Span {
         // FIXME handle span
         tt::TokenId::unspecified()
@@ -343,6 +364,12 @@ impl server::MultiSpan for RustAnalyzer {
     }
 }
 
+impl server::Symbol for RustAnalyzer {
+    fn normalize_and_validate_ident(&mut self, _string: &str) -> Result<Self::Symbol, ()> {
+        todo!()
+    }
+}
+
 impl server::Server for RustAnalyzer {
     fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
         bridge::ExpnGlobals {
@@ -350,6 +377,14 @@ impl server::Server for RustAnalyzer {
             call_site: Span::unspecified(),
             mixed_site: Span::unspecified(),
         }
+    }
+
+    fn intern_symbol(_ident: &str) -> Self::Symbol {
+        todo!("intern_symbol")
+    }
+
+    fn with_symbol_string(_symbol: &Self::Symbol, _f: impl FnOnce(&str)) {
+        todo!("with_symbol_string")
     }
 }
 
