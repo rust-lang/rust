@@ -8,16 +8,18 @@
 //!
 //! FIXME: No span and source file information is implemented yet
 
-use super::proc_macro::bridge::{self, server};
+use super::proc_macro::{
+    self,
+    bridge::{self, server},
+};
 
 mod token_stream;
 pub use token_stream::*;
 
-use std::ascii;
-use std::collections::HashMap;
-use std::hash::Hash;
+mod symbol;
+pub use symbol::*;
+
 use std::iter::FromIterator;
-use std::ops::Bound;
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
@@ -48,42 +50,6 @@ impl Diagnostic {
     /// Creates a new diagnostic with the given `level` and `message`.
     pub fn new<T: Into<String>>(level: Level, message: T) -> Diagnostic {
         Diagnostic { level, message: message.into(), spans: vec![], children: vec![] }
-    }
-}
-
-// Rustc Server Ident has to be `Copyable`
-// We use a stub here for bypassing
-#[derive(Hash, Eq, PartialEq, Copy, Clone)]
-pub struct IdentId(u32);
-
-#[derive(Clone, Hash, Eq, PartialEq)]
-struct IdentData(tt::Ident);
-
-#[derive(Default)]
-struct IdentInterner {
-    idents: HashMap<IdentData, u32>,
-    ident_data: Vec<IdentData>,
-}
-
-impl IdentInterner {
-    fn intern(&mut self, data: &IdentData) -> u32 {
-        if let Some(index) = self.idents.get(data) {
-            return *index;
-        }
-
-        let index = self.idents.len() as u32;
-        self.ident_data.push(data.clone());
-        self.idents.insert(data.clone(), index);
-        index
-    }
-
-    fn get(&self, index: u32) -> &IdentData {
-        &self.ident_data[index as usize]
-    }
-
-    #[allow(unused)]
-    fn get_mut(&mut self, index: u32) -> &mut IdentData {
-        self.ident_data.get_mut(index as usize).expect("Should be consistent")
     }
 }
 
@@ -141,12 +107,13 @@ impl server::TokenStream for RustAnalyzer {
                 Self::TokenStream::from_iter(vec![tree])
             }
 
-            bridge::TokenTree::Ident(IdentId(index)) => {
-                let IdentData(ident) = self.ident_interner.get(index).clone();
-                let ident: tt::Ident = ident;
-                let leaf = tt::Leaf::from(ident);
-                let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(vec![tree])
+            bridge::TokenTree::Ident(symbol) => {
+                todo!("implement");
+                // let IdentData(ident) = self.ident_interner.get(index).clone();
+                // let ident: tt::Ident = ident;
+                // let leaf = tt::Leaf::from(ident);
+                // let tree = TokenTree::from(leaf);
+                // Self::TokenStream::from_iter(vec![tree])
             }
 
             bridge::TokenTree::Literal(literal) => {
@@ -210,7 +177,8 @@ impl server::TokenStream for RustAnalyzer {
             .into_iter()
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(IdentId(self.ident_interner.intern(&IdentData(ident))))
+                    todo!("implement");
+                    // bridge::TokenTree::Ident(Symbol(self.ident_interner.intern(&IdentData(ident))))
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => bridge::TokenTree::Literal(lit),
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
@@ -236,162 +204,36 @@ impl server::TokenStream for RustAnalyzer {
     }
 }
 
-fn delim_to_internal(d: bridge::Delimiter) -> Option<tt::Delimiter> {
+fn delim_to_internal(d: proc_macro::Delimiter) -> Option<tt::Delimiter> {
     let kind = match d {
-        bridge::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
-        bridge::Delimiter::Brace => tt::DelimiterKind::Brace,
-        bridge::Delimiter::Bracket => tt::DelimiterKind::Bracket,
-        bridge::Delimiter::None => return None,
+        proc_macro::Delimiter::Parenthesis => tt::DelimiterKind::Parenthesis,
+        proc_macro::Delimiter::Brace => tt::DelimiterKind::Brace,
+        proc_macro::Delimiter::Bracket => tt::DelimiterKind::Bracket,
+        proc_macro::Delimiter::None => return None,
     };
     Some(tt::Delimiter { id: tt::TokenId::unspecified(), kind })
 }
 
-fn delim_to_external(d: Option<tt::Delimiter>) -> bridge::Delimiter {
+fn delim_to_external(d: Option<tt::Delimiter>) -> proc_macro::Delimiter {
     match d.map(|it| it.kind) {
-        Some(tt::DelimiterKind::Parenthesis) => bridge::Delimiter::Parenthesis,
-        Some(tt::DelimiterKind::Brace) => bridge::Delimiter::Brace,
-        Some(tt::DelimiterKind::Bracket) => bridge::Delimiter::Bracket,
-        None => bridge::Delimiter::None,
+        Some(tt::DelimiterKind::Parenthesis) => proc_macro::Delimiter::Parenthesis,
+        Some(tt::DelimiterKind::Brace) => proc_macro::Delimiter::Brace,
+        Some(tt::DelimiterKind::Bracket) => proc_macro::Delimiter::Bracket,
+        None => proc_macro::Delimiter::None,
     }
 }
 
-fn spacing_to_internal(spacing: bridge::Spacing) -> Spacing {
+fn spacing_to_internal(spacing: proc_macro::Spacing) -> Spacing {
     match spacing {
-        bridge::Spacing::Alone => Spacing::Alone,
-        bridge::Spacing::Joint => Spacing::Joint,
+        proc_macro::Spacing::Alone => Spacing::Alone,
+        proc_macro::Spacing::Joint => Spacing::Joint,
     }
 }
 
-fn spacing_to_external(spacing: Spacing) -> bridge::Spacing {
+fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     match spacing {
-        Spacing::Alone => bridge::Spacing::Alone,
-        Spacing::Joint => bridge::Spacing::Joint,
-    }
-}
-
-impl server::Ident for RustAnalyzer {
-    fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
-        IdentId(self.ident_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
-    }
-
-    fn span(&mut self, ident: Self::Ident) -> Self::Span {
-        self.ident_interner.get(ident.0).0.id
-    }
-    fn with_span(&mut self, ident: Self::Ident, span: Self::Span) -> Self::Ident {
-        let data = self.ident_interner.get(ident.0);
-        let new = IdentData(tt::Ident { id: span, ..data.0.clone() });
-        IdentId(self.ident_interner.intern(&new))
-    }
-}
-
-impl server::Literal for RustAnalyzer {
-    fn debug_kind(&mut self, _literal: &Self::Literal) -> String {
-        // r-a: debug_kind and suffix are unsupported; corresponding client code has been changed to not call these.
-        // They must still be present to be ABI-compatible and work with upstream proc_macro.
-        "".to_owned()
-    }
-    fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
-        Ok(Literal { text: s.into(), id: tt::TokenId::unspecified() })
-    }
-    fn symbol(&mut self, literal: &Self::Literal) -> String {
-        literal.text.to_string()
-    }
-    fn suffix(&mut self, _literal: &Self::Literal) -> Option<String> {
-        None
-    }
-
-    fn to_string(&mut self, literal: &Self::Literal) -> String {
-        literal.to_string()
-    }
-
-    fn integer(&mut self, n: &str) -> Self::Literal {
-        let n = match n.parse::<i128>() {
-            Ok(n) => n.to_string(),
-            Err(_) => n.parse::<u128>().unwrap().to_string(),
-        };
-        Literal { text: n.into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
-        macro_rules! def_suffixed_integer {
-            ($kind:ident, $($ty:ty),*) => {
-                match $kind {
-                    $(
-                        stringify!($ty) => {
-                            let n: $ty = n.parse().unwrap();
-                            format!(concat!("{}", stringify!($ty)), n)
-                        }
-                    )*
-                    _ => unimplemented!("unknown args for typed_integer: n {}, kind {}", n, $kind),
-                }
-            }
-        }
-
-        let text = def_suffixed_integer! {kind, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize};
-
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn float(&mut self, n: &str) -> Self::Literal {
-        let n: f64 = n.parse().unwrap();
-        let mut text = f64::to_string(&n);
-        if !text.contains('.') {
-            text += ".0"
-        }
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn f32(&mut self, n: &str) -> Self::Literal {
-        let n: f32 = n.parse().unwrap();
-        let text = format!("{}f32", n);
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn f64(&mut self, n: &str) -> Self::Literal {
-        let n: f64 = n.parse().unwrap();
-        let text = format!("{}f64", n);
-        Literal { text: text.into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn string(&mut self, string: &str) -> Self::Literal {
-        let mut escaped = String::new();
-        for ch in string.chars() {
-            escaped.extend(ch.escape_debug());
-        }
-        Literal { text: format!("\"{}\"", escaped).into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn character(&mut self, ch: char) -> Self::Literal {
-        Literal { text: format!("'{}'", ch).into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
-        let string = bytes
-            .iter()
-            .cloned()
-            .flat_map(ascii::escape_default)
-            .map(Into::<char>::into)
-            .collect::<String>();
-
-        Literal { text: format!("b\"{}\"", string).into(), id: tt::TokenId::unspecified() }
-    }
-
-    fn span(&mut self, literal: &Self::Literal) -> Self::Span {
-        literal.id
-    }
-
-    fn set_span(&mut self, literal: &mut Self::Literal, span: Self::Span) {
-        literal.id = span;
-    }
-
-    fn subspan(
-        &mut self,
-        _literal: &Self::Literal,
-        _start: Bound<usize>,
-        _end: Bound<usize>,
-    ) -> Option<Self::Span> {
-        // FIXME handle span
-        None
+        Spacing::Alone => proc_macro::Spacing::Alone,
+        Spacing::Joint => proc_macro::Spacing::Joint,
     }
 }
 
