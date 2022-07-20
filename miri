@@ -48,6 +48,25 @@ Pass extra flags to all cargo invocations.
 EOF
 )
 
+## Run the subcommands that the user requested to always run first
+if [ -z "$AUTO_OPS" ]; then
+    export AUTO_OPS=42
+
+    # Run this first, so that the toolchain doesn't change after
+    # other code has run.
+    if [ -f ".auto-everything" ] || [ -f ".auto-toolchain" ] ; then
+        "$MIRIDIR"/rustup-toolchain
+    fi
+
+    if [ -f ".auto-everything" ] || [ -f ".auto-fmt" ] ; then
+        $0 fmt
+    fi
+
+    if [ -f ".auto-everything" ] || [ -f ".auto-clippy" ] ; then
+        $0 clippy -- -D warnings
+    fi
+fi
+
 ## Preparation
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
 MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
