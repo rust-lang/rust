@@ -299,7 +299,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             infcx
                                 .report_mismatched_types(
                                     &ObligationCause::misc(instantiated_ty.span, body_id),
-                                    self.tcx.mk_opaque(def_id, id_substs),
+                                    self.tcx.mk_opaque(def_id.to_def_id(), id_substs),
                                     definition_ty,
                                     err,
                                 )
