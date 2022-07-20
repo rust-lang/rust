@@ -2282,49 +2282,55 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer_span: Span,
         else_block: &Block,
         visibility_scope: Option<SourceScope>,
+        remainder_scope: region::Scope,
         remainder_span: Span,
         pattern: &Pat<'tcx>,
     ) -> BlockAnd<()> {
-        let scrutinee = unpack!(block = self.lower_scrutinee(block, init, initializer_span));
-        let pat = Pat { ty: init.ty, span: else_block.span, kind: Box::new(PatKind::Wild) };
-        let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
-        self.declare_bindings(
-            visibility_scope,
-            remainder_span,
-            pattern,
-            ArmHasGuard(false),
-            Some((None, initializer_span)),
-        );
-        let mut candidate = Candidate::new(scrutinee.clone(), pattern, false);
-        let fake_borrow_temps = self.lower_match_tree(
-            block,
-            initializer_span,
-            pattern.span,
-            false,
-            &mut [&mut candidate, &mut wildcard],
-        );
-        // This block is for the matching case
-        let matching = self.bind_pattern(
-            self.source_info(pattern.span),
-            candidate,
-            None,
-            &fake_borrow_temps,
-            initializer_span,
-            None,
-            None,
-            None,
-        );
-        // This block is for the failure case
-        let failure = self.bind_pattern(
-            self.source_info(else_block.span),
-            wildcard,
-            None,
-            &fake_borrow_temps,
-            initializer_span,
-            None,
-            None,
-            None,
-        );
+        let (matching, failure) = self.in_if_then_scope(remainder_scope, |this| {
+            let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
+            let pat = Pat { ty: init.ty, span: else_block.span, kind: Box::new(PatKind::Wild) };
+            let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
+            this.declare_bindings(
+                visibility_scope,
+                remainder_span,
+                pattern,
+                ArmHasGuard(false),
+                Some((None, initializer_span)),
+            );
+            let mut candidate = Candidate::new(scrutinee.clone(), pattern, false);
+            let fake_borrow_temps = this.lower_match_tree(
+                block,
+                initializer_span,
+                pattern.span,
+                false,
+                &mut [&mut candidate, &mut wildcard],
+            );
+            // This block is for the matching case
+            let matching = this.bind_pattern(
+                this.source_info(pattern.span),
+                candidate,
+                None,
+                &fake_borrow_temps,
+                initializer_span,
+                None,
+                None,
+                None,
+            );
+            // This block is for the failure case
+            let failure = this.bind_pattern(
+                this.source_info(else_block.span),
+                wildcard,
+                None,
+                &fake_borrow_temps,
+                initializer_span,
+                None,
+                None,
+                None,
+            );
+            this.break_for_else(failure, remainder_scope, this.source_info(initializer_span));
+            matching.unit()
+        });
+
         // This place is not really used because this destination place
         // should never be used to take values at the end of the failure
         // block.

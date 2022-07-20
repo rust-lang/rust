@@ -1,6 +1,7 @@
 // run-pass
 #![feature(let_else)]
 
+use std::rc::Rc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
 static TRACKER: AtomicU8 = AtomicU8::new(0);
@@ -22,4 +23,38 @@ fn main() {
     let 0 = Droppy::default().inner else { return };
     assert_eq!(TRACKER.load(Ordering::Acquire), 1);
     println!("Should have dropped 👆");
+
+    {
+        // test let-else drops temps after statement
+        let rc = Rc::new(0);
+        let 0 = *rc.clone() else { unreachable!() };
+        Rc::try_unwrap(rc).unwrap();
+    }
+    {
+        let mut rc = Rc::new(0);
+        let mut i = 0;
+        loop {
+            if i > 3 {
+                break;
+            }
+            let 1 = *rc.clone() else {
+                if let Ok(v) = Rc::try_unwrap(rc) {
+                    rc = Rc::new(v);
+                } else {
+                    panic!()
+                }
+                i += 1;
+                continue
+            };
+        }
+    }
+    {
+        // test let-else drops temps before else block
+        let rc = Rc::new(0);
+        let 1 = *rc.clone() else {
+            Rc::try_unwrap(rc).unwrap();
+            return;
+        };
+        unreachable!();
+    }
 }
