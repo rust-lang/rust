@@ -30,3 +30,6 @@ expect-test = "1.4.0"
 
 # used as proc macro test targets
 proc-macro-test = { path = "../proc-macro-test" }
+
+[features]
+sysroot-abi = []

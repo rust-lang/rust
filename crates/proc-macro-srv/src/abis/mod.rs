@@ -26,6 +26,8 @@
 mod abi_1_58;
 mod abi_1_63;
 mod abi_1_64;
+#[cfg(feature = "sysroot-abi")]
+mod abi_sysroot;
 
 // Used by `test/utils.rs`
 #[cfg(test)]
