@@ -630,18 +630,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
         let to_owned_msg = "create an owned `String` from a string reference";
 
-        let string_type = self.tcx.get_diagnostic_item(sym::String);
-        let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
-            Some(ty_def) => Some(ty_def.did()) == string_type,
-            None => false,
+        let is_std_string = |ty: Ty<'tcx>| {
+            ty.ty_adt_def()
+                .map_or(false, |ty_def| self.tcx.is_diagnostic_item(sym::String, ty_def.did()))
         };
 
         match (lhs_ty.kind(), rhs_ty.kind()) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (*l_ty.kind() == Str || is_std_string(l_ty)) && (
-                        *r_ty.kind() == Str || is_std_string(r_ty) ||
-                        &format!("{:?}", rhs_ty) == "&&str"
-                    ) =>
+                if (*l_ty.kind() == Str || is_std_string(l_ty))
+                    && (*r_ty.kind() == Str
+                        || is_std_string(r_ty)
+                        || matches!(
+                            r_ty.kind(), Ref(_, inner_ty, _) if *inner_ty.kind() == Str
+                        )) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
                     err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
