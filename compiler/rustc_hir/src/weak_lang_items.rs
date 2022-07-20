@@ -4,7 +4,7 @@ use crate::def_id::DefId;
 use crate::{lang_items, LangItem, LanguageItems};
 
 use rustc_ast as ast;
-use rustc_data_structures::stable_map::StableMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::sync::LazyLock;
@@ -12,8 +12,8 @@ use std::sync::LazyLock;
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
 
-pub static WEAK_ITEMS_REFS: LazyLock<StableMap<Symbol, LangItem>> = LazyLock::new(|| {
-    let mut map = StableMap::default();
+pub static WEAK_ITEMS_REFS: LazyLock<FxIndexMap<Symbol, LangItem>> = LazyLock::new(|| {
+    let mut map = FxIndexMap::default();
     $(map.insert(sym::$name, LangItem::$item);)*
     map
 });

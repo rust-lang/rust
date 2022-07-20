@@ -1,6 +1,6 @@
 use gccjit::{ToLValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{AbiBuilderMethods, BaseTypeMethods};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::Ty;
 use rustc_target::abi::call::{CastTarget, FnAbi, PassMode, Reg, RegKind};
