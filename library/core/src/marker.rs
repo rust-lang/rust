@@ -843,7 +843,7 @@ mod copy_impls {
 #[unstable(feature = "fn_ptr_trait", issue = "none", reason = "recently added")]
 #[lang = "fn_ptr_trait"]
 #[cfg(not(bootstrap))]
-pub trait FnPtr {
+pub trait FnPtr: Copy + Clone {
     /// Returns the adress of the function pointer.
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> usize;

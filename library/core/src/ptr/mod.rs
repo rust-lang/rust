@@ -1825,138 +1825,200 @@ pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
     hashee.hash(into);
 }
 
-// If this is a unary fn pointer, it adds a doc comment.
-// Otherwise, it hides the docs entirely.
-macro_rules! maybe_fnptr_doc {
-    (@ #[$meta:meta] $item:item) => {
-        #[doc(hidden)]
-        #[$meta]
-        $item
-    };
-    ($a:ident @ #[$meta:meta] $item:item) => {
-        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
-        #[doc = "This trait is implemented for function pointers with up to twelve arguments."]
-        #[$meta]
-        $item
-    };
-    ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
-        #[doc(hidden)]
-        #[$meta]
-        $item
-    };
-}
+#[cfg(bootstrap)]
+mod old_fn_ptr_impl {
+    use super::*;
+    // If this is a unary fn pointer, it adds a doc comment.
+    // Otherwise, it hides the docs entirely.
+    macro_rules! maybe_fnptr_doc {
+        (@ #[$meta:meta] $item:item) => {
+            #[doc(hidden)]
+            #[$meta]
+            $item
+        };
+        ($a:ident @ #[$meta:meta] $item:item) => {
+            #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+            #[doc = "This trait is implemented for function pointers with up to twelve arguments."]
+            #[$meta]
+            $item
+        };
+        ($a:ident $($rest_a:ident)+ @ #[$meta:meta] $item:item) => {
+            #[doc(hidden)]
+            #[$meta]
+            $item
+        };
+    }
 
-// FIXME(strict_provenance_magic): function pointers have buggy codegen that
-// necessitates casting to a usize to get the backend to do the right thing.
-// for now I will break AVR to silence *a billion* lints. We should probably
-// have a proper "opaque function pointer type" to handle this kind of thing.
+    // FIXME(strict_provenance_magic): function pointers have buggy codegen that
+    // necessitates casting to a usize to get the backend to do the right thing.
+    // for now I will break AVR to silence *a billion* lints. We should probably
+    // have a proper "opaque function pointer type" to handle this kind of thing.
 
-// Impls for function pointers
-macro_rules! fnptr_impls_safety_abi {
-    ($FnTy: ty, $($Arg: ident),*) => {
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> PartialEq for $FnTy {
-                #[inline]
-                fn eq(&self, other: &Self) -> bool {
-                    *self as usize == *other as usize
+    // Impls for function pointers
+    macro_rules! fnptr_impls_safety_abi {
+        ($FnTy: ty, $($Arg: ident),*) => {
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> PartialEq for $FnTy {
+                    #[inline]
+                    fn eq(&self, other: &Self) -> bool {
+                        *self as usize == *other as usize
+                    }
                 }
             }
-        }
 
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> Eq for $FnTy {}
-        }
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> Eq for $FnTy {}
+            }
 
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> PartialOrd for $FnTy {
-                #[inline]
-                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                    (*self as usize).partial_cmp(&(*other as usize))
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> PartialOrd for $FnTy {
+                    #[inline]
+                    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                        (*self as usize).partial_cmp(&(*other as usize))
+                    }
                 }
             }
-        }
 
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> Ord for $FnTy {
-                #[inline]
-                fn cmp(&self, other: &Self) -> Ordering {
-                    (*self as usize).cmp(&(*other as usize))
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> Ord for $FnTy {
+                    #[inline]
+                    fn cmp(&self, other: &Self) -> Ordering {
+                        (*self as usize).cmp(&(*other as usize))
+                    }
                 }
             }
-        }
 
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> hash::Hash for $FnTy {
-                fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
-                    state.write_usize(*self as usize)
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> hash::Hash for $FnTy {
+                    fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
+                        state.write_usize(*self as usize)
+                    }
                 }
             }
-        }
 
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    fmt::pointer_fmt_inner(*self as usize, f)
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        fmt::pointer_fmt_inner(*self as usize, f)
+                    }
                 }
             }
-        }
 
-        maybe_fnptr_doc! {
-            $($Arg)* @
-            #[stable(feature = "fnptr_impls", since = "1.4.0")]
-            impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    fmt::pointer_fmt_inner(*self as usize, f)
+            maybe_fnptr_doc! {
+                $($Arg)* @
+                #[stable(feature = "fnptr_impls", since = "1.4.0")]
+                impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        fmt::pointer_fmt_inner(*self as usize, f)
+                    }
                 }
             }
         }
     }
+
+    macro_rules! fnptr_impls_args {
+        ($($Arg: ident),+) => {
+            fnptr_impls_safety_abi! { extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
+            fnptr_impls_safety_abi! { extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
+            fnptr_impls_safety_abi! { extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
+            fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
+            fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
+            fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
+        };
+        () => {
+            // No variadic functions with 0 parameters
+            fnptr_impls_safety_abi! { extern "Rust" fn() -> Ret, }
+            fnptr_impls_safety_abi! { extern "C" fn() -> Ret, }
+            fnptr_impls_safety_abi! { unsafe extern "Rust" fn() -> Ret, }
+            fnptr_impls_safety_abi! { unsafe extern "C" fn() -> Ret, }
+        };
+    }
+
+    fnptr_impls_args! {}
+    fnptr_impls_args! { T }
+    fnptr_impls_args! { A, B }
+    fnptr_impls_args! { A, B, C }
+    fnptr_impls_args! { A, B, C, D }
+    fnptr_impls_args! { A, B, C, D, E }
+    fnptr_impls_args! { A, B, C, D, E, F }
+    fnptr_impls_args! { A, B, C, D, E, F, G }
+    fnptr_impls_args! { A, B, C, D, E, F, G, H }
+    fnptr_impls_args! { A, B, C, D, E, F, G, H, I }
+    fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J }
+    fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K }
+    fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 }
 
-macro_rules! fnptr_impls_args {
-    ($($Arg: ident),+) => {
-        fnptr_impls_safety_abi! { extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
-    };
-    () => {
-        // No variadic functions with 0 parameters
-        fnptr_impls_safety_abi! { extern "Rust" fn() -> Ret, }
-        fnptr_impls_safety_abi! { extern "C" fn() -> Ret, }
-        fnptr_impls_safety_abi! { unsafe extern "Rust" fn() -> Ret, }
-        fnptr_impls_safety_abi! { unsafe extern "C" fn() -> Ret, }
-    };
+#[cfg(not(bootstrap))]
+mod new_fn_ptr_impl {
+    use super::*;
+    use crate::marker::FnPtr;
+
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> PartialEq for F {
+        #[inline]
+        fn eq(&self, other: &Self) -> bool {
+            self.addr() == other.addr()
+        }
+    }
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> Eq for F {}
+
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> PartialOrd for F {
+        #[inline]
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            self.addr().partial_cmp(&other.addr())
+        }
+    }
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> Ord for F {
+        #[inline]
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.addr().cmp(&other.addr())
+        }
+    }
+
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> hash::Hash for F {
+        fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
+            state.write_usize(self.addr())
+        }
+    }
+
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> fmt::Pointer for F {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::pointer_fmt_inner(self.addr(), f)
+        }
+    }
+
+    #[stable(feature = "fnptr_impls", since = "1.4.0")]
+    #[rustc_select_quick_discard]
+    impl<F: FnPtr> fmt::Debug for F {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::pointer_fmt_inner(self.addr(), f)
+        }
+    }
 }
-
-fnptr_impls_args! {}
-fnptr_impls_args! { T }
-fnptr_impls_args! { A, B }
-fnptr_impls_args! { A, B, C }
-fnptr_impls_args! { A, B, C, D }
-fnptr_impls_args! { A, B, C, D, E }
-fnptr_impls_args! { A, B, C, D, E, F }
-fnptr_impls_args! { A, B, C, D, E, F, G }
-fnptr_impls_args! { A, B, C, D, E, F, G, H }
-fnptr_impls_args! { A, B, C, D, E, F, G, H, I }
-fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J }
-fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K }
-fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
-
 /// Create a `const` raw pointer to a place, without creating an intermediate reference.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
