@@ -1376,11 +1376,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let hir_bounds = if origin == hir::OpaqueTyOrigin::TyAlias {
                 lower_bounds(lctx)
             } else {
-                lctx.while_capturing_lifetimes(
-                    opaque_ty_def_id,
-                    &mut collected_lifetimes,
-                    lower_bounds,
-                )
+                let lifetime_stash = std::mem::replace(
+                    &mut lctx.captured_lifetimes,
+                    Some(LifetimeCaptureContext {
+                        parent_def_id: opaque_ty_def_id,
+                        captures: std::mem::take(&mut collected_lifetimes),
+                        binders_to_ignore: Default::default(),
+                    }),
+                );
+
+                let ret = lower_bounds(lctx);
+
+                let ctxt = std::mem::replace(&mut lctx.captured_lifetimes, lifetime_stash).unwrap();
+                collected_lifetimes = ctxt.captures;
+
+                ret
             };
             debug!(?collected_lifetimes);
 
