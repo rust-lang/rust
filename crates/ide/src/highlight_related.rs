@@ -1310,4 +1310,68 @@ fn foo((
 "#,
         );
     }
+
+    #[test]
+    fn test_hl_trait_impl_methods() {
+        check(
+            r#"
+trait Trait {
+    fn func$0(self) {}
+     //^^^^
+}
+
+impl Trait for () {
+    fn func(self) {}
+     //^^^^
+}
+
+fn main() {
+    <()>::func(());
+        //^^^^
+    ().func();
+     //^^^^
+}
+"#,
+        );
+        check(
+            r#"
+trait Trait {
+    fn func(self) {}
+     //^^^^
+}
+
+impl Trait for () {
+    fn func$0(self) {}
+     //^^^^
+}
+
+fn main() {
+    <()>::func(());
+        //^^^^
+    ().func();
+     //^^^^
+}
+"#,
+        );
+        check(
+            r#"
+trait Trait {
+    fn func(self) {}
+     //^^^^
+}
+
+impl Trait for () {
+    fn func(self) {}
+     //^^^^
+}
+
+fn main() {
+    <()>::func(());
+        //^^^^
+    ().func$0();
+     //^^^^
+}
+"#,
+        );
+    }
 }
