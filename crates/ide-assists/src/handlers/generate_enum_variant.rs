@@ -32,8 +32,7 @@ use crate::assist_context::{AssistContext, Assists};
 // }
 // ```
 pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
-    let path = path_expr.path()?;
+    let path: ast::Path = ctx.find_node_at_offset()?;
 
     if ctx.sema.resolve_path(&path).is_some() {
         // No need to generate anything if the path resolves
@@ -95,9 +94,46 @@ fn make_field_list(ctx: &AssistContext<'_>, path: &ast::Path) -> Option<ast::Fie
         path.syntax().parent().and_then(|it| it.parent()).and_then(ast::CallExpr::cast)
     {
         make_tuple_field_list(call_expr, ctx, &scope)
+    } else if let Some(record_expr) = path.syntax().parent().and_then(ast::RecordExpr::cast) {
+        make_record_field_list(record_expr, ctx, &scope)
     } else {
         None
     }
+}
+
+fn make_record_field_list(
+    record: ast::RecordExpr,
+    ctx: &AssistContext<'_>,
+    scope: &hir::SemanticsScope<'_>,
+) -> Option<ast::FieldList> {
+    let fields = record.record_expr_field_list()?.fields();
+    let record_fields = fields.map(|field| {
+        let name = name_from_field(&field);
+
+        let ty = field
+            .expr()
+            .and_then(|it| expr_ty(ctx, it, scope))
+            .unwrap_or_else(make::ty_placeholder);
+
+        make::record_field(None, name, ty)
+    });
+    Some(make::record_field_list(record_fields).into())
+}
+
+fn name_from_field(field: &ast::RecordExprField) -> ast::Name {
+    let text = match field.name_ref() {
+        Some(it) => it.to_string(),
+        None => name_from_field_shorthand(field).unwrap_or("unknown".to_string()),
+    };
+    make::name(&text)
+}
+
+fn name_from_field_shorthand(field: &ast::RecordExprField) -> Option<String> {
+    let path = match field.expr()? {
+        ast::Expr::PathExpr(path_expr) => path_expr.path(),
+        _ => None,
+    }?;
+    Some(path.as_single_name_ref()?.to_string())
 }
 
 fn make_tuple_field_list(
@@ -107,18 +143,20 @@ fn make_tuple_field_list(
 ) -> Option<ast::FieldList> {
     let args = call_expr.arg_list()?.args();
     let tuple_fields = args.map(|arg| {
-        let ty = expr_ty(ctx, arg, &scope);
+        let ty = expr_ty(ctx, arg, &scope).unwrap_or_else(make::ty_placeholder);
         make::tuple_field(None, ty)
     });
     Some(make::tuple_field_list(tuple_fields).into())
 }
 
-fn expr_ty(ctx: &AssistContext<'_>, arg: ast::Expr, scope: &hir::SemanticsScope<'_>) -> ast::Type {
-    let ty = ctx.sema.type_of_expr(&arg).map(|it| it.adjusted());
-    let text = ty
-        .and_then(|it| it.display_source_code(ctx.db(), scope.module().into()).ok())
-        .unwrap_or_else(|| "_".to_string());
-    make::ty(&text)
+fn expr_ty(
+    ctx: &AssistContext<'_>,
+    arg: ast::Expr,
+    scope: &hir::SemanticsScope<'_>,
+) -> Option<ast::Type> {
+    let ty = ctx.sema.type_of_expr(&arg).map(|it| it.adjusted())?;
+    let text = ty.display_source_code(ctx.db(), scope.module().into()).ok()?;
+    Some(make::ty(&text))
 }
 
 #[cfg(test)]
@@ -317,6 +355,115 @@ enum Foo {
 }
 fn main() {
     Foo::Bar(true, x, Struct {})
+}
+",
+        )
+    }
+
+    #[test]
+    fn associated_record() {
+        check_assist(
+            generate_enum_variant,
+            r"
+enum Foo {}
+fn main() {
+    Foo::$0Bar { x: true }
+}
+",
+            r"
+enum Foo {
+    Bar { x: bool },
+}
+fn main() {
+    Foo::Bar { x: true }
+}
+",
+        )
+    }
+
+    #[test]
+    fn associated_record_unknown_type() {
+        check_assist(
+            generate_enum_variant,
+            r"
+enum Foo {}
+fn main() {
+    Foo::$0Bar { x: y }
+}
+",
+            r"
+enum Foo {
+    Bar { x: _ },
+}
+fn main() {
+    Foo::Bar { x: y }
+}
+",
+        )
+    }
+
+    #[test]
+    fn associated_record_field_shorthand() {
+        check_assist(
+            generate_enum_variant,
+            r"
+enum Foo {}
+fn main() {
+    let x = true;
+    Foo::$0Bar { x }
+}
+",
+            r"
+enum Foo {
+    Bar { x: bool },
+}
+fn main() {
+    let x = true;
+    Foo::Bar { x }
+}
+",
+        )
+    }
+
+    #[test]
+    fn associated_record_field_shorthand_unknown_type() {
+        check_assist(
+            generate_enum_variant,
+            r"
+enum Foo {}
+fn main() {
+    Foo::$0Bar { x }
+}
+",
+            r"
+enum Foo {
+    Bar { x: _ },
+}
+fn main() {
+    Foo::Bar { x }
+}
+",
+        )
+    }
+
+    #[test]
+    fn associated_record_field_multiple_fields() {
+        check_assist(
+            generate_enum_variant,
+            r"
+struct Struct {}
+enum Foo {}
+fn main() {
+    Foo::$0Bar { x, y: x, s: Struct {} }
+}
+",
+            r"
+struct Struct {}
+enum Foo {
+    Bar { x: _, y: _, s: Struct },
+}
+fn main() {
+    Foo::Bar { x, y: x, s: Struct {} }
 }
 ",
         )
