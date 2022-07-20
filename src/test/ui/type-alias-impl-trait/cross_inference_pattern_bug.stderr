@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/cross_inference_pattern_bug.rs:5:14
+   |
+LL |     type T = impl Copy;
+   |              ^^^^^^^^^
+   |
+   = note: `T` must be used in combination with a concrete type within the same module
+
+error: aborting due to previous error
+

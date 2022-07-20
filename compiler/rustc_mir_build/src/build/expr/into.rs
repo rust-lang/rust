@@ -15,13 +15,14 @@ use std::iter;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
-    #[instrument(level = "debug", skip(self))]
     pub(crate) fn expr_into_dest(
         &mut self,
         destination: Place<'tcx>,
         mut block: BasicBlock,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
+        debug!("expr_into_dest(destination={:?}, block={:?}, expr={:?})", destination, block, expr);
+
         // since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
         // just use the name `this` uniformly
@@ -365,7 +366,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             None => {
                                 let place_builder = place_builder.clone();
                                 this.consume_by_copy_or_move(
-                                    place_builder.field(n, *ty).into_place(this),
+                                    place_builder
+                                        .field(n, *ty)
+                                        .into_place(this.tcx, this.typeck_results),
                                 )
                             }
                         })
