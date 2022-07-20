@@ -481,6 +481,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.set_tainted_by_errors();
         let tcx = self.tcx;
 
+        // Get the argument span in the context of the call span so that
+        // suggestions and labels are (more) correct when an arg is a
+        // macro invocation.
+        let normalize_span = |span: Span| -> Span {
+            let normalized_span = span.find_ancestor_inside(error_span).unwrap_or(span);
+            // Sometimes macros mess up the spans, so do not normalize the
+            // arg span to equal the error span, because that's less useful
+            // than pointing out the arg expr in the wrong context.
+            if normalized_span.source_equal(error_span) { span } else { normalized_span }
+        };
+
         // Precompute the provided types and spans, since that's all we typically need for below
         let provided_arg_tys: IndexVec<ProvidedIdx, (Ty<'tcx>, Span)> = provided_args
             .iter()
@@ -490,7 +501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .borrow()
                     .expr_ty_adjusted_opt(*expr)
                     .unwrap_or_else(|| tcx.ty_error());
-                (self.resolve_vars_if_possible(ty), expr.span)
+                (self.resolve_vars_if_possible(ty), normalize_span(expr.span))
             })
             .collect();
         let callee_expr = match &call_expr.peel_blocks().kind {
@@ -600,11 +611,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Take some care with spans, so we don't suggest wrapping a macro's
                 // innards in parenthesis, for example.
                 if satisfied
-                    && let Some(lo) =
-                        provided_args[mismatch_idx.into()].span.find_ancestor_inside(error_span)
-                    && let Some(hi) = provided_args[(mismatch_idx + tys.len() - 1).into()]
-                        .span
-                        .find_ancestor_inside(error_span)
+                    && let Some((_, lo)) =
+                        provided_arg_tys.get(ProvidedIdx::from_usize(mismatch_idx))
+                    && let Some((_, hi)) =
+                        provided_arg_tys.get(ProvidedIdx::from_usize(mismatch_idx + tys.len() - 1))
                 {
                     let mut err;
                     if tys.len() == 1 {
@@ -612,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // so don't do anything special here.
                         err = self.report_and_explain_type_error(
                             TypeTrace::types(
-                                &self.misc(lo),
+                                &self.misc(*lo),
                                 true,
                                 formal_and_expected_inputs[mismatch_idx.into()].1,
                                 provided_arg_tys[mismatch_idx.into()].0,
@@ -1052,7 +1062,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let suggestion_text = if let Some(provided_idx) = provided_idx
                     && let (_, provided_span) = provided_arg_tys[*provided_idx]
                     && let Ok(arg_text) =
-                        source_map.span_to_snippet(provided_span.source_callsite())
+                        source_map.span_to_snippet(provided_span)
                 {
                     arg_text
                 } else {
