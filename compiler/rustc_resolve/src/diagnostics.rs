@@ -2603,9 +2603,9 @@ fn show_candidates(
                 .skip(1)
                 .all(|(_, descr, _, _)| descr == descr_first)
             {
-                descr_first.to_string()
+                descr_first
             } else {
-                "item".to_string()
+                "item"
             };
             let plural_descr =
                 if descr.ends_with("s") { format!("{}es", descr) } else { format!("{}s", descr) };
