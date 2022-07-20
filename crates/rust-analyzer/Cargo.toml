@@ -84,4 +84,3 @@ mbe = { path = "../mbe" }
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
-in-rust-tree = []
