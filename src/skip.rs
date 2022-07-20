@@ -2,41 +2,60 @@
 
 use rustc_ast::ast;
 use rustc_ast_pretty::pprust;
+use std::collections::HashSet;
 
-/// Take care of skip name stack. You can update it by attributes slice or
-/// by other context. Query this context to know if you need skip a block.
+/// Track which blocks of code are to be skipped when formatting.
+///
+/// You can update it by:
+///
+/// - attributes slice
+/// - manually feeding values into the underlying contexts
+///
+/// Query this context to know if you need skip a block.
 #[derive(Default, Clone)]
 pub(crate) struct SkipContext {
-    pub(crate) all_macros: bool,
-    macros: Vec<String>,
-    attributes: Vec<String>,
+    pub(crate) macros: SkipNameContext,
+    pub(crate) attributes: SkipNameContext,
 }
 
 impl SkipContext {
     pub(crate) fn update_with_attrs(&mut self, attrs: &[ast::Attribute]) {
-        self.macros.append(&mut get_skip_names("macros", attrs));
-        self.attributes
-            .append(&mut get_skip_names("attributes", attrs));
+        self.macros.append(get_skip_names("macros", attrs));
+        self.attributes.append(get_skip_names("attributes", attrs));
     }
 
-    pub(crate) fn update(&mut self, mut other: SkipContext) {
-        self.macros.append(&mut other.macros);
-        self.attributes.append(&mut other.attributes);
+    pub(crate) fn update(&mut self, other: SkipContext) {
+        let SkipContext { macros, attributes } = other;
+        self.macros.update(macros);
+        self.attributes.update(attributes);
+    }
+}
+
+/// Track which names to skip.
+///
+/// Query this context with a string to know whether to skip it.
+#[derive(Default, Clone)]
+pub(crate) struct SkipNameContext {
+    all: bool,
+    values: HashSet<String>,
+}
+
+impl SkipNameContext {
+    pub(crate) fn append(&mut self, values: Vec<String>) {
+        self.values.extend(values);
     }
 
-    pub(crate) fn update_macros<T>(&mut self, other: T)
-    where
-        T: IntoIterator<Item = String>,
-    {
-        self.macros.extend(other.into_iter());
+    pub(crate) fn update(&mut self, other: Self) {
+        self.all = self.all || other.all;
+        self.values.extend(other.values);
     }
 
-    pub(crate) fn skip_macro(&self, name: &str) -> bool {
-        self.all_macros || self.macros.iter().any(|n| n == name)
+    pub(crate) fn skip(&self, name: &str) -> bool {
+        self.all || self.values.contains(name)
     }
 
-    pub(crate) fn skip_attribute(&self, name: &str) -> bool {
-        self.attributes.iter().any(|n| n == name)
+    pub(crate) fn set_all(&mut self, all: bool) {
+        self.all = all;
     }
 }
 

@@ -775,10 +775,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         for macro_selector in config.skip_macro_invocations().0 {
             match macro_selector {
                 MacroSelector::Name(name) => macro_names.push(name.to_string()),
-                MacroSelector::All => skip_context.all_macros = true,
+                MacroSelector::All => skip_context.macros.set_all(true),
             }
         }
-        skip_context.update_macros(macro_names);
+        skip_context.macros.append(macro_names);
         FmtVisitor {
             parent_context: None,
             parse_sess: parse_session,
