@@ -72,9 +72,8 @@ impl<'tcx> ExprUseDelegate<'tcx> {
     }
 
     fn mark_consumed(&mut self, consumer: HirId, target: TrackedValue) {
-        if !self.places.consumed.contains_key(&consumer) {
-            self.places.consumed.insert(consumer, <_>::default());
-        }
+        self.places.consumed.entry(consumer).or_insert_with(|| <_>::default());
+
         debug!(?consumer, ?target, "mark_consumed");
         self.places.consumed.get_mut(&consumer).map(|places| places.insert(target));
     }

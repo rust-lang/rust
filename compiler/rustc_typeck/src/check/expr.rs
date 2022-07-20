@@ -1803,7 +1803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .source_map()
                 .span_to_snippet(range_end.expr.span)
                 .map(|s| format!(" from `{s}`"))
-                .unwrap_or(String::new());
+                .unwrap_or_default();
             err.span_suggestion(
                 range_start.span.shrink_to_hi(),
                 &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
@@ -2362,7 +2362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 false
             };
         let expr_snippet =
-            self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
+            self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or_default();
         let is_wrapped = expr_snippet.starts_with('(') && expr_snippet.ends_with(')');
         let after_open = expr.span.lo() + rustc_span::BytePos(1);
         let before_close = expr.span.hi() - rustc_span::BytePos(1);

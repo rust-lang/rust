@@ -535,7 +535,7 @@ mod parse {
     ) -> bool {
         match v {
             Some(s) => {
-                for s in s.split(",") {
+                for s in s.split(',') {
                     let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
                     slot.push((pass_name.to_string(), &s[..1] == "+"));
                 }

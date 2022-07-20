@@ -1754,7 +1754,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
             {
-                let descr = descr.to_string();
                 let vis_span =
                     self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
                 if kind == "trait" {
