@@ -11,6 +11,7 @@ use hir_expand::{
     ExpandError, HirFileId, InFile,
 };
 use la_arena::Arena;
+use once_cell::unsync::OnceCell;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -41,8 +42,7 @@ use crate::{
 pub struct LowerCtx<'a> {
     pub db: &'a dyn DefDatabase,
     hygiene: Hygiene,
-    file_id: Option<HirFileId>,
-    source_ast_id_map: Option<Arc<AstIdMap>>,
+    ast_id_map: Option<(HirFileId, OnceCell<Arc<AstIdMap>>)>,
 }
 
 impl<'a> LowerCtx<'a> {
@@ -50,13 +50,12 @@ impl<'a> LowerCtx<'a> {
         LowerCtx {
             db,
             hygiene: Hygiene::new(db.upcast(), file_id),
-            file_id: Some(file_id),
-            source_ast_id_map: Some(db.ast_id_map(file_id)),
+            ast_id_map: Some((file_id, OnceCell::new())),
         }
     }
 
     pub fn with_hygiene(db: &'a dyn DefDatabase, hygiene: &Hygiene) -> Self {
-        LowerCtx { db, hygiene: hygiene.clone(), file_id: None, source_ast_id_map: None }
+        LowerCtx { db, hygiene: hygiene.clone(), ast_id_map: None }
     }
 
     pub(crate) fn hygiene(&self) -> &Hygiene {
@@ -64,15 +63,21 @@ impl<'a> LowerCtx<'a> {
     }
 
     pub(crate) fn file_id(&self) -> HirFileId {
-        self.file_id.unwrap()
+        self.ast_id_map.as_ref().unwrap().0
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
         Path::from_src(ast, self)
     }
 
-    pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> Option<FileAstId<N>> {
-        self.source_ast_id_map.as_ref().map(|ast_id_map| ast_id_map.ast_id(item))
+    pub(crate) fn ast_id<N: AstNode>(
+        &self,
+        db: &dyn DefDatabase,
+        item: &N,
+    ) -> Option<FileAstId<N>> {
+        let (file_id, ast_id_map) = self.ast_id_map.as_ref()?;
+        let ast_id_map = ast_id_map.get_or_init(|| db.ast_id_map(*file_id));
+        Some(ast_id_map.ast_id(item))
     }
 }
 
@@ -675,7 +680,7 @@ impl ExprCollector<'_> {
     }
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
-        let ast_id = self.expander.ast_id(&block);
+        let ast_id = self.expander.ast_id(self.db, &block);
         let block_loc =
             BlockLoc { ast_id, module: self.expander.def_map.module_id(self.expander.module) };
         let block_id = self.db.intern_block(block_loc);

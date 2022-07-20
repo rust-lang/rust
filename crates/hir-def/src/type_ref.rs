@@ -237,7 +237,7 @@ impl TypeRef {
             }
             ast::Type::MacroType(mt) => match mt.macro_call() {
                 Some(mc) => ctx
-                    .ast_id(&mc)
+                    .ast_id(ctx.db, &mc)
                     .map(|mc| TypeRef::Macro(InFile::new(ctx.file_id(), mc)))
                     .unwrap_or(TypeRef::Error),
                 None => TypeRef::Error,

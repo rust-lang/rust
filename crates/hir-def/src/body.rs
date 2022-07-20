@@ -50,7 +50,7 @@ pub struct Expander {
     cfg_expander: CfgExpander,
     def_map: Arc<DefMap>,
     current_file_id: HirFileId,
-    ast_id_map: Arc<AstIdMap>,
+    ast_id_map: Option<Arc<AstIdMap>>,
     module: LocalModuleId,
     recursion_limit: usize,
 }
@@ -80,12 +80,11 @@ impl Expander {
     pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let cfg_expander = CfgExpander::new(db, current_file_id, module.krate);
         let def_map = module.def_map(db);
-        let ast_id_map = db.ast_id_map(current_file_id);
         Expander {
             cfg_expander,
             def_map,
             current_file_id,
-            ast_id_map,
+            ast_id_map: None,
             module: module.local_id,
             recursion_limit: 0,
         }
@@ -175,7 +174,7 @@ impl Expander {
         };
         self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
         self.current_file_id = file_id;
-        self.ast_id_map = db.ast_id_map(file_id);
+        self.ast_id_map = None;
 
         ExpandResult { value: Some((mark, node)), err }
     }
@@ -213,8 +212,9 @@ impl Expander {
         self.def_map.resolve_path(db, self.module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
-    fn ast_id<N: AstNode>(&self, item: &N) -> AstId<N> {
-        let file_local_id = self.ast_id_map.ast_id(item);
+    fn ast_id<N: AstNode>(&mut self, db: &dyn DefDatabase, item: &N) -> AstId<N> {
+        let file_local_id =
+            self.ast_id_map.get_or_insert_with(|| db.ast_id_map(self.current_file_id)).ast_id(item);
         AstId::new(self.current_file_id, file_local_id)
     }
 
@@ -233,7 +233,7 @@ impl Expander {
 #[derive(Debug)]
 pub struct Mark {
     file_id: HirFileId,
-    ast_id_map: Arc<AstIdMap>,
+    ast_id_map: Option<Arc<AstIdMap>>,
     bomb: DropBomb,
 }
 
