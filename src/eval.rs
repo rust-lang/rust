@@ -363,13 +363,12 @@ pub fn eval_entry<'tcx>(
         panic::resume_unwind(panic_payload)
     });
 
-    // Machine cleanup.
-    // Execution of the program has halted so any memory access we do here
-    // cannot produce a real data race. If we do not do something to disable
-    // data race detection here, some uncommon combination of errors will
-    // cause a data race to be detected:
-    // https://github.com/rust-lang/miri/issues/2020
-    ecx.allow_data_races_mut(|ecx| EnvVars::cleanup(ecx).unwrap());
+    // Machine cleanup. Only do this if all threads have terminated; threads that are still running
+    // might cause data races (https://github.com/rust-lang/miri/issues/2020) or Stacked Borrows
+    // errors (https://github.com/rust-lang/miri/issues/2396) if we deallocate here.
+    if ecx.have_all_terminated() {
+        EnvVars::cleanup(&mut ecx).unwrap();
+    }
 
     // Process the result.
     match res {
