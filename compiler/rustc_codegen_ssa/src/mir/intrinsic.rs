@@ -3,6 +3,7 @@ use super::place::PlaceRef;
 use super::FunctionCx;
 use crate::common::{span_invalid_monomorphization_error, IntPredicate};
 use crate::glue;
+use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -101,6 +102,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
+            }
+            sym::vtable_size | sym::vtable_align => {
+                let vtable = args[0].immediate();
+                let idx = match name {
+                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
+                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
+                    _ => bug!(),
+                };
+                meth::VirtualIndex::from_index(idx).get_usize(bx, vtable)
             }
             sym::pref_align_of
             | sym::needs_drop

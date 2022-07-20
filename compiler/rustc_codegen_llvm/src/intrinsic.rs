@@ -10,7 +10,6 @@ use crate::value::Value;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::meth;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
@@ -362,16 +361,6 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return;
-            }
-
-            sym::vtable_size | sym::vtable_align => {
-                let vtable = args[0].immediate();
-                let idx = match name {
-                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
-                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
-                    _ => bug!(),
-                };
-                meth::VirtualIndex::from_index(idx).get_usize(self, vtable)
             }
 
             _ if name.as_str().starts_with("simd_") => {
