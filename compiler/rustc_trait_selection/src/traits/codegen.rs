@@ -51,7 +51,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
         let impl_source = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
@@ -65,7 +65,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         }
 
         let impl_source = infcx.resolve_vars_if_possible(impl_source);
-        let impl_source = infcx.tcx.erase_regions(impl_source);
+        let impl_source = tcx.erase_regions(impl_source);
 
         // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
         // as they will get constrained elsewhere, too.
