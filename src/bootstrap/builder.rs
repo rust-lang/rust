@@ -1403,6 +1403,7 @@ impl<'a> Builder<'a> {
                 cargo.args(s.split_whitespace());
             }
             rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
+            rustflags.arg("-Zbox-noalias=no");
         } else {
             if let Ok(s) = env::var("CARGOFLAGS_BOOTSTRAP") {
                 cargo.args(s.split_whitespace());
