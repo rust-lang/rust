@@ -105,6 +105,7 @@ impl<'tcx> Stack {
         }
 
         // Check that the unique_range is a valid index into the borrow stack.
+        // This asserts that the unique_range's start <= end.
         let uniques = &self.borrows[self.unique_range.clone()];
 
         // Check that the start of the unique_range is precise.
@@ -113,7 +114,7 @@ impl<'tcx> Stack {
         }
         // We cannot assert that the unique range is exact on the upper end.
         // When we pop items within the unique range, setting the end of the range precisely
-        // require doing a linear search of the borrow stack, which is exactly the kind of
+        // requires doing a linear search of the borrow stack, which is exactly the kind of
         // operation that all this caching exists to avoid.
     }
 
@@ -240,8 +241,8 @@ impl<'tcx> Stack {
             self.unique_range.end += 1;
         }
         if new.perm() == Permission::Unique {
-            // If this is the first Unique, set the range to contain just the new item.
-            if self.unique_range == (0..0) {
+            // If this is the only Unique, set the range to contain just the new item.
+            if self.unique_range.is_empty() {
                 self.unique_range = new_idx..new_idx + 1;
             } else {
                 // We already have other Unique items, expand the range to include the new item
