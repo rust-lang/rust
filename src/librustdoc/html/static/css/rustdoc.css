@@ -984,7 +984,6 @@ table,
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
-	transition: border-color 300ms ease;
 	width: 100%;
 }
 
