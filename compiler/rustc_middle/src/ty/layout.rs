@@ -3559,11 +3559,11 @@ where
                 // which acts much like a [u8].
                 //
                 // We *do* need to panic for &dyn Trait, even though the layout of dyn Trait is
-                // size 0 align 1, because &dyn Trait holds a reference to a non-zero sized type,
-                // which also must be aligned.
+                // size 0 align 1, because &dyn Trait holds a reference to the vtable, which
+                // must be aligned and dereferenceable.
                 //
-                // This even applies to *const dyn Trait, which holds a reference and therefore
-                // must be valid, so 1-initialization is not okay there.
+                // This even applies to *const dyn Trait, which holds a reference to the vtable
+                // and therefore must be valid, so 1-initialization is not okay there.
                 //
                 // If this bypass didn't exist, old versions of `hyper` with no semver compatible
                 // fix (0.11, 0.12, 0.13) would panic, as they make uninit &[u8] and &str.
