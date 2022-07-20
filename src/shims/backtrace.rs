@@ -123,7 +123,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let ptr = this.read_pointer(ptr)?;
         // Take apart the pointer, we need its pieces.
-        let (alloc_id, offset, _tag) = this.ptr_get_alloc_id(ptr)?;
+        let (alloc_id, offset, _prov) = this.ptr_get_alloc_id(ptr)?;
 
         let fn_instance =
             if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(alloc_id) {
