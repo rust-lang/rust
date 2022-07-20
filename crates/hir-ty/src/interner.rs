@@ -168,7 +168,7 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn debug_separator_trait_ref(
-        separator_trait_ref: &chalk_ir::SeparatorTraitRef<Interner>,
+        separator_trait_ref: &chalk_ir::SeparatorTraitRef<'_, Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         Some(write!(fmt, "{:?}", separator_trait_ref.debug(Interner)))

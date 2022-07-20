@@ -21,7 +21,7 @@ enum Repr {
 }
 
 impl fmt::Display for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
             Repr::Text(text) => fmt::Display::fmt(&text, f),
             Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
@@ -35,7 +35,7 @@ fn is_raw_identifier(name: &str) -> bool {
 }
 
 impl<'a> fmt::Display for EscapedName<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 .0 {
             Repr::Text(text) => {
                 if is_raw_identifier(text) {
@@ -142,7 +142,7 @@ impl Name {
         }
     }
 
-    pub fn escaped(&self) -> EscapedName {
+    pub fn escaped(&self) -> EscapedName<'_> {
         EscapedName(self)
     }
 }

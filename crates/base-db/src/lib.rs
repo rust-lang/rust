@@ -1,4 +1,7 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 mod input;
 mod change;
 pub mod fixture;
@@ -54,7 +57,7 @@ pub const DEFAULT_LRU_CAP: usize = 128;
 pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<String>;
-    fn resolve_path(&self, path: AnchoredPath) -> Option<FileId>;
+    fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
 
@@ -113,7 +116,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
-    fn resolve_path(&self, path: AnchoredPath) -> Option<FileId> {
+    fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
         let source_root = self.0.file_source_root(path.anchor);
         let source_root = self.0.source_root(source_root);

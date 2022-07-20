@@ -34,7 +34,10 @@ use crate::assist_context::{AssistContext, Assists};
 //     };
 // }
 // ```
-pub(crate) fn replace_try_expr_with_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn replace_try_expr_with_match(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let qm_kw = ctx.find_token_syntax_at_offset(T![?])?;
     let qm_kw_parent = qm_kw.parent().and_then(ast::TryExpr::cast)?;
 

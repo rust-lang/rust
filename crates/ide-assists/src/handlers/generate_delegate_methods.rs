@@ -42,7 +42,7 @@ use syntax::ast::edit::AstNodeEdit;
 //     }
 // }
 // ```
-pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
     let current_module = ctx.sema.scope(strukt.syntax())?.module();

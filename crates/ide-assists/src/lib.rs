@@ -57,6 +57,9 @@
 //!
 //! See also this post:
 //! <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 #[allow(unused)]
 macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
@@ -101,7 +104,7 @@ pub fn assists(
 mod handlers {
     use crate::{AssistContext, Assists};
 
-    pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
+    pub(crate) type Handler = fn(&mut Assists, &AssistContext<'_>) -> Option<()>;
 
     mod add_explicit_type;
     mod add_label_to_loop;

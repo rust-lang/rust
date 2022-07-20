@@ -22,7 +22,7 @@ use Edit::*;
 // ```
 // use std::{fmt::Formatter, io};
 // ```
-pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (target, edits) = if ctx.has_empty_selection() {
         // Merge a neighbor
         let tree: ast::UseTree = ctx.find_node_at_offset()?;

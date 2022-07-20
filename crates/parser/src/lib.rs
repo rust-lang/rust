@@ -16,6 +16,8 @@
 //! Tests for this crate live in the `syntax` crate.
 //!
 //! [`Parser`]: crate::parser::Parser
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 #![allow(rustdoc::private_intra_doc_links)]
 
 mod lexed_str;
@@ -77,7 +79,7 @@ pub enum TopEntryPoint {
 
 impl TopEntryPoint {
     pub fn parse(&self, input: &Input) -> Output {
-        let entry_point: fn(&'_ mut parser::Parser) = match self {
+        let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             TopEntryPoint::SourceFile => grammar::entry::top::source_file,
             TopEntryPoint::MacroStmts => grammar::entry::top::macro_stmts,
             TopEntryPoint::MacroItems => grammar::entry::top::macro_items,
@@ -134,7 +136,7 @@ pub enum PrefixEntryPoint {
 
 impl PrefixEntryPoint {
     pub fn parse(&self, input: &Input) -> Output {
-        let entry_point: fn(&'_ mut parser::Parser) = match self {
+        let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
             PrefixEntryPoint::Block => grammar::entry::prefix::block,
             PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
@@ -153,7 +155,7 @@ impl PrefixEntryPoint {
 }
 
 /// A parsing function for a specific braced-block.
-pub struct Reparser(fn(&mut parser::Parser));
+pub struct Reparser(fn(&mut parser::Parser<'_>));
 
 impl Reparser {
     /// If the node is a braced block, return the corresponding `Reparser`.

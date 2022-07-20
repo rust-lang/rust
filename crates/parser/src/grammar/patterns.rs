@@ -13,22 +13,22 @@ pub(super) const PATTERN_FIRST: TokenSet =
         T![.],
     ]));
 
-pub(crate) fn pattern(p: &mut Parser) {
+pub(crate) fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
 }
 
 /// Parses a pattern list separated by pipes `|`.
-pub(super) fn pattern_top(p: &mut Parser) {
+pub(super) fn pattern_top(p: &mut Parser<'_>) {
     pattern_top_r(p, PAT_RECOVERY_SET);
 }
 
-pub(crate) fn pattern_single(p: &mut Parser) {
+pub(crate) fn pattern_single(p: &mut Parser<'_>) {
     pattern_single_r(p, PAT_RECOVERY_SET);
 }
 
 /// Parses a pattern list separated by pipes `|`
 /// using the given `recovery_set`.
-pub(super) fn pattern_top_r(p: &mut Parser, recovery_set: TokenSet) {
+pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     p.eat(T![|]);
     pattern_r(p, recovery_set);
 }
@@ -45,7 +45,7 @@ pub(super) fn pattern_top_r(p: &mut Parser, recovery_set: TokenSet) {
 //         [_ | _,] => (),
 //     }
 // }
-fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
+fn pattern_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     let m = p.start();
     pattern_single_r(p, recovery_set);
 
@@ -59,7 +59,7 @@ fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
     m.complete(p, OR_PAT);
 }
 
-fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
+fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     if let Some(lhs) = atom_pat(p, recovery_set) {
         // test range_pat
         // fn main() {
@@ -106,7 +106,7 @@ fn pattern_single_r(p: &mut Parser, recovery_set: TokenSet) {
 const PAT_RECOVERY_SET: TokenSet =
     TokenSet::new(&[T![let], T![if], T![while], T![loop], T![match], T![')'], T![,], T![=]]);
 
-fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
+fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let m = match p.current() {
         T![box] => box_pat(p),
         T![ref] | T![mut] => ident_pat(p, true),
@@ -139,7 +139,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     Some(m)
 }
 
-fn is_literal_pat_start(p: &Parser) -> bool {
+fn is_literal_pat_start(p: &Parser<'_>) -> bool {
     p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER)
         || p.at_ts(expressions::LITERAL_FIRST)
 }
@@ -153,7 +153,7 @@ fn is_literal_pat_start(p: &Parser) -> bool {
 //         "hello" => (),
 //     }
 // }
-fn literal_pat(p: &mut Parser) -> CompletedMarker {
+fn literal_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(is_literal_pat_start(p));
     let m = p.start();
     if p.at(T![-]) {
@@ -170,7 +170,7 @@ fn literal_pat(p: &mut Parser) -> CompletedMarker {
 //     let Bar { .. } = ();
 //     let Bar(..) = ();
 // }
-fn path_or_macro_pat(p: &mut Parser) -> CompletedMarker {
+fn path_or_macro_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(paths::is_path_start(p));
     let m = p.start();
     paths::expr_path(p);
@@ -203,7 +203,7 @@ fn path_or_macro_pat(p: &mut Parser) -> CompletedMarker {
 //     let S(_,) = ();
 //     let S(_, .. , x) = ();
 // }
-fn tuple_pat_fields(p: &mut Parser) {
+fn tuple_pat_fields(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
     p.bump(T!['(']);
     pat_list(p, T![')']);
@@ -216,7 +216,7 @@ fn tuple_pat_fields(p: &mut Parser) {
 //     let S { x: 1 } = ();
 //     let S { #[cfg(any())] x: 1 } = ();
 // }
-fn record_pat_field(p: &mut Parser) {
+fn record_pat_field(p: &mut Parser<'_>) {
     match p.current() {
         IDENT | INT_NUMBER if p.nth(1) == T![:] => {
             name_ref_or_index(p);
@@ -244,7 +244,7 @@ fn record_pat_field(p: &mut Parser) {
 //     let S { h: _, } = ();
 //     let S { #[cfg(any())] .. } = ();
 // }
-fn record_pat_field_list(p: &mut Parser) {
+fn record_pat_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);
@@ -277,7 +277,7 @@ fn record_pat_field_list(p: &mut Parser) {
 
 // test placeholder_pat
 // fn main() { let _ = (); }
-fn wildcard_pat(p: &mut Parser) -> CompletedMarker {
+fn wildcard_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
@@ -310,7 +310,7 @@ fn wildcard_pat(p: &mut Parser) -> CompletedMarker {
 //     let [head, .., mid, tail @ ..] = ();
 //     let [head, .., mid, .., cons] = ();
 // }
-fn rest_pat(p: &mut Parser) -> CompletedMarker {
+fn rest_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![..]));
     let m = p.start();
     p.bump(T![..]);
@@ -322,7 +322,7 @@ fn rest_pat(p: &mut Parser) -> CompletedMarker {
 //     let &a = ();
 //     let &mut b = ();
 // }
-fn ref_pat(p: &mut Parser) -> CompletedMarker {
+fn ref_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![&]));
     let m = p.start();
     p.bump(T![&]);
@@ -338,7 +338,7 @@ fn ref_pat(p: &mut Parser) -> CompletedMarker {
 //     let (..) = ();
 //     let () = ();
 // }
-fn tuple_pat(p: &mut Parser) -> CompletedMarker {
+fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T!['(']));
     let m = p.start();
     p.bump(T!['(']);
@@ -368,7 +368,7 @@ fn tuple_pat(p: &mut Parser) -> CompletedMarker {
 // fn main() {
 //     let [a, b, ..] = [];
 // }
-fn slice_pat(p: &mut Parser) -> CompletedMarker {
+fn slice_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T!['[']));
     let m = p.start();
     p.bump(T!['[']);
@@ -377,7 +377,7 @@ fn slice_pat(p: &mut Parser) -> CompletedMarker {
     m.complete(p, SLICE_PAT)
 }
 
-fn pat_list(p: &mut Parser, ket: SyntaxKind) {
+fn pat_list(p: &mut Parser<'_>, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
         if !p.at_ts(PATTERN_FIRST) {
             p.error("expected a pattern");
@@ -400,7 +400,7 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
 //     let e @ _ = ();
 //     let ref mut f @ g @ _ = ();
 // }
-fn ident_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
+fn ident_pat(p: &mut Parser<'_>, with_at: bool) -> CompletedMarker {
     assert!(matches!(p.current(), T![ref] | T![mut] | IDENT));
     let m = p.start();
     p.eat(T![ref]);
@@ -418,7 +418,7 @@ fn ident_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
 //     let box Outer { box i, j: box Inner(box &x) } = ();
 //     let box ref mut i = ();
 // }
-fn box_pat(p: &mut Parser) -> CompletedMarker {
+fn box_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![box]));
     let m = p.start();
     p.bump(T![box]);
@@ -431,7 +431,7 @@ fn box_pat(p: &mut Parser) -> CompletedMarker {
 //     let const { 15 } = ();
 //     let const { foo(); bar() } = ();
 // }
-fn const_block_pat(p: &mut Parser) -> CompletedMarker {
+fn const_block_pat(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(p.at(T![const]));
     let m = p.start();
     p.bump(T![const]);

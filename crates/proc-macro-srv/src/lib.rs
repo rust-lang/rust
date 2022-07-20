@@ -9,6 +9,8 @@
 //!   RA than `proc-macro2` token stream.
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 #![allow(unreachable_pub)]
 
 mod dylib;

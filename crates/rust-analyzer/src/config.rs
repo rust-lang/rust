@@ -1277,7 +1277,7 @@ macro_rules! create_bool_or_string_de {
             impl<'de> serde::de::Visitor<'de> for V {
                 type Value = ();
 
-                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                     formatter.write_str(concat!(
                         stringify!($bool),
                         " or \"",
@@ -1344,7 +1344,7 @@ macro_rules! named_unit_variant {
             struct V;
             impl<'de> serde::de::Visitor<'de> for V {
                 type Value = ();
-                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                     f.write_str(concat!("\"", stringify!($variant), "\""))
                 }
                 fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Self::Value, E> {
@@ -1405,7 +1405,7 @@ where
     impl<'de> serde::de::Visitor<'de> for SingleOrVec {
         type Value = Vec<String>;
 
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             formatter.write_str("string or array of strings")
         }
 

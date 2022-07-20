@@ -11,7 +11,7 @@ use crate::{
 /// Completes constants and paths in unqualified patterns.
 pub(crate) fn complete_pattern(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) {
     match pattern_ctx.parent_pat.as_ref() {
@@ -107,7 +107,7 @@ pub(crate) fn complete_pattern(
 
 pub(crate) fn complete_pattern_path(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
 ) {
     match qualified {

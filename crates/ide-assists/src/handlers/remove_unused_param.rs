@@ -30,7 +30,7 @@ use crate::{
 //     frobnicate();
 // }
 // ```
-pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let param: ast::Param = ctx.find_node_at_offset()?;
     let ident_pat = match param.pat()? {
         ast::Pat::IdentPat(it) => it,
@@ -87,7 +87,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
 }
 
 fn process_usages(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     builder: &mut AssistBuilder,
     file_id: FileId,
     references: Vec<FileReference>,

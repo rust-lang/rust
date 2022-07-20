@@ -50,7 +50,7 @@ pub struct Declaration {
 //
 // image::https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif[]
 pub(crate) fn find_all_refs(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<Vec<ReferenceSearchResult>> {
@@ -112,7 +112,7 @@ pub(crate) fn find_all_refs(
 }
 
 pub(crate) fn find_defs<'a>(
-    sema: &'a Semantics<RootDatabase>,
+    sema: &'a Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
 ) -> Option<impl Iterator<Item = Definition> + 'a> {
@@ -178,7 +178,7 @@ pub(crate) fn decl_mutability(def: &Definition, syntax: &SyntaxNode, range: Text
 fn retain_adt_literal_usages(
     usages: &mut UsageSearchResult,
     def: Definition,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
 ) {
     let refs = usages.references.values_mut();
     match def {
@@ -242,7 +242,7 @@ fn name_for_constructor_search(syntax: &SyntaxNode, position: FilePosition) -> O
 }
 
 fn is_enum_lit_name_ref(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     enum_: hir::Enum,
     name_ref: &ast::NameRef,
 ) -> bool {

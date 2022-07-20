@@ -264,7 +264,7 @@ fn push_lint_completion(buf: &mut String, label: &str, description: &str) {
     );
 }
 
-fn push_lint_group<'a>(buf: &mut String, label: &str, description: &str, children: &[String]) {
+fn push_lint_group(buf: &mut String, label: &str, description: &str, children: &[String]) {
     buf.push_str(
         r###"    LintGroup {
         lint:

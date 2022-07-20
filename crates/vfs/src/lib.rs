@@ -37,6 +37,9 @@
 //! [`FileSet`]: file_set::FileSet
 //! [`Handle`]: loader::Handle
 //! [`Entries`]: loader::Entry
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 mod anchored_path;
 pub mod file_set;
 pub mod loader;

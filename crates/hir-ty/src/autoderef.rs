@@ -70,7 +70,10 @@ impl Iterator for Autoderef<'_, '_> {
     }
 }
 
-pub(crate) fn autoderef_step(table: &mut InferenceTable, ty: Ty) -> Option<(AutoderefKind, Ty)> {
+pub(crate) fn autoderef_step(
+    table: &mut InferenceTable<'_>,
+    ty: Ty,
+) -> Option<(AutoderefKind, Ty)> {
     if let Some(derefed) = builtin_deref(&ty) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {
@@ -94,7 +97,7 @@ pub fn autoderef<'a>(
     v.into_iter()
 }
 
-pub(crate) fn deref(table: &mut InferenceTable, ty: Ty) -> Option<Ty> {
+pub(crate) fn deref(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
     let _p = profile::span("deref");
     autoderef_step(table, ty).map(|(_, ty)| ty)
 }
@@ -107,7 +110,7 @@ fn builtin_deref(ty: &Ty) -> Option<&Ty> {
     }
 }
 
-fn deref_by_trait(table: &mut InferenceTable, ty: Ty) -> Option<Ty> {
+fn deref_by_trait(table: &mut InferenceTable<'_>, ty: Ty) -> Option<Ty> {
     let _p = profile::span("deref_by_trait");
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables

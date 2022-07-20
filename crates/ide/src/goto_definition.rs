@@ -79,7 +79,7 @@ pub(crate) fn goto_definition(
 }
 
 fn try_lookup_include_path(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     tt: ast::TokenTree,
     token: SyntaxToken,
     file_id: FileId,
@@ -112,7 +112,7 @@ fn try_lookup_include_path(
 /// impl A for S { type a = i32; } // <-- on this associate type, will get the location of a in the trait
 /// ```
 fn try_filter_trait_item_definition(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     def: &Definition,
 ) -> Option<Vec<NavigationTarget>> {
     let db = sema.db;

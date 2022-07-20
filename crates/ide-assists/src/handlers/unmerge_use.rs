@@ -21,7 +21,7 @@ use crate::{
 // use std::fmt::{Debug};
 // use std::fmt::Display;
 // ```
-pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let tree: ast::UseTree = ctx.find_node_at_offset::<ast::UseTree>()?.clone_for_update();
 
     let tree_list = tree.syntax().parent().and_then(ast::UseTreeList::cast)?;

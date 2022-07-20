@@ -7,6 +7,8 @@
 //! Note that `hir_def` is a work in progress, so not all of the above is
 //! actually true.
 
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 #[allow(unused)]
 macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };

@@ -60,7 +60,7 @@ use crate::{
 //     let k = m + n;
 // }
 // ```
-pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let range = ctx.selection_trimmed();
     if range.is_empty() {
         return None;
@@ -170,7 +170,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
     )
 }
 
-fn make_function_name(semantics_scope: &hir::SemanticsScope) -> ast::NameRef {
+fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef {
     let mut names_in_scope = vec![];
     semantics_scope.process_all_names(&mut |name, _| names_in_scope.push(name.to_string()));
 
@@ -366,7 +366,7 @@ struct OutlivedLocal {
 struct LocalUsages(ide_db::search::UsageSearchResult);
 
 impl LocalUsages {
-    fn find_local_usages(ctx: &AssistContext, var: Local) -> Self {
+    fn find_local_usages(ctx: &AssistContext<'_>, var: Local) -> Self {
         Self(
             Definition::Local(var)
                 .usages(&ctx.sema)
@@ -381,7 +381,7 @@ impl LocalUsages {
 }
 
 impl Function {
-    fn return_type(&self, ctx: &AssistContext) -> FunType {
+    fn return_type(&self, ctx: &AssistContext<'_>) -> FunType {
         match &self.ret_ty {
             RetType::Expr(ty) if ty.is_unit() => FunType::Unit,
             RetType::Expr(ty) => FunType::Single(ty.clone()),
@@ -396,7 +396,7 @@ impl Function {
         }
     }
 
-    fn self_param_adt(&self, ctx: &AssistContext) -> Option<ast::Adt> {
+    fn self_param_adt(&self, ctx: &AssistContext<'_>) -> Option<ast::Adt> {
         let self_param = self.self_param.as_ref()?;
         let def = ctx.sema.to_def(self_param)?;
         let adt = def.ty(ctx.db()).strip_references().as_adt()?;
@@ -421,7 +421,7 @@ impl Param {
         }
     }
 
-    fn to_arg(&self, ctx: &AssistContext) -> ast::Expr {
+    fn to_arg(&self, ctx: &AssistContext<'_>) -> ast::Expr {
         let var = path_expr_from_local(ctx, self.var);
         match self.kind() {
             ParamKind::Value | ParamKind::MutValue => var,
@@ -430,7 +430,7 @@ impl Param {
         }
     }
 
-    fn to_param(&self, ctx: &AssistContext, module: hir::Module) -> ast::Param {
+    fn to_param(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Param {
         let var = self.var.name(ctx.db()).to_string();
         let var_name = make::name(&var);
         let pat = match self.kind() {
@@ -452,7 +452,7 @@ impl Param {
 }
 
 impl TryKind {
-    fn of_ty(ty: hir::Type, ctx: &AssistContext) -> Option<TryKind> {
+    fn of_ty(ty: hir::Type, ctx: &AssistContext<'_>) -> Option<TryKind> {
         if ty.is_unknown() {
             // We favour Result for `expr?`
             return Some(TryKind::Result { ty });
@@ -485,7 +485,7 @@ impl FlowKind {
         }
     }
 
-    fn expr_ty(&self, ctx: &AssistContext) -> Option<hir::Type> {
+    fn expr_ty(&self, ctx: &AssistContext<'_>) -> Option<hir::Type> {
         match self {
             FlowKind::Return(Some(expr)) | FlowKind::Break(_, Some(expr)) => {
                 ctx.sema.type_of_expr(expr).map(TypeInfo::adjusted)
@@ -691,7 +691,7 @@ impl FunctionBody {
     /// whether it contains an await expression.
     fn analyze(
         &self,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
     ) -> (FxIndexSet<Local>, Option<ast::SelfParam>) {
         let mut self_param = None;
         let mut res = FxIndexSet::default();
@@ -741,7 +741,7 @@ impl FunctionBody {
         (res, self_param)
     }
 
-    fn analyze_container(&self, sema: &Semantics<RootDatabase>) -> Option<ContainerInfo> {
+    fn analyze_container(&self, sema: &Semantics<'_, RootDatabase>) -> Option<ContainerInfo> {
         let mut ancestors = self.parent()?.ancestors();
         let infer_expr_opt = |expr| sema.type_of_expr(&expr?).map(TypeInfo::adjusted);
         let mut parent_loop = None;
@@ -837,7 +837,7 @@ impl FunctionBody {
         })
     }
 
-    fn return_ty(&self, ctx: &AssistContext) -> Option<RetType> {
+    fn return_ty(&self, ctx: &AssistContext<'_>) -> Option<RetType> {
         match self.tail_expr() {
             Some(expr) => ctx.sema.type_of_expr(&expr).map(TypeInfo::original).map(RetType::Expr),
             None => Some(RetType::Stmt),
@@ -847,7 +847,7 @@ impl FunctionBody {
     /// Local variables defined inside `body` that are accessed outside of it
     fn ret_values<'a>(
         &self,
-        ctx: &'a AssistContext,
+        ctx: &'a AssistContext<'_>,
         parent: &SyntaxNode,
     ) -> impl Iterator<Item = OutlivedLocal> + 'a {
         let parent = parent.clone();
@@ -860,7 +860,7 @@ impl FunctionBody {
     /// Analyses the function body for external control flow.
     fn external_control_flow(
         &self,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         container_info: &ContainerInfo,
     ) -> Option<ControlFlow> {
         let mut ret_expr = None;
@@ -950,7 +950,7 @@ impl FunctionBody {
     /// Computes additional info that affects param type and mutability
     fn extracted_function_params(
         &self,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         container_info: &ContainerInfo,
         locals: impl Iterator<Item = Local>,
     ) -> Vec<Param> {
@@ -1042,7 +1042,11 @@ fn generic_parents(parent: &SyntaxNode) -> Vec<GenericParent> {
 }
 
 /// checks if relevant var is used with `&mut` access inside body
-fn has_exclusive_usages(ctx: &AssistContext, usages: &LocalUsages, body: &FunctionBody) -> bool {
+fn has_exclusive_usages(
+    ctx: &AssistContext<'_>,
+    usages: &LocalUsages,
+    body: &FunctionBody,
+) -> bool {
     usages
         .iter()
         .filter(|reference| body.contains_range(reference.range))
@@ -1053,7 +1057,7 @@ fn has_exclusive_usages(ctx: &AssistContext, usages: &LocalUsages, body: &Functi
 fn reference_is_exclusive(
     reference: &FileReference,
     node: &dyn HasTokenAtOffset,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> bool {
     // we directly modify variable with set: `n = 0`, `n += 1`
     if reference.category == Some(ReferenceCategory::Write) {
@@ -1070,7 +1074,7 @@ fn reference_is_exclusive(
 }
 
 /// checks if this expr requires `&mut` access, recurses on field access
-fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Option<bool> {
+fn expr_require_exclusive_access(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<bool> {
     if let ast::Expr::MacroExpr(_) = expr {
         // FIXME: expand macro and check output for mutable usages of the variable?
         return None;
@@ -1172,7 +1176,7 @@ fn path_element_of_reference(
 
 /// list local variables defined inside `body`
 fn locals_defined_in_body(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     body: &FunctionBody,
 ) -> FxIndexSet<Local> {
     // FIXME: this doesn't work well with macros
@@ -1190,7 +1194,7 @@ fn locals_defined_in_body(
 
 /// Returns usage details if local variable is used after(outside of) body
 fn local_outlives_body(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     body_range: TextRange,
     local: Local,
     parent: &SyntaxNode,
@@ -1215,7 +1219,7 @@ fn local_outlives_body(
 
 /// checks if the relevant local was defined before(outside of) body
 fn is_defined_outside_of_body(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     body: &FunctionBody,
     src: &hir::InFile<Either<ast::IdentPat, ast::SelfParam>>,
 ) -> bool {
@@ -1260,7 +1264,7 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     last_ancestor
 }
 
-fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String {
+fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> String {
     let ret_ty = fun.return_type(ctx);
 
     let args = make::arg_list(fun.params.iter().map(|param| param.to_arg(ctx)));
@@ -1429,13 +1433,13 @@ impl FlowHandler {
     }
 }
 
-fn path_expr_from_local(ctx: &AssistContext, var: Local) -> ast::Expr {
+fn path_expr_from_local(ctx: &AssistContext<'_>, var: Local) -> ast::Expr {
     let name = var.name(ctx.db()).to_string();
     make::expr_path(make::ext::ident_path(&name))
 }
 
 fn format_function(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     module: hir::Module,
     fun: &Function,
     old_indent: IndentLevel,
@@ -1490,7 +1494,7 @@ fn format_function(
 }
 
 fn make_generic_params_and_where_clause(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     fun: &Function,
 ) -> (Option<ast::GenericParamList>, Option<ast::WhereClause>) {
     let used_type_params = fun.type_params(ctx);
@@ -1502,7 +1506,7 @@ fn make_generic_params_and_where_clause(
 }
 
 fn make_generic_param_list(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     fun: &Function,
     used_type_params: &[TypeParam],
 ) -> Option<ast::GenericParamList> {
@@ -1525,7 +1529,7 @@ fn make_generic_param_list(
 }
 
 fn param_is_required(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     param: &ast::GenericParam,
     used_type_params: &[TypeParam],
 ) -> bool {
@@ -1539,7 +1543,7 @@ fn param_is_required(
 }
 
 fn make_where_clause(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     fun: &Function,
     used_type_params: &[TypeParam],
 ) -> Option<ast::WhereClause> {
@@ -1562,7 +1566,7 @@ fn make_where_clause(
 }
 
 fn pred_is_required(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     pred: &ast::WherePred,
     used_type_params: &[TypeParam],
 ) -> bool {
@@ -1572,7 +1576,7 @@ fn pred_is_required(
     }
 }
 
-fn resolved_type_param(ctx: &AssistContext, pred: &ast::WherePred) -> Option<TypeParam> {
+fn resolved_type_param(ctx: &AssistContext<'_>, pred: &ast::WherePred) -> Option<TypeParam> {
     let path = match pred.ty()? {
         ast::Type::PathType(path_type) => path_type.path(),
         _ => None,
@@ -1586,7 +1590,7 @@ fn resolved_type_param(ctx: &AssistContext, pred: &ast::WherePred) -> Option<Typ
 
 impl Function {
     /// Collect all the `TypeParam`s used in the `body` and `params`.
-    fn type_params(&self, ctx: &AssistContext) -> Vec<TypeParam> {
+    fn type_params(&self, ctx: &AssistContext<'_>) -> Vec<TypeParam> {
         let type_params_in_descendant_paths =
             self.body.descendant_paths().filter_map(|it| match ctx.sema.resolve_path(&it) {
                 Some(PathResolution::TypeParam(type_param)) => Some(type_param),
@@ -1596,13 +1600,13 @@ impl Function {
         type_params_in_descendant_paths.chain(type_params_in_params).collect()
     }
 
-    fn make_param_list(&self, ctx: &AssistContext, module: hir::Module) -> ast::ParamList {
+    fn make_param_list(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::ParamList {
         let self_param = self.self_param.clone();
         let params = self.params.iter().map(|param| param.to_param(ctx, module));
         make::param_list(self_param, params)
     }
 
-    fn make_ret_ty(&self, ctx: &AssistContext, module: hir::Module) -> Option<ast::RetType> {
+    fn make_ret_ty(&self, ctx: &AssistContext<'_>, module: hir::Module) -> Option<ast::RetType> {
         let fun_ty = self.return_type(ctx);
         let handler = if self.mods.is_in_tail {
             FlowHandler::None
@@ -1649,7 +1653,7 @@ impl Function {
 }
 
 impl FunType {
-    fn make_ty(&self, ctx: &AssistContext, module: hir::Module) -> ast::Type {
+    fn make_ty(&self, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
         match self {
             FunType::Unit => make::ty_unit(),
             FunType::Single(ty) => make_ty(ty, ctx, module),
@@ -1672,7 +1676,7 @@ impl FunType {
 }
 
 fn make_body(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     old_indent: IndentLevel,
     new_indent: IndentLevel,
     fun: &Function,
@@ -1821,17 +1825,17 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
     make::block_expr(stmts, Some(tail_expr))
 }
 
-fn format_type(ty: &hir::Type, ctx: &AssistContext, module: hir::Module) -> String {
+fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
     ty.display_source_code(ctx.db(), module.into()).ok().unwrap_or_else(|| "_".to_string())
 }
 
-fn make_ty(ty: &hir::Type, ctx: &AssistContext, module: hir::Module) -> ast::Type {
+fn make_ty(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
     let ty_str = format_type(ty, ctx, module);
     make::ty(&ty_str)
 }
 
 fn rewrite_body_segment(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     params: &[Param],
     handler: &FlowHandler,
     syntax: &SyntaxNode,
@@ -1842,7 +1846,7 @@ fn rewrite_body_segment(
 }
 
 /// change all usages to account for added `&`/`&mut` for some params
-fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
+fn fix_param_usages(ctx: &AssistContext<'_>, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
     let mut usages_for_param: Vec<(&Param, Vec<ast::Expr>)> = Vec::new();
 
     let tm = TreeMutator::new(syntax);

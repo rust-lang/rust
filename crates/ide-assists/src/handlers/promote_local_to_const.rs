@@ -44,7 +44,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
     let name = pat.name()?;
     if !pat.is_simple_ident() {
@@ -95,7 +95,7 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext) -> 
     )
 }
 
-fn is_body_const(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> bool {
+fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
     let mut is_const = true;
     preorder_expr(expr, &mut |ev| {
         let expr = match ev {

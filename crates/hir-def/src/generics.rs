@@ -195,7 +195,7 @@ impl GenericParams {
         }
     }
 
-    pub(crate) fn fill(&mut self, lower_ctx: &LowerCtx, node: &dyn HasGenericParams) {
+    pub(crate) fn fill(&mut self, lower_ctx: &LowerCtx<'_>, node: &dyn HasGenericParams) {
         if let Some(params) = node.generic_param_list() {
             self.fill_params(lower_ctx, params)
         }
@@ -206,7 +206,7 @@ impl GenericParams {
 
     pub(crate) fn fill_bounds(
         &mut self,
-        lower_ctx: &LowerCtx,
+        lower_ctx: &LowerCtx<'_>,
         node: &dyn ast::HasTypeBounds,
         target: Either<TypeRef, LifetimeRef>,
     ) {
@@ -217,7 +217,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, lower_ctx: &LowerCtx, params: ast::GenericParamList) {
+    fn fill_params(&mut self, lower_ctx: &LowerCtx<'_>, params: ast::GenericParamList) {
         for type_or_const_param in params.type_or_const_params() {
             match type_or_const_param {
                 ast::TypeOrConstParam::Type(type_param) => {
@@ -259,7 +259,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx, where_clause: ast::WhereClause) {
+    fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx<'_>, where_clause: ast::WhereClause) {
         for pred in where_clause.predicates() {
             let target = if let Some(type_ref) = pred.ty() {
                 Either::Left(TypeRef::from_ast(lower_ctx, type_ref))
@@ -293,7 +293,7 @@ impl GenericParams {
 
     fn add_where_predicate_from_bound(
         &mut self,
-        lower_ctx: &LowerCtx,
+        lower_ctx: &LowerCtx<'_>,
         bound: ast::TypeBound,
         hrtb_lifetimes: Option<&Box<[Name]>>,
         target: Either<TypeRef, LifetimeRef>,

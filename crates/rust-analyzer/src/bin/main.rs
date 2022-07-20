@@ -1,6 +1,9 @@
 //! Driver for rust-analyzer.
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 mod logger;
 mod rustc_wrapper;
 

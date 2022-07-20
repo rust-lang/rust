@@ -8,7 +8,11 @@ use crate::{
 };
 
 /// Complete dot accesses, i.e. fields or methods.
-pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext, dot_access: &DotAccess) {
+pub(crate) fn complete_dot(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    dot_access: &DotAccess,
+) {
     let receiver_ty = match dot_access {
         DotAccess { receiver_ty: Some(receiver_ty), .. } => &receiver_ty.original,
         _ => return,
@@ -38,7 +42,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext, dot_a
 
 pub(crate) fn complete_undotted_self(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
     expr_ctx: &ExprCtx,
 ) {
@@ -96,7 +100,7 @@ pub(crate) fn complete_undotted_self(
 
 fn complete_fields(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     receiver: &hir::Type,
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
@@ -113,7 +117,7 @@ fn complete_fields(
 }
 
 fn complete_methods(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     receiver: &hir::Type,
     mut f: impl FnMut(hir::Function),
 ) {

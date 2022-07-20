@@ -19,7 +19,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // struct Foo {foo: i32, bar: i32};
 // const test: Foo = Foo {foo: 1, bar: 0}
 // ```
-pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let record = ctx
         .find_node_at_offset::<ast::RecordExpr>()
         .map(Either::Left)
@@ -86,7 +86,10 @@ fn replace<T: AstNode + PartialEq>(
     });
 }
 
-fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {
+fn compute_fields_ranks(
+    path: &ast::Path,
+    ctx: &AssistContext<'_>,
+) -> Option<FxHashMap<String, usize>> {
     let strukt = match ctx.sema.resolve_path(path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(it)))) => it,
         _ => return None,

@@ -7,7 +7,7 @@ pub(crate) fn diff(left: &str, right: &str) -> TextEdit {
     textedit_from_chunks(chunks)
 }
 
-fn textedit_from_chunks(chunks: Vec<dissimilar::Chunk>) -> TextEdit {
+fn textedit_from_chunks(chunks: Vec<dissimilar::Chunk<'_>>) -> TextEdit {
     let mut builder = TextEdit::builder();
     let mut pos = TextSize::default();
 

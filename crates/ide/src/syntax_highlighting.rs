@@ -196,7 +196,7 @@ pub(crate) fn highlight(
 
 fn traverse(
     hl: &mut Highlights,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     root: &SyntaxNode,
     krate: hir::Crate,

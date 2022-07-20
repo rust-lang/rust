@@ -3,6 +3,9 @@
 //! control the message dispatch loop yourself.
 //!
 //! Run with `RUST_LOG=lsp_server=debug` to see all the messages.
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 mod msg;
 mod stdio;
 mod error;

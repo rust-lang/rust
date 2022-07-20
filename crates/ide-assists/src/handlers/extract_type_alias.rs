@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     field: Type,
 // }
 // ```
-pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if ctx.has_empty_selection() {
         return None;
     }

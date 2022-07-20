@@ -1,5 +1,7 @@
 //! limit defines a struct to enforce limits.
 
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 use std::sync::atomic::AtomicUsize;
 
 /// Represents a struct used to enforce a numerical limit.

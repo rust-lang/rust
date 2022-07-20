@@ -104,7 +104,7 @@ mod unsafe_tls {
     use crate::db::HirDatabase;
     use scoped_tls::scoped_thread_local;
 
-    scoped_thread_local!(static PROGRAM: DebugContext);
+    scoped_thread_local!(static PROGRAM: DebugContext<'_>);
 
     pub(crate) fn with_current_program<R>(
         op: impl for<'a> FnOnce(Option<&'a DebugContext<'a>>) -> R,
@@ -127,7 +127,7 @@ mod unsafe_tls {
         // `with_current_program`, which hides the lifetime through the `for`
         // type.
         let static_p: &DebugContext<'static> =
-            unsafe { std::mem::transmute::<&DebugContext, &DebugContext<'static>>(&ctx) };
+            unsafe { std::mem::transmute::<&DebugContext<'_>, &DebugContext<'static>>(&ctx) };
         PROGRAM.set(static_p, op)
     }
 }

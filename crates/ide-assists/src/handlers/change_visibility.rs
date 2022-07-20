@@ -20,14 +20,14 @@ use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // pub(crate) fn frobnicate() {}
 // ```
-pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if let Some(vis) = ctx.find_node_at_offset::<ast::Visibility>() {
         return change_vis(acc, vis);
     }
     add_vis(acc, ctx)
 }
 
-fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn add_vis(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let item_keyword = ctx.token_at_offset().find(|leaf| {
         matches!(
             leaf.kind(),

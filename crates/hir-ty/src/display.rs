@@ -45,7 +45,7 @@ pub struct HirFormatter<'a> {
 }
 
 pub trait HirDisplay {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError>;
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError>;
 
     /// Returns a `Display`able type that is human-readable.
     fn into_displayable<'a>(
@@ -162,7 +162,7 @@ impl<'a> HirFormatter<'a> {
     }
 
     /// This allows using the `write!` macro directly with a `HirFormatter`.
-    pub fn write_fmt(&mut self, args: fmt::Arguments) -> Result<(), HirDisplayError> {
+    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> Result<(), HirDisplayError> {
         // We write to a buffer first to track output size
         self.buf.clear();
         fmt::write(&mut self.buf, args)?;
@@ -247,7 +247,7 @@ impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
 where
     T: HirDisplay,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             fmt: f,
@@ -270,19 +270,19 @@ where
 const TYPE_HINT_TRUNCATION: &str = "…";
 
 impl<T: HirDisplay> HirDisplay for &'_ T {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl<T: HirDisplay + Internable> HirDisplay for Interned<T> {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(self.as_ref(), f)
     }
 }
 
 impl HirDisplay for ProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -302,7 +302,7 @@ impl HirDisplay for ProjectionTy {
 }
 
 impl HirDisplay for OpaqueTy {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -312,7 +312,7 @@ impl HirDisplay for OpaqueTy {
 }
 
 impl HirDisplay for GenericArg {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self.interned() {
             crate::GenericArgData::Ty(ty) => ty.hir_fmt(f),
             crate::GenericArgData::Lifetime(lt) => lt.hir_fmt(f),
@@ -322,7 +322,7 @@ impl HirDisplay for GenericArg {
 }
 
 impl HirDisplay for Const {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         let data = self.interned();
         match data.value {
             ConstValue::BoundVar(idx) => idx.hir_fmt(f),
@@ -339,13 +339,13 @@ impl HirDisplay for Const {
 }
 
 impl HirDisplay for BoundVar {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "?{}.{}", self.debruijn.depth(), self.index)
     }
 }
 
 impl HirDisplay for Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -790,7 +790,7 @@ impl HirDisplay for Ty {
 }
 
 impl HirDisplay for CallableSig {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "fn(")?;
         f.write_joined(self.params(), ", ")?;
         if self.is_varargs {
@@ -839,7 +839,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
     prefix: &str,
     predicates: &[QuantifiedWhereClause],
     default_sized: SizedByDefault,
-    f: &mut HirFormatter,
+    f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
     write!(f, "{}", prefix)?;
     if !predicates.is_empty()
@@ -855,7 +855,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
 fn write_bounds_like_dyn_trait(
     predicates: &[QuantifiedWhereClause],
     default_sized: SizedByDefault,
-    f: &mut HirFormatter,
+    f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
     // Note: This code is written to produce nice results (i.e.
     // corresponding to surface Rust) for types that can occur in
@@ -952,7 +952,11 @@ fn write_bounds_like_dyn_trait(
     Ok(())
 }
 
-fn fmt_trait_ref(tr: &TraitRef, f: &mut HirFormatter, use_as: bool) -> Result<(), HirDisplayError> {
+fn fmt_trait_ref(
+    tr: &TraitRef,
+    f: &mut HirFormatter<'_>,
+    use_as: bool,
+) -> Result<(), HirDisplayError> {
     if f.should_truncate() {
         return write!(f, "{}", TYPE_HINT_TRUNCATION);
     }
@@ -973,13 +977,13 @@ fn fmt_trait_ref(tr: &TraitRef, f: &mut HirFormatter, use_as: bool) -> Result<()
 }
 
 impl HirDisplay for TraitRef {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         fmt_trait_ref(self, f, false)
     }
 }
 
 impl HirDisplay for WhereClause {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -1007,7 +1011,7 @@ impl HirDisplay for WhereClause {
 }
 
 impl HirDisplay for LifetimeOutlives {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         self.a.hir_fmt(f)?;
         write!(f, ": ")?;
         self.b.hir_fmt(f)
@@ -1015,13 +1019,13 @@ impl HirDisplay for LifetimeOutlives {
 }
 
 impl HirDisplay for Lifetime {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         self.interned().hir_fmt(f)
     }
 }
 
 impl HirDisplay for LifetimeData {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             LifetimeData::BoundVar(idx) => idx.hir_fmt(f),
             LifetimeData::InferenceVar(_) => write!(f, "_"),
@@ -1040,7 +1044,7 @@ impl HirDisplay for LifetimeData {
 }
 
 impl HirDisplay for DomainGoal {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             DomainGoal::Holds(wc) => {
                 write!(f, "Holds(")?;
@@ -1056,7 +1060,7 @@ impl HirDisplay for DomainGoal {
 pub fn write_visibility(
     module_id: ModuleId,
     vis: Visibility,
-    f: &mut HirFormatter,
+    f: &mut HirFormatter<'_>,
 ) -> Result<(), HirDisplayError> {
     match vis {
         Visibility::Public => write!(f, "pub "),
@@ -1078,7 +1082,7 @@ pub fn write_visibility(
 }
 
 impl HirDisplay for TypeRef {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             TypeRef::Never => write!(f, "!")?,
             TypeRef::Placeholder => write!(f, "_")?,
@@ -1177,7 +1181,7 @@ impl HirDisplay for TypeRef {
 }
 
 impl HirDisplay for TypeBound {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             TypeBound::Path(path, modifier) => {
                 match modifier {
@@ -1197,7 +1201,7 @@ impl HirDisplay for TypeBound {
 }
 
 impl HirDisplay for Path {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match (self.type_anchor(), self.kind()) {
             (Some(anchor), _) => {
                 write!(f, "<")?;
@@ -1301,7 +1305,7 @@ impl HirDisplay for Path {
 }
 
 impl HirDisplay for hir_def::path::GenericArg {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             hir_def::path::GenericArg::Type(ty) => ty.hir_fmt(f),
             hir_def::path::GenericArg::Const(c) => write!(f, "{}", c),

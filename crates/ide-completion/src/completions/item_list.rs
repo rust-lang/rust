@@ -9,7 +9,7 @@ pub(crate) mod trait_impl;
 
 pub(crate) fn complete_item_list_in_expr(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
     expr_ctx: &ExprCtx,
 ) {
@@ -24,7 +24,7 @@ pub(crate) fn complete_item_list_in_expr(
 
 pub(crate) fn complete_item_list(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     kind: &ItemListKind,
 ) {
@@ -70,7 +70,7 @@ pub(crate) fn complete_item_list(
     }
 }
 
-fn add_keywords(acc: &mut Completions, ctx: &CompletionContext, kind: Option<&ItemListKind>) {
+fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option<&ItemListKind>) {
     let mut add_keyword = |kw, snippet| acc.add_keyword_snippet(ctx, kw, snippet);
 
     let in_item_list = matches!(kind, Some(ItemListKind::SourceFile | ItemListKind::Module) | None);

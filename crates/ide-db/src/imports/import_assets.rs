@@ -99,7 +99,7 @@ pub struct ImportAssets {
 impl ImportAssets {
     pub fn for_method_call(
         method_call: &ast::MethodCallExpr,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
         let candidate_node = method_call.syntax().clone();
         Some(Self {
@@ -111,7 +111,7 @@ impl ImportAssets {
 
     pub fn for_exact_path(
         fully_qualified_path: &ast::Path,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
         let candidate_node = fully_qualified_path.syntax().clone();
         if let Some(use_tree) = candidate_node.ancestors().find_map(ast::UseTree::cast) {
@@ -129,7 +129,7 @@ impl ImportAssets {
         })
     }
 
-    pub fn for_ident_pat(sema: &Semantics<RootDatabase>, pat: &ast::IdentPat) -> Option<Self> {
+    pub fn for_ident_pat(sema: &Semantics<'_, RootDatabase>, pat: &ast::IdentPat) -> Option<Self> {
         if !pat.is_simple_ident() {
             return None;
         }
@@ -146,7 +146,7 @@ impl ImportAssets {
         module_with_candidate: Module,
         qualifier: Option<ast::Path>,
         fuzzy_name: String,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         candidate_node: SyntaxNode,
     ) -> Option<Self> {
         Some(Self {
@@ -210,7 +210,7 @@ impl ImportAssets {
 
     pub fn search_for_imports(
         &self,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         prefix_kind: PrefixKind,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
@@ -218,7 +218,10 @@ impl ImportAssets {
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
-    pub fn search_for_relative_paths(&self, sema: &Semantics<RootDatabase>) -> Vec<LocatedImport> {
+    pub fn search_for_relative_paths(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None)
     }
@@ -237,7 +240,7 @@ impl ImportAssets {
 
     fn search_for(
         &self,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         prefixed: Option<PrefixKind>,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for");
@@ -276,7 +279,7 @@ impl ImportAssets {
         .collect()
     }
 
-    fn scope_definitions(&self, sema: &Semantics<RootDatabase>) -> FxHashSet<ScopeDef> {
+    fn scope_definitions(&self, sema: &Semantics<'_, RootDatabase>) -> FxHashSet<ScopeDef> {
         let _p = profile::span("import_assets::scope_definitions");
         let mut scope_definitions = FxHashSet::default();
         if let Some(scope) = sema.scope(&self.candidate_node) {
@@ -289,7 +292,7 @@ impl ImportAssets {
 }
 
 fn path_applicable_imports(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     current_crate: Crate,
     path_candidate: &PathImportCandidate,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath> + Copy,
@@ -456,9 +459,9 @@ fn module_with_segment_name(
 }
 
 fn trait_applicable_items(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     current_crate: Crate,
-    scope: &SemanticsScope,
+    scope: &SemanticsScope<'_>,
     trait_candidate: &TraitImportCandidate,
     trait_assoc_item: bool,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
@@ -571,7 +574,7 @@ fn get_mod_path(
 
 impl ImportCandidate {
     fn for_method_call(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         method_call: &ast::MethodCallExpr,
     ) -> Option<Self> {
         match sema.resolve_method_call(method_call) {
@@ -585,7 +588,7 @@ impl ImportCandidate {
         }
     }
 
-    fn for_regular_path(sema: &Semantics<RootDatabase>, path: &ast::Path) -> Option<Self> {
+    fn for_regular_path(sema: &Semantics<'_, RootDatabase>, path: &ast::Path) -> Option<Self> {
         if sema.resolve_path(path).is_some() {
             return None;
         }
@@ -596,7 +599,7 @@ impl ImportCandidate {
         )
     }
 
-    fn for_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<Self> {
+    fn for_name(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<Self> {
         if sema
             .scope(name.syntax())?
             .speculative_resolve(&ast::make::ext::ident_path(&name.text()))
@@ -613,14 +616,14 @@ impl ImportCandidate {
     fn for_fuzzy_path(
         qualifier: Option<ast::Path>,
         fuzzy_name: String,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
         path_import_candidate(sema, qualifier, NameToImport::Fuzzy(fuzzy_name))
     }
 }
 
 fn path_import_candidate(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     qualifier: Option<ast::Path>,
     name: NameToImport,
 ) -> Option<ImportCandidate> {

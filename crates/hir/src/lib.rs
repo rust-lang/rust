@@ -17,6 +17,7 @@
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
 //! <https://www.tedinski.com/2018/02/06/system-boundaries.html>.
 
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 #![recursion_limit = "512"]
 
 mod semantics;
@@ -3027,7 +3028,7 @@ impl Type {
     pub fn iterate_method_candidates<T>(
         &self,
         db: &dyn HirDatabase,
-        scope: &SemanticsScope,
+        scope: &SemanticsScope<'_>,
         // FIXME this can be retrieved from `scope`, except autoimport uses this
         // to specify a different set, so the method needs to be split
         traits_in_scope: &FxHashSet<TraitId>,
@@ -3060,7 +3061,7 @@ impl Type {
     fn iterate_method_candidates_dyn(
         &self,
         db: &dyn HirDatabase,
-        scope: &SemanticsScope,
+        scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
@@ -3090,7 +3091,7 @@ impl Type {
     pub fn iterate_path_candidates<T>(
         &self,
         db: &dyn HirDatabase,
-        scope: &SemanticsScope,
+        scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
@@ -3118,7 +3119,7 @@ impl Type {
     fn iterate_path_candidates_dyn(
         &self,
         db: &dyn HirDatabase,
-        scope: &SemanticsScope,
+        scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,

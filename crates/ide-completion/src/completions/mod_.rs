@@ -14,7 +14,7 @@ use crate::{context::CompletionContext, CompletionItem, Completions};
 /// Complete mod declaration, i.e. `mod $0;`
 pub(crate) fn complete_mod(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     mod_under_caret: &ast::Module,
 ) -> Option<()> {
     if mod_under_caret.item_list().is_some() {

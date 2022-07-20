@@ -6,6 +6,8 @@
 //! The tes for this functionality live in another crate:
 //! `hir_def::macro_expansion_tests::mbe`.
 
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 mod parser;
 mod expander;
 mod syntax_bridge;
@@ -266,7 +268,7 @@ impl DeclarativeMacro {
 }
 
 impl Rule {
-    fn parse(src: &mut TtIter, expect_arrow: bool) -> Result<Self, ParseError> {
+    fn parse(src: &mut TtIter<'_>, expect_arrow: bool) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         if expect_arrow {
             src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;

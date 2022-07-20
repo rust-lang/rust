@@ -31,7 +31,7 @@ use crate::assist_context::{AssistContext, Assists};
 //     let country = Countries::Lesotho;
 // }
 // ```
-pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let path = path_expr.path()?;
 
@@ -58,7 +58,7 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext) -> O
 
 fn add_variant_to_accumulator(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     target: syntax::TextRange,
     adt: hir::Enum,
     name_ref: &ast::NameRef,

@@ -138,7 +138,7 @@ pub(crate) fn inlay_hints(
 
 fn hints(
     hints: &mut Vec<InlayHint>,
-    famous_defs @ FamousDefs(sema, _): &FamousDefs,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     node: SyntaxNode,
@@ -185,7 +185,7 @@ fn hints(
 
 fn closing_brace_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: FileId,
     node: SyntaxNode,
@@ -502,8 +502,8 @@ fn fn_lifetime_fn_hints(
 
 fn closure_ret_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
-    famous_defs: &FamousDefs,
+    sema: &Semantics<'_, RootDatabase>,
+    famous_defs: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     closure: ast::ClosureExpr,
@@ -543,7 +543,7 @@ fn closure_ret_hints(
 
 fn reborrow_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
@@ -570,8 +570,8 @@ fn reborrow_hints(
 
 fn chaining_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
-    famous_defs: &FamousDefs,
+    sema: &Semantics<'_, RootDatabase>,
+    famous_defs: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     expr: &ast::Expr,
@@ -632,7 +632,7 @@ fn chaining_hints(
 
 fn param_name_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     expr: ast::Expr,
 ) -> Option<()> {
@@ -685,7 +685,7 @@ fn param_name_hints(
 
 fn binding_mode_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     pat: &ast::Pat,
 ) -> Option<()> {
@@ -732,7 +732,7 @@ fn binding_mode_hints(
 
 fn bind_pat_hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: FileId,
     pat: &ast::IdentPat,
@@ -783,7 +783,7 @@ fn bind_pat_hints(
 }
 
 fn is_named_constructor(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     pat: &ast::IdentPat,
     ty_name: &str,
 ) -> Option<()> {
@@ -837,8 +837,8 @@ fn is_named_constructor(
 
 /// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
 fn hint_iterator(
-    sema: &Semantics<RootDatabase>,
-    famous_defs: &FamousDefs,
+    sema: &Semantics<'_, RootDatabase>,
+    famous_defs: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     ty: &hir::Type,
 ) -> Option<String> {
@@ -899,7 +899,7 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir
 }
 
 fn should_not_display_type_hint(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     bind_pat: &ast::IdentPat,
     pat_ty: &hir::Type,
@@ -959,7 +959,7 @@ fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {
 }
 
 fn should_hide_param_name_hint(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     callable: &hir::Callable,
     param_name: &str,
     argument: &ast::Expr,
@@ -1048,7 +1048,7 @@ fn is_param_name_suffix_of_fn_name(
 }
 
 fn is_adt_constructor_similar_to_param_name(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     argument: &ast::Expr,
     param_name: &str,
 ) -> bool {
@@ -1116,7 +1116,7 @@ fn is_obvious_param(param_name: &str) -> bool {
 }
 
 fn get_callable(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
 ) -> Option<(hir::Callable, ast::ArgList)> {
     match expr {

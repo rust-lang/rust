@@ -120,7 +120,7 @@ pub(crate) fn will_rename_file(
 }
 
 fn find_definitions(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> RenameResult<impl Iterator<Item = (ast::NameLike, Definition)>> {
@@ -201,7 +201,10 @@ fn find_definitions(
     }
 }
 
-fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
+fn rename_to_self(
+    sema: &Semantics<'_, RootDatabase>,
+    local: hir::Local,
+) -> RenameResult<SourceChange> {
     if never!(local.is_self(sema.db)) {
         bail!("rename_to_self invoked on self");
     }
@@ -269,7 +272,7 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
 }
 
 fn rename_self_to_param(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     local: hir::Local,
     self_param: hir::SelfParam,
     new_name: &str,

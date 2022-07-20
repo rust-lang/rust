@@ -113,7 +113,7 @@ use super::Completions;
 // capability enabled.
 pub(crate) fn import_on_the_fly_path(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
 ) -> Option<()> {
     if !ctx.config.enable_imports_on_the_fly {
@@ -152,7 +152,7 @@ pub(crate) fn import_on_the_fly_path(
 
 pub(crate) fn import_on_the_fly_pat(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
     if !ctx.config.enable_imports_on_the_fly {
@@ -177,7 +177,7 @@ pub(crate) fn import_on_the_fly_pat(
 
 pub(crate) fn import_on_the_fly_dot(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     dot_access: &DotAccess,
 ) -> Option<()> {
     if !ctx.config.enable_imports_on_the_fly {
@@ -205,7 +205,7 @@ pub(crate) fn import_on_the_fly_dot(
 
 fn import_on_the_fly(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { kind, .. }: &PathCompletionCtx,
     import_assets: ImportAssets,
     position: SyntaxNode,
@@ -285,7 +285,7 @@ fn import_on_the_fly(
 
 fn import_on_the_fly_pat_(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
     import_assets: ImportAssets,
     position: SyntaxNode,
@@ -329,7 +329,7 @@ fn import_on_the_fly_pat_(
 
 fn import_on_the_fly_method(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     dot_access: &DotAccess,
     import_assets: ImportAssets,
     position: SyntaxNode,
@@ -362,7 +362,7 @@ fn import_on_the_fly_method(
     Some(())
 }
 
-fn import_name(ctx: &CompletionContext) -> String {
+fn import_name(ctx: &CompletionContext<'_>) -> String {
     let token_kind = ctx.token.kind();
     if matches!(token_kind, T![.] | T![::]) {
         String::new()
@@ -372,7 +372,7 @@ fn import_name(ctx: &CompletionContext) -> String {
 }
 
 fn import_assets_for_path(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     potential_import_name: &str,
     qualifier: Option<ast::Path>,
 ) -> Option<ImportAssets> {

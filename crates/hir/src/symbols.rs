@@ -32,7 +32,7 @@ pub struct DeclarationLocation {
 }
 
 impl DeclarationLocation {
-    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<DB>) -> Option<SyntaxNode> {
+    pub fn syntax<DB: HirDatabase>(&self, sema: &Semantics<'_, DB>) -> Option<SyntaxNode> {
         let root = sema.parse_or_expand(self.hir_file_id)?;
         Some(self.ptr.to_node(&root))
     }

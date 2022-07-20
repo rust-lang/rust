@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     println!("foo");
 // }
 // ```
-pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let assist_id = AssistId("unwrap_block", AssistKind::RefactorRewrite);
     let assist_label = "Unwrap block";
 

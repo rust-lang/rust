@@ -39,11 +39,11 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn generate_deref(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     generate_record_deref(acc, ctx).or_else(|| generate_tuple_deref(acc, ctx))
 }
 
-fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::RecordField>()?;
 
@@ -80,7 +80,7 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     )
 }
 
-fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::TupleField>()?;
     let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;

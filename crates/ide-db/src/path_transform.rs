@@ -255,7 +255,7 @@ fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<
 }
 
 fn find_trait_for_assoc_item(
-    scope: &SemanticsScope,
+    scope: &SemanticsScope<'_>,
     type_param: hir::TypeParam,
     assoc_item: ast::NameRef,
 ) -> Option<hir::Trait> {

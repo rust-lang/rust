@@ -7,7 +7,7 @@ use crate::{
 
 pub(crate) fn complete_vis_path(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     &has_in_token: &bool,
 ) {

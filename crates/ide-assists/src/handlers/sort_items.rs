@@ -81,7 +81,7 @@ use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
 //   Cat { name: String, weight: f64 },
 // }
 // ```
-pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn sort_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if ctx.has_empty_selection() {
         cov_mark::hit!(not_applicable_if_no_selection);
         return None;

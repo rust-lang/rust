@@ -292,7 +292,7 @@ impl<'a> PatCtxt<'a> {
 }
 
 impl HirDisplay for Pat {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match &*self.kind {
             PatKind::Wild => write!(f, "_"),
             PatKind::Binding { name, subpattern } => {
@@ -394,11 +394,11 @@ impl HirDisplay for Pat {
 
 struct WriteWith<F>(F)
 where
-    F: Fn(&mut HirFormatter) -> Result<(), HirDisplayError>;
+    F: Fn(&mut HirFormatter<'_>) -> Result<(), HirDisplayError>;
 
 impl<F> HirDisplay for WriteWith<F>
 where
-    F: Fn(&mut HirFormatter) -> Result<(), HirDisplayError>,
+    F: Fn(&mut HirFormatter<'_>) -> Result<(), HirDisplayError>,
 {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         (self.0)(f)

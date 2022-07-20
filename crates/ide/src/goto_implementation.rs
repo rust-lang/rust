@@ -86,11 +86,14 @@ pub(crate) fn goto_implementation(
     Some(RangeInfo { range, info: navs })
 }
 
-fn impls_for_ty(sema: &Semantics<RootDatabase>, ty: hir::Type) -> Vec<NavigationTarget> {
+fn impls_for_ty(sema: &Semantics<'_, RootDatabase>, ty: hir::Type) -> Vec<NavigationTarget> {
     Impl::all_for_type(sema.db, ty).into_iter().filter_map(|imp| imp.try_to_nav(sema.db)).collect()
 }
 
-fn impls_for_trait(sema: &Semantics<RootDatabase>, trait_: hir::Trait) -> Vec<NavigationTarget> {
+fn impls_for_trait(
+    sema: &Semantics<'_, RootDatabase>,
+    trait_: hir::Trait,
+) -> Vec<NavigationTarget> {
     Impl::all_for_trait(sema.db, trait_)
         .into_iter()
         .filter_map(|imp| imp.try_to_nav(sema.db))
@@ -98,7 +101,7 @@ fn impls_for_trait(sema: &Semantics<RootDatabase>, trait_: hir::Trait) -> Vec<Na
 }
 
 fn impls_for_trait_item(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     trait_: hir::Trait,
     fun_name: hir::Name,
 ) -> Vec<NavigationTarget> {

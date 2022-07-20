@@ -109,7 +109,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
-        mut writer: Writer,
+        mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> fmt::Result {
         // Write level and target

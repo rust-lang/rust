@@ -1,4 +1,7 @@
 //! Discovery of `cargo` & `rustc` executables.
+
+#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+
 use std::{env, iter, path::PathBuf};
 
 pub fn cargo() -> PathBuf {

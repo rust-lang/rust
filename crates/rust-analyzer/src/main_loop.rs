@@ -75,8 +75,8 @@ pub(crate) enum PrimeCachesProgress {
 }
 
 impl fmt::Debug for Event {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter| {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter<'_>| {
             f.debug_struct("Notification").field("method", &not.method).finish()
         };
 

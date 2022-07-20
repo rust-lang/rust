@@ -40,7 +40,7 @@ use crate::{
 //
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
-pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let (parent, mod_path) = find_parent_and_path(&star)?;
@@ -112,7 +112,7 @@ fn find_parent_and_path(
     }
 }
 
-fn def_is_referenced_in(def: Definition, ctx: &AssistContext) -> bool {
+fn def_is_referenced_in(def: Definition, ctx: &AssistContext<'_>) -> bool {
     let search_scope = SearchScope::single_file(ctx.file_id());
     def.usages(&ctx.sema).in_scope(search_scope).at_least_one()
 }
@@ -139,7 +139,7 @@ impl Ref {
 struct Refs(Vec<Ref>);
 
 impl Refs {
-    fn used_refs(&self, ctx: &AssistContext) -> Refs {
+    fn used_refs(&self, ctx: &AssistContext<'_>) -> Refs {
         Refs(
             self.0
                 .clone()
@@ -168,7 +168,7 @@ impl Refs {
     }
 }
 
-fn find_refs_in_mod(ctx: &AssistContext, module: Module, visible_from: Module) -> Option<Refs> {
+fn find_refs_in_mod(ctx: &AssistContext<'_>, module: Module, visible_from: Module) -> Option<Refs> {
     if !is_mod_visible_from(ctx, module, visible_from) {
         return None;
     }
@@ -178,7 +178,7 @@ fn find_refs_in_mod(ctx: &AssistContext, module: Module, visible_from: Module) -
     Some(Refs(refs))
 }
 
-fn is_mod_visible_from(ctx: &AssistContext, module: Module, from: Module) -> bool {
+fn is_mod_visible_from(ctx: &AssistContext<'_>, module: Module, from: Module) -> bool {
     match module.parent(ctx.db()) {
         Some(parent) => {
             module.visibility(ctx.db()).is_visible_from(ctx.db(), from.into())
@@ -202,7 +202,7 @@ fn is_mod_visible_from(ctx: &AssistContext, module: Module, from: Module) -> boo
 // use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
-fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Definition>> {
+fn find_imported_defs(ctx: &AssistContext<'_>, star: SyntaxToken) -> Option<Vec<Definition>> {
     let parent_use_item_syntax = star.parent_ancestors().find_map(|n| {
         if ast::Use::can_cast(n.kind()) {
             Some(n)
@@ -239,7 +239,7 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Defi
 }
 
 fn find_names_to_import(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     refs_in_target: Refs,
     imported_defs: Vec<Definition>,
 ) -> Vec<Name> {

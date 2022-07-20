@@ -388,7 +388,7 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(crate) fn famous_defs(&self) -> FamousDefs {
+    pub(crate) fn famous_defs(&self) -> FamousDefs<'_, '_> {
         FamousDefs(&self.sema, self.krate)
     }
 

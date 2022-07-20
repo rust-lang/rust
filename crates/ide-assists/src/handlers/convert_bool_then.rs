@@ -37,7 +37,7 @@ use crate::{
 //     cond.then(|| val)
 // }
 // ```
-pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     // FIXME applies to match as well
     let expr = ctx.find_node_at_offset::<ast::IfExpr>()?;
     if !expr.if_token()?.text_range().contains_inclusive(ctx.offset()) {
@@ -149,7 +149,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
 //     }
 // }
 // ```
-pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let name_ref = ctx.find_node_at_offset::<ast::NameRef>()?;
     let mcall = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
     let receiver = mcall.receiver()?;
@@ -219,7 +219,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext) ->
 }
 
 fn option_variants(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     expr: &SyntaxNode,
 ) -> Option<(hir::Variant, hir::Variant)> {
     let fam = FamousDefs(sema, sema.scope(expr)?.krate());
@@ -237,7 +237,7 @@ fn option_variants(
 /// Traverses the expression checking if it contains `return` or `?` expressions or if any tail is not a `Some(expr)` expression.
 /// If any of these conditions are met it is impossible to rewrite this as a `bool::then` call.
 fn is_invalid_body(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     some_variant: hir::Variant,
     expr: &ast::Expr,
 ) -> bool {
@@ -272,7 +272,7 @@ fn is_invalid_body(
 }
 
 fn block_is_none_variant(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     block: &ast::BlockExpr,
     none_variant: hir::Variant,
 ) -> bool {

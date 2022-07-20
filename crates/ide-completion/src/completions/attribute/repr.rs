@@ -5,7 +5,11 @@ use syntax::ast;
 
 use crate::{context::CompletionContext, item::CompletionItem, Completions};
 
-pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, input: ast::TokenTree) {
+pub(super) fn complete_repr(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    input: ast::TokenTree,
+) {
     if let Some(existing_reprs) = super::parse_comma_sep_expr(input) {
         for &ReprCompletion { label, snippet, lookup, collides } in REPR_COMPLETIONS {
             let repr_already_annotated = existing_reprs

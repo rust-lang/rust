@@ -2,7 +2,7 @@ use super::*;
 
 // test use_item
 // use std::collections;
-pub(super) fn use_(p: &mut Parser, m: Marker) {
+pub(super) fn use_(p: &mut Parser<'_>, m: Marker) {
     p.bump(T![use]);
     use_tree(p, true);
     p.expect(T![;]);
@@ -11,7 +11,7 @@ pub(super) fn use_(p: &mut Parser, m: Marker) {
 
 // test use_tree
 // use outer::tree::{inner::tree};
-fn use_tree(p: &mut Parser, top_level: bool) {
+fn use_tree(p: &mut Parser<'_>, top_level: bool) {
     let m = p.start();
     match p.current() {
         // test use_tree_star
@@ -78,7 +78,7 @@ fn use_tree(p: &mut Parser, top_level: bool) {
 
 // test use_tree_list
 // use {a, b, c};
-pub(crate) fn use_tree_list(p: &mut Parser) {
+pub(crate) fn use_tree_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump(T!['{']);

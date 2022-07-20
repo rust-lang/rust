@@ -35,7 +35,7 @@ use crate::{
 //     let a: Vec<u32>;
 // }
 // ```
-pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     enum Replacement {
         Generic { lifetime_map: LifetimeMap, const_and_type_map: ConstAndTypeMap },
         Plain,
@@ -252,7 +252,7 @@ fn create_replacement(
     updated_concrete_type.to_string()
 }
 
-fn get_type_alias(ctx: &AssistContext, path: &ast::PathType) -> Option<ast::TypeAlias> {
+fn get_type_alias(ctx: &AssistContext<'_>, path: &ast::PathType) -> Option<ast::TypeAlias> {
     let resolved_path = ctx.sema.resolve_path(&path.path()?)?;
 
     // We need the generics in the correct order to be able to map any provided

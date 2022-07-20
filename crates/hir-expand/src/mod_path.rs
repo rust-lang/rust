@@ -102,7 +102,7 @@ impl ModPath {
         }
     }
 
-    pub fn escaped(&self) -> EscapedModPath {
+    pub fn escaped(&self) -> EscapedModPath<'_> {
         EscapedModPath(self)
     }
 

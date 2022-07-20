@@ -23,7 +23,7 @@ use crate::{
 };
 
 impl HirDisplay for Function {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         let data = f.db.function_data(self.id);
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         if data.has_default_kw() {
@@ -48,7 +48,7 @@ impl HirDisplay for Function {
 
         f.write_char('(')?;
 
-        let write_self_param = |ty: &TypeRef, f: &mut HirFormatter| match ty {
+        let write_self_param = |ty: &TypeRef, f: &mut HirFormatter<'_>| match ty {
             TypeRef::Path(p) if p.is_self_type() => f.write_str("self"),
             TypeRef::Reference(inner, lifetime, mut_) if matches!(&**inner,TypeRef::Path(p) if p.is_self_type()) =>
             {
@@ -129,7 +129,7 @@ impl HirDisplay for Function {
 }
 
 impl HirDisplay for Adt {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             Adt::Struct(it) => it.hir_fmt(f),
             Adt::Union(it) => it.hir_fmt(f),
@@ -139,7 +139,7 @@ impl HirDisplay for Adt {
 }
 
 impl HirDisplay for Struct {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         f.write_str("struct ")?;
         write!(f, "{}", self.name(f.db))?;
@@ -151,7 +151,7 @@ impl HirDisplay for Struct {
 }
 
 impl HirDisplay for Enum {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         f.write_str("enum ")?;
         write!(f, "{}", self.name(f.db))?;
@@ -163,7 +163,7 @@ impl HirDisplay for Enum {
 }
 
 impl HirDisplay for Union {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         f.write_str("union ")?;
         write!(f, "{}", self.name(f.db))?;
@@ -175,7 +175,7 @@ impl HirDisplay for Union {
 }
 
 impl HirDisplay for Field {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.parent.module(f.db).id, self.visibility(f.db), f)?;
         write!(f, "{}: ", self.name(f.db))?;
         self.ty(f.db).hir_fmt(f)
@@ -183,7 +183,7 @@ impl HirDisplay for Field {
 }
 
 impl HirDisplay for Variant {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db))?;
         let data = self.variant_data(f.db);
         match &*data {
@@ -224,13 +224,13 @@ impl HirDisplay for Variant {
 }
 
 impl HirDisplay for Type {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         self.ty.hir_fmt(f)
     }
 }
 
 impl HirDisplay for GenericParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             GenericParam::TypeParam(it) => it.hir_fmt(f),
             GenericParam::ConstParam(it) => it.hir_fmt(f),
@@ -240,7 +240,7 @@ impl HirDisplay for GenericParam {
 }
 
 impl HirDisplay for TypeOrConstParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self.split(f.db) {
             either::Either::Left(x) => x.hir_fmt(f),
             either::Either::Right(x) => x.hir_fmt(f),
@@ -249,7 +249,7 @@ impl HirDisplay for TypeOrConstParam {
 }
 
 impl HirDisplay for TypeParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db))?;
         if f.omit_verbose_types() {
             return Ok(());
@@ -277,19 +277,22 @@ impl HirDisplay for TypeParam {
 }
 
 impl HirDisplay for LifetimeParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db))
     }
 }
 
 impl HirDisplay for ConstParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write!(f, "const {}: ", self.name(f.db))?;
         self.ty(f.db).hir_fmt(f)
     }
 }
 
-fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+fn write_generic_params(
+    def: GenericDefId,
+    f: &mut HirFormatter<'_>,
+) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
     if params.lifetimes.is_empty()
         && params.type_or_consts.iter().all(|x| x.1.const_param().is_none())
@@ -304,7 +307,7 @@ fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), H
     f.write_char('<')?;
 
     let mut first = true;
-    let mut delim = |f: &mut HirFormatter| {
+    let mut delim = |f: &mut HirFormatter<'_>| {
         if first {
             first = false;
             Ok(())
@@ -343,7 +346,7 @@ fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), H
     Ok(())
 }
 
-fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+fn write_where_clause(def: GenericDefId, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
 
     // unnamed type targets are displayed inline with the argument itself, e.g. `f: impl Y`.
@@ -365,7 +368,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
         return Ok(());
     }
 
-    let write_target = |target: &WherePredicateTypeTarget, f: &mut HirFormatter| match target {
+    let write_target = |target: &WherePredicateTypeTarget, f: &mut HirFormatter<'_>| match target {
         WherePredicateTypeTarget::TypeRef(ty) => ty.hir_fmt(f),
         WherePredicateTypeTarget::TypeOrConstParam(id) => {
             match &params.type_or_consts[*id].name() {
@@ -381,8 +384,9 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
         let prev_pred =
             if pred_idx == 0 { None } else { Some(&params.where_predicates[pred_idx - 1]) };
 
-        let new_predicate =
-            |f: &mut HirFormatter| f.write_str(if pred_idx == 0 { "\n    " } else { ",\n    " });
+        let new_predicate = |f: &mut HirFormatter<'_>| {
+            f.write_str(if pred_idx == 0 { "\n    " } else { ",\n    " })
+        };
 
         match pred {
             WherePredicate::TypeBound { target, .. } if is_unnamed_type_target(target) => {}
@@ -438,7 +442,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
 }
 
 impl HirDisplay for Const {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.const_data(self.id);
         f.write_str("const ")?;
@@ -452,7 +456,7 @@ impl HirDisplay for Const {
 }
 
 impl HirDisplay for Static {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.static_data(self.id);
         f.write_str("static ")?;
@@ -466,7 +470,7 @@ impl HirDisplay for Static {
 }
 
 impl HirDisplay for Trait {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.trait_data(self.id);
         if data.is_unsafe {
@@ -484,7 +488,7 @@ impl HirDisplay for Trait {
 }
 
 impl HirDisplay for TypeAlias {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.type_alias_data(self.id);
         write!(f, "type {}", data.name)?;
@@ -501,7 +505,7 @@ impl HirDisplay for TypeAlias {
 }
 
 impl HirDisplay for Module {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         // FIXME: Module doesn't have visibility saved in data.
         match self.name(f.db) {
             Some(name) => write!(f, "mod {}", name),
@@ -515,7 +519,7 @@ impl HirDisplay for Module {
 }
 
 impl HirDisplay for Macro {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self.id {
             hir_def::MacroId::Macro2Id(_) => f.write_str("macro"),
             hir_def::MacroId::MacroRulesId(_) => f.write_str("macro_rules!"),

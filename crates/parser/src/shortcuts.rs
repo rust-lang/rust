@@ -54,7 +54,7 @@ impl<'a> LexedStr<'a> {
     pub fn intersperse_trivia(
         &self,
         output: &crate::Output,
-        sink: &mut dyn FnMut(StrStep),
+        sink: &mut dyn FnMut(StrStep<'_>),
     ) -> bool {
         let mut builder = Builder { lexed: self, pos: 0, state: State::PendingEnter, sink };
 

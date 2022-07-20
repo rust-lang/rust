@@ -17,7 +17,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     let _ = 2 + 90;
 // }
 // ```
-pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
