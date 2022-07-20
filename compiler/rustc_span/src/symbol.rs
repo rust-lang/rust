@@ -722,6 +722,8 @@ symbols! {
         fn_mut,
         fn_once,
         fn_once_output,
+        fn_ptr_addr,
+        fn_ptr_trait,
         forbid,
         forget,
         format,

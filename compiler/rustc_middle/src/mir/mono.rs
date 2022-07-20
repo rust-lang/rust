@@ -381,7 +381,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)
-                            | InstanceDef::CloneShim(..) => None,
+                            | InstanceDef::CloneShim(..)
+                            | InstanceDef::FnPtrAddrShim(..) => None,
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),

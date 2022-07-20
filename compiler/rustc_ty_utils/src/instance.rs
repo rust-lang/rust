@@ -243,7 +243,8 @@ fn resolve_associated_item<'tcx>(
             }
         }
         traits::ImplSource::Builtin(..) => {
-            if Some(trait_ref.def_id) == tcx.lang_items().clone_trait() {
+            let lang_items = tcx.lang_items();
+            if Some(trait_ref.def_id) == lang_items.clone_trait() {
                 // FIXME(eddyb) use lang items for methods instead of names.
                 let name = tcx.item_name(trait_item_id);
                 if name == sym::clone {
@@ -269,6 +270,22 @@ fn resolve_associated_item<'tcx>(
                     // Use the default `fn clone_from` from `trait Clone`.
                     let substs = tcx.erase_regions(rcvr_substs);
                     Some(ty::Instance::new(trait_item_id, substs))
+                }
+            } else if Some(trait_ref.def_id) == lang_items.fn_ptr_trait() {
+                if lang_items.fn_ptr_addr() == Some(trait_item_id) {
+                    let self_ty = trait_ref.self_ty();
+                    if !matches!(self_ty.kind(), ty::FnPtr(..)) {
+                        return Ok(None);
+                    }
+                    Some(Instance {
+                        def: ty::InstanceDef::FnPtrAddrShim(trait_item_id, self_ty),
+                        substs: rcvr_substs,
+                    })
+                } else {
+                    tcx.sess.span_fatal(
+                        tcx.def_span(trait_item_id),
+                        "`FnPtrAddr` trait with unexpected assoc item",
+                    )
                 }
             } else {
                 None

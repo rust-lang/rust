@@ -411,11 +411,24 @@ fn resolve_negative_obligation<'tcx>(
     infcx.resolve_regions(&outlives_env).is_empty()
 }
 
+/// Returns whether all impls which would apply to the `trait_ref`
+/// e.g. `Ty: Trait<Arg>` are already known in the local crate.
+///
+/// This both checks whether any downstream or sibling crates could
+/// implement it and whether an upstream crate can add this impl
+/// without breaking backwards compatibility.
 #[instrument(level = "debug", skip(tcx), ret)]
 pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), Conflict> {
+    if Some(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
+        // The only types implementing `FnPtr` are function pointers,
+        // so if there's no impl of `FnPtr` in the current crate,
+        // then such an impl will never be added in the future.
+        return Ok(());
+    }
+
     if orphan_check_trait_ref(trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.

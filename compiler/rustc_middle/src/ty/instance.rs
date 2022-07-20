@@ -96,6 +96,13 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     CloneShim(DefId, Ty<'tcx>),
+
+    /// Compiler-generated `<T as FnPtr>::addr` implementation.
+    ///
+    /// Automatically generated for all potentially higher-ranked `fn(I) -> R` types.
+    ///
+    /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
+    FnPtrAddrShim(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -151,7 +158,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
-            | InstanceDef::CloneShim(def_id, _) => def_id,
+            | InstanceDef::CloneShim(def_id, _)
+            | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
         }
     }
 
@@ -167,7 +175,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
-            | InstanceDef::CloneShim(..) => None,
+            | InstanceDef::CloneShim(..)
+            | InstanceDef::FnPtrAddrShim(..) => None,
         }
     }
 
@@ -182,7 +191,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | InstanceDef::DropGlue(def_id, _)
-            | InstanceDef::CloneShim(def_id, _) => ty::WithOptConstParam::unknown(def_id),
+            | InstanceDef::CloneShim(def_id, _)
+            | InstanceDef::FnPtrAddrShim(def_id, _) => ty::WithOptConstParam::unknown(def_id),
         }
     }
 
@@ -268,6 +278,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn has_polymorphic_mir_body(&self) -> bool {
         match *self {
             InstanceDef::CloneShim(..)
+            | InstanceDef::FnPtrAddrShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
@@ -306,6 +317,7 @@ fn fmt_instance(
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
+        InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({})", ty),
     }
 }
 

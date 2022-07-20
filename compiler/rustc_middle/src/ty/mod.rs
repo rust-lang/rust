@@ -2284,12 +2284,12 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
+        let impl_trait_ref1 = self.impl_trait_ref(def_id1);
+        let impl_trait_ref2 = self.impl_trait_ref(def_id2);
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if self.impl_trait_ref(def_id1).map_or(false, |tr| tr.subst_identity().references_error())
-            || self
-                .impl_trait_ref(def_id2)
-                .map_or(false, |tr| tr.subst_identity().references_error())
+        if impl_trait_ref1.map_or(false, |tr| tr.subst_identity().references_error())
+            || impl_trait_ref2.map_or(false, |tr| tr.subst_identity().references_error())
         {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
@@ -2317,11 +2317,10 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let is_marker_overlap = {
-            let is_marker_impl = |def_id: DefId| -> bool {
-                let trait_ref = self.impl_trait_ref(def_id);
+            let is_marker_impl = |trait_ref: Option<EarlyBinder<TraitRef<'_>>>| -> bool {
                 trait_ref.map_or(false, |tr| self.trait_def(tr.skip_binder().def_id).is_marker)
             };
-            is_marker_impl(def_id1) && is_marker_impl(def_id2)
+            is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
         };
 
         if is_marker_overlap {
@@ -2405,7 +2404,8 @@ impl<'tcx> TyCtxt<'tcx> {
             | ty::InstanceDef::Virtual(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::DropGlue(..)
-            | ty::InstanceDef::CloneShim(..) => self.mir_shims(instance),
+            | ty::InstanceDef::CloneShim(..)
+            | ty::InstanceDef::FnPtrAddrShim(..) => self.mir_shims(instance),
         }
     }
 

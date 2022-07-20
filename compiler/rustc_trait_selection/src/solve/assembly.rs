@@ -153,6 +153,12 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is a `FnPtr` if it is of `FnPtr` type.
+    fn consider_builtin_fn_ptr_trait_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     // A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
     // family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
@@ -331,6 +337,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_copy_clone_candidate(self, goal)
         } else if lang_items.pointer_like() == Some(trait_def_id) {
             G::consider_builtin_pointer_like_candidate(self, goal)
+        } else if lang_items.fn_ptr_trait() == Some(trait_def_id) {
+            G::consider_builtin_fn_ptr_trait_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {

@@ -261,6 +261,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         bug!("`PointerLike` does not have an associated type: {:?}", goal);
     }
 
+    fn consider_builtin_fn_ptr_trait_candidate(
+        _ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        bug!("`FnPtr` does not have an associated type: {:?}", goal);
+    }
+
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
