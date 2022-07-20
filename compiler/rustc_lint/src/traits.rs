@@ -138,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
 declare_lint! {
     pub DUP_TRAIT_BOUNDS,
     Deny,
-    "duplicate trait bounds"
+    "Duplicate trait bounds are meaningless"
 }
 
 declare_lint_pass!(
@@ -163,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTraitBounds {
                     if !set.insert(did) {
                         let span = polytraitref.span;
                         cx.struct_span_lint(DUP_TRAIT_BOUNDS, span, |lint| {
-                            let msg = format!("Duplicate trait bound");
+                            let msg = format!("duplicate trait bound");
                             lint.build(&msg)
                                 .span_help(span, "Remove this duplicate trait bound")
                                 .emit();

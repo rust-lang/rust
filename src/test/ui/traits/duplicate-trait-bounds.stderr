@@ -1,4 +1,4 @@
-error: Duplicate trait bound
+error: duplicate trait bound
   --> $DIR/duplicate-trait-bounds.rs:8:56
    |
 LL |     DirectedGraph + WithStartNode + WithPredecessors + WithStartNode + WithSuccessors + WithNumNodes
