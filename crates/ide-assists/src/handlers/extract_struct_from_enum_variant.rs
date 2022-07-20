@@ -37,7 +37,7 @@ use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, 
 // ```
 pub(crate) fn extract_struct_from_enum_variant(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let field_list = extract_field_list_if_applicable(&variant)?;
@@ -373,7 +373,7 @@ fn apply_references(
 }
 
 fn process_references(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     builder: &mut AssistBuilder,
     visited_modules: &mut FxHashSet<Module>,
     enum_module_def: &ModuleDef,
@@ -407,7 +407,7 @@ fn process_references(
 }
 
 fn reference_to_node(
-    sema: &hir::Semantics<RootDatabase>,
+    sema: &hir::Semantics<'_, RootDatabase>,
     reference: FileReference,
 ) -> Option<(ast::PathSegment, SyntaxNode, hir::Module)> {
     let segment =

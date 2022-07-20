@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 // ```
-pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let parent = ret_type.syntax().parent()?;
     let body = match_ast! {

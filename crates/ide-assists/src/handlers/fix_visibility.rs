@@ -30,12 +30,12 @@ use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 //     m::frobnicate() {}
 // }
 // ```
-pub(crate) fn fix_visibility(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn fix_visibility(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     add_vis_to_referenced_module_def(acc, ctx)
         .or_else(|| add_vis_to_referenced_record_field(acc, ctx))
 }
 
-fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     let path_res = ctx.sema.resolve_path(&path)?;
     let def = match path_res {
@@ -82,7 +82,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
     })
 }
 
-fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let record_field: ast::RecordExprField = ctx.find_node_at_offset()?;
     let (record_field_def, _, _) = ctx.sema.resolve_record_field(&record_field)?;
 

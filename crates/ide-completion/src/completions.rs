@@ -85,12 +85,12 @@ impl Completions {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
 
-    pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext, keyword: &'static str) {
+    pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext<'_>, keyword: &'static str) {
         let item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), keyword);
         item.add_to(self);
     }
 
-    pub(crate) fn add_nameref_keywords_with_colon(&mut self, ctx: &CompletionContext) {
+    pub(crate) fn add_nameref_keywords_with_colon(&mut self, ctx: &CompletionContext<'_>) {
         ["self::", "crate::"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
 
         if ctx.depth_from_crate_root > 0 {
@@ -98,7 +98,7 @@ impl Completions {
         }
     }
 
-    pub(crate) fn add_nameref_keywords(&mut self, ctx: &CompletionContext) {
+    pub(crate) fn add_nameref_keywords(&mut self, ctx: &CompletionContext<'_>) {
         ["self", "crate"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
 
         if ctx.depth_from_crate_root > 0 {
@@ -108,7 +108,7 @@ impl Completions {
 
     pub(crate) fn add_super_keyword(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         super_chain_len: Option<usize>,
     ) {
         if let Some(len) = super_chain_len {
@@ -120,7 +120,7 @@ impl Completions {
 
     pub(crate) fn add_keyword_snippet_expr(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         incomplete_let: bool,
         kw: &str,
         snippet: &str,
@@ -144,7 +144,7 @@ impl Completions {
         item.add_to(self);
     }
 
-    pub(crate) fn add_keyword_snippet(&mut self, ctx: &CompletionContext, kw: &str, snippet: &str) {
+    pub(crate) fn add_keyword_snippet(&mut self, ctx: &CompletionContext<'_>, kw: &str, snippet: &str) {
         let mut item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), kw);
 
         match ctx.config.snippet_cap {
@@ -156,7 +156,7 @@ impl Completions {
 
     pub(crate) fn add_crate_roots(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
     ) {
         ctx.process_all_names(&mut |name, res| match res {
@@ -169,7 +169,7 @@ impl Completions {
 
     pub(crate) fn add_path_resolution(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
@@ -192,7 +192,7 @@ impl Completions {
 
     pub(crate) fn add_pattern_resolution(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
         local_name: hir::Name,
         resolution: hir::ScopeDef,
@@ -215,7 +215,7 @@ impl Completions {
 
     pub(crate) fn add_enum_variants(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         e: hir::Enum,
     ) {
@@ -226,7 +226,7 @@ impl Completions {
 
     pub(crate) fn add_module(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         module: hir::Module,
         local_name: hir::Name,
@@ -241,7 +241,7 @@ impl Completions {
 
     pub(crate) fn add_macro(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         mac: hir::Macro,
         local_name: hir::Name,
@@ -264,7 +264,7 @@ impl Completions {
 
     pub(crate) fn add_function(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         func: hir::Function,
         local_name: Option<hir::Name>,
@@ -287,7 +287,7 @@ impl Completions {
 
     pub(crate) fn add_method(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
         func: hir::Function,
         receiver: Option<hir::Name>,
@@ -312,7 +312,7 @@ impl Completions {
 
     pub(crate) fn add_method_with_import(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
         func: hir::Function,
         import: LocatedImport,
@@ -336,7 +336,7 @@ impl Completions {
         );
     }
 
-    pub(crate) fn add_const(&mut self, ctx: &CompletionContext, konst: hir::Const) {
+    pub(crate) fn add_const(&mut self, ctx: &CompletionContext<'_>, konst: hir::Const) {
         let is_private_editable = match ctx.is_visible(&konst) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -348,7 +348,7 @@ impl Completions {
         ));
     }
 
-    pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
+    pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext<'_>, type_alias: hir::TypeAlias) {
         let is_private_editable = match ctx.is_visible(&type_alias) {
             Visible::Yes => false,
             Visible::Editable => true,
@@ -362,7 +362,7 @@ impl Completions {
 
     pub(crate) fn add_type_alias_with_eq(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         type_alias: hir::TypeAlias,
     ) {
         self.add_opt(render_type_alias_with_eq(RenderContext::new(ctx), type_alias));
@@ -370,7 +370,7 @@ impl Completions {
 
     pub(crate) fn add_qualified_enum_variant(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         variant: hir::Variant,
         path: hir::ModPath,
@@ -384,7 +384,7 @@ impl Completions {
 
     pub(crate) fn add_enum_variant(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
@@ -404,7 +404,7 @@ impl Completions {
 
     pub(crate) fn add_field(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         dot_access: &DotAccess,
         receiver: Option<hir::Name>,
         field: hir::Field,
@@ -427,7 +427,7 @@ impl Completions {
 
     pub(crate) fn add_struct_literal(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         strukt: hir::Struct,
         path: Option<hir::ModPath>,
@@ -442,7 +442,7 @@ impl Completions {
 
     pub(crate) fn add_union_literal(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         un: hir::Union,
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
@@ -453,7 +453,7 @@ impl Completions {
 
     pub(crate) fn add_tuple_field(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         receiver: Option<hir::Name>,
         field: usize,
         ty: &hir::Type,
@@ -462,18 +462,18 @@ impl Completions {
         self.add(item);
     }
 
-    pub(crate) fn add_lifetime(&mut self, ctx: &CompletionContext, name: hir::Name) {
+    pub(crate) fn add_lifetime(&mut self, ctx: &CompletionContext<'_>, name: hir::Name) {
         CompletionItem::new(SymbolKind::LifetimeParam, ctx.source_range(), name.to_smol_str())
             .add_to(self)
     }
 
-    pub(crate) fn add_label(&mut self, ctx: &CompletionContext, name: hir::Name) {
+    pub(crate) fn add_label(&mut self, ctx: &CompletionContext<'_>, name: hir::Name) {
         CompletionItem::new(SymbolKind::Label, ctx.source_range(), name.to_smol_str()).add_to(self)
     }
 
     pub(crate) fn add_variant_pat(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
         variant: hir::Variant,
         local_name: Option<hir::Name>,
@@ -489,7 +489,7 @@ impl Completions {
 
     pub(crate) fn add_qualified_variant_pat(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
         variant: hir::Variant,
         path: hir::ModPath,
@@ -500,7 +500,7 @@ impl Completions {
 
     pub(crate) fn add_struct_pat(
         &mut self,
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         pattern_ctx: &PatternContext,
         strukt: hir::Struct,
         local_name: Option<hir::Name>,
@@ -513,10 +513,10 @@ impl Completions {
 /// Skips variants that are visible with single segment paths.
 fn enum_variants_with_paths(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     enum_: hir::Enum,
     impl_: &Option<ast::Impl>,
-    cb: impl Fn(&mut Completions, &CompletionContext, hir::Variant, hir::ModPath),
+    cb: impl Fn(&mut Completions, &CompletionContext<'_>, hir::Variant, hir::ModPath),
 ) {
     let variants = enum_.variants(ctx.db);
 
@@ -545,7 +545,7 @@ fn enum_variants_with_paths(
 
 pub(super) fn complete_name(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     NameContext { name, kind }: &NameContext,
 ) {
     match kind {
@@ -586,7 +586,7 @@ pub(super) fn complete_name(
 
 pub(super) fn complete_name_ref(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     NameRefContext { nameref, kind }: &NameRefContext,
 ) {
     match kind {
@@ -661,7 +661,7 @@ pub(super) fn complete_name_ref(
     }
 }
 
-fn complete_patterns(acc: &mut Completions, ctx: &CompletionContext, pattern_ctx: &PatternContext) {
+fn complete_patterns(acc: &mut Completions, ctx: &CompletionContext<'_>, pattern_ctx: &PatternContext) {
     flyimport::import_on_the_fly_pat(acc, ctx, pattern_ctx);
     fn_param::complete_fn_param(acc, ctx, pattern_ctx);
     pattern::complete_pattern(acc, ctx, pattern_ctx);

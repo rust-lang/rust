@@ -75,7 +75,7 @@ struct FilesStats {
 }
 
 impl fmt::Display for FilesStats {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{} of files", self.size)
     }
 }
@@ -101,7 +101,7 @@ pub(crate) struct SyntaxTreeStats {
 }
 
 impl fmt::Display for SyntaxTreeStats {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{} trees, {} preserved", self.total, self.retained)
     }
 }
@@ -143,7 +143,7 @@ struct LibrarySymbolsStats {
 }
 
 impl fmt::Display for LibrarySymbolsStats {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{} of index symbols ({})", self.size, self.total)
     }
 }

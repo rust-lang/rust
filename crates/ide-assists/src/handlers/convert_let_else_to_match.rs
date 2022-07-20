@@ -9,7 +9,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 fn binders_in_pat(
     acc: &mut Vec<(Name, bool)>,
     pat: &Pat,
-    sem: &Semantics<RootDatabase>,
+    sem: &Semantics<'_, RootDatabase>,
 ) -> Option<()> {
     use Pat::*;
     match pat {
@@ -115,7 +115,7 @@ fn binders_to_str(binders: &[(Name, bool)], addmut: bool) -> String {
 //     };
 // }
 // ```
-pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     // should focus on else token to trigger
     let else_token = ctx.find_token_syntax_at_offset(T![else])?;
     let let_stmt = LetStmt::cast(else_token.parent()?.parent()?)?;

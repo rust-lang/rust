@@ -28,7 +28,7 @@ use crate::{
 // ```
 pub(crate) fn replace_turbofish_with_explicit_type(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> Option<()> {
     let let_stmt = ctx.find_node_at_offset::<LetStmt>()?;
 

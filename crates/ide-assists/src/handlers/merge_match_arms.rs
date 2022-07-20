@@ -32,7 +32,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};
 //     }
 // }
 // ```
-pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() {
@@ -97,7 +97,7 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
 fn are_same_types(
     current_arm_types: &HashMap<String, Option<TypeInfo>>,
     arm: &ast::MatchArm,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
 ) -> bool {
     let arm_types = get_arm_types(ctx, arm);
     for (other_arm_type_name, other_arm_type) in arm_types {
@@ -112,14 +112,14 @@ fn are_same_types(
 }
 
 fn get_arm_types(
-    context: &AssistContext,
+    context: &AssistContext<'_>,
     arm: &ast::MatchArm,
 ) -> HashMap<String, Option<TypeInfo>> {
     let mut mapping: HashMap<String, Option<TypeInfo>> = HashMap::new();
 
     fn recurse(
         map: &mut HashMap<String, Option<TypeInfo>>,
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         pat: &Option<ast::Pat>,
     ) {
         if let Some(local_pat) = pat {

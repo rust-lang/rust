@@ -106,7 +106,7 @@ impl<'a> TyLoweringContext<'a> {
     pub fn with_debruijn<T>(
         &self,
         debruijn: DebruijnIndex,
-        f: impl FnOnce(&TyLoweringContext) -> T,
+        f: impl FnOnce(&TyLoweringContext<'_>) -> T,
     ) -> T {
         let opaque_ty_data_vec = self.opaque_type_data.take();
         let expander = self.expander.take();
@@ -130,7 +130,7 @@ impl<'a> TyLoweringContext<'a> {
     pub fn with_shifted_in<T>(
         &self,
         debruijn: DebruijnIndex,
-        f: impl FnOnce(&TyLoweringContext) -> T,
+        f: impl FnOnce(&TyLoweringContext<'_>) -> T,
     ) -> T {
         self.with_debruijn(self.in_binders.shifted_in_from(debruijn), f)
     }

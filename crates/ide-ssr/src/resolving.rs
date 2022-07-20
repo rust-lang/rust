@@ -42,7 +42,7 @@ pub(crate) struct UfcsCallInfo {
 impl ResolvedRule {
     pub(crate) fn new(
         rule: parsing::ParsedRule,
-        resolution_scope: &ResolutionScope,
+        resolution_scope: &ResolutionScope<'_>,
         index: usize,
     ) -> Result<ResolvedRule, SsrError> {
         let resolver =

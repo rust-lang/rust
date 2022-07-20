@@ -32,7 +32,7 @@ use crate::{
 //     (1 + 2) * 4;
 // }
 // ```
-pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let file_id = ctx.file_id();
     let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
@@ -149,7 +149,7 @@ struct InlineData {
 }
 
 fn inline_let(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     let_stmt: ast::LetStmt,
     range: TextRange,
     file_id: FileId,
@@ -184,7 +184,7 @@ fn inline_let(
 }
 
 fn inline_usage(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     path_expr: ast::PathExpr,
     range: TextRange,
     file_id: FileId,

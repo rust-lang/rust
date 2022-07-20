@@ -9,7 +9,7 @@ pub(crate) struct KindsSrc<'a> {
     pub(crate) nodes: &'a [&'a str],
 }
 
-pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
+pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
     punct: &[
         (";", "SEMICOLON"),
         (",", "COMMA"),

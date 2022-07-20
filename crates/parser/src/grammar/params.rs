@@ -5,21 +5,21 @@ use super::*;
 // fn b(x: i32) {}
 // fn c(x: i32, ) {}
 // fn d(x: i32, y: ()) {}
-pub(super) fn param_list_fn_def(p: &mut Parser) {
+pub(super) fn param_list_fn_def(p: &mut Parser<'_>) {
     list_(p, Flavor::FnDef);
 }
 
 // test param_list_opt_patterns
 // fn foo<F: FnMut(&mut Foo<'a>)>(){}
-pub(super) fn param_list_fn_trait(p: &mut Parser) {
+pub(super) fn param_list_fn_trait(p: &mut Parser<'_>) {
     list_(p, Flavor::FnTrait);
 }
 
-pub(super) fn param_list_fn_ptr(p: &mut Parser) {
+pub(super) fn param_list_fn_ptr(p: &mut Parser<'_>) {
     list_(p, Flavor::FnPointer);
 }
 
-pub(super) fn param_list_closure(p: &mut Parser) {
+pub(super) fn param_list_closure(p: &mut Parser<'_>) {
     list_(p, Flavor::Closure);
 }
 
@@ -31,7 +31,7 @@ enum Flavor {
     Closure,
 }
 
-fn list_(p: &mut Parser, flavor: Flavor) {
+fn list_(p: &mut Parser<'_>, flavor: Flavor) {
     use Flavor::*;
 
     let (bra, ket) = match flavor {
@@ -87,7 +87,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
 
 const PARAM_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
 
-fn param(p: &mut Parser, m: Marker, flavor: Flavor) {
+fn param(p: &mut Parser<'_>, m: Marker, flavor: Flavor) {
     match flavor {
         // test param_list_vararg
         // extern "C" { fn printf(format: *const i8, ..., _: u8) -> i32; }
@@ -146,7 +146,7 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) {
     m.complete(p, PARAM);
 }
 
-fn variadic_param(p: &mut Parser) -> bool {
+fn variadic_param(p: &mut Parser<'_>) -> bool {
     if p.at(T![:]) && p.nth_at(1, T![...]) {
         p.bump(T![:]);
         p.bump(T![...]);
@@ -164,7 +164,7 @@ fn variadic_param(p: &mut Parser) -> bool {
 //     fn d(&'a mut self, x: i32) {}
 //     fn e(mut self) {}
 // }
-fn opt_self_param(p: &mut Parser, m: Marker) -> Result<(), Marker> {
+fn opt_self_param(p: &mut Parser<'_>, m: Marker) -> Result<(), Marker> {
     if p.at(T![self]) || p.at(T![mut]) && p.nth(1) == T![self] {
         p.eat(T![mut]);
         self_as_name(p);
@@ -202,7 +202,7 @@ fn opt_self_param(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     Ok(())
 }
 
-fn self_as_name(p: &mut Parser) {
+fn self_as_name(p: &mut Parser<'_>) {
     let m = p.start();
     p.bump(T![self]);
     m.complete(p, NAME);

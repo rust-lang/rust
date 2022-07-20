@@ -130,7 +130,7 @@ pub enum IdentClass {
 }
 
 impl IdentClass {
-    pub fn classify_node(sema: &Semantics<RootDatabase>, node: &SyntaxNode) -> Option<IdentClass> {
+    pub fn classify_node(sema: &Semantics<'_, RootDatabase>, node: &SyntaxNode) -> Option<IdentClass> {
         match_ast! {
             match node {
                 ast::Name(name) => NameClass::classify(sema, &name).map(IdentClass::NameClass),
@@ -146,7 +146,7 @@ impl IdentClass {
     }
 
     pub fn classify_token(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         token: &SyntaxToken,
     ) -> Option<IdentClass> {
         let parent = token.parent()?;
@@ -154,7 +154,7 @@ impl IdentClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<IdentClass> {
         NameRefClass::classify_lifetime(sema, lifetime)
@@ -218,7 +218,7 @@ impl NameClass {
         Some(res)
     }
 
-    pub fn classify(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<NameClass> {
+    pub fn classify(sema: &Semantics<'_, RootDatabase>, name: &ast::Name) -> Option<NameClass> {
         let _p = profile::span("classify_name");
 
         let parent = name.syntax().parent()?;
@@ -238,7 +238,7 @@ impl NameClass {
         };
         return Some(NameClass::Definition(definition));
 
-        fn classify_item(sema: &Semantics<RootDatabase>, item: ast::Item) -> Option<Definition> {
+        fn classify_item(sema: &Semantics<'_, RootDatabase>, item: ast::Item) -> Option<Definition> {
             let definition = match item {
                 ast::Item::MacroRules(it) => {
                     Definition::Macro(sema.to_def(&ast::Macro::MacroRules(it))?)
@@ -266,7 +266,7 @@ impl NameClass {
         }
 
         fn classify_ident_pat(
-            sema: &Semantics<RootDatabase>,
+            sema: &Semantics<'_, RootDatabase>,
             ident_pat: ast::IdentPat,
         ) -> Option<NameClass> {
             if let Some(def) = sema.resolve_bind_pat_to_const(&ident_pat) {
@@ -289,7 +289,7 @@ impl NameClass {
         }
 
         fn classify_rename(
-            sema: &Semantics<RootDatabase>,
+            sema: &Semantics<'_, RootDatabase>,
             rename: ast::Rename,
         ) -> Option<Definition> {
             if let Some(use_tree) = rename.syntax().parent().and_then(ast::UseTree::cast) {
@@ -305,7 +305,7 @@ impl NameClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameClass> {
         let _p = profile::span("classify_lifetime").detail(|| lifetime.to_string());
@@ -338,7 +338,7 @@ impl NameRefClass {
     // Note: we don't have unit-tests for this rather important function.
     // It is primarily exercised via goto definition tests in `ide`.
     pub fn classify(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         name_ref: &ast::NameRef,
     ) -> Option<NameRefClass> {
         let _p = profile::span("classify_name_ref").detail(|| name_ref.to_string());
@@ -418,7 +418,7 @@ impl NameRefClass {
     }
 
     pub fn classify_lifetime(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<NameRefClass> {
         let _p = profile::span("classify_lifetime_ref").detail(|| lifetime.to_string());

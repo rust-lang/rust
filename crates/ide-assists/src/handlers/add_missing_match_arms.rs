@@ -36,7 +36,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let match_expr = ctx.find_node_at_offset_with_descend::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
     let target_range = ctx.sema.original_range(match_expr.syntax()).range;
@@ -221,7 +221,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
 }
 
 fn cursor_at_trivial_match_arm_list(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     match_expr: &MatchExpr,
     match_arm_list: &MatchArmList,
 ) -> Option<()> {
@@ -321,7 +321,7 @@ impl ExtendedEnum {
     }
 }
 
-fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<ExtendedEnum> {
+fn resolve_enum_def(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> Option<ExtendedEnum> {
     sema.type_of_expr(expr)?.adjusted().autoderef(sema.db).find_map(|ty| match ty.as_adt() {
         Some(Adt::Enum(e)) => Some(ExtendedEnum::Enum(e)),
         _ => ty.is_bool().then(|| ExtendedEnum::Bool),
@@ -329,7 +329,7 @@ fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
 }
 
 fn resolve_tuple_of_enum_def(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
 ) -> Option<Vec<ExtendedEnum>> {
     sema.type_of_expr(expr)?

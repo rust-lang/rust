@@ -4,7 +4,7 @@
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 use tt::buffer::TokenBuffer;
 
-pub(crate) fn to_parser_input(buffer: &TokenBuffer) -> parser::Input {
+pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
     let mut res = parser::Input::default();
 
     let mut current = buffer.begin();

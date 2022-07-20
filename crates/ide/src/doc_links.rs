@@ -75,7 +75,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
 pub(crate) fn remove_links(markdown: &str) -> String {
     let mut drop_link = false;
 
-    let mut cb = |_: BrokenLink| {
+    let mut cb = |_: BrokenLink<'_>| {
         let empty = InlineStr::try_from("").unwrap();
         Some((CowStr::Inlined(empty), CowStr::Inlined(empty)))
     };
@@ -196,7 +196,7 @@ pub(crate) fn resolve_doc_path_for_def(
 }
 
 pub(crate) fn doc_attributes(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     node: &SyntaxNode,
 ) -> Option<(hir::AttrsWithOwner, Definition)> {
     match_ast! {
@@ -241,7 +241,7 @@ pub(crate) fn token_as_doc_comment(doc_token: &SyntaxToken) -> Option<DocComment
 impl DocCommentToken {
     pub(crate) fn get_definition_with_descend_at<T>(
         self,
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         offset: TextSize,
         // Definition, CommentOwner, range of intra doc link in original file
         mut cb: impl FnMut(Definition, SyntaxNode, TextRange) -> Option<T>,
@@ -360,7 +360,7 @@ fn map_links<'e>(
 ) -> impl Iterator<Item = Event<'e>> {
     let mut in_link = false;
     // holds the origin link target on start event and the rewritten one on end event
-    let mut end_link_target: Option<CowStr> = None;
+    let mut end_link_target: Option<CowStr<'_>> = None;
     // normally link's type is determined by the type of link tag in the end event,
     // however in some cases we want to change the link type, for example,
     // `Shortcut` type parsed from Start/End tags doesn't make sense for url links

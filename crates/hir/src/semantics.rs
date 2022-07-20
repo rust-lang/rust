@@ -124,7 +124,7 @@ impl<DB> fmt::Debug for Semantics<'_, DB> {
 }
 
 impl<'db, DB: HirDatabase> Semantics<'db, DB> {
-    pub fn new(db: &DB) -> Semantics<DB> {
+    pub fn new(db: &DB) -> Semantics<'_, DB> {
         let impl_ = SemanticsImpl::new(db);
         Semantics { db, imp: impl_ }
     }
@@ -1056,7 +1056,7 @@ impl<'db> SemanticsImpl<'db> {
             .unwrap_or_default()
     }
 
-    fn with_ctx<F: FnOnce(&mut SourceToDefCtx) -> T, T>(&self, f: F) -> T {
+    fn with_ctx<F: FnOnce(&mut SourceToDefCtx<'_, '_>) -> T, T>(&self, f: F) -> T {
         let mut cache = self.s2d_cache.borrow_mut();
         let mut ctx = SourceToDefCtx { db: self.db, cache: &mut *cache };
         f(&mut ctx)
@@ -1280,7 +1280,7 @@ impl<'db> SemanticsImpl<'db> {
 }
 
 fn macro_call_to_macro_id(
-    ctx: &mut SourceToDefCtx,
+    ctx: &mut SourceToDefCtx<'_, '_>,
     db: &dyn AstDatabase,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
@@ -1302,14 +1302,14 @@ fn macro_call_to_macro_id(
 pub trait ToDef: AstNode + Clone {
     type Def;
 
-    fn to_def(sema: &SemanticsImpl, src: InFile<Self>) -> Option<Self::Def>;
+    fn to_def(sema: &SemanticsImpl<'_>, src: InFile<Self>) -> Option<Self::Def>;
 }
 
 macro_rules! to_def_impls {
     ($(($def:path, $ast:path, $meth:ident)),* ,) => {$(
         impl ToDef for $ast {
             type Def = $def;
-            fn to_def(sema: &SemanticsImpl, src: InFile<Self>) -> Option<Self::Def> {
+            fn to_def(sema: &SemanticsImpl<'_>, src: InFile<Self>) -> Option<Self::Def> {
                 sema.with_ctx(|ctx| ctx.$meth(src)).map(<$def>::from)
             }
         }

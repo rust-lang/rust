@@ -410,7 +410,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_lifetime(
-        _sema: &Semantics<RootDatabase>,
+        _sema: &Semantics<'_, RootDatabase>,
         original_file: &SyntaxNode,
         lifetime: ast::Lifetime,
     ) -> Option<LifetimeContext> {
@@ -437,7 +437,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         original_file: &SyntaxNode,
         name: ast::Name,
     ) -> Option<NameContext> {
@@ -477,7 +477,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name_ref(
-        sema: &Semantics<RootDatabase>,
+        sema: &Semantics<'_, RootDatabase>,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
         parent: SyntaxNode,
@@ -987,7 +987,7 @@ impl<'a> CompletionContext<'a> {
 }
 
 fn pattern_context_for(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     original_file: &SyntaxNode,
     pat: ast::Pat,
 ) -> PatternContext {
@@ -1047,7 +1047,7 @@ fn pattern_context_for(
 }
 
 fn fetch_immediate_impl(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     original_file: &SyntaxNode,
     node: &SyntaxNode,
 ) -> Option<ast::Impl> {
@@ -1085,7 +1085,7 @@ fn find_node_in_file<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {
 /// for the offset introduced by the fake ident.
 /// This is wrong if `node` comes before the insertion point! Use `find_node_in_file` instead.
 fn find_node_in_file_compensated<N: AstNode>(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     in_file: &SyntaxNode,
     node: &N,
 ) -> Option<N> {
@@ -1093,7 +1093,7 @@ fn find_node_in_file_compensated<N: AstNode>(
 }
 
 fn ancestors_in_file_compensated<'sema>(
-    sema: &'sema Semantics<RootDatabase>,
+    sema: &'sema Semantics<'_, RootDatabase>,
     in_file: &SyntaxNode,
     node: &SyntaxNode,
 ) -> Option<impl Iterator<Item = SyntaxNode> + 'sema> {
@@ -1117,7 +1117,7 @@ fn ancestors_in_file_compensated<'sema>(
 /// for the offset introduced by the fake ident..
 /// This is wrong if `node` comes before the insertion point! Use `find_node_in_file` instead.
 fn find_opt_node_in_file_compensated<N: AstNode>(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     syntax: &SyntaxNode,
     node: Option<N>,
 ) -> Option<N> {

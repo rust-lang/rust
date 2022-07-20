@@ -30,7 +30,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assis
 }
 
 fn missing_record_expr_field_fixes(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     usage_file_id: FileId,
     record_expr_field: &ast::RecordExprField,
 ) -> Option<Vec<Assist>> {

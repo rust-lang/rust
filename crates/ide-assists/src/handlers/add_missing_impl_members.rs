@@ -44,7 +44,7 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     add_missing_impl_members_inner(
         acc,
         ctx,
@@ -85,7 +85,7 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -
 //     $0fn bar(&self) {}
 // }
 // ```
-pub(crate) fn add_missing_default_members(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_missing_default_members(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     add_missing_impl_members_inner(
         acc,
         ctx,
@@ -97,7 +97,7 @@ pub(crate) fn add_missing_default_members(acc: &mut Assists, ctx: &AssistContext
 
 fn add_missing_impl_members_inner(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     mode: DefaultMethods,
     assist_id: &'static str,
     label: &'static str,
@@ -164,7 +164,7 @@ fn add_missing_impl_members_inner(
 }
 
 fn try_gen_trait_body(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     func: &ast::Fn,
     trait_: &hir::Trait,
     impl_def: &ast::Impl,

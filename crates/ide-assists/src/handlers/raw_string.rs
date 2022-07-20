@@ -19,7 +19,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     r#"Hello, World!"#;
 // }
 // ```
-pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::String>()?;
     if token.is_raw() {
         return None;
@@ -61,7 +61,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
 //     "Hello, \"World!\"";
 // }
 // ```
-pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::String>()?;
     if !token.is_raw() {
         return None;
@@ -103,7 +103,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
 //     r##"Hello, World!"##;
 // }
 // ```
-pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::String>()?;
     if !token.is_raw() {
         return None;
@@ -131,7 +131,7 @@ pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 //     r"Hello, World!";
 // }
 // ```
-pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let token = ctx.find_token_at_offset::<ast::String>()?;
     if !token.is_raw() {
         return None;

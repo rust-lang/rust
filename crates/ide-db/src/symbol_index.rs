@@ -224,7 +224,7 @@ pub struct SymbolIndex {
 }
 
 impl fmt::Debug for SymbolIndex {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SymbolIndex").field("n_symbols", &self.symbols.len()).finish()
     }
 }

@@ -76,7 +76,7 @@ pub struct CompletionItem {
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
 impl fmt::Debug for CompletionItem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = f.debug_struct("CompletionItem");
         s.field("label", &self.label()).field("source_range", &self.source_range());
         if self.text_edit().len() == 1 {
@@ -433,7 +433,7 @@ pub(crate) struct Builder {
 
 impl Builder {
     pub(crate) fn from_resolution(
-        ctx: &CompletionContext,
+        ctx: &CompletionContext<'_>,
         path_ctx: &PathCompletionCtx,
         local_name: hir::Name,
         resolution: hir::ScopeDef,

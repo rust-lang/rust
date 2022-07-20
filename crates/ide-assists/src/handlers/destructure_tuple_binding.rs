@@ -27,7 +27,7 @@ use crate::assist_context::{AssistBuilder, AssistContext, Assists};
 //     let v = _0;
 // }
 // ```
-pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     destructure_tuple_binding_impl(acc, ctx, false)
 }
 
@@ -51,7 +51,7 @@ pub(crate) fn destructure_tuple_binding(acc: &mut Assists, ctx: &AssistContext) 
 // ```
 pub(crate) fn destructure_tuple_binding_impl(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     with_sub_pattern: bool,
 ) -> Option<()> {
     let ident_pat = ctx.find_node_at_offset::<ast::IdentPat>()?;
@@ -82,7 +82,7 @@ pub(crate) fn destructure_tuple_binding_impl(
     Some(())
 }
 
-fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
+fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleData> {
     if ident_pat.at_token().is_some() {
         // Cannot destructure pattern with sub-pattern:
         // Only IdentPat can have sub-pattern,
@@ -126,7 +126,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
 }
 
 fn generate_name(
-    _ctx: &AssistContext,
+    _ctx: &AssistContext<'_>,
     index: usize,
     _tuple_name: &str,
     _ident_pat: &IdentPat,
@@ -150,7 +150,7 @@ struct TupleData {
     usages: Option<UsageSearchResult>,
 }
 fn edit_tuple_assignment(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     builder: &mut AssistBuilder,
     data: &TupleData,
     in_sub_pattern: bool,
@@ -196,7 +196,7 @@ fn edit_tuple_assignment(
 fn edit_tuple_usages(
     data: &TupleData,
     builder: &mut AssistBuilder,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     in_sub_pattern: bool,
 ) {
     if let Some(usages) = data.usages.as_ref() {
@@ -210,7 +210,7 @@ fn edit_tuple_usages(
     }
 }
 fn edit_tuple_usage(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     builder: &mut AssistBuilder,
     usage: &FileReference,
     data: &TupleData,
@@ -238,7 +238,7 @@ fn edit_tuple_usage(
 }
 
 fn edit_tuple_field_usage(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     builder: &mut AssistBuilder,
     data: &TupleData,
     index: TupleIndex,
@@ -321,7 +321,7 @@ impl RefData {
         }
     }
 }
-fn handle_ref_field_usage(ctx: &AssistContext, field_expr: &FieldExpr) -> RefData {
+fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> RefData {
     let s = field_expr.syntax();
     let mut ref_data =
         RefData { range: s.text_range(), needs_deref: true, needs_parentheses: true };
@@ -368,8 +368,8 @@ fn handle_ref_field_usage(ctx: &AssistContext, field_expr: &FieldExpr) -> RefDat
             // other combinations (`&value` -> `value`, `&&value` -> `&value`, `&value` -> `&&value`) might or might not be able to auto-ref/deref,
             // but there might be trait implementations an added `&` might resolve to
             // -> ONLY handle auto-ref from `value` to `&value`
-            fn is_auto_ref(ctx: &AssistContext, call_expr: &MethodCallExpr) -> bool {
-                fn impl_(ctx: &AssistContext, call_expr: &MethodCallExpr) -> Option<bool> {
+            fn is_auto_ref(ctx: &AssistContext<'_>, call_expr: &MethodCallExpr) -> bool {
+                fn impl_(ctx: &AssistContext<'_>, call_expr: &MethodCallExpr) -> Option<bool> {
                     let rec = call_expr.receiver()?;
                     let rec_ty = ctx.sema.type_of_expr(&rec)?.original();
                     // input must be actual value
@@ -426,7 +426,7 @@ mod tests {
     // Tests for direct tuple destructure:
     // `let $0t = (1,2);` -> `let (_0, _1) = (1,2);`
 
-    fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    fn assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
         destructure_tuple_binding_impl(acc, ctx, false)
     }
 
@@ -1191,10 +1191,10 @@ fn main {
         use super::*;
         use crate::tests::check_assist_by_label;
 
-        fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+        fn assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
             destructure_tuple_binding_impl(acc, ctx, true)
         }
-        fn in_place_assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+        fn in_place_assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
             destructure_tuple_binding_impl(acc, ctx, false)
         }
 
@@ -1256,7 +1256,7 @@ fn main() {
 
         #[test]
         fn trigger_both_destructure_tuple_assists() {
-            fn assist(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+            fn assist(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
                 destructure_tuple_binding_impl(acc, ctx, true)
             }
             let text = r#"

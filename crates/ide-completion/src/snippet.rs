@@ -154,7 +154,7 @@ impl Snippet {
     }
 
     /// Returns [`None`] if the required items do not resolve.
-    pub(crate) fn imports(&self, ctx: &CompletionContext) -> Option<Vec<LocatedImport>> {
+    pub(crate) fn imports(&self, ctx: &CompletionContext<'_>) -> Option<Vec<LocatedImport>> {
         import_edits(ctx, &self.requires)
     }
 
@@ -167,7 +167,7 @@ impl Snippet {
     }
 }
 
-fn import_edits(ctx: &CompletionContext, requires: &[GreenNode]) -> Option<Vec<LocatedImport>> {
+fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<Vec<LocatedImport>> {
     let resolve = |import: &GreenNode| {
         let path = ast::Path::cast(SyntaxNode::new_root(import.clone()))?;
         let item = match ctx.scope.speculative_resolve(&path)? {

@@ -46,11 +46,11 @@ use crate::{
 // }
 //
 // ```
-pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     gen_fn(acc, ctx).or_else(|| gen_method(acc, ctx))
 }
 
-fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let path_expr: ast::PathExpr = ctx.find_node_at_offset()?;
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
@@ -113,7 +113,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     )
 }
 
-fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
     if ctx.sema.resolve_method_call(&call).is_some() {
         return None;
@@ -149,7 +149,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 fn add_func_to_accumulator(
     acc: &mut Assists,
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     text_range: TextRange,
     function_builder: FunctionBuilder,
     insert_offset: TextSize,
@@ -172,7 +172,7 @@ fn add_func_to_accumulator(
 }
 
 fn get_adt_source(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     adt: &hir::Adt,
     fn_name: &str,
 ) -> Option<(Option<ast::Impl>, FileId)> {
@@ -229,7 +229,7 @@ impl FunctionBuilder {
     /// Prepares a generated function that matches `call`.
     /// The function is generated in `target_module` or next to `call`
     fn from_call(
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         call: &ast::CallExpr,
         fn_name: &str,
         target_module: Option<hir::Module>,
@@ -261,7 +261,7 @@ impl FunctionBuilder {
     }
 
     fn from_method_call(
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         call: &ast::MethodCallExpr,
         name: &ast::NameRef,
         target_module: Module,
@@ -344,7 +344,7 @@ impl FunctionBuilder {
 /// * If we could infer the return type, don't focus it (and thus focus the function body) so the
 /// user can change the `todo!` function body.
 fn make_return_type(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     call: &ast::Expr,
     target_module: Module,
 ) -> (Option<ast::RetType>, bool) {
@@ -367,7 +367,7 @@ fn make_return_type(
 }
 
 fn get_fn_target(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     target_module: &Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
@@ -385,7 +385,7 @@ fn get_fn_target(
 }
 
 fn get_method_target(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     target_module: &Module,
     impl_: &Option<ast::Impl>,
 ) -> Option<(GeneratedFunctionTarget, TextSize)> {
@@ -423,7 +423,7 @@ impl GeneratedFunctionTarget {
 
 /// Computes the type variables and arguments required for the generated function
 fn fn_args(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     target_module: hir::Module,
     call: ast::CallableExpr,
 ) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
@@ -482,7 +482,7 @@ fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
     }
 }
 
-fn fn_arg_name(sema: &Semantics<RootDatabase>, arg_expr: &ast::Expr) -> String {
+fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> String {
     let name = (|| match arg_expr {
         ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(sema, &cast_expr.expr()?)),
         expr => {
@@ -510,9 +510,9 @@ fn fn_arg_name(sema: &Semantics<RootDatabase>, arg_expr: &ast::Expr) -> String {
     }
 }
 
-fn fn_arg_type(ctx: &AssistContext, target_module: hir::Module, fn_arg: &ast::Expr) -> String {
+fn fn_arg_type(ctx: &AssistContext<'_>, target_module: hir::Module, fn_arg: &ast::Expr) -> String {
     fn maybe_displayed_type(
-        ctx: &AssistContext,
+        ctx: &AssistContext<'_>,
         target_module: hir::Module,
         fn_arg: &ast::Expr,
     ) -> Option<String> {
@@ -593,7 +593,7 @@ fn next_space_for_fn_in_impl(impl_: &ast::Impl) -> Option<GeneratedFunctionTarge
     }
 }
 
-fn module_is_descendant(module: &hir::Module, ans: &hir::Module, ctx: &AssistContext) -> bool {
+fn module_is_descendant(module: &hir::Module, ans: &hir::Module, ctx: &AssistContext<'_>) -> bool {
     if module == ans {
         return true;
     }

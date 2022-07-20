@@ -104,7 +104,7 @@ impl CrateName {
 }
 
 impl fmt::Display for CrateName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -187,7 +187,7 @@ impl From<CrateName> for CrateDisplayName {
 }
 
 impl fmt::Display for CrateDisplayName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.crate_name.fmt(f)
     }
 }

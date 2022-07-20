@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn opt_generic_arg_list(p: &mut Parser, colon_colon_required: bool) {
+pub(super) fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: bool) {
     let m;
     if p.at(T![::]) && p.nth(2) == T![<] {
         m = p.start();
@@ -25,7 +25,7 @@ pub(super) fn opt_generic_arg_list(p: &mut Parser, colon_colon_required: bool) {
 
 // test generic_arg
 // type T = S<i32>;
-fn generic_arg(p: &mut Parser) {
+fn generic_arg(p: &mut Parser<'_>) {
     match p.current() {
         LIFETIME_IDENT => lifetime_arg(p),
         T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
@@ -74,13 +74,13 @@ fn generic_arg(p: &mut Parser) {
 
 // test lifetime_arg
 // type T = S<'static>;
-fn lifetime_arg(p: &mut Parser) {
+fn lifetime_arg(p: &mut Parser<'_>) {
     let m = p.start();
     lifetime(p);
     m.complete(p, LIFETIME_ARG);
 }
 
-pub(super) fn const_arg_expr(p: &mut Parser) {
+pub(super) fn const_arg_expr(p: &mut Parser<'_>) {
     // The tests in here are really for `const_arg`, which wraps the content
     // CONST_ARG.
     match p.current() {
@@ -118,13 +118,13 @@ pub(super) fn const_arg_expr(p: &mut Parser) {
 
 // test const_arg
 // type T = S<92>;
-pub(super) fn const_arg(p: &mut Parser) {
+pub(super) fn const_arg(p: &mut Parser<'_>) {
     let m = p.start();
     const_arg_expr(p);
     m.complete(p, CONST_ARG);
 }
 
-fn type_arg(p: &mut Parser) {
+fn type_arg(p: &mut Parser<'_>) {
     let m = p.start();
     types::type_(p);
     m.complete(p, TYPE_ARG);

@@ -33,7 +33,7 @@ pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRang
 }
 
 fn try_extend_selection(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     root: &SyntaxNode,
     frange: FileRange,
 ) -> Option<TextRange> {
@@ -120,7 +120,7 @@ fn try_extend_selection(
 }
 
 fn extend_tokens_from_range(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     macro_call: ast::MacroCall,
     original_range: TextRange,
 ) -> Option<TextRange> {

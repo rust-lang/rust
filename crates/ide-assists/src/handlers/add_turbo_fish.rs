@@ -24,7 +24,7 @@ use crate::{
 //     let x = make::<${0:_}>();
 // }
 // ```
-pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let ident = ctx.find_token_syntax_at_offset(SyntaxKind::IDENT).or_else(|| {
         let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
         if arg_list.args().next().is_some() {

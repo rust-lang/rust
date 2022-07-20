@@ -90,7 +90,7 @@ pub enum DefaultMethods {
 }
 
 pub fn filter_assoc_items(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
 ) -> Vec<ast::AssocItem> {
@@ -127,11 +127,11 @@ pub fn filter_assoc_items(
 }
 
 pub fn add_trait_assoc_items_to_impl(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     items: Vec<ast::AssocItem>,
     trait_: hir::Trait,
     impl_: ast::Impl,
-    target_scope: hir::SemanticsScope,
+    target_scope: hir::SemanticsScope<'_>,
 ) -> (ast::Impl, ast::AssocItem) {
     let source_scope = sema.scope_for_def(trait_);
 
@@ -183,7 +183,7 @@ impl<'a> Cursor<'a> {
     }
 }
 
-pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor) -> String {
+pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor<'_>) -> String {
     assert!(cursor.node().ancestors().any(|it| it == *node));
     let range = cursor.node().text_range() - node.text_range().start();
     let range: ops::Range<usize> = range.into();
@@ -334,7 +334,7 @@ fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
 // viable (e.g. we process proc macros, etc)
 // FIXME: this partially overlaps with `find_impl_block_*`
 pub(crate) fn find_struct_impl(
-    ctx: &AssistContext,
+    ctx: &AssistContext<'_>,
     adt: &ast::Adt,
     name: &str,
 ) -> Option<Option<ast::Impl>> {
@@ -576,7 +576,7 @@ impl ReferenceConversion {
 pub(crate) fn convert_reference_type(
     ty: hir::Type,
     db: &RootDatabase,
-    famous_defs: &FamousDefs,
+    famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<ReferenceConversion> {
     handle_copy(&ty, db)
         .or_else(|| handle_as_ref_str(&ty, db, famous_defs))
@@ -594,7 +594,7 @@ fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<ReferenceConversi
 fn handle_as_ref_str(
     ty: &hir::Type,
     db: &dyn HirDatabase,
-    famous_defs: &FamousDefs,
+    famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<ReferenceConversionType> {
     let str_type = hir::BuiltinType::str().ty(db);
 
@@ -605,7 +605,7 @@ fn handle_as_ref_str(
 fn handle_as_ref_slice(
     ty: &hir::Type,
     db: &dyn HirDatabase,
-    famous_defs: &FamousDefs,
+    famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<ReferenceConversionType> {
     let type_argument = ty.type_arguments().next()?;
     let slice_type = hir::Type::new_slice(type_argument);
@@ -617,7 +617,7 @@ fn handle_as_ref_slice(
 fn handle_dereferenced(
     ty: &hir::Type,
     db: &dyn HirDatabase,
-    famous_defs: &FamousDefs,
+    famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<ReferenceConversionType> {
     let type_argument = ty.type_arguments().next()?;
 
@@ -628,7 +628,7 @@ fn handle_dereferenced(
 fn handle_option_as_ref(
     ty: &hir::Type,
     db: &dyn HirDatabase,
-    famous_defs: &FamousDefs,
+    famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<ReferenceConversionType> {
     if ty.as_adt() == famous_defs.core_option_Option()?.ty(db).as_adt() {
         Some(ReferenceConversionType::Option)
@@ -640,7 +640,7 @@ fn handle_option_as_ref(
 fn handle_result_as_ref(
     ty: &hir::Type,
     db: &dyn HirDatabase,
-    famous_defs: &FamousDefs,
+    famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<ReferenceConversionType> {
     if ty.as_adt() == famous_defs.core_result_Result()?.ty(db).as_adt() {
         Some(ReferenceConversionType::Result)

@@ -399,7 +399,7 @@ impl TreeWithDepthIterator {
     }
 }
 
-impl<'a> Iterator for TreeWithDepthIterator {
+impl Iterator for TreeWithDepthIterator {
     type Item = (ast::Expr, u32);
 
     fn next(&mut self) -> Option<Self::Item> {

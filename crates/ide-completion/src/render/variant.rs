@@ -68,7 +68,7 @@ pub(crate) fn render_tuple_lit(
 /// fields, plus a boolean for whether the list is comprehensive (contains no
 /// private fields and its item is not marked `#[non_exhaustive]`).
 pub(crate) fn visible_fields(
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     fields: &[hir::Field],
     item: impl HasAttrs + HasCrate + Copy,
 ) -> Option<(Vec<hir::Field>, bool)> {

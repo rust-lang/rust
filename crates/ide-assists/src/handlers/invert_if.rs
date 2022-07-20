@@ -26,7 +26,7 @@ use crate::{
 //     if y { B } else { A }
 // }
 // ```
-pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let if_keyword = ctx.find_token_syntax_at_offset(T![if])?;
     let expr = ast::IfExpr::cast(if_keyword.parent()?)?;
     let if_range = if_keyword.text_range();

@@ -144,7 +144,7 @@ pub(crate) struct Assists {
 }
 
 impl Assists {
-    pub(crate) fn new(ctx: &AssistContext, resolve: AssistResolveStrategy) -> Assists {
+    pub(crate) fn new(ctx: &AssistContext<'_>, resolve: AssistResolveStrategy) -> Assists {
         Assists {
             resolve,
             file: ctx.frange.file_id,

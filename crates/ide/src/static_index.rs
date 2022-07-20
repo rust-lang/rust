@@ -173,7 +173,7 @@ impl StaticIndex<'_> {
         self.files.push(result);
     }
 
-    pub fn compute(analysis: &Analysis) -> StaticIndex {
+    pub fn compute(analysis: &Analysis) -> StaticIndex<'_> {
         let db = &*analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source(db).file_id.original_file(db);
@@ -202,7 +202,7 @@ impl StaticIndex<'_> {
     }
 }
 
-fn get_definition(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Definition> {
+fn get_definition(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Definition> {
     for token in sema.descend_into_macros(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions);
         if let Some(&[x]) = def.as_deref() {

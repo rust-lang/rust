@@ -56,7 +56,7 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
 
 /// Iterates all `ModuleDef`s and `Impl` blocks of the given file.
 pub fn visit_file_defs(
-    sema: &Semantics<RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     cb: &mut dyn FnMut(Definition),
 ) {

@@ -11,7 +11,7 @@ use crate::{
 
 pub(crate) fn complete_type_path(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     location: &TypeLocation,
 ) {
@@ -208,7 +208,7 @@ pub(crate) fn complete_type_path(
 
 pub(crate) fn complete_ascribed_type(
     acc: &mut Completions,
-    ctx: &CompletionContext,
+    ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
     ascription: &TypeAscriptionTarget,
 ) -> Option<()> {

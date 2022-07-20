@@ -1509,7 +1509,7 @@ impl ModCollector<'_, '_> {
             let module = self.def_collector.def_map.module_id(self.module_id);
             let def_map = &mut self.def_collector.def_map;
             let update_def =
-                |def_collector: &mut DefCollector, id, name: &Name, vis, has_constructor| {
+                |def_collector: &mut DefCollector<'_>, id, name: &Name, vis, has_constructor| {
                     def_collector.def_map.modules[self.module_id].scope.declare(id);
                     def_collector.update(
                         self.module_id,

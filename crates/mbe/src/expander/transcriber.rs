@@ -75,7 +75,7 @@ struct ExpandCtx<'a> {
 }
 
 fn expand_subtree(
-    ctx: &mut ExpandCtx,
+    ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
     delimiter: Option<Delimiter>,
     arena: &mut Vec<tt::TokenTree>,
@@ -127,7 +127,7 @@ fn expand_subtree(
     ExpandResult { value: tt::Subtree { delimiter, token_trees: tts }, err }
 }
 
-fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult<Fragment> {
+fn expand_var(ctx: &mut ExpandCtx<'_>, v: &SmolStr, id: tt::TokenId) -> ExpandResult<Fragment> {
     // We already handle $crate case in mbe parser
     debug_assert!(v != "crate");
 
@@ -163,7 +163,7 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult
 }
 
 fn expand_repeat(
-    ctx: &mut ExpandCtx,
+    ctx: &mut ExpandCtx<'_>,
     template: &MetaTemplate,
     kind: RepeatKind,
     separator: &Option<Separator>,

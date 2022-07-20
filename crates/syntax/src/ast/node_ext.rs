@@ -432,7 +432,7 @@ impl NameLike {
             _ => None,
         }
     }
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         match self {
             NameLike::NameRef(name_ref) => name_ref.text(),
             NameLike::Name(name) => name.text(),

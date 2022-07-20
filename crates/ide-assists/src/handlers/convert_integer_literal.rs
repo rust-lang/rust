@@ -13,7 +13,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // ```
 // const _: i32 = 0b1010;
 // ```
-pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let literal = ctx.find_node_at_offset::<ast::Literal>()?;
     let literal = match literal.kind() {
         ast::LiteralKind::IntNumber(it) => it,

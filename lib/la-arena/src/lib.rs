@@ -31,13 +31,13 @@ impl From<u32> for RawIdx {
 }
 
 impl fmt::Debug for RawIdx {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 impl fmt::Display for RawIdx {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -192,7 +192,7 @@ pub struct Arena<T> {
 }
 
 impl<T: fmt::Debug> fmt::Debug for Arena<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("Arena").field("len", &self.len()).field("data", &self.data).finish()
     }
 }

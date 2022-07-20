@@ -407,7 +407,7 @@ pub fn project_root() -> PathBuf {
     PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
 }
 
-pub fn format_diff(chunks: Vec<dissimilar::Chunk>) -> String {
+pub fn format_diff(chunks: Vec<dissimilar::Chunk<'_>>) -> String {
     let mut buf = String::new();
     for chunk in chunks {
         let formatted = match chunk {

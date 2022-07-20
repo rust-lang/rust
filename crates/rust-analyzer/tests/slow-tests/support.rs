@@ -26,7 +26,7 @@ pub(crate) struct Project<'a> {
 }
 
 impl<'a> Project<'a> {
-    pub(crate) fn with_fixture(fixture: &str) -> Project {
+    pub(crate) fn with_fixture(fixture: &str) -> Project<'_> {
         Project {
             fixture,
             tmp_dir: None,

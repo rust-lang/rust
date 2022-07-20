@@ -23,7 +23,7 @@ use crate::{utils::test_related_attribute, AssistContext, AssistId, AssistKind, 
 //     assert_eq!(2 + 2, 5);
 // }
 // ```
-pub(crate) fn toggle_ignore(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn toggle_ignore(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let attr: ast::Attr = ctx.find_node_at_offset()?;
     let func = attr.syntax().parent().and_then(ast::Fn::cast)?;
     let attr = test_related_attribute(&func)?;

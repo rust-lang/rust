@@ -492,7 +492,7 @@ pub struct ReceiverAdjustments {
 }
 
 impl ReceiverAdjustments {
-    pub(crate) fn apply(&self, table: &mut InferenceTable, ty: Ty) -> (Ty, Vec<Adjustment>) {
+    pub(crate) fn apply(&self, table: &mut InferenceTable<'_>, ty: Ty) -> (Ty, Vec<Adjustment>) {
         let mut ty = ty;
         let mut adjust = Vec::new();
         for _ in 0..self.autoderefs {
@@ -597,7 +597,7 @@ pub fn lookup_impl_method(
 
 fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
-    table: &mut InferenceTable,
+    table: &mut InferenceTable<'_>,
     self_ty: &Ty,
 ) -> Option<Arc<ImplData>> {
     let db = table.db;
@@ -856,7 +856,7 @@ fn iterate_method_candidates_for_self_ty(
 
 fn iterate_trait_method_candidates(
     self_ty: &Ty,
-    table: &mut InferenceTable,
+    table: &mut InferenceTable<'_>,
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     receiver_ty: Option<&Ty>,
@@ -922,7 +922,7 @@ fn iterate_trait_method_candidates(
 
 fn iterate_inherent_methods(
     self_ty: &Ty,
-    table: &mut InferenceTable,
+    table: &mut InferenceTable<'_>,
     name: Option<&Name>,
     receiver_ty: Option<&Ty>,
     receiver_adjustments: Option<ReceiverAdjustments>,
@@ -975,7 +975,7 @@ fn iterate_inherent_methods(
     fn impls_for_self_ty(
         impls: &InherentImpls,
         self_ty: &Ty,
-        table: &mut InferenceTable,
+        table: &mut InferenceTable<'_>,
         name: Option<&Name>,
         receiver_ty: Option<&Ty>,
         receiver_adjustments: Option<ReceiverAdjustments>,
@@ -1017,7 +1017,7 @@ pub fn resolve_indexing_op(
 }
 
 fn is_valid_candidate(
-    table: &mut InferenceTable,
+    table: &mut InferenceTable<'_>,
     name: Option<&Name>,
     receiver_ty: Option<&Ty>,
     item: AssocItemId,
@@ -1161,7 +1161,7 @@ fn generic_implements_goal(
 }
 
 fn autoderef_method_receiver(
-    table: &mut InferenceTable,
+    table: &mut InferenceTable<'_>,
     ty: Ty,
 ) -> (Vec<Canonical<Ty>>, Vec<ReceiverAdjustments>) {
     let (mut deref_chain, mut adjustments): (Vec<_>, Vec<_>) = (Vec::new(), Vec::new());
