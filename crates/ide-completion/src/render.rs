@@ -134,8 +134,10 @@ pub(crate) fn render_field(
         .lookup_by(name.clone());
     item.insert_text(escaped_name);
     if let Some(receiver) = &dot_access.receiver {
-        if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
-            item.ref_match(ref_match, receiver.syntax().text_range().start());
+        if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
+            if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
+                item.ref_match(ref_match, original.syntax().text_range().start());
+            }
         }
     }
     item.build()
