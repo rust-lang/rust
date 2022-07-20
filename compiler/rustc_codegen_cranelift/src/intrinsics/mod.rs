@@ -431,6 +431,16 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         };
 
+        vtable_size, (v vtable) {
+            let size = crate::vtable::size_of_obj(fx, vtable);
+            ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
+        };
+
+        vtable_align, (v vtable) {
+            let align = crate::vtable::min_align_of_obj(fx, vtable);
+            ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
+        };
+
         unchecked_add | unchecked_sub | unchecked_mul | unchecked_div | exact_div | unchecked_rem
         | unchecked_shl | unchecked_shr, (c x, c y) {
             // FIXME trap on overflow
