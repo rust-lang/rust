@@ -161,11 +161,11 @@ impl<'tcx> LateLintPass<'tcx> for DuplicateTraitBounds {
                     // If inserting the trait bound into the set returns `false`,
                     // there is a duplicate.
                     if !set.insert(did) {
-                        let span = polytraitref.span;
-                        cx.struct_span_lint(DUP_TRAIT_BOUNDS, span, |lint| {
+                        let span_of_dup = polytraitref.span;
+                        cx.struct_span_lint(DUP_TRAIT_BOUNDS, span_of_dup, |lint| {
                             let msg = format!("duplicate trait bound");
                             lint.build(&msg)
-                                .span_help(span, "remove the duplicate trait bound")
+                                .span_help(span_of_dup, "Remove this duplicate trait bound")
                                 .emit();
                         });
                     };
