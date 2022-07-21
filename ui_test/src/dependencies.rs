@@ -43,9 +43,7 @@ pub fn build_dependencies(config: &Config) -> Result<Dependencies> {
     };
 
     setup_command(&mut build);
-    build
-        .arg("--target-dir=target/test_dependencies")
-        .arg("--message-format=json");
+    build.arg("--message-format=json");
 
     let output = build.output()?;
 

@@ -54,7 +54,7 @@ pub struct Config {
 pub struct DependencyBuilder {
     pub program: PathBuf,
     pub args: Vec<String>,
-    pub envs: Vec<(String, String)>,
+    pub envs: Vec<(String, OsString)>,
 }
 
 #[derive(Debug)]
