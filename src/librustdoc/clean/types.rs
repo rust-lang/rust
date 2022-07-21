@@ -430,8 +430,8 @@ impl Item {
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => *span,
-            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
-            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     rustc_span(impl_id, tcx)
                 } else {
@@ -732,13 +732,13 @@ pub(crate) enum ItemKind {
     EnumItem(Enum),
     FunctionItem(Function),
     ModuleItem(Module),
-    TypedefItem(Typedef),
+    TypedefItem(Box<Typedef>),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
     TraitAliasItem(TraitAlias),
-    ImplItem(Impl),
+    ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
     TyMethodItem(Function),
     /// A method in a trait impl or a provided method in a trait declaration.
@@ -765,7 +765,7 @@ pub(crate) enum ItemKind {
     /// The bounds may be non-empty if there is a `where` clause.
     TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Typedef, Vec<GenericBound>),
+    AssocTypeItem(Box<Typedef>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem,

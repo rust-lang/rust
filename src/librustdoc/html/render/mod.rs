@@ -1160,7 +1160,7 @@ fn render_deref_methods(
         .items
         .iter()
         .find_map(|item| match *item.kind {
-            clean::AssocTypeItem(ref t, _) => Some(match *t {
+            clean::AssocTypeItem(box ref t, _) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -2054,7 +2054,7 @@ fn sidebar_deref_methods(
     debug!("found Deref: {:?}", impl_);
     if let Some((target, real_target)) =
         impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
-            clean::AssocTypeItem(ref t, _) => Some(match *t {
+            clean::AssocTypeItem(box ref t, _) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),

@@ -568,10 +568,10 @@ impl FromWithTcx<clean::Trait> for Trait {
     }
 }
 
-impl FromWithTcx<clean::Impl> for Impl {
-    fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
+impl FromWithTcx<Box<clean::Impl>> for Impl {
+    fn from_tcx(impl_: Box<clean::Impl>, tcx: TyCtxt<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
-        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
+        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = *impl_;
         // FIXME: should `trait_` be a clean::Path equivalent in JSON?
         let trait_ = trait_.map(|path| clean::Type::Path { path }.into_tcx(tcx));
         // FIXME: use something like ImplKind in JSON?
@@ -721,9 +721,9 @@ pub(crate) fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind
     }
 }
 
-impl FromWithTcx<clean::Typedef> for Typedef {
-    fn from_tcx(typedef: clean::Typedef, tcx: TyCtxt<'_>) -> Self {
-        let clean::Typedef { type_, generics, item_type: _ } = typedef;
+impl FromWithTcx<Box<clean::Typedef>> for Typedef {
+    fn from_tcx(typedef: Box<clean::Typedef>, tcx: TyCtxt<'_>) -> Self {
+        let clean::Typedef { type_, generics, item_type: _ } = *typedef;
         Typedef { type_: type_.into_tcx(tcx), generics: generics.into_tcx(tcx) }
     }
 }

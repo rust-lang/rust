@@ -260,15 +260,15 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     clean::Union { generics, fields }
 }
 
-fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
+fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let type_ = clean_middle_ty(cx.tcx.type_of(did), cx, Some(did));
 
-    clean::Typedef {
+    Box::new(clean::Typedef {
         type_,
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         item_type: None,
-    }
+    })
 }
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
@@ -493,7 +493,7 @@ pub(crate) fn build_impl(
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
-        clean::ImplItem(clean::Impl {
+        clean::ImplItem(Box::new(clean::Impl {
             unsafety: hir::Unsafety::Normal,
             generics,
             trait_,
@@ -505,7 +505,7 @@ pub(crate) fn build_impl(
             } else {
                 ImplKind::Normal
             },
-        }),
+        })),
         Box::new(merged_attrs),
         cx,
         cfg,
