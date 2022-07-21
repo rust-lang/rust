@@ -374,30 +374,23 @@ impl AttrsWithOwner {
                 let mod_data = &def_map[module.local_id];
 
                 match mod_data.origin {
-                    // FIXME: We should be able to leverage the item tree instead of parsing declaration here
-                    // but we don't save the module's item tree id anywhere
-                    ModuleOrigin::File { definition, declaration, .. } => {
-                        let value = declaration.to_node(db.upcast());
-                        let it = InFile { file_id: declaration.file_id, value };
-                        let raw_attrs = RawAttrs::from_attrs_owner(
-                            db,
-                            it.as_ref().map(|it| it as &dyn ast::HasAttrs),
-                        );
+                    ModuleOrigin::File { definition, declaration_tree_id, .. } => {
+                        let decl_attrs = declaration_tree_id
+                            .item_tree(db)
+                            .raw_attrs(AttrOwner::ModItem(declaration_tree_id.value.into()))
+                            .clone();
                         let tree = db.file_item_tree(definition.into());
-                        raw_attrs.merge(tree.raw_attrs(AttrOwner::TopLevel).clone())
+                        let def_attrs = tree.raw_attrs(AttrOwner::TopLevel).clone();
+                        decl_attrs.merge(def_attrs)
                     }
                     ModuleOrigin::CrateRoot { definition } => {
                         let tree = db.file_item_tree(definition.into());
                         tree.raw_attrs(AttrOwner::TopLevel).clone()
                     }
-                    // FIXME: We should be able to leverage the item tree instead of parsing here
-                    // but we don't save the module's item tree id anywhere
-                    ModuleOrigin::Inline { definition } => RawAttrs::from_attrs_owner(
-                        db,
-                        InFile::new(definition.file_id, definition.to_node(db.upcast()))
-                            .as_ref()
-                            .map(|it| it as &dyn ast::HasAttrs),
-                    ),
+                    ModuleOrigin::Inline { definition_tree_id, .. } => definition_tree_id
+                        .item_tree(db)
+                        .raw_attrs(AttrOwner::ModItem(definition_tree_id.value.into()))
+                        .clone(),
                     ModuleOrigin::BlockExpr { block } => RawAttrs::from_attrs_owner(
                         db,
                         InFile::new(block.file_id, block.to_node(db.upcast()))
