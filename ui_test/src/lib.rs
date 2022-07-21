@@ -46,6 +46,8 @@ pub struct Config {
     /// Can be used to override what command to run instead of `cargo` to build the
     /// dependencies in `manifest_path`
     pub dependency_builder: Option<DependencyBuilder>,
+    /// Print one character per test instead of one line
+    pub quiet: bool,
 }
 
 #[derive(Debug)]
@@ -123,11 +125,50 @@ pub fn run_tests(mut config: Config) -> Result<()> {
             drop(submit);
         });
 
+        // A channel for the messages emitted by the individual test threads.
+        let (finished_files_sender, finished_files_recv) = crossbeam::channel::unbounded();
+        enum TestResult {
+            Ok,
+            Failed,
+            Ignored,
+        }
+
+        s.spawn(|_| {
+            if config.quiet {
+                for (i, (_, result)) in finished_files_recv.into_iter().enumerate() {
+                    // Humans start counting at 1
+                    let i = i + 1;
+                    match result {
+                        TestResult::Ok => eprint!("{}", ".".green()),
+                        TestResult::Failed => eprint!("{}", "F".red().bold()),
+                        TestResult::Ignored => eprint!("{}", "i".yellow()),
+                    }
+                    if i % 100 == 0 {
+                        eprintln!(" {i}");
+                    }
+                }
+            } else {
+                for (msg, result) in finished_files_recv {
+                    eprint!("{msg} ... ");
+                    eprintln!(
+                        "{}",
+                        match result {
+                            TestResult::Ok => "ok".green(),
+                            TestResult::Failed => "FAILED".red().bold(),
+                            TestResult::Ignored => "ignored (in-test comment)".yellow(),
+                        }
+                    );
+                }
+            }
+        });
+
         let mut threads = vec![];
 
         // Create N worker threads that receive files to test.
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
+            let finished_files_sender = finished_files_sender.clone();
             threads.push(s.spawn(|_| -> Result<()> {
+                let finished_files_sender = finished_files_sender;
                 for path in &receive {
                     if !config.path_filter.is_empty() {
                         let path_display = path.display().to_string();
@@ -140,11 +181,8 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                     // Ignore file if only/ignore rules do (not) apply
                     if !test_file_conditions(&comments, &target, &config) {
                         ignored.fetch_add(1, Ordering::Relaxed);
-                        eprintln!(
-                            "{} ... {}",
-                            path.display(),
-                            "ignored (in-test comment)".yellow()
-                        );
+                        finished_files_sender
+                            .send((path.display().to_string(), TestResult::Ignored))?;
                         continue;
                     }
                     // Run the test for all revisions
@@ -159,12 +197,11 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                         if !revision.is_empty() {
                             write!(msg, "(revision `{revision}`) ").unwrap();
                         }
-                        write!(msg, "... ").unwrap();
                         if errors.is_empty() {
-                            eprintln!("{msg}{}", "ok".green());
+                            finished_files_sender.send((msg, TestResult::Ok))?;
                             succeeded.fetch_add(1, Ordering::Relaxed);
                         } else {
-                            eprintln!("{msg}{}", "FAILED".red().bold());
+                            finished_files_sender.send((msg, TestResult::Failed))?;
                             failures.lock().unwrap().push((
                                 path.clone(),
                                 m,
@@ -178,6 +215,7 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                 Ok(())
             }));
         }
+
         for thread in threads {
             thread.join().unwrap()?;
         }

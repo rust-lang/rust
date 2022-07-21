@@ -18,6 +18,7 @@ fn config() -> Config {
         output_conflict_handling: OutputConflictHandling::Error,
         dependencies_crate_manifest_path: None,
         dependency_builder: None,
+        quiet: false,
     }
 }
 
