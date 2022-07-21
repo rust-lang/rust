@@ -133,7 +133,7 @@ regexes! {
     // erase platform file paths
     "sys/[a-z]+/"                    => "sys/PLATFORM/",
     // erase paths into the crate registry
-    r"[^ ]*/\.cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/$1",
+    r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
 }
 
 fn ui(mode: Mode, path: &str) -> Result<()> {
