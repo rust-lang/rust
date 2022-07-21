@@ -793,18 +793,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// # use std::sync::Mutex;
-    ///
     /// # struct State {}
-    ///
     /// # impl State {
     /// #     fn foo(&self) -> bool {
     /// #         true
     /// #     }
-    ///
     /// #     fn bar(&self) {}
     /// # }
-    ///
-    ///
     /// let mutex = Mutex::new(State {});
     ///
     /// match mutex.lock().unwrap().foo() {
@@ -815,22 +810,17 @@ declare_clippy_lint! {
     /// };
     ///
     /// println!("All done!");
-    ///
     /// ```
     /// Use instead:
     /// ```rust
     /// # use std::sync::Mutex;
-    ///
     /// # struct State {}
-    ///
     /// # impl State {
     /// #     fn foo(&self) -> bool {
     /// #         true
     /// #     }
-    ///
     /// #     fn bar(&self) {}
     /// # }
-    ///
     /// let mutex = Mutex::new(State {});
     ///
     /// let is_foo = mutex.lock().unwrap().foo();
