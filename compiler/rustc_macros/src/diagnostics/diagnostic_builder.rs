@@ -212,7 +212,7 @@ impl DiagnosticDeriveBuilder {
                 }
                 NestedMeta::Meta(meta @ Meta::NameValue(_))
                     if !is_help_note_or_warn
-                        && meta.path().segments.last().unwrap().ident.to_string() == "code" =>
+                        && meta.path().segments.last().unwrap().ident == "code" =>
                 {
                     // don't error for valid follow-up attributes
                 }

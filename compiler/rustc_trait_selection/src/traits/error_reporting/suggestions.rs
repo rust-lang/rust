@@ -607,10 +607,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 "{}, {}={}>",
                                 &constraint[..constraint.len() - 1],
                                 item.name,
-                                term.to_string()
+                                term
                             );
                         } else {
-                            constraint.push_str(&format!("<{}={}>", item.name, term.to_string()));
+                            constraint.push_str(&format!("<{}={}>", item.name, term));
                         }
                     }
 

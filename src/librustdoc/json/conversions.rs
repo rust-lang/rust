@@ -43,7 +43,7 @@ impl JsonRenderer<'_> {
         let span = item.span(self.tcx);
         let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
         let inner = match *item.kind {
-            clean::KeywordItem(_) => return None,
+            clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
                 match &**inner {
                     // We document non-empty stripped modules as with `Module::is_stripped` set to
@@ -269,7 +269,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             default: Some(t.item_type.unwrap_or(t.type_).into_tcx(tcx)),
         },
         // `convert_item` early returns `None` for stripped items and keywords.
-        KeywordItem(_) => unreachable!(),
+        KeywordItem => unreachable!(),
         StrippedItem(inner) => {
             match *inner {
                 ModuleItem(m) => ItemEnum::Module(Module {

@@ -2608,7 +2608,7 @@ fn show_candidates(
                 "item"
             };
             let plural_descr =
-                if descr.ends_with("s") { format!("{}es", descr) } else { format!("{}s", descr) };
+                if descr.ends_with('s') { format!("{}es", descr) } else { format!("{}s", descr) };
 
             let mut msg = format!("{}these {} exist but are inaccessible", prefix, plural_descr);
             let mut has_colon = false;

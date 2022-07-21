@@ -104,7 +104,7 @@ pub(super) fn print_item(
         clean::StaticItem(..) | clean::ForeignStaticItem(..) => "Static ",
         clean::ConstantItem(..) => "Constant ",
         clean::ForeignTypeItem => "Foreign Type ",
-        clean::KeywordItem(..) => "Keyword ",
+        clean::KeywordItem => "Keyword ",
         clean::OpaqueTyItem(..) => "Opaque Type ",
         clean::TraitAliasItem(..) => "Trait Alias ",
         _ => {
@@ -175,7 +175,7 @@ pub(super) fn print_item(
         clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) => item_static(buf, cx, item, i),
         clean::ConstantItem(ref c) => item_constant(buf, cx, item, c),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
-        clean::KeywordItem(_) => item_keyword(buf, cx, item),
+        clean::KeywordItem => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta),
         _ => {

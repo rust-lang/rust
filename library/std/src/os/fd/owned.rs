@@ -356,7 +356,7 @@ impl From<OwnedFd> for crate::net::UdpSocket {
     }
 }
 
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[stable(feature = "asfd_ptrs", since = "1.64.0")]
 /// This impl allows implementing traits that require `AsFd` on Arc.
 /// ```
 /// # #[cfg(any(unix, target_os = "wasi"))] mod group_cfg {
@@ -379,7 +379,7 @@ impl<T: AsFd> AsFd for crate::sync::Arc<T> {
     }
 }
 
-#[stable(feature = "io_safety", since = "1.63.0")]
+#[stable(feature = "asfd_ptrs", since = "1.64.0")]
 impl<T: AsFd> AsFd for Box<T> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {

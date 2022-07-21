@@ -22,11 +22,12 @@ use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
 use std::iter;
+use std::ops::ControlFlow;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -578,220 +579,146 @@ fn orphan_check_trait_ref<'tcx>(
         );
     }
 
-    // Given impl<P1..=Pn> Trait<T1..=Tn> for T0, an impl is valid only
-    // if at least one of the following is true:
-    //
-    // - Trait is a local trait
-    // (already checked in orphan_check prior to calling this function)
-    // - All of
-    //     - At least one of the types T0..=Tn must be a local type.
-    //      Let Ti be the first such type.
-    //     - No uncovered type parameters P1..=Pn may appear in T0..Ti (excluding Ti)
-    //
-    fn uncover_fundamental_ty<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        in_crate: InCrate,
-    ) -> Vec<Ty<'tcx>> {
-        // FIXME: this is currently somewhat overly complicated,
-        // but fixing this requires a more complicated refactor.
-        if !contained_non_local_types(tcx, ty, in_crate).is_empty() {
-            if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
-                return inner_tys
-                    .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                    .collect();
-            }
-        }
-
-        vec![ty]
-    }
-
-    let mut non_local_spans = vec![];
-    for (i, input_ty) in trait_ref
-        .substs
-        .types()
-        .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-        .enumerate()
-    {
-        debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
-        let non_local_tys = contained_non_local_types(tcx, input_ty, in_crate);
-        if non_local_tys.is_empty() {
-            debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
-            return Ok(());
-        } else if let ty::Param(_) = input_ty.kind() {
-            debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
-            let local_type = trait_ref
-                .substs
-                .types()
-                .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                .find(|&ty| ty_is_local_constructor(tcx, ty, in_crate));
-
-            debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
-
-            return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type));
-        }
-
-        non_local_spans.extend(non_local_tys.into_iter().map(|input_ty| (input_ty, i == 0)));
-    }
-    // If we exit above loop, never found a local type.
-    debug!("orphan_check_trait_ref: no local type");
-    Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
-}
-
-/// Returns a list of relevant non-local types for `ty`.
-///
-/// This is just `ty` itself unless `ty` is `#[fundamental]`,
-/// in which case we recursively look into this type.
-///
-/// If `ty` is local itself, this method returns an empty `Vec`.
-///
-/// # Examples
-///
-/// - `u32` is not local, so this returns `[u32]`.
-/// - for `Foo<u32>`, where `Foo` is a local type, this returns `[]`.
-/// - `&mut u32` returns `[u32]`, as `&mut` is a fundamental type, similar to `Box`.
-/// - `Box<Foo<u32>>` returns `[]`, as `Box` is a fundamental type and `Foo` is local.
-fn contained_non_local_types<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    in_crate: InCrate,
-) -> Vec<Ty<'tcx>> {
-    if ty_is_local_constructor(tcx, ty, in_crate) {
-        Vec::new()
-    } else {
-        match fundamental_ty_inner_tys(tcx, ty) {
-            Some(inner_tys) => {
-                inner_tys.flat_map(|ty| contained_non_local_types(tcx, ty, in_crate)).collect()
-            }
-            None => vec![ty],
-        }
-    }
-}
-
-/// For `#[fundamental]` ADTs and `&T` / `&mut T`, returns `Some` with the
-/// type parameters of the ADT, or `T`, respectively. For non-fundamental
-/// types, returns `None`.
-fn fundamental_ty_inner_tys<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-) -> Option<impl Iterator<Item = Ty<'tcx>>> {
-    let (first_ty, rest_tys) = match *ty.kind() {
-        ty::Ref(_, ty, _) => (ty, ty::subst::InternalSubsts::empty().types()),
-        ty::Adt(def, substs) if def.is_fundamental() => {
-            let mut types = substs.types();
-
-            // FIXME(eddyb) actually validate `#[fundamental]` up-front.
-            match types.next() {
-                None => {
-                    tcx.sess.span_err(
-                        tcx.def_span(def.did()),
-                        "`#[fundamental]` requires at least one type parameter",
-                    );
-
-                    return None;
-                }
-
-                Some(first_ty) => (first_ty, types),
-            }
-        }
-        _ => return None,
-    };
-
-    Some(iter::once(first_ty).chain(rest_tys))
-}
-
-fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
-    match in_crate {
-        // The type is local to *this* crate - it will not be
-        // local in any other crate.
-        InCrate::Remote => false,
-        InCrate::Local => def_id.is_local(),
-    }
-}
-
-fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
-    debug!("ty_is_local_constructor({:?})", ty);
-
-    match *ty.kind() {
-        ty::Bool
-        | ty::Char
-        | ty::Int(..)
-        | ty::Uint(..)
-        | ty::Float(..)
-        | ty::Str
-        | ty::FnDef(..)
-        | ty::FnPtr(_)
-        | ty::Array(..)
-        | ty::Slice(..)
-        | ty::RawPtr(..)
-        | ty::Ref(..)
-        | ty::Never
-        | ty::Tuple(..)
-        | ty::Param(..)
-        | ty::Projection(..) => false,
-
-        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match in_crate {
-            InCrate::Local => false,
-            // The inference variable might be unified with a local
-            // type in that remote crate.
-            InCrate::Remote => true,
-        },
-
-        ty::Adt(def, _) => def_id_is_local(def.did(), in_crate),
-        ty::Foreign(did) => def_id_is_local(did, in_crate),
-        ty::Opaque(..) => {
-            // This merits some explanation.
-            // Normally, opaque types are not involved when performing
-            // coherence checking, since it is illegal to directly
-            // implement a trait on an opaque type. However, we might
-            // end up looking at an opaque type during coherence checking
-            // if an opaque type gets used within another type (e.g. as
-            // a type parameter). This requires us to decide whether or
-            // not an opaque type should be considered 'local' or not.
-            //
-            // We choose to treat all opaque types as non-local, even
-            // those that appear within the same crate. This seems
-            // somewhat surprising at first, but makes sense when
-            // you consider that opaque types are supposed to hide
-            // the underlying type *within the same crate*. When an
-            // opaque type is used from outside the module
-            // where it is declared, it should be impossible to observe
-            // anything about it other than the traits that it implements.
-            //
-            // The alternative would be to look at the underlying type
-            // to determine whether or not the opaque type itself should
-            // be considered local. However, this could make it a breaking change
-            // to switch the underlying ('defining') type from a local type
-            // to a remote type. This would violate the rule that opaque
-            // types should be completely opaque apart from the traits
-            // that they implement, so we don't use this behavior.
-            false
-        }
-
-        ty::Dynamic(ref tt, ..) => {
-            if let Some(principal) = tt.principal() {
-                def_id_is_local(principal.def_id(), in_crate)
+    let mut checker = OrphanChecker::new(tcx, in_crate);
+    match trait_ref.visit_with(&mut checker) {
+        ControlFlow::Continue(()) => Err(OrphanCheckErr::NonLocalInputType(checker.non_local_tys)),
+        ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(ty)) => {
+            // Does there exist some local type after the `ParamTy`.
+            checker.search_first_local_ty = true;
+            if let Some(OrphanCheckEarlyExit::LocalTy(local_ty)) =
+                trait_ref.visit_with(&mut checker).break_value()
+            {
+                Err(OrphanCheckErr::UncoveredTy(ty, Some(local_ty)))
             } else {
-                false
+                Err(OrphanCheckErr::UncoveredTy(ty, None))
             }
         }
+        ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(_)) => Ok(()),
+    }
+}
 
-        ty::Error(_) => true,
+struct OrphanChecker<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    in_crate: InCrate,
+    in_self_ty: bool,
+    /// Ignore orphan check failures and exclusively search for the first
+    /// local type.
+    search_first_local_ty: bool,
+    non_local_tys: Vec<(Ty<'tcx>, bool)>,
+}
 
-        // These variants should never appear during coherence checking because they
-        // cannot be named directly.
-        //
-        // They could be indirectly used through an opaque type. While using opaque types
-        // in impls causes an error, this path can still be hit afterwards.
-        //
-        // See `test/ui/coherence/coherence-with-closure.rs` for an example where this
-        // could happens.
-        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
-            tcx.sess.delay_span_bug(
-                DUMMY_SP,
-                format!("ty_is_local invoked on closure or generator: {:?}", ty),
-            );
-            true
+impl<'tcx> OrphanChecker<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, in_crate: InCrate) -> Self {
+        OrphanChecker {
+            tcx,
+            in_crate,
+            in_self_ty: true,
+            search_first_local_ty: false,
+            non_local_tys: Vec::new(),
         }
+    }
+
+    fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
+        self.non_local_tys.push((t, self.in_self_ty));
+        ControlFlow::CONTINUE
+    }
+
+    fn found_param_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx>> {
+        if self.search_first_local_ty {
+            ControlFlow::CONTINUE
+        } else {
+            ControlFlow::Break(OrphanCheckEarlyExit::ParamTy(t))
+        }
+    }
+
+    fn def_id_is_local(&mut self, def_id: DefId) -> bool {
+        match self.in_crate {
+            InCrate::Local => def_id.is_local(),
+            InCrate::Remote => false,
+        }
+    }
+}
+
+enum OrphanCheckEarlyExit<'tcx> {
+    ParamTy(Ty<'tcx>),
+    LocalTy(Ty<'tcx>),
+}
+
+impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
+    type BreakTy = OrphanCheckEarlyExit<'tcx>;
+    fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        ControlFlow::CONTINUE
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        let result = match *ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Str
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::Array(..)
+            | ty::Slice(..)
+            | ty::RawPtr(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Projection(..) => self.found_non_local_ty(ty),
+
+            ty::Param(..) => self.found_param_ty(ty),
+
+            ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match self.in_crate {
+                InCrate::Local => self.found_non_local_ty(ty),
+                // The inference variable might be unified with a local
+                // type in that remote crate.
+                InCrate::Remote => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
+            },
+
+            // For fundamental types, we just look inside of them.
+            ty::Ref(_, ty, _) => ty.visit_with(self),
+            ty::Adt(def, substs) => {
+                if self.def_id_is_local(def.did()) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else if def.is_fundamental() {
+                    substs.visit_with(self)
+                } else {
+                    self.found_non_local_ty(ty)
+                }
+            }
+            ty::Foreign(def_id) => {
+                if self.def_id_is_local(def_id) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else {
+                    self.found_non_local_ty(ty)
+                }
+            }
+            ty::Dynamic(tt, ..) => {
+                let principal = tt.principal().map(|p| p.def_id());
+                if principal.map_or(false, |p| self.def_id_is_local(p)) {
+                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+                } else {
+                    self.found_non_local_ty(ty)
+                }
+            }
+            ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
+            ty::Opaque(..) | ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+                self.tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("ty_is_local invoked on closure or generator: {:?}", ty),
+                );
+                ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+            }
+        };
+        // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
+        // the first type we visit is always the self type.
+        self.in_self_ty = false;
+        result
+    }
+
+    // FIXME: Constants should participate in orphan checking.
+    fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        ControlFlow::CONTINUE
     }
 }
