@@ -137,7 +137,7 @@ pub struct TraitImpls {
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile::span("trait_impls_in_crate_query");
+        let _p = profile::span("trait_impls_in_crate_query").detail(|| format!("{krate:?}"));
         let mut impls = Self { map: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
@@ -162,7 +162,7 @@ impl TraitImpls {
     }
 
     pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile::span("trait_impls_in_deps_query");
+        let _p = profile::span("trait_impls_in_deps_query").detail(|| format!("{krate:?}"));
         let crate_graph = db.crate_graph();
         let mut res = Self { map: FxHashMap::default() };
 
@@ -214,8 +214,7 @@ impl TraitImpls {
         for (trait_, other_map) in &other.map {
             let map = self.map.entry(*trait_).or_default();
             for (fp, impls) in other_map {
-                let vec = map.entry(*fp).or_default();
-                vec.extend(impls);
+                map.entry(*fp).or_default().extend(impls);
             }
         }
     }
@@ -584,7 +583,7 @@ pub fn lookup_impl_method(
     name: &Name,
 ) -> Option<FunctionId> {
     let self_ty_fp = TyFingerprint::for_trait_impl(self_ty)?;
-    let trait_impls = TraitImpls::trait_impls_in_deps_query(db, env.krate);
+    let trait_impls = db.trait_impls_in_deps(env.krate);
     let impls = trait_impls.for_trait_and_self_ty(trait_, self_ty_fp);
     let mut table = InferenceTable::new(db, env.clone());
     find_matching_impl(impls, &mut table, &self_ty).and_then(|data| {
