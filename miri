@@ -48,33 +48,34 @@ Pass extra flags to all cargo invocations.
 EOF
 )
 
-## Run the subcommands that the user requested to always run first
+## We need to know where we are.
+# macOS does not have a useful readlink/realpath so we have to use Python instead...
+MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
+
+## Run the auto-things.
 if [ -z "$AUTO_OPS" ]; then
     export AUTO_OPS=42
 
     # Run this first, so that the toolchain doesn't change after
     # other code has run.
-    if [ -f ".auto-everything" ] || [ -f ".auto-toolchain" ] ; then
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-toolchain" ] ; then
         "$MIRIDIR"/rustup-toolchain
     fi
 
-    if [ -f ".auto-everything" ] || [ -f ".auto-fmt" ] ; then
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-fmt" ] ; then
         $0 fmt
     fi
 
-    if [ -f ".auto-everything" ] || [ -f ".auto-clippy" ] ; then
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-clippy" ] ; then
         $0 clippy -- -D warnings
     fi
 fi
 
-## Preparation
-# macOS does not have a useful readlink/realpath so we have to use Python instead...
-MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
-TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
-
-# Determine command.
+## Determine command and toolchain.
 COMMAND="$1"
 [ $# -gt 0 ] && shift
+# Doing this *after* auto-toolchain logic above, since that might change the toolchain.
+TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
 
 ## Handle some commands early, since they should *not* alter the environment.
 case "$COMMAND" in
