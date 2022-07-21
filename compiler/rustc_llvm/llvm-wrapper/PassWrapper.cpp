@@ -34,6 +34,7 @@
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
+#include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
 #include "llvm/Transforms/Instrumentation.h"
@@ -1638,13 +1639,17 @@ struct LLVMRustThinLTOBuffer {
 };
 
 extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     raw_string_ostream OS(Ret->data);
     {
       legacy::PassManager PM;
-      PM.add(createWriteThinLTOBitcodePass(OS));
+      if (is_thin) {
+        PM.add(createWriteThinLTOBitcodePass(OS));
+      } else {
+        PM.add(createBitcodeWriterPass(OS));
+      }
       PM.run(*unwrap(M));
     }
   }
