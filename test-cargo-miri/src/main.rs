@@ -45,17 +45,12 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    use rand::{Rng, SeedableRng};
+    use byteorder_2::{BigEndian, ByteOrder};
 
     // Make sure in-crate tests with dev-dependencies work
     #[test]
-    fn rng() {
-        let mut rng = rand::rngs::StdRng::seed_from_u64(0xcafebeef);
-        let x: u32 = rng.gen();
-        let y: usize = rng.gen();
-        let z: u128 = rng.gen();
-        assert_ne!(x as usize, y);
-        assert_ne!(y as u128, z);
+    fn dev_dependency() {
+        let _n = <BigEndian as ByteOrder>::read_u64(&[1, 2, 3, 4, 5, 6, 7, 8]);
     }
 
     #[test]

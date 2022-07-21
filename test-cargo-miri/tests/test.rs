@@ -1,39 +1,30 @@
-use rand::{rngs::SmallRng, Rng, SeedableRng};
-
-// Having more than 1 test does seem to make a difference
-// (i.e., this calls ptr::swap which having just one test does not).
 #[test]
-fn simple1() {
+fn simple() {
     assert_eq!(4, 4);
-}
-
-#[test]
-fn simple2() {
-    assert_ne!(42, 24);
 }
 
 // A test that won't work on miri (tests disabling tests).
 #[test]
 #[cfg_attr(miri, ignore)]
 fn does_not_work_on_miri() {
-    let x = 0u8;
-    assert!(&x as *const _ as usize % 4 < 4);
+    // Only do this where inline assembly is stable.
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    unsafe {
+        std::arch::asm!("foo");
+    }
 }
 
-// Make sure integration tests can access dev-dependencies
+// Make sure integration tests can access both dependencies and dev-dependencies
 #[test]
-fn entropy_rng() {
-    // Try seeding with "real" entropy.
-    let mut rng = SmallRng::from_entropy();
-    let _val = rng.gen::<i32>();
-    let _val = rng.gen::<isize>();
-    let _val = rng.gen::<i128>();
-
-    // Also try per-thread RNG.
-    let mut rng = rand::thread_rng();
-    let _val = rng.gen::<i32>();
-    let _val = rng.gen::<isize>();
-    let _val = rng.gen::<i128>();
+fn deps() {
+    {
+        use byteorder::{BigEndian, ByteOrder};
+        let _n = <BigEndian as ByteOrder>::read_u64(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+    {
+        use byteorder_2::{BigEndian, ByteOrder};
+        let _n = <BigEndian as ByteOrder>::read_u64(&[1, 2, 3, 4, 5, 6, 7, 8]);
+    }
 }
 
 #[test]
@@ -49,17 +40,10 @@ fn do_panic() // In large, friendly letters :)
     panic!("Explicit panic from test!");
 }
 
+// A different way of raising a panic
 #[test]
 #[allow(unconditional_panic)]
 #[should_panic(expected = "the len is 0 but the index is 42")]
 fn fail_index_check() {
     [][42]
-}
-
-#[test]
-fn page_size() {
-    let page_size = page_size::get();
-
-    // In particular, this checks that it is not 0.
-    assert!(page_size.is_power_of_two(), "page size not a power of two: {}", page_size);
 }

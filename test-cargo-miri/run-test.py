@@ -134,7 +134,7 @@ def test_cargo_miri_test():
         env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (with filter)",
-        cargo_miri("test") + ["--", "--format=pretty", "le1"],
+        cargo_miri("test") + ["--", "--format=pretty", "pl"],
         filter_ref, "test.stderr-empty.ref",
     )
     test("`cargo miri test` (test target)",

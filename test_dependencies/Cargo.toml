@@ -11,6 +11,7 @@ edition = "2021"
 # all dependencies (and their transitive ones) listed here can be used in `tests/`.
 tokio = { version = "1.0", features = ["full"] }
 libc = "0.2"
+page_size = "0.4.1"
 
 getrandom_1 = { package = "getrandom", version = "0.1" }
 getrandom_2 = { package = "getrandom", version = "0.2" }
