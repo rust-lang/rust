@@ -684,22 +684,22 @@ impl PartialEq for TypeId {
 impl Eq for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Hash for TypeId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl core::hash::Hash for TypeId {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.t.hash(state);
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for TypeId {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for TypeId {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.t.cmp(&other.t)
     }
 }
