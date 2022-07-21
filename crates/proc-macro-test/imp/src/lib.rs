@@ -90,7 +90,14 @@ fn clone_tree(t: TokenTree) -> TokenTree {
             new.set_span(orig.span());
             TokenTree::Group(new)
         }
-        TokenTree::Ident(orig) => TokenTree::Ident(Ident::new(&orig.to_string(), orig.span())),
+        TokenTree::Ident(orig) => {
+            let s = orig.to_string();
+            if let Some(rest) = s.strip_prefix("r#") {
+                TokenTree::Ident(Ident::new_raw(rest, orig.span()))
+            } else {
+                TokenTree::Ident(Ident::new(&s, orig.span()))
+            }
+        }
         TokenTree::Punct(orig) => {
             let mut new = Punct::new(orig.as_char(), orig.spacing());
             new.set_span(orig.span());

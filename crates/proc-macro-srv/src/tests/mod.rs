@@ -60,10 +60,10 @@ fn test_fn_like_macro_clone_ident_subtree() {
 fn test_fn_like_macro_clone_raw_ident() {
     assert_expand(
         "fn_like_clone_tokens",
-        "r#\"ident\"#",
-        expect![[r##"
+        "r#async",
+        expect![[r#"
             SUBTREE $
-              LITERAL r#"ident"# 4294967295"##]],
+              IDENT   async 4294967295"#]],
     );
 }
 
