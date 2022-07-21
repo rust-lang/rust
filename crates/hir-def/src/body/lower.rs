@@ -8,7 +8,7 @@ use hir_expand::{
     ast_id_map::{AstIdMap, FileAstId},
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    ExpandError, HirFileId, InFile,
+    AstId, ExpandError, HirFileId, InFile,
 };
 use la_arena::Arena;
 use once_cell::unsync::OnceCell;
@@ -90,6 +90,7 @@ pub(super) fn lower(
     ExprCollector {
         db,
         source_map: BodySourceMap::default(),
+        ast_id_map: db.ast_id_map(expander.current_file_id),
         body: Body {
             exprs: Arena::default(),
             pats: Arena::default(),
@@ -110,6 +111,7 @@ pub(super) fn lower(
 struct ExprCollector<'a> {
     db: &'a dyn DefDatabase,
     expander: Expander,
+    ast_id_map: Arc<AstIdMap>,
     body: Body,
     source_map: BodySourceMap,
     // a poor-mans union-find?
@@ -591,8 +593,13 @@ impl ExprCollector<'_> {
         match res.value {
             Some((mark, expansion)) => {
                 self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id);
+                let prev_ast_id_map = mem::replace(
+                    &mut self.ast_id_map,
+                    self.db.ast_id_map(self.expander.current_file_id),
+                );
 
                 let id = collector(self, Some(expansion));
+                self.ast_id_map = prev_ast_id_map;
                 self.expander.exit(self.db, mark);
                 id
             }
@@ -680,7 +687,8 @@ impl ExprCollector<'_> {
     }
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
-        let ast_id = self.expander.ast_id(self.db, &block);
+        let file_local_id = self.ast_id_map.ast_id(&block);
+        let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
         let block_loc =
             BlockLoc { ast_id, module: self.expander.def_map.module_id(self.expander.module) };
         let block_id = self.db.intern_block(block_loc);
