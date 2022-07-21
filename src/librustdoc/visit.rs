@@ -43,7 +43,7 @@ pub(crate) trait DocVisitor: Sized {
             | AssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
-            | KeywordItem(_) => {}
+            | KeywordItem => {}
         }
     }
 
