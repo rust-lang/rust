@@ -24,6 +24,22 @@ pub fn fn_like_clone_tokens(args: TokenStream) -> TokenStream {
     clone_stream(args)
 }
 
+#[proc_macro]
+pub fn fn_like_mk_literals(_args: TokenStream) -> TokenStream {
+    let trees: Vec<TokenTree> = vec![
+        TokenTree::from(Literal::byte_string(b"byte_string")),
+        TokenTree::from(Literal::character('c')),
+        TokenTree::from(Literal::string("string")),
+        // as of 2022-07-21, there's no method on `Literal` to build a raw
+        // string or a raw byte string
+        TokenTree::from(Literal::f64_suffixed(3.14)),
+        TokenTree::from(Literal::f64_unsuffixed(3.14)),
+        TokenTree::from(Literal::i64_suffixed(123)),
+        TokenTree::from(Literal::i64_unsuffixed(123)),
+    ];
+    TokenStream::from_iter(trees)
+}
+
 #[proc_macro_attribute]
 pub fn attr_noop(_args: TokenStream, item: TokenStream) -> TokenStream {
     item

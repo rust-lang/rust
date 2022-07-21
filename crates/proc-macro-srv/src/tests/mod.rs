@@ -57,6 +57,35 @@ fn test_fn_like_macro_clone_ident_subtree() {
 }
 
 #[test]
+fn test_fn_like_macro_clone_raw_ident() {
+    assert_expand(
+        "fn_like_clone_tokens",
+        "r#\"ident\"#",
+        expect![[r##"
+            SUBTREE $
+              LITERAL r#"ident"# 4294967295"##]],
+    );
+}
+
+#[test]
+fn test_fn_like_mk_literals() {
+    assert_expand(
+        "fn_like_mk_literals",
+        r#""#,
+        expect![[r#"
+            SUBTREE $
+              LITERAL b"byte_string" 4294967295
+              LITERAL 'c' 4294967295
+              LITERAL "string" 4294967295
+              LITERAL "maybe \"raw\"?" 4294967295
+              LITERAL 3.14f64 4294967295
+              LITERAL 3.14 4294967295
+              LITERAL 123i64 4294967295
+              LITERAL 123 4294967295"#]],
+    );
+}
+
+#[test]
 fn test_fn_like_macro_clone_literals() {
     assert_expand(
         "fn_like_clone_tokens",
@@ -105,6 +134,7 @@ fn list_test_macros() {
         fn_like_panic [FuncLike]
         fn_like_error [FuncLike]
         fn_like_clone_tokens [FuncLike]
+        fn_like_mk_literals [FuncLike]
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]
