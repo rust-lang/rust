@@ -538,6 +538,11 @@ impl fmt::Debug for FileTimes {
 
 impl Default for FileTimes {
     fn default() -> Self {
+        // Redox doesn't appear to support `UTIME_OMIT`, so we stub it out here, and always return
+        // an error in `set_times`.
+        #[cfg(target_os = "redox")]
+        let omit = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        #[cfg(not(target_os = "redox"))]
         let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ };
         Self([omit; 2])
     }
@@ -1064,8 +1069,14 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_if::cfg_if! {
-            // futimens requires macOS 10.13, and Android API level 19
-            if #[cfg(any(target_os = "android", target_os = "macos"))] {
+            if #[cfg(target_os = "redox")] {
+                // Redox doesn't appear to support `UTIME_OMIT`.
+                return Err(io::const_io_error!(
+                    io::ErrorKind::Unsupported,
+                    "setting file times not supported",
+                ));
+            } else if #[cfg(any(target_os = "android", target_os = "macos"))] {
+                // futimens requires macOS 10.13, and Android API level 19
                 cvt(unsafe {
                     weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
                     match futimens.get() {
