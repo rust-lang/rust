@@ -80,20 +80,8 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
 
         match (a.kind(), b.kind()) {
-            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
-                infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
-            }
-
-            (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
-            }
-
-            (_, &ty::Infer(TyVar(b_id))) => {
-                self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
-            }
-
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-                self.fields.infcx.super_combine_tys(self, a, b)?;
+                self.infcx.super_combine_tys(self, a, b)
             }
             (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
                 if self.fields.define_opaque_types && did.is_local() =>
@@ -109,6 +97,18 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                         )?
                         .obligations,
                 );
+            }
+
+            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
+                infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
+            }
+
+            (&ty::Infer(TyVar(a_id)), _) => {
+                self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
+            }
+
+            (_, &ty::Infer(TyVar(b_id))) => {
+                self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
             }
 
             _ => {

@@ -90,7 +90,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 // Shouldn't have any LBR here, so we can safely put
                 // this under a binder below without fear of accidental
                 // capture.
-                assert!(!a.has_escaping_bound_vars());
+            assert!(!a.has_escaping_bound_vars());
                 assert!(!b.has_escaping_bound_vars());
 
                 // can't make progress on `A <: B` if both A and B are

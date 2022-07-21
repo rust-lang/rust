@@ -184,16 +184,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         } else if let Some(res) = process(b, a) {
             res
         } else {
-            // Rerun equality check, but this time error out due to
-            // different types.
-            match self.at(cause, param_env).define_opaque_types(false).eq(a, b) {
-                Ok(_) => span_bug!(
-                    cause.span,
-                    "opaque types are never equal to anything but themselves: {:#?}",
-                    (a.kind(), b.kind())
-                ),
-                Err(e) => Err(e),
-            }
+            self.at(cause, param_env).define_opaque_types(false).eq(a, b)
         }
     }
 
