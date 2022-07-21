@@ -53,8 +53,8 @@ EOF
 MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
 
 ## Run the auto-things.
-if [ -z "$AUTO_OPS" ]; then
-    export AUTO_OPS=42
+if [ -z "$MIRI_AUTO_OPS" ]; then
+    export MIRI_AUTO_OPS=42
 
     # Run this first, so that the toolchain doesn't change after
     # other code has run.
