@@ -5,7 +5,7 @@ use std::fmt::Write;
 
 use hir_expand::{
     name::{AsName, Name},
-    AstId, InFile,
+    AstId,
 };
 use syntax::ast::{self, HasName};
 
@@ -236,10 +236,7 @@ impl TypeRef {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
             ast::Type::MacroType(mt) => match mt.macro_call() {
-                Some(mc) => ctx
-                    .ast_id(&mc)
-                    .map(|mc| TypeRef::Macro(InFile::new(ctx.file_id(), mc)))
-                    .unwrap_or(TypeRef::Error),
+                Some(mc) => ctx.ast_id(ctx.db, &mc).map(TypeRef::Macro).unwrap_or(TypeRef::Error),
                 None => TypeRef::Error,
             },
         }

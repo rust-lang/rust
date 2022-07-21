@@ -5,21 +5,18 @@ mod lower;
 mod tests;
 pub mod scope;
 
-use std::{mem, ops::Index, sync::Arc};
+use std::{ops::Index, sync::Arc};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use drop_bomb::DropBomb;
 use either::Either;
-use hir_expand::{
-    ast_id_map::AstIdMap, hygiene::Hygiene, AstId, ExpandError, ExpandResult, HirFileId, InFile,
-    MacroCallId,
-};
+use hir_expand::{hygiene::Hygiene, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId};
 use la_arena::{Arena, ArenaMap};
 use limit::Limit;
 use profile::Count;
 use rustc_hash::FxHashMap;
-use syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
+use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use crate::{
     attr::{Attrs, RawAttrs},
@@ -50,7 +47,6 @@ pub struct Expander {
     cfg_expander: CfgExpander,
     def_map: Arc<DefMap>,
     current_file_id: HirFileId,
-    ast_id_map: Arc<AstIdMap>,
     module: LocalModuleId,
     recursion_limit: usize,
 }
@@ -80,12 +76,10 @@ impl Expander {
     pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let cfg_expander = CfgExpander::new(db, current_file_id, module.krate);
         let def_map = module.def_map(db);
-        let ast_id_map = db.ast_id_map(current_file_id);
         Expander {
             cfg_expander,
             def_map,
             current_file_id,
-            ast_id_map,
             module: module.local_id,
             recursion_limit: 0,
         }
@@ -168,14 +162,10 @@ impl Expander {
         tracing::debug!("macro expansion {:#?}", node.syntax());
 
         self.recursion_limit += 1;
-        let mark = Mark {
-            file_id: self.current_file_id,
-            ast_id_map: mem::take(&mut self.ast_id_map),
-            bomb: DropBomb::new("expansion mark dropped"),
-        };
+        let mark =
+            Mark { file_id: self.current_file_id, bomb: DropBomb::new("expansion mark dropped") };
         self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
         self.current_file_id = file_id;
-        self.ast_id_map = db.ast_id_map(file_id);
 
         ExpandResult { value: Some((mark, node)), err }
     }
@@ -183,7 +173,6 @@ impl Expander {
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
         self.cfg_expander.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
-        self.ast_id_map = mem::take(&mut mark.ast_id_map);
         self.recursion_limit -= 1;
         mark.bomb.defuse();
     }
@@ -213,11 +202,6 @@ impl Expander {
         self.def_map.resolve_path(db, self.module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
-    fn ast_id<N: AstNode>(&self, item: &N) -> AstId<N> {
-        let file_local_id = self.ast_id_map.ast_id(item);
-        AstId::new(self.current_file_id, file_local_id)
-    }
-
     fn recursion_limit(&self, db: &dyn DefDatabase) -> Limit {
         let limit = db.crate_limits(self.cfg_expander.krate).recursion_limit as _;
 
@@ -233,7 +217,6 @@ impl Expander {
 #[derive(Debug)]
 pub struct Mark {
     file_id: HirFileId,
-    ast_id_map: Arc<AstIdMap>,
     bomb: DropBomb,
 }
 

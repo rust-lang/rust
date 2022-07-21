@@ -550,14 +550,17 @@ impl<'a> AssocItemCollector<'a> {
                 AssocItem::MacroCall(call) => {
                     let call = &item_tree[call];
                     let ast_id_map = self.db.ast_id_map(self.expander.current_file_id());
-                    let root = self.db.parse_or_expand(self.expander.current_file_id()).unwrap();
-                    let call = ast_id_map.get(call.ast_id).to_node(&root);
-                    let _cx =
-                        stdx::panic_context::enter(format!("collect_items MacroCall: {}", call));
-                    let res = self.expander.enter_expand(self.db, call);
+                    if let Some(root) = self.db.parse_or_expand(self.expander.current_file_id()) {
+                        let call = ast_id_map.get(call.ast_id).to_node(&root);
+                        let _cx = stdx::panic_context::enter(format!(
+                            "collect_items MacroCall: {}",
+                            call
+                        ));
+                        let res = self.expander.enter_expand(self.db, call);
 
-                    if let Ok(ExpandResult { value: Some((mark, mac)), .. }) = res {
-                        self.collect_macro_items(mark, mac);
+                        if let Ok(ExpandResult { value: Some((mark, mac)), .. }) = res {
+                            self.collect_macro_items(mark, mac);
+                        }
                     }
                 }
             }
