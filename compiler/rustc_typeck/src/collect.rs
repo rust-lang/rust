@@ -2813,7 +2813,37 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         )
                         .emit();
                 }
-                None => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED,
+                None => {
+                    // Unfortunately, unconditionally using `llvm.used` causes
+                    // issues in handling `.init_array` with the gold linker,
+                    // but using `llvm.compiler.used` caused a nontrival amount
+                    // of unintentional ecosystem breakage -- particularly on
+                    // Mach-O targets.
+                    //
+                    // As a result, we emit `llvm.compiler.used` only on ELF
+                    // targets. This is somewhat ad-hoc, but actually follows
+                    // our pre-LLVM 13 behavior (prior to the ecosystem
+                    // breakage), and seems to match `clang`'s behavior as well
+                    // (both before and after LLVM 13), possibly because they
+                    // have similar compatibility concerns to us. See
+                    // https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146
+                    // and following comments for some discussion of this, as
+                    // well as the comments in `rustc_codegen_llvm` where these
+                    // flags are handled.
+                    //
+                    // Anyway, to be clear: this is still up in the air
+                    // somewhat, and is subject to change in the future (which
+                    // is a good thing, because this would ideally be a bit
+                    // more firmed up).
+                    let is_like_elf = !(tcx.sess.target.is_like_osx
+                        || tcx.sess.target.is_like_windows
+                        || tcx.sess.target.is_like_wasm);
+                    codegen_fn_attrs.flags = if is_like_elf {
+                        CodegenFnAttrFlags::USED
+                    } else {
+                        CodegenFnAttrFlags::USED_LINKER
+                    };
+                }
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
             if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
