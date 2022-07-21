@@ -52,7 +52,7 @@ mod rustc {
 
         type Scope = Ty<'tcx>;
 
-        #[instrument(level = "DEBUG", skip(self))]
+        #[instrument(level = "debug", skip(self))]
         fn is_accessible_from(&self, def: Self::Def, scope: Self::Scope) -> bool {
             use layout::rustc::Def;
             use rustc_middle::ty;

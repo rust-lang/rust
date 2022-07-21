@@ -64,7 +64,7 @@ mod rustc {
     impl<'tcx> MaybeTransmutableQuery<Ty<'tcx>, TyCtxt<'tcx>> {
         /// This method begins by converting `src` and `dst` from `Ty`s to `Tree`s,
         /// then computes an answer using those trees.
-        #[instrument(level = "DEBUG", skip(self), fields(src = ?self.src, dst = ?self.dst))]
+        #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
         pub fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
             let query_or_answer = self.map_layouts(|src, dst, scope, &context| {
                 // Convert `src` and `dst` from their rustc representations, to `Tree`-based
@@ -103,7 +103,7 @@ where
     /// This method begins by de-def'ing `src` and `dst`, and prunes private paths from `dst`,
     /// then converts `src` and `dst` to `Nfa`s, and computes an answer using those NFAs.
     #[inline(always)]
-    #[instrument(level = "DEBUG", skip(self), fields(src = ?self.src, dst = ?self.dst))]
+    #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         let assume_visibility = self.assume.visibility;
         let query_or_answer = self.map_layouts(|src, dst, scope, context| {
@@ -152,7 +152,7 @@ where
     ///
     /// This method converts `src` and `dst` to DFAs, then computes an answer using those DFAs.
     #[inline(always)]
-    #[instrument(level = "DEBUG", skip(self), fields(src = ?self.src, dst = ?self.dst))]
+    #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         let query_or_answer = self
             .map_layouts(|src, dst, scope, context| Ok((Dfa::from_nfa(src), Dfa::from_nfa(dst))));
@@ -192,7 +192,7 @@ where
     }
 
     #[inline(always)]
-    #[instrument(level = "DEBUG", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn answer_memo(
         &self,
         cache: &mut Map<(dfa::State, dfa::State), Answer<<C as QueryContext>::Ref>>,
