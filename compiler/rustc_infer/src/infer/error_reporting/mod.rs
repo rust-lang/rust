@@ -2670,8 +2670,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
     pub fn same_type_modulo_infer(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         let (a, b) = self.resolve_vars_if_possible((a, b));
-        match (&a.kind(), &b.kind()) {
-            (&ty::Adt(did_a, substs_a), &ty::Adt(did_b, substs_b)) => {
+        match (a.kind(), b.kind()) {
+            (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) => {
+                if def_a != def_b {
+                    return false;
+                }
+
+                substs_a
+                    .types()
+                    .zip(substs_b.types())
+                    .all(|(a, b)| self.same_type_modulo_infer(a, b))
+            }
+            (&ty::FnDef(did_a, substs_a), &ty::FnDef(did_b, substs_b)) => {
                 if did_a != did_b {
                     return false;
                 }
@@ -2694,7 +2704,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             | (&ty::Infer(ty::InferTy::TyVar(_)), _)
             | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
             (&ty::Ref(_, ty_a, mut_a), &ty::Ref(_, ty_b, mut_b)) => {
-                mut_a == mut_b && self.same_type_modulo_infer(*ty_a, *ty_b)
+                mut_a == mut_b && self.same_type_modulo_infer(ty_a, ty_b)
+            }
+            (&ty::RawPtr(a), &ty::RawPtr(b)) => {
+                a.mutbl == b.mutbl && self.same_type_modulo_infer(a.ty, b.ty)
+            }
+            (&ty::Slice(a), &ty::Slice(b)) => self.same_type_modulo_infer(a, b),
+            (&ty::Array(a_ty, a_ct), &ty::Array(b_ty, b_ct)) => {
+                self.same_type_modulo_infer(a_ty, b_ty) && a_ct == b_ct
+            }
+            (&ty::Tuple(a), &ty::Tuple(b)) => {
+                if a.len() != b.len() {
+                    return false;
+                }
+                std::iter::zip(a.iter(), b.iter()).all(|(a, b)| self.same_type_modulo_infer(a, b))
+            }
+            (&ty::FnPtr(a), &ty::FnPtr(b)) => {
+                let a = a.skip_binder().inputs_and_output;
+                let b = b.skip_binder().inputs_and_output;
+                if a.len() != b.len() {
+                    return false;
+                }
+                std::iter::zip(a.iter(), b.iter()).all(|(a, b)| self.same_type_modulo_infer(a, b))
             }
             // FIXME(compiler-errors): This needs to be generalized more
             _ => a == b,
