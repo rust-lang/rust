@@ -299,7 +299,7 @@ impl DiagnosticMessage {
     /// - If `self` is non-translatable then return `self`'s message.
     pub fn with_subdiagnostic_message(&self, sub: SubdiagnosticMessage) -> Self {
         let attr = match sub {
-            SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s.clone()),
+            SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s),
             SubdiagnosticMessage::FluentIdentifier(id) => {
                 return DiagnosticMessage::FluentIdentifier(id, None);
             }
