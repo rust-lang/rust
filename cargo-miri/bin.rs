@@ -60,7 +60,7 @@ struct CrateRunEnv {
 
 impl CrateRunEnv {
     /// Gather all the information we need.
-    fn collect(args: env::Args, capture_stdin: bool) -> Self {
+    fn collect(args: impl Iterator<Item = String>, capture_stdin: bool) -> Self {
         let args = args.collect();
         let env = env::vars_os().collect();
         let current_dir = env::current_dir().unwrap().into_os_string();
@@ -757,7 +757,7 @@ enum RustcPhase {
     Rustdoc,
 }
 
-fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
+fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     /// Determines if we are being invoked (as rustc) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
@@ -978,10 +978,11 @@ enum RunnerPhase {
     Rustdoc,
 }
 
-fn phase_runner(binary: &Path, binary_args: impl Iterator<Item = String>, phase: RunnerPhase) {
+fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhase) {
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
+    let binary = binary_args.next().unwrap();
     let file = File::open(&binary)
         .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
@@ -1071,7 +1072,7 @@ fn phase_runner(binary: &Path, binary_args: impl Iterator<Item = String>, phase:
     }
 }
 
-fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
+fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
@@ -1079,17 +1080,8 @@ fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
     // just default to a straight-forward invocation for now:
     let mut cmd = Command::new("rustdoc");
 
-    // Because of the way the main function is structured, we have to take the first argument spearately
-    // from the rest; to simplify the following argument patching loop, we'll just skip that one.
-    // This is fine for now, because cargo will never pass --extern arguments in the first position,
-    // but we should defensively assert that this will work.
     let extern_flag = "--extern";
-    assert!(fst_arg != extern_flag);
-    cmd.arg(fst_arg);
-
     let runtool_flag = "--runtool";
-    // `crossmode` records if *any* argument matches `runtool_flag`; here we check the first one.
-    let mut crossmode = fst_arg == runtool_flag;
     while let Some(arg) = args.next() {
         if arg == extern_flag {
             // Patch --extern arguments to use *.rmeta files, since phase_cargo_rustc only creates stub *.rlib files.
@@ -1098,15 +1090,10 @@ fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
             // An existing --runtool flag indicates cargo is running in cross-target mode, which we don't support.
             // Note that this is only passed when cargo is run with the unstable -Zdoctest-xcompile flag;
             // otherwise, we won't be called as rustdoc at all.
-            crossmode = true;
-            break;
+            show_error(format!("cross-interpreting doctests is not currently supported by Miri."));
         } else {
             cmd.arg(arg);
         }
-    }
-
-    if crossmode {
-        show_error(format!("cross-interpreting doctests is not currently supported by Miri."));
     }
 
     // Doctests of `proc-macro` crates (and their dependencies) are always built for the host,
@@ -1178,16 +1165,7 @@ fn main() {
         // since we don't specify any runtool-args, and rustdoc supplies multiple arguments to
         // the test-builder unconditionally, we can just check the number of remaining arguments:
         if args.len() == 1 {
-            let arg = args.next().unwrap();
-            let binary = Path::new(&arg);
-            if binary.exists() {
-                phase_runner(binary, args, RunnerPhase::Rustdoc);
-            } else {
-                show_error(format!(
-                    "`cargo-miri` called with non-existing path argument `{}` in rustdoc mode; please invoke this binary through `cargo miri`",
-                    arg
-                ));
-            }
+            phase_runner(args, RunnerPhase::Rustdoc);
         } else {
             phase_rustc(args, RustcPhase::Rustdoc);
         }
@@ -1195,35 +1173,38 @@ fn main() {
         return;
     }
 
-    match args.next().as_deref() {
-        Some("miri") => phase_cargo_miri(args),
-        Some(arg) => {
-            // If the first arg is equal to the RUSTC variable (which should be set at this point),
-            // then we need to behave as rustc. This is the somewhat counter-intuitive behavior of
-            // having both RUSTC and RUSTC_WRAPPER set (see
-            // https://github.com/rust-lang/cargo/issues/10886).
-            if arg == env::var_os("RUSTC").unwrap() {
-                return phase_rustc(args, RustcPhase::Build);
-            }
-            // We have to distinguish the "runner" and "rustdoc" cases.
-            // As runner, the first argument is the binary (a file that should exist, with an absolute path);
-            // as rustdoc, the first argument is a flag (`--something`).
-            let binary = Path::new(arg);
-            if binary.exists() {
-                assert!(!arg.starts_with("--")); // not a flag
-                phase_runner(binary, args, RunnerPhase::Cargo);
-            } else if arg.starts_with("--") {
-                phase_rustdoc(arg, args);
-            } else {
-                show_error(format!(
-                    "`cargo-miri` called with unexpected first argument `{}`; please only invoke this binary through `cargo miri`",
-                    arg
-                ));
-            }
+    let mut args = args.peekable();
+    if args.next_if(|a| a == "miri").is_some() {
+        phase_cargo_miri(args);
+    } else if let Some(arg) = args.peek().cloned() {
+        // Cargo calls us for everything it does. We could be invoked as rustc, rustdoc, or the runner.
+
+        // If the first arg is equal to the RUSTC variable (which should be set at this point),
+        // then we need to behave as rustc. This is the somewhat counter-intuitive behavior of
+        // having both RUSTC and RUSTC_WRAPPER set (see
+        // https://github.com/rust-lang/cargo/issues/10886).
+        if arg == env::var("RUSTC").unwrap() {
+            args.next().unwrap(); // consume wrapped RUSTC command.
+            return phase_rustc(args, RustcPhase::Build);
         }
-        _ =>
+        // We have to distinguish the "runner" and "rustdoc" cases.
+        // As runner, the first argument is the binary (a file that should exist, with an absolute path);
+        // as rustdoc, the first argument is a flag (`--something`).
+        let binary = Path::new(&arg);
+        if binary.exists() {
+            assert!(!arg.starts_with("--")); // not a flag
+            phase_runner(args, RunnerPhase::Cargo);
+        } else if arg.starts_with("--") {
+            phase_rustdoc(args);
+        } else {
             show_error(format!(
-                "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
-            )),
+                "`cargo-miri` called with unexpected first argument `{}`; please only invoke this binary through `cargo miri`",
+                arg
+            ));
+        }
+    } else {
+        show_error(format!(
+            "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
+        ));
     }
 }
