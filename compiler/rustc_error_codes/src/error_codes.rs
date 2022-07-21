@@ -559,7 +559,7 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0273, // on_unimplemented #1
 //  E0274, // on_unimplemented #2
 //  E0278, // requirement is not satisfied
-    E0279, // requirement is not satisfied
+//  E0279,
     E0280, // requirement is not satisfied
 //  E0285, // overflow evaluation builtin bounds
 //  E0296, // replaced with a generic attribute input check

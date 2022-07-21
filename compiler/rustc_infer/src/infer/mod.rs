@@ -265,6 +265,11 @@ pub struct InferCtxt<'a, 'tcx> {
     /// might come up during inference or typeck.
     pub defining_use_anchor: DefiningAnchor,
 
+    /// Whether this inference context should care about region obligations in
+    /// the root universe. Most notably, this is used during hir typeck as region
+    /// solving is left to borrowck instead.
+    pub considering_regions: bool,
+
     /// During type-checking/inference of a body, `in_progress_typeck_results`
     /// contains a reference to the typeck results being built up, which are
     /// used for reading closure kinds/signatures as they are inferred,
@@ -539,8 +544,9 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// without using `Rc` or something similar.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
     defining_use_anchor: DefiningAnchor,
+    considering_regions: bool,
+    fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -552,6 +558,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
         InferCtxtBuilder {
             tcx: self,
             defining_use_anchor: DefiningAnchor::Error,
+            considering_regions: true,
             fresh_typeck_results: None,
         }
     }
@@ -574,6 +581,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// in mir borrowck.
     pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
         self.defining_use_anchor = defining_use_anchor;
+        self
+    }
+
+    pub fn ignoring_regions(mut self) -> Self {
+        self.considering_regions = false;
         self
     }
 
@@ -601,11 +613,17 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
-        let InferCtxtBuilder { tcx, defining_use_anchor, ref fresh_typeck_results } = *self;
+        let InferCtxtBuilder {
+            tcx,
+            defining_use_anchor,
+            considering_regions,
+            ref fresh_typeck_results,
+        } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
             tcx,
             defining_use_anchor,
+            considering_regions,
             in_progress_typeck_results,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
@@ -1043,16 +1061,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) -> UnitResult<'tcx> {
-        self.commit_if_ok(|_snapshot| {
-            let ty::OutlivesPredicate(r_a, r_b) =
-                self.replace_bound_vars_with_placeholders(predicate);
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            Ok(())
-        })
+    ) {
+        let ty::OutlivesPredicate(r_a, r_b) = self.replace_bound_vars_with_placeholders(predicate);
+        let origin =
+            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
+        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
     }
 
     /// Number of type variables created so far.

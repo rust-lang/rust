@@ -87,10 +87,10 @@ mod op;
 mod pat;
 mod place_op;
 mod region;
-mod regionck;
+pub mod regionck;
 pub mod rvalue_scopes;
 mod upvar;
-mod wfcheck;
+pub mod wfcheck;
 pub mod writeback;
 
 use check::{check_abi, check_fn, check_mod_item_types};

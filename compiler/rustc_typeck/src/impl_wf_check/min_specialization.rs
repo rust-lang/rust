@@ -65,6 +65,8 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
+use crate::check::regionck::OutlivesEnvironmentExt;
+use crate::check::wfcheck::impl_implied_bounds;
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
 
@@ -148,8 +150,15 @@ fn get_impl_substs<'tcx>(
     let impl2_substs =
         translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
 
-    // Conservatively use an empty `ParamEnv`.
-    let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
+    let mut outlives_env = OutlivesEnvironment::new(param_env);
+    let implied_bounds =
+        impl_implied_bounds(infcx.tcx, param_env, impl1_def_id, tcx.def_span(impl1_def_id));
+    outlives_env.add_implied_bounds(
+        infcx,
+        implied_bounds,
+        tcx.hir().local_def_id_to_hir_id(impl1_def_id),
+    );
+    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
     infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
         let span = tcx.def_span(impl1_def_id);

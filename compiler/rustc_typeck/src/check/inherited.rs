@@ -86,7 +86,10 @@ impl<'tcx> Inherited<'_, 'tcx> {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
         InheritedBuilder {
-            infcx: tcx.infer_ctxt().with_fresh_in_progress_typeck_results(hir_owner),
+            infcx: tcx
+                .infer_ctxt()
+                .ignoring_regions()
+                .with_fresh_in_progress_typeck_results(hir_owner),
             def_id,
         }
     }
@@ -113,7 +116,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
                 maybe_typeck_results: infcx.in_progress_typeck_results,
             },
             infcx,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new_ignoring_regions(tcx)),
+            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),

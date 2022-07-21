@@ -58,19 +58,6 @@ pub struct FulfillmentContext<'tcx> {
 
     relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
 
-    // Should this fulfillment context register type-lives-for-region
-    // obligations on its parent infcx? In some cases, region
-    // obligations are either already known to hold (normalization) or
-    // hopefully verified elsewhere (type-impls-bound), and therefore
-    // should not be checked.
-    //
-    // Note that if we are normalizing a type that we already
-    // know is well-formed, there should be no harm setting this
-    // to true - all the region variables should be determinable
-    // using the RFC 447 rules, which don't depend on
-    // type-lives-for-region constraints, and because the type
-    // is well-formed, the constraints should hold.
-    register_region_obligations: bool,
     // Is it OK to register obligations into this infcx inside
     // an infcx snapshot?
     //
@@ -103,7 +90,6 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
-            register_region_obligations: true,
             usable_in_snapshot: false,
         }
     }
@@ -112,17 +98,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             relationships: FxHashMap::default(),
-            register_region_obligations: true,
             usable_in_snapshot: true,
-        }
-    }
-
-    pub fn new_ignoring_regions() -> FulfillmentContext<'tcx> {
-        FulfillmentContext {
-            predicates: ObligationForest::new(),
-            relationships: FxHashMap::default(),
-            register_region_obligations: false,
-            usable_in_snapshot: false,
         }
     }
 
@@ -132,10 +108,8 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
         let _enter = span.enter();
 
         // Process pending obligations.
-        let outcome: Outcome<_, _> = self.predicates.process_obligations(&mut FulfillProcessor {
-            selcx,
-            register_region_obligations: self.register_region_obligations,
-        });
+        let outcome: Outcome<_, _> =
+            self.predicates.process_obligations(&mut FulfillProcessor { selcx });
 
         // FIXME: if we kept the original cache key, we could mark projection
         // obligations as complete for the projection cache here.
@@ -239,7 +213,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
 struct FulfillProcessor<'a, 'b, 'tcx> {
     selcx: &'a mut SelectionContext<'b, 'tcx>,
-    register_region_obligations: bool,
 }
 
 fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligation<'_>> {
@@ -385,19 +358,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateKind::RegionOutlives(data) => {
-                    match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
-                        Ok(()) => ProcessResult::Changed(vec![]),
-                        Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
+                    if infcx.considering_regions || data.has_placeholders() {
+                        infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
+
+                    ProcessResult::Changed(vec![])
                 }
 
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
-                    if self.register_region_obligations {
-                        self.selcx.infcx().register_region_obligation_with_cause(
-                            t_a,
-                            r_b,
-                            &obligation.cause,
-                        );
+                    if infcx.considering_regions {
+                        infcx.register_region_obligation_with_cause(t_a, r_b, &obligation.cause);
                     }
                     ProcessResult::Changed(vec![])
                 }
