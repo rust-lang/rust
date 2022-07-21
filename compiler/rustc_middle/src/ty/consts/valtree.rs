@@ -88,19 +88,17 @@ impl<'tcx> ValTree<'tcx> {
                     let leafs = self
                         .unwrap_branch()
                         .into_iter()
-                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
-                        .collect::<Vec<_>>();
+                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap());
 
-                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
+                    return Some(tcx.arena.alloc_from_iter(leafs));
                 }
                 ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {
                     let leafs = self
                         .unwrap_branch()
                         .into_iter()
-                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
-                        .collect::<Vec<_>>();
+                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap());
 
-                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
+                    return Some(tcx.arena.alloc_from_iter(leafs));
                 }
                 _ => {}
             },
