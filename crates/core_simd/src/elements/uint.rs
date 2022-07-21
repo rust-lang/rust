@@ -11,7 +11,9 @@ pub trait SimdUint: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdUint};
     /// use core::u32::MAX;
     /// let x = Simd::from_array([2, 1, 0, MAX]);
     /// let max = Simd::splat(MAX);
@@ -27,7 +29,9 @@ pub trait SimdUint: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdUint};
     /// use core::u32::MAX;
     /// let x = Simd::from_array([2, 1, 0, MAX]);
     /// let max = Simd::splat(MAX);

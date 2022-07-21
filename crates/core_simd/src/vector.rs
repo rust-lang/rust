@@ -173,7 +173,7 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, u32x4};
+    /// # use core::simd::u32x4;
     /// let source = vec![1, 2, 3, 4, 5, 6];
     /// let v = u32x4::from_slice(&source);
     /// assert_eq!(v.as_array(), &[1, 2, 3, 4]);
@@ -332,7 +332,9 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::simd::{Simd, SimdPartialOrd, Mask};
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdPartialOrd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -389,7 +391,9 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::simd::{Simd, Mask};
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -423,7 +427,9 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core_simd::simd::{Simd, SimdPartialOrd, Mask};
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdPartialOrd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);

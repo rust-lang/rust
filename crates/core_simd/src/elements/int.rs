@@ -16,7 +16,9 @@ pub trait SimdInt: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdInt};
     /// use core::i32::{MIN, MAX};
     /// let x = Simd::from_array([MIN, 0, 1, MAX]);
     /// let max = Simd::splat(MAX);
@@ -32,7 +34,9 @@ pub trait SimdInt: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdInt};
     /// use core::i32::{MIN, MAX};
     /// let x = Simd::from_array([MIN, -2, -1, MAX]);
     /// let max = Simd::splat(MAX);
@@ -48,7 +52,9 @@ pub trait SimdInt: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdInt};
     /// use core::i32::{MIN, MAX};
     /// let xs = Simd::from_array([MIN, MIN +1, -5, 0]);
     /// assert_eq!(xs.abs(), Simd::from_array([MIN, MAX, 5, 0]));
@@ -61,7 +67,9 @@ pub trait SimdInt: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdInt};
     /// use core::i32::{MIN, MAX};
     /// let xs = Simd::from_array([MIN, -2, 0, 3]);
     /// let unsat = xs.abs();
@@ -77,7 +85,9 @@ pub trait SimdInt: Copy + Sealed {
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{Simd, SimdInt};
     /// use core::i32::{MIN, MAX};
     /// let x = Simd::from_array([MIN, -2, 3, MAX]);
     /// let unsat = -x;
@@ -105,7 +115,9 @@ pub trait SimdInt: Copy + Sealed {
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::i32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{i32x4, SimdInt};
     /// let v = i32x4::from_array([1, 2, 3, 4]);
     /// assert_eq!(v.reduce_sum(), 10);
     ///
@@ -121,7 +133,9 @@ pub trait SimdInt: Copy + Sealed {
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::i32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{i32x4, SimdInt};
     /// let v = i32x4::from_array([1, 2, 3, 4]);
     /// assert_eq!(v.reduce_product(), 24);
     ///
@@ -137,7 +151,9 @@ pub trait SimdInt: Copy + Sealed {
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::i32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{i32x4, SimdInt};
     /// let v = i32x4::from_array([1, 2, 3, 4]);
     /// assert_eq!(v.reduce_max(), 4);
     /// ```
@@ -149,7 +165,9 @@ pub trait SimdInt: Copy + Sealed {
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::i32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{i32x4, SimdInt};
     /// let v = i32x4::from_array([1, 2, 3, 4]);
     /// assert_eq!(v.reduce_min(), 1);
     /// ```
