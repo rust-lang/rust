@@ -614,13 +614,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_label(span, "expected due to this");
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                semi_span,
+                arm_block_id,
+                arm_span,
+                arm_ty,
+                prior_arm_block_id,
+                prior_arm_span,
+                prior_arm_ty,
                 source,
                 ref prior_arms,
-                last_ty,
                 scrut_hir_id,
                 opt_suggest_box_span,
-                arm_span,
                 scrut_span,
                 ..
             }) => match source {
@@ -651,10 +654,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
                 _ => {
-                    // `last_ty` can be `!`, `expected` will have better info when present.
+                    // `prior_arm_ty` can be `!`, `expected` will have better info when present.
                     let t = self.resolve_vars_if_possible(match exp_found {
                         Some(ty::error::ExpectedFound { expected, .. }) => expected,
-                        _ => last_ty,
+                        _ => prior_arm_ty,
                     });
                     let source_map = self.tcx.sess.source_map();
                     let mut any_multiline_arm = source_map.is_multiline(arm_span);
@@ -679,37 +682,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     };
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer_error_span, msg);
-                    if let Some((sp, boxed)) = semi_span {
-                        if let (StatementAsExpression::NeedsBoxing, [.., prior_arm]) =
-                            (boxed, &prior_arms[..])
-                        {
-                            err.multipart_suggestion(
-                                "consider removing this semicolon and boxing the expressions",
-                                vec![
-                                    (prior_arm.shrink_to_lo(), "Box::new(".to_string()),
-                                    (prior_arm.shrink_to_hi(), ")".to_string()),
-                                    (arm_span.shrink_to_lo(), "Box::new(".to_string()),
-                                    (arm_span.shrink_to_hi(), ")".to_string()),
-                                    (sp, String::new()),
-                                ],
-                                Applicability::HasPlaceholders,
-                            );
-                        } else if matches!(boxed, StatementAsExpression::NeedsBoxing) {
-                            err.span_suggestion_short(
-                                sp,
-                                "consider removing this semicolon and boxing the expressions",
-                                "",
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            err.span_suggestion_short(
-                                sp,
-                                "consider removing this semicolon",
-                                "",
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    }
+                    self.suggest_remove_semi_or_return_binding(
+                        err,
+                        prior_arm_block_id,
+                        prior_arm_ty,
+                        prior_arm_span,
+                        arm_block_id,
+                        arm_ty,
+                        arm_span,
+                    );
                     if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.
                         self.suggest_boxing_for_return_impl_trait(
@@ -734,48 +715,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
-                let semicolon = if let hir::Node::Block(blk) = self.tcx.hir().get(then_id)
-                    && let Some(remove_semicolon) = self.could_remove_semicolon(blk, else_ty)
-                {
-                    Some(remove_semicolon)
-                } else if let hir::Node::Block(blk) = self.tcx.hir().get(else_id)
-                    && let Some(remove_semicolon) = self.could_remove_semicolon(blk, then_ty)
-                {
-                    Some(remove_semicolon)
-                } else {
-                    None
-                };
-                if let Some((sp, boxed)) = semicolon {
-                    if matches!(boxed, StatementAsExpression::NeedsBoxing) {
-                        err.multipart_suggestion(
-                            "consider removing this semicolon and boxing the expression",
-                            vec![
-                                (then_span.shrink_to_lo(), "Box::new(".to_string()),
-                                (then_span.shrink_to_hi(), ")".to_string()),
-                                (else_span.shrink_to_lo(), "Box::new(".to_string()),
-                                (else_span.shrink_to_hi(), ")".to_string()),
-                                (sp, String::new()),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        err.span_suggestion_short(
-                            sp,
-                            "consider removing this semicolon",
-                            "",
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                } else {
-                    let suggested = if let hir::Node::Block(blk) = self.tcx.hir().get(then_id) {
-                        self.consider_returning_binding(blk, else_ty, err)
-                    } else {
-                        false
-                    };
-                    if !suggested && let hir::Node::Block(blk) = self.tcx.hir().get(else_id) {
-                        self.consider_returning_binding(blk, then_ty, err);
-                    }
-                }
+                self.suggest_remove_semi_or_return_binding(
+                    err,
+                    Some(then_id),
+                    then_ty,
+                    then_span,
+                    Some(else_id),
+                    else_ty,
+                    else_span,
+                );
                 if let Some(ret_sp) = opt_suggest_box_span {
                     self.suggest_boxing_for_return_impl_trait(
                         err,
@@ -796,6 +744,69 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         err.span_note(*binding_span, "the lifetime requirement is introduced here");
                     }
                 }
+            }
+        }
+    }
+
+    fn suggest_remove_semi_or_return_binding(
+        &self,
+        err: &mut Diagnostic,
+        first_id: Option<hir::HirId>,
+        first_ty: Ty<'tcx>,
+        first_span: Span,
+        second_id: Option<hir::HirId>,
+        second_ty: Ty<'tcx>,
+        second_span: Span,
+    ) {
+        let semicolon =
+            if let Some(first_id) = first_id
+                && let hir::Node::Block(blk) = self.tcx.hir().get(first_id)
+                && let Some(remove_semicolon) = self.could_remove_semicolon(blk, second_ty)
+            {
+                Some(remove_semicolon)
+            } else if let Some(second_id) = second_id
+                && let hir::Node::Block(blk) = self.tcx.hir().get(second_id)
+                && let Some(remove_semicolon) = self.could_remove_semicolon(blk, first_ty)
+            {
+                Some(remove_semicolon)
+            } else {
+                None
+            };
+        if let Some((sp, boxed)) = semicolon {
+            if matches!(boxed, StatementAsExpression::NeedsBoxing) {
+                err.multipart_suggestion(
+                    "consider removing this semicolon and boxing the expressions",
+                    vec![
+                        (first_span.shrink_to_lo(), "Box::new(".to_string()),
+                        (first_span.shrink_to_hi(), ")".to_string()),
+                        (second_span.shrink_to_lo(), "Box::new(".to_string()),
+                        (second_span.shrink_to_hi(), ")".to_string()),
+                        (sp, String::new()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_suggestion_short(
+                    sp,
+                    "consider removing this semicolon",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            }
+        } else {
+            let suggested =
+                if let Some(first_id) = first_id
+                    && let hir::Node::Block(blk) = self.tcx.hir().get(first_id)
+                {
+                    self.consider_returning_binding(blk, second_ty, err)
+                } else {
+                    false
+                };
+            if !suggested
+                && let Some(second_id) = second_id
+                && let hir::Node::Block(blk) = self.tcx.hir().get(second_id)
+            {
+                self.consider_returning_binding(blk, first_ty, err);
             }
         }
     }

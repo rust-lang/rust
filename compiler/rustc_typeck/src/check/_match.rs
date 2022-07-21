@@ -9,7 +9,6 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    StatementAsExpression,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -75,8 +74,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut other_arms = vec![]; // Used only for diagnostics.
-        let mut prior_arm_ty = None;
-        for (i, arm) in arms.iter().enumerate() {
+        let mut prior_arm = None;
+        for arm in arms {
             if let Some(g) = &arm.guard {
                 self.diverges.set(Diverges::Maybe);
                 match g {
@@ -96,21 +95,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let opt_suggest_box_span = self.opt_suggest_box_span(arm_ty, orig_expected);
 
-            let (arm_span, semi_span) =
-                self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
-            let (span, code) = match i {
+            let (arm_block_id, arm_span) = if let hir::ExprKind::Block(blk, _) = arm.body.kind {
+                (Some(blk.hir_id), self.find_block_span(blk))
+            } else {
+                (None, arm.body.span)
+            };
+
+            let (span, code) = match prior_arm {
                 // The reason for the first arm to fail is not that the match arms diverge,
                 // but rather that there's a prior obligation that doesn't hold.
-                0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
-                _ => (
+                None => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
+                Some((prior_arm_block_id, prior_arm_ty, prior_arm_span)) => (
                     expr.span,
                     ObligationCauseCode::MatchExpressionArm(Box::new(MatchExpressionArmCause {
+                        arm_block_id,
                         arm_span,
+                        arm_ty,
+                        prior_arm_block_id,
+                        prior_arm_ty,
+                        prior_arm_span,
                         scrut_span: scrut.span,
-                        semi_span,
                         source: match_src,
                         prior_arms: other_arms.clone(),
-                        last_ty: prior_arm_ty.unwrap(),
                         scrut_hir_id: scrut.hir_id,
                         opt_suggest_box_span,
                     })),
@@ -139,7 +145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let ret_ty = ret_coercion.borrow().expected_ty();
                             let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
                             self.can_coerce(arm_ty, ret_ty)
-                                && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
+                                && prior_arm.map_or(true, |(_, t, _)| self.can_coerce(t, ret_ty))
                                 // The match arms need to unify for the case of `impl Trait`.
                                 && !matches!(ret_ty.kind(), ty::Opaque(..))
                         }
@@ -181,7 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if other_arms.len() > 5 {
                 other_arms.remove(0);
             }
-            prior_arm_ty = Some(arm_ty);
+
+            prior_arm = Some((arm_block_id, arm_ty, arm_span));
         }
 
         // If all of the arms in the `match` diverge,
@@ -205,32 +212,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let match_ty = coercion.complete(self);
         debug!(?match_ty);
         match_ty
-    }
-
-    fn get_appropriate_arm_semicolon_removal_span(
-        &self,
-        arms: &'tcx [hir::Arm<'tcx>],
-        i: usize,
-        prior_arm_ty: Option<Ty<'tcx>>,
-        arm_ty: Ty<'tcx>,
-    ) -> (Span, Option<(Span, StatementAsExpression)>) {
-        let arm = &arms[i];
-        let (arm_span, mut semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
-            (
-                self.find_block_span(blk),
-                prior_arm_ty
-                    .and_then(|prior_arm_ty| self.could_remove_semicolon(blk, prior_arm_ty)),
-            )
-        } else {
-            (arm.body.span, None)
-        };
-        if semi_span.is_none() && i > 0 {
-            if let hir::ExprKind::Block(blk, _) = &arms[i - 1].body.kind {
-                let semi_span_prev = self.could_remove_semicolon(blk, arm_ty);
-                semi_span = semi_span_prev;
-            }
-        }
-        (arm_span, semi_span)
     }
 
     /// When the previously checked expression (the scrutinee) diverges,

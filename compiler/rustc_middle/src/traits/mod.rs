@@ -488,12 +488,15 @@ impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct MatchExpressionArmCause<'tcx> {
+    pub arm_block_id: Option<hir::HirId>,
+    pub arm_ty: Ty<'tcx>,
     pub arm_span: Span,
+    pub prior_arm_block_id: Option<hir::HirId>,
+    pub prior_arm_ty: Ty<'tcx>,
+    pub prior_arm_span: Span,
     pub scrut_span: Span,
-    pub semi_span: Option<(Span, StatementAsExpression)>,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
-    pub last_ty: Ty<'tcx>,
     pub scrut_hir_id: hir::HirId,
     pub opt_suggest_box_span: Option<Span>,
 }
