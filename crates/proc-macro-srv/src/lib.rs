@@ -64,15 +64,23 @@ impl ProcMacroSrv {
         let macro_body = task.macro_body.to_subtree();
         let attributes = task.attributes.map(|it| it.to_subtree());
         let result = crossbeam::scope(|s| {
-            s.spawn(|_| {
-                expander
-                    .expand(&task.macro_name, &macro_body, attributes.as_ref())
-                    .map(|it| FlatTree::new(&it))
-            })
-            .join()
-            .unwrap()
-        })
-        .unwrap();
+            let res = s
+                .spawn(|_| {
+                    expander
+                        .expand(&task.macro_name, &macro_body, attributes.as_ref())
+                        .map(|it| FlatTree::new(&it))
+                })
+                .join();
+
+            match res {
+                Ok(res) => res,
+                Err(e) => std::panic::resume_unwind(e),
+            }
+        });
+        let result = match result {
+            Ok(result) => result,
+            Err(e) => std::panic::resume_unwind(e),
+        };
 
         prev_env.rollback();
 
