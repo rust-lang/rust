@@ -31,6 +31,6 @@ fn test() {
         c: Ox01,
     }
 
-    assert::is_maybe_transmutable::<A, B>(); //~ ERROR not satisfied
-    assert::is_maybe_transmutable::<B, A>(); //~ ERROR not satisfied
+    assert::is_maybe_transmutable::<A, B>(); //~ ERROR cannot be safely transmuted
+    assert::is_maybe_transmutable::<B, A>(); //~ ERROR cannot be safely transmuted
 }

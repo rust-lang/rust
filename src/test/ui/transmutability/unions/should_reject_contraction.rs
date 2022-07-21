@@ -32,5 +32,5 @@ fn test() {
         c: Ox01,
     }
 
-    assert::is_transmutable::<Superset, Subset>(); //~ ERROR not satisfied
+    assert::is_transmutable::<Superset, Subset>(); //~ ERROR cannot be safely transmuted
 }

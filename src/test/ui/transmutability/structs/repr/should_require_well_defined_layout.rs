@@ -18,39 +18,39 @@ fn should_reject_repr_rust()
 {
     fn unit() {
         struct repr_rust;
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn tuple() {
         struct repr_rust();
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn braces() {
         struct repr_rust{}
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn aligned() {
         #[repr(align(1))] struct repr_rust{}
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn packed() {
         #[repr(packed)] struct repr_rust{}
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn nested() {
         struct repr_rust;
         #[repr(C)] struct repr_c(repr_rust);
-        assert::is_maybe_transmutable::<repr_c, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_c>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_c, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_c>(); //~ ERROR cannot be safely transmuted
     }
 }
 

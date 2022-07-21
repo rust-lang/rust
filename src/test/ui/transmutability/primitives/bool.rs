@@ -19,7 +19,7 @@ mod assert {
 }
 
 fn contrast_with_u8() {
-    assert::is_transmutable::<u8, bool>(); //~ ERROR not satisfied
+    assert::is_transmutable::<u8, bool>(); //~ ERROR cannot be safely transmuted
     assert::is_maybe_transmutable::<u8, bool>();
     assert::is_transmutable::<bool, u8>();
 }

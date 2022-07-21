@@ -18,20 +18,20 @@ mod assert {
 fn should_reject_repr_rust() {
     fn void() {
         enum repr_rust {}
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn singleton() {
         enum repr_rust { V }
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn duplex() {
         enum repr_rust { A, B }
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 }
 

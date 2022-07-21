@@ -33,6 +33,6 @@ fn test() {
         b: OxFF,
     }
 
-    assert::is_transmutable::<A, B>(); //~ ERROR not satisfied
-    assert::is_transmutable::<B, A>(); //~ ERROR not satisfied
+    assert::is_transmutable::<A, B>(); //~ ERROR cannot be safely transmuted
+    assert::is_transmutable::<B, A>(); //~ ERROR cannot be safely transmuted
 }

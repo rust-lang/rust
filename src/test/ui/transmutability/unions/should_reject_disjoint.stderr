@@ -1,9 +1,10 @@
-error[E0277]: the trait bound `B: BikeshedIntrinsicFrom<A, assert::Context, false, false, true, true>` is not satisfied
+error[E0277]: `A` cannot be safely transmuted into `B` in the defining scope of `assert::Context`.
   --> $DIR/should_reject_disjoint.rs:34:40
    |
 LL |     assert::is_maybe_transmutable::<A, B>();
-   |                                        ^ the trait `BikeshedIntrinsicFrom<A, assert::Context, false, false, true, true>` is not implemented for `B`
+   |                                        ^ `A` cannot be safely transmuted into `B` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<A, assert::Context, false, false, true, true>` is not implemented for `B`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_reject_disjoint.rs:13:14
    |
@@ -13,12 +14,13 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, true, true>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: the trait bound `A: BikeshedIntrinsicFrom<B, assert::Context, false, false, true, true>` is not satisfied
+error[E0277]: `B` cannot be safely transmuted into `A` in the defining scope of `assert::Context`.
   --> $DIR/should_reject_disjoint.rs:35:40
    |
 LL |     assert::is_maybe_transmutable::<B, A>();
-   |                                        ^ the trait `BikeshedIntrinsicFrom<B, assert::Context, false, false, true, true>` is not implemented for `A`
+   |                                        ^ `B` cannot be safely transmuted into `A` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<B, assert::Context, false, false, true, true>` is not implemented for `A`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_reject_disjoint.rs:13:14
    |

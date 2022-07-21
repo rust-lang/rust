@@ -20,8 +20,8 @@ fn should_reject_repr_rust()
         a: u8
     }
 
-    assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-    assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+    assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+    assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
 }
 
 fn should_accept_repr_C()

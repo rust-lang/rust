@@ -16,5 +16,5 @@ mod assert {
 
 fn not_yet_implemented() {
     #[repr(C)] struct Unit;
-    assert::is_maybe_transmutable::<&'static Unit, &'static Unit>(); //~ ERROR not satisfied
+    assert::is_maybe_transmutable::<&'static Unit, &'static Unit>(); //~ ERROR cannot be safely transmuted
 }

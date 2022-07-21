@@ -18,20 +18,20 @@ fn should_reject_repr_rust()
 {
     fn unit() {
         type repr_rust = [String; 0];
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn singleton() {
         type repr_rust = [String; 1];
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 
     fn duplex() {
         type repr_rust = [String; 2];
-        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR not satisfied
-        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR not satisfied
+        assert::is_maybe_transmutable::<repr_rust, ()>(); //~ ERROR cannot be safely transmuted
+        assert::is_maybe_transmutable::<u128, repr_rust>(); //~ ERROR cannot be safely transmuted
     }
 }
 

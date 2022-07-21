@@ -35,5 +35,5 @@ mod dst {
 
 fn test() {
     struct Context;
-    assert::is_transmutable::<src::Src, dst::Dst, Context>(); //~ ERROR not satisfied
+    assert::is_transmutable::<src::Src, dst::Dst, Context>(); //~ ERROR cannot be safely transmuted
 }

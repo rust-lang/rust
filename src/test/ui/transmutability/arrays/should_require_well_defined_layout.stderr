@@ -1,9 +1,10 @@
-error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<[String; 0], assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `[String; 0]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
   --> $DIR/should_require_well_defined_layout.rs:21:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ the trait `BikeshedIntrinsicFrom<[String; 0], assert::Context, true, true, true, true>` is not implemented for `()`
+   |                                                    ^^ `[String; 0]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<[String; 0], assert::Context, true, true, true, true>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -13,12 +14,13 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: the trait bound `[String; 0]: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `u128` cannot be safely transmuted into `[String; 0]` in the defining scope of `assert::Context`.
   --> $DIR/should_require_well_defined_layout.rs:22:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `[String; 0]`
+   |                                               ^^^^^^^^^ `u128` cannot be safely transmuted into `[String; 0]` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `[String; 0]`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -28,12 +30,13 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<[String; 1], assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `[String; 1]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
   --> $DIR/should_require_well_defined_layout.rs:27:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ the trait `BikeshedIntrinsicFrom<[String; 1], assert::Context, true, true, true, true>` is not implemented for `()`
+   |                                                    ^^ `[String; 1]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<[String; 1], assert::Context, true, true, true, true>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -43,12 +46,13 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: the trait bound `[String; 1]: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `u128` cannot be safely transmuted into `[String; 1]` in the defining scope of `assert::Context`.
   --> $DIR/should_require_well_defined_layout.rs:28:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `[String; 1]`
+   |                                               ^^^^^^^^^ `u128` cannot be safely transmuted into `[String; 1]` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `[String; 1]`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -58,12 +62,13 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: the trait bound `(): BikeshedIntrinsicFrom<[String; 2], assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `[String; 2]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
   --> $DIR/should_require_well_defined_layout.rs:33:52
    |
 LL |         assert::is_maybe_transmutable::<repr_rust, ()>();
-   |                                                    ^^ the trait `BikeshedIntrinsicFrom<[String; 2], assert::Context, true, true, true, true>` is not implemented for `()`
+   |                                                    ^^ `[String; 2]` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<[String; 2], assert::Context, true, true, true, true>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
@@ -73,12 +78,13 @@ LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
 
-error[E0277]: the trait bound `[String; 2]: BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `u128` cannot be safely transmuted into `[String; 2]` in the defining scope of `assert::Context`.
   --> $DIR/should_require_well_defined_layout.rs:34:47
    |
 LL |         assert::is_maybe_transmutable::<u128, repr_rust>();
-   |                                               ^^^^^^^^^ the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `[String; 2]`
+   |                                               ^^^^^^^^^ `u128` cannot be safely transmuted into `[String; 2]` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `[String; 2]`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |

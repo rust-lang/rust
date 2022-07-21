@@ -29,5 +29,5 @@ mod assert {
 
 fn should_respect_endianness() {
     assert::is_transmutable::<Src, Expected>();
-    assert::is_transmutable::<Src, Unexpected>(); //~ ERROR not satisfied
+    assert::is_transmutable::<Src, Unexpected>(); //~ ERROR cannot be safely transmuted
 }

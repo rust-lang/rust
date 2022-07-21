@@ -1,7 +1,7 @@
 // check-pass
 //! NOTE: This test documents a known-bug in the implementation of the
 //! transmutability trait. Once fixed, the above "check-pass" header should be
-//! removed, and an "ERROR not satisfied" annotation should be added at the end
+//! removed, and an "ERROR cannot be safely transmuted" annotation should be added at the end
 //! of the line starting with `assert::is_transmutable`.
 //!
 //! Unless visibility is assumed, a transmutation should be rejected if the

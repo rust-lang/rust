@@ -38,17 +38,17 @@ fn n8() {
     fn i_should_have_correct_length() {
         type Current = V0i8;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 
     fn u_should_have_correct_length() {
         type Current = V0u8;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 }
 
@@ -62,17 +62,17 @@ fn n16() {
     fn i_should_have_correct_length() {
         type Current = V0i16;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 
     fn u_should_have_correct_length() {
         type Current = V0u16;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 }
 
@@ -86,17 +86,17 @@ fn n32() {
     fn i_should_have_correct_length() {
         type Current = V0i32;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 
     fn u_should_have_correct_length() {
         type Current = V0u32;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 }
 
@@ -110,17 +110,17 @@ fn n64() {
     fn i_should_have_correct_length() {
         type Current = V0i64;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 
     fn u_should_have_correct_length() {
         type Current = V0u64;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 }
 
@@ -134,16 +134,16 @@ fn nsize() {
     fn i_should_have_correct_length() {
         type Current = V0isize;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 
     fn u_should_have_correct_length() {
         type Current = V0usize;
 
-        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Smaller, Current, Context>(); //~ ERROR cannot be safely transmuted
         assert::is_transmutable::<Current, Analog, Context>();
-        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR not satisfied
+        assert::is_transmutable::<Current, Larger, Context>(); //~ ERROR cannot be safely transmuted
     }
 }

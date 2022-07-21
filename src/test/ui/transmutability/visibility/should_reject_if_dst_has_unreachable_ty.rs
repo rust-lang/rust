@@ -38,5 +38,5 @@ fn test() {
     struct Context;
     assert::is_transmutable::<src::Src, dst::Dst, Context>();
     //~^ ERROR `Dst` is private
-    //~| ERROR not satisfied
+    //~| ERROR cannot be safely transmuted
 }

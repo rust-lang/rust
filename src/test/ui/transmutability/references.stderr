@@ -1,9 +1,10 @@
-error[E0277]: the trait bound `&'static Unit: BikeshedIntrinsicFrom<&'static Unit, assert::Context, true, true, true, true>` is not satisfied
+error[E0277]: `&'static Unit` cannot be safely transmuted into `&'static Unit` in the defining scope of `assert::Context`.
   --> $DIR/references.rs:19:52
    |
 LL |     assert::is_maybe_transmutable::<&'static Unit, &'static Unit>();
-   |                                                    ^^^^^^^^^^^^^ the trait `BikeshedIntrinsicFrom<&'static Unit, assert::Context, true, true, true, true>` is not implemented for `&'static Unit`
+   |                                                    ^^^^^^^^^^^^^ `&'static Unit` cannot be safely transmuted into `&'static Unit` in the defining scope of `assert::Context`.
    |
+   = help: the trait `BikeshedIntrinsicFrom<&'static Unit, assert::Context, true, true, true, true>` is not implemented for `&'static Unit`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/references.rs:13:14
    |

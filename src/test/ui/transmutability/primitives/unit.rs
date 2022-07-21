@@ -20,5 +20,5 @@ fn should_have_correct_size() {
     struct Context;
     assert::is_transmutable::<(), Zst, Context>();
     assert::is_transmutable::<Zst, (), Context>();
-    assert::is_transmutable::<(), u8, Context>(); //~ ERROR not satisfied
+    assert::is_transmutable::<(), u8, Context>(); //~ ERROR cannot be safely transmuted
 }
