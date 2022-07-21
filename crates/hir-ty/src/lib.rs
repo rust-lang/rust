@@ -52,8 +52,8 @@ pub use infer::{
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
-    TyDefId, TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, CallableDefId, ImplTraitLoweringMode, TyDefId,
+    TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
