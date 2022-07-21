@@ -28,7 +28,7 @@ mod valid_align;
 pub(crate) use valid_align::ValidAlign;
 
 mod transmutability;
-#[unstable(feature = "transmutability", issue = "none")]
+#[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, BikeshedIntrinsicFrom};
 
 #[stable(feature = "rust1", since = "1.0.0")]

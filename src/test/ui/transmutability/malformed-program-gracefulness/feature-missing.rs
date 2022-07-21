@@ -4,3 +4,6 @@
 
 use std::mem::BikeshedIntrinsicFrom;
 //~^ ERROR use of unstable library feature 'transmutability' [E0658]
+
+use std::mem::Assume;
+//~^ ERROR use of unstable library feature 'transmutability' [E0658]

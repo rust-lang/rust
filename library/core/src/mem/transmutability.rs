@@ -3,7 +3,7 @@
 /// This trait is implemented on-the-fly by the compiler for types `Src` and `Self` when the bits of
 /// any value of type `Self` are safely transmutable into a value of type `Dst`, in a given `Context`,
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
-#[unstable(feature = "transmutability", issue = "none")]
+#[unstable(feature = "transmutability", issue = "99571")]
 #[cfg_attr(not(bootstrap), lang = "transmute_trait")]
 #[rustc_on_unimplemented(
     message = "`{Src}` cannot be safely transmuted into `{Self}` in the defining scope of `{Context}`.",
@@ -22,7 +22,7 @@ pub unsafe trait BikeshedIntrinsicFrom<
 }
 
 /// What transmutation safety conditions shall the compiler assume that *you* are checking?
-#[unstable(feature = "transmutability", issue = "none")]
+#[unstable(feature = "transmutability", issue = "99571")]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Assume {
     /// When `true`, the compiler assumes that *you* are ensuring (either dynamically or statically) that
