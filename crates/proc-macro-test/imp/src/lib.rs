@@ -2,7 +2,7 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
-use proc_macro::{Group, Ident, Literal, Punct, TokenStream, TokenTree};
+use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 
 #[proc_macro]
 pub fn fn_like_noop(args: TokenStream) -> TokenStream {
@@ -36,6 +36,15 @@ pub fn fn_like_mk_literals(_args: TokenStream) -> TokenStream {
         TokenTree::from(Literal::f64_unsuffixed(3.14)),
         TokenTree::from(Literal::i64_suffixed(123)),
         TokenTree::from(Literal::i64_unsuffixed(123)),
+    ];
+    TokenStream::from_iter(trees)
+}
+
+#[proc_macro]
+pub fn fn_like_mk_idents(_args: TokenStream) -> TokenStream {
+    let trees: Vec<TokenTree> = vec![
+        TokenTree::from(Ident::new("standard", Span::call_site())),
+        TokenTree::from(Ident::new_raw("raw", Span::call_site())),
     ];
     TokenStream::from_iter(trees)
 }

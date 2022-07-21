@@ -85,6 +85,20 @@ fn test_fn_like_mk_literals() {
 }
 
 #[test]
+fn test_fn_like_mk_idents() {
+    // FIXME: this test is wrong: raw should be 'r#raw' but ABIs 1.64 and below
+    // simply ignore `is_raw` when implementing the `Ident` interface.
+    assert_expand(
+        "fn_like_mk_idents",
+        r#""#,
+        expect![[r#"
+            SUBTREE $
+              IDENT   standard 4294967295
+              IDENT   raw 4294967295"#]],
+    );
+}
+
+#[test]
 fn test_fn_like_macro_clone_literals() {
     assert_expand(
         "fn_like_clone_tokens",
@@ -134,6 +148,7 @@ fn list_test_macros() {
         fn_like_error [FuncLike]
         fn_like_clone_tokens [FuncLike]
         fn_like_mk_literals [FuncLike]
+        fn_like_mk_idents [FuncLike]
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]
