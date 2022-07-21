@@ -796,7 +796,7 @@ pub trait Provider {
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
     ///         demand.provide_ref::<str>(&self.field)
-    ///             .provide_value::<i32>(|| self.num_field);
+    ///             .provide_value::<i32>(self.num_field);
     ///     }
     /// }
     /// ```
@@ -881,28 +881,55 @@ impl<'a> Demand<'a> {
     ///
     /// # Examples
     ///
+    /// Provides an `u8`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: u8 }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_value::<u8>(self.field);
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_value<T>(&mut self, value: T) -> &mut Self
+    where
+        T: 'static,
+    {
+        self.provide::<tags::Value<T>>(value)
+    }
+
+    /// Provide a value or other type with only static lifetimes computed using a closure.
+    ///
+    /// # Examples
+    ///
     /// Provides a `String` by cloning.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
     /// impl Provider for SomeConcreteType {
     ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-    ///         demand.provide_value::<String>(|| self.field.clone());
+    ///         demand.provide_value_with::<String>(|| self.field.clone());
     ///     }
     /// }
     /// ```
     #[unstable(feature = "provide_any", issue = "96024")]
-    pub fn provide_value<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
+    pub fn provide_value_with<T>(&mut self, fulfil: impl FnOnce() -> T) -> &mut Self
     where
         T: 'static,
     {
         self.provide_with::<tags::Value<T>>(fulfil)
     }
 
-    /// Provide a reference, note that the referee type must be bounded by `'static`,
+    /// Provide a reference. The referee type must be bounded by `'static`,
     /// but may be unsized.
     ///
     /// # Examples
@@ -910,7 +937,8 @@ impl<'a> Demand<'a> {
     /// Provides a reference to a field as a `&str`.
     ///
     /// ```rust
-    /// # #![feature(provide_any)]
+    /// #![feature(provide_any)]
+    ///
     /// use std::any::{Provider, Demand};
     /// # struct SomeConcreteType { field: String }
     ///
@@ -923,6 +951,40 @@ impl<'a> Demand<'a> {
     #[unstable(feature = "provide_any", issue = "96024")]
     pub fn provide_ref<T: ?Sized + 'static>(&mut self, value: &'a T) -> &mut Self {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
+    }
+
+    /// Provide a reference computed using a closure. The referee type
+    /// must be bounded by `'static`, but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field as a `&str`.
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    ///
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { business: String, party: String }
+    /// # fn today_is_a_weekday() -> bool { true }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref_with::<str>(|| {
+    ///             if today_is_a_weekday() {
+    ///                 &self.business
+    ///             } else {
+    ///                 &self.party
+    ///             }
+    ///         });
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "96024")]
+    pub fn provide_ref_with<T: ?Sized + 'static>(
+        &mut self,
+        fulfil: impl FnOnce() -> &'a T,
+    ) -> &mut Self {
+        self.provide_with::<tags::Ref<tags::MaybeSizedValue<T>>>(fulfil)
     }
 
     /// Provide a value with the given `Type` tag.

@@ -142,7 +142,7 @@ impl Provider for SomeConcreteType {
         demand
             .provide_ref::<String>(&self.some_string)
             .provide_ref::<str>(&self.some_string)
-            .provide_value::<String>(|| "bye".to_owned());
+            .provide_value_with::<String>(|| "bye".to_owned());
     }
 }
 
