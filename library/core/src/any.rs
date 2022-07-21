@@ -670,7 +670,7 @@ impl dyn Any + Send + Sync {
 pub struct TypeId {
     // This field is unused, and is intended solely
     // to break invalid transmutes to `TypeId`.
-    pad: u64,
+    pad: core::mem::MaybeUninit<u64>,
     t: u64,
 }
 
@@ -703,7 +703,7 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId { pad: 0, t: intrinsics::type_id::<T>() }
+        TypeId { pad: core::mem::MaybeUninit::new(), t: intrinsics::type_id::<T>() }
     }
 }
 
