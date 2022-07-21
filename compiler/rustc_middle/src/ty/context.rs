@@ -1729,12 +1729,33 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// As long as the kind of `ty` is `TyAlias`, then it'll continue to peel it off and return
     /// the type below it.
-    pub fn peel_off_ty_alias(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        while let ty::TyAlias(def_id, substs) = *ty.kind() {
-            let binder_ty = self.bound_type_of(def_id);
-            ty = binder_ty.subst(self, substs);
+    pub fn peel_off_ty_alias<T: ty::TypeFoldable<'tcx>>(self, ty: T) -> T {
+        struct TyAliasPeeler<'t> {
+            tcx: TyCtxt<'t>,
         }
-        ty
+
+        impl<'t> ty::TypeFolder<'t> for TyAliasPeeler<'t> {
+            fn tcx<'a>(&'a self) -> TyCtxt<'t> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, t: Ty<'t>) -> Ty<'t> {
+                use crate::ty::fold::{TypeFoldable, TypeSuperFoldable};
+                use crate::ty::visit::TypeVisitable;
+
+                match *t.kind() {
+                    ty::TyAlias(def_id, substs) => {
+                        let binder_ty = self.tcx.bound_type_of(def_id);
+                        let ty = binder_ty.subst(self.tcx, substs);
+                        ty.fold_with(self)
+                    }
+                    _ if !t.has_ty_alias() => t,
+                    _ => t.super_fold_with(self),
+                }
+            }
+        }
+
+        ty.fold_with(&mut TyAliasPeeler { tcx: self })
     }
 }
 
