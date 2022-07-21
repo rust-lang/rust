@@ -44,7 +44,7 @@ use crate::sync::atomic::{
 use crate::sys::futex::zircon::{
     zx_futex_wait, zx_futex_wake_single_owner, zx_handle_t, zx_thread_self, ZX_ERR_BAD_HANDLE,
     ZX_ERR_BAD_STATE, ZX_ERR_INVALID_ARGS, ZX_ERR_TIMED_OUT, ZX_ERR_WRONG_TYPE, ZX_OK,
-    ZX_TIME_INFINITE, ZX_TIME_INFINITE,
+    ZX_TIME_INFINITE,
 };
 
 // The lowest two bits of a `zx_handle_t` are always set, so the lowest bit is used to mark the
