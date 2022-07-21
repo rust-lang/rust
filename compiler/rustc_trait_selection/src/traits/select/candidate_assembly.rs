@@ -884,7 +884,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         if obligation.has_param_types_or_consts() {
-            candidates.ambiguous = false;
             return;
         }
 
