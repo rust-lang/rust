@@ -9,4 +9,4 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-byteorder = "1.0"
+byteorder = "1.0" # to test dependencies of sub-crates

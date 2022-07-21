@@ -5,9 +5,9 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 imported main
 
-running 8 tests
-..i.....
-test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
+running 6 tests
+...i..
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
 
 
 running 4 tests
