@@ -8,6 +8,9 @@
 )]
 #![allow(dead_code, unused_variables)]
 
+#[macro_use]
+extern crate tracing;
+
 #[cfg(feature = "rustc")]
 pub(crate) use rustc_data_structures::fx::{FxHashMap as Map, FxHashSet as Set};
 

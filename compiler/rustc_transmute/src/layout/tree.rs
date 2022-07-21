@@ -76,7 +76,6 @@ where
     }
 
     /// A `Tree` whose layout is entirely padding of the given width.
-    #[tracing::instrument]
     pub(crate) fn padding(width_in_bytes: usize) -> Self {
         Self::Seq(vec![Self::uninit(); width_in_bytes])
     }
@@ -316,10 +315,7 @@ pub(crate) mod rustc {
                             tcx,
                         )?,
                         AdtKind::Enum => {
-                            tracing::trace!(
-                                adt_def = ?adt_def,
-                                "treeifying enum"
-                            );
+                            tracing::trace!(?adt_def, "treeifying enum");
                             let mut tree = Tree::uninhabited();
 
                             for (idx, discr) in adt_def.discriminants(tcx) {
@@ -398,13 +394,13 @@ pub(crate) mod rustc {
 
             // The layout of the variant is prefixed by the discriminant, if any.
             if let Some(discr) = discr {
-                tracing::trace!(discr = ?discr, "treeifying discriminant");
+                tracing::trace!(?discr, "treeifying discriminant");
                 let discr_layout = alloc::Layout::from_size_align(
                     layout_summary.discriminant_size,
                     clamp(layout_summary.discriminant_align),
                 )
                 .unwrap();
-                tracing::trace!(discr_layout = ?discr_layout, "computed discriminant layout");
+                tracing::trace!(?discr_layout, "computed discriminant layout");
                 variant_layout = variant_layout.extend(discr_layout).unwrap().0;
                 tree = tree.then(Self::from_disr(discr, tcx, layout_summary.discriminant_size));
             }
@@ -469,11 +465,7 @@ pub(crate) mod rustc {
             layout.align().abi.bytes().try_into().unwrap(),
         )
         .unwrap();
-        tracing::trace!(
-            ty = ?ty,
-            layout = ?layout,
-            "computed layout for type"
-        );
+        tracing::trace!(?ty, ?layout, "computed layout for type");
         Ok(layout)
     }
 }
