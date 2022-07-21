@@ -4,6 +4,7 @@
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
 
+use crate::ffi::CStr;
 use crate::mem;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
 use crate::os::windows::io::{BorrowedHandle, HandleOrInvalid, HandleOrNull};
@@ -1219,8 +1220,8 @@ extern "system" {
 
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
-compat_fn! {
-    "kernel32":
+compat_fn_with_fallback! {
+    pub static KERNEL32: &CStr = ansi_str!("kernel32");
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
@@ -1243,8 +1244,8 @@ compat_fn! {
     }
 }
 
-compat_fn! {
-    "api-ms-win-core-synch-l1-2-0":
+compat_fn_optional! {
+    pub static SYNCH_API: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
 
     // >= Windows 8 / Server 2012
     // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitonaddress
@@ -1253,17 +1254,13 @@ compat_fn! {
         CompareAddress: LPVOID,
         AddressSize: SIZE_T,
         dwMilliseconds: DWORD
-    ) -> BOOL {
-        panic!("WaitOnAddress not available")
-    }
-    pub fn WakeByAddressSingle(Address: LPVOID) -> () {
-        // If this api is unavailable, there cannot be anything waiting, because
-        // WaitOnAddress would've panicked. So it's fine to do nothing here.
-    }
+    ) -> BOOL;
+    pub fn WakeByAddressSingle(Address: LPVOID) -> ();
 }
 
-compat_fn! {
-    "ntdll":
+compat_fn_with_fallback! {
+    pub static NTDLL: &CStr = ansi_str!("ntdll");
+
     pub fn NtCreateFile(
         FileHandle: *mut HANDLE,
         DesiredAccess: ACCESS_MASK,
