@@ -82,7 +82,7 @@ impl server::FreeFunctions for RustAnalyzer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        // TODO: keep track of LitKind and Suffix
+        // FIXME: keep track of LitKind and Suffix
         let symbol = SYMBOL_INTERNER.lock().unwrap().intern(s);
         Ok(bridge::Literal {
             kind: bridge::LitKind::Err,
@@ -391,8 +391,9 @@ impl server::MultiSpan for RustAnalyzer {
 }
 
 impl server::Symbol for RustAnalyzer {
-    fn normalize_and_validate_ident(&mut self, _string: &str) -> Result<Self::Symbol, ()> {
-        todo!()
+    fn normalize_and_validate_ident(&mut self, string: &str) -> Result<Self::Symbol, ()> {
+        // FIXME: nfc-normalize and validate idents
+        Ok(<Self as server::Server>::intern_symbol(string))
     }
 }
 

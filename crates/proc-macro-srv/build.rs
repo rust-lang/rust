@@ -1,9 +1,9 @@
+//! Determine rustc version `proc-macro-srv` (and thus the sysroot ABI) is
+//! build with and make it accessible at runtime for ABI selection.
+
 use std::{env, fs::File, io::Write, path::PathBuf, process::Command};
 
 fn main() {
-    // Determine rustc version `proc-macro-srv` (and thus the sysroot ABI) is
-    // build with and make it accessible at runtime for ABI selection.
-
     let mut path = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     path.push("rustc_version.rs");
     let mut f = File::create(&path).unwrap();

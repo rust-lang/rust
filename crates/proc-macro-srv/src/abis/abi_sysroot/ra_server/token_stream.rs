@@ -1,3 +1,5 @@
+//! TokenStream implementation used by sysroot ABI
+
 use tt::TokenTree;
 
 #[derive(Debug, Default, Clone)]
