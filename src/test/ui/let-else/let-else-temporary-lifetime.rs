@@ -1,6 +1,7 @@
 // run-pass
 #![feature(let_else)]
 
+use std::fmt::Display;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -18,12 +19,22 @@ impl Drop for Droppy {
     }
 }
 
+fn foo<'a>(x: &'a str) -> Result<impl Display + 'a, ()> {
+    Ok(x)
+}
+
 fn main() {
     assert_eq!(TRACKER.load(Ordering::Acquire), 0);
     let 0 = Droppy::default().inner else { return };
     assert_eq!(TRACKER.load(Ordering::Acquire), 1);
     println!("Should have dropped 👆");
 
+    {
+        let x = String::from("Hey");
+
+        let Ok(s) = foo(&x) else { panic!() };
+        assert_eq!(s.to_string(), x);
+    }
     {
         // test let-else drops temps after statement
         let rc = Rc::new(0);
