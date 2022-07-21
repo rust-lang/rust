@@ -77,14 +77,13 @@ impl Abi {
         lib: &Library,
         symbol_name: String,
         info: RustCInfo,
-        #[cfg_attr(not(feature = "sysroot-abi"), allow(unused_variables))] version_string: String,
     ) -> Result<Abi, LoadProcMacroDylibError> {
         // the sysroot ABI relies on `extern proc_macro` with unstable features,
         // instead of a snapshot of the proc macro bridge's source code. it's only
         // enabled if we have an exact version match.
         #[cfg(feature = "sysroot-abi")]
         {
-            if version_string == RUSTC_VERSION_STRING {
+            if info.version_string == RUSTC_VERSION_STRING {
                 let inner = unsafe { Abi_Sysroot::from_lib(lib, symbol_name) }?;
                 return Ok(Abi::AbiSysroot(inner));
             }
@@ -104,7 +103,7 @@ impl Abi {
                 } else {
                     panic!(
                         "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
-                        version_string, RUSTC_VERSION_STRING
+                        info.version_string, RUSTC_VERSION_STRING
                     );
                 }
             }

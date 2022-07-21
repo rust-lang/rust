@@ -16,6 +16,8 @@ pub struct RustCInfo {
     pub channel: String,
     pub commit: Option<String>,
     pub date: Option<String>,
+    // something like "rustc 1.58.1 (db9d1b20b 2022-01-20)"
+    pub version_string: String,
 }
 
 /// Read rustc dylib information
@@ -68,7 +70,7 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
     }
     let version = (version_numbers[0], version_numbers[1], version_numbers[2]);
 
-    Ok(RustCInfo { version, channel, commit, date })
+    Ok(RustCInfo { version, channel, commit, date, version_string: ver_str })
 }
 
 /// This is used inside read_version() to locate the ".rustc" section

@@ -12,7 +12,7 @@ use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
 use paths::AbsPath;
-use proc_macro_api::{read_dylib_info, read_version, ProcMacroKind};
+use proc_macro_api::{read_dylib_info, ProcMacroKind};
 
 use super::abis::Abi;
 
@@ -122,10 +122,9 @@ impl ProcMacroLibraryLibloading {
             invalid_data_err(format!("expected an absolute path, got {}", file.display()))
         })?;
         let version_info = read_dylib_info(abs_file)?;
-        let version_string = read_version(abs_file)?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
-        let abi = Abi::from_lib(&lib, symbol_name, version_info, version_string)?;
+        let abi = Abi::from_lib(&lib, symbol_name, version_info)?;
         Ok(ProcMacroLibraryLibloading { _lib: lib, abi })
     }
 }
