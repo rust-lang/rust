@@ -7,7 +7,11 @@ fn simple() {
 #[test]
 #[cfg_attr(miri, ignore)]
 fn does_not_work_on_miri() {
-    unsafe { std::arch::asm!("") };
+    // Only do this where inline assembly is stable.
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    unsafe {
+        std::arch::asm!("foo");
+    }
 }
 
 // Make sure integration tests can access both dependencies and dev-dependencies
