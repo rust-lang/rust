@@ -92,7 +92,7 @@ where
                 let mut alts = alts.into_iter().map(Self::from_tree);
                 let mut nfa = alts.next().ok_or(Uninhabited)??;
                 for alt in alts {
-                    nfa = nfa.union(&alt?);
+                    nfa = nfa.union(alt?);
                 }
                 nfa
             }
@@ -136,7 +136,7 @@ where
     }
 
     /// Compute the union of two `Nfa`s.
-    pub(crate) fn union(&self, other: &Self) -> Self {
+    pub(crate) fn union(self, other: Self) -> Self {
         let start = self.start;
         let accepting = self.accepting;
 
