@@ -724,7 +724,7 @@ impl TypeId {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId { pad: core::mem::MaybeUninit::new(), t: intrinsics::type_id::<T>() }
+        TypeId { pad: core::mem::MaybeUninit::uninit(), t: intrinsics::type_id::<T>() }
     }
 }
 
