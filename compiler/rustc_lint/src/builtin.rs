@@ -3299,7 +3299,11 @@ declare_lint_pass!(SpecialModuleName => [SPECIAL_MODULE_NAME]);
 impl EarlyLintPass for SpecialModuleName {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
         for item in &krate.items {
-            if let ast::ItemKind::Mod(..) = item.kind {
+            if let ast::ItemKind::Mod(
+                _,
+                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _),
+            ) = item.kind
+            {
                 if item.attrs.iter().any(|a| a.has_name(sym::path)) {
                     continue;
                 }
