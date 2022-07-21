@@ -212,7 +212,11 @@ fn find_miri() -> PathBuf {
         return path.into();
     }
     let mut path = std::env::current_exe().expect("current executable path invalid");
-    path.set_file_name("miri");
+    if cfg!(windows) {
+        path.set_file_name("miri.exe");
+    } else {
+        path.set_file_name("miri");
+    }
     path
 }
 
