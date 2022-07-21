@@ -132,17 +132,11 @@ impl server::TokenStream for RustAnalyzer {
             }
 
             bridge::TokenTree::Literal(literal) => {
-                // FIXME: remove unnecessary clones here
-                let symbol = ThreadLocalSymbolInterner::get_cloned(&literal.symbol);
+                let literal = LiteralFormatter(literal);
+                let text = literal
+                    .with_stringify_parts(|parts| tt::SmolStr::from_iter(parts.iter().copied()));
 
-                let text: tt::SmolStr = if let Some(suffix) = literal.suffix {
-                    let suffix = ThreadLocalSymbolInterner::get_cloned(&suffix);
-                    format!("{symbol}{suffix}").into()
-                } else {
-                    symbol
-                };
-
-                let literal = tt::Literal { text, id: literal.span };
+                let literal = tt::Literal { text, id: literal.0.span };
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
                 Self::TokenStream::from_iter(vec![tree])
@@ -413,6 +407,53 @@ impl server::Server for RustAnalyzer {
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
         ThreadLocalSymbolInterner::with(symbol, |s| f(s.as_str()))
+    }
+}
+
+struct LiteralFormatter(bridge::Literal<tt::TokenId, Symbol>);
+
+impl LiteralFormatter {
+    /// Invokes the callback with a `&[&str]` consisting of each part of the
+    /// literal's representation. This is done to allow the `ToString` and
+    /// `Display` implementations to borrow references to symbol values, and
+    /// both be optimized to reduce overhead.
+    fn with_stringify_parts<R>(&self, f: impl FnOnce(&[&str]) -> R) -> R {
+        /// Returns a string containing exactly `num` '#' characters.
+        /// Uses a 256-character source string literal which is always safe to
+        /// index with a `u8` index.
+        fn get_hashes_str(num: u8) -> &'static str {
+            const HASHES: &str = "\
+                        ################################################################\
+                        ################################################################\
+                        ################################################################\
+                        ################################################################\
+                        ";
+            const _: () = assert!(HASHES.len() == 256);
+            &HASHES[..num as usize]
+        }
+
+        self.with_symbol_and_suffix(|symbol, suffix| match self.0.kind {
+            bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
+            bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
+            bridge::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
+            bridge::LitKind::StrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["r", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+            bridge::LitKind::ByteStr => f(&["b\"", symbol, "\"", suffix]),
+            bridge::LitKind::ByteStrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+            _ => f(&[symbol, suffix]),
+        })
+    }
+
+    fn with_symbol_and_suffix<R>(&self, f: impl FnOnce(&str, &str) -> R) -> R {
+        ThreadLocalSymbolInterner::with(&self.0.symbol, |symbol| match self.0.suffix.as_ref() {
+            Some(suffix) => ThreadLocalSymbolInterner::with(suffix, |suffix| f(symbol, suffix)),
+            None => f(symbol, ""),
+        })
     }
 }
 

@@ -77,7 +77,6 @@ fn test_fn_like_mk_literals() {
               LITERAL b"byte_string" 4294967295
               LITERAL 'c' 4294967295
               LITERAL "string" 4294967295
-              LITERAL "maybe \"raw\"?" 4294967295
               LITERAL 3.14f64 4294967295
               LITERAL 3.14 4294967295
               LITERAL 123i64 4294967295
