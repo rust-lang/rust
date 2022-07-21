@@ -665,7 +665,7 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     // This field is unused, and is intended solely
@@ -682,6 +682,27 @@ impl PartialEq for TypeId {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for TypeId {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for TypeId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.t.hash(state);
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd for TypeId {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for TypeId {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.t.cmp(&other.t)
+    }
+}
 
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
