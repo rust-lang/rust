@@ -83,7 +83,7 @@ impl server::FreeFunctions for RustAnalyzer {
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
         // FIXME: keep track of LitKind and Suffix
-        let symbol = SYMBOL_INTERNER.lock().unwrap().intern(s);
+        let symbol = ThreadLocalSymbolInterner::intern(s);
         Ok(bridge::Literal {
             kind: bridge::LitKind::Err,
             symbol,
@@ -124,7 +124,7 @@ impl server::TokenStream for RustAnalyzer {
 
             bridge::TokenTree::Ident(ident) => {
                 // FIXME: handle raw idents
-                let text = SYMBOL_INTERNER.lock().unwrap().get(&ident.sym).clone();
+                let text = ThreadLocalSymbolInterner::get_cloned(&ident.sym);
                 let ident: tt::Ident = tt::Ident { text, id: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
@@ -132,10 +132,11 @@ impl server::TokenStream for RustAnalyzer {
             }
 
             bridge::TokenTree::Literal(literal) => {
-                let symbol = SYMBOL_INTERNER.lock().unwrap().get(&literal.symbol).clone();
+                // FIXME: remove unnecessary clones here
+                let symbol = ThreadLocalSymbolInterner::get_cloned(&literal.symbol);
 
                 let text: tt::SmolStr = if let Some(suffix) = literal.suffix {
-                    let suffix = SYMBOL_INTERNER.lock().unwrap().get(&suffix).clone();
+                    let suffix = ThreadLocalSymbolInterner::get_cloned(&suffix);
                     format!("{symbol}{suffix}").into()
                 } else {
                     symbol
@@ -203,7 +204,7 @@ impl server::TokenStream for RustAnalyzer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: SYMBOL_INTERNER.lock().unwrap().intern(&ident.text),
+                        sym: ThreadLocalSymbolInterner::intern(&ident.text),
                         // FIXME: handle raw idents
                         is_raw: false,
                         span: ident.id,
@@ -213,7 +214,7 @@ impl server::TokenStream for RustAnalyzer {
                     bridge::TokenTree::Literal(bridge::Literal {
                         // FIXME: handle literal kinds
                         kind: bridge::LitKind::Err,
-                        symbol: SYMBOL_INTERNER.lock().unwrap().intern(&lit.text),
+                        symbol: ThreadLocalSymbolInterner::intern(&lit.text),
                         // FIXME: handle suffixes
                         suffix: None,
                         span: lit.id,
@@ -407,11 +408,11 @@ impl server::Server for RustAnalyzer {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        SYMBOL_INTERNER.lock().unwrap().intern(&tt::SmolStr::from(ident))
+        ThreadLocalSymbolInterner::intern(&tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        f(SYMBOL_INTERNER.lock().unwrap().get(symbol).as_str())
+        ThreadLocalSymbolInterner::with(symbol, |s| f(s.as_str()))
     }
 }
 

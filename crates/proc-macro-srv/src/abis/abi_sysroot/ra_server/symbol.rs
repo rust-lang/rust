@@ -1,23 +1,24 @@
 //! Symbol interner for proc-macro-srv
 
-use once_cell::sync::Lazy;
-use std::{collections::HashMap, sync::Mutex};
+use std::{cell::RefCell, collections::HashMap};
 use tt::SmolStr;
 
-pub(super) static SYMBOL_INTERNER: Lazy<Mutex<SymbolInterner>> = Lazy::new(|| Default::default());
+thread_local! {
+    static SYMBOL_INTERNER: RefCell<SymbolInterner> = Default::default();
+}
 
 // ID for an interned symbol.
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Symbol(u32);
 
 #[derive(Default)]
-pub(super) struct SymbolInterner {
+struct SymbolInterner {
     idents: HashMap<SmolStr, u32>,
     ident_data: Vec<SmolStr>,
 }
 
 impl SymbolInterner {
-    pub(super) fn intern(&mut self, data: &str) -> Symbol {
+    fn intern(&mut self, data: &str) -> Symbol {
         if let Some(index) = self.idents.get(data) {
             return Symbol(*index);
         }
@@ -29,7 +30,23 @@ impl SymbolInterner {
         Symbol(index)
     }
 
-    pub(super) fn get(&self, index: &Symbol) -> &SmolStr {
-        &self.ident_data[index.0 as usize]
+    fn get(&self, sym: &Symbol) -> &SmolStr {
+        &self.ident_data[sym.0 as usize]
+    }
+}
+
+pub(super) struct ThreadLocalSymbolInterner;
+
+impl ThreadLocalSymbolInterner {
+    pub(super) fn intern(data: &str) -> Symbol {
+        SYMBOL_INTERNER.with(|i| i.borrow_mut().intern(data))
+    }
+
+    pub(super) fn with<T>(sym: &Symbol, f: impl FnOnce(&SmolStr) -> T) -> T {
+        SYMBOL_INTERNER.with(|i| f(i.borrow().get(sym)))
+    }
+
+    pub(super) fn get_cloned(sym: &Symbol) -> SmolStr {
+        Self::with(sym, |s| s.clone())
     }
 }
