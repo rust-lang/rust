@@ -19,8 +19,8 @@ use tt::Subtree;
 use crate::{
     db::DefDatabase,
     intern::Interned,
-    item_tree::{Fields, ItemTreeId, ItemTreeNode},
-    nameres::ModuleSource,
+    item_tree::{AttrOwner, Fields, ItemTreeId, ItemTreeNode},
+    nameres::{ModuleOrigin, ModuleSource},
     path::{ModPath, PathKind},
     src::{HasChildSource, HasSource},
     AdtId, AttrDefId, EnumId, GenericParamId, LocalEnumVariantId, LocalFieldId, Lookup, MacroId,
@@ -201,6 +201,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         e: EnumId,
     ) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>> {
+        // FIXME: There should be some proper form of mapping between item tree enum variant ids and hir enum variant ids
         let mut res = ArenaMap::default();
 
         let loc = e.lookup(db);
@@ -226,6 +227,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         v: VariantId,
     ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
+        // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
 
         let crate_graph = db.crate_graph();
@@ -295,11 +297,14 @@ impl Attrs {
 
 impl Attrs {
     pub fn cfg(&self) -> Option<CfgExpr> {
-        let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse).collect::<Vec<_>>();
-        match cfgs.len() {
-            0 => None,
-            1 => Some(cfgs.pop().unwrap()),
-            _ => Some(CfgExpr::All(cfgs)),
+        let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse);
+        let first = cfgs.next()?;
+        match cfgs.next() {
+            Some(second) => {
+                let cfgs = [first, second].into_iter().chain(cfgs);
+                Some(CfgExpr::All(cfgs.collect()))
+            }
+            None => Some(first),
         }
     }
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
@@ -367,25 +372,37 @@ impl AttrsWithOwner {
             AttrDefId::ModuleId(module) => {
                 let def_map = module.def_map(db);
                 let mod_data = &def_map[module.local_id];
-                match mod_data.declaration_source(db) {
-                    Some(it) => {
+
+                match mod_data.origin {
+                    // FIXME: We should be able to leverage the item tree instead of parsing declaration here
+                    // but we don't save the module's item tree id anywhere
+                    ModuleOrigin::File { definition, declaration, .. } => {
+                        let value = declaration.to_node(db.upcast());
+                        let it = InFile { file_id: declaration.file_id, value };
                         let raw_attrs = RawAttrs::from_attrs_owner(
                             db,
                             it.as_ref().map(|it| it as &dyn ast::HasAttrs),
                         );
-                        match mod_data.definition_source(db) {
-                            InFile { file_id, value: ModuleSource::SourceFile(file) } => raw_attrs
-                                .merge(RawAttrs::from_attrs_owner(db, InFile::new(file_id, &file))),
-                            _ => raw_attrs,
-                        }
+                        let tree = db.file_item_tree(definition.into());
+                        raw_attrs.merge(tree.raw_attrs(AttrOwner::TopLevel).clone())
                     }
-                    None => RawAttrs::from_attrs_owner(
+                    ModuleOrigin::CrateRoot { definition } => {
+                        let tree = db.file_item_tree(definition.into());
+                        tree.raw_attrs(AttrOwner::TopLevel).clone()
+                    }
+                    // FIXME: We should be able to leverage the item tree instead of parsing here
+                    // but we don't save the module's item tree id anywhere
+                    ModuleOrigin::Inline { definition } => RawAttrs::from_attrs_owner(
                         db,
-                        mod_data.definition_source(db).as_ref().map(|src| match src {
-                            ModuleSource::SourceFile(file) => file as &dyn ast::HasAttrs,
-                            ModuleSource::Module(module) => module as &dyn ast::HasAttrs,
-                            ModuleSource::BlockExpr(block) => block as &dyn ast::HasAttrs,
-                        }),
+                        InFile::new(definition.file_id, definition.to_node(db.upcast()))
+                            .as_ref()
+                            .map(|it| it as &dyn ast::HasAttrs),
+                    ),
+                    ModuleOrigin::BlockExpr { block } => RawAttrs::from_attrs_owner(
+                        db,
+                        InFile::new(block.file_id, block.to_node(db.upcast()))
+                            .as_ref()
+                            .map(|it| it as &dyn ast::HasAttrs),
                     ),
                 }
             }
