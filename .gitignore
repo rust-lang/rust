@@ -8,3 +8,4 @@ tex/*/out
 perf.data
 perf.data.old
 flamegraph.svg
+.auto-*

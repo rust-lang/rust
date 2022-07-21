@@ -28,6 +28,11 @@ install that exact version of rustc as a toolchain:
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
+You can also create a `.auto-everything` file (contents don't matter, can be empty), which
+will cause any `./miri` command to automatically call `rustup-toolchain`, `clippy` and `rustfmt`
+for you. If you don't want all of these to happen, you can add individual `.auto-toolchain`,
+`.auto-clippy` and `.auto-fmt` files respectively.
+
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
 
 ## Building and testing Miri
@@ -242,6 +247,14 @@ cd rustc
 rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
 # Now cd to your Miri directory, then configure rustup
 rustup override set stage2
+```
+
+Note: When you are working with a locally built rustc or any other toolchain that
+is not the same as the one in `rust-version`, you should not have `.auto-everything` or
+`.auto-toolchain` as that will keep resetting your toolchain.
+
+```
+rm -f .auto-everything .auto-toolchain
 ```
 
 Important: You need to delete the Miri cache when you change the stdlib; otherwise the
