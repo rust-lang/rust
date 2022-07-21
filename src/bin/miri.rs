@@ -220,16 +220,17 @@ fn compile_time_sysroot() -> Option<String> {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     Some(match (home, toolchain) {
         (Some(home), Some(toolchain)) => {
-            // Check that at runtime, we are still in this toolchain.
-            let toolchain_runtime =
-                env::var_os("RUSTUP_TOOLCHAIN").or_else(|| env::var_os("MULTIRUST_TOOLCHAIN"));
-            if !matches!(toolchain_runtime, Some(r) if r == toolchain) {
-                show_error(format!(
-                    "This Miri got built with local toolchain `{toolchain}`, but now is being run under a different toolchain. \n\
+            // Check that at runtime, we are still in this toolchain (if there is any toolchain).
+            if let Some(toolchain_runtime) =
+                env::var_os("RUSTUP_TOOLCHAIN").or_else(|| env::var_os("MULTIRUST_TOOLCHAIN"))
+            {
+                if toolchain_runtime != toolchain {
+                    show_error(format!(
+                        "This Miri got built with local toolchain `{toolchain}`, but now is being run under a different toolchain. \n\
                     Make sure to run Miri in the toolchain it got built with, e.g. via `cargo +{toolchain} miri`."
-                ));
+                    ));
+                }
             }
-
             format!("{}/toolchains/{}", home, toolchain)
         }
         _ => option_env!("RUST_SYSROOT")
