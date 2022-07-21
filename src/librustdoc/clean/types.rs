@@ -771,6 +771,10 @@ pub(crate) enum ItemKind {
     KeywordItem,
 }
 
+// `ItemKind` is an enum and large variants can bloat up memory usage even for smaller ones
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ItemKind, 112);
+
 impl ItemKind {
     /// Some items contain others such as structs (for their fields) and Enums
     /// (for their variants). This method returns those contained items.
