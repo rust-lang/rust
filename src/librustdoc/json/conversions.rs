@@ -602,11 +602,11 @@ impl FromWithTcx<Box<clean::Impl>> for Impl {
 }
 
 pub(crate) fn from_function(
-    function: clean::Function,
+    function: Box<clean::Function>,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Function {
-    let clean::Function { decl, generics } = function;
+    let clean::Function { decl, generics } = *function;
     Function {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
@@ -615,12 +615,12 @@ pub(crate) fn from_function(
 }
 
 pub(crate) fn from_function_method(
-    function: clean::Function,
+    function: Box<clean::Function>,
     has_body: bool,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Method {
-    let clean::Function { decl, generics } = function;
+    let clean::Function { decl, generics } = *function;
     Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),

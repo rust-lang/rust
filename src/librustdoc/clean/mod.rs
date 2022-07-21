@@ -908,7 +908,7 @@ fn clean_function<'tcx>(
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     body_id: hir::BodyId,
-) -> Function {
+) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
         let generics = generics.clean(cx);
@@ -916,7 +916,7 @@ fn clean_function<'tcx>(
         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
         (generics, decl)
     });
-    Function { decl, generics }
+    Box::new(Function { decl, generics })
 }
 
 fn clean_args_from_types_and_names<'tcx>(
@@ -1061,7 +1061,7 @@ impl<'tcx> Clean<'tcx, Item> for hir::TraitItem<'tcx> {
                         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
                         (generics, decl)
                     });
-                    TyMethodItem(Function { decl, generics })
+                    TyMethodItem(Box::new(Function { decl, generics }))
                 }
                 hir::TraitItemKind::Type(bounds, Some(default)) => {
                     let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
@@ -1186,9 +1186,9 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    MethodItem(Function { generics, decl }, defaultness)
+                    MethodItem(Box::new(Function { generics, decl }), defaultness)
                 } else {
-                    TyMethodItem(Function { generics, decl })
+                    TyMethodItem(Box::new(Function { generics, decl }))
                 }
             }
             ty::AssocKind::Type => {
@@ -2243,7 +2243,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                     let decl = clean_fn_decl_with_args(cx, decl, args);
                     (generics, decl)
                 });
-                ForeignFunctionItem(Function { decl, generics })
+                ForeignFunctionItem(Box::new(Function { decl, generics }))
             }
             hir::ForeignItemKind::Static(ty, mutability) => {
                 ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })

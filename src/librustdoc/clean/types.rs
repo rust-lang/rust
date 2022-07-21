@@ -730,7 +730,7 @@ pub(crate) enum ItemKind {
     StructItem(Struct),
     UnionItem(Union),
     EnumItem(Enum),
-    FunctionItem(Function),
+    FunctionItem(Box<Function>),
     ModuleItem(Module),
     TypedefItem(Box<Typedef>),
     OpaqueTyItem(OpaqueTy),
@@ -740,15 +740,15 @@ pub(crate) enum ItemKind {
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
-    TyMethodItem(Function),
+    TyMethodItem(Box<Function>),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
     /// Compared to [TyMethodItem], it also contains a method body.
-    MethodItem(Function, Option<hir::Defaultness>),
+    MethodItem(Box<Function>, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Function),
+    ForeignFunctionItem(Box<Function>),
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     /// `type`s from an extern block
