@@ -671,7 +671,10 @@ fn phase_cargo_miri(mut args: env::Args) {
     // (https://github.com/rust-lang/cargo/issues/10885). There is no good way to single out these invocations;
     // some build scripts use the RUSTC env var as well. So we set it directly to the `miri` driver and
     // hope that all they do is ask for the version number -- things could quickly go downhill from here.
-    cmd.env("RUSTC", &find_miri());
+    // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
+    // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
+    // there would be a collision.
+    cmd.env("RUSTC", &fs::canonicalize(find_miri()).unwrap());
 
     let runner_env_name =
         |triple: &str| format!("CARGO_TARGET_{}_RUNNER", triple.to_uppercase().replace('-', "_"));
