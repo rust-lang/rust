@@ -739,34 +739,6 @@ fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bo
 
         ty::Adt(def, _) => def_id_is_local(def.did(), in_crate),
         ty::Foreign(did) => def_id_is_local(did, in_crate),
-        ty::Opaque(..) => {
-            // This merits some explanation.
-            // Normally, opaque types are not involved when performing
-            // coherence checking, since it is illegal to directly
-            // implement a trait on an opaque type. However, we might
-            // end up looking at an opaque type during coherence checking
-            // if an opaque type gets used within another type (e.g. as
-            // a type parameter). This requires us to decide whether or
-            // not an opaque type should be considered 'local' or not.
-            //
-            // We choose to treat all opaque types as non-local, even
-            // those that appear within the same crate. This seems
-            // somewhat surprising at first, but makes sense when
-            // you consider that opaque types are supposed to hide
-            // the underlying type *within the same crate*. When an
-            // opaque type is used from outside the module
-            // where it is declared, it should be impossible to observe
-            // anything about it other than the traits that it implements.
-            //
-            // The alternative would be to look at the underlying type
-            // to determine whether or not the opaque type itself should
-            // be considered local. However, this could make it a breaking change
-            // to switch the underlying ('defining') type from a local type
-            // to a remote type. This would violate the rule that opaque
-            // types should be completely opaque apart from the traits
-            // that they implement, so we don't use this behavior.
-            false
-        }
 
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
@@ -786,7 +758,7 @@ fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bo
         //
         // See `test/ui/coherence/coherence-with-closure.rs` for an example where this
         // could happens.
-        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+        ty::Opaque(..) | ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
             tcx.sess.delay_span_bug(
                 DUMMY_SP,
                 format!("ty_is_local invoked on closure or generator: {:?}", ty),
