@@ -126,7 +126,7 @@ pub fn run_tests(mut config: Config) -> Result<()> {
         });
 
         // A channel for the messages emitted by the individual test threads.
-        let (finish_file, finished_files) = crossbeam::channel::unbounded();
+        let (finished_files_sender, finished_files_recv) = crossbeam::channel::unbounded();
         enum TestResult {
             Ok,
             Failed,
@@ -135,7 +135,7 @@ pub fn run_tests(mut config: Config) -> Result<()> {
 
         s.spawn(|_| {
             if config.quiet {
-                for (i, (_, result)) in finished_files.into_iter().enumerate() {
+                for (i, (_, result)) in finished_files_recv.into_iter().enumerate() {
                     // Humans start counting at 1
                     let i = i + 1;
                     match result {
@@ -148,7 +148,7 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                     }
                 }
             } else {
-                for (msg, result) in finished_files {
+                for (msg, result) in finished_files_recv {
                     eprint!("{msg} ... ");
                     eprintln!(
                         "{}",
@@ -166,9 +166,9 @@ pub fn run_tests(mut config: Config) -> Result<()> {
 
         // Create N worker threads that receive files to test.
         for _ in 0..std::thread::available_parallelism().unwrap().get() {
-            let finish_file = finish_file.clone();
+            let finished_files_sender = finished_files_sender.clone();
             threads.push(s.spawn(|_| -> Result<()> {
-                let finish_file = finish_file;
+                let finished_files_sender = finished_files_sender;
                 for path in &receive {
                     if !config.path_filter.is_empty() {
                         let path_display = path.display().to_string();
@@ -181,7 +181,8 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                     // Ignore file if only/ignore rules do (not) apply
                     if !test_file_conditions(&comments, &target, &config) {
                         ignored.fetch_add(1, Ordering::Relaxed);
-                        finish_file.send((path.display().to_string(), TestResult::Ignored))?;
+                        finished_files_sender
+                            .send((path.display().to_string(), TestResult::Ignored))?;
                         continue;
                     }
                     // Run the test for all revisions
@@ -197,10 +198,10 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                             write!(msg, "(revision `{revision}`) ").unwrap();
                         }
                         if errors.is_empty() {
-                            finish_file.send((msg, TestResult::Ok))?;
+                            finished_files_sender.send((msg, TestResult::Ok))?;
                             succeeded.fetch_add(1, Ordering::Relaxed);
                         } else {
-                            finish_file.send((msg, TestResult::Failed))?;
+                            finished_files_sender.send((msg, TestResult::Failed))?;
                             failures.lock().unwrap().push((
                                 path.clone(),
                                 m,
