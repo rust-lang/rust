@@ -240,17 +240,25 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 }
 
 #[cfg(target_os = "fuchsia")]
-mod zircon {
-    type zx_time_t = i64;
-    type zx_futex_t = crate::sync::atomic::AtomicU32;
-    type zx_handle_t = u32;
-    type zx_status_t = i32;
+pub mod zircon {
+    pub type zx_futex_t = crate::sync::atomic::AtomicU32;
+    pub type zx_handle_t = u32;
+    pub type zx_status_t = i32;
+    pub type zx_time_t = i64;
 
     pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
-    pub const ZX_ERR_TIMED_OUT: zx_status_t = -21;
+
     pub const ZX_TIME_INFINITE: zx_time_t = zx_time_t::MAX;
 
+    pub const ZX_OK: zx_status_t = 0;
+    pub const ZX_ERR_INVALID_ARGS: zx_status_t = -10;
+    pub const ZX_ERR_BAD_HANDLE: zx_status_t = -11;
+    pub const ZX_ERR_WRONG_TYPE: zx_status_t = -12;
+    pub const ZX_ERR_BAD_STATE: zx_status_t = -20;
+    pub const ZX_ERR_TIMED_OUT: zx_status_t = -21;
+
     extern "C" {
+        pub fn zx_clock_get_monotonic() -> zx_time_t;
         pub fn zx_futex_wait(
             value_ptr: *const zx_futex_t,
             current_value: zx_futex_t,
@@ -258,7 +266,8 @@ mod zircon {
             deadline: zx_time_t,
         ) -> zx_status_t;
         pub fn zx_futex_wake(value_ptr: *const zx_futex_t, wake_count: u32) -> zx_status_t;
-        pub fn zx_clock_get_monotonic() -> zx_time_t;
+        pub fn zx_futex_wake_single_owner(value_ptr: *const zx_futex_t) -> zx_status_t;
+        pub fn zx_thread_self() -> zx_handle_t;
     }
 }
 
@@ -286,4 +295,9 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
 pub fn futex_wake(futex: &AtomicU32) -> bool {
     unsafe { zircon::zx_futex_wake(futex, 1) };
     false
+}
+
+#[cfg(target_os = "fuchsia")]
+pub fn futex_wake_all(futex: &AtomicU32) {
+    unsafe { zircon::zx_futex_wake(futex, u32::MAX) };
 }
