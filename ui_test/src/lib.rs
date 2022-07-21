@@ -54,7 +54,7 @@ pub struct Config {
 pub struct DependencyBuilder {
     pub program: PathBuf,
     pub args: Vec<String>,
-    pub envs: Vec<(String, String)>,
+    pub envs: Vec<(String, OsString)>,
 }
 
 #[derive(Debug)]
@@ -76,6 +76,7 @@ pub fn run_tests(mut config: Config) -> Result<()> {
     // Get the triple with which to run the tests
     let target = config.target.clone().unwrap_or_else(|| config.get_host());
 
+    eprintln!("   Building test dependencies...");
     let dependencies = build_dependencies(&config)?;
     for (name, dependency) in dependencies.dependencies {
         config.args.push("--extern".into());

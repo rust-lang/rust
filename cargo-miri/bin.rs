@@ -572,7 +572,51 @@ fn local_crates(metadata: &Metadata) -> String {
     local_crates
 }
 
-fn phase_cargo_miri(mut args: env::Args) {
+fn env_vars_from_cmd(cmd: &Command) -> Vec<(String, String)> {
+    let mut envs = HashMap::new();
+    for (key, value) in std::env::vars() {
+        envs.insert(key, value);
+    }
+    for (key, value) in cmd.get_envs() {
+        if let Some(value) = value {
+            envs.insert(key.to_string_lossy().to_string(), value.to_string_lossy().to_string());
+        } else {
+            envs.remove(&key.to_string_lossy().to_string());
+        }
+    }
+    let mut envs: Vec<_> = envs.into_iter().collect();
+    envs.sort();
+    envs
+}
+
+/// Debug-print a command that is going to be run.
+fn debug_cmd(prefix: &str, verbose: usize, cmd: &Command) {
+    if verbose == 0 {
+        return;
+    }
+    // We only do a single `eprintln!` call to minimize concurrency interactions.
+    let mut out = prefix.to_string();
+    writeln!(out, " running command: env \\").unwrap();
+    if verbose > 1 {
+        // Print the full environment this will be called in.
+        for (key, value) in env_vars_from_cmd(cmd) {
+            writeln!(out, "{key}={value:?} \\").unwrap();
+        }
+    } else {
+        // Print only what has been changed for this `cmd`.
+        for (var, val) in cmd.get_envs() {
+            if let Some(val) = val {
+                writeln!(out, "{}={:?} \\", var.to_string_lossy(), val).unwrap();
+            } else {
+                writeln!(out, "--unset={}", var.to_string_lossy()).unwrap();
+            }
+        }
+    }
+    write!(out, "{cmd:?}").unwrap();
+    eprintln!("{}", out);
+}
+
+fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Check for version and help flags even when invoked as `cargo-miri`.
     if has_arg_flag("--help") || has_arg_flag("-h") {
         show_help();
@@ -694,18 +738,12 @@ fn phase_cargo_miri(mut args: env::Args) {
     cmd.env("RUSTDOC", &cargo_miri_path);
 
     cmd.env("MIRI_LOCAL_CRATES", local_crates(&metadata));
-
-    // Run cargo.
     if verbose > 0 {
-        eprintln!("[cargo-miri miri] RUSTC_WRAPPER={:?}", cargo_miri_path);
-        eprintln!("[cargo-miri miri] {}={:?}", target_runner_env_name, cargo_miri_path);
-        if *target != host {
-            eprintln!("[cargo-miri miri] {}={:?}", host_runner_env_name, cargo_miri_path);
-        }
-        eprintln!("[cargo-miri miri] RUSTDOC={:?}", cargo_miri_path);
-        eprintln!("[cargo-miri miri] {:?}", cmd);
         cmd.env("MIRI_VERBOSE", verbose.to_string()); // This makes the other phases verbose.
     }
+
+    // Run cargo.
+    debug_cmd("[cargo-miri miri]", verbose, &cmd);
     exec(cmd)
 }
 
@@ -913,14 +951,8 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
         eprintln!(
             "[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate} print={print}"
         );
-        eprintln!("[cargo-miri rustc] going to run:");
-        if verbose > 1 {
-            for (key, value) in env_vars_from_cmd(&cmd) {
-                eprintln!("{key}={value:?} \\");
-            }
-        }
-        eprintln!("{:?}", cmd);
     }
+    debug_cmd("[cargo-miri rustc]", verbose, &cmd);
     exec(cmd);
 
     // Create a stub .rlib file if "link" was requested by cargo.
@@ -938,23 +970,6 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
     }
 }
 
-fn env_vars_from_cmd(cmd: &Command) -> Vec<(String, String)> {
-    let mut envs = HashMap::new();
-    for (key, value) in std::env::vars() {
-        envs.insert(key, value);
-    }
-    for (key, value) in cmd.get_envs() {
-        if let Some(value) = value {
-            envs.insert(key.to_str().unwrap().into(), value.to_str().unwrap().to_owned());
-        } else {
-            envs.remove(key.to_str().unwrap());
-        }
-    }
-    let mut envs: Vec<_> = envs.into_iter().collect();
-    envs.sort();
-    envs
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum RunnerPhase {
     /// `cargo` is running a binary
@@ -963,8 +978,9 @@ enum RunnerPhase {
     Rustdoc,
 }
 
-fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
-    let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
+fn phase_runner(binary: &Path, binary_args: impl Iterator<Item = String>, phase: RunnerPhase) {
+    let verbose = std::env::var("MIRI_VERBOSE")
+        .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
     let file = File::open(&binary)
         .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
@@ -991,7 +1007,7 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
     // Set missing env vars. We prefer build-time env vars over run-time ones; see
     // <https://github.com/rust-lang/miri/issues/1661> for the kind of issue that fixes.
     for (name, val) in info.env {
-        if verbose {
+        if verbose > 0 {
             if let Some(old_val) = env::var_os(&name) {
                 if old_val != val {
                     eprintln!(
@@ -1048,10 +1064,7 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
     cmd.env("MIRI_CWD", env::current_dir().unwrap());
 
     // Run it.
-    if verbose {
-        eprintln!("[cargo-miri runner] {:?}", cmd);
-    }
-
+    debug_cmd("[cargo-miri runner]", verbose, &cmd);
     match phase {
         RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin),
         RunnerPhase::Cargo => exec(cmd),
@@ -1059,7 +1072,8 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
 }
 
 fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
-    let verbose = std::env::var_os("MIRI_VERBOSE").is_some();
+    let verbose = std::env::var("MIRI_VERBOSE")
+        .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
     // phase_cargo_miri sets the RUSTDOC env var to ourselves, so we can't use that here;
     // just default to a straight-forward invocation for now:
@@ -1126,10 +1140,7 @@ fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
     cmd.arg("--test-builder").arg(&cargo_miri_path); // invoked by forwarding most arguments
     cmd.arg("--runtool").arg(&cargo_miri_path); // invoked with just a single path argument
 
-    if verbose {
-        eprintln!("[cargo-miri rustdoc] {:?}", cmd);
-    }
-
+    debug_cmd("[cargo-miri rustdoc]", verbose, &cmd);
     exec(cmd)
 }
 
