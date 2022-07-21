@@ -29,6 +29,9 @@ mod abi_1_64;
 #[cfg(feature = "sysroot-abi")]
 mod abi_sysroot;
 
+// see `build.rs`
+include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
+
 // Used by `test/utils.rs`
 #[cfg(test)]
 pub(crate) use abi_1_64::TokenStream as TestTokenStream;
@@ -74,13 +77,37 @@ impl Abi {
         lib: &Library,
         symbol_name: String,
         info: RustCInfo,
+        #[cfg_attr(not(feature = "sysroot-abi"), allow(unused_variables))] version_string: String,
     ) -> Result<Abi, LoadProcMacroDylibError> {
-        // Gated behind an env var for now to avoid a change in behavior for
-        // rustup-installed rust-analyzer
+        // the sysroot ABI relies on `extern proc_macro` with unstable features,
+        // instead of a snapshot of the proc macro bridge's source code. it's only
+        // enabled if we have an exact version match.
         #[cfg(feature = "sysroot-abi")]
-        if std::env::var("PROC_MACRO_SRV_SYSROOT_ABI").is_ok() {
-            let inner = unsafe { Abi_Sysroot::from_lib(lib, symbol_name) }?;
-            return Ok(Abi::AbiSysroot(inner));
+        {
+            if version_string == RUSTC_VERSION_STRING {
+                let inner = unsafe { Abi_Sysroot::from_lib(lib, symbol_name) }?;
+                return Ok(Abi::AbiSysroot(inner));
+            }
+
+            // if we reached this point, versions didn't match. in testing, we
+            // want that to panic - this could mean that the format of `rustc
+            // --version` no longer matches the format of the version string
+            // stored in the `.rustc` section, and we want to catch that in-tree
+            // with `x.py test`
+            #[cfg(test)]
+            {
+                let allow_mismatch = std::env::var("PROC_MACRO_SRV_ALLOW_SYSROOT_MISMATCH");
+                if let Ok("1") = allow_mismatch.as_deref() {
+                    // only used by rust-analyzer developers, when working on the
+                    // sysroot ABI from the rust-analyzer repository - which should
+                    // only happen pre-subtree. this can be removed later.
+                } else {
+                    panic!(
+                        "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
+                        version_string, RUSTC_VERSION_STRING
+                    );
+                }
+            }
         }
 
         // FIXME: this should use exclusive ranges when they're stable

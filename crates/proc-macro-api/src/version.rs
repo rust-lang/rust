@@ -102,7 +102,7 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// * [some more bytes that we don't really care but about still there] :-)
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
-fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
+pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let dylib_file = File::open(dylib_path)?;
     let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
 
