@@ -98,7 +98,7 @@ impl<'a> DocFolder for Stripper<'a> {
             clean::PrimitiveItem(..) => {}
 
             // Keywords are never stripped
-            clean::KeywordItem(..) => {}
+            clean::KeywordItem => {}
         }
 
         let fastreturn = match *i.kind {

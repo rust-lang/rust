@@ -496,8 +496,7 @@ impl Item {
         // Primitives and Keywords are written in the source code as private modules.
         // The modules need to be private so that nobody actually uses them, but the
         // keywords and primitives that they are documenting are public.
-        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
-        {
+        let visibility = if matches!(&kind, ItemKind::KeywordItem | ItemKind::PrimitiveItem(..)) {
             Visibility::Public
         } else {
             cx.tcx.visibility(def_id).clean(cx)
@@ -769,7 +768,7 @@ pub(crate) enum ItemKind {
     AssocTypeItem(Typedef, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem(Symbol),
+    KeywordItem,
 }
 
 impl ItemKind {
@@ -808,7 +807,7 @@ impl ItemKind {
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
-            | KeywordItem(_) => [].iter(),
+            | KeywordItem => [].iter(),
         }
     }
 }
