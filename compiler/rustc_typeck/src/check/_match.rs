@@ -216,13 +216,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> (Span, Option<(Span, StatementAsExpression)>) {
         let arm = &arms[i];
         let (arm_span, mut semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
-            self.find_block_span(blk, prior_arm_ty)
+            (
+                self.find_block_span(blk),
+                prior_arm_ty
+                    .and_then(|prior_arm_ty| self.could_remove_semicolon(blk, prior_arm_ty)),
+            )
         } else {
             (arm.body.span, None)
         };
         if semi_span.is_none() && i > 0 {
             if let hir::ExprKind::Block(blk, _) = &arms[i - 1].body.kind {
-                let (_, semi_span_prev) = self.find_block_span(blk, Some(arm_ty));
+                let semi_span_prev = self.could_remove_semicolon(blk, arm_ty);
                 semi_span = semi_span_prev;
             }
         }
@@ -313,7 +317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else_ty: Ty<'tcx>,
         opt_suggest_box_span: Option<Span>,
     ) -> ObligationCause<'tcx> {
-        let mut outer_sp = if self.tcx.sess.source_map().is_multiline(span) {
+        let mut outer_span = if self.tcx.sess.source_map().is_multiline(span) {
             // The `if`/`else` isn't in one line in the output, include some context to make it
             // clear it is an if/else expression:
             // ```
@@ -339,69 +343,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        let mut remove_semicolon = None;
-        let error_sp = if let ExprKind::Block(block, _) = &else_expr.kind {
-            let (error_sp, semi_sp) = self.find_block_span(block, Some(then_ty));
-            remove_semicolon = semi_sp;
-            if block.expr.is_none() && block.stmts.is_empty() {
-                // Avoid overlapping spans that aren't as readable:
-                // ```
-                // 2 |        let x = if true {
-                //   |   _____________-
-                // 3 |  |         3
-                //   |  |         - expected because of this
-                // 4 |  |     } else {
-                //   |  |____________^
-                // 5 | ||
-                // 6 | ||     };
-                //   | ||     ^
-                //   | ||_____|
-                //   | |______if and else have incompatible types
-                //   |        expected integer, found `()`
-                // ```
-                // by not pointing at the entire expression:
-                // ```
-                // 2 |       let x = if true {
-                //   |               ------- `if` and `else` have incompatible types
-                // 3 |           3
-                //   |           - expected because of this
-                // 4 |       } else {
-                //   |  ____________^
-                // 5 | |
-                // 6 | |     };
-                //   | |_____^ expected integer, found `()`
-                // ```
-                if outer_sp.is_some() {
-                    outer_sp = Some(self.tcx.sess.source_map().guess_head_span(span));
-                }
+        let (error_sp, else_id) = if let ExprKind::Block(block, _) = &else_expr.kind {
+            let block = block.peel_blocks();
+
+            // Avoid overlapping spans that aren't as readable:
+            // ```
+            // 2 |        let x = if true {
+            //   |   _____________-
+            // 3 |  |         3
+            //   |  |         - expected because of this
+            // 4 |  |     } else {
+            //   |  |____________^
+            // 5 | ||
+            // 6 | ||     };
+            //   | ||     ^
+            //   | ||_____|
+            //   | |______if and else have incompatible types
+            //   |        expected integer, found `()`
+            // ```
+            // by not pointing at the entire expression:
+            // ```
+            // 2 |       let x = if true {
+            //   |               ------- `if` and `else` have incompatible types
+            // 3 |           3
+            //   |           - expected because of this
+            // 4 |       } else {
+            //   |  ____________^
+            // 5 | |
+            // 6 | |     };
+            //   | |_____^ expected integer, found `()`
+            // ```
+            if block.expr.is_none() && block.stmts.is_empty()
+                && let Some(outer_span) = &mut outer_span
+            {
+                *outer_span = self.tcx.sess.source_map().guess_head_span(*outer_span);
             }
-            error_sp
+
+            (self.find_block_span(block), block.hir_id)
         } else {
-            // shouldn't happen unless the parser has done something weird
-            else_expr.span
+            (else_expr.span, else_expr.hir_id)
         };
 
-        // Compute `Span` of `then` part of `if`-expression.
-        let then_sp = if let ExprKind::Block(block, _) = &then_expr.kind {
-            let (then_sp, semi_sp) = self.find_block_span(block, Some(else_ty));
-            remove_semicolon = remove_semicolon.or(semi_sp);
+        let then_id = if let ExprKind::Block(block, _) = &then_expr.kind {
+            let block = block.peel_blocks();
+            // Exclude overlapping spans
             if block.expr.is_none() && block.stmts.is_empty() {
-                outer_sp = None; // same as in `error_sp`; cleanup output
+                outer_span = None;
             }
-            then_sp
+            block.hir_id
         } else {
-            // shouldn't happen unless the parser has done something weird
-            then_expr.span
+            then_expr.hir_id
         };
 
         // Finally construct the cause:
         self.cause(
             error_sp,
             ObligationCauseCode::IfExpression(Box::new(IfExpressionCause {
-                then: then_sp,
-                else_sp: error_sp,
-                outer: outer_sp,
-                semicolon: remove_semicolon,
+                else_id,
+                then_id,
+                then_ty,
+                else_ty,
+                outer_span,
                 opt_suggest_box_span,
             })),
         )
@@ -479,22 +481,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
             self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {});
             scrut_ty
-        }
-    }
-
-    fn find_block_span(
-        &self,
-        block: &'tcx hir::Block<'tcx>,
-        expected_ty: Option<Ty<'tcx>>,
-    ) -> (Span, Option<(Span, StatementAsExpression)>) {
-        if let Some(expr) = &block.expr {
-            (expr.span, None)
-        } else if let Some(stmt) = block.stmts.last() {
-            // possibly incorrect trailing `;` in the else arm
-            (stmt.span, expected_ty.and_then(|ty| self.could_remove_semicolon(block, ty)))
-        } else {
-            // empty block; point at its entirety
-            (block.span, None)
         }
     }
 

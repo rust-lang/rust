@@ -721,25 +721,39 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             },
             ObligationCauseCode::IfExpression(box IfExpressionCause {
-                then,
-                else_sp,
-                outer,
-                semicolon,
+                then_id,
+                else_id,
+                then_ty,
+                else_ty,
+                outer_span,
                 opt_suggest_box_span,
             }) => {
-                err.span_label(then, "expected because of this");
-                if let Some(sp) = outer {
+                let then_span = self.find_block_span_from_hir_id(then_id);
+                let else_span = self.find_block_span_from_hir_id(then_id);
+                err.span_label(then_span, "expected because of this");
+                if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
+                let semicolon = if let hir::Node::Block(blk) = self.tcx.hir().get(then_id)
+                    && let Some(remove_semicolon) = self.could_remove_semicolon(blk, else_ty)
+                {
+                    Some(remove_semicolon)
+                } else if let hir::Node::Block(blk) = self.tcx.hir().get(else_id)
+                    && let Some(remove_semicolon) = self.could_remove_semicolon(blk, then_ty)
+                {
+                    Some(remove_semicolon)
+                } else {
+                    None
+                };
                 if let Some((sp, boxed)) = semicolon {
                     if matches!(boxed, StatementAsExpression::NeedsBoxing) {
                         err.multipart_suggestion(
                             "consider removing this semicolon and boxing the expression",
                             vec![
-                                (then.shrink_to_lo(), "Box::new(".to_string()),
-                                (then.shrink_to_hi(), ")".to_string()),
-                                (else_sp.shrink_to_lo(), "Box::new(".to_string()),
-                                (else_sp.shrink_to_hi(), ")".to_string()),
+                                (then_span.shrink_to_lo(), "Box::new(".to_string()),
+                                (then_span.shrink_to_hi(), ")".to_string()),
+                                (else_span.shrink_to_lo(), "Box::new(".to_string()),
+                                (else_span.shrink_to_hi(), ")".to_string()),
                                 (sp, String::new()),
                             ],
                             Applicability::MachineApplicable,
@@ -752,12 +766,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     }
+                } else {
+                    let suggested = if let hir::Node::Block(blk) = self.tcx.hir().get(then_id) {
+                        self.consider_returning_binding(blk, else_ty, err)
+                    } else {
+                        false
+                    };
+                    if !suggested && let hir::Node::Block(blk) = self.tcx.hir().get(else_id) {
+                        self.consider_returning_binding(blk, then_ty, err);
+                    }
                 }
                 if let Some(ret_sp) = opt_suggest_box_span {
                     self.suggest_boxing_for_return_impl_trait(
                         err,
                         ret_sp,
-                        [then, else_sp].into_iter(),
+                        [then_span, else_span].into_iter(),
                     );
                 }
             }
@@ -1870,40 +1893,41 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.get_impl_future_output_ty(exp_found.expected).map(Binder::skip_binder),
             self.get_impl_future_output_ty(exp_found.found).map(Binder::skip_binder),
         ) {
-            (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => {
-                match cause.code() {
-                    ObligationCauseCode::IfExpression(box IfExpressionCause { then, .. }) => {
+            (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
+                .code()
+            {
+                ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
+                    let then_span = self.find_block_span_from_hir_id(*then_id);
+                    diag.multipart_suggestion(
+                        "consider `await`ing on both `Future`s",
+                        vec![
+                            (then_span.shrink_to_hi(), ".await".to_string()),
+                            (exp_span.shrink_to_hi(), ".await".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                    prior_arms,
+                    ..
+                }) => {
+                    if let [.., arm_span] = &prior_arms[..] {
                         diag.multipart_suggestion(
                             "consider `await`ing on both `Future`s",
                             vec![
-                                (then.shrink_to_hi(), ".await".to_string()),
+                                (arm_span.shrink_to_hi(), ".await".to_string()),
                                 (exp_span.shrink_to_hi(), ".await".to_string()),
                             ],
                             Applicability::MaybeIncorrect,
                         );
-                    }
-                    ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                        prior_arms,
-                        ..
-                    }) => {
-                        if let [.., arm_span] = &prior_arms[..] {
-                            diag.multipart_suggestion(
-                                "consider `await`ing on both `Future`s",
-                                vec![
-                                    (arm_span.shrink_to_hi(), ".await".to_string()),
-                                    (exp_span.shrink_to_hi(), ".await".to_string()),
-                                ],
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            diag.help("consider `await`ing on both `Future`s");
-                        }
-                    }
-                    _ => {
+                    } else {
                         diag.help("consider `await`ing on both `Future`s");
                     }
                 }
-            }
+                _ => {
+                    diag.help("consider `await`ing on both `Future`s");
+                }
+            },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
                 diag.span_suggestion_verbose(
                     exp_span.shrink_to_hi(),
@@ -1914,10 +1938,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
-                ObligationCauseCode::Pattern { span: Some(span), .. }
-                | ObligationCauseCode::IfExpression(box IfExpressionCause { then: span, .. }) => {
+                ObligationCauseCode::Pattern { span: Some(then_span), .. } => {
                     diag.span_suggestion_verbose(
-                        span.shrink_to_hi(),
+                        then_span.shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
+                    let then_span = self.find_block_span_from_hir_id(*then_id);
+                    diag.span_suggestion_verbose(
+                        then_span.shrink_to_hi(),
                         "consider `await`ing on the `Future`",
                         ".await",
                         Applicability::MaybeIncorrect,
@@ -2805,6 +2837,233 @@ impl TyCategory {
             }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,
+        }
+    }
+}
+
+impl<'tcx> InferCtxt<'_, 'tcx> {
+    pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
+        let block = block.peel_blocks();
+        if let Some(expr) = &block.expr {
+            expr.span
+        } else if let Some(stmt) = block.stmts.last() {
+            // possibly incorrect trailing `;` in the else arm
+            stmt.span
+        } else {
+            // empty block; point at its entirety
+            block.span
+        }
+    }
+
+    pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
+        match self.tcx.hir().get(hir_id) {
+            hir::Node::Block(blk) => self.find_block_span(blk),
+            // The parser was in a weird state if either of these happen...
+            hir::Node::Expr(e) => e.span,
+            _ => rustc_span::DUMMY_SP,
+        }
+    }
+
+    pub fn could_remove_semicolon(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> Option<(Span, StatementAsExpression)> {
+        let blk = blk.peel_blocks();
+        // Do not suggest if we have a tail expr.
+        if blk.expr.is_some() {
+            return None;
+        }
+        // Be helpful when the user wrote `{... expr;}` and
+        // taking the `;` off is enough to fix the error.
+        let last_stmt = blk.stmts.last()?;
+        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
+            return None;
+        };
+        let last_expr_ty = self.in_progress_typeck_results?.borrow().expr_ty_opt(*last_expr)?;
+        let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
+            _ if last_expr_ty.references_error() => return None,
+            _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
+                StatementAsExpression::CorrectType
+            }
+            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
+                if last_def_id == exp_def_id =>
+            {
+                StatementAsExpression::CorrectType
+            }
+            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
+                debug!(
+                    "both opaque, likely future {:?} {:?} {:?} {:?}",
+                    last_def_id, last_bounds, exp_def_id, exp_bounds
+                );
+
+                let last_local_id = last_def_id.as_local()?;
+                let exp_local_id = exp_def_id.as_local()?;
+
+                match (
+                    &self.tcx.hir().expect_item(last_local_id).kind,
+                    &self.tcx.hir().expect_item(exp_local_id).kind,
+                ) {
+                    (
+                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
+                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
+                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
+                        match (left, right) {
+                            (
+                                hir::GenericBound::Trait(tl, ml),
+                                hir::GenericBound::Trait(tr, mr),
+                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
+                                && ml == mr =>
+                            {
+                                true
+                            }
+                            (
+                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
+                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
+                            ) if langl == langr => {
+                                // FIXME: consider the bounds!
+                                debug!("{:?} {:?}", argsl, argsr);
+                                true
+                            }
+                            _ => false,
+                        }
+                    }) =>
+                    {
+                        StatementAsExpression::NeedsBoxing
+                    }
+                    _ => StatementAsExpression::CorrectType,
+                }
+            }
+            _ => return None,
+        };
+        let span = if last_stmt.span.from_expansion() {
+            let mac_call = rustc_span::source_map::original_sp(last_stmt.span, blk.span);
+            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
+        } else {
+            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
+        };
+        Some((span, needs_box))
+    }
+
+    pub fn consider_returning_binding(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+        err: &mut Diagnostic,
+    ) -> bool {
+        let blk = blk.peel_blocks();
+        // Do not suggest if we have a tail expr.
+        if blk.expr.is_some() {
+            return false;
+        }
+        let mut shadowed = FxHashSet::default();
+        let mut candidate_idents = vec![];
+        let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
+            if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind
+                && let Some(pat_ty) = self
+                    .in_progress_typeck_results
+                    .and_then(|typeck_results| typeck_results.borrow().node_type_opt(*hir_id))
+            {
+                let pat_ty = self.resolve_vars_if_possible(pat_ty);
+                if self.same_type_modulo_infer(pat_ty, expected_ty)
+                    && !(pat_ty, expected_ty).references_error()
+                    && shadowed.insert(ident.name)
+                {
+                    candidate_idents.push((*ident, pat_ty));
+                }
+            }
+            true
+        };
+
+        let hir = self.tcx.hir();
+        for stmt in blk.stmts.iter().rev() {
+            let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
+            local.pat.walk(&mut find_compatible_candidates);
+        }
+        match hir.find(hir.get_parent_node(blk.hir_id)) {
+            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
+                match hir.find(hir.get_parent_node(*hir_id)) {
+                    Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
+                        pat.walk(&mut find_compatible_candidates);
+                    }
+                    Some(
+                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                        | hir::Node::ImplItem(hir::ImplItem {
+                            kind: hir::ImplItemKind::Fn(_, body),
+                            ..
+                        })
+                        | hir::Node::TraitItem(hir::TraitItem {
+                            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                            ..
+                        })
+                        | hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                            ..
+                        }),
+                    ) => {
+                        for param in hir.body(*body).params {
+                            param.pat.walk(&mut find_compatible_candidates);
+                        }
+                    }
+                    Some(hir::Node::Expr(hir::Expr {
+                        kind:
+                            hir::ExprKind::If(
+                                hir::Expr { kind: hir::ExprKind::Let(let_), .. },
+                                then_block,
+                                _,
+                            ),
+                        ..
+                    })) if then_block.hir_id == *hir_id => {
+                        let_.pat.walk(&mut find_compatible_candidates);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+
+        match &candidate_idents[..] {
+            [(ident, _ty)] => {
+                let sm = self.tcx.sess.source_map();
+                if let Some(stmt) = blk.stmts.last() {
+                    let stmt_span = sm.stmt_span(stmt.span, blk.span);
+                    let sugg = if sm.is_multiline(blk.span)
+                        && let Some(spacing) = sm.indentation_before(stmt_span)
+                    {
+                        format!("\n{spacing}{ident}")
+                    } else {
+                        format!(" {ident}")
+                    };
+                    err.span_suggestion_verbose(
+                        stmt_span.shrink_to_hi(),
+                        format!("consider returning the local binding `{ident}`"),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    let sugg = if sm.is_multiline(blk.span)
+                        && let Some(spacing) = sm.indentation_before(blk.span.shrink_to_lo())
+                    {
+                        format!("\n{spacing}    {ident}\n{spacing}")
+                    } else {
+                        format!(" {ident} ")
+                    };
+                    let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
+                    err.span_suggestion_verbose(
+                        sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
+                        format!("consider returning the local binding `{ident}`"),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                true
+            }
+            values if (1..3).contains(&values.len()) => {
+                let spans = values.iter().map(|(ident, _)| ident.span).collect::<Vec<_>>();
+                err.span_note(spans, "consider returning one of these bindings");
+                true
+            }
+            _ => false,
         }
     }
 }

@@ -351,7 +351,7 @@ pub enum ObligationCauseCode<'tcx> {
     ConstPatternStructural,
 
     /// Computing common supertype in an if expression
-    IfExpression(Box<IfExpressionCause>),
+    IfExpression(Box<IfExpressionCause<'tcx>>),
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -498,12 +498,14 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub opt_suggest_box_span: Option<Span>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct IfExpressionCause {
-    pub then: Span,
-    pub else_sp: Span,
-    pub outer: Option<Span>,
-    pub semicolon: Option<(Span, StatementAsExpression)>,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Lift, TypeFoldable, TypeVisitable)]
+pub struct IfExpressionCause<'tcx> {
+    pub then_id: hir::HirId,
+    pub else_id: hir::HirId,
+    pub then_ty: Ty<'tcx>,
+    pub else_ty: Ty<'tcx>,
+    pub outer_span: Option<Span>,
     pub opt_suggest_box_span: Option<Span>,
 }
 
