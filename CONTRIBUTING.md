@@ -168,11 +168,15 @@ to `.vscode/settings.json` in your local Miri clone:
         "./cargo-miri/Cargo.toml"
     ],
     "rust-analyzer.checkOnSave.overrideCommand": [
+        "env",
+        "AUTO_OPS=42",
         "./miri",
         "check",
         "--message-format=json"
     ],
     "rust-analyzer.buildScripts.overrideCommand": [
+        "env",
+        "AUTO_OPS=42",
         "./miri",
         "check",
         "--message-format=json",
