@@ -172,8 +172,8 @@ pub const fn identity<T>(x: T) -> T {
 ///
 /// # Reflexivity
 ///
-/// Ideally, `AsRef` would be reflexive, that is there is an `impl<T: ?Sized> AsRef<T> for T`, with
-/// [`as_ref`] simply returning its argument unchanged.
+/// Ideally, `AsRef` would be reflexive, i.e. there would be an `impl<T: ?Sized> AsRef<T> for T`
+/// with [`as_ref`] simply returning its argument unchanged.
 /// Such a blanket implementation is currently *not* provided due to technical restrictions of
 /// Rust's type system (it would be overlapping with another existing blanket implementation for
 /// `&T where T: AsRef<U>` which allows `AsRef` to auto-dereference, see "Generic Implementations"
@@ -283,8 +283,8 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// # Reflexivity
 ///
-/// Ideally, `AsMut` would be reflexive, that is there is an `impl<T: ?Sized> AsMut<T> for T`, with
-/// [`as_mut`] simply returning its argument unchanged.
+/// Ideally, `AsMut` would be reflexive, i.e. there would be an `impl<T: ?Sized> AsMut<T> for T`
+/// with [`as_mut`] simply returning its argument unchanged.
 /// Such a blanket implementation is currently *not* provided due to technical restrictions of
 /// Rust's type system (it would be overlapping with another existing blanket implementation for
 /// `&mut T where T: AsMut<U>` which allows `AsMut` to auto-dereference, see "Generic
