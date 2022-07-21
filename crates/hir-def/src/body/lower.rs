@@ -5,7 +5,7 @@ use std::{mem, sync::Arc};
 
 use either::Either;
 use hir_expand::{
-    ast_id_map::{AstIdMap, FileAstId},
+    ast_id_map::AstIdMap,
     hygiene::Hygiene,
     name::{name, AsName, Name},
     AstId, ExpandError, HirFileId, InFile,
@@ -62,22 +62,14 @@ impl<'a> LowerCtx<'a> {
         &self.hygiene
     }
 
-    pub(crate) fn file_id(&self) -> HirFileId {
-        self.ast_id_map.as_ref().unwrap().0
-    }
-
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
         Path::from_src(ast, self)
     }
 
-    pub(crate) fn ast_id<N: AstNode>(
-        &self,
-        db: &dyn DefDatabase,
-        item: &N,
-    ) -> Option<FileAstId<N>> {
-        let (file_id, ast_id_map) = self.ast_id_map.as_ref()?;
-        let ast_id_map = ast_id_map.get_or_init(|| db.ast_id_map(*file_id));
-        Some(ast_id_map.ast_id(item))
+    pub(crate) fn ast_id<N: AstNode>(&self, db: &dyn DefDatabase, item: &N) -> Option<AstId<N>> {
+        let &(file_id, ref ast_id_map) = self.ast_id_map.as_ref()?;
+        let ast_id_map = ast_id_map.get_or_init(|| db.ast_id_map(file_id));
+        Some(InFile::new(file_id, ast_id_map.ast_id(item)))
     }
 }
 
