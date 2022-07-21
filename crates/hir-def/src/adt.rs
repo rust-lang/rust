@@ -136,9 +136,9 @@ impl EnumData {
 
         let enum_ = &item_tree[loc.id.value];
         let mut variants = Arena::new();
-        for var_id in enum_.variants.clone() {
-            if item_tree.attrs(db, krate, var_id.into()).is_cfg_enabled(&cfg_options) {
-                let var = &item_tree[var_id];
+        for tree_id in enum_.variants.clone() {
+            if item_tree.attrs(db, krate, tree_id.into()).is_cfg_enabled(&cfg_options) {
+                let var = &item_tree[tree_id];
                 let var_data = lower_fields(
                     db,
                     krate,
