@@ -820,10 +820,10 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
 
             if verbose > 0 {
                 eprintln!(
-                    "[cargo-miri rustc] captured input:\n{}",
+                    "[cargo-miri rustc inside rustdoc] captured input:\n{}",
                     std::str::from_utf8(&env.stdin).unwrap()
                 );
-                eprintln!("[cargo-miri rustc] {:?}", cmd);
+                eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{:?}", cmd);
             }
 
             exec_with_pipe(cmd, &env.stdin);
@@ -906,7 +906,10 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
 
     // Run it.
     if verbose > 0 {
-        eprint!("[cargo-miri rustc] ");
+        eprintln!(
+            "[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate} print={print}"
+        );
+        eprintln!("[cargo-miri rustc] going to run:");
         if verbose > 1 {
             for (key, value) in env_vars_from_cmd(&cmd) {
                 eprintln!("{key}={value:?} \\");
