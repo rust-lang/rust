@@ -1008,14 +1008,16 @@ fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhas
     // Set missing env vars. We prefer build-time env vars over run-time ones; see
     // <https://github.com/rust-lang/miri/issues/1661> for the kind of issue that fixes.
     for (name, val) in info.env {
-        if verbose > 0 {
-            if let Some(old_val) = env::var_os(&name) {
-                if old_val != val {
-                    eprintln!(
-                        "[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}",
-                        name, old_val, val
-                    );
-                }
+        if let Some(old_val) = env::var_os(&name) {
+            if old_val == val {
+                // This one did not actually change, no need to re-set it.
+                // (This keeps the `debug_cmd` below more manageable.)
+                continue;
+            } else if verbose > 0 {
+                eprintln!(
+                    "[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}",
+                    name, old_val, val
+                );
             }
         }
         cmd.env(name, val);
