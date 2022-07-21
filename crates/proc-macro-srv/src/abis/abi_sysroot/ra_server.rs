@@ -83,10 +83,9 @@ impl server::FreeFunctions for RustAnalyzer {
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
         // FIXME: keep track of LitKind and Suffix
-        let symbol = ThreadLocalSymbolInterner::intern(s);
         Ok(bridge::Literal {
             kind: bridge::LitKind::Err,
-            symbol,
+            symbol: Symbol::intern(s),
             suffix: None,
             span: tt::TokenId::unspecified(),
         })
@@ -124,7 +123,7 @@ impl server::TokenStream for RustAnalyzer {
 
             bridge::TokenTree::Ident(ident) => {
                 // FIXME: handle raw idents
-                let text = ThreadLocalSymbolInterner::get_cloned(&ident.sym);
+                let text = ident.sym.text();
                 let ident: tt::Ident = tt::Ident { text, id: ident.span };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
@@ -198,7 +197,7 @@ impl server::TokenStream for RustAnalyzer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: ThreadLocalSymbolInterner::intern(&ident.text),
+                        sym: Symbol::intern(&ident.text),
                         // FIXME: handle raw idents
                         is_raw: false,
                         span: ident.id,
@@ -208,7 +207,7 @@ impl server::TokenStream for RustAnalyzer {
                     bridge::TokenTree::Literal(bridge::Literal {
                         // FIXME: handle literal kinds
                         kind: bridge::LitKind::Err,
-                        symbol: ThreadLocalSymbolInterner::intern(&lit.text),
+                        symbol: Symbol::intern(&lit.text),
                         // FIXME: handle suffixes
                         suffix: None,
                         span: lit.id,
@@ -402,11 +401,11 @@ impl server::Server for RustAnalyzer {
     }
 
     fn intern_symbol(ident: &str) -> Self::Symbol {
-        ThreadLocalSymbolInterner::intern(&tt::SmolStr::from(ident))
+        Symbol::intern(&tt::SmolStr::from(ident))
     }
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
-        ThreadLocalSymbolInterner::with(symbol, |s| f(s.as_str()))
+        f(symbol.text().as_str())
     }
 }
 
@@ -450,10 +449,9 @@ impl LiteralFormatter {
     }
 
     fn with_symbol_and_suffix<R>(&self, f: impl FnOnce(&str, &str) -> R) -> R {
-        ThreadLocalSymbolInterner::with(&self.0.symbol, |symbol| match self.0.suffix.as_ref() {
-            Some(suffix) => ThreadLocalSymbolInterner::with(suffix, |suffix| f(symbol, suffix)),
-            None => f(symbol, ""),
-        })
+        let symbol = self.0.symbol.text();
+        let suffix = self.0.suffix.map(|s| s.text()).unwrap_or_default();
+        f(symbol.as_str(), suffix.as_str())
     }
 }
 

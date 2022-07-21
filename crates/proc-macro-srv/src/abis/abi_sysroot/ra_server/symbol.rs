@@ -11,6 +11,16 @@ thread_local! {
 #[derive(Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Symbol(u32);
 
+impl Symbol {
+    pub fn intern(data: &str) -> Symbol {
+        SYMBOL_INTERNER.with(|i| i.borrow_mut().intern(data))
+    }
+
+    pub fn text(&self) -> SmolStr {
+        SYMBOL_INTERNER.with(|i| i.borrow().get(self).clone())
+    }
+}
+
 #[derive(Default)]
 struct SymbolInterner {
     idents: HashMap<SmolStr, u32>,
@@ -32,21 +42,5 @@ impl SymbolInterner {
 
     fn get(&self, sym: &Symbol) -> &SmolStr {
         &self.ident_data[sym.0 as usize]
-    }
-}
-
-pub(super) struct ThreadLocalSymbolInterner;
-
-impl ThreadLocalSymbolInterner {
-    pub(super) fn intern(data: &str) -> Symbol {
-        SYMBOL_INTERNER.with(|i| i.borrow_mut().intern(data))
-    }
-
-    pub(super) fn with<T>(sym: &Symbol, f: impl FnOnce(&SmolStr) -> T) -> T {
-        SYMBOL_INTERNER.with(|i| f(i.borrow().get(sym)))
-    }
-
-    pub(super) fn get_cloned(sym: &Symbol) -> SmolStr {
-        Self::with(sym, |s| s.clone())
     }
 }
