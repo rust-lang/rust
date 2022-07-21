@@ -1480,7 +1480,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
     /// This conversion allocates on the heap
-    /// and performs a copy of `slice`.
+    /// and performs a copy of `slice` and its contents.
     ///
     /// # Examples
     /// ```rust
