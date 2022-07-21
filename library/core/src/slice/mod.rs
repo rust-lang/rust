@@ -3569,6 +3569,7 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(portable_simd)]
+    /// use core::simd::SimdFloat;
     ///
     /// let short = &[1, 2, 3];
     /// let (prefix, middle, suffix) = short.as_simd::<4>();
