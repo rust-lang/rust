@@ -580,7 +580,7 @@ impl<'tcx> Predicate<'tcx> {
         if let PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) = self.kind().skip_binder()
             && constness != BoundConstness::NotConst
         {
-            self = tcx.mk_predicate(self.kind().map_bound(|_| PredicateKind::Trait(TraitPredicate {
+            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Trait(TraitPredicate {
                 trait_ref,
                 constness: BoundConstness::NotConst,
                 polarity,
