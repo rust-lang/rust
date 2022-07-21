@@ -661,14 +661,17 @@ fn phase_cargo_miri(mut args: env::Args) {
         );
     }
     cmd.env("RUSTC_WRAPPER", &cargo_miri_path);
-    // Having both `RUSTC_WRAPPER` and `RUSTC` set does some odd things, so let's avoid that.
-    // See <https://github.com/rust-lang/miri/issues/2238>.
+    // We are going to invoke `MIRI` for everything, not `RUSTC`.
     if env::var_os("RUSTC").is_some() && env::var_os("MIRI").is_none() {
         println!(
             "WARNING: Ignoring `RUSTC` environment variable; set `MIRI` if you want to control the binary used as the driver."
         );
     }
-    cmd.env_remove("RUSTC");
+    // We'd prefer to just clear this env var, but cargo does not always honor `RUSTC_WRAPPER`
+    // (https://github.com/rust-lang/cargo/issues/10885). There is no good way to single out these invocations;
+    // some build scripts use the RUSTC env var as well. So we set it directly to the `miri` driver and
+    // hope that all they do is ask for the version number -- things could quickly go downhill from here.
+    cmd.env("RUSTC", &find_miri());
 
     let runner_env_name =
         |triple: &str| format!("CARGO_TARGET_{}_RUNNER", triple.to_uppercase().replace('-', "_"));
@@ -1173,8 +1176,14 @@ fn main() {
 
     match args.next().as_deref() {
         Some("miri") => phase_cargo_miri(args),
-        Some("rustc") => phase_rustc(args, RustcPhase::Build),
         Some(arg) => {
+            // If the first arg is equal to the RUSTC variable (which should be set at this point),
+            // then we need to behave as rustc. This is the somewhat counter-intuitive behavior of
+            // having both RUSTC and RUSTC_WRAPPER set (see
+            // https://github.com/rust-lang/cargo/issues/10886).
+            if arg == env::var_os("RUSTC").unwrap() {
+                return phase_rustc(args, RustcPhase::Build);
+            }
             // We have to distinguish the "runner" and "rustdoc" cases.
             // As runner, the first argument is the binary (a file that should exist, with an absolute path);
             // as rustdoc, the first argument is a flag (`--something`).
