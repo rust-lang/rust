@@ -487,6 +487,7 @@ symbols! {
         cmse_nonsecure_entry,
         coerce_unsized,
         cold,
+        collapse_debuginfo,
         column,
         column_macro,
         compare_and_swap,

@@ -131,6 +131,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
                 sym::cmse_nonsecure_entry => self.check_cmse_nonsecure_entry(attr, span, target),
+                sym::collapse_debuginfo => self.check_collapse_debuginfo(attr, span, target),
                 sym::const_trait => self.check_const_trait(attr, span, target),
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, span, target),
@@ -427,6 +428,19 @@ impl CheckAttrVisitor<'_> {
                     ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
                 };
                 tcx.sess.span_err(p.span, &repr);
+            }
+        }
+    }
+
+    /// Checks if `#[collapse_debuginfo]` is applied to a macro.
+    fn check_collapse_debuginfo(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::MacroDef => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .emit_err(errors::CollapseDebuginfo { attr_span: attr.span, defn_span: span });
+                false
             }
         }
     }

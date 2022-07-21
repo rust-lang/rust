@@ -693,10 +693,6 @@ pub struct SyntaxExtension {
     pub span: Span,
     /// List of unstable features that are treated as stable inside this macro.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
-    /// Suppresses the `unsafe_code` lint for code produced by this macro.
-    pub allow_internal_unsafe: bool,
-    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
-    pub local_inner_macros: bool,
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
@@ -708,6 +704,13 @@ pub struct SyntaxExtension {
     /// Built-in macros have a couple of special properties like availability
     /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
     pub builtin_name: Option<Symbol>,
+    /// Suppresses the `unsafe_code` lint for code produced by this macro.
+    pub allow_internal_unsafe: bool,
+    /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
+    pub local_inner_macros: bool,
+    /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
+    /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
+    pub collapse_debuginfo: bool,
 }
 
 impl SyntaxExtension {
@@ -729,14 +732,15 @@ impl SyntaxExtension {
         SyntaxExtension {
             span: DUMMY_SP,
             allow_internal_unstable: None,
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
             stability: None,
             deprecation: None,
             helper_attrs: Vec::new(),
             edition,
             builtin_name: None,
             kind,
+            allow_internal_unsafe: false,
+            local_inner_macros: false,
+            collapse_debuginfo: false,
         }
     }
 
@@ -754,12 +758,13 @@ impl SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
-        let mut local_inner_macros = false;
-        if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
-            if let Some(l) = macro_export.meta_item_list() {
-                local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
-            }
-        }
+        let allow_internal_unsafe = sess.contains_name(attrs, sym::allow_internal_unsafe);
+        let local_inner_macros = sess
+            .find_by_name(attrs, sym::macro_export)
+            .and_then(|macro_export| macro_export.meta_item_list())
+            .map_or(false, |l| attr::list_contains_name(&l, sym::local_inner_macros));
+        let collapse_debuginfo = sess.contains_name(attrs, sym::collapse_debuginfo);
+        tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
         let (builtin_name, helper_attrs) = sess
             .find_by_name(attrs, sym::rustc_builtin_macro)
@@ -801,13 +806,14 @@ impl SyntaxExtension {
             span,
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
                 .then(|| allow_internal_unstable.into()),
-            allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
-            local_inner_macros,
             stability: stability.map(|(s, _)| s),
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
             builtin_name,
+            allow_internal_unsafe,
+            local_inner_macros,
+            collapse_debuginfo,
         }
     }
 
@@ -852,11 +858,12 @@ impl SyntaxExtension {
             call_site,
             self.span,
             self.allow_internal_unstable.clone(),
-            self.allow_internal_unsafe,
-            self.local_inner_macros,
             self.edition,
             macro_def_id,
             parent_module,
+            self.allow_internal_unsafe,
+            self.local_inner_macros,
+            self.collapse_debuginfo,
         )
     }
 }
