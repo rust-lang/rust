@@ -955,7 +955,7 @@ pub struct Block<'hir> {
 }
 
 impl<'hir> Block<'hir> {
-    pub fn peel_blocks(&self) -> &Block<'hir> {
+    pub fn innermost_block(&self) -> &Block<'hir> {
         let mut block = self;
         while let Some(Expr { kind: ExprKind::Block(inner_block, _), .. }) = block.expr {
             block = inner_block;

@@ -758,22 +758,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         second_ty: Ty<'tcx>,
         second_span: Span,
     ) {
-        let semicolon =
-            if let Some(first_id) = first_id
-                && let hir::Node::Block(blk) = self.tcx.hir().get(first_id)
-                && let Some(remove_semicolon) = self.could_remove_semicolon(blk, second_ty)
-            {
-                Some(remove_semicolon)
-            } else if let Some(second_id) = second_id
-                && let hir::Node::Block(blk) = self.tcx.hir().get(second_id)
-                && let Some(remove_semicolon) = self.could_remove_semicolon(blk, first_ty)
-            {
-                Some(remove_semicolon)
-            } else {
-                None
-            };
-        if let Some((sp, boxed)) = semicolon {
-            if matches!(boxed, StatementAsExpression::NeedsBoxing) {
+        let remove_semicolon =
+            [(first_id, second_ty), (second_id, first_ty)].into_iter().find_map(|(id, ty)| {
+                let hir::Node::Block(blk) = self.tcx.hir().get(id?) else { return None };
+                self.could_remove_semicolon(blk, ty)
+            });
+        match remove_semicolon {
+            Some((sp, StatementAsExpression::NeedsBoxing)) => {
                 err.multipart_suggestion(
                     "consider removing this semicolon and boxing the expressions",
                     vec![
@@ -785,7 +776,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else {
+            }
+            Some((sp, StatementAsExpression::CorrectType)) => {
                 err.span_suggestion_short(
                     sp,
                     "consider removing this semicolon",
@@ -793,20 +785,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
             }
-        } else {
-            let suggested =
-                if let Some(first_id) = first_id
-                    && let hir::Node::Block(blk) = self.tcx.hir().get(first_id)
-                {
-                    self.consider_returning_binding(blk, second_ty, err)
-                } else {
-                    false
-                };
-            if !suggested
-                && let Some(second_id) = second_id
-                && let hir::Node::Block(blk) = self.tcx.hir().get(second_id)
-            {
-                self.consider_returning_binding(blk, first_ty, err);
+            None => {
+                for (id, ty) in [(first_id, second_ty), (second_id, first_ty)] {
+                    if let Some(id) = id
+                        && let hir::Node::Block(blk) = self.tcx.hir().get(id)
+                        && self.consider_returning_binding(blk, ty, err)
+                    {
+                        break;
+                    }
+                }
             }
         }
     }
@@ -2884,8 +2871,10 @@ impl TyCategory {
 }
 
 impl<'tcx> InferCtxt<'_, 'tcx> {
+    /// Given a [`hir::Block`], get the span of its last expression or
+    /// statement, peeling off any inner blocks.
     pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
-        let block = block.peel_blocks();
+        let block = block.innermost_block();
         if let Some(expr) = &block.expr {
             expr.span
         } else if let Some(stmt) = block.stmts.last() {
@@ -2897,27 +2886,30 @@ impl<'tcx> InferCtxt<'_, 'tcx> {
         }
     }
 
+    /// Given a [`hir::HirId`] for a block, get the span of its last expression
+    /// or statement, peeling off any inner blocks.
     pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
         match self.tcx.hir().get(hir_id) {
             hir::Node::Block(blk) => self.find_block_span(blk),
-            // The parser was in a weird state if either of these happen...
+            // The parser was in a weird state if either of these happen, but
+            // it's better not to panic.
             hir::Node::Expr(e) => e.span,
             _ => rustc_span::DUMMY_SP,
         }
     }
 
+    /// Be helpful when the user wrote `{... expr; }` and taking the `;` off
+    /// is enough to fix the error.
     pub fn could_remove_semicolon(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> Option<(Span, StatementAsExpression)> {
-        let blk = blk.peel_blocks();
+        let blk = blk.innermost_block();
         // Do not suggest if we have a tail expr.
         if blk.expr.is_some() {
             return None;
         }
-        // Be helpful when the user wrote `{... expr;}` and
-        // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
         let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
             return None;
@@ -2987,13 +2979,15 @@ impl<'tcx> InferCtxt<'_, 'tcx> {
         Some((span, needs_box))
     }
 
+    /// Suggest returning a local binding with a compatible type if the block
+    /// has no return expression.
     pub fn consider_returning_binding(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
         err: &mut Diagnostic,
     ) -> bool {
-        let blk = blk.peel_blocks();
+        let blk = blk.innermost_block();
         // Do not suggest if we have a tail expr.
         if blk.expr.is_some() {
             return false;

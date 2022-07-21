@@ -325,7 +325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let (error_sp, else_id) = if let ExprKind::Block(block, _) = &else_expr.kind {
-            let block = block.peel_blocks();
+            let block = block.innermost_block();
 
             // Avoid overlapping spans that aren't as readable:
             // ```
@@ -366,7 +366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let then_id = if let ExprKind::Block(block, _) = &then_expr.kind {
-            let block = block.peel_blocks();
+            let block = block.innermost_block();
             // Exclude overlapping spans
             if block.expr.is_none() && block.stmts.is_empty() {
                 outer_span = None;
