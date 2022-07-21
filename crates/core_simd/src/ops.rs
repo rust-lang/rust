@@ -1,4 +1,4 @@
-use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdElement, SimdPartialEq, SupportedLaneCount};
 use core::ops::{Add, Mul};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{Div, Rem, Sub};
@@ -33,6 +33,7 @@ where
 
 macro_rules! unsafe_base {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $($_:tt)*) => {
+        // Safety: $lhs and $rhs are vectors
         unsafe { $crate::simd::intrinsics::$simd_call($lhs, $rhs) }
     };
 }
@@ -48,6 +49,8 @@ macro_rules! unsafe_base {
 // cg_clif defaults to this, and scalar MIR shifts also default to wrapping
 macro_rules! wrap_bitshift {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $int:ident) => {
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        // Safety: $lhs and the bitand result are vectors
         unsafe {
             $crate::simd::intrinsics::$simd_call(
                 $lhs,
@@ -74,7 +77,7 @@ macro_rules! int_divrem_guard {
             $simd_call:ident
         },
         $int:ident ) => {
-        if $rhs.lanes_eq(Simd::splat(0)).any() {
+        if $rhs.simd_eq(Simd::splat(0 as _)).any() {
             panic!($zero);
         } else {
             // Prevent otherwise-UB overflow on the MIN / -1 case.
@@ -82,14 +85,15 @@ macro_rules! int_divrem_guard {
                 // This should, at worst, optimize to a few branchless logical ops
                 // Ideally, this entire conditional should evaporate
                 // Fire LLVM and implement those manually if it doesn't get the hint
-                ($lhs.lanes_eq(Simd::splat(<$int>::MIN))
+                ($lhs.simd_eq(Simd::splat(<$int>::MIN))
                 // type inference can break here, so cut an SInt to size
-                & $rhs.lanes_eq(Simd::splat(-1i64 as _)))
-                .select(Simd::splat(1), $rhs)
+                & $rhs.simd_eq(Simd::splat(-1i64 as _)))
+                .select(Simd::splat(1 as _), $rhs)
             } else {
                 // Nice base case to make it easy to const-fold away the other branch.
                 $rhs
             };
+            // Safety: $lhs and rhs are vectors
             unsafe { $crate::simd::intrinsics::$simd_call($lhs, rhs) }
         }
     };
