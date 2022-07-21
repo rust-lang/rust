@@ -445,6 +445,8 @@ binaries, and as such worth documenting:
   crate currently being compiled.
 * `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
   perform verbose logging.
+* `MIRI_HOST_SYSROOT` is set by bootstrap to tell `cargo-miri` which sysroot to use for *host*
+  operations.
 
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 

@@ -721,7 +721,9 @@ fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // hope that all they do is ask for the version number -- things could quickly go downhill from here.
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
     // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
-    // there would be a collision.
+    // there would be a collision with other invocations of cargo-miri (as rustdoc or as runner).
+    // We explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
+    // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host builds.
     cmd.env("RUSTC", &fs::canonicalize(find_miri()).unwrap());
 
     let runner_env_name =
@@ -929,9 +931,9 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     } else {
         // For host crates (but not when we are printing), we might still have to set the sysroot.
         if !print {
-            // When we're running `cargo-miri` from `x.py` we need to pass the sysroot explicitly as rustc
-            // can't figure out the sysroot on its own unless it's from rustup.
-            if let Some(sysroot) = std::env::var_os("SYSROOT") {
+            // When we're running `cargo-miri` from `x.py` we need to pass the sysroot explicitly
+            // due to bootstrap complications.
+            if let Some(sysroot) = std::env::var_os("MIRI_HOST_SYSROOT") {
                 cmd.arg("--sysroot").arg(sysroot);
             }
         }
