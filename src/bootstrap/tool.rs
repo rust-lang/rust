@@ -692,7 +692,7 @@ pub struct RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -719,8 +719,8 @@ impl Step for RustAnalyzer {
             target: self.target,
             tool: "rust-analyzer",
             mode: Mode::ToolStd,
-            path: "src/tools/rust-analyzer/crates/rust-analyzer",
-            extra_features: vec!["in-rust-tree".to_owned()],
+            path: "src/tools/rust-analyzer",
+            extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
             is_optional_tool: true,
             source_type: SourceType::InTree,
         })
