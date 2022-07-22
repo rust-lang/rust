@@ -69,6 +69,7 @@ trivially_parameterized_over_tcx! {
     ty::TraitDef,
     ty::UnusedGenericParams,
     ty::Visibility<DefIndex>,
+    ty::Restriction,
     ty::adjustment::CoerceUnsizedInfo,
     ty::fast_reject::SimplifiedType,
     rustc_ast::Attribute,

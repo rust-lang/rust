@@ -820,6 +820,13 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.insert_field_def_ids(local_def_id, vdata);
                 self.insert_field_visibilities_local(def_id, vdata);
 
+                for field in vdata.fields() {
+                    if let Some(local_did) = self.r.opt_local_def_id(field.id) {
+                        let mut_restriction = self.resolve_restriction(&field.mut_restriction);
+                        self.r.mut_restrictions.insert(local_did, mut_restriction);
+                    }
+                }
+
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(vdata) {
@@ -847,8 +854,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         }
                         ret_fields.push(field_vis.to_def_id());
 
-                        let mut_restriction = self.resolve_restriction(&field.mut_restriction);
-                        self.r.mut_restrictions.insert(local_def_id, mut_restriction);
+                        // TODO(jhpratt) add resolutions for enum variant fields
                     }
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
                     let ctor_res =

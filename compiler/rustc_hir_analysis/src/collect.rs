@@ -807,6 +807,7 @@ fn convert_variant(
                 did: f.def_id.to_def_id(),
                 name: f.ident.name,
                 vis: tcx.visibility(f.def_id),
+                mut_restriction: tcx.mut_restriction(f.def_id),
             }
         })
         .collect();
