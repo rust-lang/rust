@@ -30,6 +30,21 @@ fn main() {
     println!("Should have dropped 👆");
 
     {
+        // cf. https://github.com/rust-lang/rust/pull/99518#issuecomment-1191520030
+        struct Foo<'a>(&'a mut u32);
+
+        impl<'a> Drop for Foo<'a> {
+            fn drop(&mut self) {
+                *self.0 = 0;
+            }
+        }
+        let mut foo = 0;
+        let Foo(0) = Foo(&mut foo) else {
+            *&mut foo = 1;
+            todo!()
+        };
+    }
+    {
         let x = String::from("Hey");
 
         let Ok(s) = foo(&x) else { panic!() };
@@ -61,6 +76,8 @@ fn main() {
     }
     {
         // test let-else drops temps before else block
+        // NOTE: this test has to be the last block in the `main`
+        // body.
         let rc = Rc::new(0);
         let 1 = *rc.clone() else {
             Rc::try_unwrap(rc).unwrap();
