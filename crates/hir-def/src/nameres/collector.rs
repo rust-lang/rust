@@ -1525,7 +1525,7 @@ impl ModCollector<'_, '_> {
             };
 
             match item {
-                ModItem::Mod(m) => self.collect_module(&self.item_tree[m], &attrs),
+                ModItem::Mod(m) => self.collect_module(m, &attrs),
                 ModItem::Import(import_id) => {
                     let imports = Import::from_use(
                         db,
@@ -1700,9 +1700,10 @@ impl ModCollector<'_, '_> {
         }
     }
 
-    fn collect_module(&mut self, module: &Mod, attrs: &Attrs) {
+    fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
         let path_attr = attrs.by_key("path").string_value();
         let is_macro_use = attrs.by_key("macro_use").exists();
+        let module = &self.item_tree[module_id];
         match &module.kind {
             // inline module, just recurse
             ModKind::Inline { items } => {
@@ -1711,6 +1712,7 @@ impl ModCollector<'_, '_> {
                     AstId::new(self.file_id(), module.ast_id),
                     None,
                     &self.item_tree[module.visibility],
+                    module_id,
                 );
 
                 if let Some(mod_dir) = self.mod_dir.descend_into_definition(&module.name, path_attr)
@@ -1748,6 +1750,7 @@ impl ModCollector<'_, '_> {
                                 ast_id,
                                 Some((file_id, is_mod_rs)),
                                 &self.item_tree[module.visibility],
+                                module_id,
                             );
                             ModCollector {
                                 def_collector: self.def_collector,
@@ -1774,6 +1777,7 @@ impl ModCollector<'_, '_> {
                             ast_id,
                             None,
                             &self.item_tree[module.visibility],
+                            module_id,
                         );
                         self.def_collector.def_map.diagnostics.push(
                             DefDiagnostic::unresolved_module(self.module_id, ast_id, candidates),
@@ -1790,6 +1794,7 @@ impl ModCollector<'_, '_> {
         declaration: AstId<ast::Module>,
         definition: Option<(FileId, bool)>,
         visibility: &crate::visibility::RawVisibility,
+        mod_tree_id: FileItemTreeId<Mod>,
     ) -> LocalModuleId {
         let def_map = &mut self.def_collector.def_map;
         let vis = def_map
@@ -1797,10 +1802,16 @@ impl ModCollector<'_, '_> {
             .unwrap_or(Visibility::Public);
         let modules = &mut def_map.modules;
         let origin = match definition {
-            None => ModuleOrigin::Inline { definition: declaration },
-            Some((definition, is_mod_rs)) => {
-                ModuleOrigin::File { declaration, definition, is_mod_rs }
-            }
+            None => ModuleOrigin::Inline {
+                definition: declaration,
+                definition_tree_id: ItemTreeId::new(self.tree_id, mod_tree_id),
+            },
+            Some((definition, is_mod_rs)) => ModuleOrigin::File {
+                declaration,
+                definition,
+                is_mod_rs,
+                declaration_tree_id: ItemTreeId::new(self.tree_id, mod_tree_id),
+            },
         };
 
         let res = modules.alloc(ModuleData::new(origin, vis));

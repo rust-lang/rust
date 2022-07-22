@@ -70,7 +70,7 @@ use syntax::{ast, SmolStr};
 use crate::{
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
-    item_tree::TreeId,
+    item_tree::{ItemTreeId, Mod, TreeId},
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
@@ -141,9 +141,11 @@ pub enum ModuleOrigin {
     File {
         is_mod_rs: bool,
         declaration: AstId<ast::Module>,
+        declaration_tree_id: ItemTreeId<Mod>,
         definition: FileId,
     },
     Inline {
+        definition_tree_id: ItemTreeId<Mod>,
         definition: AstId<ast::Module>,
     },
     /// Pseudo-module introduced by a block scope (contains only inner items).
@@ -186,7 +188,7 @@ impl ModuleOrigin {
                 let sf = db.parse(file_id).tree();
                 InFile::new(file_id.into(), ModuleSource::SourceFile(sf))
             }
-            ModuleOrigin::Inline { definition } => InFile::new(
+            ModuleOrigin::Inline { definition, .. } => InFile::new(
                 definition.file_id,
                 ModuleSource::Module(definition.to_node(db.upcast())),
             ),
