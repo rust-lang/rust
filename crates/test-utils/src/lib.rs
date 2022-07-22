@@ -8,9 +8,9 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
+mod assert_linear;
 pub mod bench_fixture;
 mod fixture;
-mod assert_linear;
 
 use std::{
     collections::BTreeMap,
@@ -391,7 +391,8 @@ fn main() {
 /// also creates a file at `./target/.slow_tests_cookie` which serves as a flag
 /// that slow tests did run.
 pub fn skip_slow_tests() -> bool {
-    let should_skip = std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err();
+    let should_skip = (std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err())
+        || std::env::var("SKIP_SLOW_TESTS").is_ok();
     if should_skip {
         eprintln!("ignoring slow test");
     } else {
@@ -475,7 +476,7 @@ pub fn ensure_file_contents(file: &Path, contents: &str) {
 pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
     match std::fs::read_to_string(file) {
         Ok(old_contents) if normalize_newlines(&old_contents) == normalize_newlines(contents) => {
-            return Ok(())
+            return Ok(());
         }
         _ => (),
     }
