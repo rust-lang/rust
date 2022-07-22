@@ -140,6 +140,8 @@ pub enum TyKind<I: Interner> {
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
+    ///
+    /// The unit type `()` is defined as a tuple of length 0.
     Tuple(I::ListTy),
 
     /// The projection of an associated type. For example,
