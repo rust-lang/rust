@@ -120,7 +120,7 @@ pub use crate::set::HashSet;
 /// Key equivalence trait.
 ///
 /// This trait defines the function used to compare the input value with the
-/// map keys (or set values) during a lookup operation sur as [`HashMap::get`]
+/// map keys (or set values) during a lookup operation such as [`HashMap::get`]
 /// or [`HashSet::contains`].
 /// It is provided with a blanket implementation based on the
 /// [`Borrow`](core::borrow::Borrow) trait.
@@ -131,7 +131,7 @@ pub use crate::set::HashSet;
 pub trait Equivalent<K: ?Sized> {
     /// Checks if this value is equivalent to the given key.
     ///
-    /// Returns `true` if oth values are equivalent, and `false` otherwise.
+    /// Returns `true` if both values are equivalent, and `false` otherwise.
     ///
     /// # Correctness
     ///
