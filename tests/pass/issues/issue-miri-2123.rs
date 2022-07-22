@@ -16,6 +16,6 @@ fn main() {
         let x = &orig as &dyn Foo;
         let (ptr, meta) = (x as *const dyn Foo).to_raw_parts();
         let ptr = uwu(ptr, mem::transmute(meta));
-        mem::size_of_val_raw(ptr);
+        let _size = mem::size_of_val_raw(ptr);
     }
 }
