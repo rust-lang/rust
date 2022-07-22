@@ -1,4 +1,4 @@
-use crate::infer::type_variable::TypeVariableOriginKind;
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -8,12 +8,12 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::ConstVariableOriginKind;
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, InferConst};
-use rustc_middle::ty::{Ty, TyCtxt, TypeckResults};
+use rustc_middle::ty::{IsSuggestable, Ty, TyCtxt, TypeckResults};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;
@@ -407,11 +407,40 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 err.span_label(span, cannot_infer_msg);
 
-                let printer = fmt_printer(self, Namespace::TypeNS);
-                let args = printer.comma_sep(generic_args.iter().copied()).unwrap().into_buffer();
+                let args = fmt_printer(self, Namespace::TypeNS)
+                    .comma_sep(generic_args.iter().copied().map(|arg| {
+                        if arg.is_suggestable(self.tcx, true) {
+                            return arg;
+                        }
+
+                        match arg.unpack() {
+                            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+                            GenericArgKind::Type(_) => self
+                                .next_ty_var(TypeVariableOrigin {
+                                    span: rustc_span::DUMMY_SP,
+                                    kind: TypeVariableOriginKind::MiscVariable,
+                                })
+                                .into(),
+                            GenericArgKind::Const(arg) => self
+                                .next_const_var(
+                                    arg.ty(),
+                                    ConstVariableOrigin {
+                                        span: rustc_span::DUMMY_SP,
+                                        kind: ConstVariableOriginKind::MiscVariable,
+                                    },
+                                )
+                                .into(),
+                        }
+                    }))
+                    .unwrap()
+                    .into_buffer();
+
                 err.span_suggestion_verbose(
                     insert_span,
-                    &format!("consider specifying the generic argument{}", pluralize!(args.len()),),
+                    &format!(
+                        "consider specifying the generic argument{}",
+                        pluralize!(generic_args.len()),
+                    ),
                     format!("::<{}>", args),
                     Applicability::HasPlaceholders,
                 );

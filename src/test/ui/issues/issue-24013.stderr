@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     unsafe {swap::<&mut _>(transmute(&a), transmute(&b))};
    |             ^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `swap`
    |
-help: consider specifying the generic arguments
+help: consider specifying the generic argument
    |
 LL |     unsafe {swap::<&mut _>(transmute(&a), transmute(&b))};
    |                 ~~~~~~~~~~

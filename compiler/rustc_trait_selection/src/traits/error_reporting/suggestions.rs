@@ -378,7 +378,7 @@ fn suggest_restriction<'tcx>(
             replace_ty: ty::ParamTy::new(generics.count() as u32, Symbol::intern(&type_param_name))
                 .to_ty(tcx),
         });
-        if !trait_pred.is_suggestable(tcx) {
+        if !trait_pred.is_suggestable(tcx, false) {
             return;
         }
         // We know we have an `impl Trait` that doesn't satisfy a required projection.
@@ -417,7 +417,7 @@ fn suggest_restriction<'tcx>(
             Applicability::MaybeIncorrect,
         );
     } else {
-        if !trait_pred.is_suggestable(tcx) {
+        if !trait_pred.is_suggestable(tcx, false) {
             return;
         }
         // Trivial case: `T` needs an extra bound: `T: Bound`.
@@ -586,7 +586,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // else in the predicate.
                     if !trait_pred.skip_binder().trait_ref.substs[1..]
                         .iter()
-                        .all(|g| g.is_suggestable(self.tcx))
+                        .all(|g| g.is_suggestable(self.tcx, false))
                     {
                         return;
                     }
