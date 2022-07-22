@@ -63,6 +63,8 @@ impl ProcMacroSrv {
 
         let macro_body = task.macro_body.to_subtree();
         let attributes = task.attributes.map(|it| it.to_subtree());
+        // FIXME: replace this with std's scoped threads once they stabilize
+        // (then remove dependency on crossbeam)
         let result = crossbeam::scope(|s| {
             let res = s
                 .spawn(|_| {
