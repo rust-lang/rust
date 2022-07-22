@@ -36,6 +36,10 @@ LL | |                 }
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |                move || {
+   |                ++++
 
 error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:37:9
