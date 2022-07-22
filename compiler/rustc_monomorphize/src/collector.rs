@@ -25,7 +25,7 @@
 //! codegen unit:
 //!
 //! - Constants
-//! - Vtables
+//! - VTables
 //! - Object Shims
 //!
 //!
@@ -992,7 +992,7 @@ fn visit_instance_use<'tcx>(
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_))
-        | ty::InstanceDef::VtableShim(..)
+        | ty::InstanceDef::VTableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
         | ty::InstanceDef::Item(..)
@@ -1426,6 +1426,10 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(tcx, fn_instance, DUMMY_SP));
             }
+        }
+        GlobalAlloc::VTable(ty, trait_ref) => {
+            let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+            collect_miri(tcx, alloc_id, output)
         }
     }
 }

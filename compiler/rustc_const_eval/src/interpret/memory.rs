@@ -16,7 +16,7 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::display_allocation;
-use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
@@ -62,6 +62,8 @@ pub enum AllocKind {
     LiveData,
     /// A function allocation (that fn ptrs point to).
     Function,
+    /// A (symbolic) vtable allocation.
+    VTable,
     /// A dead allocation.
     Dead,
 }
@@ -159,7 +161,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc_id = ptr.provenance;
         // We need to handle `extern static`.
-        match self.tcx.get_global_alloc(alloc_id) {
+        match self.tcx.try_get_global_alloc(alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
                 bug!("global memory cannot point to thread-local static")
             }
@@ -287,9 +289,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let Some((alloc_kind, mut alloc)) = self.memory.alloc_map.remove(&alloc_id) else {
             // Deallocating global memory -- always an error
-            return Err(match self.tcx.get_global_alloc(alloc_id) {
+            return Err(match self.tcx.try_get_global_alloc(alloc_id) {
                 Some(GlobalAlloc::Function(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is a function")
+                }
+                Some(GlobalAlloc::VTable(..)) => {
+                    err_ub_format!("deallocating {alloc_id:?}, which is a vtable")
                 }
                 Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                     err_ub_format!("deallocating {alloc_id:?}, which is static memory")
@@ -473,12 +478,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::Provenance, M::AllocExtra>>> {
-        let (alloc, def_id) = match self.tcx.get_global_alloc(id) {
+        let (alloc, def_id) = match self.tcx.try_get_global_alloc(id) {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
                 (mem, None)
             }
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
+            Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
@@ -494,6 +500,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
                 if self.tcx.is_foreign_item(def_id) {
+                    // This is unreachable in Miri, but can happen in CTFE where we actually *do* support
+                    // referencing arbitrary (declared) extern statics.
                     throw_unsup!(ReadExternStatic(def_id));
                 }
 
@@ -663,12 +671,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // # Statics
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
-        match self.tcx.get_global_alloc(id) {
-            Some(GlobalAlloc::Static(did)) => {
-                assert!(!self.tcx.is_thread_local_static(did));
+        match self.tcx.try_get_global_alloc(id) {
+            Some(GlobalAlloc::Static(def_id)) => {
+                assert!(self.tcx.is_static(def_id));
+                assert!(!self.tcx.is_thread_local_static(def_id));
                 // Use size and align of the type.
-                let ty = self.tcx.type_of(did);
+                let ty = self.tcx.type_of(def_id);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                assert!(!layout.is_unsized());
                 (layout.size, layout.align.abi, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Memory(alloc)) => {
@@ -678,6 +688,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (alloc.size(), alloc.align, AllocKind::LiveData)
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
+            Some(GlobalAlloc::VTable(..)) => {
+                // No data to be accessed here. But vtables are pointer-aligned.
+                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
+            }
             // The rest must be dead.
             None => {
                 // Deallocated pointers are allowed, we should be able to find
@@ -705,7 +719,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(extra) = self.memory.extra_fn_ptr_map.get(&id) {
             Some(FnVal::Other(*extra))
         } else {
-            match self.tcx.get_global_alloc(id) {
+            match self.tcx.try_get_global_alloc(id) {
                 Some(GlobalAlloc::Function(instance)) => Some(FnVal::Instance(instance)),
                 _ => None,
             }
@@ -716,13 +730,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<Option<M::Provenance>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
-        trace!("get_fn({:?})", ptr);
+        trace!("get_ptr_fn({:?})", ptr);
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
         }
         self.get_fn_alloc(alloc_id)
             .ok_or_else(|| err_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset))).into())
+    }
+
+    pub fn get_ptr_vtable(
+        &self,
+        ptr: Pointer<Option<M::Provenance>>,
+    ) -> InterpResult<'tcx, (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>)> {
+        trace!("get_ptr_vtable({:?})", ptr);
+        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr)?;
+        if offset.bytes() != 0 {
+            throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
+        }
+        match self.tcx.try_get_global_alloc(alloc_id) {
+            Some(GlobalAlloc::VTable(ty, trait_ref)) => Ok((ty, trait_ref)),
+            _ => throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset))),
+        }
     }
 
     pub fn alloc_mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
@@ -829,7 +858,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                 }
                 None => {
                     // global alloc
-                    match self.ecx.tcx.get_global_alloc(id) {
+                    match self.ecx.tcx.try_get_global_alloc(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
                             write!(fmt, " (unchanged global, ")?;
                             write_allocation_track_relocs(
@@ -840,7 +869,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                             )?;
                         }
                         Some(GlobalAlloc::Function(func)) => {
-                            write!(fmt, " (fn: {})", func)?;
+                            write!(fmt, " (fn: {func})")?;
+                        }
+                        Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
+                            write!(fmt, " (vtable: impl {trait_ref} for {ty})")?;
+                        }
+                        Some(GlobalAlloc::VTable(ty, None)) => {
+                            write!(fmt, " (vtable: impl <auto trait> for {ty})")?;
                         }
                         Some(GlobalAlloc::Static(did)) => {
                             write!(fmt, " (static: {})", self.ecx.tcx.def_path_str(did))?;

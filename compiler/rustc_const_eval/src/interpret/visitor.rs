@@ -425,7 +425,7 @@ macro_rules! make_value_visitor {
                         // unsized values are never immediate, so we can assert_mem_place
                         let op = v.to_op_for_read(self.ecx())?;
                         let dest = op.assert_mem_place();
-                        let inner_mplace = self.ecx().unpack_dyn_trait(&dest)?.1;
+                        let inner_mplace = self.ecx().unpack_dyn_trait(&dest)?;
                         trace!("walk_value: dyn object layout: {:#?}", inner_mplace.layout);
                         // recurse with the inner type
                         return self.visit_field(&v, 0, &$value_trait::from_op(&inner_mplace.into()));

@@ -195,9 +195,8 @@ pub(crate) fn codegen_const_value<'tcx>(
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
-                let alloc_kind = fx.tcx.get_global_alloc(alloc_id);
-                let base_addr = match alloc_kind {
-                    Some(GlobalAlloc::Memory(alloc)) => {
+                let base_addr = match fx.tcx.global_alloc(alloc_id) {
+                    GlobalAlloc::Memory(alloc) => {
                         let data_id = data_id_for_alloc_id(
                             &mut fx.constants_cx,
                             fx.module,
@@ -211,13 +210,27 @@ pub(crate) fn codegen_const_value<'tcx>(
                         }
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
-                    Some(GlobalAlloc::Function(instance)) => {
+                    GlobalAlloc::Function(instance) => {
                         let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
                         let local_func_id =
                             fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                         fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                     }
-                    Some(GlobalAlloc::Static(def_id)) => {
+                    GlobalAlloc::VTable(ty, trait_ref) => {
+                        let alloc_id = fx.tcx.vtable_allocation((ty, trait_ref));
+                        let alloc = fx.tcx.global_alloc(alloc_id).unwrap_memory();
+                        // FIXME: factor this common code with the `Memory` arm into a function?
+                        let data_id = data_id_for_alloc_id(
+                            &mut fx.constants_cx,
+                            fx.module,
+                            alloc_id,
+                            alloc.inner().mutability,
+                        );
+                        let local_data_id =
+                            fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                        fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+                    }
+                    GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
                         let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
                         let local_data_id =
@@ -227,7 +240,6 @@ pub(crate) fn codegen_const_value<'tcx>(
                         }
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
-                    None => bug!("missing allocation {:?}", alloc_id),
                 };
                 let val = if offset.bytes() != 0 {
                     fx.bcx.ins().iadd_imm(base_addr, i64::try_from(offset.bytes()).unwrap())
@@ -357,10 +369,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
     while let Some(todo_item) = cx.todo.pop() {
         let (data_id, alloc, section_name) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
-                //println!("alloc_id {}", alloc_id);
-                let alloc = match tcx.get_global_alloc(alloc_id).unwrap() {
+                let alloc = match tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => alloc,
-                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
+                    GlobalAlloc::Function(_) | GlobalAlloc::Static(_) | GlobalAlloc::VTable(..) => {
+                        unreachable!()
+                    }
                 };
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
                     module
@@ -424,7 +437,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 read_target_uint(endianness, bytes).unwrap()
             };
 
-            let reloc_target_alloc = tcx.get_global_alloc(alloc_id).unwrap();
+            let reloc_target_alloc = tcx.global_alloc(alloc_id);
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function(instance) => {
                     assert_eq!(addend, 0);
@@ -435,6 +448,10 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 }
                 GlobalAlloc::Memory(target_alloc) => {
                     data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
+                }
+                GlobalAlloc::VTable(ty, trait_ref) => {
+                    let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+                    data_id_for_alloc_id(cx, module, alloc_id, Mutability::Not)
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)

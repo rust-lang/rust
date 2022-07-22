@@ -313,50 +313,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match tail.kind() {
             ty::Dynamic(..) => {
                 let vtable = self.ecx.scalar_to_ptr(meta.unwrap_meta())?;
-                // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
-                try_validation!(
-                    self.ecx.check_ptr_access_align(
-                        vtable,
-                        3 * self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                        self.ecx.tcx.data_layout.pointer_align.abi,
-                        CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
-                    ),
+                // Make sure it is a genuine vtable pointer.
+                let (_ty, _trait) = try_validation!(
+                    self.ecx.get_ptr_vtable(vtable),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(PointerUseAfterFree(..)) =>
-                        { "dangling vtable pointer in wide pointer" },
-                    err_ub!(AlignmentCheckFailed { .. }) =>
-                        { "unaligned vtable pointer in wide pointer" },
-                    err_ub!(PointerOutOfBounds { .. }) =>
-                        { "too small vtable" },
+                    err_ub!(InvalidVTablePointer(..)) =>
+                        { "{vtable}" } expected { "a vtable pointer" },
                 );
-                try_validation!(
-                    self.ecx.read_drop_type_from_vtable(vtable),
-                    self.path,
-                    err_ub!(DanglingIntPointer(..)) |
-                    err_ub!(InvalidFunctionPointer(..)) =>
-                        { "invalid drop function pointer in vtable (not pointing to a function)" },
-                    err_ub!(InvalidVtableDropFn(..)) =>
-                        { "invalid drop function pointer in vtable (function has incompatible signature)" },
-                    // Stacked Borrows errors can happen here, see https://github.com/rust-lang/miri/issues/2123.
-                    // (We assume there are no other MachineStop errors possible here.)
-                    InterpError::MachineStop(_) =>
-                        { "vtable pointer does not have permission to read drop function pointer" },
-                );
-                try_validation!(
-                    self.ecx.read_size_and_align_from_vtable(vtable),
-                    self.path,
-                    err_ub!(InvalidVtableSize) =>
-                        { "invalid vtable: size is bigger than largest supported object" },
-                    err_ub!(InvalidVtableAlignment(msg)) =>
-                        { "invalid vtable: alignment {}", msg },
-                    err_unsup!(ReadPointerAsBytes) => { "invalid size or align in vtable" },
-                    // Stacked Borrows errors can happen here, see https://github.com/rust-lang/miri/issues/2123.
-                    // (We assume there are no other MachineStop errors possible here.)
-                    InterpError::MachineStop(_) =>
-                        { "vtable pointer does not have permission to read size and alignment" },
-                );
-                // FIXME: More checks for the vtable.
+                // FIXME: check if the type/trait match what ty::Dynamic says?
             }
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
@@ -447,7 +412,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr) {
                 // Special handling for pointers to statics (irrespective of their type).
-                let alloc_kind = self.ecx.tcx.get_global_alloc(alloc_id);
+                let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id);
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
                     assert!(!self.ecx.tcx.is_thread_local_static(did));
                     assert!(self.ecx.tcx.is_static(did));
@@ -607,11 +572,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
-                        err_ub!(DanglingIntPointer(0, _)) =>
-                            { "a null function pointer" },
                         err_ub!(DanglingIntPointer(..)) |
                         err_ub!(InvalidFunctionPointer(..)) =>
-                            { "{:x}", value } expected { "a function pointer" },
+                            { "{ptr}" } expected { "a function pointer" },
                     );
                     // FIXME: Check if the signature matches
                 } else {

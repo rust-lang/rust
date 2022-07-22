@@ -400,6 +400,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::const_eval_select => (4, vec![param(0), param(1), param(2)], param(3)),
 
+            sym::vtable_size | sym::vtable_align => {
+                (0, vec![tcx.mk_imm_ptr(tcx.mk_unit())], tcx.types.usize)
+            }
+
             other => {
                 tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
                 return;

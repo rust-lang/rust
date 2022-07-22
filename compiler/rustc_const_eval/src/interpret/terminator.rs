@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::convert::TryFrom;
 
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_middle::ty::Instance;
@@ -365,7 +364,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // caller_fn_abi is not relevant here, we interpret the arguments directly for each intrinsic.
                 M::call_intrinsic(self, instance, args, destination, target, unwind)
             }
-            ty::InstanceDef::VtableShim(..)
+            ty::InstanceDef::VTableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
             | ty::InstanceDef::FnPtrShim(..)
@@ -520,7 +519,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
             // cannot use the shim here, because that will only result in infinite recursion
-            ty::InstanceDef::Virtual(_, idx) => {
+            ty::InstanceDef::Virtual(def_id, idx) => {
                 let mut args = args.to_vec();
                 // We have to implement all "object safe receivers". So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
@@ -553,17 +552,53 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                     }
                 };
-                // Find and consult vtable. The type now could be something like RcBox<dyn Trait>,
-                // i.e., it is still not necessarily `ty::Dynamic` (so we cannot use
-                // `place.vtable()`), but it should have a `dyn Trait` tail.
-                assert!(matches!(
-                    self.tcx
-                        .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env)
-                        .kind(),
-                    ty::Dynamic(..)
-                ));
-                let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta())?;
-                let fn_val = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
+                // Obtain the underlying trait we are working on.
+                let receiver_tail = self
+                    .tcx
+                    .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
+                let ty::Dynamic(data, ..) = receiver_tail.kind() else {
+                    span_bug!(self.cur_span(), "dyanmic call on non-`dyn` type {}", receiver_tail)
+                };
+
+                // Get the required information from the vtable.
+                let vptr = self.scalar_to_ptr(receiver_place.meta.unwrap_meta())?;
+                let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
+                if dyn_trait != data.principal() {
+                    throw_ub_format!(
+                        "`dyn` call on a pointer whose vtable does not match its type"
+                    );
+                }
+
+                // Now determine the actual method to call. We can do that in two different ways and
+                // compare them to ensure everything fits.
+                let ty::VtblEntry::Method(fn_inst) = self.get_vtable_entries(vptr)?[idx] else {
+                    span_bug!(self.cur_span(), "dyn call index points at something that is not a method")
+                };
+                if cfg!(debug_assertions) {
+                    let tcx = *self.tcx;
+
+                    let trait_def_id = tcx.trait_of_item(def_id).unwrap();
+                    let virtual_trait_ref =
+                        ty::TraitRef::from_method(tcx, trait_def_id, instance.substs);
+                    assert_eq!(
+                        receiver_tail,
+                        virtual_trait_ref.self_ty(),
+                        "mismatch in underlying dyn trait computation within Miri and MIR building",
+                    );
+                    let existential_trait_ref =
+                        ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
+                    let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
+
+                    let concrete_method = Instance::resolve(
+                        tcx,
+                        self.param_env,
+                        def_id,
+                        instance.substs.rebase_onto(tcx, trait_def_id, concrete_trait_ref.substs),
+                    )
+                    .unwrap()
+                    .unwrap();
+                    assert_eq!(fn_inst, concrete_method);
+                }
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -579,7 +614,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("Patched receiver operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(
-                    fn_val,
+                    FnVal::Instance(fn_inst),
                     (caller_abi, caller_fn_abi),
                     &args,
                     with_caller_location,
@@ -606,8 +641,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let (instance, place) = match place.layout.ty.kind() {
             ty::Dynamic(..) => {
-                // Dropping a trait object.
-                self.unpack_dyn_trait(&place)?
+                // Dropping a trait object. Need to find actual drop fn.
+                let place = self.unpack_dyn_trait(&place)?;
+                let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+                (instance, place)
             }
             _ => (instance, place),
         };

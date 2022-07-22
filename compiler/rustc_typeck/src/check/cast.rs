@@ -69,7 +69,7 @@ enum PointerKind<'tcx> {
     /// No metadata attached, ie pointer to sized type or foreign type
     Thin,
     /// A trait object
-    Vtable(Option<DefId>),
+    VTable(Option<DefId>),
     /// Slice
     Length,
     /// The unsize info of this projection
@@ -102,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
-            ty::Dynamic(ref tty, ..) => Some(PointerKind::Vtable(tty.principal_def_id())),
+            ty::Dynamic(ref tty, ..) => Some(PointerKind::VTable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(f) => {
@@ -951,7 +951,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         match fcx.pointer_kind(m_cast.ty, self.span)? {
             None => Err(CastError::UnknownCastPtrKind),
             Some(PointerKind::Thin) => Ok(CastKind::AddrPtrCast),
-            Some(PointerKind::Vtable(_)) => Err(CastError::IntToFatCast(Some("a vtable"))),
+            Some(PointerKind::VTable(_)) => Err(CastError::IntToFatCast(Some("a vtable"))),
             Some(PointerKind::Length) => Err(CastError::IntToFatCast(Some("a length"))),
             Some(
                 PointerKind::OfProjection(_)

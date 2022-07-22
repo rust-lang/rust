@@ -201,6 +201,11 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAlloc::Function(fn_instance) => {
                             self.get_fn_addr(fn_instance)
                         },
+                        GlobalAlloc::VTable(ty, trait_ref) => {
+                            let alloc = self.tcx.global_alloc(self.tcx.vtable_allocation((ty, trait_ref))).unwrap_memory();
+                            let init = const_alloc_to_gcc(self, alloc);
+                            self.static_addr_of(init, alloc.inner().align, None)
+                        }
                         GlobalAlloc::Static(def_id) => {
                             assert!(self.tcx.is_static(def_id));
                             self.get_static(def_id).get_address(None)

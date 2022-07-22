@@ -362,7 +362,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // the codegen tests and can even make item order
                             // unstable.
                             InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
-                            InstanceDef::VtableShim(..)
+                            InstanceDef::VTableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
                             | InstanceDef::FnPtrShim(..)
