@@ -86,7 +86,9 @@ impl<'mir, 'tcx> GlobalStateInner {
         if global_state.exposed.contains(&alloc_id) {
             let (_size, _align, kind) = ecx.get_alloc_info(alloc_id);
             match kind {
-                AllocKind::LiveData | AllocKind::Function => return Some(alloc_id),
+                AllocKind::LiveData | AllocKind::Function | AllocKind::VTable => {
+                    return Some(alloc_id);
+                }
                 AllocKind::Dead => {}
             }
         }
@@ -187,8 +189,8 @@ impl<'mir, 'tcx> GlobalStateInner {
 
                 // Remember next base address.  If this allocation is zero-sized, leave a gap
                 // of at least 1 to avoid two allocations having the same base address.
-                // (The logic in `alloc_id_from_addr` assumes unique addresses, and function
-                // pointers to different functions need to be distinguishable!)
+                // (The logic in `alloc_id_from_addr` assumes unique addresses, and different
+                // function/vtable pointers need to be distinguishable!)
                 global_state.next_base_addr = base_addr.checked_add(max(size.bytes(), 1)).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
