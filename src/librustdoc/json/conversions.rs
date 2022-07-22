@@ -554,10 +554,12 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
 
 impl FromWithTcx<clean::Trait> for Trait {
     fn from_tcx(trait_: clean::Trait, tcx: TyCtxt<'_>) -> Self {
-        let clean::Trait { unsafety, items, generics, bounds, is_auto } = trait_;
+        let is_auto = trait_.is_auto(tcx);
+        let is_unsafe = trait_.unsafety(tcx) == rustc_hir::Unsafety::Unsafe;
+        let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
             is_auto,
-            is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
+            is_unsafe,
             items: ids(items, tcx),
             generics: generics.into_tcx(tcx),
             bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),

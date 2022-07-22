@@ -1513,11 +1513,19 @@ impl FnRetTy {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Trait {
-    pub(crate) unsafety: hir::Unsafety,
+    pub(crate) def_id: DefId,
     pub(crate) items: Vec<Item>,
     pub(crate) generics: Generics,
     pub(crate) bounds: Vec<GenericBound>,
-    pub(crate) is_auto: bool,
+}
+
+impl Trait {
+    pub(crate) fn is_auto(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.trait_is_auto(self.def_id)
+    }
+    pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
+        tcx.trait_def(self.def_id).unsafety
+    }
 }
 
 #[derive(Clone, Debug)]

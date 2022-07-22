@@ -2295,7 +2295,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     sidebar_assoc_items(cx, buf, it);
 
     print_sidebar_title(buf, "implementors", "Implementors");
-    if t.is_auto {
+    if t.is_auto(cx.tcx()) {
         print_sidebar_title(buf, "synthetic-implementors", "Auto Implementors");
     }
 
