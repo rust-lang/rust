@@ -1,5 +1,5 @@
 use crate::raw::{Allocator, Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
-use crate::TryReserveError;
+use crate::{Equivalent, TryReserveError};
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -209,13 +209,12 @@ impl<K: Clone, V: Clone, S: Clone, A: Allocator + Clone> Clone for HashMap<K, V,
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
 /// instances of any functions like RawTable::reserve from being generated
 #[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_hasher<K, Q, V, S>(hash_builder: &S) -> impl Fn(&(Q, V)) -> u64 + '_
+pub(crate) fn make_hasher<Q, V, S>(hash_builder: &S) -> impl Fn(&(Q, V)) -> u64 + '_
 where
-    K: Borrow<Q>,
     Q: Hash,
     S: BuildHasher,
 {
-    move |val| make_hash::<K, Q, S>(hash_builder, &val.0)
+    move |val| make_hash::<Q, S>(hash_builder, &val.0)
 }
 
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
@@ -223,10 +222,9 @@ where
 #[cfg_attr(feature = "inline-more", inline)]
 fn equivalent_key<Q, K, V>(k: &Q) -> impl Fn(&(K, V)) -> bool + '_
 where
-    K: Borrow<Q>,
-    Q: ?Sized + Eq,
+    Q: ?Sized + Equivalent<K>,
 {
-    move |x| k.eq(x.0.borrow())
+    move |x| k.equivalent(&x.0)
 }
 
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
@@ -234,17 +232,15 @@ where
 #[cfg_attr(feature = "inline-more", inline)]
 fn equivalent<Q, K>(k: &Q) -> impl Fn(&K) -> bool + '_
 where
-    K: Borrow<Q>,
-    Q: ?Sized + Eq,
+    Q: ?Sized + Equivalent<K>,
 {
-    move |x| k.eq(x.borrow())
+    move |x| k.equivalent(x)
 }
 
 #[cfg(not(feature = "nightly"))]
 #[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
+pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
 where
-    K: Borrow<Q>,
     Q: Hash + ?Sized,
     S: BuildHasher,
 {
@@ -1012,7 +1008,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
         self.table
-            .reserve(additional, make_hasher::<K, _, V, S>(&self.hash_builder));
+            .reserve(additional, make_hasher::<_, V, S>(&self.hash_builder));
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -1062,7 +1058,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.table
-            .try_reserve(additional, make_hasher::<K, _, V, S>(&self.hash_builder))
+            .try_reserve(additional, make_hasher::<_, V, S>(&self.hash_builder))
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -1084,7 +1080,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
         self.table
-            .shrink_to(0, make_hasher::<K, _, V, S>(&self.hash_builder));
+            .shrink_to(0, make_hasher::<_, V, S>(&self.hash_builder));
     }
 
     /// Shrinks the capacity of the map with a lower limit. It will drop
@@ -1113,7 +1109,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.table
-            .shrink_to(min_capacity, make_hasher::<K, _, V, S>(&self.hash_builder));
+            .shrink_to(min_capacity, make_hasher::<_, V, S>(&self.hash_builder));
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -1174,10 +1170,9 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn entry_ref<'a, 'b, Q: ?Sized>(&'a mut self, key: &'b Q) -> EntryRef<'a, 'b, K, Q, V, S, A>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
-        let hash = make_hash::<K, Q, S>(&self.hash_builder, key);
+        let hash = make_hash::<Q, S>(&self.hash_builder, key);
         if let Some(elem) = self.table.find(hash, equivalent_key(key)) {
             EntryRef::Occupied(OccupiedEntryRef {
                 hash,
@@ -1216,8 +1211,7 @@ where
     #[inline]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner(k) {
@@ -1248,8 +1242,7 @@ where
     #[inline]
     pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner(k) {
@@ -1261,13 +1254,12 @@ where
     #[inline]
     fn get_inner<Q: ?Sized>(&self, k: &Q) -> Option<&(K, V)>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         if self.table.is_empty() {
             None
         } else {
-            let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
+            let hash = make_hash::<Q, S>(&self.hash_builder, k);
             self.table.get(hash, equivalent_key(k))
         }
     }
@@ -1298,8 +1290,7 @@ where
     #[inline]
     pub fn get_key_value_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<(&K, &mut V)>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner_mut(k) {
@@ -1330,8 +1321,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         self.get_inner(k).is_some()
     }
@@ -1362,8 +1352,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner_mut(k) {
@@ -1375,13 +1364,12 @@ where
     #[inline]
     fn get_inner_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut (K, V)>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         if self.table.is_empty() {
             None
         } else {
-            let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
+            let hash = make_hash::<Q, S>(&self.hash_builder, k);
             self.table.get_mut(hash, equivalent_key(k))
         }
     }
@@ -1431,8 +1419,7 @@ where
     /// ```
     pub fn get_many_mut<Q: ?Sized, const N: usize>(&mut self, ks: [&Q; N]) -> Option<[&'_ mut V; N]>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         self.get_many_mut_inner(ks).map(|res| res.map(|(_, v)| v))
     }
@@ -1487,8 +1474,7 @@ where
         ks: [&Q; N],
     ) -> Option<[&'_ mut V; N]>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         self.get_many_unchecked_mut_inner(ks)
             .map(|res| res.map(|(_, v)| v))
@@ -1543,8 +1529,7 @@ where
         ks: [&Q; N],
     ) -> Option<[(&'_ K, &'_ mut V); N]>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         self.get_many_mut_inner(ks)
             .map(|res| res.map(|(k, v)| (&*k, v)))
@@ -1599,8 +1584,7 @@ where
         ks: [&Q; N],
     ) -> Option<[(&'_ K, &'_ mut V); N]>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         self.get_many_unchecked_mut_inner(ks)
             .map(|res| res.map(|(k, v)| (&*k, v)))
@@ -1611,12 +1595,11 @@ where
         ks: [&Q; N],
     ) -> Option<[&'_ mut (K, V); N]>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         let hashes = self.build_hashes_inner(ks);
         self.table
-            .get_many_mut(hashes, |i, (k, _)| ks[i].eq(k.borrow()))
+            .get_many_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
     }
 
     unsafe fn get_many_unchecked_mut_inner<Q: ?Sized, const N: usize>(
@@ -1624,22 +1607,20 @@ where
         ks: [&Q; N],
     ) -> Option<[&'_ mut (K, V); N]>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         let hashes = self.build_hashes_inner(ks);
         self.table
-            .get_many_unchecked_mut(hashes, |i, (k, _)| ks[i].eq(k.borrow()))
+            .get_many_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
     }
 
     fn build_hashes_inner<Q: ?Sized, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         let mut hashes = [0_u64; N];
         for i in 0..N {
-            hashes[i] = make_hash::<K, Q, S>(&self.hash_builder, ks[i]);
+            hashes[i] = make_hash::<Q, S>(&self.hash_builder, ks[i]);
         }
         hashes
     }
@@ -1677,7 +1658,7 @@ where
             Some(mem::replace(item, v))
         } else {
             self.table
-                .insert(hash, (k, v), make_hasher::<K, _, V, S>(&self.hash_builder));
+                .insert(hash, (k, v), make_hasher::<_, V, S>(&self.hash_builder));
             None
         }
     }
@@ -1736,7 +1717,7 @@ where
         let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
         let bucket = self
             .table
-            .insert(hash, (k, v), make_hasher::<K, _, V, S>(&self.hash_builder));
+            .insert(hash, (k, v), make_hasher::<_, V, S>(&self.hash_builder));
         let (k_ref, v_ref) = unsafe { bucket.as_mut() };
         (k_ref, v_ref)
     }
@@ -1812,8 +1793,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.remove_entry(k) {
@@ -1853,10 +1833,9 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
     where
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
-        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
+        let hash = make_hash::<Q, S>(&self.hash_builder, k);
         self.table.remove_entry(hash, equivalent_key(k))
     }
 }
@@ -2140,8 +2119,8 @@ where
 
 impl<K, Q: ?Sized, V, S, A> Index<&Q> for HashMap<K, V, S, A>
 where
-    K: Eq + Hash + Borrow<Q>,
-    Q: Eq + Hash,
+    K: Eq + Hash,
+    Q: Hash + Equivalent<K>,
     S: BuildHasher,
     A: Allocator + Clone,
 {
@@ -3103,10 +3082,9 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> RawEntryMut<'a, K, V, S, A>
     where
         S: BuildHasher,
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
-        let hash = make_hash::<K, Q, S>(&self.map.hash_builder, k);
+        let hash = make_hash::<Q, S>(&self.map.hash_builder, k);
         self.from_key_hashed_nocheck(hash, k)
     }
 
@@ -3136,8 +3114,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S, A>
     where
-        K: Borrow<Q>,
-        Q: Eq,
+        Q: Equivalent<K>,
     {
         self.from_hash(hash, equivalent(k))
     }
@@ -3211,10 +3188,9 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
     pub fn from_key<Q: ?Sized>(self, k: &Q) -> Option<(&'a K, &'a V)>
     where
         S: BuildHasher,
-        K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<K>,
     {
-        let hash = make_hash::<K, Q, S>(&self.map.hash_builder, k);
+        let hash = make_hash::<Q, S>(&self.map.hash_builder, k);
         self.from_key_hashed_nocheck(hash, k)
     }
 
@@ -3242,8 +3218,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
     #[allow(clippy::wrong_self_convention)]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> Option<(&'a K, &'a V)>
     where
-        K: Borrow<Q>,
-        Q: Eq,
+        Q: Equivalent<K>,
     {
         self.from_hash(hash, equivalent(k))
     }
@@ -3950,7 +3925,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         let &mut (ref mut k, ref mut v) = self.table.insert_entry(
             hash,
             (key, value),
-            make_hasher::<K, _, V, S>(self.hash_builder),
+            make_hasher::<_, V, S>(self.hash_builder),
         );
         (k, v)
     }
@@ -4018,7 +3993,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         let elem = self.table.insert(
             hash,
             (key, value),
-            make_hasher::<K, _, V, S>(self.hash_builder),
+            make_hasher::<_, V, S>(self.hash_builder),
         );
         RawOccupiedEntryMut {
             elem,
@@ -5567,7 +5542,7 @@ impl<'a, K, V, S, A: Allocator + Clone> VacantEntry<'a, K, V, S, A> {
         let entry = table.insert_entry(
             self.hash,
             (self.key, value),
-            make_hasher::<K, _, V, S>(&self.table.hash_builder),
+            make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         &mut entry.1
     }
@@ -5581,7 +5556,7 @@ impl<'a, K, V, S, A: Allocator + Clone> VacantEntry<'a, K, V, S, A> {
         let elem = self.table.table.insert(
             self.hash,
             (self.key, value),
-            make_hasher::<K, _, V, S>(&self.table.hash_builder),
+            make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         OccupiedEntry {
             hash: self.hash,
@@ -6305,7 +6280,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> VacantEntryRef<'a, 'b, K,
         let entry = table.insert_entry(
             self.hash,
             (self.key.into_owned(), value),
-            make_hasher::<K, _, V, S>(&self.table.hash_builder),
+            make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         &mut entry.1
     }
@@ -6319,7 +6294,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> VacantEntryRef<'a, 'b, K,
         let elem = self.table.table.insert(
             self.hash,
             (self.key.into_owned(), value),
-            make_hasher::<K, _, V, S>(&self.table.hash_builder),
+            make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         OccupiedEntryRef {
             hash: self.hash,
