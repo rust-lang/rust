@@ -42,7 +42,8 @@ export class Ctx {
 
         const res = new Ctx(config, extCtx, client, serverPath, statusBar);
 
-        await client.start();
+        res.pushCleanup(client.start());
+        await client.onReady();
         client.onNotification(ra.serverStatus, (params) => res.setServerStatus(params));
         return res;
     }

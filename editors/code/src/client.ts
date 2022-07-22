@@ -261,10 +261,6 @@ export async function createClient(
 }
 
 class ExperimentalFeatures implements lc.StaticFeature {
-    getState(): lc.FeatureState {
-        return { kind: "static" };
-    }
-
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
         const caps: any = capabilities.experimental ?? {};
         caps.snippetTextEdit = true;
