@@ -3,7 +3,6 @@ use crate::astconv::AstConv;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
@@ -14,7 +13,7 @@ use rustc_hir::{
 use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -902,119 +901,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             true
         } else {
             false
-        }
-    }
-
-    pub(crate) fn consider_returning_binding(
-        &self,
-        blk: &'tcx hir::Block<'tcx>,
-        expected_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
-    ) {
-        let mut shadowed = FxHashSet::default();
-        let mut candidate_idents = vec![];
-        let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
-            if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind
-                && let Some(pat_ty) = self.typeck_results.borrow().node_type_opt(*hir_id)
-            {
-                let pat_ty = self.resolve_vars_if_possible(pat_ty);
-                if self.can_coerce(pat_ty, expected_ty)
-                    && !(pat_ty, expected_ty).references_error()
-                    && shadowed.insert(ident.name)
-                {
-                    candidate_idents.push((*ident, pat_ty));
-                }
-            }
-            true
-        };
-
-        let hir = self.tcx.hir();
-        for stmt in blk.stmts.iter().rev() {
-            let StmtKind::Local(local) = &stmt.kind else { continue; };
-            local.pat.walk(&mut find_compatible_candidates);
-        }
-        match hir.find(hir.get_parent_node(blk.hir_id)) {
-            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
-                match hir.find(hir.get_parent_node(*hir_id)) {
-                    Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
-                        pat.walk(&mut find_compatible_candidates);
-                    }
-                    Some(
-                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
-                        | hir::Node::ImplItem(hir::ImplItem {
-                            kind: hir::ImplItemKind::Fn(_, body),
-                            ..
-                        })
-                        | hir::Node::TraitItem(hir::TraitItem {
-                            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
-                            ..
-                        })
-                        | hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
-                            ..
-                        }),
-                    ) => {
-                        for param in hir.body(*body).params {
-                            param.pat.walk(&mut find_compatible_candidates);
-                        }
-                    }
-                    Some(hir::Node::Expr(hir::Expr {
-                        kind:
-                            hir::ExprKind::If(
-                                hir::Expr { kind: hir::ExprKind::Let(let_), .. },
-                                then_block,
-                                _,
-                            ),
-                        ..
-                    })) if then_block.hir_id == *hir_id => {
-                        let_.pat.walk(&mut find_compatible_candidates);
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
-        match &candidate_idents[..] {
-            [(ident, _ty)] => {
-                let sm = self.tcx.sess.source_map();
-                if let Some(stmt) = blk.stmts.last() {
-                    let stmt_span = sm.stmt_span(stmt.span, blk.span);
-                    let sugg = if sm.is_multiline(blk.span)
-                        && let Some(spacing) = sm.indentation_before(stmt_span)
-                    {
-                        format!("\n{spacing}{ident}")
-                    } else {
-                        format!(" {ident}")
-                    };
-                    err.span_suggestion_verbose(
-                        stmt_span.shrink_to_hi(),
-                        format!("consider returning the local binding `{ident}`"),
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    let sugg = if sm.is_multiline(blk.span)
-                        && let Some(spacing) = sm.indentation_before(blk.span.shrink_to_lo())
-                    {
-                        format!("\n{spacing}    {ident}\n{spacing}")
-                    } else {
-                        format!(" {ident} ")
-                    };
-                    let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
-                    err.span_suggestion_verbose(
-                        sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
-                        format!("consider returning the local binding `{ident}`"),
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-            values if (1..3).contains(&values.len()) => {
-                let spans = values.iter().map(|(ident, _)| ident.span).collect::<Vec<_>>();
-                err.span_note(spans, "consider returning one of these bindings");
-            }
-            _ => {}
         }
     }
 }

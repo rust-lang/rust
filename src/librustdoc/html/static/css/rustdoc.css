@@ -216,6 +216,15 @@ details.rustdoc-toggle > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate,
 a.srclink,
+#main-content > .since,
+#help-button > button,
+details.rustdoc-toggle.top-doc > summary,
+details.rustdoc-toggle.top-doc > summary::before,
+details.rustdoc-toggle.non-exhaustive > summary,
+details.rustdoc-toggle.non-exhaustive > summary::before,
+.scraped-example-title,
+.more-examples-toggle summary, .more-examples-toggle .hide-more,
+.example-links a,
 /* This selector is for the items listed in the "all items" page. */
 #main-content > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -702,7 +711,6 @@ pre, .rustdoc.source .example-wrap {
 }
 #main-content > .since {
 	top: inherit;
-	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -1518,7 +1526,6 @@ input:checked + .slider {
 }
 
 #help-button > button {
-	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */
@@ -1690,7 +1697,6 @@ details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.top-doc > summary::before,
 details.rustdoc-toggle.non-exhaustive > summary,
 details.rustdoc-toggle.non-exhaustive > summary::before {
-	font-family: 'Fira Sans';
 	font-size: 1rem;
 }
 
@@ -2176,10 +2182,6 @@ in storage.js plus the media query with (min-width: 701px)
 	border-radius: 50px;
 }
 
-.scraped-example-title {
-	font-family: 'Fira Sans';
-}
-
 .scraped-example .code-wrapper {
 	position: relative;
 	display: flex;
@@ -2283,10 +2285,6 @@ in storage.js plus the media query with (min-width: 701px)
 	cursor: pointer;
 }
 
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	font-family: 'Fira Sans';
-}
-
 .more-scraped-examples {
 	margin-left: 5px;
 	display: flex;
@@ -2321,7 +2319,6 @@ in storage.js plus the media query with (min-width: 701px)
 
 .example-links a {
 	margin-top: 20px;
-	font-family: 'Fira Sans';
 }
 
 .example-links ul {
