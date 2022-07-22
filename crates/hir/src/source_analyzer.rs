@@ -650,9 +650,7 @@ fn scope_for_offset(
         .filter_map(|(id, scope)| {
             let InFile { file_id, value } = source_map.expr_syntax(*id).ok()?;
             if from_file == file_id {
-                let root = db.parse_or_expand(file_id)?;
-                let node = value.to_node(&root);
-                return Some((node.syntax().text_range(), scope));
+                return Some((value.text_range(), scope));
             }
 
             // FIXME handle attribute expansion

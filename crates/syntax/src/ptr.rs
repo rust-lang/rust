@@ -14,6 +14,8 @@ use std::{
     marker::PhantomData,
 };
 
+use rowan::TextRange;
+
 use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
 
 /// A "pointer" to a [`SyntaxNode`], via location in the source code.
@@ -58,6 +60,10 @@ impl<N: AstNode> AstPtr<N> {
 
     pub fn syntax_node_ptr(&self) -> SyntaxNodePtr {
         self.raw.clone()
+    }
+
+    pub fn text_range(&self) -> TextRange {
+        self.raw.text_range()
     }
 
     pub fn cast<U: AstNode>(self) -> Option<AstPtr<U>> {
