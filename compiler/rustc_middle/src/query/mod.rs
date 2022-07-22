@@ -1716,6 +1716,10 @@ rustc_queries! {
         desc { |tcx| "computing mut restriction for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
+    query check_mut_restriction(def_id: LocalDefId) {
+        desc { "checking mut restrictions" }
+    }
+
     query dep_kind(_: CrateNum) -> CrateDepKind {
         eval_always
         desc { "fetching what a dependency looks like" }

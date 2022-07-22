@@ -265,6 +265,8 @@ fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
         tcx.ensure_with_value().unsafety_check_result(def);
     }
 
+    tcx.ensure().check_mut_restriction(def);
+
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
     tcx.ensure_with_value().has_ffi_unwind_calls(def);
 

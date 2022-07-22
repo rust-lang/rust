@@ -9,3 +9,12 @@ pub struct ImplOfRestrictedTrait {
     #[note]
     pub restriction_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(restrictions_mut_of_restricted_field)]
+pub struct MutOfRestrictedField {
+    #[primary_span]
+    pub mut_span: Span,
+    #[note]
+    pub restriction_span: Span,
+}
