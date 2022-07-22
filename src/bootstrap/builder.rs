@@ -649,6 +649,7 @@ impl<'a> Builder<'a> {
                 test::Cargotest,
                 test::Cargo,
                 test::Rls,
+                test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
                 test::RunMakeFullDeps,
