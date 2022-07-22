@@ -39,7 +39,7 @@ use crate::{
 
 use super::{
     explain_borrow::{BorrowExplanation, LaterUseKind},
-    IncludingDowncast, RegionName, RegionNameSource, UseSpans,
+    DescribePlaceOpt, RegionName, RegionNameSource, UseSpans,
 };
 
 #[derive(Debug)]
@@ -137,7 +137,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 partially_str,
-                self.describe_place_with_options(moved_place, IncludingDowncast(true)),
+                self.describe_place_with_options(
+                    moved_place,
+                    DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+                ),
             );
 
             let reinit_spans = maybe_reinitialized_locations
@@ -274,8 +277,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            let opt_name =
-                self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
+            let opt_name = self.describe_place_with_options(
+                place.as_ref(),
+                DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+            );
             let note_msg = match opt_name {
                 Some(ref name) => format!("`{}`", name),
                 None => "value".to_owned(),
@@ -341,12 +346,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let (name, desc) =
-            match self.describe_place_with_options(moved_place, IncludingDowncast(true)) {
-                Some(name) => (format!("`{name}`"), format!("`{name}` ")),
-                None => ("the variable".to_string(), String::new()),
-            };
-        let path = match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
+        let (name, desc) = match self.describe_place_with_options(
+            moved_place,
+            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+        ) {
+            Some(name) => (format!("`{name}`"), format!("`{name}` ")),
+            None => ("the variable".to_string(), String::new()),
+        };
+        let path = match self.describe_place_with_options(
+            used_place,
+            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+        ) {
             Some(name) => format!("`{name}`"),
             None => "value".to_string(),
         };
