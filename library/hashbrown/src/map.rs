@@ -252,9 +252,8 @@ where
 
 #[cfg(feature = "nightly")]
 #[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
+pub(crate) fn make_hash<Q, S>(hash_builder: &S, val: &Q) -> u64
 where
-    K: Borrow<Q>,
     Q: Hash + ?Sized,
     S: BuildHasher,
 {
@@ -8255,7 +8254,7 @@ mod test_map {
                             let e = map.table.insert(
                                 hash_value,
                                 (i, 2 * i),
-                                super::make_hasher::<usize, _, usize, _>(&hash_builder),
+                                super::make_hasher::<_, usize, _>(&hash_builder),
                             );
                             it.reflect_insert(&e);
                             if let Some(p) = removed.iter().position(|e| e == &(i, 2 * i)) {
