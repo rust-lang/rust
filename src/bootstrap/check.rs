@@ -340,10 +340,13 @@ impl Step for RustAnalyzer {
             "-Zallow-features=proc_macro_internals,proc_macro_diagnostic,proc_macro_span",
         );
 
-        // For ./x.py clippy, don't run with --all-targets because
+        // For ./x.py clippy, don't check those targets because
         // linting tests and benchmarks can produce very noisy results
         if builder.kind != Kind::Clippy {
-            cargo.arg("--all-targets");
+            // can't use `--all-targets` because `--examples` doesn't work well
+            cargo.arg("--bins");
+            cargo.arg("--tests");
+            cargo.arg("--benches");
         }
 
         builder.info(&format!(
