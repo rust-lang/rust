@@ -392,6 +392,8 @@ impl Step for RustAnalyzer {
         );
 
         let dir = builder.src.join(path);
+        // needed by rust-analyzer to find its own text fixtures, cf.
+        // https://github.com/rust-analyzer/expect-test/issues/33
         cargo.env("CARGO_WORKSPACE_DIR", &dir);
 
         cargo.add_rustc_lib_path(builder, compiler);
