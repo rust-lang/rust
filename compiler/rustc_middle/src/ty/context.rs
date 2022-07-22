@@ -57,7 +57,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{CrateType, OutputFilenames};
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_session::errors::TargetDataLayoutErrorsWrapper;
-use rustc_session::lint::{Level, Lint};
+use rustc_session::lint::{Level, Lint, LintId};
 use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
@@ -2835,19 +2835,16 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn lint_level_at_node(
         self,
         lint: &'static Lint,
-        mut id: hir::HirId,
+        id: hir::HirId,
     ) -> (Level, LintLevelSource) {
-        let sets = self.lint_levels(());
-        loop {
-            if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
-                return pair;
-            }
-            let next = self.hir().get_parent_node(id);
-            if next == id {
-                bug!("lint traversal reached the root of the crate");
-            }
-            id = next;
-        }
+        let level_and_src = crate::lint::LintLevelQueryMap::get_lint_level(
+            LintId::of(lint),
+            id,
+            self,
+            self.lint_levels_on(id),
+        );
+        debug!(?id, ?level_and_src);
+        level_and_src
     }
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
