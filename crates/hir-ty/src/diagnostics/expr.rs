@@ -305,7 +305,7 @@ pub fn record_literal_missing_fields(
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
     let (fields, exhaustive) = match expr {
-        Expr::RecordLit { path: _, fields, spread } => (fields, spread.is_none()),
+        Expr::RecordLit { fields, spread, .. } => (fields, spread.is_none()),
         _ => return None,
     };
 
