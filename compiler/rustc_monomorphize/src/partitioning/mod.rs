@@ -98,6 +98,7 @@ mod merging;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::DefIdSet;
+use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -479,9 +480,14 @@ fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSe
                 if !visited.insert(did) {
                     continue;
                 }
-                for scope in &tcx.instance_mir(instance.def).source_scopes {
-                    if let Some((ref inlined, _)) = scope.inlined {
-                        result.insert(inlined.def_id());
+                let body = tcx.instance_mir(instance.def);
+                for block in body.basic_blocks() {
+                    for statement in &block.statements {
+                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
+                        let scope = statement.source_info.scope;
+                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
+                            result.insert(inlined.def_id());
+                        }
                     }
                 }
             }
