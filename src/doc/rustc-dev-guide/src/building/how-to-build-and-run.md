@@ -1,10 +1,7 @@
 # How to Build and Run the Compiler
 
 The compiler is built using a tool called `x.py`. You will need to
-have Python installed to run it. But before we get to that, if you're going to
-be hacking on `rustc`, you'll want to tweak the configuration of the compiler.
-The default configuration is oriented towards running the compiler as a user,
-not a developer.
+have Python installed to run it.
 
 For instructions on how to install Python and other prerequisites,
 see [the next page](./prerequisites.md).
@@ -222,6 +219,50 @@ fall back to using `cargo` from the installed `nightly`, `beta`, or `stable` too
 (in that order).  If you need to use unstable `cargo` flags, be sure to run
 `rustup install nightly` if you haven't already.  See the
 [rustup documentation on custom toolchains](https://rust-lang.github.io/rustup/concepts/toolchains.html#custom-toolchains).
+
+## Building targets for cross-compilation
+
+To produce a compiler that can cross-compile for other targets,
+pass any number of `target` flags to `x.py build`.
+For example, if your host platform is `x86_64-unknown-linux-gnu`
+and your cross-compilation target is `wasm32-wasi`, you can build with:
+
+```bash
+./x.py build --target x86_64-unknown-linux-gnu --target wasm32-wasi
+```
+
+Note that if you want the resulting compiler to be able to build crates that
+involve proc macros or build scripts, you must be sure to explicitly build target support for the
+host platform (in this case, `x86_64-unknown-linux-gnu`).
+
+If you want to always build for other targets without needing to pass flags to `x.py build`,
+then you can configure this in the `[build]` section of your `config.toml` like so:
+
+```toml
+[build]
+target = ["x86_64-unknown-linux-gnu", "wasm32-wasi"]
+```
+
+Note that building for some targets requires having external dependencies installed
+(e.g. building musl targets requires a local copy of musl).
+Any target-specific configuration (e.g. the path to a local copy of musl)
+will need to be provided by your `config.toml`.
+Please see `config.toml.example` for information on target-specific configuration keys.
+
+For examples of the complete configuration necessary to build a target, please visit
+[the rustc book](https://doc.rust-lang.org/rustc/platform-support.html),
+select any target under the "Platform Support" heading on the left,
+and see the section related to building a compiler for that target.
+For targets without a corresponding page in the rustc book,
+it may be useful to [inspect the Dockerfiles](/tests/docker.md)
+that the Rust infrastructure itself uses to set up and configure cross-compilation.
+
+If you have followed the directions from the prior section on creating a rustup toolchain,
+then once you have built your compiler you will be able to use it to cross-compile like so:
+
+```bash
+cargo +stage1 build --target wasm32-wasi
+```
 
 ## Other `x.py` commands
 
