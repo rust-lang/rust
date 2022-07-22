@@ -24,7 +24,10 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```rust
     /// fn is_rust_file(filename: &str) -> bool {
-    ///     filename.rsplit('.').next().map(|ext| ext.eq_ignore_ascii_case("rs")) == Some(true)
+    ///     let filename = std::path::Path::new(filename);
+    ///     filename.extension()
+    ///         .map(|ext| ext.eq_ignore_ascii_case("rs"))
+    ///         .unwrap_or(false)
     /// }
     /// ```
     #[clippy::version = "1.51.0"]
