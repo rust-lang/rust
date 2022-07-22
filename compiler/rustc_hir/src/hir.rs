@@ -954,6 +954,16 @@ pub struct Block<'hir> {
     pub targeted_by_break: bool,
 }
 
+impl<'hir> Block<'hir> {
+    pub fn innermost_block(&self) -> &Block<'hir> {
+        let mut block = self;
+        while let Some(Expr { kind: ExprKind::Block(inner_block, _), .. }) = block.expr {
+            block = inner_block;
+        }
+        block
+    }
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub struct Pat<'hir> {
     #[stable_hasher(ignore)]

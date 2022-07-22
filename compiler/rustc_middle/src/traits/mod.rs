@@ -351,7 +351,7 @@ pub enum ObligationCauseCode<'tcx> {
     ConstPatternStructural,
 
     /// Computing common supertype in an if expression
-    IfExpression(Box<IfExpressionCause>),
+    IfExpression(Box<IfExpressionCause<'tcx>>),
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -488,22 +488,27 @@ impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct MatchExpressionArmCause<'tcx> {
+    pub arm_block_id: Option<hir::HirId>,
+    pub arm_ty: Ty<'tcx>,
     pub arm_span: Span,
+    pub prior_arm_block_id: Option<hir::HirId>,
+    pub prior_arm_ty: Ty<'tcx>,
+    pub prior_arm_span: Span,
     pub scrut_span: Span,
-    pub semi_span: Option<(Span, StatementAsExpression)>,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
-    pub last_ty: Ty<'tcx>,
     pub scrut_hir_id: hir::HirId,
     pub opt_suggest_box_span: Option<Span>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct IfExpressionCause {
-    pub then: Span,
-    pub else_sp: Span,
-    pub outer: Option<Span>,
-    pub semicolon: Option<(Span, StatementAsExpression)>,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Lift, TypeFoldable, TypeVisitable)]
+pub struct IfExpressionCause<'tcx> {
+    pub then_id: hir::HirId,
+    pub else_id: hir::HirId,
+    pub then_ty: Ty<'tcx>,
+    pub else_ty: Ty<'tcx>,
+    pub outer_span: Option<Span>,
     pub opt_suggest_box_span: Option<Span>,
 }
 
