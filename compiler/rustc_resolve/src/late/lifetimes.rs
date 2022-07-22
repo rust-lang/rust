@@ -1,10 +1,11 @@
 // ignore-tidy-filelength
-//! Name resolution for lifetimes.
+//! Resolution of early vs late bound lifetimes.
 //!
-//! Name resolution for lifetimes follows *much* simpler rules than the
-//! full resolve. For example, lifetime names are never exported or
-//! used between functions, and they operate in a purely top-down
-//! way. Therefore, we break lifetime name resolution into a separate pass.
+//! Name resolution for lifetimes is performed on the AST and embedded into HIR.  From this
+//! information, typechecking needs to transform the lifetime parameters into bound lifetimes.
+//! Lifetimes can be early-bound or late-bound.  Construction of typechecking terms needs to visit
+//! the types in HIR to identify late-bound lifetimes and assign their Debruijn indices.  This file
+//! is also responsible for assigning their semantics to implicit lifetimes in trait objects.
 
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
