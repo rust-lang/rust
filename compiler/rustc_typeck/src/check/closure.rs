@@ -182,9 +182,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::PredicateKind::Projection(proj_predicate) => self
                             .deduce_sig_from_projection(
                                 Some(span.0),
-                                pred.0.kind().rebind(
-                                    pred.map_bound(|_| proj_predicate).subst(self.tcx, substs),
-                                ),
+                                pred.0
+                                    .kind()
+                                    .rebind(pred.rebind(proj_predicate).subst(self.tcx, substs)),
                             ),
                         _ => None,
                     });

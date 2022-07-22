@@ -575,6 +575,19 @@ impl<'tcx> Predicate<'tcx> {
 
         Some(tcx.mk_predicate(kind))
     }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
+        if let PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) = self.kind().skip_binder()
+            && constness != BoundConstness::NotConst
+        {
+            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Trait(TraitPredicate {
+                trait_ref,
+                constness: BoundConstness::NotConst,
+                polarity,
+            })));
+        }
+        self
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
