@@ -2,7 +2,7 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
-use proc_macro::{Group, Ident, Literal, Punct, TokenStream, TokenTree};
+use proc_macro::{Group, Ident, Literal, Punct, Span, TokenStream, TokenTree};
 
 #[proc_macro]
 pub fn fn_like_noop(args: TokenStream) -> TokenStream {
@@ -22,6 +22,31 @@ pub fn fn_like_error(args: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fn_like_clone_tokens(args: TokenStream) -> TokenStream {
     clone_stream(args)
+}
+
+#[proc_macro]
+pub fn fn_like_mk_literals(_args: TokenStream) -> TokenStream {
+    let trees: Vec<TokenTree> = vec![
+        TokenTree::from(Literal::byte_string(b"byte_string")),
+        TokenTree::from(Literal::character('c')),
+        TokenTree::from(Literal::string("string")),
+        // as of 2022-07-21, there's no method on `Literal` to build a raw
+        // string or a raw byte string
+        TokenTree::from(Literal::f64_suffixed(3.14)),
+        TokenTree::from(Literal::f64_unsuffixed(3.14)),
+        TokenTree::from(Literal::i64_suffixed(123)),
+        TokenTree::from(Literal::i64_unsuffixed(123)),
+    ];
+    TokenStream::from_iter(trees)
+}
+
+#[proc_macro]
+pub fn fn_like_mk_idents(_args: TokenStream) -> TokenStream {
+    let trees: Vec<TokenTree> = vec![
+        TokenTree::from(Ident::new("standard", Span::call_site())),
+        TokenTree::from(Ident::new_raw("raw", Span::call_site())),
+    ];
+    TokenStream::from_iter(trees)
 }
 
 #[proc_macro_attribute]
@@ -65,7 +90,14 @@ fn clone_tree(t: TokenTree) -> TokenTree {
             new.set_span(orig.span());
             TokenTree::Group(new)
         }
-        TokenTree::Ident(orig) => TokenTree::Ident(Ident::new(&orig.to_string(), orig.span())),
+        TokenTree::Ident(orig) => {
+            let s = orig.to_string();
+            if let Some(rest) = s.strip_prefix("r#") {
+                TokenTree::Ident(Ident::new_raw(rest, orig.span()))
+            } else {
+                TokenTree::Ident(Ident::new(&s, orig.span()))
+            }
+        }
         TokenTree::Punct(orig) => {
             let mut new = Punct::new(orig.as_char(), orig.spacing());
             new.set_span(orig.span());

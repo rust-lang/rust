@@ -26,6 +26,11 @@
 mod abi_1_58;
 mod abi_1_63;
 mod abi_1_64;
+#[cfg(feature = "sysroot-abi")]
+mod abi_sysroot;
+
+// see `build.rs`
+include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
 
 // Used by `test/utils.rs`
 #[cfg(test)]
@@ -35,6 +40,8 @@ use super::dylib::LoadProcMacroDylibError;
 pub(crate) use abi_1_58::Abi as Abi_1_58;
 pub(crate) use abi_1_63::Abi as Abi_1_63;
 pub(crate) use abi_1_64::Abi as Abi_1_64;
+#[cfg(feature = "sysroot-abi")]
+pub(crate) use abi_sysroot::Abi as Abi_Sysroot;
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
 
@@ -52,6 +59,8 @@ pub(crate) enum Abi {
     Abi1_58(Abi_1_58),
     Abi1_63(Abi_1_63),
     Abi1_64(Abi_1_64),
+    #[cfg(feature = "sysroot-abi")]
+    AbiSysroot(Abi_Sysroot),
 }
 
 impl Abi {
@@ -69,6 +78,37 @@ impl Abi {
         symbol_name: String,
         info: RustCInfo,
     ) -> Result<Abi, LoadProcMacroDylibError> {
+        // the sysroot ABI relies on `extern proc_macro` with unstable features,
+        // instead of a snapshot of the proc macro bridge's source code. it's only
+        // enabled if we have an exact version match.
+        #[cfg(feature = "sysroot-abi")]
+        {
+            if info.version_string == RUSTC_VERSION_STRING {
+                let inner = unsafe { Abi_Sysroot::from_lib(lib, symbol_name) }?;
+                return Ok(Abi::AbiSysroot(inner));
+            }
+
+            // if we reached this point, versions didn't match. in testing, we
+            // want that to panic - this could mean that the format of `rustc
+            // --version` no longer matches the format of the version string
+            // stored in the `.rustc` section, and we want to catch that in-tree
+            // with `x.py test`
+            #[cfg(test)]
+            {
+                let allow_mismatch = std::env::var("PROC_MACRO_SRV_ALLOW_SYSROOT_MISMATCH");
+                if let Ok("1") = allow_mismatch.as_deref() {
+                    // only used by rust-analyzer developers, when working on the
+                    // sysroot ABI from the rust-analyzer repository - which should
+                    // only happen pre-subtree. this can be removed later.
+                } else {
+                    panic!(
+                        "sysroot ABI mismatch: dylib rustc version (read from .rustc section): {:?} != proc-macro-srv version (read from 'rustc --version'): {:?}",
+                        info.version_string, RUSTC_VERSION_STRING
+                    );
+                }
+            }
+        }
+
         // FIXME: this should use exclusive ranges when they're stable
         // https://github.com/rust-lang/rust/issues/37854
         match (info.version.0, info.version.1) {
@@ -98,6 +138,8 @@ impl Abi {
             Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_64(abi) => abi.expand(macro_name, macro_body, attributes),
+            #[cfg(feature = "sysroot-abi")]
+            Self::AbiSysroot(abi) => abi.expand(macro_name, macro_body, attributes),
         }
     }
 
@@ -106,6 +148,8 @@ impl Abi {
             Self::Abi1_58(abi) => abi.list_macros(),
             Self::Abi1_63(abi) => abi.list_macros(),
             Self::Abi1_64(abi) => abi.list_macros(),
+            #[cfg(feature = "sysroot-abi")]
+            Self::AbiSysroot(abi) => abi.list_macros(),
         }
     }
 }

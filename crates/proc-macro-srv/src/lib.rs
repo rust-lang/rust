@@ -11,6 +11,10 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![cfg_attr(
+    feature = "sysroot-abi",
+    feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
+)]
 #![allow(unreachable_pub)]
 
 mod dylib;
@@ -59,9 +63,26 @@ impl ProcMacroSrv {
 
         let macro_body = task.macro_body.to_subtree();
         let attributes = task.attributes.map(|it| it.to_subtree());
-        let result = expander
-            .expand(&task.macro_name, &macro_body, attributes.as_ref())
-            .map(|it| FlatTree::new(&it));
+        // FIXME: replace this with std's scoped threads once they stabilize
+        // (then remove dependency on crossbeam)
+        let result = crossbeam::scope(|s| {
+            let res = s
+                .spawn(|_| {
+                    expander
+                        .expand(&task.macro_name, &macro_body, attributes.as_ref())
+                        .map(|it| FlatTree::new(&it))
+                })
+                .join();
+
+            match res {
+                Ok(res) => res,
+                Err(e) => std::panic::resume_unwind(e),
+            }
+        });
+        let result = match result {
+            Ok(result) => result,
+            Err(e) => std::panic::resume_unwind(e),
+        };
 
         prev_env.rollback();
 

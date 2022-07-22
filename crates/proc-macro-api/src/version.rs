@@ -16,6 +16,8 @@ pub struct RustCInfo {
     pub channel: String,
     pub commit: Option<String>,
     pub date: Option<String>,
+    // something like "rustc 1.58.1 (db9d1b20b 2022-01-20)"
+    pub version_string: String,
 }
 
 /// Read rustc dylib information
@@ -68,7 +70,7 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
     }
     let version = (version_numbers[0], version_numbers[1], version_numbers[2]);
 
-    Ok(RustCInfo { version, channel, commit, date })
+    Ok(RustCInfo { version, channel, commit, date, version_string: ver_str })
 }
 
 /// This is used inside read_version() to locate the ".rustc" section
@@ -102,7 +104,7 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// * [some more bytes that we don't really care but about still there] :-)
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
-fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
+pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let dylib_file = File::open(dylib_path)?;
     let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
 
