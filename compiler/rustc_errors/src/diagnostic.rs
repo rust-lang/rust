@@ -338,9 +338,10 @@ impl Diagnostic {
             // The lint index inside the attribute is manually transferred here.
             let lint_index = expectation_id.get_lint_index();
             expectation_id.set_lint_index(None);
-            let mut stable_id = *unstable_to_stable
+            let mut stable_id = unstable_to_stable
                 .get(&expectation_id)
-                .expect("each unstable `LintExpectationId` must have a matching stable id");
+                .expect("each unstable `LintExpectationId` must have a matching stable id")
+                .normalize();
 
             stable_id.set_lint_index(lint_index);
             *expectation_id = stable_id;

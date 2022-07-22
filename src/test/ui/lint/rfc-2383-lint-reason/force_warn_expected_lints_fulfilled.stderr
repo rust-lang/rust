@@ -1,11 +1,3 @@
-warning: denote infinite loops with `loop { ... }`
-  --> $DIR/force_warn_expected_lints_fulfilled.rs:10:5
-   |
-LL |     while true {
-   |     ^^^^^^^^^^ help: use `loop`
-   |
-   = note: requested on the command line with `--force-warn while-true`
-
 warning: unused variable: `x`
   --> $DIR/force_warn_expected_lints_fulfilled.rs:20:9
    |
@@ -35,6 +27,14 @@ LL |     let mut what_does_the_fox_say = "*ding* *deng* *dung*";
    |         help: remove this `mut`
    |
    = note: requested on the command line with `--force-warn unused-mut`
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/force_warn_expected_lints_fulfilled.rs:10:5
+   |
+LL |     while true {
+   |     ^^^^^^^^^^ help: use `loop`
+   |
+   = note: requested on the command line with `--force-warn while-true`
 
 warning: 5 warnings emitted
 
