@@ -51,6 +51,22 @@ impl<'tcx> PlaceTy<'tcx> {
         }
     }
 
+    /// `place_ty.field_def(f)` obtains the `FieldDef` of the provided ADT field.
+    pub fn field_def(self, f: FieldIdx) -> &'tcx ty::FieldDef {
+        let ty::Adt(adt_def, _) = self.ty.kind() else {
+            bug!("extracting field def of non-ADT: {self:?}")
+        };
+
+        let variant_def = match self.variant_index {
+            None => adt_def.non_enum_variant(),
+            Some(variant_index) => {
+                assert!(adt_def.is_enum());
+                &adt_def.variant(variant_index)
+            }
+        };
+        &variant_def.fields[f]
+    }
+
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
