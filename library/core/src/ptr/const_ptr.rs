@@ -97,7 +97,7 @@ impl<T: ?Sized> *const T {
     /// refactored.
     #[unstable(feature = "ptr_const_cast", issue = "92675")]
     #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
-    pub const fn as_mut(self) -> *mut T {
+    pub const fn cast_mut(self) -> *mut T {
         self as _
     }
 
