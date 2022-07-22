@@ -21,7 +21,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
-use rustc_middle::ty::abstract_const::AbstractConst;
+use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
@@ -1683,7 +1683,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_resolve(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
+        mut param_env: ty::ParamEnv<'tcx>,
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
@@ -1694,10 +1694,45 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // variables
         if substs.has_infer_types_or_consts() {
             let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
-            if let Ok(None) = ac {
-                substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
-            } else {
-                return Err(ErrorHandled::TooGeneric);
+            match ac {
+                Ok(None) => {
+                    substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
+                    param_env = self.tcx.param_env(unevaluated.def.did);
+                }
+                Ok(Some(ct)) => {
+                    if ct.unify_failure_kind(self.tcx) == FailureKind::Concrete {
+                        substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
+                            let needs_replacement =
+                                arg.has_param_types_or_consts() || arg.has_infer_types_or_consts();
+                            match arg.unpack() {
+                                GenericArgKind::Type(_) if needs_replacement => self
+                                    .tcx
+                                    .mk_ty(ty::Placeholder(ty::PlaceholderType {
+                                        universe: ty::UniverseIndex::ROOT,
+                                        name: ty::BoundVar::from_usize(idx),
+                                    }))
+                                    .into(),
+                                GenericArgKind::Const(ct) if needs_replacement => self
+                                    .tcx
+                                    .mk_const(ty::ConstS {
+                                        ty: ct.ty(),
+                                        kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                                            universe: ty::UniverseIndex::ROOT,
+                                            name: ty::BoundConst {
+                                                var: ty::BoundVar::from_usize(idx),
+                                                ty: ct.ty(),
+                                            },
+                                        }),
+                                    })
+                                    .into(),
+                                _ => arg,
+                            }
+                        }));
+                    } else {
+                        return Err(ErrorHandled::TooGeneric);
+                    }
+                }
+                Err(guar) => return Err(ErrorHandled::Reported(guar)),
             }
         }
 
