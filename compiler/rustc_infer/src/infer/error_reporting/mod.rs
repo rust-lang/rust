@@ -2114,11 +2114,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
                 if let Some((expected, found)) = trace.values.ty() {
                     match (expected.kind(), found.kind()) {
+                        (_, _) if expected.is_unit() => {
+                            if let ObligationCauseCode::BlockTailExpression(_) = trace.cause.code() {
+                                err.span_suggestion(
+                                    span.shrink_to_hi(),
+                                    "consider using a semicolon at the end of the expression",
+                                    ';',
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        }
                         (ty::Tuple(_), ty::Tuple(_)) => {}
-                        // If a tuple of length one was expected and the found expression has
-                        // parentheses around it, perhaps the user meant to write `(expr,)` to
-                        // build a tuple (issue #86100)
                         (ty::Tuple(fields), _) => {
+                            // If a tuple of length one was expected and the found expression
+                            // has parentheses around it, perhaps the user meant to write
+                            // `(expr,)` to build a tuple (issue #86100)
                             self.emit_tuple_wrap_err(&mut err, span, found, fields)
                         }
                         // If a character was expected and the found expression is a string literal
