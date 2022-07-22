@@ -390,8 +390,7 @@ pub(crate) fn run_global_ctxt(
     //
     // Note that in case of `#![no_core]`, the trait is not available.
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
-        let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
-        sized_trait.is_auto = true;
+        let sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         ctxt.external_traits
             .borrow_mut()
             .insert(sized_trait_did, TraitWithExtraInfo { trait_: sized_trait, is_notable: false });

@@ -1972,15 +1972,14 @@ fn clean_maybe_renamed_item<'tcx>(
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                 })
             }
-            ItemKind::Trait(is_auto, unsafety, generics, bounds, item_ids) => {
+            ItemKind::Trait(_, _, generics, bounds, item_ids) => {
                 let items =
                     item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
                 TraitItem(Trait {
-                    unsafety,
+                    def_id,
                     items,
                     generics: generics.clean(cx),
                     bounds: bounds.iter().filter_map(|x| x.clean(cx)).collect(),
-                    is_auto: is_auto.clean(cx),
                 })
             }
             ItemKind::ExternCrate(orig_name) => {

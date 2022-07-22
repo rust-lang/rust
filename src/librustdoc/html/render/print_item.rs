@@ -548,8 +548,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 w,
                 "{}{}{}trait {}{}{}",
                 it.visibility.print_with_space(it.item_id, cx),
-                t.unsafety.print_with_space(),
-                if t.is_auto { "auto " } else { "" },
+                t.unsafety(cx.tcx()).print_with_space(),
+                if t.is_auto(cx.tcx()) { "auto " } else { "" },
                 it.name.unwrap(),
                 t.generics.print(cx),
                 bounds
@@ -883,7 +883,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
         w.write_str("</div>");
 
-        if t.is_auto {
+        if t.is_auto(cx.tcx()) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -912,7 +912,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "<div class=\"item-list\" id=\"implementors-list\"></div>",
         );
 
-        if t.is_auto {
+        if t.is_auto(cx.tcx()) {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
