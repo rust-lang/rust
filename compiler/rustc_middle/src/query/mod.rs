@@ -266,10 +266,14 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query lint_levels(_: ()) -> LintLevelMap {
+    query lint_levels_on(key: HirId) -> FxHashMap<LintId, LevelAndSource> {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
-        desc { "computing the lint levels for items in this crate" }
+        desc { |tcx| "looking up lint levels for `{}`", key }
+    }
+
+    query lint_expectations(_: ()) -> Vec<(LintExpectationId, LintExpectation)> {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "computing `#[expect]`ed lints in this crate" }
     }
 
     query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {

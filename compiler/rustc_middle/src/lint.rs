@@ -15,6 +15,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind};
 use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
 
+use crate::ty::TyCtxt;
+
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
 pub enum LintLevelSource {
@@ -23,7 +25,14 @@ pub enum LintLevelSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(Symbol, Span, Option<Symbol> /* RFC 2383 reason */),
+    Node {
+        name: Symbol,
+        span: Span,
+        /// RFC 2383 reason
+        reason: Option<Symbol>,
+        /// The lint tool. (e.g. rustdoc, clippy)
+        tool: Option<Symbol>,
+    },
 
     /// Lint level was set by a command-line flag.
     /// The provided `Level` is the level specified on the command line.
@@ -35,7 +44,7 @@ impl LintLevelSource {
     pub fn name(&self) -> Symbol {
         match *self {
             LintLevelSource::Default => symbol::kw::Default,
-            LintLevelSource::Node(name, _, _) => name,
+            LintLevelSource::Node { name, .. } => name,
             LintLevelSource::CommandLine(name, _) => name,
         }
     }
@@ -43,7 +52,7 @@ impl LintLevelSource {
     pub fn span(&self) -> Span {
         match *self {
             LintLevelSource::Default => DUMMY_SP,
-            LintLevelSource::Node(_, span, _) => span,
+            LintLevelSource::Node { span, .. } => span,
             LintLevelSource::CommandLine(_, _) => DUMMY_SP,
         }
     }
@@ -55,7 +64,6 @@ pub type LevelAndSource = (Level, LintLevelSource);
 #[derive(Debug, HashStable)]
 pub struct LintLevelSets {
     pub list: IndexVec<LintStackIndex, LintSet>,
-    pub lint_cap: Level,
 }
 
 rustc_index::newtype_index! {
@@ -76,18 +84,16 @@ pub struct LintSet {
 
 impl LintLevelSets {
     pub fn new() -> Self {
-        LintLevelSets { list: IndexVec::new(), lint_cap: Level::Forbid }
+        LintLevelSets { list: IndexVec::new() }
     }
 
-    pub fn get_lint_level(
-        &self,
-        lint: &'static Lint,
-        idx: LintStackIndex,
-        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
+    pub fn actual_level(
+        level: Option<Level>,
+        src: &mut LintLevelSource,
         sess: &Session,
-    ) -> LevelAndSource {
-        let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
-
+        lint: &'static Lint,
+        get_lint_id_level: impl FnOnce(LintId) -> (Option<Level>, LintLevelSource),
+    ) -> Level {
         // If `level` is none then we actually assume the default level for this
         // lint.
         let mut level = level.unwrap_or_else(|| lint.default_level(sess.edition()));
@@ -101,12 +107,11 @@ impl LintLevelSets {
         // and so if we turned that into an error, it'd defeat the purpose of the
         // future compatibility warning.
         if level == Level::Warn && LintId::of(lint) != LintId::of(FORBIDDEN_LINT_GROUPS) {
-            let (warnings_level, warnings_src) =
-                self.get_lint_id_level(LintId::of(builtin::WARNINGS), idx, aux);
+            let (warnings_level, warnings_src) = get_lint_id_level(LintId::of(builtin::WARNINGS));
             if let Some(configured_warning_level) = warnings_level {
                 if configured_warning_level != Level::Warn {
                     level = configured_warning_level;
-                    src = warnings_src;
+                    *src = warnings_src;
                 }
             }
         }
@@ -116,13 +121,29 @@ impl LintLevelSets {
         level = if let LintLevelSource::CommandLine(_, Level::ForceWarn(_)) = src {
             level
         } else {
-            cmp::min(level, self.lint_cap)
+            cmp::min(level, sess.opts.lint_cap.unwrap_or(Level::Forbid))
         };
 
         if let Some(driver_level) = sess.driver_lint_caps.get(&LintId::of(lint)) {
             // Ensure that we never exceed driver level.
             level = cmp::min(*driver_level, level);
         }
+
+        level
+    }
+
+    pub fn get_lint_level(
+        &self,
+        lint: &'static Lint,
+        idx: LintStackIndex,
+        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
+        sess: &Session,
+    ) -> LevelAndSource {
+        let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
+
+        let level = Self::actual_level(level, &mut src, sess, lint, |id| {
+            self.get_lint_id_level(id, idx, aux)
+        });
 
         (level, src)
     }
@@ -193,6 +214,58 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
         hcx.while_hashing_spans(true, |hcx| sets.hash_stable(hcx, hasher))
     }
 }
+pub struct LintLevelQueryMap<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub cur: HirId,
+    pub specs: FxHashMap<LintId, LevelAndSource>,
+}
+
+impl<'tcx> LintLevelQueryMap<'tcx> {
+    pub fn lint_id_level(&self, id: LintId) -> (Option<Level>, LintLevelSource) {
+        Self::get_lint_id_level(id, self.cur, self.tcx, &self.specs)
+    }
+
+    pub fn lint_level(&self, lint: &'static Lint) -> LevelAndSource {
+        Self::get_lint_level(LintId::of(lint), self.cur, self.tcx, &self.specs)
+    }
+
+    pub fn get_lint_id_level(
+        id: LintId,
+        cur: HirId,
+        tcx: TyCtxt<'tcx>,
+        specs: &FxHashMap<LintId, LevelAndSource>,
+    ) -> (Option<Level>, LintLevelSource) {
+        if let Some(&(level, src)) = specs.get(&id) {
+            return (Some(level), src);
+        }
+        let mut cur = cur;
+
+        loop {
+            let parent = tcx.hir().get_parent_node(cur);
+            if cur == parent {
+                return (None, LintLevelSource::Default);
+            }
+            let specs = tcx.lint_levels_on(parent);
+            if let Some(&(level, src)) = specs.get(&id) {
+                return (Some(level), src);
+            }
+            cur = parent
+        }
+    }
+
+    pub fn get_lint_level(
+        id: LintId,
+        cur: HirId,
+        tcx: TyCtxt<'tcx>,
+        specs: &FxHashMap<LintId, LevelAndSource>,
+    ) -> (Level, LintLevelSource) {
+        let (level, mut src) = Self::get_lint_id_level(id, cur, tcx, specs);
+        let level = LintLevelSets::actual_level(level, &mut src, tcx.sess, id.lint, |id| {
+            Self::get_lint_id_level(id, cur, tcx, specs)
+        });
+        (level, src)
+    }
+}
 
 /// This struct represents a lint expectation and holds all required information
 /// to emit the `unfulfilled_lint_expectations` lint if it is unfulfilled after
@@ -261,11 +334,11 @@ pub fn explain_lint_level_source(
                 ));
             }
         }
-        LintLevelSource::Node(lint_attr_name, src, reason) => {
+        LintLevelSource::Node { name: lint_attr_name, span, reason, .. } => {
             if let Some(rationale) = reason {
                 err.note(rationale.as_str());
             }
-            err.span_note_once(src, "the lint level is defined here");
+            err.span_note_once(span, "the lint level is defined here");
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
                 err.note_once(&format!(

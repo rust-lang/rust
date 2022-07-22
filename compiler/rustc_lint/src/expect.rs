@@ -16,8 +16,10 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
         return;
     }
 
+    let lint_expectations = tcx.lint_expectations(());
     let fulfilled_expectations = tcx.sess.diagnostic().steal_fulfilled_expectation_ids();
-    let lint_expectations = &tcx.lint_levels(()).lint_expectations;
+
+    tracing::debug!(?lint_expectations, ?fulfilled_expectations);
 
     for (id, expectation) in lint_expectations {
         // This check will always be true, since `lint_expectations` only
