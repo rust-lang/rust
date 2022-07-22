@@ -696,7 +696,7 @@ impl Step for RustAnalyzer {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/rust-analyzer/crates/rust-analyzer").default_condition(
+        run.path("src/tools/rust-analyzer").default_condition(
             builder.config.extended
                 && builder
                     .config
