@@ -1,0 +1,8 @@
+error: only lifetime parameters can be used in this context
+  --> $DIR/disallow-const.rs:4:15
+   |
+LL |     for<const N: i32> || -> () {};
+   |               ^
+
+error: aborting due to previous error
+
