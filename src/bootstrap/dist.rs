@@ -1058,7 +1058,7 @@ impl Step for RustAnalyzer {
         }
 
         let rust_analyzer = builder
-            .ensure(tool::RustAnalyzer { compiler, target, extra_features: Vec::new() })
+            .ensure(tool::RustAnalyzer { compiler, target })
             .expect("rust-analyzer always builds");
 
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
