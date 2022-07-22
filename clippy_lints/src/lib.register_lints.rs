@@ -42,6 +42,7 @@ store.register_lints(&[
     asm_syntax::INLINE_ASM_X86_ATT_SYNTAX,
     asm_syntax::INLINE_ASM_X86_INTEL_SYNTAX,
     assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
+    assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES,
     async_yields_async::ASYNC_YIELDS_ASYNC,
     attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON,
     attrs::BLANKET_CLIPPY_RESTRICTION_LINTS,
