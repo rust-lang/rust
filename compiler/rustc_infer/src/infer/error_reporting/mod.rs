@@ -316,37 +316,6 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     err
 }
 
-/// Structurally compares two types, modulo any inference variables.
-///
-/// Returns `true` if two types are equal, or if one type is an inference variable compatible
-/// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
-/// FloatVar inference type are compatible with themselves or their concrete types (Int and
-/// Float types, respectively). When comparing two ADTs, these rules apply recursively.
-pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    match (&a.kind(), &b.kind()) {
-        (&ty::Adt(did_a, substs_a), &ty::Adt(did_b, substs_b)) => {
-            if did_a != did_b {
-                return false;
-            }
-
-            substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type_modulo_infer(a, b))
-        }
-        (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
-        | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Int(_) | &ty::Infer(ty::InferTy::IntVar(_)))
-        | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
-        | (
-            &ty::Infer(ty::InferTy::FloatVar(_)),
-            &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
-        )
-        | (&ty::Infer(ty::InferTy::TyVar(_)), _)
-        | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
-        (&ty::Ref(_, ty_a, mut_a), &ty::Ref(_, ty_b, mut_b)) => {
-            mut_a == mut_b && same_type_modulo_infer(*ty_a, *ty_b)
-        }
-        _ => a == b,
-    }
-}
-
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_region_errors(
         &self,
@@ -645,13 +614,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.span_label(span, "expected due to this");
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                semi_span,
+                arm_block_id,
+                arm_span,
+                arm_ty,
+                prior_arm_block_id,
+                prior_arm_span,
+                prior_arm_ty,
                 source,
                 ref prior_arms,
-                last_ty,
                 scrut_hir_id,
                 opt_suggest_box_span,
-                arm_span,
                 scrut_span,
                 ..
             }) => match source {
@@ -682,10 +654,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
                 _ => {
-                    // `last_ty` can be `!`, `expected` will have better info when present.
+                    // `prior_arm_ty` can be `!`, `expected` will have better info when present.
                     let t = self.resolve_vars_if_possible(match exp_found {
                         Some(ty::error::ExpectedFound { expected, .. }) => expected,
-                        _ => last_ty,
+                        _ => prior_arm_ty,
                     });
                     let source_map = self.tcx.sess.source_map();
                     let mut any_multiline_arm = source_map.is_multiline(arm_span);
@@ -710,37 +682,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     };
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer_error_span, msg);
-                    if let Some((sp, boxed)) = semi_span {
-                        if let (StatementAsExpression::NeedsBoxing, [.., prior_arm]) =
-                            (boxed, &prior_arms[..])
-                        {
-                            err.multipart_suggestion(
-                                "consider removing this semicolon and boxing the expressions",
-                                vec![
-                                    (prior_arm.shrink_to_lo(), "Box::new(".to_string()),
-                                    (prior_arm.shrink_to_hi(), ")".to_string()),
-                                    (arm_span.shrink_to_lo(), "Box::new(".to_string()),
-                                    (arm_span.shrink_to_hi(), ")".to_string()),
-                                    (sp, String::new()),
-                                ],
-                                Applicability::HasPlaceholders,
-                            );
-                        } else if matches!(boxed, StatementAsExpression::NeedsBoxing) {
-                            err.span_suggestion_short(
-                                sp,
-                                "consider removing this semicolon and boxing the expressions",
-                                "",
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            err.span_suggestion_short(
-                                sp,
-                                "consider removing this semicolon",
-                                "",
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    }
+                    self.suggest_remove_semi_or_return_binding(
+                        err,
+                        prior_arm_block_id,
+                        prior_arm_ty,
+                        prior_arm_span,
+                        arm_block_id,
+                        arm_ty,
+                        arm_span,
+                    );
                     if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.
                         self.suggest_boxing_for_return_impl_trait(
@@ -752,43 +702,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             },
             ObligationCauseCode::IfExpression(box IfExpressionCause {
-                then,
-                else_sp,
-                outer,
-                semicolon,
+                then_id,
+                else_id,
+                then_ty,
+                else_ty,
+                outer_span,
                 opt_suggest_box_span,
             }) => {
-                err.span_label(then, "expected because of this");
-                if let Some(sp) = outer {
+                let then_span = self.find_block_span_from_hir_id(then_id);
+                let else_span = self.find_block_span_from_hir_id(then_id);
+                err.span_label(then_span, "expected because of this");
+                if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
-                if let Some((sp, boxed)) = semicolon {
-                    if matches!(boxed, StatementAsExpression::NeedsBoxing) {
-                        err.multipart_suggestion(
-                            "consider removing this semicolon and boxing the expression",
-                            vec![
-                                (then.shrink_to_lo(), "Box::new(".to_string()),
-                                (then.shrink_to_hi(), ")".to_string()),
-                                (else_sp.shrink_to_lo(), "Box::new(".to_string()),
-                                (else_sp.shrink_to_hi(), ")".to_string()),
-                                (sp, String::new()),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        err.span_suggestion_short(
-                            sp,
-                            "consider removing this semicolon",
-                            "",
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
+                self.suggest_remove_semi_or_return_binding(
+                    err,
+                    Some(then_id),
+                    then_ty,
+                    then_span,
+                    Some(else_id),
+                    else_ty,
+                    else_span,
+                );
                 if let Some(ret_sp) = opt_suggest_box_span {
                     self.suggest_boxing_for_return_impl_trait(
                         err,
                         ret_sp,
-                        [then, else_sp].into_iter(),
+                        [then_span, else_span].into_iter(),
                     );
                 }
             }
@@ -802,6 +742,56 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 {
                     if matches!(terr, TypeError::RegionsPlaceholderMismatch) {
                         err.span_note(*binding_span, "the lifetime requirement is introduced here");
+                    }
+                }
+            }
+        }
+    }
+
+    fn suggest_remove_semi_or_return_binding(
+        &self,
+        err: &mut Diagnostic,
+        first_id: Option<hir::HirId>,
+        first_ty: Ty<'tcx>,
+        first_span: Span,
+        second_id: Option<hir::HirId>,
+        second_ty: Ty<'tcx>,
+        second_span: Span,
+    ) {
+        let remove_semicolon =
+            [(first_id, second_ty), (second_id, first_ty)].into_iter().find_map(|(id, ty)| {
+                let hir::Node::Block(blk) = self.tcx.hir().get(id?) else { return None };
+                self.could_remove_semicolon(blk, ty)
+            });
+        match remove_semicolon {
+            Some((sp, StatementAsExpression::NeedsBoxing)) => {
+                err.multipart_suggestion(
+                    "consider removing this semicolon and boxing the expressions",
+                    vec![
+                        (first_span.shrink_to_lo(), "Box::new(".to_string()),
+                        (first_span.shrink_to_hi(), ")".to_string()),
+                        (second_span.shrink_to_lo(), "Box::new(".to_string()),
+                        (second_span.shrink_to_hi(), ")".to_string()),
+                        (sp, String::new()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
+            Some((sp, StatementAsExpression::CorrectType)) => {
+                err.span_suggestion_short(
+                    sp,
+                    "consider removing this semicolon",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            }
+            None => {
+                for (id, ty) in [(first_id, second_ty), (second_id, first_ty)] {
+                    if let Some(id) = id
+                        && let hir::Node::Block(blk) = self.tcx.hir().get(id)
+                        && self.consider_returning_binding(blk, ty, err)
+                    {
+                        break;
                     }
                 }
             }
@@ -1723,15 +1713,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         debug!("exp_found {:?} terr {:?} cause.code {:?}", exp_found, terr, cause.code());
         if let Some(exp_found) = exp_found {
-            let should_suggest_fixes = if let ObligationCauseCode::Pattern { root_ty, .. } =
-                cause.code()
-            {
-                // Skip if the root_ty of the pattern is not the same as the expected_ty.
-                // If these types aren't equal then we've probably peeled off a layer of arrays.
-                same_type_modulo_infer(self.resolve_vars_if_possible(*root_ty), exp_found.expected)
-            } else {
-                true
-            };
+            let should_suggest_fixes =
+                if let ObligationCauseCode::Pattern { root_ty, .. } = cause.code() {
+                    // Skip if the root_ty of the pattern is not the same as the expected_ty.
+                    // If these types aren't equal then we've probably peeled off a layer of arrays.
+                    self.same_type_modulo_infer(*root_ty, exp_found.expected)
+                } else {
+                    true
+                };
 
             if should_suggest_fixes {
                 self.suggest_tuple_pattern(cause, &exp_found, diag);
@@ -1786,7 +1775,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .filter_map(|variant| {
                         let sole_field = &variant.fields[0];
                         let sole_field_ty = sole_field.ty(self.tcx, substs);
-                        if same_type_modulo_infer(sole_field_ty, exp_found.found) {
+                        if self.same_type_modulo_infer(sole_field_ty, exp_found.found) {
                             let variant_path =
                                 with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
                             // FIXME #56861: DRYer prelude filtering
@@ -1902,12 +1891,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.get_impl_future_output_ty(exp_found.expected).map(Binder::skip_binder),
             self.get_impl_future_output_ty(exp_found.found).map(Binder::skip_binder),
         ) {
-            (Some(exp), Some(found)) if same_type_modulo_infer(exp, found) => match cause.code() {
-                ObligationCauseCode::IfExpression(box IfExpressionCause { then, .. }) => {
+            (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
+                .code()
+            {
+                ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
+                    let then_span = self.find_block_span_from_hir_id(*then_id);
                     diag.multipart_suggestion(
                         "consider `await`ing on both `Future`s",
                         vec![
-                            (then.shrink_to_hi(), ".await".to_string()),
+                            (then_span.shrink_to_hi(), ".await".to_string()),
                             (exp_span.shrink_to_hi(), ".await".to_string()),
                         ],
                         Applicability::MaybeIncorrect,
@@ -1934,7 +1926,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     diag.help("consider `await`ing on both `Future`s");
                 }
             },
-            (_, Some(ty)) if same_type_modulo_infer(exp_found.expected, ty) => {
+            (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
                 diag.span_suggestion_verbose(
                     exp_span.shrink_to_hi(),
                     "consider `await`ing on the `Future`",
@@ -1942,11 +1934,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (Some(ty), _) if same_type_modulo_infer(ty, exp_found.found) => match cause.code() {
-                ObligationCauseCode::Pattern { span: Some(span), .. }
-                | ObligationCauseCode::IfExpression(box IfExpressionCause { then: span, .. }) => {
+            (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
+            {
+                ObligationCauseCode::Pattern { span: Some(then_span), .. } => {
                     diag.span_suggestion_verbose(
-                        span.shrink_to_hi(),
+                        then_span.shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
+                    let then_span = self.find_block_span_from_hir_id(*then_id);
+                    diag.span_suggestion_verbose(
+                        then_span.shrink_to_hi(),
                         "consider `await`ing on the `Future`",
                         ".await",
                         Applicability::MaybeIncorrect,
@@ -1992,7 +1993,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
                 .map(|field| (field.name, field.ty(self.tcx, expected_substs)))
-                .find(|(_, ty)| same_type_modulo_infer(*ty, exp_found.found))
+                .find(|(_, ty)| self.same_type_modulo_infer(*ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code() {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -2057,7 +2058,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         | (_, ty::Infer(_))
                                         | (ty::Param(_), _)
                                         | (ty::Infer(_), _) => {}
-                                        _ if same_type_modulo_infer(exp_ty, found_ty) => {}
+                                        _ if self.same_type_modulo_infer(exp_ty, found_ty) => {}
                                         _ => show_suggestion = false,
                                     };
                                 }
@@ -2179,7 +2180,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         let [expected_tup_elem] = expected_fields[..] else { return };
 
-        if !same_type_modulo_infer(expected_tup_elem, found) {
+        if !self.same_type_modulo_infer(expected_tup_elem, found) {
             return;
         }
 
@@ -2647,6 +2648,76 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span.is_desugaring(DesugaringKind::QuestionMark)
             && self.tcx.is_diagnostic_item(sym::From, trait_def_id)
     }
+
+    /// Structurally compares two types, modulo any inference variables.
+    ///
+    /// Returns `true` if two types are equal, or if one type is an inference variable compatible
+    /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
+    /// FloatVar inference type are compatible with themselves or their concrete types (Int and
+    /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
+    pub fn same_type_modulo_infer(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+        let (a, b) = self.resolve_vars_if_possible((a, b));
+        match (a.kind(), b.kind()) {
+            (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) => {
+                if def_a != def_b {
+                    return false;
+                }
+
+                substs_a
+                    .types()
+                    .zip(substs_b.types())
+                    .all(|(a, b)| self.same_type_modulo_infer(a, b))
+            }
+            (&ty::FnDef(did_a, substs_a), &ty::FnDef(did_b, substs_b)) => {
+                if did_a != did_b {
+                    return false;
+                }
+
+                substs_a
+                    .types()
+                    .zip(substs_b.types())
+                    .all(|(a, b)| self.same_type_modulo_infer(a, b))
+            }
+            (&ty::Int(_) | &ty::Uint(_), &ty::Infer(ty::InferTy::IntVar(_)))
+            | (
+                &ty::Infer(ty::InferTy::IntVar(_)),
+                &ty::Int(_) | &ty::Uint(_) | &ty::Infer(ty::InferTy::IntVar(_)),
+            )
+            | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
+            | (
+                &ty::Infer(ty::InferTy::FloatVar(_)),
+                &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
+            )
+            | (&ty::Infer(ty::InferTy::TyVar(_)), _)
+            | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
+            (&ty::Ref(_, ty_a, mut_a), &ty::Ref(_, ty_b, mut_b)) => {
+                mut_a == mut_b && self.same_type_modulo_infer(ty_a, ty_b)
+            }
+            (&ty::RawPtr(a), &ty::RawPtr(b)) => {
+                a.mutbl == b.mutbl && self.same_type_modulo_infer(a.ty, b.ty)
+            }
+            (&ty::Slice(a), &ty::Slice(b)) => self.same_type_modulo_infer(a, b),
+            (&ty::Array(a_ty, a_ct), &ty::Array(b_ty, b_ct)) => {
+                self.same_type_modulo_infer(a_ty, b_ty) && a_ct == b_ct
+            }
+            (&ty::Tuple(a), &ty::Tuple(b)) => {
+                if a.len() != b.len() {
+                    return false;
+                }
+                std::iter::zip(a.iter(), b.iter()).all(|(a, b)| self.same_type_modulo_infer(a, b))
+            }
+            (&ty::FnPtr(a), &ty::FnPtr(b)) => {
+                let a = a.skip_binder().inputs_and_output;
+                let b = b.skip_binder().inputs_and_output;
+                if a.len() != b.len() {
+                    return false;
+                }
+                std::iter::zip(a.iter(), b.iter()).all(|(a, b)| self.same_type_modulo_infer(a, b))
+            }
+            // FIXME(compiler-errors): This needs to be generalized more
+            _ => a == b,
+        }
+    }
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -2795,6 +2866,240 @@ impl TyCategory {
             }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,
+        }
+    }
+}
+
+impl<'tcx> InferCtxt<'_, 'tcx> {
+    /// Given a [`hir::Block`], get the span of its last expression or
+    /// statement, peeling off any inner blocks.
+    pub fn find_block_span(&self, block: &'tcx hir::Block<'tcx>) -> Span {
+        let block = block.innermost_block();
+        if let Some(expr) = &block.expr {
+            expr.span
+        } else if let Some(stmt) = block.stmts.last() {
+            // possibly incorrect trailing `;` in the else arm
+            stmt.span
+        } else {
+            // empty block; point at its entirety
+            block.span
+        }
+    }
+
+    /// Given a [`hir::HirId`] for a block, get the span of its last expression
+    /// or statement, peeling off any inner blocks.
+    pub fn find_block_span_from_hir_id(&self, hir_id: hir::HirId) -> Span {
+        match self.tcx.hir().get(hir_id) {
+            hir::Node::Block(blk) => self.find_block_span(blk),
+            // The parser was in a weird state if either of these happen, but
+            // it's better not to panic.
+            hir::Node::Expr(e) => e.span,
+            _ => rustc_span::DUMMY_SP,
+        }
+    }
+
+    /// Be helpful when the user wrote `{... expr; }` and taking the `;` off
+    /// is enough to fix the error.
+    pub fn could_remove_semicolon(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> Option<(Span, StatementAsExpression)> {
+        let blk = blk.innermost_block();
+        // Do not suggest if we have a tail expr.
+        if blk.expr.is_some() {
+            return None;
+        }
+        let last_stmt = blk.stmts.last()?;
+        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
+            return None;
+        };
+        let last_expr_ty = self.in_progress_typeck_results?.borrow().expr_ty_opt(*last_expr)?;
+        let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
+            _ if last_expr_ty.references_error() => return None,
+            _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
+                StatementAsExpression::CorrectType
+            }
+            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
+                if last_def_id == exp_def_id =>
+            {
+                StatementAsExpression::CorrectType
+            }
+            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
+                debug!(
+                    "both opaque, likely future {:?} {:?} {:?} {:?}",
+                    last_def_id, last_bounds, exp_def_id, exp_bounds
+                );
+
+                let last_local_id = last_def_id.as_local()?;
+                let exp_local_id = exp_def_id.as_local()?;
+
+                match (
+                    &self.tcx.hir().expect_item(last_local_id).kind,
+                    &self.tcx.hir().expect_item(exp_local_id).kind,
+                ) {
+                    (
+                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
+                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
+                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
+                        match (left, right) {
+                            (
+                                hir::GenericBound::Trait(tl, ml),
+                                hir::GenericBound::Trait(tr, mr),
+                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
+                                && ml == mr =>
+                            {
+                                true
+                            }
+                            (
+                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
+                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
+                            ) if langl == langr => {
+                                // FIXME: consider the bounds!
+                                debug!("{:?} {:?}", argsl, argsr);
+                                true
+                            }
+                            _ => false,
+                        }
+                    }) =>
+                    {
+                        StatementAsExpression::NeedsBoxing
+                    }
+                    _ => StatementAsExpression::CorrectType,
+                }
+            }
+            _ => return None,
+        };
+        let span = if last_stmt.span.from_expansion() {
+            let mac_call = rustc_span::source_map::original_sp(last_stmt.span, blk.span);
+            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
+        } else {
+            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
+        };
+        Some((span, needs_box))
+    }
+
+    /// Suggest returning a local binding with a compatible type if the block
+    /// has no return expression.
+    pub fn consider_returning_binding(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+        err: &mut Diagnostic,
+    ) -> bool {
+        let blk = blk.innermost_block();
+        // Do not suggest if we have a tail expr.
+        if blk.expr.is_some() {
+            return false;
+        }
+        let mut shadowed = FxHashSet::default();
+        let mut candidate_idents = vec![];
+        let mut find_compatible_candidates = |pat: &hir::Pat<'_>| {
+            if let hir::PatKind::Binding(_, hir_id, ident, _) = &pat.kind
+                && let Some(pat_ty) = self
+                    .in_progress_typeck_results
+                    .and_then(|typeck_results| typeck_results.borrow().node_type_opt(*hir_id))
+            {
+                let pat_ty = self.resolve_vars_if_possible(pat_ty);
+                if self.same_type_modulo_infer(pat_ty, expected_ty)
+                    && !(pat_ty, expected_ty).references_error()
+                    && shadowed.insert(ident.name)
+                {
+                    candidate_idents.push((*ident, pat_ty));
+                }
+            }
+            true
+        };
+
+        let hir = self.tcx.hir();
+        for stmt in blk.stmts.iter().rev() {
+            let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
+            local.pat.walk(&mut find_compatible_candidates);
+        }
+        match hir.find(hir.get_parent_node(blk.hir_id)) {
+            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
+                match hir.find(hir.get_parent_node(*hir_id)) {
+                    Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
+                        pat.walk(&mut find_compatible_candidates);
+                    }
+                    Some(
+                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                        | hir::Node::ImplItem(hir::ImplItem {
+                            kind: hir::ImplItemKind::Fn(_, body),
+                            ..
+                        })
+                        | hir::Node::TraitItem(hir::TraitItem {
+                            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                            ..
+                        })
+                        | hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                            ..
+                        }),
+                    ) => {
+                        for param in hir.body(*body).params {
+                            param.pat.walk(&mut find_compatible_candidates);
+                        }
+                    }
+                    Some(hir::Node::Expr(hir::Expr {
+                        kind:
+                            hir::ExprKind::If(
+                                hir::Expr { kind: hir::ExprKind::Let(let_), .. },
+                                then_block,
+                                _,
+                            ),
+                        ..
+                    })) if then_block.hir_id == *hir_id => {
+                        let_.pat.walk(&mut find_compatible_candidates);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+
+        match &candidate_idents[..] {
+            [(ident, _ty)] => {
+                let sm = self.tcx.sess.source_map();
+                if let Some(stmt) = blk.stmts.last() {
+                    let stmt_span = sm.stmt_span(stmt.span, blk.span);
+                    let sugg = if sm.is_multiline(blk.span)
+                        && let Some(spacing) = sm.indentation_before(stmt_span)
+                    {
+                        format!("\n{spacing}{ident}")
+                    } else {
+                        format!(" {ident}")
+                    };
+                    err.span_suggestion_verbose(
+                        stmt_span.shrink_to_hi(),
+                        format!("consider returning the local binding `{ident}`"),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    let sugg = if sm.is_multiline(blk.span)
+                        && let Some(spacing) = sm.indentation_before(blk.span.shrink_to_lo())
+                    {
+                        format!("\n{spacing}    {ident}\n{spacing}")
+                    } else {
+                        format!(" {ident} ")
+                    };
+                    let left_span = sm.span_through_char(blk.span, '{').shrink_to_hi();
+                    err.span_suggestion_verbose(
+                        sm.span_extend_while(left_span, |c| c.is_whitespace()).unwrap_or(left_span),
+                        format!("consider returning the local binding `{ident}`"),
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                true
+            }
+            values if (1..3).contains(&values.len()) => {
+                let spans = values.iter().map(|(ident, _)| ident.span).collect::<Vec<_>>();
+                err.span_note(spans, "consider returning one of these bindings");
+                true
+            }
+            _ => false,
         }
     }
 }

@@ -30,17 +30,15 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{self, BytePos, Span};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
+    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt,
 };
 
 use std::collections::hash_map::Entry;
-use std::iter;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1057,84 +1055,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.def_path_str_with_substs(did, substs),
             sig
         ));
-    }
-
-    pub(in super::super) fn could_remove_semicolon(
-        &self,
-        blk: &'tcx hir::Block<'tcx>,
-        expected_ty: Ty<'tcx>,
-    ) -> Option<(Span, StatementAsExpression)> {
-        // Be helpful when the user wrote `{... expr;}` and
-        // taking the `;` off is enough to fix the error.
-        let last_stmt = blk.stmts.last()?;
-        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
-            return None;
-        };
-        let last_expr_ty = self.node_ty(last_expr.hir_id);
-        let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
-            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
-                if last_def_id == exp_def_id =>
-            {
-                StatementAsExpression::CorrectType
-            }
-            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
-                debug!(
-                    "both opaque, likely future {:?} {:?} {:?} {:?}",
-                    last_def_id, last_bounds, exp_def_id, exp_bounds
-                );
-
-                let last_local_id = last_def_id.as_local()?;
-                let exp_local_id = exp_def_id.as_local()?;
-
-                match (
-                    &self.tcx.hir().expect_item(last_local_id).kind,
-                    &self.tcx.hir().expect_item(exp_local_id).kind,
-                ) {
-                    (
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
-                        match (left, right) {
-                            (
-                                hir::GenericBound::Trait(tl, ml),
-                                hir::GenericBound::Trait(tr, mr),
-                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
-                            {
-                                true
-                            }
-                            (
-                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
-                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
-                            ) if langl == langr => {
-                                // FIXME: consider the bounds!
-                                debug!("{:?} {:?}", argsl, argsr);
-                                true
-                            }
-                            _ => false,
-                        }
-                    }) =>
-                    {
-                        StatementAsExpression::NeedsBoxing
-                    }
-                    _ => StatementAsExpression::CorrectType,
-                }
-            }
-            _ => StatementAsExpression::CorrectType,
-        };
-        if (matches!(last_expr_ty.kind(), ty::Error(_))
-            || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err())
-            && matches!(needs_box, StatementAsExpression::CorrectType)
-        {
-            return None;
-        }
-        let span = if last_stmt.span.from_expansion() {
-            let mac_call = original_sp(last_stmt.span, blk.span);
-            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
-        } else {
-            last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
-        };
-        Some((span, needs_box))
     }
 
     // Instantiates the given path, which must refer to an item with the given
