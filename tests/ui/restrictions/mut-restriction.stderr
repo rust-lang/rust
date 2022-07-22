@@ -1,5 +1,5 @@
 error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:11:5
+  --> $DIR/mut-restriction.rs:21:5
    |
 LL |     foo.alpha = 1;
    |     ^^^^^^^^^^^^^
@@ -11,7 +11,19 @@ LL |         pub mut(self) alpha: u8,
    |             ^^^^^^^^^
 
 error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:17:9
+  --> $DIR/mut-restriction.rs:23:24
+   |
+LL |         foo::Bar::Beta(ref mut beta) => {}
+   |                        ^^^^^^^^^^^^
+   |
+note: mutability restricted here
+  --> $DIR/mut-restriction.rs:10:14
+   |
+LL |         Beta(mut(self) u8),
+   |              ^^^^^^^^^
+
+error: mutable use of restricted field
+  --> $DIR/mut-restriction.rs:30:9
    |
 LL |         (*foo).alpha = 1;
    |         ^^^^^^^^^^^^^^^^
@@ -23,7 +35,7 @@ LL |         pub mut(self) alpha: u8,
    |             ^^^^^^^^^
 
 error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:23:5
+  --> $DIR/mut-restriction.rs:38:5
    |
 LL |     foo.alpha = 1;
    |     ^^^^^^^^^^^^^
@@ -35,7 +47,19 @@ LL |         pub mut(self) alpha: u8,
    |             ^^^^^^^^^
 
 error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:24:5
+  --> $DIR/mut-restriction.rs:40:24
+   |
+LL |         foo::Bar::Beta(ref mut beta) => {}
+   |                        ^^^^^^^^^^^^
+   |
+note: mutability restricted here
+  --> $DIR/mut-restriction.rs:10:14
+   |
+LL |         Beta(mut(self) u8),
+   |              ^^^^^^^^^
+
+error: mutable use of restricted field
+  --> $DIR/mut-restriction.rs:42:5
    |
 LL |     std::ptr::addr_of_mut!(foo.alpha);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +72,7 @@ LL |         pub mut(self) alpha: u8,
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:26:18
+  --> $DIR/mut-restriction.rs:44:18
    |
 LL |     let _alpha = &mut foo.alpha;
    |                  ^^^^^^^^^^^^^^
@@ -60,7 +84,7 @@ LL |         pub mut(self) alpha: u8,
    |             ^^^^^^^^^
 
 error: mutable use of restricted field
-  --> $DIR/mut-restriction.rs:29:9
+  --> $DIR/mut-restriction.rs:47:9
    |
 LL |         foo.alpha = 1;
    |         ^^^^^^^^^^^^^
@@ -71,5 +95,5 @@ note: mutability restricted here
 LL |         pub mut(self) alpha: u8,
    |             ^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 

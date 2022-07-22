@@ -793,7 +793,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
-            ItemKind::Enum(_, _) => {
+            ItemKind::Enum(ref enum_def, _) => {
                 let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(DefKind::Enum, def_id, ident.name),
@@ -803,6 +803,14 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
+
+                for variant in &enum_def.variants {
+                    for field in variant.data.fields() {
+                        let local_did = self.r.local_def_id(field.id);
+                        let mut_restriction = self.resolve_restriction(&field.mut_restriction);
+                        self.r.mut_restrictions.insert(local_did, mut_restriction);
+                    }
+                }
             }
 
             ItemKind::TraitAlias(..) => {
