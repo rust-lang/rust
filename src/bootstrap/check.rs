@@ -351,7 +351,7 @@ impl Step for RustAnalyzer {
 
         builder.info(&format!(
             "Checking stage{} {} artifacts ({} -> {})",
-            builder.top_stage, "rust-analyzer", &compiler.host.triple, target.triple
+            compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
         ));
         run_cargo(builder, cargo, args(builder), &stamp(builder, compiler, target), vec![], true);
 
