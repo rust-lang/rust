@@ -66,6 +66,27 @@ fn test_trait_obj() {
     assert_eq!(location.column(), 28);
 }
 
+fn test_trait_obj2() {
+    // track_caller on the impl but not the trait.
+    pub trait Foo {
+        fn foo(&self) -> &'static Location<'static>;
+    }
+
+    struct Bar;
+    impl Foo for Bar {
+        #[track_caller]
+        fn foo(&self) -> &'static Location<'static> {
+            std::panic::Location::caller()
+        }
+    }
+    let expected_line = line!() - 4; // the `fn` signature above
+
+    let f = &Bar as &dyn Foo;
+    let loc = f.foo(); // trait doesn't track, so we don't point at this call site
+    assert_eq!(loc.file(), file!());
+    assert_eq!(loc.line(), expected_line);
+}
+
 fn main() {
     let location = Location::caller();
     let expected_line = line!() - 1;
@@ -105,4 +126,5 @@ fn main() {
 
     test_fn_ptr();
     test_trait_obj();
+    test_trait_obj2();
 }
