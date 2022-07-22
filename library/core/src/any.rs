@@ -667,6 +667,7 @@ impl dyn Any + Send + Sync {
 /// of relying on them inside of your code!
 #[derive(Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(dead_code)]
 pub struct TypeId {
     // This field is unused, and is intended solely
     // to break invalid transmutes to `TypeId`.
