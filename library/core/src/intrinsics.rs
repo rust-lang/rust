@@ -1212,8 +1212,9 @@ extern "rust-intrinsic" {
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
-    /// destination value, then forgets the original. It's equivalent to C's
-    /// `memcpy` under the hood, just like `transmute_copy`.
+    /// destination value, then forgets the original. Note that source and destination
+    /// are passed by-value, which means if `T` or `U` contains padding, that padding
+    /// might *not* be preserved by `transmute`.
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
