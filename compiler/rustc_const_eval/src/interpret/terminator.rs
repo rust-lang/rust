@@ -589,13 +589,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
                     let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
 
-                    let concrete_method = Instance::resolve(
+                    let concrete_method = Instance::resolve_for_vtable(
                         tcx,
                         self.param_env,
                         def_id,
                         instance.substs.rebase_onto(tcx, trait_def_id, concrete_trait_ref.substs),
                     )
-                    .unwrap()
                     .unwrap();
                     assert_eq!(fn_inst, concrete_method);
                 }
