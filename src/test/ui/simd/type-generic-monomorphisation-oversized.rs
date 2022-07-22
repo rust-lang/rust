@@ -2,7 +2,7 @@
 
 #![feature(repr_simd, platform_intrinsics)]
 
-// error-pattern:monomorphising SIMD type `Simd<65536_usize>` of length greater than 32768
+// error-pattern:monomorphising SIMD type `Simd<65536>` of length greater than 32768
 
 #[repr(simd)]
 struct Simd<const N: usize>([f32; N]);

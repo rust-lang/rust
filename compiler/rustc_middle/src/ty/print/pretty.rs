@@ -1729,7 +1729,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct, true)
+        self.pretty_print_const(ct, false)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
