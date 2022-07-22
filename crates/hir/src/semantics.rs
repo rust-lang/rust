@@ -22,7 +22,7 @@ use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody},
-    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
+    match_ast, AstNode, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
 };
 
 use crate::{
@@ -215,6 +215,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         token: SyntaxToken,
     ) -> SmallVec<[SyntaxToken; 1]> {
         self.imp.descend_into_macros_with_same_text(token)
+    }
+
+    pub fn descend_into_macros_with_kind_preference(&self, token: SyntaxToken) -> SyntaxToken {
+        self.imp.descend_into_macros_with_kind_preference(token)
     }
 
     /// Maps a node down by mapping its first and last token down.
@@ -678,6 +682,32 @@ impl<'db> SemanticsImpl<'db> {
             res.push(token);
         }
         res
+    }
+
+    fn descend_into_macros_with_kind_preference(&self, token: SyntaxToken) -> SyntaxToken {
+        let fetch_kind = |token: &SyntaxToken| match token.parent() {
+            Some(node) => match node.kind() {
+                kind @ (SyntaxKind::NAME | SyntaxKind::NAME_REF) => {
+                    node.parent().map_or(kind, |it| it.kind())
+                }
+                _ => token.kind(),
+            },
+            None => token.kind(),
+        };
+        let preferred_kind = fetch_kind(&token);
+        let mut res = None;
+        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
+            if fetch_kind(&value) == preferred_kind {
+                res = Some(value);
+                true
+            } else {
+                if let None = res {
+                    res = Some(value)
+                }
+                false
+            }
+        });
+        res.unwrap_or(token)
     }
 
     fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
