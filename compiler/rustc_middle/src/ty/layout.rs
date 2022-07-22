@@ -2618,14 +2618,14 @@ where
                     // Use conservative pointer kind if not optimizing. This saves us the
                     // Freeze/Unpin queries, and can save time in the codegen backend (noalias
                     // attributes in LLVM have compile-time cost even in unoptimized builds).
-                    PointerKind::Shared
+                    PointerKind::SharedMutable
                 } else {
                     match mt {
                         hir::Mutability::Not => {
                             if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
                                 PointerKind::Frozen
                             } else {
-                                PointerKind::Shared
+                                PointerKind::SharedMutable
                             }
                         }
                         hir::Mutability::Mut => {
@@ -2636,7 +2636,7 @@ where
                             if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
                                 PointerKind::UniqueBorrowed
                             } else {
-                                PointerKind::Shared
+                                PointerKind::UniqueBorrowedPinned
                             }
                         }
                     }
@@ -3255,10 +3255,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
                     // for the entire duration of the function as they can be deallocated
-                    // at any time. Set their valid size to 0.
+                    // at any time. Same for shared mutable references. If LLVM had a
+                    // way to say "dereferenceable on entry" we could use it here.
                     attrs.pointee_size = match kind {
-                        PointerKind::UniqueOwned => Size::ZERO,
-                        _ => pointee.size,
+                        PointerKind::UniqueBorrowed
+                        | PointerKind::UniqueBorrowedPinned
+                        | PointerKind::Frozen => pointee.size,
+                        PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
                     };
 
                     // `Box`, `&T`, and `&mut T` cannot be undef.
@@ -3285,7 +3288,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // or not to actually emit the attribute. It can also be controlled with the
                     // `-Zmutable-noalias` debugging option.
                     let no_alias = match kind {
-                        PointerKind::Shared | PointerKind::UniqueBorrowed => false,
+                        PointerKind::SharedMutable
+                        | PointerKind::UniqueBorrowed
+                        | PointerKind::UniqueBorrowedPinned => false,
                         PointerKind::UniqueOwned => noalias_for_box,
                         PointerKind::Frozen => !is_return,
                     };
