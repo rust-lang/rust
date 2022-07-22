@@ -396,6 +396,10 @@ impl Step for RustAnalyzer {
         // https://github.com/rust-analyzer/expect-test/issues/33
         cargo.env("CARGO_WORKSPACE_DIR", &dir);
 
+        // RA's test suite tries to write to the source directory, that can't
+        // work in Rust CI
+        cargo.env("SKIP_SLOW_TESTS", "1");
+
         cargo.add_rustc_lib_path(builder, compiler);
         cargo.arg("--").args(builder.config.cmd.test_args());
 
