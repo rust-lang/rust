@@ -36,7 +36,7 @@ A more conventional way is using `/x.py doc`.
 - Document internal rustc items
 
   Compiler documentation is not built by default.
-  To enable it, modify "config.toml":
+  To enable it, modify `config.toml`:
 
   ```toml
   [build]
