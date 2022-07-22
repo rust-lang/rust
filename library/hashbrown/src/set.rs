@@ -1,6 +1,5 @@
-use crate::TryReserveError;
+use crate::{Equivalent, TryReserveError};
 use alloc::borrow::ToOwned;
-use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
@@ -773,8 +772,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<T>,
     {
         self.map.contains_key(value)
     }
@@ -800,8 +798,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<T>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.map.get_key_value(value) {
@@ -856,8 +853,7 @@ where
     #[inline]
     pub fn get_or_insert_owned<Q: ?Sized>(&mut self, value: &Q) -> &T
     where
-        T: Borrow<Q>,
-        Q: Hash + Eq + ToOwned<Owned = T>,
+        Q: Hash + Equivalent<T> + ToOwned<Owned = T>,
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
         // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
@@ -889,8 +885,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
     where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<T>,
         F: FnOnce(&Q) -> T,
     {
         // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
@@ -1106,8 +1101,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<T>,
     {
         self.map.remove(value).is_some()
     }
@@ -1133,8 +1127,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
-        T: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Equivalent<T>,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.map.remove_entry(value) {
