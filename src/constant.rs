@@ -316,14 +316,18 @@ fn data_id_for_static(
 
     let attrs = tcx.codegen_fn_attrs(def_id);
 
-    let data_id = module
-        .declare_data(
-            &*symbol_name,
-            linkage,
-            is_mutable,
-            attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
-        )
-        .unwrap();
+    let data_id = match module.declare_data(
+        &*symbol_name,
+        linkage,
+        is_mutable,
+        attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
+    ) {
+        Ok(data_id) => data_id,
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+            "attempt to declare `{symbol_name}` as static, but it was already declared as function"
+        )),
+        Err(err) => Err::<_, _>(err).unwrap(),
+    };
 
     if rlinkage.is_some() {
         // Comment copied from https://github.com/rust-lang/rust/blob/45060c2a66dfd667f88bd8b94261b28a58d85bd5/src/librustc_codegen_llvm/consts.rs#L141
