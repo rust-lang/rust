@@ -376,7 +376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.param_env,
                             *predicate,
                         );
-                        let result = self.infcx.evaluate_obligation(&obligation);
+                        let result = self.evaluate_obligation(&obligation);
                         self.tcx
                             .sess
                             .struct_span_err(

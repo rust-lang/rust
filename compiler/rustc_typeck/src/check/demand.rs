@@ -815,7 +815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
                 _,
                 &ty::Ref(_, checked, _),
-            ) if self.infcx.can_sub(self.param_env, checked, expected).is_ok() => {
+            ) if self.can_sub(self.param_env, checked, expected).is_ok() => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
@@ -959,7 +959,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // For this suggestion to make sense, the type would need to be `Copy`,
                     // or we have to be moving out of a `Box<T>`
-                    if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp)
+                    if self.type_is_copy_modulo_regions(self.param_env, expected, sp)
                         // FIXME(compiler-errors): We can actually do this if the checked_ty is
                         // `steps` layers of boxes, not just one, but this is easier and most likely.
                         || (checked_ty.is_box() && steps == 1)
