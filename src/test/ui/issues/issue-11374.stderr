@@ -14,7 +14,7 @@ note: associated function defined here
   --> $DIR/issue-11374.rs:13:12
    |
 LL |     pub fn read_to(&mut self, vec: &mut [u8]) {
-   |            ^^^^^^^ ---------  --------------
+   |            ^^^^^^^            --------------
 
 error: aborting due to previous error
 

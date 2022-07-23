@@ -10,7 +10,7 @@ note: function defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:25:4
    |
 LL | fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
-   |    ^^^^        ----  ---------------
+   |    ^^^^              ---------------
 
 error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:28:23
@@ -24,7 +24,7 @@ note: function defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:25:4
    |
 LL | fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
-   |    ^^^^        ----  ---------------
+   |    ^^^^              ---------------
 
 error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:32:28
@@ -38,7 +38,7 @@ note: associated function defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
    |
 LL |     fn chip_paint(&self, c: Self::Color) { }
-   |        ^^^^^^^^^^ -----  --------------
+   |        ^^^^^^^^^^        --------------
 
 error[E0308]: mismatched types
   --> $DIR/associated-type-projection-from-supertrait.rs:33:28
@@ -52,7 +52,7 @@ note: associated function defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
    |
 LL |     fn chip_paint(&self, c: Self::Color) { }
-   |        ^^^^^^^^^^ -----  --------------
+   |        ^^^^^^^^^^        --------------
 
 error: aborting due to 4 previous errors
 
