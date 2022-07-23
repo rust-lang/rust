@@ -80,6 +80,14 @@ impl io::Read for Stdin {
     // FIXME: Implement buffered reading. Currently backspace and other characters are read as
     // normal characters. Thus it might look like line-editing but it actually isn't
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if let Ok(current_exe) = crate::env::current_exe() {
+            if let Ok(v) = crate::env::var(format!("{}_stdin", current_exe.to_string_lossy())) {
+                if v.as_str() == "null" {
+                    return Ok(buf.len());
+                }
+            }
+        }
+
         let global_system_table = uefi::env::get_system_table()
             .ok_or(io::Error::new(io::ErrorKind::NotFound, "Global System Table"))?;
         let con_in = get_con_in(global_system_table)?;
@@ -121,6 +129,15 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if let Ok(current_exe) = crate::env::current_exe() {
+            if let Ok(v) = crate::env::var(format!("{}_stdout", current_exe.to_string_lossy())) {
+                if v.as_str() == "null" {
+                    return Ok(buf.len());
+                } else {
+                    return super::pipe::AnonPipe::new(v).write(buf);
+                }
+            }
+        }
         let global_system_table = uefi::env::get_system_table()
             .ok_or(io::Error::new(io::ErrorKind::NotFound, "Global System Table"))?;
         let con_out = get_con_out(global_system_table)?;
@@ -140,6 +157,16 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if let Ok(current_exe) = crate::env::current_exe() {
+            if let Ok(v) = crate::env::var(format!("{}_stderr", current_exe.to_string_lossy())) {
+                if v.as_str() == "null" {
+                    return Ok(buf.len());
+                } else {
+                    return super::pipe::AnonPipe::new(v).write(buf);
+                }
+            }
+        }
+
         let global_system_table = uefi::env::get_system_table()
             .ok_or(io::Error::new(io::ErrorKind::NotFound, "Global System Table"))?;
         let std_err = get_std_err(global_system_table)?;

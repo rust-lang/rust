@@ -28,7 +28,6 @@ impl TcpProtocol {
                     let tcp4_protocol = match tcp4::Tcp4Protocol::create(service_binding) {
                         Ok(x) => x,
                         Err(e) => {
-                            println!("Error creating Protocol from Service Binding: {:?}", e);
                             continue;
                         }
                     };
@@ -42,8 +41,6 @@ impl TcpProtocol {
                     ) {
                         Ok(()) => return Ok(Self::from(tcp4_protocol)),
                         Err(e) => {
-                            println!("Error during Protocol Config: {:?}", e);
-                            println!("Supplied Address: {x:?}");
                             continue;
                         }
                     }
@@ -52,7 +49,6 @@ impl TcpProtocol {
                 Err(io::Error::new(io::ErrorKind::Other, "Failed to open any EFI_TCP6_PROTOCOL"))
             }
             SocketAddr::V6(_x) => {
-                println!("V6 Not implemented yet");
                 todo!();
             }
         }

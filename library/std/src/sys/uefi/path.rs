@@ -2,7 +2,9 @@
 
 use crate::ffi::OsStr;
 use crate::io;
+use crate::os::uefi;
 use crate::path::{Path, PathBuf, Prefix};
+use crate::ptr::NonNull;
 
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';

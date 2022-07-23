@@ -27,7 +27,6 @@ pub mod net;
 pub mod os;
 pub mod os_str;
 pub mod path;
-#[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 pub mod process;
 pub mod stdio;
@@ -101,7 +100,6 @@ pub fn abort_internal() -> ! {
     if let (Some(boot_services), Some(handle)) =
         (uefi::env::get_boot_services(), uefi::env::get_system_handle())
     {
-        println!("Aborting");
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
                 handle.as_ptr(),
@@ -172,7 +170,3 @@ pub unsafe extern "efiapi" fn efi_main(
         uefi::raw::Status::ABORTED
     }
 }
-
-// pub fn unknown_error(e: &uefi::raw::Status) -> crate::io::Error {
-//     crate::io::Error::new(crate::io::ErrorKind::Other, format!("Unknown Error: {}", e.as_usize()))
-// }

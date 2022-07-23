@@ -181,11 +181,9 @@ impl Tcp6Protocol {
                 )),
             };
         }
-        println!("Wait");
         // accept_event.wait()?;
         // Seems like a bad idea
         while listen_token.completion_token.status == Status::ABORTED {}
-        println!("Wait Done");
 
         let r = listen_token.completion_token.status;
         if r.is_error() {

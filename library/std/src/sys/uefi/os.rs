@@ -16,7 +16,9 @@ pub fn error_string(_errno: i32) -> String {
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    unsupported()
+    let mut p = current_exe()?;
+    p.pop();
+    Ok(p)
 }
 
 pub fn chdir(_: &path::Path) -> io::Result<()> {
@@ -61,7 +63,16 @@ impl StdError for JoinPathsError {
 }
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    unsupported()
+    use uefi::raw::protocols::{device_path, loaded_image_device_path};
+
+    let mut protocol_guid = loaded_image_device_path::PROTOCOL_GUID;
+    match uefi::env::get_current_handle_protocol::<device_path::Protocol>(&mut protocol_guid) {
+        Some(x) => PathBuf::try_from(x),
+        None => Err(io::Error::new(
+            io::ErrorKind::Uncategorized,
+            "Failed to Acquire EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL",
+        )),
+    }
 }
 
 // FIXME: Implement using Variable Services
@@ -84,11 +95,19 @@ pub fn getenv(key: &OsStr) -> Option<OsString> {
 }
 
 pub fn setenv(key: &OsStr, val: &OsStr) -> io::Result<()> {
-    uefi_vars::set_variable(key, val)
+    // UEFI does not support empty variables
+    if val.is_empty() { Ok(()) } else { uefi_vars::set_variable(key, val) }
 }
 
 pub fn unsetenv(key: &OsStr) -> io::Result<()> {
-    uefi_vars::set_variable(key, OsStr::new(""))
+    match uefi_vars::set_variable(key, OsStr::new("")) {
+        Ok(_) => Ok(()),
+        Err(e) => match e.kind() {
+            // Its fine if the key does not exist
+            io::ErrorKind::NotFound => Ok(()),
+            _ => Err(e),
+        },
+    }
 }
 
 pub fn temp_dir() -> PathBuf {

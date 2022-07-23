@@ -416,8 +416,6 @@ pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
 // Liberal Cascade Delete
 // The file should not point to root
 fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
-    println!("Cascade Start");
-
     // Skip "." and ".."
     let _ = file.read_dir_entry();
     let _ = file.read_dir_entry();
@@ -425,7 +423,6 @@ fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
     while let Some(dir_entry) = file.read_dir_entry() {
         if let Ok(dir_entry) = dir_entry {
             if let Ok(t) = dir_entry.file_type() {
-                println!("Cascade FileType");
                 if t.is_dir() {
                     let open_mode = file::MODE_READ | file::MODE_WRITE;
                     let attr = file::DIRECTORY;
@@ -449,7 +446,6 @@ fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
         }
     }
 
-    println!("Cascade End");
     file.delete()
 }
 
