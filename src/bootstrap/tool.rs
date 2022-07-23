@@ -721,7 +721,7 @@ impl Step for RustAnalyzer {
             mode: Mode::ToolStd,
             path: "src/tools/rust-analyzer",
             extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
-            is_optional_tool: true,
+            is_optional_tool: false,
             source_type: SourceType::InTree,
         })
     }

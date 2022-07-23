@@ -312,7 +312,7 @@ impl Step for RustAnalyzer {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["src/tools/rust-analyzer"])
+        run.path("src/tools/rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {

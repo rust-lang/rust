@@ -62,7 +62,7 @@ fn main() {
         Command::new(toolchain::cargo())
     };
 
-    let output = cmd
+    cmd
         .current_dir(&staging_dir)
         .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
@@ -70,9 +70,11 @@ fn main() {
         // This can happen when `CARGO_TARGET_DIR` is set or global config forces all cargo
         // instance to use the same target directory.
         .arg("--target-dir")
-        .arg(&target_dir)
-        .output()
-        .unwrap();
+        .arg(&target_dir);
+
+    println!("Running {:?}", cmd);
+
+    let output = cmd.output().unwrap();
     if !output.status.success() {
         println!("proc-macro-test-impl failed to build");
         println!("============ stdout ============");
