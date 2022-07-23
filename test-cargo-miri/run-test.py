@@ -25,7 +25,12 @@ def cargo_miri(cmd, quiet = True):
 
 def normalize_stdout(str):
     str = str.replace("src\\", "src/") # normalize paths across platforms
-    return re.sub("finished in \d+\.\d\ds", "finished in $TIME", str)
+    str = re.sub("finished in \d+\.\d\ds", "finished in $TIME", str) # the time keeps changing, obviously
+    return str
+
+def normalize_stderr(str):
+    str = str.replace("Preparing a sysroot for Miri... done\n", "") # remove leading cargo-miri setup output
+    return str
 
 def check_output(actual, path, name):
     expected = open(path).read()
@@ -51,9 +56,8 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
         env=p_env,
     )
     (stdout, stderr) = p.communicate(input=stdin)
-    stdout = stdout.decode("UTF-8")
-    stderr = stderr.decode("UTF-8")
-    stdout = normalize_stdout(stdout)
+    stdout = normalize_stdout(stdout.decode("UTF-8"))
+    stderr = normalize_stderr(stderr.decode("UTF-8"))
 
     stdout_matches = check_output(stdout, stdout_ref, "stdout")
     stderr_matches = check_output(stderr, stderr_ref, "stderr")
@@ -175,10 +179,6 @@ os.environ["RUST_TEST_THREADS"] = "1" # avoid non-deterministic output due to co
 target_str = " for target {}".format(os.environ['MIRI_TEST_TARGET']) if 'MIRI_TEST_TARGET' in os.environ else ""
 print(CGREEN + CBOLD + "## Running `cargo miri` tests{}".format(target_str) + CEND)
 
-if not 'MIRI_SYSROOT' in os.environ:
-    # Make sure we got a working sysroot.
-    # (If the sysroot gets built later when output is compared, that leads to test failures.)
-    subprocess.run(cargo_miri("setup"), check=True)
 test_cargo_miri_run()
 test_cargo_miri_test()
 # Ensure we did not create anything outside the expected target dir.

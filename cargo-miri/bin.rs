@@ -510,7 +510,9 @@ path = "lib.rs"
         if only_setup {
             show_error(format!("failed to run xargo, see error details above"))
         } else {
-            show_error(format!("failed to run xargo; run `cargo miri setup` to see the error details"))
+            show_error(format!(
+                "failed to run xargo; run `cargo miri setup` to see the error details"
+            ))
         }
     }
     if !only_setup {
