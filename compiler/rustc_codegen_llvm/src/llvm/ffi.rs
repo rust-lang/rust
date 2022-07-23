@@ -192,6 +192,7 @@ pub enum AttributeKind {
     NoUndef = 33,
     SanitizeMemTag = 34,
     NoCfCheck = 35,
+    ShadowCallStack = 36,
 }
 
 /// LLVMIntPredicate

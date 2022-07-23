@@ -69,6 +69,9 @@ pub fn sanitize_attrs<'ll>(
     if enabled.contains(SanitizerSet::HWADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeHWAddress.create_attr(cx.llcx));
     }
+    if enabled.contains(SanitizerSet::SHADOWCALLSTACK) {
+        attrs.push(llvm::AttributeKind::ShadowCallStack.create_attr(cx.llcx));
+    }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
         let features = cx.tcx.global_backend_features(());

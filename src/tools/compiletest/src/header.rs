@@ -876,6 +876,7 @@ pub fn make_test_description<R: Read>(
     let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
     // for `-Z gcc-ld=lld`
     let has_rust_lld = config
         .compile_lib_path
@@ -913,6 +914,8 @@ pub fn make_test_description<R: Read>(
         ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
         ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
+        ignore |= !has_shadow_call_stack
+            && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
         ignore |= config.target_panic == PanicStrategy::Abort
             && config.parse_name_directive(ln, "needs-unwind");
         ignore |= config.target == "wasm32-unknown-unknown"
