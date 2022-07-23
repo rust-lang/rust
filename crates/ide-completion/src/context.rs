@@ -138,6 +138,9 @@ pub(crate) struct ExprCtx {
     pub(crate) self_param: Option<hir::SelfParam>,
     pub(crate) innermost_ret_ty: Option<hir::Type>,
     pub(crate) impl_: Option<ast::Impl>,
+    /// Whether this expression occurs in match arm guard position: before the
+    /// fat arrow token
+    pub(crate) in_match_guard: bool,
 }
 
 /// Original file ast nodes

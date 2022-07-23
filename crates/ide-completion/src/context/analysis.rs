@@ -763,6 +763,13 @@ impl<'a> CompletionContext<'a> {
                 .map_or(false, |it| it.semicolon_token().is_none());
             let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
+            let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
+                Some(arm) => arm
+                    .fat_arrow_token()
+                    .map_or(true, |arrow| it.text_range().start() < arrow.text_range().start()),
+                None => false,
+            };
+
             PathKind::Expr {
                 expr_ctx: ExprCtx {
                     in_block_expr,
@@ -775,6 +782,7 @@ impl<'a> CompletionContext<'a> {
                     self_param,
                     incomplete_let,
                     impl_,
+                    in_match_guard,
                 },
             }
         };
