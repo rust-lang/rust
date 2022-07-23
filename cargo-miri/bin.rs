@@ -483,6 +483,7 @@ path = "lib.rs"
     // The `MIRI_CALLED_FROM_XARGO` will mean we dispatch to `phase_setup_rustc`.
     let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     if env::var_os("RUSTC_STAGE").is_some() {
+        assert!(env::var_os("RUSTC").is_some());
         command.env("RUSTC_REAL", &cargo_miri_path);
     } else {
         command.env("RUSTC", &cargo_miri_path);
