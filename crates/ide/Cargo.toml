@@ -42,3 +42,6 @@ toolchain = { path = "../toolchain", version = "0.0.0" }
 [dev-dependencies]
 test-utils = { path = "../test-utils" }
 expect-test = "1.4.0"
+
+[features]
+in-rust-tree = ["ide-assists/in-rust-tree", "ide-diagnostics/in-rust-tree"]

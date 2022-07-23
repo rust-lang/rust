@@ -1,9 +1,12 @@
 //! Generates `assists.md` documentation.
 
+#[cfg(not(feature = "in-rust-tree"))]
 use std::{fmt, fs, path::Path};
 
+#[cfg(not(feature = "in-rust-tree"))]
 use test_utils::project_root;
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn sourcegen_assists_docs() {
     let assists = Assist::collect();
@@ -59,6 +62,8 @@ r#####"
         fs::write(dst, contents).unwrap();
     }
 }
+
+#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 struct Section {
     doc: String,
@@ -66,6 +71,7 @@ struct Section {
     after: String,
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 struct Assist {
     id: String,
@@ -73,6 +79,7 @@ struct Assist {
     sections: Vec<Section>,
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 impl Assist {
     fn collect() -> Vec<Assist> {
         let handlers_dir = project_root().join("crates/ide-assists/src/handlers");
@@ -104,9 +111,11 @@ impl Assist {
                 while lines.peek().is_some() {
                     let doc = take_until(lines.by_ref(), "```").trim().to_string();
                     assert!(
-                        (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.')) || assist.sections.len() > 0,
+                        (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.'))
+                            || assist.sections.len() > 0,
                         "\n\n{}: assist docs should be proper sentences, with capitalization and a full stop at the end.\n\n{}\n\n",
-                        &assist.id, doc,
+                        &assist.id,
+                        doc,
                     );
 
                     let before = take_until(lines.by_ref(), "```");
@@ -135,6 +144,7 @@ impl Assist {
     }
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 impl fmt::Display for Assist {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let _ = writeln!(
@@ -169,6 +179,7 @@ impl fmt::Display for Assist {
     }
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 fn hide_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .filter(|&it| !(it.starts_with("# ") || it == "#"))
@@ -176,6 +187,7 @@ fn hide_hash_comments(text: &str) -> String {
         .collect()
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 fn reveal_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .map(|it| {

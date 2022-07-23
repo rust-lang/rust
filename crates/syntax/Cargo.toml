@@ -34,3 +34,6 @@ ungrammar = "1.16.1"
 
 test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }
+
+[features]
+in-rust-tree = []

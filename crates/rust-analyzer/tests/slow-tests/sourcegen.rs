@@ -1,7 +1,9 @@
 //! Generates `assists.md` documentation.
 
+#[cfg(not(feature = "in-rust-tree"))]
 use std::{fmt, fs, io, path::PathBuf};
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn sourcegen_feature_docs() {
     let features = Feature::collect().unwrap();
@@ -17,6 +19,7 @@ fn sourcegen_feature_docs() {
     fs::write(&dst, &contents).unwrap();
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 struct Feature {
     id: String,
@@ -24,6 +27,7 @@ struct Feature {
     doc: String,
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 impl Feature {
     fn collect() -> io::Result<Vec<Feature>> {
         let crates_dir = sourcegen::project_root().join("crates");
@@ -54,6 +58,7 @@ impl Feature {
     }
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 fn is_valid_feature_name(feature: &str) -> Result<(), String> {
     'word: for word in feature.split_whitespace() {
         for short in ["to", "and"] {
@@ -73,6 +78,7 @@ fn is_valid_feature_name(feature: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 impl fmt::Display for Feature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "=== {}\n**Source:** {}\n{}", self.id, self.location, self.doc)
