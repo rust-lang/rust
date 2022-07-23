@@ -1,5 +1,7 @@
 use std::env;
 
+use byteorder::{ByteOrder, LittleEndian};
+
 fn main() {
     println!("subcrate testing");
 
@@ -11,6 +13,6 @@ fn main() {
     let crate_dir = crate_dir.to_string_lossy().replace("\\", "/");
     assert_eq!(env_dir, crate_dir);
 
-    // Make sure we can call `num_cpus`.
-    num_cpus::get();
+    // Make sure we can call dev-dependencies.
+    let _n = <LittleEndian as ByteOrder>::read_u32(&[1, 2, 3, 4]);
 }

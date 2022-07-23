@@ -107,6 +107,7 @@ dependencies = [
  "getrandom 0.1.16",
  "getrandom 0.2.7",
  "libc",
+ "num_cpus",
  "page_size",
  "rand",
  "tokio",
