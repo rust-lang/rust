@@ -1207,8 +1207,7 @@ extern "rust-intrinsic" {
 
     /// Reinterprets the bits of a value of one type as another type.
     ///
-    /// Both types must have the same size. Neither the original, nor the result,
-    /// may be an [invalid value](../../nomicon/what-unsafe-does.html).
+    /// Both types must have the same size. Compilation will fail if this is not guaranteed.
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
@@ -1216,21 +1215,24 @@ extern "rust-intrinsic" {
     /// are passed by-value, which means if `T` or `U` contains padding, that padding
     /// might *not* be preserved by `transmute`.
     ///
+    /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
+    /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
+    /// will generate code *assuming that you, the programmer, ensure that there will never be
+    /// undefined behavior*. It is therefore your responsibility to guarantee that every value
+    /// passed to `transmute` is valid at both types `T` and `U`. Failing to uphold this condition
+    /// may lead to unexpeced and unstable compilation results. This makes `transmute` **incredibly
+    /// unsafe**. `transmute` should be the absolute last resort.
+    ///
+    /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
+    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
+    ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
     /// both `T` and `U` are properly aligned. However, when transmuting values that *point
     /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
     /// alignment of the pointed-to values.
     ///
-    /// `transmute` is **incredibly** unsafe. There are a vast number of ways to
-    /// cause [undefined behavior][ub] with this function. `transmute` should be
-    /// the absolute last resort.
-    ///
-    /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
-    /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
-    ///
-    /// The [nomicon](../../nomicon/transmutes.html) has additional
-    /// documentation.
+    /// The [nomicon](../../nomicon/transmutes.html) has additional documentation.
     ///
     /// [ub]: ../../reference/behavior-considered-undefined.html
     ///
