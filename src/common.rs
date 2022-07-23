@@ -132,7 +132,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         });
         let len = s_str.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
-            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
+            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self)),
         );
         (cs, self.const_usize(len as u64))
     }
@@ -235,7 +235,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn from_const_alloc(&self, layout: TyAndLayout<'tcx>, alloc: ConstAllocation<'tcx>, offset: Size) -> PlaceRef<'tcx, RValue<'gcc>> {
         assert_eq!(alloc.inner().align, layout.align.abi);
-        let ty = self.type_ptr_to(layout.gcc_type(self, true));
+        let ty = self.type_ptr_to(layout.gcc_type(self));
         let value =
             if layout.size == Size::ZERO {
                 let value = self.const_usize(alloc.inner().align.bytes());
