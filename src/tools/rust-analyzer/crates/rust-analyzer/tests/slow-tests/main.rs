@@ -10,10 +10,11 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
+#[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
-mod tidy;
-mod testdir;
 mod support;
+mod testdir;
+mod tidy;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
