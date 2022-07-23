@@ -746,7 +746,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("arguments to this {} are incorrect", call_name),
             );
             // Call out where the function is defined
-            self.label_fn_like(&mut err, fn_def_id, callee_ty, Some(expected_idx.as_usize()), is_method);
+            self.label_fn_like(
+                &mut err,
+                fn_def_id,
+                callee_ty,
+                Some(expected_idx.as_usize()),
+                is_method,
+            );
             err.emit();
             return;
         }
@@ -1896,6 +1902,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let def_kind = self.tcx.def_kind(def_id);
             err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+        } else if let Some(hir::Node::Expr(e)) = self.tcx.hir().get_if_local(def_id)
+            && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
+        {
+            let param = expected_idx
+                .and_then(|expected_idx| self.tcx.hir().body(*body).params.get(expected_idx));
+            let (kind, span) = if let Some(param) = param {
+                ("closure parameter", param.span)
+            } else {
+                ("closure", self.tcx.def_span(def_id))
+            };
+            err.span_note(span, &format!("{} defined here", kind));
         } else {
             let def_kind = self.tcx.def_kind(def_id);
             err.span_note(
