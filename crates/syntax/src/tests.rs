@@ -1,3 +1,4 @@
+#[cfg(not(feature = "in-rust-tree"))]
 mod ast_src;
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen_ast;

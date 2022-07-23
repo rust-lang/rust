@@ -1,6 +1,5 @@
 //! Defines input for code generation process.
 
-#[cfg(not(feature = "in-rust-tree"))]
 pub(crate) struct KindsSrc<'a> {
     pub(crate) punct: &'a [(&'a str, &'a str)],
     pub(crate) keywords: &'a [&'a str],
@@ -10,7 +9,6 @@ pub(crate) struct KindsSrc<'a> {
     pub(crate) nodes: &'a [&'a str],
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
     punct: &[
         (";", "SEMICOLON"),
@@ -218,7 +216,6 @@ pub(crate) const KINDS_SRC: KindsSrc<'_> = KindsSrc {
     ],
 };
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Default, Debug)]
 pub(crate) struct AstSrc {
     pub(crate) tokens: Vec<String>,
@@ -226,7 +223,6 @@ pub(crate) struct AstSrc {
     pub(crate) enums: Vec<AstEnumSrc>,
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 pub(crate) struct AstNodeSrc {
     pub(crate) doc: Vec<String>,
@@ -235,21 +231,18 @@ pub(crate) struct AstNodeSrc {
     pub(crate) fields: Vec<Field>,
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Field {
     Token(String),
     Node { name: String, ty: String, cardinality: Cardinality },
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Cardinality {
     Optional,
     Many,
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 pub(crate) struct AstEnumSrc {
     pub(crate) doc: Vec<String>,

@@ -1,12 +1,9 @@
 //! Generates `assists.md` documentation.
 
-#[cfg(not(feature = "in-rust-tree"))]
 use std::{fmt, fs, path::Path};
 
-#[cfg(not(feature = "in-rust-tree"))]
 use test_utils::project_root;
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn sourcegen_assists_docs() {
     let assists = Assist::collect();
@@ -63,7 +60,6 @@ r#####"
     }
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 struct Section {
     doc: String,
@@ -71,7 +67,6 @@ struct Section {
     after: String,
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 struct Assist {
     id: String,
@@ -79,7 +74,6 @@ struct Assist {
     sections: Vec<Section>,
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 impl Assist {
     fn collect() -> Vec<Assist> {
         let handlers_dir = project_root().join("crates/ide-assists/src/handlers");
@@ -144,7 +138,6 @@ impl Assist {
     }
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 impl fmt::Display for Assist {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let _ = writeln!(
@@ -179,7 +172,6 @@ impl fmt::Display for Assist {
     }
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 fn hide_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .filter(|&it| !(it.starts_with("# ") || it == "#"))
@@ -187,7 +179,6 @@ fn hide_hash_comments(text: &str) -> String {
         .collect()
 }
 
-#[cfg(not(feature = "in-rust-tree"))]
 fn reveal_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .map(|it| {
