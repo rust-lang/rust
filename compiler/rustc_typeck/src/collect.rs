@@ -1929,7 +1929,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.skip_binder().output();
-            if ret_ty.is_suggestable(tcx) {
+            if ret_ty.is_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
@@ -1938,7 +1938,12 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 );
             } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
                 let fn_sig = ret_ty.fn_sig(tcx);
-                if fn_sig.skip_binder().inputs_and_output.iter().all(|t| t.is_suggestable(tcx)) {
+                if fn_sig
+                    .skip_binder()
+                    .inputs_and_output
+                    .iter()
+                    .all(|t| t.is_suggestable(tcx, false))
+                {
                     diag.span_suggestion(
                         ty.span,
                         "replace with the correct return type",
