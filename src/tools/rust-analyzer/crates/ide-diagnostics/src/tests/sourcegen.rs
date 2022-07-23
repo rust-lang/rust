@@ -1,9 +1,12 @@
 //! Generates `assists.md` documentation.
 
+#[cfg(not(feature = "in-rust-tree"))]
 use std::{fmt, fs, io, path::PathBuf};
 
+#[cfg(not(feature = "in-rust-tree"))]
 use sourcegen::project_root;
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn sourcegen_diagnostic_docs() {
     let diagnostics = Diagnostic::collect().unwrap();
@@ -14,6 +17,7 @@ fn sourcegen_diagnostic_docs() {
     fs::write(&dst, &contents).unwrap();
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[derive(Debug)]
 struct Diagnostic {
     id: String,
@@ -21,6 +25,7 @@ struct Diagnostic {
     doc: String,
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 impl Diagnostic {
     fn collect() -> io::Result<Vec<Diagnostic>> {
         let handlers_dir = project_root().join("crates/ide-diagnostics/src/handlers");
@@ -51,6 +56,7 @@ impl Diagnostic {
     }
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 fn is_valid_diagnostic_name(diagnostic: &str) -> Result<(), String> {
     let diagnostic = diagnostic.trim();
     if diagnostic.find(char::is_whitespace).is_some() {
@@ -66,6 +72,7 @@ fn is_valid_diagnostic_name(diagnostic: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "=== {}\n**Source:** {}\n{}", self.id, self.location, self.doc)

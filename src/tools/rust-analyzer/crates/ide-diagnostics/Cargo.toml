@@ -29,3 +29,6 @@ expect-test = "1.4.0"
 
 test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }
+
+[features]
+in-rust-tree = []

@@ -3,8 +3,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use xshell::{cmd, Shell};
+use xshell::Shell;
 
+#[cfg(not(feature = "in-rust-tree"))]
+use xshell::cmd;
+
+#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn check_code_formatting() {
     let sh = &Shell::new().unwrap();
@@ -168,6 +172,7 @@ See https://github.com/rust-lang/rust-clippy/issues/5537 for discussion.
     }
 }
 
+#[cfg(not(feature = "in-rust-tree"))]
 #[test]
 fn check_licenses() {
     let sh = &Shell::new().unwrap();

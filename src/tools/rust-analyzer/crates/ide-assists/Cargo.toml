@@ -26,3 +26,6 @@ hir = { path = "../hir", version = "0.0.0" }
 test-utils = { path = "../test-utils" }
 sourcegen = { path = "../sourcegen" }
 expect-test = "1.4.0"
+
+[features]
+in-rust-tree = []
