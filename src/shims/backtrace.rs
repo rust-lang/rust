@@ -175,7 +175,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // file would have more than 2^32 lines or columns, but whatever, just default to 0.
         let lineno: u32 = u32::try_from(lo.line).unwrap_or(0);
         // `lo.col` is 0-based - add 1 to make it 1-based for the caller.
-        let colno: u32 = u32::try_from(lo.col.0 + 1).unwrap_or(0);
+        let colno: u32 = u32::try_from(lo.col.0.saturating_add(1)).unwrap_or(0);
 
         let dest = this.force_allocation(dest)?;
         if let ty::Adt(adt, _) = dest.layout.ty.kind() {

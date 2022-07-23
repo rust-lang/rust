@@ -443,6 +443,7 @@ pub struct DirHandler {
 }
 
 impl DirHandler {
+    #[allow(clippy::integer_arithmetic)]
     fn insert_new(&mut self, read_dir: ReadDir) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
