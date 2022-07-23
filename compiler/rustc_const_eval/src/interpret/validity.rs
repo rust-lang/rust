@@ -517,15 +517,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             { "{:x}", value } expected { "initialized bytes" }
                     );
                 }
-                if M::enforce_number_no_provenance(self.ecx) {
-                    // As a special exception we *do* match on a `Scalar` here, since we truly want
-                    // to know its underlying representation (and *not* cast it to an integer).
-                    let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
-                    if is_ptr {
-                        throw_validation_failure!(self.path,
-                            { "{:x}", value } expected { "plain (non-pointer) bytes" }
-                        )
-                    }
+                // As a special exception we *do* match on a `Scalar` here, since we truly want
+                // to know its underlying representation (and *not* cast it to an integer).
+                let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
+                if is_ptr {
+                    throw_validation_failure!(self.path,
+                        { "{:x}", value } expected { "plain (non-pointer) bytes" }
+                    )
                 }
                 Ok(true)
             }
@@ -906,7 +904,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),
                     /*allow_uninit*/ !M::enforce_number_init(self.ecx),
-                    /*allow_ptr*/ !M::enforce_number_no_provenance(self.ecx),
+                    /*allow_ptr*/ false,
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}
