@@ -2676,7 +2676,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     span,
                     ty,
                     opt_sugg: Some((span, Applicability::MachineApplicable))
-                        .filter(|_| ty.is_suggestable(tcx)),
+                        .filter(|_| ty.is_suggestable(tcx, false)),
                 });
 
                 ty

@@ -1070,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
                     if expected_ty.is_unit() {
                         "()".to_string()
-                    } else if expected_ty.is_suggestable(tcx) {
+                    } else if expected_ty.is_suggestable(tcx, false) {
                         format!("/* {} */", expected_ty)
                     } else {
                         "/* value */".to_string()
