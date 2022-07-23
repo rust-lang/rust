@@ -215,6 +215,17 @@ impl<'tcx> Inliner<'tcx> {
         self.inline_call(caller_body, &callsite, callee_body);
         let new_blocks = old_blocks..caller_body.basic_blocks().next_index();
 
+        // Opportunistically remove drop terminators for types that don't need them.
+        for bb in new_blocks.clone() {
+            let terminator = caller_body.basic_blocks.as_mut()[bb].terminator.as_mut().unwrap();
+            if let TerminatorKind::Drop { place, target, unwind: _ } = terminator.kind {
+                let ty = place.ty(&caller_body.local_decls, self.tcx);
+                if !ty.ty.needs_drop(self.tcx, self.param_env) {
+                    terminator.kind = TerminatorKind::Goto { target };
+                }
+            }
+        }
+
         Ok(new_blocks)
     }
 
