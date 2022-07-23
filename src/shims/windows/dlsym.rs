@@ -102,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Return whether this was a success. >= 0 is success.
                 // For the error code we arbitrarily pick 0xC0000185, STATUS_IO_DEVICE_ERROR.
                 this.write_scalar(
-                    Scalar::from_i32(if written.is_some() { 0 } else { 0xC0000185u32 as i32 }),
+                    Scalar::from_u32(if written.is_some() { 0 } else { 0xC0000185u32 }),
                     dest,
                 )?;
             }

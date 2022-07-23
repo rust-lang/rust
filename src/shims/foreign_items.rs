@@ -526,8 +526,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "memrchr" => {
                 let [ptr, val, num] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let val = this.read_scalar(val)?.to_i32()? as u8;
+                let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
+                // The docs say val is "interpreted as unsigned char".
+                #[allow(clippy::cast_sign_loss)]
+                let val = val as u8;
+
                 if let Some(idx) = this
                     .read_bytes_ptr(ptr, Size::from_bytes(num))?
                     .iter()
@@ -543,8 +547,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "memchr" => {
                 let [ptr, val, num] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let val = this.read_scalar(val)?.to_i32()? as u8;
+                let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
+                // The docs say val is "interpreted as unsigned char".
+                #[allow(clippy::cast_sign_loss)]
+                let val = val as u8;
+
                 let idx = this
                     .read_bytes_ptr(ptr, Size::from_bytes(num))?
                     .iter()

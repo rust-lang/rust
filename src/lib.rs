@@ -24,7 +24,12 @@
     clippy::derive_hash_xor_eq,
     clippy::too_many_arguments
 )]
-#![warn(rust_2018_idioms, clippy::cast_lossless)]
+#![warn(
+    rust_2018_idioms,
+    clippy::cast_possible_wrap, // unsigned -> signed
+    clippy::cast_sign_loss, // signed -> unsigned
+    clippy::cast_lossless,
+)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
