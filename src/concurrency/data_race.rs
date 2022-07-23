@@ -1187,12 +1187,15 @@ pub struct GlobalState {
 
     /// The timestamp of last SC write performed by each thread
     last_sc_write: RefCell<VClock>,
+
+    /// Track when an outdated (weak memory) load happens.
+    pub track_outdated_loads: bool,
 }
 
 impl GlobalState {
     /// Create a new global state, setup with just thread-id=0
     /// advanced to timestamp = 1.
-    pub fn new() -> Self {
+    pub fn new(config: &MiriConfig) -> Self {
         let mut global_state = GlobalState {
             multi_threaded: Cell::new(false),
             ongoing_action_data_race_free: Cell::new(false),
@@ -1203,6 +1206,7 @@ impl GlobalState {
             terminated_threads: RefCell::new(FxHashMap::default()),
             last_sc_fence: RefCell::new(VClock::default()),
             last_sc_write: RefCell::new(VClock::default()),
+            track_outdated_loads: config.track_outdated_loads,
         };
 
         // Setup the main-thread since it is not explicitly created:

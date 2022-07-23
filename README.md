@@ -377,6 +377,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   happening and where in your code would be a good place to look for it.
   Specifying this argument multiple times does not overwrite the previous
   values, instead it appends its values to the list. Listing a tag multiple times has no effect.
+* `-Zmiri-track-weak-memory-loads` shows a backtrace when weak memory emulation returns an outdated
+  value from a load. This can help diagnose problems that disappear under
+  `-Zmiri-disable-weak-memory-emulation`.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 

@@ -82,10 +82,7 @@ use rustc_const_eval::interpret::{
 };
 use rustc_data_structures::fx::FxHashMap;
 
-use crate::{
-    AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, Provenance, ThreadManager, VClock, VTimestamp,
-    VectorIdx,
-};
+use crate::*;
 
 use super::{
     data_race::{GlobalState as DataRaceState, ThreadClockSet},
@@ -111,6 +108,13 @@ pub struct StoreBufferAlloc {
 pub(super) struct StoreBuffer {
     // Stores to this location in modification order
     buffer: VecDeque<StoreElement>,
+}
+
+/// Whether a load returned the latest value or not.
+#[derive(PartialEq, Eq)]
+enum LoadRecency {
+    Latest,
+    Outdated,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -254,11 +258,11 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         is_seqcst: bool,
         rng: &mut (impl rand::Rng + ?Sized),
         validate: impl FnOnce() -> InterpResult<'tcx>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+    ) -> InterpResult<'tcx, (ScalarMaybeUninit<Provenance>, LoadRecency)> {
         // Having a live borrow to store_buffer while calling validate_atomic_load is fine
         // because the race detector doesn't touch store_buffer
 
-        let store_elem = {
+        let (store_elem, recency) = {
             // The `clocks` we got here must be dropped before calling validate_atomic_load
             // as the race detector will update it
             let (.., clocks) = global.current_thread_state(thread_mgr);
@@ -274,7 +278,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
 
         let (index, clocks) = global.current_thread_state(thread_mgr);
         let loaded = store_elem.load_impl(index, &clocks);
-        Ok(loaded)
+        Ok((loaded, recency))
     }
 
     fn buffered_write(
@@ -296,7 +300,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
         is_seqcst: bool,
         clocks: &ThreadClockSet,
         rng: &mut R,
-    ) -> &StoreElement {
+    ) -> (&StoreElement, LoadRecency) {
         use rand::seq::IteratorRandom;
         let mut found_sc = false;
         // FIXME: we want an inclusive take_while (stops after a false predicate, but
@@ -359,9 +363,12 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
                 }
             });
 
-        candidates
-            .choose(rng)
-            .expect("store buffer cannot be empty, an element is populated on construction")
+        let chosen = candidates.choose(rng).expect("store buffer cannot be empty");
+        if std::ptr::eq(chosen, self.buffer.back().expect("store buffer cannot be empty")) {
+            (chosen, LoadRecency::Latest)
+        } else {
+            (chosen, LoadRecency::Outdated)
+        }
     }
 
     /// ATOMIC STORE IMPL in the paper (except we don't need the location's vector clock)
@@ -499,13 +506,16 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     alloc_range(base_offset, place.layout.size),
                     latest_in_mo,
                 )?;
-                let loaded = buffer.buffered_read(
+                let (loaded, recency) = buffer.buffered_read(
                     global,
                     &this.machine.threads,
                     atomic == AtomicReadOrd::SeqCst,
                     &mut *rng,
                     validate,
                 )?;
+                if global.track_outdated_loads && recency == LoadRecency::Outdated {
+                    register_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad);
+                }
 
                 return Ok(loaded);
             }
