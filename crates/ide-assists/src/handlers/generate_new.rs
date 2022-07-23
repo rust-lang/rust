@@ -12,7 +12,7 @@ use crate::{
 
 // Assist: generate_new
 //
-// Adds a new inherent impl for a type.
+// Adds a `fn new` for a type.
 //
 // ```
 // struct Ctx<T: Clone> {
