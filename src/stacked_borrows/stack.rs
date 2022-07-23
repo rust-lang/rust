@@ -39,11 +39,7 @@ pub struct Stack {
     unique_range: Range<usize>,
 }
 
-/// A very small cache of searches of the borrow stack
-/// This maps items to locations in the borrow stack. Any use of this still needs to do a
-/// probably-cold random access into the borrow stack to figure out what `Permission` an
-/// `SbTag` grants. We could avoid this by also storing the `Permission` in the cache, but
-/// most lookups into the cache are immediately followed by access of the full borrow stack anyway.
+/// A very small cache of searches of a borrow stack, mapping `Item`s to their position in said stack.
 ///
 /// It may seem like maintaining this cache is a waste for small stacks, but
 /// (a) iterating over small fixed-size arrays is super fast, and (b) empirically this helps *a lot*,
