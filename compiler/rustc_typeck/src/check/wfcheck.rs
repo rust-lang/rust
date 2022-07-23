@@ -848,29 +848,13 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
             let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
 
             if tcx.features().adt_const_params {
-                let err = match ty.peel_refs().kind() {
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => None,
-                };
-
-                if let Some(unsupported_type) = err {
-                    tcx.sess.span_err(
-                        hir_ty.span,
-                        &format!(
-                            "using {} as const generic parameters is forbidden",
-                            unsupported_type
-                        ),
-                    );
-                }
-
                 if let Some(non_structural_match_ty) =
-                    traits::search_for_structural_match_violation(param.span, tcx, ty, false)
+                    traits::search_for_structural_match_violation(param.span, tcx, ty, true)
                 {
                     // We use the same error code in both branches, because this is really the same
                     // issue: we just special-case the message for type parameters to make it
                     // clearer.
-                    match ty.peel_refs().kind() {
+                    match non_structural_match_ty.ty.kind() {
                         ty::Param(_) => {
                             // Const parameters may not have type parameters as their types,
                             // because we cannot be sure that the type parameter derives `PartialEq`
@@ -900,6 +884,24 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                                 "`{ty}` is forbidden as the type of a const generic parameter",
                             )
                             .note("floats do not derive `Eq` or `Ord`, which are required for const parameters")
+                            .emit();
+                        }
+                        ty::FnPtr(_) => {
+                            struct_span_err!(
+                                tcx.sess,
+                                hir_ty.span,
+                                E0741,
+                                "using function pointers as const generic parameters is forbidden",
+                            )
+                            .emit();
+                        }
+                        ty::RawPtr(_) => {
+                            struct_span_err!(
+                                tcx.sess,
+                                hir_ty.span,
+                                E0741,
+                                "using raw pointers as const generic parameters is forbidden",
+                            )
                             .emit();
                         }
                         _ => {

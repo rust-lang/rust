@@ -27,6 +27,8 @@ pub enum NonStructuralMatchTyKind<'tcx> {
     Generator,
     Projection,
     Float,
+    FnPtr,
+    RawPtr,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -55,14 +57,15 @@ pub enum NonStructuralMatchTyKind<'tcx> {
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
 ///
-/// The floats_allowed flag is used to deny constants in floating point
+/// When the `valtree_semantics` flag is set, then we also deny additional
+/// types that are not evaluatable to valtrees, such as floats and fn ptrs.
 pub fn search_for_structural_match_violation<'tcx>(
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    floats_allowed: bool,
+    valtree_semantics: bool,
 ) -> Option<NonStructuralMatchTy<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), floats_allowed })
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), valtree_semantics })
         .break_value()
 }
 
@@ -125,7 +128,9 @@ struct Search<'tcx> {
     /// we will not recur on them again.
     seen: FxHashSet<hir::def_id::DefId>,
 
-    floats_allowed: bool,
+    // Additionally deny things that have been allowed in patterns,
+    // but are not evaluatable to a valtree, such as floats and fn ptrs.
+    valtree_semantics: bool,
 }
 
 impl<'tcx> Search<'tcx> {
@@ -170,24 +175,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 let kind = NonStructuralMatchTyKind::Generator;
                 return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
             }
-            ty::RawPtr(..) => {
-                // structural-match ignores substructure of
-                // `*const _`/`*mut _`, so skip `super_visit_with`.
-                //
-                // For example, if you have:
-                // ```
-                // struct NonStructural;
-                // #[derive(PartialEq, Eq)]
-                // struct T(*const NonStructural);
-                // const C: T = T(std::ptr::null());
-                // ```
-                //
-                // Even though `NonStructural` does not implement `PartialEq`,
-                // structural equality on `T` does not recur into the raw
-                // pointer. Therefore, one can still use `C` in a pattern.
-                return ControlFlow::CONTINUE;
-            }
-            ty::FnDef(..) | ty::FnPtr(..) => {
+            ty::FnDef(..) => {
                 // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
                 return ControlFlow::CONTINUE;
@@ -206,8 +194,44 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 return ControlFlow::CONTINUE;
             }
 
+            ty::FnPtr(..) => {
+                if !self.valtree_semantics {
+                    return ControlFlow::CONTINUE;
+                } else {
+                    return ControlFlow::Break(NonStructuralMatchTy {
+                        ty,
+                        kind: NonStructuralMatchTyKind::FnPtr,
+                    });
+                }
+            }
+
+            ty::RawPtr(..) => {
+                if !self.valtree_semantics {
+                    // structural-match ignores substructure of
+                    // `*const _`/`*mut _`, so skip `super_visit_with`.
+                    //
+                    // For example, if you have:
+                    // ```
+                    // struct NonStructural;
+                    // #[derive(PartialEq, Eq)]
+                    // struct T(*const NonStructural);
+                    // const C: T = T(std::ptr::null());
+                    // ```
+                    //
+                    // Even though `NonStructural` does not implement `PartialEq`,
+                    // structural equality on `T` does not recur into the raw
+                    // pointer. Therefore, one can still use `C` in a pattern.
+                    return ControlFlow::CONTINUE;
+                } else {
+                    return ControlFlow::Break(NonStructuralMatchTy {
+                        ty,
+                        kind: NonStructuralMatchTyKind::FnPtr,
+                    });
+                }
+            }
+
             ty::Float(_) => {
-                if self.floats_allowed {
+                if !self.valtree_semantics {
                     return ControlFlow::CONTINUE;
                 } else {
                     return ControlFlow::Break(NonStructuralMatchTy {

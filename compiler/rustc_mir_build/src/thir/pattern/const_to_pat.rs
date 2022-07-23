@@ -120,7 +120,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
-        traits::search_for_structural_match_violation(self.span, self.tcx(), ty, true).map(
+        traits::search_for_structural_match_violation(self.span, self.tcx(), ty, false).map(
             |non_sm_ty| {
                 with_no_trimmed_paths!(match non_sm_ty.kind {
                     traits::NonStructuralMatchTyKind::Adt(adt) => self.adt_derive_msg(adt),
@@ -138,6 +138,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                     traits::NonStructuralMatchTyKind::Float => {
                         "floating-point numbers cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::FnPtr => {
+                        "function pointers cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTyKind::RawPtr => {
+                        "raw pointers cannot be used in patterns".to_string()
                     }
                     traits::NonStructuralMatchTyKind::Param => {
                         bug!("use of a constant whose type is a parameter inside a pattern")
