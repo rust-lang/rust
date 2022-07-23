@@ -475,6 +475,9 @@ impl Step for Miri {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
+        // We need the stdlib for the *next* stage, as it was built with this compiler that also built Miri.
+        // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
+        let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
         let miri =
             builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
@@ -483,6 +486,10 @@ impl Step for Miri {
             target: self.host,
             extra_features: Vec::new(),
         });
+        // The stdlib we need might be at a different stage. And just asking for the
+        // sysroot does not seem to populate it, so we do that first.
+        builder.ensure(compile::Std::new(compiler_std, host));
+        let sysroot = builder.sysroot(compiler_std);
         if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
             let mut cargo =
                 builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
@@ -562,6 +569,7 @@ impl Step for Miri {
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
+            cargo.env("MIRI_HOST_SYSROOT", sysroot);
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI", miri);
 
