@@ -21,6 +21,7 @@ function run_tests {
     echo "Testing host architecture"
   fi
 
+  ## ui test suite
   ./miri test --locked
   if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with optimizations (`-O` is what cargo passes, but crank MIR
@@ -30,15 +31,13 @@ function run_tests {
     MIRIFLAGS="-O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test --locked -- tests/{pass,panic}
   fi
 
+  ## test-cargo-miri
   # On Windows, there is always "python", not "python3" or "python2".
   if command -v python3 > /dev/null; then
     PYTHON=python3
   else
     PYTHON=python
   fi
-
-  # "miri test" has built the sysroot for us, now this should pass without
-  # any interactive questions.
   ${PYTHON} test-cargo-miri/run-test.py
   echo
 

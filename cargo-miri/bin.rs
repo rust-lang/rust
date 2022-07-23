@@ -497,9 +497,26 @@ path = "lib.rs"
     // Disable debug assertions in the standard library -- Miri is already slow enough.
     // But keep the overflow checks, they are cheap.
     command.env("RUSTFLAGS", "-Cdebug-assertions=off -Coverflow-checks=on");
+    // Manage the output the user sees.
+    if only_setup {
+        eprintln!("Preparing a sysroot for Miri...");
+    } else {
+        eprint!("Preparing a sysroot for Miri... ");
+        command.stdout(process::Stdio::null());
+        command.stderr(process::Stdio::null());
+    }
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
-        show_error(format!("failed to run xargo"));
+        if only_setup {
+            show_error(format!("failed to run xargo, see error details above"))
+        } else {
+            show_error(format!(
+                "failed to run xargo; run `cargo miri setup` to see the error details"
+            ))
+        }
+    }
+    if !only_setup {
+        eprintln!("done");
     }
 
     // That should be it! But we need to figure out where xargo built stuff.
@@ -510,10 +527,10 @@ path = "lib.rs"
     // Figure out what to print.
     let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     if print_sysroot {
-        // Print just the sysroot and nothing else; this way we do not need any escaping.
+        // Print just the sysroot and nothing else to stdout; this way we do not need any escaping.
         println!("{}", sysroot.display());
     } else if only_setup {
-        println!("A libstd for Miri is now available in `{}`.", sysroot.display());
+        eprintln!("A sysroot for Miri is now available in `{}`.", sysroot.display());
     }
 }
 
