@@ -306,16 +306,16 @@ impl GlobalState {
         if self.proc_macro_clients.is_empty() {
             if let Some((path, args)) = self.config.proc_macro_srv() {
                 self.proc_macro_clients = (0..self.workspaces.len())
-                    .map(|_| match ProcMacroServer::spawn(path.clone(), args.clone()) {
-                        Ok(it) => Some(it),
-                        Err(err) => {
-                            tracing::error!(
+                    .map(|_| {
+                        ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
+                            let error = format!(
                                 "Failed to run proc_macro_srv from path {}, error: {:?}",
                                 path.display(),
                                 err
                             );
-                            None
-                        }
+                            tracing::error!(error);
+                            error
+                        })
                     })
                     .collect();
             }
@@ -539,14 +539,14 @@ impl SourceRootConfig {
 /// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
 /// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
-    server: Option<&ProcMacroServer>,
+    server: Result<&ProcMacroServer, &String>,
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf())
             .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
-        let server = server.ok_or_else(|| format!("Proc-macro server not started"))?;
+        let server = server.map_err(ToOwned::to_owned)?;
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
         if vec.is_empty() {
             return Err("proc macro library returned no proc macros".to_string());

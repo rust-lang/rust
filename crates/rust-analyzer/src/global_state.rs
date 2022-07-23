@@ -61,7 +61,7 @@ pub(crate) struct GlobalState {
     pub(crate) proc_macro_changed: bool,
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
     pub(crate) source_root_config: SourceRootConfig,
-    pub(crate) proc_macro_clients: Vec<Option<ProcMacroServer>>,
+    pub(crate) proc_macro_clients: Vec<Result<ProcMacroServer, String>>,
 
     pub(crate) flycheck: Vec<FlycheckHandle>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
