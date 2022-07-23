@@ -163,4 +163,75 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn if_completion_in_match_guard() {
+        check_edit(
+            "if",
+            r"
+fn main() {
+    match () {
+        () $0
+    }
+}
+",
+            r"
+fn main() {
+    match () {
+        () if $0
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn if_completion_in_match_arm_expr() {
+        check_edit(
+            "if",
+            r"
+fn main() {
+    match () {
+        () => $0
+    }
+}
+",
+            r"
+fn main() {
+    match () {
+        () => if $1 {
+    $0
+}
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn if_completion_in_match_arm_expr_block() {
+        check_edit(
+            "if",
+            r"
+fn main() {
+    match () {
+        () => {
+            $0
+        }
+    }
+}
+",
+            r"
+fn main() {
+    match () {
+        () => {
+            if $1 {
+    $0
+}
+        }
+    }
+}
+",
+        )
+    }
 }

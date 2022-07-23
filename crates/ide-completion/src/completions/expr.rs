@@ -21,6 +21,7 @@ pub(crate) fn complete_expr_path(
         ref is_func_update,
         ref innermost_ret_ty,
         ref impl_,
+        in_match_guard,
         ..
     }: &ExprCtx,
 ) {
@@ -195,7 +196,11 @@ pub(crate) fn complete_expr_path(
                 add_keyword("while", "while $1 {\n    $0\n}");
                 add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
                 add_keyword("loop", "loop {\n    $0\n}");
-                add_keyword("if", "if $1 {\n    $0\n}");
+                if in_match_guard {
+                    add_keyword("if", "if $0");
+                } else {
+                    add_keyword("if", "if $1 {\n    $0\n}");
+                }
                 add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
                 add_keyword("for", "for $1 in $2 {\n    $0\n}");
                 add_keyword("true", "true");
