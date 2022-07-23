@@ -367,20 +367,14 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             measureme::Profiler::new(out).expect("Couldn't create `measureme` profiler")
         });
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
-        let stacked_borrows = if config.stacked_borrows {
-            Some(RefCell::new(stacked_borrows::GlobalStateInner::new(
+        let stacked_borrows = config.stacked_borrows.then(|| {
+            RefCell::new(stacked_borrows::GlobalStateInner::new(
                 config.tracked_pointer_tags.clone(),
                 config.tracked_call_ids.clone(),
                 config.retag_fields,
-            )))
-        } else {
-            None
-        };
-        let data_race = if config.data_race_detector {
-            Some(data_race::GlobalState::new(config))
-        } else {
-            None
-        };
+            ))
+        });
+        let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
         Evaluator {
             stacked_borrows,
             data_race,
@@ -691,32 +685,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         }
 
         let alloc = alloc.into_owned();
-        let stacks = if let Some(stacked_borrows) = &ecx.machine.stacked_borrows {
-            Some(Stacks::new_allocation(
+        let stacks = ecx.machine.stacked_borrows.as_ref().map(|stacked_borrows| {
+            Stacks::new_allocation(
                 id,
                 alloc.size(),
                 stacked_borrows,
                 kind,
                 ecx.machine.current_span(),
-            ))
-        } else {
-            None
-        };
-        let race_alloc = if let Some(data_race) = &ecx.machine.data_race {
-            Some(data_race::AllocExtra::new_allocation(
+            )
+        });
+        let race_alloc = ecx.machine.data_race.as_ref().map(|data_race| {
+            data_race::AllocExtra::new_allocation(
                 data_race,
                 &ecx.machine.threads,
                 alloc.size(),
                 kind,
-            ))
-        } else {
-            None
-        };
-        let buffer_alloc = if ecx.machine.weak_memory {
-            Some(weak_memory::AllocExtra::new_allocation())
-        } else {
-            None
-        };
+            )
+        });
+        let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocExtra::new_allocation);
         let alloc: Allocation<Provenance, Self::AllocExtra> = alloc.adjust_from_tcx(
             &ecx.tcx,
             AllocExtra {
