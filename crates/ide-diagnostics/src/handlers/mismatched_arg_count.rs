@@ -1,11 +1,9 @@
-use ide_db::base_db::{FileRange, SourceDatabase};
 use syntax::{
-    algo::find_node_at_range,
     ast::{self, HasArgList},
     AstNode, TextRange,
 };
 
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticsContext};
 
 // Diagnostic: mismatched-arg-count
 //
@@ -20,40 +18,32 @@ pub(crate) fn mismatched_arg_count(
 }
 
 fn invalid_args_range(ctx: &DiagnosticsContext<'_>, d: &hir::MismatchedArgCount) -> TextRange {
-    let FileRange { file_id, range } =
-        ctx.sema.diagnostics_display_range(d.call_expr.clone().map(|it| it.into()));
+    adjusted_display_range::<ast::Expr>(ctx, d.call_expr.clone().map(|it| it.into()), &|expr| {
+        let arg_list = match expr {
+            ast::Expr::CallExpr(call) => call.arg_list()?,
+            ast::Expr::MethodCallExpr(call) => call.arg_list()?,
+            _ => return None,
+        };
+        if d.found < d.expected {
+            if d.found == 0 {
+                return Some(arg_list.syntax().text_range());
+            }
+            if let Some(r_paren) = arg_list.r_paren_token() {
+                return Some(r_paren.text_range());
+            }
+        }
+        if d.expected < d.found {
+            if d.expected == 0 {
+                return Some(arg_list.syntax().text_range());
+            }
+            let zip = arg_list.args().nth(d.expected).zip(arg_list.r_paren_token());
+            if let Some((arg, r_paren)) = zip {
+                return Some(arg.syntax().text_range().cover(r_paren.text_range()));
+            }
+        }
 
-    let source_file = ctx.sema.db.parse(file_id);
-    let expr = find_node_at_range::<ast::Expr>(&source_file.syntax_node(), range)
-        .filter(|it| it.syntax().text_range() == range);
-    let arg_list = match expr {
-        Some(ast::Expr::CallExpr(call)) => call.arg_list(),
-        Some(ast::Expr::MethodCallExpr(call)) => call.arg_list(),
-        _ => None,
-    };
-    let arg_list = match arg_list {
-        Some(it) => it,
-        None => return range,
-    };
-    if d.found < d.expected {
-        if d.found == 0 {
-            return arg_list.syntax().text_range();
-        }
-        if let Some(r_paren) = arg_list.r_paren_token() {
-            return r_paren.text_range();
-        }
-    }
-    if d.expected < d.found {
-        if d.expected == 0 {
-            return arg_list.syntax().text_range();
-        }
-        let zip = arg_list.args().nth(d.expected).zip(arg_list.r_paren_token());
-        if let Some((arg, r_paren)) = zip {
-            return arg.syntax().text_range().cover(r_paren.text_range());
-        }
-    }
-
-    range
+        None
+    })
 }
 
 #[cfg(test)]
