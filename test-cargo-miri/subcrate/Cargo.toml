@@ -18,4 +18,4 @@ path = "test.rs"
 harness = false
 
 [dev-dependencies]
-num_cpus = "1.10.1"
+byteorder = "1.0"
