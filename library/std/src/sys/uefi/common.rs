@@ -3,40 +3,6 @@ use crate::io;
 use crate::os::uefi;
 use crate::ptr::NonNull;
 
-// A type to make working with Variable Sized Types easier
-pub(crate) struct VariableSizeType<T> {
-    inner: NonNull<T>,
-    layout: Layout,
-}
-
-impl<T> VariableSizeType<T> {
-    const ALIGNMENT: usize = 8;
-
-    pub(crate) fn new(inner: NonNull<T>, layout: Layout) -> Self {
-        Self { inner, layout }
-    }
-
-    pub(crate) fn from_size(size: usize) -> io::Result<Self> {
-        let layout = Layout::from_size_align(size, Self::ALIGNMENT)
-            .map_err(|_| io::Error::new(io::ErrorKind::Uncategorized, "Invalid buffer size"))?;
-        let inner: NonNull<T> = Global
-            .allocate(layout)
-            .map_err(|_| io::Error::new(io::ErrorKind::Uncategorized, "Failed to allocate Buffer"))?
-            .cast();
-        Ok(Self::new(inner, layout))
-    }
-
-    pub(crate) fn as_ptr(&self) -> *mut T {
-        self.inner.as_ptr()
-    }
-}
-
-impl<T> Drop for VariableSizeType<T> {
-    fn drop(&mut self) {
-        unsafe { Global.deallocate(self.inner.cast(), self.layout) }
-    }
-}
-
 pub(crate) fn status_to_io_error(s: &uefi::raw::Status) -> crate::io::Error {
     use io::ErrorKind;
     use uefi::raw::Status;
