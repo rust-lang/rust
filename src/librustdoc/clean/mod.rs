@@ -239,11 +239,9 @@ impl<'tcx> Clean<'tcx, Lifetime> for hir::Lifetime {
 
 impl<'tcx> Clean<'tcx, Constant> for hir::ConstArg {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Constant {
+        let def_id = cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id();
         Constant {
-            type_: cx
-                .tcx
-                .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
-                .clean(cx),
+            type_: clean_middle_ty(cx.tcx.type_of(def_id), cx, Some(def_id)),
             kind: ConstantKind::Anonymous { body: self.value.body },
         }
     }
@@ -297,7 +295,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for hir::WherePredicate<'tcx> {
                     })
                     .collect();
                 WherePredicate::BoundPredicate {
-                    ty: wbp.bounded_ty.clean(cx),
+                    ty: clean_ty(wbp.bounded_ty, cx),
                     bounds: wbp.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
                     bound_params,
                 }
@@ -309,8 +307,8 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for hir::WherePredicate<'tcx> {
             },
 
             hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
-                lhs: wrp.lhs_ty.clean(cx),
-                rhs: wrp.rhs_ty.clean(cx).into(),
+                lhs: clean_ty(wrp.lhs_ty, cx),
+                rhs: clean_ty(wrp.rhs_ty, cx).into(),
             },
         })
     }
@@ -348,7 +346,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::PolyTraitPredicate<'tcx> 
 
         let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
         Some(WherePredicate::BoundPredicate {
-            ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
+            ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
             bounds: vec![poly_trait_ref.clean(cx)],
             bound_params: Vec::new(),
         })
@@ -383,7 +381,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>>
         }
 
         Some(WherePredicate::BoundPredicate {
-            ty: ty.clean(cx),
+            ty: clean_middle_ty(*ty, cx, None),
             bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
             bound_params: Vec::new(),
         })
@@ -393,7 +391,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>>
 impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
         match self {
-            ty::Term::Ty(ty) => Term::Type(ty.clean(cx)),
+            ty::Term::Ty(ty) => Term::Type(clean_middle_ty(*ty, cx, None)),
             ty::Term::Const(c) => Term::Constant(c.clean(cx)),
         }
     }
@@ -402,7 +400,7 @@ impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
 impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
         match self {
-            hir::Term::Ty(ty) => Term::Type(ty.clean(cx)),
+            hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
             hir::Term::Const(c) => {
                 let def_id = cx.tcx.hir().local_def_id(c.hir_id);
                 Term::Constant(ty::Const::from_anon_const(cx.tcx, def_id).clean(cx))
@@ -425,7 +423,7 @@ fn clean_projection<'tcx>(
 ) -> Type {
     let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
     let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
-    let self_type = ty.self_ty().clean(cx);
+    let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
     } else {
@@ -476,7 +474,7 @@ impl<'tcx> Clean<'tcx, GenericParamDef> for ty::GenericParamDef {
             }
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
                 let default = if has_default {
-                    Some(clean_ty(cx.tcx.type_of(self.def_id), cx, Some(self.def_id)))
+                    Some(clean_middle_ty(cx.tcx.type_of(self.def_id), cx, Some(self.def_id)))
                 } else {
                     None
                 };
@@ -494,7 +492,11 @@ impl<'tcx> Clean<'tcx, GenericParamDef> for ty::GenericParamDef {
                 self.name,
                 GenericParamDefKind::Const {
                     did: self.def_id,
-                    ty: Box::new(cx.tcx.type_of(self.def_id).clean(cx)),
+                    ty: Box::new(clean_middle_ty(
+                        cx.tcx.type_of(self.def_id),
+                        cx,
+                        Some(self.def_id),
+                    )),
                     default: match has_default {
                         true => Some(Box::new(cx.tcx.const_param_default(self.def_id).to_string())),
                         false => None,
@@ -546,7 +548,7 @@ fn clean_generic_param<'tcx>(
                 GenericParamDefKind::Type {
                     did: did.to_def_id(),
                     bounds,
-                    default: default.map(|t| t.clean(cx)).map(Box::new),
+                    default: default.map(|t| clean_ty(t, cx)).map(Box::new),
                     synthetic,
                 },
             )
@@ -555,7 +557,7 @@ fn clean_generic_param<'tcx>(
             param.name.ident().name,
             GenericParamDefKind::Const {
                 did: did.to_def_id(),
-                ty: Box::new(ty.clean(cx)),
+                ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
                     let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
                     Box::new(ty::Const::from_anon_const(cx.tcx, def_id).to_string())
@@ -752,7 +754,7 @@ fn clean_ty_generics<'tcx>(
         if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
             if let Some(proj) = impl_trait_proj.remove(&idx) {
                 for (trait_did, name, rhs) in proj {
-                    let rhs = rhs.clean(cx);
+                    let rhs = clean_middle_ty(rhs, cx, None);
                     simplify::merge_bounds(cx, &mut bounds, trait_did, name, &Term::Type(rhs));
                 }
             }
@@ -926,7 +928,7 @@ fn clean_args_from_types_and_names<'tcx>(
                 if name.is_empty() {
                     name = kw::Underscore;
                 }
-                Argument { name, type_: ty.clean(cx), is_const: false }
+                Argument { name, type_: clean_ty(ty, cx), is_const: false }
             })
             .collect(),
     }
@@ -945,7 +947,7 @@ fn clean_args_from_types_and_body_id<'tcx>(
             .enumerate()
             .map(|(i, ty)| Argument {
                 name: name_from_pat(body.params[i].pat),
-                type_: ty.clean(cx),
+                type_: clean_ty(ty, cx),
                 is_const: false,
             })
             .collect(),
@@ -969,7 +971,7 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
 
     // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
     // but shouldn't change any code meaning.
-    let output = match sig.skip_binder().output().clean(cx) {
+    let output = match clean_middle_ty(sig.skip_binder().output(), cx, None) {
         Type::Tuple(inner) if inner.is_empty() => DefaultReturn,
         ty => Return(ty),
     };
@@ -983,7 +985,7 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
                 .inputs()
                 .iter()
                 .map(|t| Argument {
-                    type_: t.clean(cx),
+                    type_: clean_middle_ty(*t, cx, None),
                     name: names.next().map_or(kw::Empty, |i| i.name),
                     is_const: false,
                 })
@@ -995,7 +997,7 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
 impl<'tcx> Clean<'tcx, FnRetTy> for hir::FnRetTy<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> FnRetTy {
         match *self {
-            Self::Return(typ) => Return(typ.clean(cx)),
+            Self::Return(typ) => Return(clean_ty(typ, cx)),
             Self::DefaultReturn(..) => DefaultReturn,
         }
     }
@@ -1038,10 +1040,10 @@ impl<'tcx> Clean<'tcx, Item> for hir::TraitItem<'tcx> {
         cx.with_param_env(local_did, |cx| {
             let inner = match self.kind {
                 hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(
-                    ty.clean(cx),
+                    clean_ty(ty, cx),
                     ConstantKind::Local { def_id: local_did, body: default },
                 ),
-                hir::TraitItemKind::Const(ty, None) => TyAssocConstItem(ty.clean(cx)),
+                hir::TraitItemKind::Const(ty, None) => TyAssocConstItem(clean_ty(ty, cx)),
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                     let m = clean_function(cx, sig, self.generics, body);
                     MethodItem(m, None)
@@ -1059,9 +1061,13 @@ impl<'tcx> Clean<'tcx, Item> for hir::TraitItem<'tcx> {
                 hir::TraitItemKind::Type(bounds, Some(default)) => {
                     let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
                     let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
-                    let item_type = hir_ty_to_ty(cx.tcx, default).clean(cx);
+                    let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, default), cx, None);
                     AssocTypeItem(
-                        Typedef { type_: default.clean(cx), generics, item_type: Some(item_type) },
+                        Typedef {
+                            type_: clean_ty(default, cx),
+                            generics,
+                            item_type: Some(item_type),
+                        },
                         bounds,
                     )
                 }
@@ -1086,7 +1092,7 @@ impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
             let inner = match self.kind {
                 hir::ImplItemKind::Const(ty, expr) => {
                     let default = ConstantKind::Local { def_id: local_did, body: expr };
-                    AssocConstItem(ty.clean(cx), default)
+                    AssocConstItem(clean_ty(ty, cx), default)
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
                     let m = clean_function(cx, sig, self.generics, body);
@@ -1094,9 +1100,9 @@ impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
                     MethodItem(m, Some(defaultness))
                 }
                 hir::ImplItemKind::TyAlias(hir_ty) => {
-                    let type_ = hir_ty.clean(cx);
+                    let type_ = clean_ty(hir_ty, cx);
                     let generics = self.generics.clean(cx);
-                    let item_type = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
+                    let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
                     AssocTypeItem(
                         Typedef { type_, generics, item_type: Some(item_type) },
                         Vec::new(),
@@ -1125,7 +1131,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
         let tcx = cx.tcx;
         let kind = match self.kind {
             ty::AssocKind::Const => {
-                let ty = tcx.type_of(self.def_id).clean(cx);
+                let ty = clean_middle_ty(tcx.type_of(self.def_id), cx, Some(self.def_id));
 
                 let provided = match self.container {
                     ty::ImplContainer(_) => true,
@@ -1272,7 +1278,11 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                     if self.defaultness.has_value() {
                         AssocTypeItem(
                             Typedef {
-                                type_: tcx.type_of(self.def_id).clean(cx),
+                                type_: clean_middle_ty(
+                                    tcx.type_of(self.def_id),
+                                    cx,
+                                    Some(self.def_id),
+                                ),
                                 generics,
                                 // FIXME: should we obtain the Type from HIR and pass it on here?
                                 item_type: None,
@@ -1286,7 +1296,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                     // FIXME: when could this happen? Associated items in inherent impls?
                     AssocTypeItem(
                         Typedef {
-                            type_: tcx.type_of(self.def_id).clean(cx),
+                            type_: clean_middle_ty(tcx.type_of(self.def_id), cx, Some(self.def_id)),
                             generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
                             item_type: None,
                         },
@@ -1337,7 +1347,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             // Try to normalize `<X as Y>::T` to a type
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             if let Some(normalized_value) = normalize(cx, ty) {
-                return normalized_value.clean(cx);
+                return clean_middle_ty(normalized_value, cx, None);
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
@@ -1348,7 +1358,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             };
             register_res(cx, trait_.res);
             let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
-            let self_type = qself.clean(cx);
+            let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
             Type::QPath {
                 assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
@@ -1368,7 +1378,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let trait_ = hir::Path { span, res, segments: &[] }.clean(cx);
             register_res(cx, trait_.res);
             let self_def_id = res.opt_def_id();
-            let self_type = qself.clean(cx);
+            let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
             Type::QPath {
                 assoc: Box::new(segment.clean(cx)),
@@ -1435,9 +1445,12 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(ty) = type_ {
-                    substs.insert(ty_param_def_id.to_def_id(), SubstParam::Type(ty.clean(cx)));
+                    substs.insert(ty_param_def_id.to_def_id(), SubstParam::Type(clean_ty(ty, cx)));
                 } else if let Some(default) = *default {
-                    substs.insert(ty_param_def_id.to_def_id(), SubstParam::Type(default.clean(cx)));
+                    substs.insert(
+                        ty_param_def_id.to_def_id(),
+                        SubstParam::Type(clean_ty(default, cx)),
+                    );
                 }
                 indices.types += 1;
             }
@@ -1464,70 +1477,68 @@ fn maybe_expand_private_type_alias<'tcx>(
         }
     }
 
-    Some(cx.enter_alias(substs, |cx| ty.clean(cx)))
+    Some(cx.enter_alias(substs, |cx| clean_ty(ty, cx)))
 }
 
-impl<'tcx> Clean<'tcx, Type> for hir::Ty<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
-        use rustc_hir::*;
+pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
+    use rustc_hir::*;
 
-        match self.kind {
-            TyKind::Never => Primitive(PrimitiveType::Never),
-            TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(m.ty.clean(cx))),
-            TyKind::Rptr(ref l, ref m) => {
-                // There are two times a `Fresh` lifetime can be created:
-                // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
-                // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
-                //    See #59286 for more information.
-                // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
-                // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
-                // there's no case where it could cause the function to fail to compile.
-                let elided =
-                    l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
-                let lifetime = if elided { None } else { Some(l.clean(cx)) };
-                BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(m.ty.clean(cx)) }
-            }
-            TyKind::Slice(ty) => Slice(Box::new(ty.clean(cx))),
-            TyKind::Array(ty, ref length) => {
-                let length = match length {
-                    hir::ArrayLen::Infer(_, _) => "_".to_string(),
-                    hir::ArrayLen::Body(anon_const) => {
-                        let def_id = cx.tcx.hir().local_def_id(anon_const.hir_id);
-                        // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
-                        // as we currently do not supply the parent generics to anonymous constants
-                        // but do allow `ConstKind::Param`.
-                        //
-                        // `const_eval_poly` tries to to first substitute generic parameters which
-                        // results in an ICE while manually constructing the constant and using `eval`
-                        // does nothing for `ConstKind::Param`.
-                        let ct = ty::Const::from_anon_const(cx.tcx, def_id);
-                        let param_env = cx.tcx.param_env(def_id);
-                        print_const(cx, ct.eval(cx.tcx, param_env))
-                    }
-                };
-
-                Array(Box::new(ty.clean(cx)), length)
-            }
-            TyKind::Tup(tys) => Tuple(tys.iter().map(|x| x.clean(cx)).collect()),
-            TyKind::OpaqueDef(item_id, _) => {
-                let item = cx.tcx.hir().item(item_id);
-                if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
-                    ImplTrait(ty.bounds.iter().filter_map(|x| x.clean(cx)).collect())
-                } else {
-                    unreachable!()
-                }
-            }
-            TyKind::Path(_) => clean_qpath(self, cx),
-            TyKind::TraitObject(bounds, ref lifetime, _) => {
-                let bounds = bounds.iter().map(|bound| bound.clean(cx)).collect();
-                let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
-                DynTrait(bounds, lifetime)
-            }
-            TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
-            // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-            TyKind::Infer | TyKind::Err => Infer,
-            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
+    match ty.kind {
+        TyKind::Never => Primitive(PrimitiveType::Never),
+        TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
+        TyKind::Rptr(ref l, ref m) => {
+            // There are two times a `Fresh` lifetime can be created:
+            // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
+            // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
+            //    See #59286 for more information.
+            // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
+            // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
+            // there's no case where it could cause the function to fail to compile.
+            let elided =
+                l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
+            let lifetime = if elided { None } else { Some(l.clean(cx)) };
+            BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
+        TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
+        TyKind::Array(ty, ref length) => {
+            let length = match length {
+                hir::ArrayLen::Infer(_, _) => "_".to_string(),
+                hir::ArrayLen::Body(anon_const) => {
+                    let def_id = cx.tcx.hir().local_def_id(anon_const.hir_id);
+                    // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
+                    // as we currently do not supply the parent generics to anonymous constants
+                    // but do allow `ConstKind::Param`.
+                    //
+                    // `const_eval_poly` tries to to first substitute generic parameters which
+                    // results in an ICE while manually constructing the constant and using `eval`
+                    // does nothing for `ConstKind::Param`.
+                    let ct = ty::Const::from_anon_const(cx.tcx, def_id);
+                    let param_env = cx.tcx.param_env(def_id);
+                    print_const(cx, ct.eval(cx.tcx, param_env))
+                }
+            };
+
+            Array(Box::new(clean_ty(ty, cx)), length)
+        }
+        TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
+        TyKind::OpaqueDef(item_id, _) => {
+            let item = cx.tcx.hir().item(item_id);
+            if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
+                ImplTrait(ty.bounds.iter().filter_map(|x| x.clean(cx)).collect())
+            } else {
+                unreachable!()
+            }
+        }
+        TyKind::Path(_) => clean_qpath(ty, cx),
+        TyKind::TraitObject(bounds, ref lifetime, _) => {
+            let bounds = bounds.iter().map(|bound| bound.clean(cx)).collect();
+            let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
+            DynTrait(bounds, lifetime)
+        }
+        TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
+        // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
+        TyKind::Infer | TyKind::Err => Infer,
+        TyKind::Typeof(..) => panic!("unimplemented type {:?}", ty.kind),
     }
 }
 
@@ -1562,7 +1573,11 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     }
 }
 
-fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefId>) -> Type {
+pub(crate) fn clean_middle_ty<'tcx>(
+    this: Ty<'tcx>,
+    cx: &mut DocContext<'tcx>,
+    def_id: Option<DefId>,
+) -> Type {
     trace!("cleaning type: {:?}", this);
     let ty = normalize(cx, this).unwrap_or(this);
     match *ty.kind() {
@@ -1573,17 +1588,19 @@ fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefI
         ty::Uint(uint_ty) => Primitive(uint_ty.into()),
         ty::Float(float_ty) => Primitive(float_ty.into()),
         ty::Str => Primitive(PrimitiveType::Str),
-        ty::Slice(ty) => Slice(Box::new(ty.clean(cx))),
+        ty::Slice(ty) => Slice(Box::new(clean_middle_ty(ty, cx, None))),
         ty::Array(ty, n) => {
             let mut n = cx.tcx.lift(n).expect("array lift failed");
             n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
             let n = print_const(cx, n);
-            Array(Box::new(ty.clean(cx)), n)
+            Array(Box::new(clean_middle_ty(ty, cx, None)), n)
         }
-        ty::RawPtr(mt) => RawPointer(mt.mutbl, Box::new(mt.ty.clean(cx))),
-        ty::Ref(r, ty, mutbl) => {
-            BorrowedRef { lifetime: r.clean(cx), mutability: mutbl, type_: Box::new(ty.clean(cx)) }
-        }
+        ty::RawPtr(mt) => RawPointer(mt.mutbl, Box::new(clean_middle_ty(mt.ty, cx, None))),
+        ty::Ref(r, ty, mutbl) => BorrowedRef {
+            lifetime: r.clean(cx),
+            mutability: mutbl,
+            type_: Box::new(clean_middle_ty(ty, cx, None)),
+        },
         ty::FnDef(..) | ty::FnPtr(_) => {
             let ty = cx.tcx.lift(this).expect("FnPtr lift failed");
             let sig = ty.fn_sig(cx.tcx);
@@ -1660,7 +1677,7 @@ fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefI
 
             DynTrait(bounds, lifetime)
         }
-        ty::Tuple(t) => Tuple(t.iter().map(|t| t.clean(cx)).collect()),
+        ty::Tuple(t) => Tuple(t.iter().map(|t| clean_middle_ty(t, cx, None)).collect()),
 
         ty::Projection(ref data) => clean_projection(*data, cx, def_id),
 
@@ -1747,17 +1764,11 @@ fn clean_ty<'tcx>(this: Ty<'tcx>, cx: &mut DocContext<'tcx>, def_id: Option<DefI
     }
 }
 
-impl<'tcx> Clean<'tcx, Type> for Ty<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
-        clean_ty(*self, cx, None)
-    }
-}
-
 impl<'tcx> Clean<'tcx, Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Constant {
         // FIXME: instead of storing the stringified expression, store `self` directly instead.
         Constant {
-            type_: self.ty().clean(cx),
+            type_: clean_middle_ty(self.ty(), cx, None),
             kind: ConstantKind::TyConst { expr: self.to_string() },
         }
     }
@@ -1766,13 +1777,18 @@ impl<'tcx> Clean<'tcx, Constant> for ty::Const<'tcx> {
 impl<'tcx> Clean<'tcx, Item> for hir::FieldDef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
-        clean_field(def_id, self.ident.name, self.ty.clean(cx), cx)
+        clean_field(def_id, self.ident.name, clean_ty(self.ty, cx), cx)
     }
 }
 
 impl<'tcx> Clean<'tcx, Item> for ty::FieldDef {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        clean_field(self.did, self.name, cx.tcx.type_of(self.did).clean(cx), cx)
+        clean_field(
+            self.did,
+            self.name,
+            clean_middle_ty(cx.tcx.type_of(self.did), cx, Some(self.did)),
+            cx,
+        )
     }
 }
 
@@ -1863,10 +1879,10 @@ impl<'tcx> Clean<'tcx, Path> for hir::Path<'tcx> {
 impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericArgs {
         if self.parenthesized {
-            let output = self.bindings[0].ty().clean(cx);
+            let output = clean_ty(self.bindings[0].ty(), cx);
             let output =
                 if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
-            let inputs = self.inputs().iter().map(|x| x.clean(cx)).collect::<Vec<_>>().into();
+            let inputs = self.inputs().iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
             GenericArgs::Parenthesized { inputs, output }
         } else {
             let args = self
@@ -1877,7 +1893,7 @@ impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
                         GenericArg::Lifetime(lt.clean(cx))
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                    hir::GenericArg::Type(ty) => GenericArg::Type(ty.clean(cx)),
+                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(ct.clean(cx))),
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
@@ -1925,10 +1941,10 @@ fn clean_maybe_renamed_item<'tcx>(
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             ItemKind::Static(ty, mutability, body_id) => {
-                StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
+                StaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: Some(body_id) })
             }
             ItemKind::Const(ty, body_id) => ConstantItem(Constant {
-                type_: ty.clean(cx),
+                type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             }),
             ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
@@ -1936,8 +1952,8 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: ty.generics.clean(cx),
             }),
             ItemKind::TyAlias(hir_ty, generics) => {
-                let rustdoc_ty = hir_ty.clean(cx);
-                let ty = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
+                let rustdoc_ty = clean_ty(hir_ty, cx);
+                let ty = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
                 TypedefItem(Typedef {
                     type_: rustdoc_ty,
                     generics: generics.clean(cx),
@@ -2023,9 +2039,9 @@ fn clean_impl<'tcx>(
         build_deref_target_impls(cx, &items, &mut ret);
     }
 
-    let for_ = impl_.self_ty.clean(cx);
+    let for_ = clean_ty(impl_.self_ty, cx);
     let type_alias = for_.def_id(&cx.cache).and_then(|did| match tcx.def_kind(did) {
-        DefKind::TyAlias => Some(tcx.type_of(did).clean(cx)),
+        DefKind::TyAlias => Some(clean_middle_ty(tcx.type_of(did), cx, Some(did))),
         _ => None,
     });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
@@ -2234,7 +2250,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                 ForeignFunctionItem(Function { decl, generics })
             }
             hir::ForeignItemKind::Static(ty, mutability) => {
-                ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
+                ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })
             }
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
