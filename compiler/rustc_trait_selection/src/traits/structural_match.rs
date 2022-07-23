@@ -6,30 +6,9 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use std::ops::ControlFlow;
-
-#[derive(Debug)]
-pub struct NonStructuralMatchTy<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub kind: NonStructuralMatchTyKind<'tcx>,
-}
-
-#[derive(Debug)]
-pub enum NonStructuralMatchTyKind<'tcx> {
-    Adt(AdtDef<'tcx>),
-    Param,
-    Dynamic,
-    Foreign,
-    Opaque,
-    Closure,
-    Generator,
-    Projection,
-    Float,
-    FnPtr,
-    RawPtr,
-}
 
 /// This method traverses the structure of `ty`, trying to find an
 /// instance of an ADT (i.e. struct or enum) that doesn't implement
@@ -64,7 +43,7 @@ pub fn search_for_structural_match_violation<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     valtree_semantics: bool,
-) -> Option<NonStructuralMatchTy<'tcx>> {
+) -> Option<Ty<'tcx>> {
     ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), valtree_semantics })
         .break_value()
 }
@@ -140,7 +119,7 @@ impl<'tcx> Search<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
-    type BreakTy = NonStructuralMatchTy<'tcx>;
+    type BreakTy = Ty<'tcx>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("Search visiting ty: {:?}", ty);
@@ -148,32 +127,25 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
         let (adt_def, substs) = match *ty.kind() {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
-                let kind = NonStructuralMatchTyKind::Param;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Dynamic(..) => {
-                let kind = NonStructuralMatchTyKind::Dynamic;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Foreign(_) => {
-                let kind = NonStructuralMatchTyKind::Foreign;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Opaque(..) => {
-                let kind = NonStructuralMatchTyKind::Opaque;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Projection(..) => {
-                let kind = NonStructuralMatchTyKind::Projection;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Closure(..) => {
-                let kind = NonStructuralMatchTyKind::Closure;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::Generator(..) | ty::GeneratorWitness(..) => {
-                let kind = NonStructuralMatchTyKind::Generator;
-                return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+                return ControlFlow::Break(ty);
             }
             ty::FnDef(..) => {
                 // Types of formals and return in `fn(_) -> _` are also irrelevant;
@@ -198,10 +170,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 if !self.valtree_semantics {
                     return ControlFlow::CONTINUE;
                 } else {
-                    return ControlFlow::Break(NonStructuralMatchTy {
-                        ty,
-                        kind: NonStructuralMatchTyKind::FnPtr,
-                    });
+                    return ControlFlow::Break(ty);
                 }
             }
 
@@ -223,10 +192,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                     // pointer. Therefore, one can still use `C` in a pattern.
                     return ControlFlow::CONTINUE;
                 } else {
-                    return ControlFlow::Break(NonStructuralMatchTy {
-                        ty,
-                        kind: NonStructuralMatchTyKind::FnPtr,
-                    });
+                    return ControlFlow::Break(ty);
                 }
             }
 
@@ -234,10 +200,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 if !self.valtree_semantics {
                     return ControlFlow::CONTINUE;
                 } else {
-                    return ControlFlow::Break(NonStructuralMatchTy {
-                        ty,
-                        kind: NonStructuralMatchTyKind::Float,
-                    });
+                    return ControlFlow::Break(ty);
                 }
             }
 
@@ -263,8 +226,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
 
         if !self.type_marked_structural(ty) {
             debug!("Search found ty: {:?}", ty);
-            let kind = NonStructuralMatchTyKind::Adt(adt_def);
-            return ControlFlow::Break(NonStructuralMatchTy { ty, kind });
+            return ControlFlow::Break(ty);
         }
 
         // structural-match does not care about the

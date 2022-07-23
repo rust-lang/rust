@@ -854,7 +854,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                     // We use the same error code in both branches, because this is really the same
                     // issue: we just special-case the message for type parameters to make it
                     // clearer.
-                    match non_structural_match_ty.ty.kind() {
+                    match non_structural_match_ty.kind() {
                         ty::Param(_) => {
                             // Const parameters may not have type parameters as their types,
                             // because we cannot be sure that the type parameter derives `PartialEq`
@@ -911,10 +911,10 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                                 E0741,
                                 "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
                                 the type of a const parameter",
-                                non_structural_match_ty.ty,
+                                non_structural_match_ty,
                             );
 
-                            if ty == non_structural_match_ty.ty {
+                            if ty == non_structural_match_ty {
                                 diag.span_label(
                                     hir_ty.span,
                                     format!("`{ty}` doesn't derive both `PartialEq` and `Eq`"),
