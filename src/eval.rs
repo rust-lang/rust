@@ -102,6 +102,8 @@ pub struct MiriConfig {
     pub data_race_detector: bool,
     /// Determine if weak memory emulation should be enabled. Requires data race detection to be enabled
     pub weak_memory_emulation: bool,
+    /// Track when an outdated (weak memory) load happens.
+    pub track_outdated_loads: bool,
     /// Rate of spurious failures for compare_exchange_weak atomic operations,
     /// between 0.0 and 1.0, defaulting to 0.8 (80% chance of failure).
     pub cmpxchg_weak_failure_rate: f64,
@@ -143,6 +145,7 @@ impl Default for MiriConfig {
             tracked_alloc_ids: HashSet::default(),
             data_race_detector: true,
             weak_memory_emulation: true,
+            track_outdated_loads: false,
             cmpxchg_weak_failure_rate: 0.8, // 80%
             measureme_out: None,
             panic_on_unsupported: false,

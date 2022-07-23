@@ -376,8 +376,11 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         } else {
             None
         };
-        let data_race =
-            if config.data_race_detector { Some(data_race::GlobalState::new()) } else { None };
+        let data_race = if config.data_race_detector {
+            Some(data_race::GlobalState::new(config))
+        } else {
+            None
+        };
         Evaluator {
             stacked_borrows,
             data_race,

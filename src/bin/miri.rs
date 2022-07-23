@@ -358,6 +358,8 @@ fn main() {
             miri_config.isolated_op = miri::IsolatedOp::Allow;
         } else if arg == "-Zmiri-disable-weak-memory-emulation" {
             miri_config.weak_memory_emulation = false;
+        } else if arg == "-Zmiri-track-weak-memory-loads" {
+            miri_config.track_outdated_loads = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-isolation-error=") {
             if matches!(isolation_enabled, Some(false)) {
                 panic!("-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation");

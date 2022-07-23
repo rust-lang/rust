@@ -74,6 +74,7 @@ pub enum NonHaltingDiagnostic {
     Int2Ptr {
         details: bool,
     },
+    WeakMemoryOutdatedLoad,
 }
 
 /// Level of Miri specific diagnostics
@@ -474,6 +475,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("progress report: current operation being executed is here"),
                     Int2Ptr { .. } =>
                         format!("integer-to-pointer cast"),
+                    WeakMemoryOutdatedLoad =>
+                        format!("weak memory emulation: outdated value returned from load"),
                 };
 
                 let (title, diag_level) = match e {
@@ -485,7 +488,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     | CreatedCallId(..)
                     | CreatedAlloc(..)
                     | FreedAlloc(..)
-                    | ProgressReport => ("tracking was triggered", DiagLevel::Note),
+                    | ProgressReport
+                    | WeakMemoryOutdatedLoad =>
+                        ("tracking was triggered", DiagLevel::Note),
                 };
 
                 let helps = match e {
