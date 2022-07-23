@@ -1,7 +1,12 @@
 use hir::{db::AstDatabase, HirDisplay, Type};
-use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
+use ide_db::{
+    base_db::{FileRange, SourceDatabase},
+    famous_defs::FamousDefs,
+    source_change::SourceChange,
+};
 use syntax::{
-    ast::{BlockExpr, ExprStmt},
+    algo::find_node_at_range,
+    ast::{self, BlockExpr, ExprStmt},
     AstNode,
 };
 use text_edit::TextEdit;
@@ -13,6 +18,18 @@ use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 // This diagnostic is triggered when the type of an expression does not match
 // the expected type.
 pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
+    let FileRange { file_id, range } =
+        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into()));
+
+    let source_file = ctx.sema.db.parse(file_id);
+    let block = find_node_at_range::<ast::BlockExpr>(&source_file.syntax_node(), range)
+        .filter(|it| it.syntax().text_range() == range);
+    let display_range = block
+        .and_then(|it| it.stmt_list())
+        .and_then(|it| it.r_curly_token())
+        .map(|it| it.text_range())
+        .unwrap_or(range);
+
     let mut diag = Diagnostic::new(
         "type-mismatch",
         format!(
@@ -20,7 +37,7 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
             d.expected.display(ctx.sema.db),
             d.actual.display(ctx.sema.db)
         ),
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        display_range,
     )
     .with_fixes(fixes(ctx, d));
     if diag.fixes.is_none() {
@@ -543,6 +560,20 @@ fn test() -> String {
     "a".to_owned()
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn type_mismatch_on_block() {
+        check_diagnostics(
+            r#"
+fn f() -> i32 {
+    let x = 1;
+    let y = 2;
+    let _ = x + y;
+  }
+//^ error: expected i32, found ()
+"#,
         );
     }
 }
