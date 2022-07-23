@@ -35,6 +35,11 @@ The cargo options are exactly the same as for `cargo run` and `cargo test`, resp
 Examples:
     cargo miri run
     cargo miri test -- test-suite-filter
+
+    cargo miri setup --print sysroot
+        This will print the path to the generated sysroot (and nothing else) on stdout.
+        stderr will still contain progress information about how the build is doing.
+
 "#;
 
 #[derive(Clone, Debug)]
@@ -361,16 +366,14 @@ fn write_to_file(filename: &Path, content: &str) {
 /// done all this already.
 fn setup(subcommand: &MiriCommand) {
     let only_setup = matches!(subcommand, MiriCommand::Setup);
+    let ask_user = !only_setup;
+    let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     if std::env::var_os("MIRI_SYSROOT").is_some() {
         if only_setup {
             println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
         }
         return;
     }
-
-    // Subcommands other than `setup` will do a setup if necessary, but
-    // interactively confirm first.
-    let ask_user = !only_setup;
 
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
@@ -507,8 +510,14 @@ path = "lib.rs"
     command.env("RUSTFLAGS", "-Cdebug-assertions=off -Coverflow-checks=on");
     // Manage the output the user sees.
     if only_setup {
+        // We want to be explicit.
         eprintln!("Preparing a sysroot for Miri...");
+        if print_sysroot {
+            // Be extra sure there is no noise on stdout.
+            command.stdout(process::Stdio::null());
+        }
     } else {
+        // We want to be quiet, but still let the user know that something is happening.
         eprint!("Preparing a sysroot for Miri... ");
         command.stdout(process::Stdio::null());
         command.stderr(process::Stdio::null());
@@ -523,9 +532,6 @@ path = "lib.rs"
             ))
         }
     }
-    if !only_setup {
-        eprintln!("done");
-    }
 
     // That should be it! But we need to figure out where xargo built stuff.
     // Unfortunately, it puts things into a different directory when the
@@ -533,12 +539,14 @@ path = "lib.rs"
     let sysroot = if target == &host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
     // Figure out what to print.
-    let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    if only_setup {
+        eprintln!("A sysroot for Miri is now available in `{}`.", sysroot.display());
+    } else {
+        eprintln!("done");
+    }
     if print_sysroot {
         // Print just the sysroot and nothing else to stdout; this way we do not need any escaping.
         println!("{}", sysroot.display());
-    } else if only_setup {
-        eprintln!("A sysroot for Miri is now available in `{}`.", sysroot.display());
     }
 }
 
