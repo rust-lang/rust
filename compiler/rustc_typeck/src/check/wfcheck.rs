@@ -183,7 +183,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
             match (tcx.impl_polarity(def_id), impl_.polarity) {
                 (ty::ImplPolarity::Positive, _) => {
-                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait);
+                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait, impl_.constness);
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
@@ -1242,6 +1242,7 @@ fn check_impl<'tcx>(
     item: &'tcx hir::Item<'tcx>,
     ast_self_ty: &hir::Ty<'_>,
     ast_trait_ref: &Option<hir::TraitRef<'_>>,
+    constness: hir::Constness,
 ) {
     enter_wf_checking_ctxt(tcx, item.span, item.def_id, |wfcx| {
         match *ast_trait_ref {
@@ -1251,11 +1252,19 @@ fn check_impl<'tcx>(
                 // won't hold).
                 let trait_ref = tcx.impl_trait_ref(item.def_id).unwrap();
                 let trait_ref = wfcx.normalize(ast_trait_ref.path.span, None, trait_ref);
+                let trait_pred = ty::TraitPredicate {
+                    trait_ref,
+                    constness: match constness {
+                        hir::Constness::Const => ty::BoundConstness::ConstIfConst,
+                        hir::Constness::NotConst => ty::BoundConstness::NotConst,
+                    },
+                    polarity: ty::ImplPolarity::Positive,
+                };
                 let obligations = traits::wf::trait_obligations(
                     wfcx.infcx,
                     wfcx.param_env,
                     wfcx.body_id,
-                    &trait_ref,
+                    &trait_pred,
                     ast_trait_ref.path.span,
                     item,
                 );
