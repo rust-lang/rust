@@ -9,7 +9,7 @@
 #![feature(is_some_with)]
 #![feature(nonzero_ops)]
 #![feature(local_key_cell_methods)]
-#![warn(rust_2018_idioms)]
+// Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
     clippy::collapsible_if,
@@ -24,6 +24,7 @@
     clippy::derive_hash_xor_eq,
     clippy::too_many_arguments
 )]
+#![warn(rust_2018_idioms, clippy::cast_lossless)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
