@@ -785,8 +785,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             trace!("read: FD mapped to {:?}", file_descriptor);
             // We want to read at most `count` bytes. We are sure that `count` is not negative
             // because it was a target's `usize`. Also we are sure that its smaller than
-            // `usize::MAX` because it is a host's `isize`.
-            let mut bytes = vec![0; count as usize];
+            // `usize::MAX` because it is bounded by the host's `isize`.
+            let mut bytes = vec![0; usize::try_from(count).unwrap()];
             // `File::read` never returns a value larger than `count`,
             // so this cannot fail.
             let result =

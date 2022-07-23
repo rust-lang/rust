@@ -84,7 +84,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     } else {
                         io::stderr().write(buf_cont)
                     };
-                    res.ok().map(|n| n as u32)
+                    // We write at most `n` bytes, which is a `u32`, so we cannot have written more than that.
+                    res.ok().map(|n| u32::try_from(n).unwrap())
                 } else {
                     throw_unsup_format!(
                         "on Windows, writing to anything except stdout/stderr is not supported"

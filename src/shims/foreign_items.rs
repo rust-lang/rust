@@ -82,8 +82,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let align = this.min_align(size, kind);
             let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
             if zero_init {
-                // We just allocated this, the access is definitely in-bounds.
-                this.write_bytes_ptr(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
+                // We just allocated this, the access is definitely in-bounds and fits into our address space.
+                this.write_bytes_ptr(
+                    ptr.into(),
+                    iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+                )
+                .unwrap();
             }
             Ok(ptr.into())
         }
@@ -529,7 +533,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 // The docs say val is "interpreted as unsigned char".
-                #[allow(clippy::cast_sign_loss)]
+                #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                 let val = val as u8;
 
                 if let Some(idx) = this
@@ -550,7 +554,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = this.read_scalar(val)?.to_i32()?;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 // The docs say val is "interpreted as unsigned char".
-                #[allow(clippy::cast_sign_loss)]
+                #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
                 let val = val as u8;
 
                 let idx = this

@@ -29,6 +29,7 @@
     clippy::cast_possible_wrap, // unsigned -> signed
     clippy::cast_sign_loss, // signed -> unsigned
     clippy::cast_lossless,
+    clippy::cast_possible_truncation,
 )]
 
 extern crate rustc_apfloat;
