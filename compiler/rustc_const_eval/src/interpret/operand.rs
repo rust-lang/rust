@@ -14,7 +14,7 @@ use rustc_target::abi::{VariantIdx, Variants};
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer,
-    PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit,
+    Provenance, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -455,7 +455,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        self.scalar_to_ptr(self.read_scalar(op)?.check_init()?)
+        self.read_scalar(op)?.to_pointer(self)
     }
 
     /// Turn the wide MPlace into a string (must already be dereferenced!)
