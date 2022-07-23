@@ -303,18 +303,21 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        if self.proc_macro_client.is_none() {
+        if self.proc_macro_clients.is_empty() {
             if let Some((path, args)) = self.config.proc_macro_srv() {
-                match ProcMacroServer::spawn(path.clone(), args) {
-                    Ok(it) => self.proc_macro_client = Some(it),
-                    Err(err) => {
-                        tracing::error!(
-                            "Failed to run proc_macro_srv from path {}, error: {:?}",
-                            path.display(),
-                            err
-                        );
-                    }
-                }
+                self.proc_macro_clients = (0..self.workspaces.len())
+                    .map(|_| match ProcMacroServer::spawn(path.clone(), args.clone()) {
+                        Ok(it) => Some(it),
+                        Err(err) => {
+                            tracing::error!(
+                                "Failed to run proc_macro_srv from path {}, error: {:?}",
+                                path.display(),
+                                err
+                            );
+                            None
+                        }
+                    })
+                    .collect();
             }
         }
 
@@ -331,15 +334,7 @@ impl GlobalState {
 
         // Create crate graph from all the workspaces
         let crate_graph = {
-            let proc_macro_client = self.proc_macro_client.as_ref();
             let dummy_replacements = self.config.dummy_replacements();
-            let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
-                load_proc_macro(
-                    proc_macro_client,
-                    path,
-                    dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
-                )
-            };
 
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
@@ -359,7 +354,15 @@ impl GlobalState {
             };
 
             let mut crate_graph = CrateGraph::default();
-            for ws in self.workspaces.iter() {
+            for (idx, ws) in self.workspaces.iter().enumerate() {
+                let proc_macro_client = self.proc_macro_clients[idx].as_ref();
+                let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
+                    load_proc_macro(
+                        proc_macro_client,
+                        path,
+                        dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
+                    )
+                };
                 crate_graph.extend(ws.to_crate_graph(&mut load_proc_macro, &mut load));
             }
             crate_graph
