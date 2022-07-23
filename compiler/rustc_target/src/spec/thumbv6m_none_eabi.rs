@@ -14,8 +14,9 @@ pub fn target() -> Target {
             // The ARMv6-M architecture doesn't support unaligned loads/stores so we disable them
             // with +strict-align.
             features: "+strict-align".into(),
-            // There are no atomic CAS instructions available in the instruction set of the ARMv6-M
+            // There are no atomic instructions available in the instruction set of the ARMv6-M
             // architecture
+            max_atomic_width: Some(0),
             atomic_cas: false,
             ..super::thumb_base::opts()
         },
