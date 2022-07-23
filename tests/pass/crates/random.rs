@@ -1,6 +1,6 @@
-use rand::{rngs::SmallRng, Rng, SeedableRng};
 // mac-os `getrandom_1` does some pointer shenanigans
 //@compile-flags: -Zmiri-permissive-provenance
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 fn main() {
     // Test `getrandom` directly (in multiple different versions).

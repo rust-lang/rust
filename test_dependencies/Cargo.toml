@@ -12,6 +12,7 @@ edition = "2021"
 tokio = { version = "1.0", features = ["full"] }
 libc = "0.2"
 page_size = "0.4.1"
+num_cpus = "1.10.1"
 
 getrandom_1 = { package = "getrandom", version = "0.1" }
 getrandom_2 = { package = "getrandom", version = "0.2" }
