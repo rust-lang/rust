@@ -715,28 +715,17 @@ fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // This is needed to make the `target.runner` settings do something,
     // and it later helps us detect which crates are proc-macro/build-script
     // (host crates) and which crates are needed for the program itself.
-    let host = version_info().host;
-    let target = get_arg_flag_value("--target");
-    let target = if let Some(ref target) = target {
-        target
-    } else {
-        // No target given. Pick default and tell cargo about it.
+    if get_arg_flag_value("--target").is_none() {
+        // No target given. Explicitly pick the host.
         cmd.arg("--target");
-        cmd.arg(&host);
-        &host
-    };
+        cmd.arg(version_info().host);
+    }
 
+    // Set ourselves as runner for al binaries invoked by cargo.
+    // We use `all()` since `true` is not a thing in cfg-lang, but the empty conjunction is. :)
     let cargo_miri_path_for_toml = escape_for_toml(&cargo_miri_path);
     cmd.arg("--config")
-        .arg(format!("target.{target}.runner=[{cargo_miri_path_for_toml}, 'runner']",));
-    if &host != target {
-        // Set ourselves as runner for host and target. (Unit tests of `proc-macro` crates are run on
-        // the host, so we set the host runner to us in order to skip them.)
-        // But only do that if host and target are different; setting this command twice otherwise
-        // makes cargo concatenate the two arrays.
-        cmd.arg("--config")
-            .arg(format!("target.{host}.runner=[{cargo_miri_path_for_toml}, 'runner']",));
-    }
+        .arg(format!("target.'cfg(all())'.runner=[{cargo_miri_path_for_toml}, 'runner']"));
 
     // Forward all further arguments after `--` to cargo.
     cmd.arg("--").args(args);
