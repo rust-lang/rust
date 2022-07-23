@@ -336,6 +336,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             | NativeLibKind::Dylib { .. }
             | NativeLibKind::Framework { .. }
             | NativeLibKind::RawDylib
+            | NativeLibKind::LinkArg
             | NativeLibKind::Unspecified => continue,
         }
         if let Some(name) = lib.name {
@@ -1287,6 +1288,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
                 }
                 // These are included, no need to print them
                 NativeLibKind::Static { bundle: None | Some(true), .. }
+                | NativeLibKind::LinkArg
                 | NativeLibKind::RawDylib => None,
             }
         })
@@ -2225,6 +2227,9 @@ fn add_local_native_libraries(
                 // FIXME(#58713): Proper handling for raw dylibs.
                 bug!("raw_dylib feature not yet implemented");
             }
+            NativeLibKind::LinkArg => {
+                cmd.arg(name);
+            }
         }
     }
 }
@@ -2362,19 +2367,34 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             (lib.name, lib.kind, lib.verbatim)
                         };
 
-                        if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
-                            lib.kind
-                        {
-                            let verbatim = lib.verbatim.unwrap_or(false);
-                            if whole_archive == Some(true) {
+                        match lib.kind {
+                            NativeLibKind::Static {
+                                bundle: Some(false),
+                                whole_archive: Some(true),
+                            } => {
                                 cmd.link_whole_staticlib(
                                     name,
-                                    verbatim,
+                                    lib.verbatim.unwrap_or(false),
                                     search_path.get_or_init(|| archive_search_paths(sess)),
                                 );
-                            } else {
-                                cmd.link_staticlib(name, verbatim);
                             }
+                            NativeLibKind::Static {
+                                bundle: Some(false),
+                                whole_archive: Some(false) | None,
+                            } => {
+                                cmd.link_staticlib(name, lib.verbatim.unwrap_or(false));
+                            }
+                            NativeLibKind::LinkArg => {
+                                cmd.arg(name);
+                            }
+                            NativeLibKind::Dylib { .. }
+                            | NativeLibKind::Framework { .. }
+                            | NativeLibKind::Unspecified
+                            | NativeLibKind::RawDylib => {}
+                            NativeLibKind::Static {
+                                bundle: Some(true) | None,
+                                whole_archive: _,
+                            } => {}
                         }
                     }
                 }
@@ -2565,7 +2585,7 @@ fn add_upstream_native_libraries(
                 // already included them in add_local_native_libraries and
                 // add_upstream_rust_crates
                 NativeLibKind::Static { .. } => {}
-                NativeLibKind::RawDylib => {}
+                NativeLibKind::RawDylib | NativeLibKind::LinkArg => {}
             }
         }
     }
