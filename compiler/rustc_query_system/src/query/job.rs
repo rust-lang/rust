@@ -1,4 +1,3 @@
-use crate::dep_graph::DepContext;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_hir::def::DefKind;
@@ -536,9 +535,7 @@ pub(crate) fn report_cycle<'a>(
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     assert!(!stack.is_empty());
 
-    let fix_span = |span: Span, query: &QueryStackFrame| {
-        sess.source_map().guess_head_span(query.default_span(span))
-    };
+    let fix_span = |span: Span, query: &QueryStackFrame| query.default_span(span);
 
     let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
     let mut err =
@@ -606,8 +603,7 @@ pub fn print_query_stack<CTX: QueryContext>(
             Level::FailureNote,
             &format!("#{} [{}] {}", i, query_info.query.name, query_info.query.description),
         );
-        diag.span =
-            tcx.dep_context().sess().source_map().guess_head_span(query_info.job.span).into();
+        diag.span = query_info.job.span.into();
         handler.force_print_diagnostic(diag);
 
         current_query = query_info.job.parent;

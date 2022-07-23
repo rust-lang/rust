@@ -1003,8 +1003,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let else_diverges = self.diverges.get();
 
             let opt_suggest_box_span = self.opt_suggest_box_span(else_ty, orig_expected);
-            let if_cause =
-                self.if_cause(sp, then_expr, else_expr, then_ty, else_ty, opt_suggest_box_span);
+            let if_cause = self.if_cause(
+                sp,
+                cond_expr.span,
+                then_expr,
+                else_expr,
+                then_ty,
+                else_ty,
+                opt_suggest_box_span,
+            );
 
             coerce.coerce(self, &if_cause, else_expr, else_ty);
 
