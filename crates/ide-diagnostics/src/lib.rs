@@ -55,15 +55,15 @@ mod handlers {
 #[cfg(test)]
 mod tests;
 
-use hir::{diagnostics::AnyDiagnostic, Semantics};
+use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
-    base_db::{FileId, SourceDatabase},
+    base_db::{FileId, FileRange, SourceDatabase},
     label::Label,
     source_change::SourceChange,
     FxHashSet, RootDatabase,
 };
-use syntax::{ast::AstNode, TextRange};
+use syntax::{algo::find_node_at_range, ast::AstNode, SyntaxNodePtr, TextRange};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
@@ -243,4 +243,18 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
         source_change: None,
         trigger_signature_help: false,
     }
+}
+
+fn adjusted_display_range<N: AstNode>(
+    ctx: &DiagnosticsContext<'_>,
+    diag_ptr: InFile<SyntaxNodePtr>,
+    adj: &dyn Fn(N) -> Option<TextRange>,
+) -> TextRange {
+    let FileRange { file_id, range } = ctx.sema.diagnostics_display_range(diag_ptr);
+
+    let source_file = ctx.sema.db.parse(file_id);
+    find_node_at_range::<N>(&source_file.syntax_node(), range)
+        .filter(|it| it.syntax().text_range() == range)
+        .and_then(adj)
+        .unwrap_or(range)
 }
