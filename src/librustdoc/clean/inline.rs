@@ -16,8 +16,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_ty_generics, utils, Attributes, AttributesExt,
-    Clean, ImplKind, ItemId, Type, Visibility,
+    self, clean_fn_decl_from_did_and_sig, clean_middle_ty, clean_ty, clean_ty_generics, utils,
+    Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -261,7 +261,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
     let predicates = cx.tcx.explicit_predicates_of(did);
-    let type_ = cx.tcx.type_of(did).clean(cx);
+    let type_ = clean_middle_ty(cx.tcx.type_of(did), cx, Some(did));
 
     clean::Typedef {
         type_,
@@ -357,8 +357,8 @@ pub(crate) fn build_impl(
     };
 
     let for_ = match &impl_item {
-        Some(impl_) => impl_.self_ty.clean(cx),
-        None => tcx.type_of(did).clean(cx),
+        Some(impl_) => clean_ty(impl_.self_ty, cx),
+        None => clean_middle_ty(tcx.type_of(did), cx, Some(did)),
     };
 
     // Only inline impl if the implementing type is
@@ -577,14 +577,14 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
-        type_: cx.tcx.type_of(def_id).clean(cx),
+        type_: clean_middle_ty(cx.tcx.type_of(def_id), cx, Some(def_id)),
         kind: clean::ConstantKind::Extern { def_id },
     }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
-        type_: cx.tcx.type_of(did).clean(cx),
+        type_: clean_middle_ty(cx.tcx.type_of(did), cx, Some(did)),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,
     }
