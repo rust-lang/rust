@@ -16,8 +16,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_middle_ty, clean_ty, clean_ty_generics, utils,
-    Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
+    self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty, clean_ty,
+    clean_ty_generics, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -246,7 +246,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     clean::Struct {
         struct_type: variant.ctor_kind,
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
-        fields: variant.fields.iter().map(|x| x.clean(cx)).collect(),
+        fields: variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect(),
     }
 }
 
@@ -255,7 +255,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
-    let fields = variant.fields.iter().map(|x| x.clean(cx)).collect();
+    let fields = variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect();
     clean::Union { generics, fields }
 }
 
