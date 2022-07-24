@@ -1464,6 +1464,8 @@ impl<'tcx> Place<'tcx> {
     /// If MirPhase >= Derefered and if projection contains Deref,
     /// It's guaranteed to be in the first place
     pub fn has_deref(&self) -> bool {
+        // To make sure this is not accidently used in wrong mir phase
+        debug_assert!(!self.projection[1..].contains(&PlaceElem::Deref));
         self.projection.first() == Some(&PlaceElem::Deref)
     }
 
