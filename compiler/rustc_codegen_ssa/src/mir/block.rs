@@ -20,7 +20,7 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
-use rustc_symbol_mangling::typeid_for_fnabi;
+use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -918,7 +918,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // FIXME(rcvalle): Add support for generalized identifiers.
             // FIXME(rcvalle): Create distinct unnamed MDNodes for internal identifiers.
             let typeid = typeid_for_fnabi(bx.tcx(), fn_abi);
-            let typeid_metadata = bx.typeid_metadata(typeid);
+            let typeid_metadata = self.cx.typeid_metadata(typeid);
 
             // Test whether the function pointer is associated with the type identifier.
             let cond = bx.type_test(fn_ptr, typeid_metadata);
