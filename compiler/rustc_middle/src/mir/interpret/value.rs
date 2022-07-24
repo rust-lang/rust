@@ -331,6 +331,19 @@ impl<Prov> Scalar<Prov> {
 }
 
 impl<'tcx, Prov: Provenance> Scalar<Prov> {
+    pub fn to_pointer(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, Pointer<Option<Prov>>> {
+        match self
+            .to_bits_or_ptr_internal(cx.pointer_size())
+            .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
+        {
+            Err(ptr) => Ok(ptr.into()),
+            Ok(bits) => {
+                let addr = u64::try_from(bits).unwrap();
+                Ok(Pointer::from_addr(addr))
+            }
+        }
+    }
+
     /// Fundamental scalar-to-int (cast) operation. Many convenience wrappers exist below, that you
     /// likely want to use instead.
     ///
@@ -546,6 +559,11 @@ impl<Prov> ScalarMaybeUninit<Prov> {
 }
 
 impl<'tcx, Prov: Provenance> ScalarMaybeUninit<Prov> {
+    #[inline(always)]
+    pub fn to_pointer(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, Pointer<Option<Prov>>> {
+        self.check_init()?.to_pointer(cx)
+    }
+
     #[inline(always)]
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
         self.check_init()?.to_bool()

@@ -331,7 +331,7 @@ where
             Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
         };
 
-        let mplace = MemPlace { ptr: self.scalar_to_ptr(ptr.check_init()?)?, meta };
+        let mplace = MemPlace { ptr: ptr.to_pointer(self)?, meta };
         // When deref'ing a pointer, the *static* alignment given by the type is what matters.
         let align = layout.align.abi;
         Ok(MPlaceTy { mplace, layout, align })
@@ -889,7 +889,7 @@ where
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let vtable = self.scalar_to_ptr(mplace.vtable())?; // also sanity checks the type
+        let vtable = mplace.vtable().to_pointer(self)?; // also sanity checks the type
         let (ty, _) = self.get_ptr_vtable(vtable)?;
         let layout = self.layout_of(ty)?;
 

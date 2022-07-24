@@ -561,7 +561,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
 
                 // Get the required information from the vtable.
-                let vptr = self.scalar_to_ptr(receiver_place.meta.unwrap_meta())?;
+                let vptr = receiver_place.meta.unwrap_meta().to_pointer(self)?;
                 let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
                 if dyn_trait != data.principal() {
                     throw_ub_format!(

@@ -117,12 +117,12 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
 
-/// Given a `source_file` and config, returns a parser.
+/// Given a session and a `source_file`, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
 }
 
-/// Given a `source_file` and config, return a parser. Returns any buffered errors from lexing the
+/// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing the
 /// initial token stream.
 fn maybe_source_file_to_parser(
     sess: &ParseSess,

@@ -312,7 +312,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind() {
             ty::Dynamic(..) => {
-                let vtable = self.ecx.scalar_to_ptr(meta.unwrap_meta())?;
+                let vtable = meta.unwrap_meta().to_pointer(self.ecx)?;
                 // Make sure it is a genuine vtable pointer.
                 let (_ty, _trait) = try_validation!(
                     self.ecx.get_ptr_vtable(vtable),
@@ -517,15 +517,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             { "{:x}", value } expected { "initialized bytes" }
                     );
                 }
-                if M::enforce_number_no_provenance(self.ecx) {
-                    // As a special exception we *do* match on a `Scalar` here, since we truly want
-                    // to know its underlying representation (and *not* cast it to an integer).
-                    let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
-                    if is_ptr {
-                        throw_validation_failure!(self.path,
-                            { "{:x}", value } expected { "plain (non-pointer) bytes" }
-                        )
-                    }
+                // As a special exception we *do* match on a `Scalar` here, since we truly want
+                // to know its underlying representation (and *not* cast it to an integer).
+                let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
+                if is_ptr {
+                    throw_validation_failure!(self.path,
+                        { "{:x}", value } expected { "plain (non-pointer) bytes" }
+                    )
                 }
                 Ok(true)
             }
@@ -568,7 +566,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
-                    let ptr = self.ecx.scalar_to_ptr(value)?;
+                    let ptr = value.to_pointer(self.ecx)?;
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
@@ -906,7 +904,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),
                     /*allow_uninit*/ !M::enforce_number_init(self.ecx),
-                    /*allow_ptr*/ !M::enforce_number_no_provenance(self.ecx),
+                    /*allow_ptr*/ false,
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}
