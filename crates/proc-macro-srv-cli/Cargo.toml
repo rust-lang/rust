@@ -11,3 +11,7 @@ proc-macro-srv = { version = "0.0.0", path = "../proc-macro-srv" }
 
 [features]
 sysroot-abi = ["proc-macro-srv/sysroot-abi"]
+
+[[bin]]
+name = "proc-macro-srv"
+path = "src/main.rs"
