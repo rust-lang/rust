@@ -238,7 +238,7 @@ impl<R: Seek> BufReader<R> {
                 return Ok(());
             }
         } else if let Some(new_pos) = pos.checked_add(offset as u64) {
-            if new_pos <= self.buf.cap() as u64 {
+            if new_pos <= self.buf.filled() as u64 {
                 self.buf.consume(offset as usize);
                 return Ok(());
             }
@@ -254,7 +254,7 @@ impl<R: Read> Read for BufReader<R> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.
-        if self.buf.pos() == self.buf.cap() && buf.len() >= self.capacity() {
+        if self.buf.pos() == self.buf.filled() && buf.len() >= self.capacity() {
             self.discard_buffer();
             return self.inner.read(buf);
         }
@@ -270,7 +270,7 @@ impl<R: Read> Read for BufReader<R> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.
-        if self.buf.pos() == self.buf.cap() && buf.remaining() >= self.capacity() {
+        if self.buf.pos() == self.buf.filled() && buf.remaining() >= self.capacity() {
             self.discard_buffer();
             return self.inner.read_buf(buf);
         }
@@ -301,7 +301,7 @@ impl<R: Read> Read for BufReader<R> {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
-        if self.buf.pos() == self.buf.cap() && total_len >= self.capacity() {
+        if self.buf.pos() == self.buf.filled() && total_len >= self.capacity() {
             self.discard_buffer();
             return self.inner.read_vectored(bufs);
         }
@@ -385,7 +385,7 @@ where
             .field("reader", &self.inner)
             .field(
                 "buffer",
-                &format_args!("{}/{}", self.buf.cap() - self.buf.pos(), self.capacity()),
+                &format_args!("{}/{}", self.buf.filled() - self.buf.pos(), self.capacity()),
             )
             .finish()
     }
@@ -418,7 +418,7 @@ impl<R: Seek> Seek for BufReader<R> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
-            let remainder = (self.buf.cap() - self.buf.pos()) as i64;
+            let remainder = (self.buf.filled() - self.buf.pos()) as i64;
             // it should be safe to assume that remainder fits within an i64 as the alternative
             // means we managed to allocate 8 exbibytes and that's absurd.
             // But it's not out of the realm of possibility for some weird underlying reader to
@@ -476,7 +476,7 @@ impl<R: Seek> Seek for BufReader<R> {
     /// }
     /// ```
     fn stream_position(&mut self) -> io::Result<u64> {
-        let remainder = (self.buf.cap() - self.buf.pos()) as u64;
+        let remainder = (self.buf.filled() - self.buf.pos()) as u64;
         self.inner.stream_position().map(|pos| {
             pos.checked_sub(remainder).expect(
                 "overflow when subtracting remaining buffer size from inner stream position",
