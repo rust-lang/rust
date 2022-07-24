@@ -1110,7 +1110,7 @@ table,
 	padding: 0 20px 20px 17px;
 }
 
-.item-info,.methods .stab {
+.item-info .stab {
 	display: inline-block;
 }
 .stab {
