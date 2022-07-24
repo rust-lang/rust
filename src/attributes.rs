@@ -1,4 +1,4 @@
-#[cfg_attr(not(feature="master"), allow(unused_imports))]
+#[cfg(feature="master")]
 use gccjit::FnAttribute;
 use gccjit::Function;
 use rustc_attr::InstructionSetAttr;
@@ -107,6 +107,6 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     let target_features = function_features.join(",");
     if !target_features.is_empty() {
         #[cfg(feature="master")]
-        func.add_attribute(FnAttribute::Target, &target_features);
+        func.add_attribute(FnAttribute::Target(&target_features));
     }
 }

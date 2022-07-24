@@ -8,6 +8,8 @@ use gccjit::{
 };
 use rustc_middle::dep_graph;
 use rustc_middle::ty::TyCtxt;
+#[cfg(feature="master")]
+use rustc_middle::mir::mono::Visibility;
 use rustc_middle::mir::mono::Linkage;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
@@ -19,6 +21,15 @@ use rustc_span::Symbol;
 use crate::GccContext;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+
+#[cfg(feature="master")]
+pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {
+    match linkage {
+        Visibility::Default => gccjit::Visibility::Default,
+        Visibility::Hidden => gccjit::Visibility::Hidden,
+        Visibility::Protected => gccjit::Visibility::Protected,
+    }
+}
 
 pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
     match linkage {
