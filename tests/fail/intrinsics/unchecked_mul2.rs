@@ -1,7 +1,5 @@
-#![feature(core_intrinsics)]
+#![feature(unchecked_math)]
 fn main() {
     // MIN overflow
-    unsafe {
-        std::intrinsics::unchecked_mul(1_000_000_000i32, -4); //~ ERROR: overflow executing `unchecked_mul`
-    }
+    let _val = unsafe { 1_000_000_000i32.unchecked_mul(-4) }; //~ ERROR: overflow executing `unchecked_mul`
 }

@@ -1,10 +1,8 @@
-#![feature(core_intrinsics)]
-
-use std::intrinsics::*;
+#![feature(unchecked_math)]
 
 fn main() {
     unsafe {
-        let _n = unchecked_shr(1i64, 64);
+        let _n = 1i64.unchecked_shr(64);
         //~^ ERROR: overflowing shift by 64 in `unchecked_shr`
     }
 }

@@ -1,7 +1,5 @@
-#![feature(core_intrinsics)]
+#![feature(unchecked_math)]
 fn main() {
     // MAX overflow
-    unsafe {
-        std::intrinsics::unchecked_mul(300u16, 250u16); //~ ERROR: overflow executing `unchecked_mul`
-    }
+    let _val = unsafe { 300u16.unchecked_mul(250u16) }; //~ ERROR: overflow executing `unchecked_mul`
 }
