@@ -237,13 +237,22 @@ impl<'tcx> Clean<'tcx, Lifetime> for hir::Lifetime {
     }
 }
 
-impl<'tcx> Clean<'tcx, Constant> for hir::ConstArg {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Constant {
-        let def_id = cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id();
-        Constant {
-            type_: clean_middle_ty(cx.tcx.type_of(def_id), cx, Some(def_id)),
-            kind: ConstantKind::Anonymous { body: self.value.body },
-        }
+pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
+    let def_id = cx.tcx.hir().body_owner_def_id(constant.value.body).to_def_id();
+    Constant {
+        type_: clean_middle_ty(cx.tcx.type_of(def_id), cx, Some(def_id)),
+        kind: ConstantKind::Anonymous { body: constant.value.body },
+    }
+}
+
+pub(crate) fn clean_middle_const<'tcx>(
+    constant: ty::Const<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Constant {
+    // FIXME: instead of storing the stringified expression, store `self` directly instead.
+    Constant {
+        type_: clean_middle_ty(constant.ty(), cx, None),
+        kind: ConstantKind::TyConst { expr: constant.to_string() },
     }
 }
 
@@ -392,7 +401,7 @@ impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
         match self {
             ty::Term::Ty(ty) => Term::Type(clean_middle_ty(*ty, cx, None)),
-            ty::Term::Const(c) => Term::Constant(c.clean(cx)),
+            ty::Term::Const(c) => Term::Constant(clean_middle_const(*c, cx)),
         }
     }
 }
@@ -403,7 +412,7 @@ impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
             hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
             hir::Term::Const(c) => {
                 let def_id = cx.tcx.hir().local_def_id(c.hir_id);
-                Term::Constant(ty::Const::from_anon_const(cx.tcx, def_id).clean(cx))
+                Term::Constant(clean_middle_const(ty::Const::from_anon_const(cx.tcx, def_id), cx))
             }
         }
     }
@@ -1468,8 +1477,10 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(ct) = const_ {
-                    substs
-                        .insert(const_param_def_id.to_def_id(), SubstParam::Constant(ct.clean(cx)));
+                    substs.insert(
+                        const_param_def_id.to_def_id(),
+                        SubstParam::Constant(clean_const(ct, cx)),
+                    );
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;
@@ -1764,16 +1775,6 @@ pub(crate) fn clean_middle_ty<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, Constant> for ty::Const<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Constant {
-        // FIXME: instead of storing the stringified expression, store `self` directly instead.
-        Constant {
-            type_: clean_middle_ty(self.ty(), cx, None),
-            kind: ConstantKind::TyConst { expr: self.to_string() },
-        }
-    }
-}
-
 pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let def_id = cx.tcx.hir().local_def_id(field.hir_id).to_def_id();
     clean_field_with_def_id(def_id, field.ident.name, clean_ty(field.ty, cx), cx)
@@ -1895,7 +1896,7 @@ impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(ct.clean(cx))),
+                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
                 .collect::<Vec<_>>()
