@@ -57,10 +57,10 @@ mod proc_macro;
 #[cfg(test)]
 mod tests;
 
-use std::{cmp::Ord, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
 use base_db::{CrateId, Edition, FileId};
-use hir_expand::{name::Name, InFile, MacroDefId};
+use hir_expand::{name::Name, InFile, MacroCallId, MacroDefId};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
@@ -106,6 +106,9 @@ pub struct DefMap {
     fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
     /// The error that occurred when failing to load the proc-macro dll.
     proc_macro_loading_error: Option<Box<str>>,
+    /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
+    /// attributes.
+    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroCallId)>>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -275,6 +278,7 @@ impl DefMap {
             exported_derives: FxHashMap::default(),
             fn_proc_macro_mapping: FxHashMap::default(),
             proc_macro_loading_error: None,
+            derive_helpers_in_scope: FxHashMap::default(),
             prelude: None,
             root,
             modules,
@@ -294,12 +298,19 @@ impl DefMap {
     pub fn modules(&self) -> impl Iterator<Item = (LocalModuleId, &ModuleData)> + '_ {
         self.modules.iter()
     }
+
+    pub fn derive_helpers_in_scope(&self, id: AstId<ast::Adt>) -> Option<&[(Name, MacroCallId)]> {
+        self.derive_helpers_in_scope.get(&id.map(|it| it.upcast())).map(Deref::deref)
+    }
+
     pub fn registered_tools(&self) -> &[SmolStr] {
         &self.registered_tools
     }
+
     pub fn registered_attrs(&self) -> &[SmolStr] {
         &self.registered_attrs
     }
+
     pub fn root(&self) -> LocalModuleId {
         self.root
     }
@@ -307,6 +318,7 @@ impl DefMap {
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.fn_proc_macro_mapping.get(&id).copied()
     }
+
     pub fn proc_macro_loading_error(&self) -> Option<&str> {
         self.proc_macro_loading_error.as_deref()
     }
@@ -467,6 +479,7 @@ impl DefMap {
             registered_attrs,
             registered_tools,
             fn_proc_macro_mapping,
+            derive_helpers_in_scope,
             proc_macro_loading_error: _,
             block: _,
             edition: _,
@@ -483,6 +496,7 @@ impl DefMap {
         registered_attrs.shrink_to_fit();
         registered_tools.shrink_to_fit();
         fn_proc_macro_mapping.shrink_to_fit();
+        derive_helpers_in_scope.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();

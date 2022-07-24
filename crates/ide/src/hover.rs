@@ -115,7 +115,12 @@ pub(crate) fn hover(
         });
     }
 
-    let descended = sema.descend_into_macros_with_same_text(original_token.clone());
+    let in_attr = matches!(original_token.parent().and_then(ast::TokenTree::cast), Some(tt) if tt.syntax().ancestors().any(|it| ast::Meta::can_cast(it.kind())));
+    let descended = if in_attr {
+        [sema.descend_into_macros_with_kind_preference(original_token.clone())].into()
+    } else {
+        sema.descend_into_macros_with_same_text(original_token.clone())
+    };
 
     // FIXME: Definition should include known lints and the like instead of having this special case here
     let hovered_lint = descended.iter().find_map(|token| {

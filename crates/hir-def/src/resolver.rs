@@ -448,10 +448,14 @@ impl Resolver {
     }
 
     pub fn krate(&self) -> CrateId {
+        self.def_map().krate()
+    }
+
+    pub fn def_map(&self) -> &DefMap {
         self.scopes
             .get(0)
             .and_then(|scope| match scope {
-                Scope::ModuleScope(m) => Some(m.def_map.krate()),
+                Scope::ModuleScope(m) => Some(&m.def_map),
                 _ => None,
             })
             .expect("module scope invariant violated")

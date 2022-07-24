@@ -110,7 +110,6 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         proc_macros,
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
-        derive_helpers_in_scope: Default::default(),
         is_proc_macro,
     };
     if tree_id.is_block() {
@@ -258,9 +257,6 @@ struct DefCollector<'a> {
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
     skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
-    /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
-    /// attributes.
-    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<Name>>,
 }
 
 impl DefCollector<'_> {
@@ -1132,8 +1128,8 @@ impl DefCollector<'_> {
                     };
 
                     if let Some(ident) = path.as_ident() {
-                        if let Some(helpers) = self.derive_helpers_in_scope.get(&ast_id) {
-                            if helpers.contains(ident) {
+                        if let Some(helpers) = self.def_map.derive_helpers_in_scope.get(&ast_id) {
+                            if helpers.iter().any(|(it, _)| it == ident) {
                                 cov_mark::hit!(resolved_derive_helper);
                                 // Resolved to derive helper. Collect the item's attributes again,
                                 // starting after the derive helper.
@@ -1322,10 +1318,11 @@ impl DefCollector<'_> {
             if loc.def.krate != self.def_map.krate {
                 let def_map = self.db.crate_def_map(loc.def.krate);
                 if let Some(helpers) = def_map.exported_derives.get(&loc.def) {
-                    self.derive_helpers_in_scope
+                    self.def_map
+                        .derive_helpers_in_scope
                         .entry(ast_id.map(|it| it.upcast()))
                         .or_default()
-                        .extend(helpers.iter().cloned());
+                        .extend(helpers.iter().cloned().zip(std::iter::repeat(macro_call_id)));
                 }
             }
         }
@@ -2140,7 +2137,6 @@ mod tests {
             proc_macros: Default::default(),
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
-            derive_helpers_in_scope: Default::default(),
             is_proc_macro: false,
         };
         collector.seed_with_top_level();
