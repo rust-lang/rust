@@ -1,4 +1,5 @@
 use crate::un_derefer::UnDerefer;
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
@@ -209,7 +210,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn finalize(
         self,
-    ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    ) -> Result<
+        (FxHashMap<rustc_middle::mir::Local, rustc_middle::mir::Place<'tcx>>, MoveData<'tcx>),
+        (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
+    > {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -222,7 +226,11 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             "done dumping moves"
         });
 
-        if !self.errors.is_empty() { Err((self.data, self.errors)) } else { Ok(self.data) }
+        if !self.errors.is_empty() {
+            Err((self.data, self.errors))
+        } else {
+            Ok((self.un_derefer.derefer_sidetable.clone(), self.data))
+        }
     }
 }
 
@@ -230,7 +238,10 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+) -> Result<
+    (FxHashMap<rustc_middle::mir::Local, rustc_middle::mir::Place<'tcx>>, MoveData<'tcx>),
+    (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
+> {
     let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();

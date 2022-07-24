@@ -386,7 +386,10 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    ) -> Result<
+        (FxHashMap<rustc_middle::mir::Local, rustc_middle::mir::Place<'tcx>>, MoveData<'tcx>),
+        (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
+    > {
         builder::gather_moves(body, tcx, param_env)
     }
 

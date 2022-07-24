@@ -28,20 +28,19 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 
-        let mut un_derefer = UnDerefer { tcx: tcx, derefer_sidetable: Default::default() };
-        un_derefer.ref_finder(body);
         let def_id = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        let move_data = match MoveData::gather_moves(body, tcx, param_env) {
+        let (side_table, move_data) = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {
                 tcx.sess.delay_span_bug(
                     body.span,
                     "No `move_errors` should be allowed in MIR borrowck",
                 );
-                move_data
+                (Default::default(), move_data)
             }
         };
+        let un_derefer = UnDerefer { tcx: tcx, derefer_sidetable: side_table };
         let elaborate_patch = {
             let body = &*body;
             let env = MoveDataParamEnv { move_data, param_env };
