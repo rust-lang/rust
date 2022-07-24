@@ -131,9 +131,6 @@ export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
 
 # Build a sysroot and set MIRI_SYSROOT to use it. Arguments are passed to `cargo miri setup`.
 build_sysroot() {
-    # Build once, for the user to see.
-    $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup "$@"
-    # Call again, to just set env var.
     export MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"
 }
 
