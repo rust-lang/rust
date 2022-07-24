@@ -2351,18 +2351,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             GenericKind::Projection(ref p) => format!("the associated type `{}`", p),
         };
 
-        if let Some(SubregionOrigin::CompareImplMethodObligation {
-            span,
-            impl_item_def_id,
-            trait_item_def_id,
-        }) = origin
-        {
-            return self.report_extra_impl_obligation(
+        match origin {
+            Some(SubregionOrigin::CompareImplMethodObligation {
                 span,
                 impl_item_def_id,
                 trait_item_def_id,
-                &format!("`{}: {}`", bound_kind, sub),
-            );
+            } | SubregionOrigin::CompareImplTypeObligation {
+                span,
+                impl_item_def_id,
+                trait_item_def_id,
+            }) => {
+                return self.report_extra_impl_obligation(
+                    span,
+                    impl_item_def_id,
+                    trait_item_def_id,
+                    &format!("`{}: {}`", bound_kind, sub),
+                );
+            }
+            _ => {}
         }
 
         fn binding_suggestion<'tcx, S: fmt::Display>(
