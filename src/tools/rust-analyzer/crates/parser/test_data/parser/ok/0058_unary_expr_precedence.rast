@@ -1,0 +1,97 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            BIN_EXPR
+              LITERAL
+                INT_NUMBER "1"
+              WHITESPACE " "
+              PLUS "+"
+              WHITESPACE " "
+              PREFIX_EXPR
+                STAR "*"
+                REF_EXPR
+                  AMP "&"
+                  LITERAL
+                    INT_NUMBER "2"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "3"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CAST_EXPR
+            PREFIX_EXPR
+              STAR "*"
+              REF_EXPR
+                AMP "&"
+                LITERAL
+                  INT_NUMBER "1"
+            WHITESPACE " "
+            AS_KW "as"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u64"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          PREFIX_EXPR
+            STAR "*"
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "x"
+              ARG_LIST
+                L_PAREN "("
+                LITERAL
+                  INT_NUMBER "1"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          REF_EXPR
+            AMP "&"
+            INDEX_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "x"
+              L_BRACK "["
+              LITERAL
+                INT_NUMBER "1"
+              R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RANGE_EXPR
+            PREFIX_EXPR
+              MINUS "-"
+              LITERAL
+                INT_NUMBER "1"
+            DOT2 ".."
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

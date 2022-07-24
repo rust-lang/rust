@@ -1,0 +1,34 @@
+[package]
+name = "hir-expand"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+tracing = "0.1.35"
+either = "1.7.0"
+rustc-hash = "1.1.0"
+la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+itertools = "0.10.3"
+hashbrown = { version = "0.12.1", features = [
+    "inline-more",
+], default-features = false }
+smallvec = { version = "1.9.0", features = ["const_new"] }
+
+stdx = { path = "../stdx", version = "0.0.0" }
+base-db = { path = "../base-db", version = "0.0.0" }
+cfg = { path = "../cfg", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
+profile = { path = "../profile", version = "0.0.0" }
+tt = { path = "../tt", version = "0.0.0" }
+mbe = { path = "../mbe", version = "0.0.0" }
+limit = { path = "../limit", version = "0.0.0" }
+
+[dev-dependencies]
+expect-test = "1.4.0"

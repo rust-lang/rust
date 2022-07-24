@@ -1,0 +1,26 @@
+[package]
+name = "ide-ssr"
+version = "0.0.0"
+description = "Structural search and replace of Rust code"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust-analyzer"
+edition = "2021"
+rust-version = "1.57"
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0-pre.1"
+
+itertools = "0.10.3"
+
+text-edit = { path = "../text-edit", version = "0.0.0" }
+parser = { path = "../parser", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
+ide-db = { path = "../ide-db", version = "0.0.0" }
+hir = { path = "../hir", version = "0.0.0" }
+
+[dev-dependencies]
+test-utils = { path = "../test-utils" }
+expect-test = "1.4.0"
