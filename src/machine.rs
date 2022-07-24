@@ -546,11 +546,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn enforce_number_no_provenance(_ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
-        true
-    }
-
-    #[inline(always)]
     fn enforce_abi(ecx: &MiriEvalContext<'mir, 'tcx>) -> bool {
         ecx.machine.enforce_abi
     }
@@ -751,14 +746,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>> {
         intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
-    }
-
-    #[inline(always)]
-    fn ptr_from_addr_transmute(
-        ecx: &MiriEvalContext<'mir, 'tcx>,
-        addr: u64,
-    ) -> Pointer<Option<Self::Provenance>> {
-        intptrcast::GlobalStateInner::ptr_from_addr_transmute(ecx, addr)
     }
 
     fn expose_ptr(

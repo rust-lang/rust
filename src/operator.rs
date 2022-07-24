@@ -57,7 +57,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
 
             Offset => {
                 assert!(left.layout.ty.is_unsafe_ptr());
-                let ptr = self.scalar_to_ptr(left.to_scalar()?)?;
+                let ptr = left.to_scalar()?.to_pointer(self)?;
                 let offset = right.to_scalar()?.to_machine_isize(self)?;
 
                 let pointee_ty =
@@ -71,7 +71,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             Add | Sub | BitOr | BitAnd | BitXor => {
                 assert!(left.layout.ty.is_unsafe_ptr());
                 assert!(right.layout.ty.is_unsafe_ptr());
-                let ptr = self.scalar_to_ptr(left.to_scalar()?)?;
+                let ptr = left.to_scalar()?.to_pointer(self)?;
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), self.machine.layouts.usize);
                 let right = ImmTy::from_uint(
