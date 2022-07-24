@@ -2843,7 +2843,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     let is_like_elf = !(tcx.sess.target.is_like_osx
                         || tcx.sess.target.is_like_windows
                         || tcx.sess.target.is_like_wasm);
-                    codegen_fn_attrs.flags = if is_like_elf {
+                    codegen_fn_attrs.flags |= if is_like_elf {
                         CodegenFnAttrFlags::USED
                     } else {
                         CodegenFnAttrFlags::USED_LINKER
