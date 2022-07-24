@@ -69,10 +69,8 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
             _ => return,
         };
 
-        let Ok(arg_snip) = cx.sess().source_map().span_to_snippet(arg.span) else { return };
-
         let msg = format!(
-            "for loop over `{arg_snip}`, which is {article} `{ty}`. This is more readably written as an `if let` statement",
+            "for loop over {article} `{ty}`. This is more readably written as an `if let` statement",
         );
 
         cx.struct_span_lint(FOR_LOOP_OVER_FALLIBLES, arg.span, |diag| {
