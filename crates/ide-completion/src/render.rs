@@ -121,7 +121,7 @@ pub(crate) fn render_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        receiver.map_or_else(|| name.clone(), |receiver| format!("{}.{}", receiver, name).into()),
+        field_with_receiver(receiver.as_ref(), &name),
     );
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, ty),
@@ -132,7 +132,7 @@ pub(crate) fn render_field(
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
         .lookup_by(name.clone());
-    item.insert_text(escaped_name);
+    item.insert_text(field_with_receiver(receiver.as_ref(), &escaped_name));
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
             if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
@@ -141,6 +141,11 @@ pub(crate) fn render_field(
         }
     }
     item.build()
+}
+
+fn field_with_receiver(receiver: Option<&hir::Name>, field_name: &str) -> SmolStr {
+    receiver
+        .map_or_else(|| field_name.into(), |receiver| format!("{}.{}", receiver, field_name).into())
 }
 
 pub(crate) fn render_tuple_field(
@@ -152,7 +157,7 @@ pub(crate) fn render_tuple_field(
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
-        receiver.map_or_else(|| field.to_string(), |receiver| format!("{}.{}", receiver, field)),
+        field_with_receiver(receiver.as_ref(), &field.to_string()),
     );
     item.detail(ty.display(ctx.db()).to_string()).lookup_by(field.to_string());
     item.build()
@@ -1873,6 +1878,35 @@ impl r#trait for r#struct { type t$0 }
 struct r#struct {}
 trait r#trait { type r#type; }
 impl r#trait for r#struct { type r#type = $0; }
+"#,
+        )
+    }
+
+    #[test]
+    fn field_access_includes_self() {
+        check_edit(
+            "length",
+            r#"
+struct S {
+    length: i32
+}
+
+impl S {
+    fn some_fn(&self) {
+        let l = len$0
+    }
+}
+"#,
+            r#"
+struct S {
+    length: i32
+}
+
+impl S {
+    fn some_fn(&self) {
+        let l = self.length
+    }
+}
 "#,
         )
     }
