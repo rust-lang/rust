@@ -145,13 +145,16 @@ fn add_missing_impl_members_inner(
             Some(cap) => {
                 let mut cursor = Cursor::Before(first_new_item.syntax());
                 let placeholder;
-                if let ast::AssocItem::Fn(func) = &first_new_item {
-                    if try_gen_trait_body(ctx, func, &trait_, &impl_def).is_none() {
-                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
-                        {
-                            if m.syntax().text() == "todo!()" {
-                                placeholder = m;
-                                cursor = Cursor::Replace(placeholder.syntax());
+                if let DefaultMethods::No = mode {
+                    if let ast::AssocItem::Fn(func) = &first_new_item {
+                        if try_gen_trait_body(ctx, func, &trait_, &impl_def).is_none() {
+                            if let Some(m) =
+                                func.syntax().descendants().find_map(ast::MacroCall::cast)
+                            {
+                                if m.syntax().text() == "todo!()" {
+                                    placeholder = m;
+                                    cursor = Cursor::Replace(placeholder.syntax());
+                                }
                             }
                         }
                     }
