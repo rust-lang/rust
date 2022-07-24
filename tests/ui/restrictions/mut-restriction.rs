@@ -1,4 +1,4 @@
-#![feature(restrictions)]
+#![feature(mut_restriction)]
 
 pub mod foo {
     #[derive(Default)]

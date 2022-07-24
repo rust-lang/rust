@@ -1,0 +1,11 @@
+error[E0658]: restrictions are experimental
+  --> $DIR/mut-feature-gate.rs:9:9
+   |
+LL |     pub mut(self) alpha: u8,
+   |         ^^^^^^^^^
+   |
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

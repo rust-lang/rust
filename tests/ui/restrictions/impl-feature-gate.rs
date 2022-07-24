@@ -1,9 +1,9 @@
-// gate-test-restrictions
+// gate-test-impl_restriction
 // compile-flags: --crate-type=lib
 // revisions: with_gate without_gate
 //[with_gate] check-pass
 
-#![cfg_attr(with_gate, feature(restrictions))]
+#![cfg_attr(with_gate, feature(impl_restriction))]
 
 pub impl trait Foo {} //[without_gate]~ ERROR
 pub impl(crate) trait Bar {} //[without_gate]~ ERROR

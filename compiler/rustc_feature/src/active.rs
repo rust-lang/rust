@@ -426,6 +426,8 @@ declare_features! (
     (active, half_open_range_patterns_in_slices, "1.66.0", Some(67264), None),
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
+    /// Allows restricting the implementation of traits.
+    (active, impl_restriction, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows `impl Trait` to be used inside associated types (RFC 2515).
     (active, impl_trait_in_assoc_type, "1.70.0", Some(63063), None),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
@@ -462,6 +464,8 @@ declare_features! (
     (active, more_qualified_paths, "1.54.0", Some(86935), None),
     /// Allows the `#[must_not_suspend]` attribute.
     (active, must_not_suspend, "1.57.0", Some(83310), None),
+    /// Allows restricting the mutation of fields.
+    (active, mut_restriction, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
     /// Allows specifying the as-needed link modifier
@@ -505,8 +509,6 @@ declare_features! (
     (incomplete, repr128, "1.16.0", Some(56071), None),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (active, repr_simd, "1.4.0", Some(27731), None),
-    /// Allows restricting the implementation of traits and mutability of fields.
-    (active, restrictions, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows return-position `impl Trait` in traits.
     (active, return_position_impl_trait_in_trait, "1.65.0", Some(91611), None),
     /// Allows bounding the return type of AFIT/RPITIT.

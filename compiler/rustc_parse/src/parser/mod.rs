@@ -1464,6 +1464,7 @@ impl<'a> Parser<'a> {
     fn parse_restriction(
         &mut self,
         kw: Symbol,
+        feature_gate: Option<Symbol>,
         action: &str,
         fbt: FollowedByType,
     ) -> PResult<'a, Restriction> {
@@ -1475,7 +1476,9 @@ impl<'a> Parser<'a> {
         }
 
         let gate = |span| {
-            self.sess.gated_spans.gate(sym::restrictions, span);
+            if let Some(feature_gate) = feature_gate {
+                self.sess.gated_spans.gate(feature_gate, span);
+            }
             span
         };
 

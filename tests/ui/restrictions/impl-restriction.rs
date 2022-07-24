@@ -1,6 +1,6 @@
 // compile-flags: --crate-type=lib
 
-#![feature(restrictions)]
+#![feature(impl_restriction)]
 
 pub mod foo {
     pub mod bar {
