@@ -37,9 +37,8 @@ LL |     for _ in [0; 0].iter().next() {}
    |
 help: to iterate over `[0; 0].iter()` remove the call to `next`
    |
-LL -     for _ in [0; 0].iter().next() {}
-LL +     for _ in [0; 0].iter() {}
-   |
+LL |     for _ in [0; 0].iter().by_ref() {}
+   |                           ~~~~~~~~~
 help: consider using `if let` to clear intent
    |
 LL |     if let Some(_) = [0; 0].iter().next() {}

@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
                 warn.span_suggestion(
                     recv.span.between(arg.span.shrink_to_hi()),
                     format!("to iterate over `{recv_snip}` remove the call to `next`"),
-                    "",
+                    ".by_ref()",
                     Applicability::MaybeIncorrect
                 );
             } else {
