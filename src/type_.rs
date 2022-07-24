@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use gccjit::{RValue, Struct, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_middle::{bug, ty};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -289,4 +289,15 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
     }
 
     (result, packed)
+}
+
+impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn set_type_metadata(&self, _function: RValue<'gcc>, _typeid: String) {
+        // Unsupported.
+    }
+
+    fn typeid_metadata(&self, _typeid: String) -> RValue<'gcc> {
+        // Unsupported.
+        self.context.new_rvalue_from_int(self.int_type, 0)
+    }
 }
