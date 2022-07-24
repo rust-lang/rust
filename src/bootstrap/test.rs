@@ -379,19 +379,22 @@ impl Step for RustAnalyzer {
 
         builder.ensure(tool::RustAnalyzer { compiler, target: self.host }).expect("in-tree tool");
 
-        let path = "src/tools/rust-analyzer";
+        let workspace_path = "src/tools/rust-analyzer";
+        // until the whole RA test suite runs on `i686`, we only run
+        // `proc-macro-srv` tests
+        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
             Mode::ToolStd,
             host,
             "test",
-            path,
+            crate_path,
             SourceType::InTree,
-            &["rust-analyzer/in-rust-tree".to_owned()],
+            &["sysroot-abi".to_owned()],
         );
 
-        let dir = builder.src.join(path);
+        let dir = builder.src.join(workspace_path);
         // needed by rust-analyzer to find its own text fixtures, cf.
         // https://github.com/rust-analyzer/expect-test/issues/33
         cargo.env("CARGO_WORKSPACE_DIR", &dir);
