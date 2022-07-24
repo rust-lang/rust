@@ -84,4 +84,10 @@ fn main() {
     let _ = x.to_string();
     let _ = format!("{x:?}"); // Don't lint on debug
     let _ = x.to_string();
+
+    // Issue #9234
+    let abc = "abc";
+    let _ = abc.to_string();
+    let xx = "xx";
+    let _ = xx.to_string();
 }

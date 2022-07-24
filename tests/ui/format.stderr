@@ -111,5 +111,17 @@ error: useless use of `format!`
 LL |     let _ = format!("{y}", y = x);
    |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.to_string()`
 
-error: aborting due to 17 previous errors
+error: useless use of `format!`
+  --> $DIR/format.rs:92:13
+   |
+LL |     let _ = format!("{abc}");
+   |             ^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `abc.to_string()`
+
+error: useless use of `format!`
+  --> $DIR/format.rs:94:13
+   |
+LL |     let _ = format!("{xx}");
+   |             ^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `xx.to_string()`
+
+error: aborting due to 19 previous errors
 
