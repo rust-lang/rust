@@ -86,4 +86,10 @@ fn main() {
     let _ = format!("{x}");
     let _ = format!("{x:?}"); // Don't lint on debug
     let _ = format!("{y}", y = x);
+
+    // Issue #9234
+    let abc = "abc";
+    let _ = format!("{abc}");
+    let xx = "xx";
+    let _ = format!("{xx}");
 }
