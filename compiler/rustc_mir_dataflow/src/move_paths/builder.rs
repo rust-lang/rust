@@ -1,5 +1,5 @@
+use crate::move_paths::FxHashMap;
 use crate::un_derefer::UnDerefer;
-use rustc_data_structures::stable_map::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
