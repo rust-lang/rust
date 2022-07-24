@@ -311,18 +311,10 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
-    CompareImplConstObligation,
-
-    /// Error derived when matching traits/impls; see ObligationCause for more details
-    CompareImplMethodObligation {
+    CompareImplItemObligation {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
-    },
-
-    /// Error derived when matching traits/impls; see ObligationCause for more details
-    CompareImplTypeObligation {
-        impl_item_def_id: LocalDefId,
-        trait_item_def_id: DefId,
+        kind: ty::AssocKind,
     },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl

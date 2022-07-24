@@ -1150,17 +1150,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .expect("missing associated type");
 
         if !assoc_item.vis.is_accessible_from(def_scope, tcx) {
-            let kind = match assoc_item.kind {
-                ty::AssocKind::Type => "type",
-                ty::AssocKind::Const => "const",
-                _ => unreachable!(),
-            };
             tcx.sess
                 .struct_span_err(
                     binding.span,
-                    &format!("associated {kind} `{}` is private", binding.item_name),
+                    &format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label(binding.span, &format!("private associated {kind}"))
+                .span_label(binding.span, &format!("private {}", assoc_item.kind))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);

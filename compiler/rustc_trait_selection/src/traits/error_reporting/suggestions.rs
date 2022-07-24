@@ -2682,11 +2682,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::CompareImplMethodObligation { trait_item_def_id, .. } => {
+            ObligationCauseCode::CompareImplItemObligation { trait_item_def_id, kind, .. } => {
                 let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
-                    "the requirement `{}` appears on the impl method `{}` but not on the \
-                     corresponding trait method",
+                    "the requirement `{}` appears on the `impl`'s {kind} `{}` but not on the \
+                     corresponding trait's {kind}",
                     predicate, item_name,
                 );
                 let sp = self
@@ -2697,7 +2697,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let mut assoc_span: MultiSpan = sp.into();
                 assoc_span.push_span_label(
                     sp,
-                    format!("this trait method doesn't have the requirement `{}`", predicate),
+                    format!("this trait's {kind} doesn't have the requirement `{}`", predicate),
                 );
                 if let Some(ident) = self
                     .tcx
@@ -2707,38 +2707,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     assoc_span.push_span_label(ident.span, "in this trait");
                 }
                 err.span_note(assoc_span, &msg);
-            }
-            ObligationCauseCode::CompareImplTypeObligation { trait_item_def_id, .. } => {
-                let item_name = self.tcx.item_name(trait_item_def_id);
-                let msg = format!(
-                    "the requirement `{}` appears on the associated impl type `{}` but not on the \
-                     corresponding associated trait type",
-                    predicate, item_name,
-                );
-                let sp = self.tcx.def_span(trait_item_def_id);
-                let mut assoc_span: MultiSpan = sp.into();
-                assoc_span.push_span_label(
-                    sp,
-                    format!(
-                        "this trait associated type doesn't have the requirement `{}`",
-                        predicate,
-                    ),
-                );
-                if let Some(ident) = self
-                    .tcx
-                    .opt_associated_item(trait_item_def_id)
-                    .and_then(|i| self.tcx.opt_item_ident(i.container.id()))
-                {
-                    assoc_span.push_span_label(ident.span, "in this trait");
-                }
-                err.span_note(assoc_span, &msg);
-            }
-            ObligationCauseCode::CompareImplConstObligation => {
-                err.note(&format!(
-                    "the requirement `{}` appears on the associated impl constant \
-                     but not on the corresponding associated trait constant",
-                    predicate
-                ));
             }
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");

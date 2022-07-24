@@ -90,9 +90,10 @@ fn compare_predicate_entailment<'tcx>(
     let mut cause = ObligationCause::new(
         impl_m_span,
         impl_m_hir_id,
-        ObligationCauseCode::CompareImplMethodObligation {
+        ObligationCauseCode::CompareImplItemObligation {
             impl_item_def_id: impl_m.def_id.expect_local(),
             trait_item_def_id: trait_m.def_id,
+            kind: impl_m.kind,
         },
     );
 
@@ -223,9 +224,10 @@ fn compare_predicate_entailment<'tcx>(
             let cause = ObligationCause::new(
                 span,
                 impl_m_hir_id,
-                ObligationCauseCode::CompareImplMethodObligation {
+                ObligationCauseCode::CompareImplItemObligation {
                     impl_item_def_id: impl_m.def_id.expect_local(),
                     trait_item_def_id: trait_m.def_id,
+                    kind: impl_m.kind,
                 },
             );
             ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
@@ -1079,7 +1081,11 @@ pub(crate) fn compare_const_impl<'tcx>(
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
-            ObligationCauseCode::CompareImplConstObligation,
+            ObligationCauseCode::CompareImplItemObligation {
+                impl_item_def_id: impl_c.def_id.expect_local(),
+                trait_item_def_id: trait_c.def_id,
+                kind: impl_c.kind,
+            },
         );
 
         // There is no "body" here, so just pass dummy id.
@@ -1249,9 +1255,10 @@ fn compare_type_predicate_entailment<'tcx>(
             let cause = ObligationCause::new(
                 span,
                 impl_ty_hir_id,
-                ObligationCauseCode::CompareImplTypeObligation {
+                ObligationCauseCode::CompareImplItemObligation {
                     impl_item_def_id: impl_ty.def_id.expect_local(),
                     trait_item_def_id: trait_ty.def_id,
+                    kind: impl_ty.kind,
                 },
             );
             ocx.register_obligations(obligations);

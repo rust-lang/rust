@@ -224,6 +224,7 @@ TrivialTypeTraversalAndLiftImpls! {
     // general `Region`.
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
+    crate::ty::AssocKind,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
