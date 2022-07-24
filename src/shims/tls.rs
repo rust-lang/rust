@@ -241,15 +241,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // (that would be basically https://github.com/rust-lang/miri/issues/450),
         // we specifically look up the static in libstd that we know is placed
         // in that section.
-        let thread_callback = this.eval_path_scalar(&[
-            "std",
-            "sys",
-            "windows",
-            "thread_local_key",
-            "p_thread_callback",
-        ])?;
-        let thread_callback =
-            this.get_ptr_fn(this.scalar_to_ptr(thread_callback)?)?.as_instance()?;
+        let thread_callback = this
+            .eval_path_scalar(&["std", "sys", "windows", "thread_local_key", "p_thread_callback"])?
+            .to_pointer(this)?;
+        let thread_callback = this.get_ptr_fn(thread_callback)?.as_instance()?;
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
         let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_THREAD_DETACH"])?;

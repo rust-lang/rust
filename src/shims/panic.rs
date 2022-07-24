@@ -26,7 +26,7 @@ use helpers::check_arg_count;
 #[derive(Debug)]
 pub struct CatchUnwindData<'tcx> {
     /// The `catch_fn` callback to call in case of a panic.
-    catch_fn: Scalar<Provenance>,
+    catch_fn: Pointer<Option<Provenance>>,
     /// The `data` argument for that callback.
     data: Scalar<Provenance>,
     /// The return place from the original call to `try`.
@@ -86,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let [try_fn, data, catch_fn] = check_arg_count(args)?;
         let try_fn = this.read_pointer(try_fn)?;
         let data = this.read_scalar(data)?.check_init()?;
-        let catch_fn = this.read_scalar(catch_fn)?.check_init()?;
+        let catch_fn = this.read_pointer(catch_fn)?;
 
         // Now we make a function call, and pass `data` as first and only argument.
         let f_instance = this.get_ptr_fn(try_fn)?.as_instance()?;
@@ -140,8 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let payload = this.active_thread_mut().panic_payload.take().unwrap();
 
             // Push the `catch_fn` stackframe.
-            let f_instance =
-                this.get_ptr_fn(this.scalar_to_ptr(catch_unwind.catch_fn)?)?.as_instance()?;
+            let f_instance = this.get_ptr_fn(catch_unwind.catch_fn)?.as_instance()?;
             trace!("catch_fn: {:?}", f_instance);
             this.call_function(
                 f_instance,

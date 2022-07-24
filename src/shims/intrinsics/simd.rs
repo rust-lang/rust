@@ -201,7 +201,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             this.saturating_arith(mir_op, &left, &right)?
                         }
                         Op::WrappingOffset => {
-                            let ptr = this.scalar_to_ptr(left.to_scalar()?)?;
+                            let ptr = left.to_scalar()?.to_pointer(this)?;
                             let offset_count = right.to_scalar()?.to_machine_isize(this)?;
                             let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
 

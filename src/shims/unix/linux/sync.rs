@@ -121,7 +121,7 @@ pub fn futex<'tcx>(
             // The API requires `addr` to be a 4-byte aligned pointer, and will
             // use the 4 bytes at the given address as an (atomic) i32.
             this.check_ptr_access_align(
-                this.scalar_to_ptr(addr_scalar)?,
+                addr_scalar.to_pointer(this)?,
                 Size::from_bytes(4),
                 Align::from_bytes(4).unwrap(),
                 CheckInAllocMsg::MemoryAccessTest,
