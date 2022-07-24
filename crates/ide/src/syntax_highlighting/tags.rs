@@ -134,6 +134,7 @@ impl HlTag {
                 SymbolKind::Const => "constant",
                 SymbolKind::ConstParam => "const_param",
                 SymbolKind::Derive => "derive",
+                SymbolKind::DeriveHelper => "derive_helper",
                 SymbolKind::Enum => "enum",
                 SymbolKind::Field => "field",
                 SymbolKind::Function => "function",

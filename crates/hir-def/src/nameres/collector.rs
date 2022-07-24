@@ -18,7 +18,7 @@ use hir_expand::{
     ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
     MacroDefKind,
 };
-use itertools::Itertools;
+use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -1055,7 +1055,7 @@ impl DefCollector<'_> {
         };
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
-            let resolver = |path| {
+            let resolver2 = |path| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
                     self.db,
                     ResolveMode::Other,
@@ -1063,8 +1063,12 @@ impl DefCollector<'_> {
                     &path,
                     BuiltinShadowMode::Module,
                 );
-                resolved_res.resolved_def.take_macros().map(|it| macro_id_to_def_id(self.db, it))
+                resolved_res
+                    .resolved_def
+                    .take_macros()
+                    .map(|it| (it, macro_id_to_def_id(self.db, it)))
             };
+            let resolver = |path| resolver2(path).map(|(_, it)| it);
 
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
@@ -1083,21 +1087,37 @@ impl DefCollector<'_> {
                     }
                 }
                 MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos } => {
-                    let call_id = derive_macro_as_call_id(
+                    let id = derive_macro_as_call_id(
                         self.db,
                         ast_id,
                         *derive_attr,
                         *derive_pos as u32,
                         self.def_map.krate,
-                        &resolver,
+                        &resolver2,
                     );
-                    if let Ok(call_id) = call_id {
+
+                    if let Ok((macro_id, def_id, call_id)) = id {
                         self.def_map.modules[directive.module_id].scope.set_derive_macro_invoc(
                             ast_id.ast_id,
                             call_id,
                             *derive_attr,
                             *derive_pos,
                         );
+                        // Record its helper attributes.
+                        if def_id.krate != self.def_map.krate {
+                            let def_map = self.db.crate_def_map(def_id.krate);
+                            if let Some(helpers) = def_map.exported_derives.get(&def_id) {
+                                self.def_map
+                                    .derive_helpers_in_scope
+                                    .entry(ast_id.ast_id.map(|it| it.upcast()))
+                                    .or_default()
+                                    .extend(izip!(
+                                        helpers.iter().cloned(),
+                                        iter::repeat(macro_id),
+                                        iter::repeat(call_id),
+                                    ));
+                            }
+                        }
 
                         push_resolved(directive, call_id);
                         res = ReachedFixedPoint::No;
@@ -1129,7 +1149,7 @@ impl DefCollector<'_> {
 
                     if let Some(ident) = path.as_ident() {
                         if let Some(helpers) = self.def_map.derive_helpers_in_scope.get(&ast_id) {
-                            if helpers.iter().any(|(it, _)| it == ident) {
+                            if helpers.iter().any(|(it, ..)| it == ident) {
                                 cov_mark::hit!(resolved_derive_helper);
                                 // Resolved to derive helper. Collect the item's attributes again,
                                 // starting after the derive helper.
@@ -1144,7 +1164,7 @@ impl DefCollector<'_> {
                     };
                     if matches!(
                         def,
-                        MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. }
+                        MacroDefId { kind:MacroDefKind::BuiltInAttr(expander, _),.. }
                         if expander.is_derive()
                     ) {
                         // Resolved to `#[derive]`
@@ -1311,20 +1331,6 @@ impl DefCollector<'_> {
             };
 
             self.def_map.diagnostics.push(diag);
-        }
-
-        // If we've just resolved a derive, record its helper attributes.
-        if let MacroCallKind::Derive { ast_id, .. } = &loc.kind {
-            if loc.def.krate != self.def_map.krate {
-                let def_map = self.db.crate_def_map(loc.def.krate);
-                if let Some(helpers) = def_map.exported_derives.get(&loc.def) {
-                    self.def_map
-                        .derive_helpers_in_scope
-                        .entry(ast_id.map(|it| it.upcast()))
-                        .or_default()
-                        .extend(helpers.iter().cloned().zip(std::iter::repeat(macro_call_id)));
-                }
-            }
         }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.

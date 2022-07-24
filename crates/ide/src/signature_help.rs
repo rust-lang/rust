@@ -237,7 +237,8 @@ fn signature_help_for_generics(
             | hir::PathResolution::Local(_)
             | hir::PathResolution::TypeParam(_)
             | hir::PathResolution::ConstParam(_)
-            | hir::PathResolution::SelfType(_) => return None,
+            | hir::PathResolution::SelfType(_)
+            | hir::PathResolution::DeriveHelper(_) => return None,
         };
 
         generic_def

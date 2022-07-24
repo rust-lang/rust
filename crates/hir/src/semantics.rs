@@ -29,9 +29,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, BindingMode, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
-    HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path,
-    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Access, BindingMode, BuiltinAttr, Callable, ConstParam, Crate, DeriveHelper, Field, Function,
+    HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef,
+    Name, Path, ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +47,7 @@ pub enum PathResolution {
     SelfType(Impl),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
+    DeriveHelper(DeriveHelper),
 }
 
 impl PathResolution {
@@ -71,6 +72,7 @@ impl PathResolution {
             PathResolution::BuiltinAttr(_)
             | PathResolution::ToolModule(_)
             | PathResolution::Local(_)
+            | PathResolution::DeriveHelper(_)
             | PathResolution::ConstParam(_) => None,
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
@@ -856,7 +858,9 @@ impl<'db> SemanticsImpl<'db> {
                             None
                         }
                     }?;
-
+                    if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(token.file_id, &adt))) {
+                        return None;
+                    }
                     // Not an attribute, nor a derive, so it's either a builtin or a derive helper
                     // Try to resolve to a derive helper and downmap
                     let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
@@ -865,7 +869,7 @@ impl<'db> SemanticsImpl<'db> {
                         def_map.derive_helpers_in_scope(InFile::new(token.file_id, id))?;
                     let item = Some(adt.into());
                     let mut res = None;
-                    for (_, derive) in helpers.iter().filter(|(helper, _)| *helper == attr_name) {
+                    for (.., derive) in helpers.iter().filter(|(helper, ..)| *helper == attr_name) {
                         res = res.or(process_expansion_for_token(
                             &mut stack,
                             derive.as_file(),

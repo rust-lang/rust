@@ -2252,6 +2252,17 @@ impl Local {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DeriveHelper {
+    pub(crate) derive: MacroId,
+}
+
+impl DeriveHelper {
+    pub fn derive(&self) -> Macro {
+        Macro { id: self.derive.into() }
+    }
+}
+
 // FIXME: Wrong name? This is could also be a registered attribute
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BuiltinAttr {

@@ -76,7 +76,7 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, ModuleId, ProcMacroId,
+    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, MacroId, ModuleId, ProcMacroId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -108,7 +108,7 @@ pub struct DefMap {
     proc_macro_loading_error: Option<Box<str>>,
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
-    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroCallId)>>,
+    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<(Name, MacroId, MacroCallId)>>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -299,7 +299,10 @@ impl DefMap {
         self.modules.iter()
     }
 
-    pub fn derive_helpers_in_scope(&self, id: AstId<ast::Adt>) -> Option<&[(Name, MacroCallId)]> {
+    pub fn derive_helpers_in_scope(
+        &self,
+        id: AstId<ast::Adt>,
+    ) -> Option<&[(Name, MacroId, MacroCallId)]> {
         self.derive_helpers_in_scope.get(&id.map(|it| it.upcast())).map(Deref::deref)
     }
 
