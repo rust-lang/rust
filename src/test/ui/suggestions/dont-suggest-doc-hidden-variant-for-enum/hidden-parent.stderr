@@ -8,10 +8,10 @@ LL |     let x: Option<i32> = 1i32;
    |
    = note: expected enum `Option<i32>`
               found type `i32`
-help: try wrapping the expression in `hidden_parent::__private::Some`
+help: try wrapping the expression in `Some`
    |
-LL |     let x: Option<i32> = hidden_parent::__private::Some(1i32);
-   |                          +++++++++++++++++++++++++++++++    +
+LL |     let x: Option<i32> = Some(1i32);
+   |                          +++++    +
 
 error: aborting due to previous error
 
