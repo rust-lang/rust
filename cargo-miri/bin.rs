@@ -761,17 +761,19 @@ fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
             "WARNING: Ignoring `RUSTC` environment variable; set `MIRI` if you want to control the binary used as the driver."
         );
     }
-    // Build scripts (and also cargo: https://github.com/rust-lang/cargo/issues/10885) will invoke `rustc` even when `RUSTC_WRAPPER` is set.
-    // To make sure everything is coherent, we want that to be the Miri driver, but acting as rustc, on the target level.
-    // (Target, rather than host, is needed for cross-interpretation situations.) This is not a
-    // perfect emulation of real rustc (it might be unable to produce binaries since the sysroot is
-    // check-only), but it's as close as we can get, and it's good enough for autocfg.
+    // Build scripts (and also cargo: https://github.com/rust-lang/cargo/issues/10885) will invoke
+    // `rustc` even when `RUSTC_WRAPPER` is set. To make sure everything is coherent, we want that
+    // to be the Miri driver, but acting as rustc, on the target level. (Target, rather than host,
+    // is needed for cross-interpretation situations.) This is not a perfect emulation of real rustc
+    // (it might be unable to produce binaries since the sysroot is check-only), but it's as close
+    // as we can get, and it's good enough for autocfg.
     //
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
     // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
-    // there would be a collision with other invocations of cargo-miri (as rustdoc or as runner).
-    // We explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
-    // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host builds.
+    // there would be a collision with other invocations of cargo-miri (as rustdoc or as runner). We
+    // explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
+    // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host
+    // builds.
     cmd.env("RUSTC", &fs::canonicalize(find_miri()).unwrap());
     cmd.env("MIRI_BE_RUSTC", "target"); // we better remember to *unset* this in the other phases!
 
@@ -850,7 +852,8 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
-    let print = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV"); // whether this is cargo/xargo invoking rustc to get some infos
+    // Determine whether this is cargo/xargo invoking rustc to get some infos.
+    let info_query = get_arg_flag_value("--print").is_some() || has_arg_flag("-vV");
 
     let store_json = |info: CrateRunInfo| {
         // Create a stub .d file to stop Cargo from "rebuilding" the crate:
@@ -872,7 +875,7 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         info.store(&out_filename("", ".exe"));
     };
 
-    let runnable_crate = !print && is_runnable_crate();
+    let runnable_crate = !info_query && is_runnable_crate();
 
     if runnable_crate && target_crate {
         assert!(
@@ -934,7 +937,7 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     let mut emit_link_hack = false;
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
-    if !print && target_crate {
+    if !info_query && target_crate {
         // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
         let emit_flag = "--emit";
         while let Some(arg) = args.next() {
@@ -968,8 +971,9 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             cmd.arg("-C").arg("panic=abort");
         }
     } else {
-        // For host crates (but not when we are printing), we might still have to set the sysroot.
-        if !print {
+        // For host crates (but not when we are just printing some info),
+        // we might still have to set the sysroot.
+        if !info_query {
             // When we're running `cargo-miri` from `x.py` we need to pass the sysroot explicitly
             // due to bootstrap complications.
             if let Some(sysroot) = std::env::var_os("MIRI_HOST_SYSROOT") {
@@ -990,7 +994,7 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     // Run it.
     if verbose > 0 {
         eprintln!(
-            "[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate} print={print}"
+            "[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate} info_query={info_query}"
         );
     }
     debug_cmd("[cargo-miri rustc]", verbose, &cmd);
@@ -1030,7 +1034,9 @@ fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhas
 
     let binary = binary_args.next().unwrap();
     let file = File::open(&binary)
-        .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
+        .unwrap_or_else(|_| show_error(format!(
+            "file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary
+        )));
     let file = BufReader::new(file);
 
     let info = serde_json::from_reader(file).unwrap_or_else(|_| {
