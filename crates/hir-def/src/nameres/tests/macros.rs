@@ -439,14 +439,7 @@ macro_rules! baz {
             m7: t
             ok_double_macro_use_shadow: v
 
-            crate::m7
-
             crate::m1
-
-            crate::m5
-            m6: t
-
-            crate::m5::m6
 
             crate::m2
 
@@ -462,6 +455,13 @@ macro_rules! baz {
             ok_shadow_deep: v
 
             crate::m3::m5
+
+            crate::m5
+            m6: t
+
+            crate::m5::m6
+
+            crate::m7
         "#]],
     );
     // FIXME: should not see `NotFoundBefore`

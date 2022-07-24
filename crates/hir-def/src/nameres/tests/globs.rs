@@ -315,8 +315,13 @@ mod d {
             c: t
             d: t
 
-            crate::d
-            Y: t v
+            crate::a
+            foo: t
+
+            crate::a::foo
+            X: t v
+
+            crate::b
             foo: t
 
             crate::c
@@ -325,14 +330,9 @@ mod d {
             crate::c::foo
             Y: t v
 
-            crate::b
+            crate::d
+            Y: t v
             foo: t
-
-            crate::a
-            foo: t
-
-            crate::a::foo
-            X: t v
         "#]],
     );
 }
