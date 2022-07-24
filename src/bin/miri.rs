@@ -27,7 +27,7 @@ use rustc_middle::{
     },
     ty::{query::ExternProviders, TyCtxt},
 };
-use rustc_session::{search_paths::PathKind, CtfeBacktrace};
+use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
 
 use miri::{BacktraceStyle, ProvenanceMode};
 
@@ -60,6 +60,10 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             init_late_loggers(tcx);
+            if !tcx.sess.crate_types().contains(&CrateType::Executable) {
+                tcx.sess.fatal("miri only makes sense on bin crates");
+            }
+
             let (entry_def_id, entry_type) = if let Some(entry_def) = tcx.entry_fn(()) {
                 entry_def
             } else {
@@ -204,9 +208,9 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
     }
 }
 
-/// Returns the "default sysroot" that Miri will use if no `--sysroot` flag is set.
+/// Returns the "default sysroot" that Miri will use for host things if no `--sysroot` flag is set.
 /// Should be a compile-time constant.
-fn compile_time_sysroot() -> Option<String> {
+fn host_sysroot() -> Option<String> {
     if option_env!("RUSTC_STAGE").is_some() {
         // This is being built as part of rustc, and gets shipped with rustup.
         // We can rely on the sysroot computation in librustc_session.
@@ -227,7 +231,7 @@ fn compile_time_sysroot() -> Option<String> {
                 if toolchain_runtime != toolchain {
                     show_error(format!(
                         "This Miri got built with local toolchain `{toolchain}`, but now is being run under a different toolchain. \n\
-                    Make sure to run Miri in the toolchain it got built with, e.g. via `cargo +{toolchain} miri`."
+                        Make sure to run Miri in the toolchain it got built with, e.g. via `cargo +{toolchain} miri`."
                     ));
                 }
             }
@@ -246,25 +250,42 @@ fn compile_time_sysroot() -> Option<String> {
 /// Execute a compiler with the given CLI arguments and callbacks.
 fn run_compiler(
     mut args: Vec<String>,
+    target_crate: bool,
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
-    insert_default_args: bool,
 ) -> ! {
     // Make sure we use the right default sysroot. The default sysroot is wrong,
     // because `get_or_default_sysroot` in `librustc_session` bases that on `current_exe`.
     //
-    // Make sure we always call `compile_time_sysroot` as that also does some sanity-checks
-    // of the environment we were built in.
-    // FIXME: Ideally we'd turn a bad build env into a compile-time error via CTFE or so.
-    if let Some(sysroot) = compile_time_sysroot() {
-        let sysroot_flag = "--sysroot";
-        if !args.iter().any(|e| e == sysroot_flag) {
+    // Make sure we always call `host_sysroot` as that also does some sanity-checks
+    // of the environment we were built in and whether it matches what we are running in.
+    let host_default_sysroot = host_sysroot();
+    // Now see if we even need to set something.
+    let sysroot_flag = "--sysroot";
+    if !args.iter().any(|e| e == sysroot_flag) {
+        // No sysroot was set, let's see if we have a custom default we want to configure.
+        let default_sysroot = if target_crate {
+            // Using the built-in default here would be plain wrong, so we *require*
+            // the env var to make sure things make sense.
+            Some(env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
+                show_error(format!(
+                    "Miri was invoked in 'target' mode without `MIRI_SYSROOT` or `--sysroot` being set"
+                ))
+            }))
+        } else {
+            host_default_sysroot
+        };
+        if let Some(sysroot) = default_sysroot {
             // We need to overwrite the default that librustc_session would compute.
             args.push(sysroot_flag.to_owned());
             args.push(sysroot);
         }
     }
 
-    if insert_default_args {
+    // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building
+    // a "host" crate. That may cause procedural macros (and probably build scripts) to
+    // depend on Miri-only symbols, such as `miri_resolve_frame`:
+    // https://github.com/rust-lang/miri/issues/1760
+    if target_crate {
         // Some options have different defaults in Miri than in plain rustc; apply those by making
         // them the first arguments after the binary name (but later arguments can overwrite them).
         args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
@@ -302,13 +323,8 @@ fn main() {
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
         run_compiler(
             env::args().collect(),
+            target_crate,
             &mut MiriBeRustCompilerCalls { target_crate },
-            // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building
-            // a "host" crate. That may cause procedural macros (and probably build scripts) to
-            // depend on Miri-only symbols, such as `miri_resolve_frame`:
-            // https://github.com/rust-lang/miri/issues/1760
-            #[rustfmt::skip]
-            /* insert_default_args: */ target_crate,
         )
     }
 
@@ -502,9 +518,5 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
-    run_compiler(
-        rustc_args,
-        &mut MiriCompilerCalls { miri_config },
-        /* insert_default_args: */ true,
-    )
+    run_compiler(rustc_args, /* target_crate: */ true, &mut MiriCompilerCalls { miri_config })
 }

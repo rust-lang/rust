@@ -131,7 +131,11 @@ export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
 
 # Build a sysroot and set MIRI_SYSROOT to use it. Arguments are passed to `cargo miri setup`.
 build_sysroot() {
-    export MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"
+    if ! MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"; then
+        echo "'cargo miri setup' failed"
+        exit 1
+    fi
+    export MIRI_SYSROOT
 }
 
 # Prepare and set MIRI_SYSROOT. Respects `MIRI_TEST_TARGET` and takes into account
@@ -201,7 +205,7 @@ run)
     $CARGO build $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml
     find_sysroot
     # Then run the actual command.
-    exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- --sysroot "$MIRI_SYSROOT" $MIRIFLAGS "$@"
+    exec $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/Cargo.toml -- $MIRIFLAGS "$@"
     ;;
 fmt)
     find "$MIRIDIR" -not \( -name target -prune \) -name '*.rs' \

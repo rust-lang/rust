@@ -205,12 +205,6 @@ fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut
     }
 }
 
-fn forward_miri_sysroot(cmd: &mut Command) {
-    let sysroot = env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
-    cmd.arg("--sysroot");
-    cmd.arg(sysroot);
-}
-
 /// Escapes `s` in a way that is suitable for using it as a string literal in TOML syntax.
 fn escape_for_toml(s: &str) -> String {
     // We want to surround this string in quotes `"`. So we first escape all quotes,
@@ -237,8 +231,15 @@ fn miri() -> Command {
     Command::new(find_miri())
 }
 
+fn miri_for_host() -> Command {
+    let mut cmd = miri();
+    cmd.env("MIRI_BE_RUSTC", "host");
+    cmd
+}
+
 fn version_info() -> VersionMeta {
-    VersionMeta::for_command(miri()).expect("failed to determine underlying rustc version of Miri")
+    VersionMeta::for_command(miri_for_host())
+        .expect("failed to determine underlying rustc version of Miri")
 }
 
 fn cargo() -> Command {
@@ -336,7 +337,7 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
             a => show_error(format!("invalid answer `{}`", a)),
         };
     } else {
-        println!("Running `{:?}` to {}.", cmd, text);
+        eprintln!("Running `{:?}` to {}.", cmd, text);
     }
 
     if cmd.status().unwrap_or_else(|_| panic!("failed to execute {:?}", cmd)).success().not() {
@@ -364,7 +365,7 @@ fn write_to_file(filename: &Path, content: &str) {
 /// Performs the setup required to make `cargo miri` work: Getting a custom-built libstd. Then sets
 /// `MIRI_SYSROOT`. Skipped if `MIRI_SYSROOT` is already set, in which case we expect the user has
 /// done all this already.
-fn setup(subcommand: &MiriCommand) {
+fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
     let only_setup = matches!(subcommand, MiriCommand::Setup);
     let ask_user = !only_setup;
     let print_sysroot = only_setup && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
@@ -398,8 +399,10 @@ fn setup(subcommand: &MiriCommand) {
         }
         None => {
             // Check for `rust-src` rustup component.
-            let output =
-                miri().args(&["--print", "sysroot"]).output().expect("failed to determine sysroot");
+            let output = miri_for_host()
+                .args(&["--print", "sysroot"])
+                .output()
+                .expect("failed to determine sysroot");
             if !output.status.success() {
                 show_error(format!(
                     "Failed to determine sysroot; Miri said:\n{}",
@@ -472,18 +475,21 @@ path = "lib.rs"
     );
     write_to_file(&dir.join("lib.rs"), "#![no_std]");
 
-    // Determine architectures.
-    // We always need to set a target so rustc bootstrap can tell apart host from target crates.
-    let host = version_info().host;
-    let target = get_arg_flag_value("--target");
-    let target = target.as_ref().unwrap_or(&host);
+    // Figure out where xargo will build its stuff.
+    // Unfortunately, it puts things into a different directory when the
+    // architecture matches the host.
+    let sysroot = if target == host { dir.join("HOST") } else { PathBuf::from(dir) };
+    // Make sure all target-level Miri invocations know their sysroot.
+    std::env::set_var("MIRI_SYSROOT", &sysroot);
+
     // Now invoke xargo.
     let mut command = xargo_check();
     command.arg("check").arg("-q");
-    command.arg("--target").arg(target);
     command.current_dir(&dir);
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
+    // We always need to set a target so rustc bootstrap can tell apart host from target crates.
+    command.arg("--target").arg(target);
     // Use Miri as rustc to build a libstd compatible with us (and use the right flags).
     // However, when we are running in bootstrap, we cannot just overwrite `RUSTC`,
     // because we still need bootstrap to distinguish between host and target crates.
@@ -523,6 +529,7 @@ path = "lib.rs"
         command.stdout(process::Stdio::null());
         command.stderr(process::Stdio::null());
     }
+
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
         if only_setup {
@@ -534,11 +541,6 @@ path = "lib.rs"
         }
     }
 
-    // That should be it! But we need to figure out where xargo built stuff.
-    // Unfortunately, it puts things into a different directory when the
-    // architecture matches the host.
-    let sysroot = if target == &host { dir.join("HOST") } else { PathBuf::from(dir) };
-    std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
     // Figure out what to print.
     if only_setup {
         eprintln!("A sysroot for Miri is now available in `{}`.", sysroot.display());
@@ -677,8 +679,13 @@ fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     };
     let verbose = num_arg_flag("-v");
 
+    // Determine the involved architectures.
+    let host = version_info().host;
+    let target = get_arg_flag_value("--target");
+    let target = target.as_ref().unwrap_or(&host);
+
     // We always setup.
-    setup(&subcommand);
+    setup(&subcommand, &host, target);
 
     // Invoke actual cargo for the job, but with different flags.
     // We re-use `cargo test` and `cargo run`, which makes target and binary handling very easy but
@@ -727,7 +734,7 @@ fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     if get_arg_flag_value("--target").is_none() {
         // No target given. Explicitly pick the host.
         cmd.arg("--target");
-        cmd.arg(version_info().host);
+        cmd.arg(&host);
     }
 
     // Set ourselves as runner for al binaries invoked by cargo.
@@ -754,16 +761,19 @@ fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
             "WARNING: Ignoring `RUSTC` environment variable; set `MIRI` if you want to control the binary used as the driver."
         );
     }
-    // We'd prefer to just clear this env var, but cargo does not always honor `RUSTC_WRAPPER`
-    // (https://github.com/rust-lang/cargo/issues/10885). There is no good way to single out these invocations;
-    // some build scripts use the RUSTC env var as well. So we set it directly to the `miri` driver and
-    // hope that all they do is ask for the version number -- things could quickly go downhill from here.
+    // Build scripts (and also cargo: https://github.com/rust-lang/cargo/issues/10885) will invoke `rustc` even when `RUSTC_WRAPPER` is set.
+    // To make sure everything is coherent, we want that to be the Miri driver, but acting as rustc, on the target level.
+    // (Target, rather than host, is needed for cross-interpretation situations.) This is not a
+    // perfect emulation of real rustc (it might be unable to produce binaries since the sysroot is
+    // check-only), but it's as close as we can get, and it's good enough for autocfg.
+    //
     // In `main`, we need the value of `RUSTC` to distinguish RUSTC_WRAPPER invocations from rustdoc
     // or TARGET_RUNNER invocations, so we canonicalize it here to make it exceedingly unlikely that
     // there would be a collision with other invocations of cargo-miri (as rustdoc or as runner).
     // We explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
     // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host builds.
     cmd.env("RUSTC", &fs::canonicalize(find_miri()).unwrap());
+    cmd.env("MIRI_BE_RUSTC", "target"); // we better remember to *unset* this in the other phases!
 
     // Set rustdoc to us as well, so we can run doctests.
     cmd.env("RUSTDOC", &cargo_miri_path);
@@ -831,6 +841,11 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             PathBuf::from(out_file)
         }
     }
+
+    // phase_cargo_miri set `MIRI_BE_RUSTC` for when build scripts directly invoke the driver;
+    // however, if we get called back by cargo here, we'll carefully compute the right flags
+    // ourselves, so we first un-do what the earlier phase did.
+    env::remove_var("MIRI_BE_RUSTC");
 
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
@@ -946,11 +961,6 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             }
         }
 
-        // Use our custom sysroot (but not if that is what we are currently building).
-        if phase != RustcPhase::Setup {
-            forward_miri_sysroot(&mut cmd);
-        }
-
         // During setup, patch the panic runtime for `libpanic_abort` (mirroring what bootstrap usually does).
         if phase == RustcPhase::Setup
             && get_arg_flag_value("--crate-name").as_deref() == Some("panic_abort")
@@ -1010,6 +1020,11 @@ enum RunnerPhase {
 }
 
 fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhase) {
+    // phase_cargo_miri set `MIRI_BE_RUSTC` for when build scripts directly invoke the driver;
+    // however, if we get called back by cargo here, we'll carefully compute the right flags
+    // ourselves, so we first un-do what the earlier phase did.
+    env::remove_var("MIRI_BE_RUSTC");
+
     let verbose = std::env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
@@ -1076,10 +1091,6 @@ fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhas
         } else {
             cmd.arg(arg);
         }
-    }
-    // Set sysroot (if we are inside rustdoc, we already did that in `phase_cargo_rustdoc`).
-    if phase != RunnerPhase::Rustdoc {
-        forward_miri_sysroot(&mut cmd);
     }
     // Respect `MIRIFLAGS`.
     if let Ok(a) = env::var("MIRIFLAGS") {
@@ -1151,7 +1162,7 @@ fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     cmd.arg("-Z").arg("unstable-options");
 
     // rustdoc needs to know the right sysroot.
-    forward_miri_sysroot(&mut cmd);
+    cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
     // make sure the 'miri' flag is set for rustdoc
     cmd.arg("--cfg").arg("miri");
 

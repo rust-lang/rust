@@ -20,4 +20,9 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=MIRITESTVAR");
     println!("cargo:rustc-env=MIRITESTVAR=testval");
+
+    // Test that autocfg works. This invokes RUSTC.
+    let a = autocfg::new();
+    assert!(a.probe_sysroot_crate("std"));
+    assert!(!a.probe_sysroot_crate("doesnotexist"));
 }
