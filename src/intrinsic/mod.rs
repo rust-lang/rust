@@ -90,7 +90,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let name = tcx.item_name(def_id);
         let name_str = name.as_str();
 
-        let llret_ty = self.layout_of(ret_ty).gcc_type(self, true);
+        let llret_ty = self.layout_of(ret_ty).gcc_type(self);
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
         let simple = get_simple_intrinsic(self, name);
@@ -389,7 +389,7 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     /// Gets the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc> {
-        self.layout.gcc_type(cx, true)
+        self.layout.gcc_type(cx)
     }
 
     /// Stores a direct/indirect value described by this ArgAbi into a

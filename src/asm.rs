@@ -156,7 +156,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     use ConstraintOrRegister::*;
 
                     let (constraint, ty) = match (reg_to_gcc(reg), place) {
-                        (Constraint(constraint), Some(place)) => (constraint, place.layout.gcc_type(self.cx, false)),
+                        (Constraint(constraint), Some(place)) => (constraint, place.layout.gcc_type(self.cx)),
                         // When `reg` is a class and not an explicit register but the out place is not specified,
                         // we need to create an unused output variable to assign the output to. This var
                         // needs to be of a type that's "compatible" with the register class, but specific type
@@ -225,7 +225,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // This decision is also backed by the fact that LLVM needs in and out
                     // values to be of *exactly the same type*, not just "compatible".
                     // I'm not sure if GCC is so picky too, but better safe than sorry.
-                    let ty = in_value.layout.gcc_type(self.cx, false);
+                    let ty = in_value.layout.gcc_type(self.cx);
                     let tmp_var = self.current_func().new_local(None, ty, "output_register");
 
                     // If the out_place is None (i.e `inout(reg) _` syntax was used), we translate
@@ -285,7 +285,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             continue
                         };
 
-                        let ty = out_place.layout.gcc_type(self.cx, false);
+                        let ty = out_place.layout.gcc_type(self.cx);
                         let tmp_var = self.current_func().new_local(None, ty, "output_register");
                         tmp_var.set_register_name(reg_name);
 
@@ -305,7 +305,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 // `in("explicit register") var`
                 InlineAsmOperandRef::In { reg, value } => {
                     if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
-                        let ty = value.layout.gcc_type(self.cx, false);
+                        let ty = value.layout.gcc_type(self.cx);
                         let reg_var = self.current_func().new_local(None, ty, "input_register");
                         reg_var.set_register_name(reg_name);
                         self.llbb().add_assignment(None, reg_var, value.immediate());
@@ -324,7 +324,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
                     if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
                         // See explanation in the first pass.
-                        let ty = in_value.layout.gcc_type(self.cx, false);
+                        let ty = in_value.layout.gcc_type(self.cx);
                         let tmp_var = self.current_func().new_local(None, ty, "output_register");
                         tmp_var.set_register_name(reg_name);
 

@@ -15,7 +15,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
         let instance = Instance::mono(self.tcx, def_id);
         let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
-        let gcc_type = self.layout_of(ty).gcc_type(self, true);
+        let gcc_type = self.layout_of(ty).gcc_type(self);
 
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
         let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section);
