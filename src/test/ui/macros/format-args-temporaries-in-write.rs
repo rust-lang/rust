@@ -1,4 +1,4 @@
-// check-pass
+// check-fail
 
 use std::fmt::{self, Display};
 
@@ -20,6 +20,12 @@ impl<'a> Drop for MutexGuard<'a> {
     }
 }
 
+struct Out;
+
+impl Out {
+    fn write_fmt(&self, _args: fmt::Arguments) {}
+}
+
 impl<'a> Display for MutexGuard<'a> {
     fn fmt(&self, _formatter: &mut fmt::Formatter) -> fmt::Result {
         Ok(())
@@ -27,28 +33,18 @@ impl<'a> Display for MutexGuard<'a> {
 }
 
 fn main() {
-    let _print = {
+    // FIXME(dtolnay): We actually want both of these to work. I think it's
+    // sadly unimplementable today though.
+
+    let _write = {
         let mutex = Mutex;
-        print!("{}", mutex.lock()) /* no semicolon */
+        write!(Out, "{}", mutex.lock()) /* no semicolon */
+        //~^ ERROR `mutex` does not live long enough
     };
 
-    let _println = {
+    let _writeln = {
         let mutex = Mutex;
-        println!("{}", mutex.lock()) /* no semicolon */
-    };
-
-    let _eprint = {
-        let mutex = Mutex;
-        eprint!("{}", mutex.lock()) /* no semicolon */
-    };
-
-    let _eprintln = {
-        let mutex = Mutex;
-        eprintln!("{}", mutex.lock()) /* no semicolon */
-    };
-
-    let _panic = {
-        let mutex = Mutex;
-        panic!("{}", mutex.lock()) /* no semicolon */
+        writeln!(Out, "{}", mutex.lock()) /* no semicolon */
+        //~^ ERROR `mutex` does not live long enough
     };
 }
