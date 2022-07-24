@@ -3,8 +3,11 @@ use crate::{LateContext, LateLintPass, LintContext};
 use hir::{Expr, Pat};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_middle::ty;
-use rustc_span::sym;
+use rustc_infer::traits::TraitEngine;
+use rustc_infer::{infer::TyCtxtInferExt, traits::ObligationCause};
+use rustc_middle::ty::{self, List};
+use rustc_span::{sym, Span};
+use rustc_trait_selection::traits::TraitEngineExt;
 
 declare_lint! {
     /// ### What it does
@@ -58,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
 
         let ty = cx.typeck_results().expr_ty(arg);
 
-        let ty::Adt(adt, _) = ty.kind() else { return };
+        let &ty::Adt(adt, substs) = ty.kind() else { return };
 
         let (article, ty, var) = match adt.did() {
             did if cx.tcx.is_diagnostic_item(sym::Option, did) => ("an", "Option", "Some"),
@@ -93,6 +96,15 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
                         (pat.span.between(arg.span), format!(") = ")),
                     ],
                     Applicability::MaybeIncorrect
+                );
+            }
+
+            if suggest_question_mark(cx, adt, substs, expr.span) {
+                warn.span_suggestion(
+                    arg.span.shrink_to_hi(),
+                    "consider unwrapping the `Result` with `?` to iterate over its contents",
+                    "?",
+                    Applicability::MaybeIncorrect,
                 );
             }
 
@@ -139,4 +151,54 @@ fn extract_iterator_next_call<'tcx>(
     } else {
         return None
     }
+}
+
+fn suggest_question_mark<'tcx>(
+    cx: &LateContext<'tcx>,
+    adt: ty::AdtDef<'tcx>,
+    substs: &List<ty::GenericArg<'tcx>>,
+    span: Span,
+) -> bool {
+    let Some(body_id) = cx.enclosing_body else { return false };
+    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else { return false };
+
+    if !cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
+        return false;
+    }
+
+    // Check that the function/closure/constant we are in has a `Result` type.
+    // Otherwise suggesting using `?` may not be a good idea.
+    {
+        let ty = cx.typeck_results().expr_ty(&cx.tcx.hir().body(body_id).value);
+        let ty::Adt(ret_adt, ..) = ty.kind() else { return false };
+        if !cx.tcx.is_diagnostic_item(sym::Result, ret_adt.did()) {
+            return false;
+        }
+    }
+
+    let ty = substs.type_at(0);
+    let is_iterator = cx.tcx.infer_ctxt().enter(|infcx| {
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+
+        let cause = ObligationCause::new(
+            span,
+            body_id.hir_id,
+            rustc_infer::traits::ObligationCauseCode::MiscObligation,
+        );
+        fulfill_cx.register_bound(
+            &infcx,
+            ty::ParamEnv::empty(),
+            // Erase any region vids from the type, which may not be resolved
+            infcx.tcx.erase_regions(ty),
+            into_iterator_did,
+            cause,
+        );
+
+        // Select all, including ambiguous predicates
+        let errors = fulfill_cx.select_all_or_error(&infcx);
+
+        errors.is_empty()
+    });
+
+    is_iterator
 }
