@@ -9,7 +9,6 @@
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::convert::TryFrom;
 use std::fmt;
 use std::ptr;
 
@@ -1172,26 +1171,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
 /// Machine pointer introspection.
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn scalar_to_ptr(
-        &self,
-        scalar: Scalar<M::Provenance>,
-    ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
-        // We use `to_bits_or_ptr_internal` since we are just implementing the method people need to
-        // call to force getting out a pointer.
-        Ok(
-            match scalar
-                .to_bits_or_ptr_internal(self.pointer_size())
-                .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
-            {
-                Err(ptr) => ptr.into(),
-                Ok(bits) => {
-                    let addr = u64::try_from(bits).unwrap();
-                    M::ptr_from_addr_transmute(&self, addr)
-                }
-            },
-        )
-    }
-
     /// Test if this value might be null.
     /// If the machine does not support ptr-to-int casts, this is conservative.
     pub fn scalar_may_be_null(&self, scalar: Scalar<M::Provenance>) -> InterpResult<'tcx, bool> {
@@ -1199,7 +1178,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(int) => int.is_null(),
             Err(_) => {
                 // Can only happen during CTFE.
-                let ptr = self.scalar_to_ptr(scalar)?;
+                let ptr = scalar.to_pointer(self)?;
                 match self.ptr_try_get_alloc_id(ptr) {
                     Ok((alloc_id, offset, _)) => {
                         let (size, _align, _kind) = self.get_alloc_info(alloc_id);

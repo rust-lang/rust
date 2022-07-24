@@ -180,7 +180,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert!(cast_ty.is_integral());
 
         let scalar = src.to_scalar()?;
-        let ptr = self.scalar_to_ptr(scalar)?;
+        let ptr = scalar.to_pointer(self)?;
         match ptr.into_pointer_or_addr() {
             Ok(ptr) => M::expose_ptr(self, ptr)?,
             Err(_) => {} // Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
@@ -299,7 +299,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
                 let (old_data, old_vptr) = self.read_immediate(src)?.to_scalar_pair()?;
-                let old_vptr = self.scalar_to_ptr(old_vptr)?;
+                let old_vptr = old_vptr.to_pointer(self)?;
                 let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
                 if old_trait != data_a.principal() {
                     throw_ub_format!("upcast on a pointer whose vtable does not match its type");

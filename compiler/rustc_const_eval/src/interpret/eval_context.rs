@@ -629,7 +629,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
-                let vtable = self.scalar_to_ptr(metadata.unwrap_meta())?;
+                let vtable = metadata.unwrap_meta().to_pointer(self)?;
                 // Read size and align from vtable (already checks size).
                 Ok(Some(self.get_vtable_size_and_align(vtable)?))
             }

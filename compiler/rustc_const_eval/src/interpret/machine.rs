@@ -135,9 +135,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce integers and floats being initialized.
     fn enforce_number_init(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether to enforce integers and floats not having provenance.
-    fn enforce_number_no_provenance(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
-
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         true
@@ -299,13 +296,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &InterpCx<'mir, 'tcx, Self>,
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>>;
-
-    /// Hook for returning a pointer from a transmute-like operation on an addr.
-    /// This is only needed to support Miri's (unsound) "allow-ptr-int-transmute" flag.
-    fn ptr_from_addr_transmute(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
-        addr: u64,
-    ) -> Pointer<Option<Self::Provenance>>;
 
     /// Marks a pointer as exposed, allowing it's provenance
     /// to be recovered. "Pointer-to-int cast"
@@ -470,11 +460,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn enforce_number_no_provenance(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        true
-    }
-
-    #[inline(always)]
     fn checked_binop_checks_overflow(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         true
     }
@@ -516,14 +501,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         ptr: Pointer<AllocId>,
     ) -> Pointer<AllocId> {
         ptr
-    }
-
-    #[inline(always)]
-    fn ptr_from_addr_transmute(
-        _ecx: &InterpCx<$mir, $tcx, Self>,
-        addr: u64,
-    ) -> Pointer<Option<AllocId>> {
-        Pointer::from_addr(addr)
     }
 
     #[inline(always)]
