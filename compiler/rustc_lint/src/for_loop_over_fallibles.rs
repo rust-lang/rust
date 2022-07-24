@@ -73,17 +73,30 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
         );
 
         cx.struct_span_lint(FOR_LOOP_OVER_FALLIBLES, arg.span, |diag| {
-            diag.build(msg)
-                .multipart_suggestion_verbose(
-                    "consider using `if let` to clear intent",
-                    vec![
-                        // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
-                        (expr.span.with_hi(pat.span.lo()), format!("if let {var}(")),
-                        (pat.span.between(arg.span), format!(") = ")),
-                    ],
-                    Applicability::MachineApplicable,
-                )
-                .emit()
+            let mut warn = diag.build(msg);
+
+            if let Some(recv) = extract_iterator_next_call(cx, arg)
+            && let Ok(recv_snip) = cx.sess().source_map().span_to_snippet(recv.span)
+            {
+                warn.span_suggestion(
+                    recv.span.between(arg.span.shrink_to_hi()),
+                    format!("to iterate over `{recv_snip}` remove the call to `next`"),
+                    "",
+                    Applicability::MaybeIncorrect
+                );
+            }
+
+            warn.multipart_suggestion_verbose(
+                "consider using `if let` to clear intent",
+                vec![
+                    // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
+                    (expr.span.with_hi(pat.span.lo()), format!("if let {var}(")),
+                    (pat.span.between(arg.span), format!(") = ")),
+                ],
+                Applicability::MachineApplicable,
+            );
+
+            warn.emit()
         })
     }
 }
@@ -101,5 +114,19 @@ fn extract_for_loop<'tcx>(expr: &Expr<'tcx>) -> Option<(&'tcx Pat<'tcx>, &'tcx E
         Some((field.pat, arg))
     } else {
         None
+    }
+}
+
+fn extract_iterator_next_call<'tcx>(
+    cx: &LateContext<'_>,
+    expr: &Expr<'tcx>,
+) -> Option<&'tcx Expr<'tcx>> {
+    // This won't work for `Iterator::next(iter)`, is this an issue?
+    if let hir::ExprKind::MethodCall(_, [recv], _) = expr.kind
+    && cx.typeck_results().type_dependent_def_id(expr.hir_id) == cx.tcx.lang_items().next_fn()
+    {
+        Some(recv)
+    } else {
+        return None
     }
 }
