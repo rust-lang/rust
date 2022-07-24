@@ -1272,7 +1272,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 self.visit_generics(generics);
-                self.with_banned_tilde_const(|this| {
+                self.with_tilde_const_allowed(|this| {
                     walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                 });
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
