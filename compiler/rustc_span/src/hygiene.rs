@@ -39,6 +39,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use std::collections::hash_map::Entry;
 use std::fmt;
 use std::hash::Hash;
 use tracing::*;
@@ -179,6 +180,9 @@ impl LocalExpnId {
         ExpnIndex::from_u32(self.as_u32())
     }
 
+    /// Creates an empty expansion to be filled later.
+    /// This method should only be used outside of the incremental compilation engine.
+    /// Prefer using `fresh` when the expansion data is available.
     pub fn fresh_empty() -> LocalExpnId {
         HygieneData::with(|data| {
             let expn_id = data.local_expn_data.push(None);
@@ -188,17 +192,51 @@ impl LocalExpnId {
         })
     }
 
+    /// Creates an expansion.
     pub fn fresh(mut expn_data: ExpnData, ctx: impl HashStableContext) -> LocalExpnId {
+        debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
+        #[cfg(debug_assertions)]
+        let hashing_controls = ctx.hashing_controls();
+        let expn_hash = update_disambiguator(&mut expn_data, ctx);
+        HygieneData::with(|data| match data.expn_hash_to_expn_id.entry(expn_hash) {
+            Entry::Vacant(v) => {
+                let expn_id = data.local_expn_data.push(Some(expn_data));
+                let _eid = data.local_expn_hashes.push(expn_hash);
+                debug_assert_eq!(expn_id, _eid);
+                debug!(?expn_hash, ?expn_id);
+                v.insert(expn_id.to_expn_id());
+                expn_id
+            }
+            Entry::Occupied(o) => {
+                let old_id = *o.get();
+                // The hash starts with the local crate's hash, so this must be a local id.
+                let old_id = old_id.expect_local();
+                #[cfg(debug_assertions)]
+                {
+                    let old_data = data.local_expn_data[old_id].as_ref().unwrap();
+                    debug!(?old_id, ?old_data, ?expn_data);
+                    expn_data.assert_identical(&old_data, hashing_controls);
+                }
+                old_id
+            }
+        })
+    }
+
+    /// Fill an empty expansion.
+    /// This method should only be used outside of the incremental compilation engine.
+    pub fn set_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, ctx);
         HygieneData::with(|data| {
-            let expn_id = data.local_expn_data.push(Some(expn_data));
-            let _eid = data.local_expn_hashes.push(expn_hash);
-            debug_assert_eq!(expn_id, _eid);
-            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, expn_id.to_expn_id());
+            let old_expn_data = &mut data.local_expn_data[self];
+            assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
+            *old_expn_data = Some(expn_data);
+            debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
+            data.local_expn_hashes[self] = expn_hash;
+            debug!(?expn_hash, ?self);
+            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
             debug_assert!(_old_id.is_none());
-            expn_id
-        })
+        });
     }
 
     #[inline]
@@ -214,21 +252,6 @@ impl LocalExpnId {
     #[inline]
     pub fn to_expn_id(self) -> ExpnId {
         ExpnId { krate: LOCAL_CRATE, local_id: self.as_raw() }
-    }
-
-    #[inline]
-    pub fn set_expn_data(self, mut expn_data: ExpnData, ctx: impl HashStableContext) {
-        debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
-        let expn_hash = update_disambiguator(&mut expn_data, ctx);
-        HygieneData::with(|data| {
-            let old_expn_data = &mut data.local_expn_data[self];
-            assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
-            *old_expn_data = Some(expn_data);
-            debug_assert_eq!(data.local_expn_hashes[self].0, Fingerprint::ZERO);
-            data.local_expn_hashes[self] = expn_hash;
-            let _old_id = data.expn_hash_to_expn_id.insert(expn_hash, self.to_expn_id());
-            debug_assert!(_old_id.is_none());
-        });
     }
 
     #[inline]
@@ -1039,6 +1062,36 @@ impl ExpnData {
         self.hash_stable(ctx, &mut hasher);
         hasher.finish()
     }
+
+    #[inline]
+    #[cfg(debug_assertions)]
+    fn assert_identical(&self, other: &ExpnData, ctx: HashingControls) {
+        let ExpnData {
+            kind,
+            parent,
+            call_site,
+            def_site,
+            allow_internal_unstable,
+            allow_internal_unsafe,
+            local_inner_macros,
+            edition,
+            macro_def_id,
+            parent_module,
+            disambiguator: _,
+        } = self;
+        debug_assert_eq!(*kind, other.kind);
+        debug_assert_eq!(*parent, other.parent);
+        if ctx.hash_spans {
+            debug_assert_eq!(*call_site, other.call_site);
+            debug_assert_eq!(*def_site, other.def_site);
+        }
+        debug_assert_eq!(*allow_internal_unstable, other.allow_internal_unstable);
+        debug_assert_eq!(*allow_internal_unsafe, other.allow_internal_unsafe);
+        debug_assert_eq!(*local_inner_macros, other.local_inner_macros);
+        debug_assert_eq!(*edition, other.edition);
+        debug_assert_eq!(*macro_def_id, other.macro_def_id);
+        debug_assert_eq!(*parent_module, other.parent_module);
+    }
 }
 
 /// Expansion kind.
@@ -1253,8 +1306,10 @@ pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
 
         let expn_id = expn_id.to_expn_id();
 
+        debug!(?hash, ?expn_id);
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
-        debug_assert!(_old_id.is_none());
+        debug_assert_eq!(_old_id, None);
+
         expn_id
     })
 }
@@ -1273,6 +1328,7 @@ pub fn register_expn_id(
         debug_assert!(_old_data.is_none());
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
         debug_assert!(_old_hash.is_none());
+        debug!(?hash, ?expn_id);
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
         debug_assert!(_old_id.is_none());
     });
