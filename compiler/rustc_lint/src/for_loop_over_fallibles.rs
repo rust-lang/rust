@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopOverFallibles {
                     (expr.span.with_hi(pat.span.lo()), format!("if let {var}(")),
                     (pat.span.between(arg.span), format!(") = ")),
                 ],
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             );
 
             warn.emit()
