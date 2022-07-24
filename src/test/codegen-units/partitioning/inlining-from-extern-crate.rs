@@ -4,6 +4,7 @@
 // incremental
 // compile-flags:-Zprint-mono-items=lazy
 // compile-flags:-Zinline-in-all-cgus
+// compile-flags:-Zinline-mir=no
 
 #![crate_type="lib"]
 
