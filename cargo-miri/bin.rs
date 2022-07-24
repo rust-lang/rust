@@ -494,19 +494,20 @@ path = "lib.rs"
     // The `MIRI_CALLED_FROM_XARGO` will mean we dispatch to `phase_setup_rustc`.
     let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     if env::var_os("RUSTC_STAGE").is_some() {
+        assert!(env::var_os("RUSTC").is_some());
         command.env("RUSTC_REAL", &cargo_miri_path);
     } else {
         command.env("RUSTC", &cargo_miri_path);
     }
     command.env("MIRI_CALLED_FROM_XARGO", "1");
-    // Make sure there are no other wrappers or flags getting in our way
-    // (Cc https://github.com/rust-lang/miri/issues/1421).
-    // This is consistent with normal `cargo build` that does not apply `RUSTFLAGS`
-    // to the sysroot either.
-    command.env_remove("RUSTC_WRAPPER");
-    command.env_remove("RUSTFLAGS");
-    // Disable debug assertions in the standard library -- Miri is already slow enough.
-    // But keep the overflow checks, they are cheap.
+    // Make sure there are no other wrappers getting in our way
+    // (Cc https://github.com/rust-lang/miri/issues/1421, https://github.com/rust-lang/miri/issues/2429).
+    // Looks like setting `RUSTC_WRAPPER` to the empty string overwrites `build.rustc-wrapper` set via `config.toml`.
+    command.env("RUSTC_WRAPPER", "");
+    // Disable debug assertions in the standard library -- Miri is already slow enough. But keep the
+    // overflow checks, they are cheap. This completely overwrites flags the user might have set,
+    // which is consistent with normal `cargo build` that does not apply `RUSTFLAGS` to the sysroot
+    // either.
     command.env("RUSTFLAGS", "-Cdebug-assertions=off -Coverflow-checks=on");
     // Manage the output the user sees.
     if only_setup {
