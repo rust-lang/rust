@@ -1,6 +1,6 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(core_intrinsics, const_raw_ptr_comparison)]
-#![feature(layout_for_ptr)]
+#![feature(core_intrinsics, layout_for_ptr)]
+//! Tests for various intrinsics that do not fit anywhere else.
 
 use std::intrinsics;
 use std::mem::{size_of, size_of_val, size_of_val_raw};
@@ -39,9 +39,4 @@ fn main() {
     let _v = intrinsics::discriminant_value(&0);
     let _v = intrinsics::discriminant_value(&true);
     let _v = intrinsics::discriminant_value(&vec![1, 2, 3]);
-
-    let addr = &13 as *const i32;
-    let addr2 = (addr as usize).wrapping_add(usize::MAX).wrapping_add(1);
-    assert!(addr.guaranteed_eq(addr2 as *const _));
-    assert!(addr.guaranteed_ne(0x100 as *const _));
 }

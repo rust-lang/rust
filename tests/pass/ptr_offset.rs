@@ -1,12 +1,28 @@
 //@compile-flags: -Zmiri-permissive-provenance
+#![feature(ptr_sub_ptr)]
 use std::{mem, ptr};
 
 fn main() {
+    smoke();
     test_offset_from();
     test_vec_into_iter();
     ptr_arith_offset();
     ptr_arith_offset_overflow();
     ptr_offset();
+}
+
+fn smoke() {
+    // Smoke-test various offsetting operations.
+    let ptr = &5;
+    let ptr = ptr as *const i32;
+    let _val = ptr.wrapping_offset(0);
+    let _val = unsafe { ptr.offset(0) };
+    let _val = ptr.wrapping_add(0);
+    let _val = unsafe { ptr.add(0) };
+    let _val = ptr.wrapping_sub(0);
+    let _val = unsafe { ptr.sub(0) };
+    let _val = unsafe { ptr.offset_from(ptr) };
+    let _val = unsafe { ptr.sub_ptr(ptr) };
 }
 
 fn test_offset_from() {
@@ -17,12 +33,14 @@ fn test_offset_from() {
         let y = x.offset(12);
 
         assert_eq!(y.offset_from(x), 12);
+        assert_eq!(y.sub_ptr(x), 12);
         assert_eq!(x.offset_from(y), -12);
         assert_eq!((y as *const u32).offset_from(x as *const u32), 12 / 4);
         assert_eq!((x as *const u32).offset_from(y as *const u32), -12 / 4);
 
         let x = (((x as usize) * 2) / 2) as *const u8;
         assert_eq!(y.offset_from(x), 12);
+        assert_eq!(y.sub_ptr(x), 12);
         assert_eq!(x.offset_from(y), -12);
     }
 }
