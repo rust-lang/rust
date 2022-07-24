@@ -35,16 +35,28 @@ use std::ops::ControlFlow;
 /// For more background on why Rust has this requirement, and issues
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
-///
-/// When the `valtree_semantics` flag is set, then we also deny additional
-/// types that are not evaluatable to valtrees, such as floats and fn ptrs.
 pub fn search_for_structural_match_violation<'tcx>(
     span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    valtree_semantics: bool,
 ) -> Option<Ty<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), valtree_semantics })
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), adt_const_param: false })
+        .break_value()
+}
+
+/// This method traverses the structure of `ty`, trying to find any
+/// types that are not allowed to be used in a const generic.
+///
+/// This is either because the type does not implement `StructuralEq`
+/// and `StructuralPartialEq`, or because the type is intentionally
+/// not supported in const generics (such as floats and raw pointers,
+/// which are allowed in match blocks).
+pub fn search_for_adt_const_param_violation<'tcx>(
+    span: Span,
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<Ty<'tcx>> {
+    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default(), adt_const_param: true })
         .break_value()
 }
 
@@ -108,8 +120,9 @@ struct Search<'tcx> {
     seen: FxHashSet<hir::def_id::DefId>,
 
     // Additionally deny things that have been allowed in patterns,
-    // but are not evaluatable to a valtree, such as floats and fn ptrs.
-    valtree_semantics: bool,
+    // but are not allowed in adt const params, such as floats and
+    // fn ptrs.
+    adt_const_param: bool,
 }
 
 impl<'tcx> Search<'tcx> {
@@ -167,7 +180,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             }
 
             ty::FnPtr(..) => {
-                if !self.valtree_semantics {
+                if !self.adt_const_param {
                     return ControlFlow::CONTINUE;
                 } else {
                     return ControlFlow::Break(ty);
@@ -175,7 +188,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             }
 
             ty::RawPtr(..) => {
-                if !self.valtree_semantics {
+                if !self.adt_const_param {
                     // structural-match ignores substructure of
                     // `*const _`/`*mut _`, so skip `super_visit_with`.
                     //
@@ -197,7 +210,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             }
 
             ty::Float(_) => {
-                if !self.valtree_semantics {
+                if !self.adt_const_param {
                     return ControlFlow::CONTINUE;
                 } else {
                     return ControlFlow::Break(ty);

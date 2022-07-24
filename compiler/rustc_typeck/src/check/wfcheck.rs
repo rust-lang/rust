@@ -849,7 +849,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
 
             if tcx.features().adt_const_params {
                 if let Some(non_structural_match_ty) =
-                    traits::search_for_structural_match_violation(param.span, tcx, ty, true)
+                    traits::search_for_adt_const_param_violation(param.span, tcx, ty)
                 {
                     // We use the same error code in both branches, because this is really the same
                     // issue: we just special-case the message for type parameters to make it
