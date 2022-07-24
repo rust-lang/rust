@@ -7,7 +7,6 @@
 // memory model in the future.
 
 #![feature(atomic_from_mut)]
-#![feature(core_intrinsics)]
 
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::*;
@@ -27,7 +26,7 @@ fn racing_mixed_atomicity_read() {
 
     let j2 = spawn(move || {
         let x_ptr = x as *const AtomicU32 as *const u32;
-        unsafe { std::intrinsics::atomic_load_relaxed(x_ptr) }
+        unsafe { x_ptr.read() }
     });
 
     let r1 = j1.join().unwrap();
