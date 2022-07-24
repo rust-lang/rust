@@ -278,14 +278,14 @@ impl Definition {
                     }
                 }
                 hir::MacroKind::BuiltIn => SearchScope::crate_graph(db),
-                // FIXME: We don't actually see derives in derive attributes as these do not
-                // expand to something that references the derive macro in the output.
-                // We could get around this by doing pseudo expansions for proc_macro_derive like we
-                // do for the derive attribute
                 hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
                     SearchScope::reverse_dependencies(db, module.krate())
                 }
             };
+        }
+
+        if let Definition::DeriveHelper(_) = self {
+            return SearchScope::reverse_dependencies(db, module.krate());
         }
 
         let vis = self.visibility(db);

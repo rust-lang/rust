@@ -121,7 +121,7 @@ impl Definition {
             Definition::Label(it) => it.name(db),
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
-            Definition::DeriveHelper(_) => return None, // FIXME
+            Definition::DeriveHelper(it) => it.name(db),
         };
         Some(name)
     }

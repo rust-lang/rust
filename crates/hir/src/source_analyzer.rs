@@ -35,6 +35,7 @@ use hir_ty::{
     method_resolution, Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution,
     TyExt, TyKind, TyLoweringContext,
 };
+use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
     ast::{self, AstNode},
@@ -487,10 +488,16 @@ impl SourceAnalyzer {
                         {
                             // FIXME: Multiple derives can have the same helper
                             let name_ref = name_ref.as_name();
-                            if let Some(&(_, derive, _)) =
-                                helpers.iter().find(|(name, ..)| *name == name_ref)
+                            for (macro_id, mut helpers) in
+                                helpers.iter().group_by(|(_, macro_id, ..)| macro_id).into_iter()
                             {
-                                return Some(PathResolution::DeriveHelper(DeriveHelper { derive }));
+                                if let Some(idx) = helpers.position(|(name, ..)| *name == name_ref)
+                                {
+                                    return Some(PathResolution::DeriveHelper(DeriveHelper {
+                                        derive: *macro_id,
+                                        idx,
+                                    }));
+                                }
                             }
                         }
                     }

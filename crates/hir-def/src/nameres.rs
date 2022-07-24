@@ -48,11 +48,11 @@
 //! the result
 
 pub mod attr_resolution;
-mod collector;
+pub mod proc_macro;
 pub mod diagnostics;
+mod collector;
 mod mod_resolution;
 mod path_resolution;
-mod proc_macro;
 
 #[cfg(test)]
 mod tests;

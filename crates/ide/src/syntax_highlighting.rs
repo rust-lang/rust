@@ -432,6 +432,13 @@ fn traverse(
                 // let the editor do its highlighting for these tokens instead
                 continue;
             }
+            if highlight.tag == HlTag::UnresolvedReference
+                && matches!(attr_or_derive_item, Some(AttrOrDerive::Derive(_)) if inside_attribute)
+            {
+                // do not emit unresolved references in derive helpers if the token mapping maps to
+                // something unresolvable. FIXME: There should be a way to prevent that
+                continue;
+            }
             if inside_attribute {
                 highlight |= HlMod::Attribute
             }
