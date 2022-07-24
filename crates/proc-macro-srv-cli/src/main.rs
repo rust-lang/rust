@@ -2,6 +2,6 @@
 
 use proc_macro_srv::cli;
 
-fn main() {
-    cli::run().unwrap();
+fn main() -> std::io::Result<()> {
+    cli::run()
 }
