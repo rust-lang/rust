@@ -1,5 +1,4 @@
-// FIXME: check-pass
-// check-fail
+// check-pass
 // edition:2021
 
 use std::fmt::{self, Display};
@@ -30,9 +29,7 @@ impl<'a, T> Future for WriteFmtFuture<'a, T> {
 
 async fn async_main() {
     let _write = write!(&mut AsyncStdout, "...").await;
-    //~^ ERROR temporary value dropped while borrowed
     let _writeln = writeln!(&mut AsyncStdout, "...").await;
-    //~^ ERROR temporary value dropped while borrowed
 }
 
 fn main() {
