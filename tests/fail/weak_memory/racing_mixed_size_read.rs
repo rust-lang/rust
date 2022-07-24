@@ -2,10 +2,8 @@
 //@compile-flags: -Zmiri-preemption-rate=0
 //@ignore-target-windows: Concurrency on Windows is not supported yet.
 
-#![feature(core_intrinsics)]
-
-use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::*;
+use std::sync::atomic::{AtomicU16, AtomicU32};
 use std::thread::spawn;
 
 fn static_atomic(val: u32) -> &'static AtomicU32 {
@@ -31,8 +29,8 @@ pub fn main() {
         let x_ptr = x as *const AtomicU32 as *const u32;
         let x_split = split_u32_ptr(x_ptr);
         unsafe {
-            let hi = &(*x_split)[0] as *const u16;
-            std::intrinsics::atomic_load_relaxed(hi); //~ ERROR: imperfectly overlapping
+            let hi = x_split as *const u16 as *const AtomicU16;
+            (*hi).load(Relaxed); //~ ERROR: imperfectly overlapping
         }
     });
 
