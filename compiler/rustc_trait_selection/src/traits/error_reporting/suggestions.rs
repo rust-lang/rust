@@ -320,6 +320,13 @@ pub trait InferCtxtExt<'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     );
+
+    fn suggest_dereferencing_index(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
@@ -2923,6 +2930,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     diagnostic_name,
                 ),
                 format!("#[derive({})]\n", diagnostic_name),
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
+    fn suggest_dereferencing_index(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        if let ObligationCauseCode::ImplDerivedObligation(_) = obligation.cause.code()
+            && self.tcx.is_diagnostic_item(sym::SliceIndex, trait_pred.skip_binder().trait_ref.def_id)
+            && let ty::Ref(_, inner_ty, _) = trait_pred.skip_binder().self_ty().kind()
+            && let ty::Uint(ty::UintTy::Usize) = inner_ty.kind()
+        {
+            err.span_suggestion_verbose(
+                obligation.cause.span.shrink_to_lo(),
+            "consider dereferencing here",
+            '*',
                 Applicability::MaybeIncorrect,
             );
         }
