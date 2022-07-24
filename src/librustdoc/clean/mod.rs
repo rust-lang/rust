@@ -1774,25 +1774,26 @@ impl<'tcx> Clean<'tcx, Constant> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, Item> for hir::FieldDef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
-        clean_field(def_id, self.ident.name, clean_ty(self.ty, cx), cx)
-    }
+pub(crate) fn clean_field<'tcx>(field: &hir::FieldDef<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+    let def_id = cx.tcx.hir().local_def_id(field.hir_id).to_def_id();
+    clean_field_with_def_id(def_id, field.ident.name, clean_ty(field.ty, cx), cx)
 }
 
-impl<'tcx> Clean<'tcx, Item> for ty::FieldDef {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        clean_field(
-            self.did,
-            self.name,
-            clean_middle_ty(cx.tcx.type_of(self.did), cx, Some(self.did)),
-            cx,
-        )
-    }
+pub(crate) fn clean_middle_field<'tcx>(field: &ty::FieldDef, cx: &mut DocContext<'tcx>) -> Item {
+    clean_field_with_def_id(
+        field.did,
+        field.name,
+        clean_middle_ty(cx.tcx.type_of(field.did), cx, Some(field.did)),
+        cx,
+    )
 }
 
-fn clean_field(def_id: DefId, name: Symbol, ty: Type, cx: &mut DocContext<'_>) -> Item {
+pub(crate) fn clean_field_with_def_id(
+    def_id: DefId,
+    name: Symbol,
+    ty: Type,
+    cx: &mut DocContext<'_>,
+) -> Item {
     let what_rustc_thinks =
         Item::from_def_id_and_parts(def_id, Some(name), StructFieldItem(ty), cx);
     if is_field_vis_inherited(cx.tcx, def_id) {
@@ -1830,14 +1831,14 @@ impl<'tcx> Clean<'tcx, VariantStruct> for rustc_hir::VariantData<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> VariantStruct {
         VariantStruct {
             struct_type: CtorKind::from_hir(self),
-            fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
+            fields: self.fields().iter().map(|x| clean_field(x, cx)).collect(),
         }
     }
 }
 
 impl<'tcx> Clean<'tcx, Vec<Item>> for hir::VariantData<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Vec<Item> {
-        self.fields().iter().map(|x| x.clean(cx)).collect()
+        self.fields().iter().map(|x| clean_field(x, cx)).collect()
     }
 }
 
@@ -1845,12 +1846,12 @@ impl<'tcx> Clean<'tcx, Item> for ty::VariantDef {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let kind = match self.ctor_kind {
             CtorKind::Const => Variant::CLike,
-            CtorKind::Fn => {
-                Variant::Tuple(self.fields.iter().map(|field| field.clean(cx)).collect())
-            }
+            CtorKind::Fn => Variant::Tuple(
+                self.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
+            ),
             CtorKind::Fictive => Variant::Struct(VariantStruct {
                 struct_type: CtorKind::Fictive,
-                fields: self.fields.iter().map(|field| field.clean(cx)).collect(),
+                fields: self.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
             }),
         };
         let what_rustc_thinks =
@@ -1970,12 +1971,12 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             ItemKind::Union(ref variant_data, generics) => UnionItem(Union {
                 generics: generics.clean(cx),
-                fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
+                fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
                 struct_type: CtorKind::from_hir(variant_data),
                 generics: generics.clean(cx),
-                fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
+                fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.hir_id(), cx),
             // proc macros can have a name set by attributes
