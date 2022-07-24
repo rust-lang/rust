@@ -648,11 +648,11 @@ mod b {
             a: t
             b: t
 
-            crate::b
-            T: v
-
             crate::a
             T: t v
+
+            crate::b
+            T: v
         "#]],
     );
 }
@@ -704,13 +704,13 @@ use crate::reex::*;
             reex: t
             tr: t
 
-            crate::tr
-            PrivTr: t
-            PubTr: t
-
             crate::reex
             _: t
             _: t
+
+            crate::tr
+            PrivTr: t
+            PubTr: t
         "#]],
     );
 }
@@ -920,13 +920,13 @@ use some_module::unknown_func;
             some_module: t
             unknown_func: v
 
-            crate::some_module
-            unknown_func: v
-
             crate::other_module
             some_submodule: t
 
             crate::other_module::some_submodule
+            unknown_func: v
+
+            crate::some_module
             unknown_func: v
         "#]],
     )
