@@ -15,7 +15,11 @@ impl<K, V> Root<K, V> {
     /// a `BTreeMap`, both iterators should produce keys in strictly ascending
     /// order, each greater than all keys in the tree, including any keys
     /// already in the tree upon entry.
-    pub fn append_from_sorted_iters<I, A: Allocator + Clone>(
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn append_from_sorted_iters<I, A: Allocator + Clone>(
         &mut self,
         left: I,
         right: I,
@@ -29,14 +33,25 @@ impl<K, V> Root<K, V> {
         let iter = MergeIter(MergeIterInner::new(left, right));
 
         // Meanwhile, we build a tree from the sorted sequence in linear time.
-        self.bulk_push(iter, length, alloc)
+
+        // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+        // `BTreeMap`.
+        unsafe { self.bulk_push(iter, length, alloc) }
     }
 
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
-    pub fn bulk_push<I, A: Allocator + Clone>(&mut self, iter: I, length: &mut usize, alloc: A)
-    where
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn bulk_push<I, A: Allocator + Clone>(
+        &mut self,
+        iter: I,
+        length: &mut usize,
+        alloc: A,
+    ) where
         I: Iterator<Item = (K, V)>,
     {
         let mut cur_node = self.borrow_mut().last_leaf_edge().into_node();
@@ -64,7 +79,10 @@ impl<K, V> Root<K, V> {
                         }
                         Err(_) => {
                             // We are at the top, create a new root node and push there.
-                            open_node = self.push_internal_level(alloc.clone());
+
+                            // SAFETY: The caller has guaranteed that `alloc` is the allocator for
+                            // the owning `BTreeMap`.
+                            open_node = unsafe { self.push_internal_level(alloc.clone()) };
                             break;
                         }
                     }
@@ -72,9 +90,13 @@ impl<K, V> Root<K, V> {
 
                 // Push key-value pair and new right subtree.
                 let tree_height = open_node.height() - 1;
-                let mut right_tree = Root::new(alloc.clone());
+                // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+                // `BTreeMap`.
+                let mut right_tree = unsafe { Root::new(alloc.clone()) };
                 for _ in 0..tree_height {
-                    right_tree.push_internal_level(alloc.clone());
+                    // SAFETY: The caller has guaranteed that `alloc` is the allocator for the
+                    // owning `BTreeMap`.
+                    unsafe { right_tree.push_internal_level(alloc.clone()) };
                 }
                 open_node.push(key, value, right_tree);
 

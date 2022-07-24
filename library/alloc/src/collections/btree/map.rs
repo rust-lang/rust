@@ -216,7 +216,9 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
             match node.force() {
                 Leaf(leaf) => {
                     let mut out_tree = BTreeMap {
-                        root: Some(Root::new(alloc.clone())),
+                        // SAFETY: `alloc` is the allocator for both the original and the cloned
+                        // `BTreeMap`.
+                        root: unsafe { Some(Root::new(alloc.clone())) },
                         length: 0,
                         alloc: ManuallyDrop::new(alloc),
                         _marker: PhantomData,
@@ -247,7 +249,9 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
 
                     {
                         let out_root = out_tree.root.as_mut().unwrap();
-                        let mut out_node = out_root.push_internal_level(alloc.clone());
+                        // SAFETY: `alloc` is the allocator for both the original and the cloned
+                        // `BTreeMap`.
+                        let mut out_node = unsafe { out_root.push_internal_level(alloc.clone()) };
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
@@ -269,7 +273,9 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
                             out_node.push(
                                 k,
                                 v,
-                                subroot.unwrap_or_else(|| Root::new(alloc.clone())),
+                                // SAFETY: `alloc` is the allocator for both the original and cloned
+                                // `BTreeMap`.
+                                subroot.unwrap_or_else(|| unsafe { Root::new(alloc.clone()) }),
                             );
                             out_tree.length += 1 + sublength;
                         }
@@ -323,8 +329,9 @@ where
 
     fn replace(&mut self, key: K) -> Option<K> {
         let (map, dormant_map) = DormantMutRef::new(self);
+        // SAFETY: `alloc` is the allocator for the `BTreeMap`.
         let root_node =
-            map.root.get_or_insert_with(|| Root::new((*map.alloc).clone())).borrow_mut();
+            map.root.get_or_insert_with(|| unsafe { Root::new((*map.alloc).clone()) }).borrow_mut();
         match root_node.search_tree::<K>(&key) {
             Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
@@ -1144,13 +1151,16 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
 
         let self_iter = mem::replace(self, Self::new_in((*self.alloc).clone())).into_iter();
         let other_iter = mem::replace(other, Self::new_in((*self.alloc).clone())).into_iter();
-        let root = self.root.get_or_insert_with(|| Root::new((*self.alloc).clone()));
-        root.append_from_sorted_iters(
-            self_iter,
-            other_iter,
-            &mut self.length,
-            (*self.alloc).clone(),
-        )
+        let root = self.root.get_or_insert_with(|| unsafe { Root::new((*self.alloc).clone()) });
+        // SAFETY: `self.alloc` is the allocator for the `BTreeMap`.
+        unsafe {
+            root.append_from_sorted_iters(
+                self_iter,
+                other_iter,
+                &mut self.length,
+                (*self.alloc).clone(),
+            )
+        }
     }
 
     /// Constructs a double-ended iterator over a sub-range of elements in the map.
@@ -1464,9 +1474,13 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         K: Ord,
         I: IntoIterator<Item = (K, V)>,
     {
-        let mut root = Root::new(alloc.clone());
+        // SAFETY: `alloc` is the allocator for the returned `BTreeMap`.
+        let mut root = unsafe { Root::new(alloc.clone()) };
         let mut length = 0;
-        root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length, alloc.clone());
+        // SAFETY: `alloc` is the allocator for the returned `BTreeMap`.
+        unsafe {
+            root.bulk_push(DedupSortedIter::new(iter.into_iter()), &mut length, alloc.clone());
+        }
         BTreeMap { root: Some(root), length, alloc: ManuallyDrop::new(alloc), _marker: PhantomData }
     }
 }

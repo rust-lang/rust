@@ -575,7 +575,7 @@ impl<T, A: Allocator> Box<T, A> {
     #[inline(always)]
     pub const fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
-        A: 'static + ~const Allocator + ~const Destruct,
+        A: ~const Allocator + ~const PinSafeAllocator + ~const Destruct,
     {
         Self::into_pin(Self::new_in(x, alloc))
     }

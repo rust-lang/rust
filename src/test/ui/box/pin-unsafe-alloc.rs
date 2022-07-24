@@ -1,5 +1,4 @@
 #![feature(allocator_api)]
-#![feature(box_into_pin)]
 
 use std::alloc::{AllocError, Allocator, Layout, System};
 use std::ptr::NonNull;

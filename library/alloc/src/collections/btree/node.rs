@@ -213,31 +213,61 @@ unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> 
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    pub fn new_leaf<A: Allocator + Clone>(alloc: A) -> Self {
-        Self::from_new_leaf(LeafNode::new(alloc))
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn new_leaf<A: Allocator + Clone>(alloc: A) -> Self {
+        // SAFETY: The caller has guaranteed that the allocator of the provided `Box` is the
+        // allocator for the owning `BTreeMap`.
+        unsafe { Self::from_new_leaf(LeafNode::new(alloc)) }
     }
 
-    fn from_new_leaf<A: Allocator + Clone>(leaf: Box<LeafNode<K, V>, A>) -> Self {
-        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
+    /// # Safety
+    ///
+    /// The allocator of the `Box` must be the allocator for the owning `BTreeMap`.
+    unsafe fn from_new_leaf<A: Allocator + Clone>(leaf: Box<LeafNode<K, V>, A>) -> Self {
+        // We're dropping the `alloc` part of the box here, but our safety condition guarantees that
+        // a clone of that allocator will outlive the returned `NodeRef` in the owning `BTreeMap`.
+        // This prevents the memory of the box from being invalidated.
+        let ptr = Box::into_raw(leaf);
+        // SAFETY: The pointer returned from `Box::into_raw` is guaranteed to be non-null.
+        let node = unsafe { NonNull::new_unchecked(ptr) };
+        NodeRef { height: 0, node, _marker: PhantomData }
     }
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    fn new_internal<A: Allocator + Clone>(child: Root<K, V>, alloc: A) -> Self {
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    unsafe fn new_internal<A: Allocator + Clone>(child: Root<K, V>, alloc: A) -> Self {
         let mut new_node = unsafe { InternalNode::new(alloc) };
         new_node.edges[0].write(child.node);
+
+        // SAFETY:
+        // - `child.height + 1` is always nonzero.
+        // - The caller has guaranteed that the allocator of the provided `Box` is the allocator for
+        //   the owning `BTreeMap`.
         unsafe { NodeRef::from_new_internal(new_node, child.height + 1) }
     }
 
     /// # Safety
-    /// `height` must not be zero.
+    ///
+    /// - `height` must not be zero.
+    /// - The allocator of the `Box` must be the allocator for the owning `BTreeMap`.
     unsafe fn from_new_internal<A: Allocator + Clone>(
         internal: Box<InternalNode<K, V>, A>,
         height: usize,
     ) -> Self {
         debug_assert!(height > 0);
-        let node = NonNull::from(Box::leak(internal)).cast();
-        let mut this = NodeRef { height, node, _marker: PhantomData };
+        // We're dropping the `alloc` part of the box here, but our safety condition guarantees that
+        // a clone of that allocator will outlive the returned `NodeRef` in the owning `BTreeMap`.
+        // This prevents the memory of the box from being invalidated.
+        let ptr = Box::into_raw(internal);
+        // SAFETY: The pointer returned from `Box::into_raw` is guaranteed to be non-null.
+        let node = unsafe { NonNull::new_unchecked(ptr) };
+
+        let mut this = NodeRef { height, node: node.cast(), _marker: PhantomData };
         this.borrow_mut().correct_all_childrens_parent_links();
         this
     }
@@ -559,18 +589,32 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Returns a new owned tree, with its own root node that is initially empty.
-    pub fn new<A: Allocator + Clone>(alloc: A) -> Self {
-        NodeRef::new_leaf(alloc).forget_type()
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn new<A: Allocator + Clone>(alloc: A) -> Self {
+        // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+        // `BTreeMap`.
+        unsafe { NodeRef::new_leaf(alloc).forget_type() }
     }
 
     /// Adds a new internal node with a single edge pointing to the previous root node,
     /// make that new node the root node, and return it. This increases the height by 1
     /// and is the opposite of `pop_internal_level`.
-    pub fn push_internal_level<A: Allocator + Clone>(
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn push_internal_level<A: Allocator + Clone>(
         &mut self,
         alloc: A,
     ) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
-        super::mem::take_mut(self, |old_root| NodeRef::new_internal(old_root, alloc).forget_type());
+        // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+        // `BTreeMap`.
+        super::mem::take_mut(self, |old_root| unsafe {
+            NodeRef::new_internal(old_root, alloc).forget_type()
+        });
 
         // `self.borrow_mut()`, except that we just forgot we're internal now:
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
@@ -869,7 +913,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// this edge. This method splits the node if there isn't enough room.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert<A: Allocator + Clone>(
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    unsafe fn insert<A: Allocator + Clone>(
         mut self,
         key: K,
         val: V,
@@ -881,7 +929,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
-            let mut result = middle.split(alloc);
+            // SAFETY: The caller has guaranteed that `alloc` is the allocator of the owning
+            // `BTreeMap`.
+            let mut result = unsafe { middle.split(alloc) };
             let mut insertion_edge = match insertion {
                 LeftOrRight::Left(insert_idx) => unsafe {
                     Handle::new_edge(result.left.reborrow_mut(), insert_idx)
@@ -968,13 +1018,19 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// If the returned result is some `SplitResult`, the `left` field will be the root node.
     /// The returned pointer points to the inserted value, which in the case of `SplitResult`
     /// is in the `left` or `right` tree.
-    pub fn insert_recursing<A: Allocator + Clone>(
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn insert_recursing<A: Allocator + Clone>(
         self,
         key: K,
         value: V,
         alloc: A,
     ) -> (Option<SplitResult<'a, K, V, marker::LeafOrInternal>>, *mut V) {
-        let (mut split, val_ptr) = match self.insert(key, value, alloc.clone()) {
+        // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+        // `BTreeMap`.
+        let (mut split, val_ptr) = match unsafe { self.insert(key, value, alloc.clone()) } {
             (None, val_ptr) => return (None, val_ptr),
             (Some(split), val_ptr) => (split.forget_node_type(), val_ptr),
         };
@@ -1128,12 +1184,21 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// - The key and value pointed to by this handle are extracted.
     /// - All the key-value pairs to the right of this handle are put into a newly
     ///   allocated node.
-    pub fn split<A: Allocator + Clone>(mut self, alloc: A) -> SplitResult<'a, K, V, marker::Leaf> {
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
+    pub unsafe fn split<A: Allocator + Clone>(
+        mut self,
+        alloc: A,
+    ) -> SplitResult<'a, K, V, marker::Leaf> {
         let mut new_node = LeafNode::new(alloc);
 
         let kv = self.split_leaf_data(&mut new_node);
 
-        let right = NodeRef::from_new_leaf(new_node);
+        // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+        // `BTreeMap`.
+        let right = unsafe { NodeRef::from_new_leaf(new_node) };
         SplitResult { left: self.node, kv, right }
     }
 

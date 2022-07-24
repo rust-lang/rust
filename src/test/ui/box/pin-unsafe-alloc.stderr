@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Alloc: PinSafeAllocator` is not satisfied
-  --> $DIR/pin-unsafe-alloc.rs:32:32
+  --> $DIR/pin-unsafe-alloc.rs:31:32
    |
 LL |     let _ = Box::pin_in(value, alloc);
    |             -----------        ^^^^^ expected an implementor of trait `PinSafeAllocator`
@@ -9,7 +9,7 @@ LL |     let _ = Box::pin_in(value, alloc);
 note: required by a bound in `Box::<T, A>::pin_in`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
-LL |         A: ~const Allocator + ~const PinSafeAllocator + ~const Drop + ~const Destruct,
+LL |         A: ~const Allocator + ~const PinSafeAllocator + ~const Destruct,
    |                               ^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Box::<T, A>::pin_in`
 help: consider borrowing here
    |

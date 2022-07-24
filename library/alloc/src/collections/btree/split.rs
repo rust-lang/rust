@@ -63,10 +63,20 @@ impl<K, V> Root<K, V> {
     }
 
     /// Creates a tree consisting of empty nodes.
+    ///
+    /// # Safety
+    ///
+    /// `alloc` must be the allocator for the owning `BTreeMap`.
     fn new_pillar<A: Allocator + Clone>(height: usize, alloc: A) -> Self {
-        let mut root = Root::new(alloc.clone());
+        // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+        // `BTreeMap`.
+        let mut root = unsafe { Root::new(alloc.clone()) };
         for _ in 0..height {
-            root.push_internal_level(alloc.clone());
+            // SAFETY: The caller has guaranteed that `alloc` is the allocator for the owning
+            // `BTreeMap`.
+            unsafe {
+                root.push_internal_level(alloc.clone());
+            }
         }
         root
     }

@@ -116,7 +116,14 @@ impl<K, V> BTreeMap<K, V> {
     {
         let iter = mem::take(self).into_iter();
         if !iter.is_empty() {
-            self.root.insert(Root::new(*self.alloc)).bulk_push(iter, &mut self.length, *self.alloc);
+            // SAFETY: `self.alloc` is the allocator for this `BTreeMap`.
+            unsafe {
+                self.root.insert(Root::new(*self.alloc)).bulk_push(
+                    iter,
+                    &mut self.length,
+                    *self.alloc,
+                );
+            }
         }
     }
 }

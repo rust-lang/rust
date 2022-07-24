@@ -342,30 +342,39 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
             None => {
                 // SAFETY: There is no tree yet so no reference to it exists.
                 let map = unsafe { self.dormant_map.awaken() };
-                let mut root = NodeRef::new_leaf(self.alloc.clone());
+                // SAFETY: `self.alloc` is the allocator for the owning `BTreeMap`.
+                let mut root = unsafe { NodeRef::new_leaf(self.alloc.clone()) };
                 let val_ptr = root.borrow_mut().push(self.key, value) as *mut V;
                 map.root = Some(root.forget_type());
                 map.length = 1;
                 val_ptr
             }
-            Some(handle) => match handle.insert_recursing(self.key, value, self.alloc.clone()) {
-                (None, val_ptr) => {
-                    // SAFETY: We have consumed self.handle.
-                    let map = unsafe { self.dormant_map.awaken() };
-                    map.length += 1;
-                    val_ptr
+            Some(handle) => {
+                // SAFETY: `self.alloc` is the allocator for the owning `BTreeMap`.
+                let insert_result =
+                    unsafe { handle.insert_recursing(self.key, value, self.alloc.clone()) };
+                match insert_result {
+                    (None, val_ptr) => {
+                        // SAFETY: We have consumed self.handle.
+                        let map = unsafe { self.dormant_map.awaken() };
+                        map.length += 1;
+                        val_ptr
+                    }
+                    (Some(ins), val_ptr) => {
+                        drop(ins.left);
+                        // SAFETY: We have consumed self.handle and dropped the
+                        // remaining reference to the tree, ins.left.
+                        let map = unsafe { self.dormant_map.awaken() };
+                        let root = map.root.as_mut().unwrap(); // same as ins.left
+                        // SAFETY: `self.alloc` is the allocator for the owning `BTreeMap`.
+                        unsafe {
+                            root.push_internal_level(self.alloc).push(ins.kv.0, ins.kv.1, ins.right)
+                        };
+                        map.length += 1;
+                        val_ptr
+                    }
                 }
-                (Some(ins), val_ptr) => {
-                    drop(ins.left);
-                    // SAFETY: We have consumed self.handle and dropped the
-                    // remaining reference to the tree, ins.left.
-                    let map = unsafe { self.dormant_map.awaken() };
-                    let root = map.root.as_mut().unwrap(); // same as ins.left
-                    root.push_internal_level(self.alloc).push(ins.kv.0, ins.kv.1, ins.right);
-                    map.length += 1;
-                    val_ptr
-                }
-            },
+            }
         };
         // Now that we have finished growing the tree using borrowed references,
         // dereference the pointer to a part of it, that we picked up along the way.

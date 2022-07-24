@@ -68,10 +68,13 @@ fn test_splitpoint() {
 
 #[test]
 fn test_partial_eq() {
-    let mut root1 = NodeRef::new_leaf(Global);
+    // SAFETY: `Global` is the allocator for the `BTreeMap` we're testing.
+    let mut root1 = unsafe { NodeRef::new_leaf(Global) };
     root1.borrow_mut().push(1, ());
-    let mut root1 = NodeRef::new_internal(root1.forget_type(), Global).forget_type();
-    let root2 = Root::new(Global);
+    // SAFETY: `Global` is the allocator for the `BTreeMap` we're testing.
+    let mut root1 = unsafe { NodeRef::new_internal(root1.forget_type(), Global).forget_type() };
+    // SAFETY: `Global` is the allocator for the `BTreeMap` we're testing.
+    let root2 = unsafe { Root::new(Global) };
     root1.reborrow().assert_back_pointers();
     root2.reborrow().assert_back_pointers();
 
