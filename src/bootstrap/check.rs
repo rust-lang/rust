@@ -301,6 +301,68 @@ impl Step for CodegenBackend {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustAnalyzer {
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzer { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let target = self.target;
+
+        builder.ensure(Std { target });
+
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            target,
+            cargo_subcommand(builder.kind),
+            "src/tools/rust-analyzer",
+            SourceType::InTree,
+            &["rust-analyzer/in-rust-tree".to_owned()],
+        );
+
+        cargo.rustflag(
+            "-Zallow-features=proc_macro_internals,proc_macro_diagnostic,proc_macro_span",
+        );
+
+        // For ./x.py clippy, don't check those targets because
+        // linting tests and benchmarks can produce very noisy results
+        if builder.kind != Kind::Clippy {
+            // can't use `--all-targets` because `--examples` doesn't work well
+            cargo.arg("--bins");
+            cargo.arg("--tests");
+            cargo.arg("--benches");
+        }
+
+        builder.info(&format!(
+            "Checking stage{} {} artifacts ({} -> {})",
+            compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
+        ));
+        run_cargo(builder, cargo, args(builder), &stamp(builder, compiler, target), vec![], true);
+
+        /// Cargo's output path in a given stage, compiled by a particular
+        /// compiler for the specified target.
+        fn stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
+            builder.cargo_out(compiler, Mode::ToolStd, target).join(".rust-analyzer-check.stamp")
+        }
+    }
+}
+
 macro_rules! tool_check_step {
     ($name:ident, $path:literal, $($alias:literal, )* $source_type:path $(, $default:literal )?) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

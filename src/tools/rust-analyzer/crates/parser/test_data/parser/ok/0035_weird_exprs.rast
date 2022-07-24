@@ -1,0 +1,2339 @@
+SOURCE_FILE
+  COMMENT "//! Adapted from a `rustc` test, which can be found at "
+  WHITESPACE "\n"
+  COMMENT "//! https://github.com/rust-lang/rust/blob/6d34ec18c7d7e574553f6347ecf08e1e1c45c13d/src/test/run-pass/weird-exprs.rs."
+  WHITESPACE "\n"
+  COMMENT "//! "
+  WHITESPACE "\n"
+  COMMENT "//! Reported to rust-analyzer in https://github.com/rust-lang/rust-analyzer/issues/290"
+  WHITESPACE "\n\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "allow"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "non_camel_case_types"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "allow"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "dead_code"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "allow"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "unreachable_code"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "allow"
+      TOKEN_TREE
+        L_PAREN "("
+        IDENT "unused_parens"
+        R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "recursion_limit"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      LITERAL
+        STRING "\"128\""
+    R_BRACK "]"
+  WHITESPACE "\n\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "std"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "cell"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Cell"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "std"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "mem"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "swap"
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+  COMMENT "// Just a grab bag of stuff that you wouldn't want to actually write."
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "strange"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "bool"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_x"
+          COLON ":"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "bool"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          RETURN_EXPR
+            RETURN_KW "return"
+            WHITESPACE " "
+            LITERAL
+              TRUE_KW "true"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "funny"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        FN
+          FN_KW "fn"
+          WHITESPACE " "
+          NAME
+            IDENT "f"
+          PARAM_LIST
+            L_PAREN "("
+            PARAM
+              IDENT_PAT
+                NAME
+                  IDENT "_x"
+              COLON ":"
+              WHITESPACE " "
+              TUPLE_TYPE
+                L_PAREN "("
+                R_PAREN ")"
+            R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "f"
+            ARG_LIST
+              L_PAREN "("
+              RETURN_EXPR
+                RETURN_KW "return"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "what"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        FN
+          FN_KW "fn"
+          WHITESPACE " "
+          NAME
+            IDENT "the"
+          PARAM_LIST
+            L_PAREN "("
+            PARAM
+              IDENT_PAT
+                NAME
+                  IDENT "x"
+              COLON ":"
+              WHITESPACE " "
+              REF_TYPE
+                AMP "&"
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Cell"
+                      GENERIC_ARG_LIST
+                        L_ANGLE "<"
+                        TYPE_ARG
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "bool"
+                        R_ANGLE ">"
+            R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                RETURN_EXPR
+                  RETURN_KW "return"
+                  WHITESPACE " "
+                  WHILE_EXPR
+                    WHILE_KW "while"
+                    WHITESPACE " "
+                    PREFIX_EXPR
+                      BANG "!"
+                      METHOD_CALL_EXPR
+                        PATH_EXPR
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "x"
+                        DOT "."
+                        NAME_REF
+                          IDENT "get"
+                        ARG_LIST
+                          L_PAREN "("
+                          R_PAREN ")"
+                    WHITESPACE " "
+                    BLOCK_EXPR
+                      STMT_LIST
+                        L_CURLY "{"
+                        WHITESPACE " "
+                        EXPR_STMT
+                          METHOD_CALL_EXPR
+                            PATH_EXPR
+                              PATH
+                                PATH_SEGMENT
+                                  NAME_REF
+                                    IDENT "x"
+                            DOT "."
+                            NAME_REF
+                              IDENT "set"
+                            ARG_LIST
+                              L_PAREN "("
+                              LITERAL
+                                TRUE_KW "true"
+                              R_PAREN ")"
+                          SEMICOLON ";"
+                        WHITESPACE " "
+                        R_CURLY "}"
+                SEMICOLON ";"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "i"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          REF_EXPR
+            AMP "&"
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Cell"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "new"
+              ARG_LIST
+                L_PAREN "("
+                LITERAL
+                  FALSE_KW "false"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "dont"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              CLOSURE_EXPR
+                PARAM_LIST
+                  PIPE "|"
+                  PIPE "|"
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "the"
+                  ARG_LIST
+                    L_PAREN "("
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "i"
+                    R_PAREN ")"
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "dont"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                TOKEN_TREE
+                  L_PAREN "("
+                  IDENT "i"
+                  DOT "."
+                  IDENT "get"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    R_PAREN ")"
+                  R_PAREN ")"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "zombiejesus"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LOOP_EXPR
+          LOOP_KW "loop"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                WHILE_EXPR
+                  WHILE_KW "while"
+                  WHITESPACE " "
+                  PAREN_EXPR
+                    L_PAREN "("
+                    RETURN_EXPR
+                      RETURN_KW "return"
+                    R_PAREN ")"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE "\n            "
+                      IF_EXPR
+                        IF_KW "if"
+                        WHITESPACE " "
+                        PAREN_EXPR
+                          L_PAREN "("
+                          RETURN_EXPR
+                            RETURN_KW "return"
+                          R_PAREN ")"
+                        WHITESPACE " "
+                        BLOCK_EXPR
+                          STMT_LIST
+                            L_CURLY "{"
+                            WHITESPACE "\n                "
+                            EXPR_STMT
+                              MATCH_EXPR
+                                MATCH_KW "match"
+                                WHITESPACE " "
+                                PAREN_EXPR
+                                  L_PAREN "("
+                                  RETURN_EXPR
+                                    RETURN_KW "return"
+                                  R_PAREN ")"
+                                WHITESPACE " "
+                                MATCH_ARM_LIST
+                                  L_CURLY "{"
+                                  WHITESPACE "\n                    "
+                                  MATCH_ARM
+                                    LITERAL_PAT
+                                      LITERAL
+                                        INT_NUMBER "1"
+                                    WHITESPACE " "
+                                    FAT_ARROW "=>"
+                                    WHITESPACE " "
+                                    BLOCK_EXPR
+                                      STMT_LIST
+                                        L_CURLY "{"
+                                        WHITESPACE "\n                        "
+                                        IF_EXPR
+                                          IF_KW "if"
+                                          WHITESPACE " "
+                                          PAREN_EXPR
+                                            L_PAREN "("
+                                            RETURN_EXPR
+                                              RETURN_KW "return"
+                                            R_PAREN ")"
+                                          WHITESPACE " "
+                                          BLOCK_EXPR
+                                            STMT_LIST
+                                              L_CURLY "{"
+                                              WHITESPACE "\n                            "
+                                              RETURN_EXPR
+                                                RETURN_KW "return"
+                                              WHITESPACE "\n                        "
+                                              R_CURLY "}"
+                                          WHITESPACE " "
+                                          ELSE_KW "else"
+                                          WHITESPACE " "
+                                          BLOCK_EXPR
+                                            STMT_LIST
+                                              L_CURLY "{"
+                                              WHITESPACE "\n                            "
+                                              RETURN_EXPR
+                                                RETURN_KW "return"
+                                              WHITESPACE "\n                        "
+                                              R_CURLY "}"
+                                        WHITESPACE "\n                    "
+                                        R_CURLY "}"
+                                  WHITESPACE "\n                    "
+                                  MATCH_ARM
+                                    WILDCARD_PAT
+                                      UNDERSCORE "_"
+                                    WHITESPACE " "
+                                    FAT_ARROW "=>"
+                                    WHITESPACE " "
+                                    BLOCK_EXPR
+                                      STMT_LIST
+                                        L_CURLY "{"
+                                        WHITESPACE " "
+                                        RETURN_EXPR
+                                          RETURN_KW "return"
+                                        WHITESPACE " "
+                                        R_CURLY "}"
+                                  WHITESPACE "\n                "
+                                  R_CURLY "}"
+                              SEMICOLON ";"
+                            WHITESPACE "\n            "
+                            R_CURLY "}"
+                        WHITESPACE " "
+                        ELSE_KW "else"
+                        WHITESPACE " "
+                        IF_EXPR
+                          IF_KW "if"
+                          WHITESPACE " "
+                          PAREN_EXPR
+                            L_PAREN "("
+                            RETURN_EXPR
+                              RETURN_KW "return"
+                            R_PAREN ")"
+                          WHITESPACE " "
+                          BLOCK_EXPR
+                            STMT_LIST
+                              L_CURLY "{"
+                              WHITESPACE "\n                "
+                              EXPR_STMT
+                                RETURN_EXPR
+                                  RETURN_KW "return"
+                                SEMICOLON ";"
+                              WHITESPACE "\n            "
+                              R_CURLY "}"
+                      WHITESPACE "\n        "
+                      R_CURLY "}"
+              WHITESPACE "\n        "
+              IF_EXPR
+                IF_KW "if"
+                WHITESPACE " "
+                PAREN_EXPR
+                  L_PAREN "("
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                  R_PAREN ")"
+                WHITESPACE " "
+                BLOCK_EXPR
+                  STMT_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    EXPR_STMT
+                      BREAK_EXPR
+                        BREAK_KW "break"
+                      SEMICOLON ";"
+                    WHITESPACE " "
+                    R_CURLY "}"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "notsure"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            MUT_KW "mut"
+            WHITESPACE " "
+            NAME
+              IDENT "_x"
+          COLON ":"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "isize"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            MUT_KW "mut"
+            WHITESPACE " "
+            NAME
+              IDENT "_y"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BIN_EXPR
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "_x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ2 "=="
+            WHITESPACE " "
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "_x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            MUT_KW "mut"
+            WHITESPACE " "
+            NAME
+              IDENT "_z"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BIN_EXPR
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "_x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
+              R_PAREN ")"
+            WHITESPACE " "
+            L_ANGLE "<"
+            WHITESPACE " "
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "_x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_a"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BIN_EXPR
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "_x"
+                WHITESPACE " "
+                PLUSEQ "+="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ2 "=="
+            WHITESPACE " "
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "_x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "0"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_b"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BIN_EXPR
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "swap"
+              ARG_LIST
+                L_PAREN "("
+                REF_EXPR
+                  AMP "&"
+                  MUT_KW "mut"
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "_y"
+                COMMA ","
+                WHITESPACE " "
+                REF_EXPR
+                  AMP "&"
+                  MUT_KW "mut"
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "_z"
+                R_PAREN ")"
+            WHITESPACE " "
+            EQ2 "=="
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "swap"
+              ARG_LIST
+                L_PAREN "("
+                REF_EXPR
+                  AMP "&"
+                  MUT_KW "mut"
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "_y"
+                COMMA ","
+                WHITESPACE " "
+                REF_EXPR
+                  AMP "&"
+                  MUT_KW "mut"
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "_z"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "canttouchthis"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "usize"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        FN
+          FN_KW "fn"
+          WHITESPACE " "
+          NAME
+            IDENT "p"
+          PARAM_LIST
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          RET_TYPE
+            THIN_ARROW "->"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "bool"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              LITERAL
+                TRUE_KW "true"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_a"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PAREN_EXPR
+            L_PAREN "("
+            BIN_EXPR
+              MACRO_EXPR
+                MACRO_CALL
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "assert"
+                  BANG "!"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    TOKEN_TREE
+                      L_PAREN "("
+                      TRUE_KW "true"
+                      R_PAREN ")"
+                    R_PAREN ")"
+              WHITESPACE " "
+              EQ2 "=="
+              WHITESPACE " "
+              PAREN_EXPR
+                L_PAREN "("
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "assert"
+                    BANG "!"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      IDENT "p"
+                      TOKEN_TREE
+                        L_PAREN "("
+                        R_PAREN ")"
+                      R_PAREN ")"
+                R_PAREN ")"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_c"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PAREN_EXPR
+            L_PAREN "("
+            BIN_EXPR
+              MACRO_EXPR
+                MACRO_CALL
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "assert"
+                  BANG "!"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    TOKEN_TREE
+                      L_PAREN "("
+                      IDENT "p"
+                      TOKEN_TREE
+                        L_PAREN "("
+                        R_PAREN ")"
+                      R_PAREN ")"
+                    R_PAREN ")"
+              WHITESPACE " "
+              EQ2 "=="
+              WHITESPACE " "
+              TUPLE_EXPR
+                L_PAREN "("
+                R_PAREN ")"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_b"
+          COLON ":"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "bool"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PAREN_EXPR
+            L_PAREN "("
+            BIN_EXPR
+              MACRO_EXPR
+                MACRO_CALL
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "println"
+                  BANG "!"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    STRING "\"{}\""
+                    COMMA ","
+                    WHITESPACE " "
+                    INT_NUMBER "0"
+                    R_PAREN ")"
+              WHITESPACE " "
+              EQ2 "=="
+              WHITESPACE " "
+              PAREN_EXPR
+                L_PAREN "("
+                RETURN_EXPR
+                  RETURN_KW "return"
+                  WHITESPACE " "
+                  LITERAL
+                    INT_NUMBER "0"
+                R_PAREN ")"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "angrydome"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          LOOP_EXPR
+            LOOP_KW "loop"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                IF_EXPR
+                  IF_KW "if"
+                  WHITESPACE " "
+                  BREAK_EXPR
+                    BREAK_KW "break"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE " "
+                      R_CURLY "}"
+                WHITESPACE " "
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            MUT_KW "mut"
+            WHITESPACE " "
+            NAME
+              IDENT "i"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LOOP_EXPR
+          LOOP_KW "loop"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              EXPR_STMT
+                BIN_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "i"
+                  WHITESPACE " "
+                  PLUSEQ "+="
+                  WHITESPACE " "
+                  LITERAL
+                    INT_NUMBER "1"
+                SEMICOLON ";"
+              WHITESPACE " "
+              EXPR_STMT
+                IF_EXPR
+                  IF_KW "if"
+                  WHITESPACE " "
+                  BIN_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "i"
+                    WHITESPACE " "
+                    EQ2 "=="
+                    WHITESPACE " "
+                    LITERAL
+                      INT_NUMBER "1"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE " "
+                      MATCH_EXPR
+                        MATCH_KW "match"
+                        WHITESPACE " "
+                        PAREN_EXPR
+                          L_PAREN "("
+                          CONTINUE_EXPR
+                            CONTINUE_KW "continue"
+                          R_PAREN ")"
+                        WHITESPACE " "
+                        MATCH_ARM_LIST
+                          L_CURLY "{"
+                          WHITESPACE " "
+                          MATCH_ARM
+                            LITERAL_PAT
+                              LITERAL
+                                INT_NUMBER "1"
+                            WHITESPACE " "
+                            FAT_ARROW "=>"
+                            WHITESPACE " "
+                            BLOCK_EXPR
+                              STMT_LIST
+                                L_CURLY "{"
+                                WHITESPACE " "
+                                R_CURLY "}"
+                            COMMA ","
+                          WHITESPACE " "
+                          MATCH_ARM
+                            WILDCARD_PAT
+                              UNDERSCORE "_"
+                            WHITESPACE " "
+                            FAT_ARROW "=>"
+                            WHITESPACE " "
+                            MACRO_EXPR
+                              MACRO_CALL
+                                PATH
+                                  PATH_SEGMENT
+                                    NAME_REF
+                                      IDENT "panic"
+                                BANG "!"
+                                TOKEN_TREE
+                                  L_PAREN "("
+                                  STRING "\"wat\""
+                                  R_PAREN ")"
+                          WHITESPACE " "
+                          R_CURLY "}"
+                      WHITESPACE " "
+                      R_CURLY "}"
+              WHITESPACE "\n      "
+              EXPR_STMT
+                BREAK_EXPR
+                  BREAK_KW "break"
+                SEMICOLON ";"
+              WHITESPACE " "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "evil_lincoln"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "_evil"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "println"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                STRING "\"lincoln\""
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "dots"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert_eq"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                IDENT "String"
+                COLON ":"
+                COLON ":"
+                IDENT "from"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"..................................................\""
+                  R_PAREN ")"
+                COMMA ","
+                WHITESPACE "\n               "
+                IDENT "format"
+                BANG "!"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"{:?}\""
+                  COMMA ","
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE "\n                               "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  R_PAREN ")"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "u8"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "u8"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u8"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        IF_EXPR
+          IF_KW "if"
+          WHITESPACE " "
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u8"
+            WHITESPACE " "
+            NEQ "!="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "0u8"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "assert_eq"
+                    BANG "!"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      INT_NUMBER "8u8"
+                      COMMA ","
+                      WHITESPACE " "
+                      TOKEN_TREE
+                        L_CURLY "{"
+                        WHITESPACE "\n            "
+                        IDENT "macro_rules"
+                        BANG "!"
+                        WHITESPACE " "
+                        IDENT "u8"
+                        WHITESPACE " "
+                        TOKEN_TREE
+                          L_CURLY "{"
+                          WHITESPACE "\n                "
+                          TOKEN_TREE
+                            L_PAREN "("
+                            IDENT "u8"
+                            R_PAREN ")"
+                          WHITESPACE " "
+                          EQ "="
+                          R_ANGLE ">"
+                          WHITESPACE " "
+                          TOKEN_TREE
+                            L_CURLY "{"
+                            WHITESPACE "\n                    "
+                            MOD_KW "mod"
+                            WHITESPACE " "
+                            IDENT "u8"
+                            WHITESPACE " "
+                            TOKEN_TREE
+                              L_CURLY "{"
+                              WHITESPACE "\n                        "
+                              PUB_KW "pub"
+                              WHITESPACE " "
+                              FN_KW "fn"
+                              WHITESPACE " "
+                              IDENT "u8"
+                              L_ANGLE "<"
+                              LIFETIME_IDENT "'u8"
+                              COLON ":"
+                              WHITESPACE " "
+                              LIFETIME_IDENT "'u8"
+                              WHITESPACE " "
+                              PLUS "+"
+                              WHITESPACE " "
+                              LIFETIME_IDENT "'u8"
+                              R_ANGLE ">"
+                              TOKEN_TREE
+                                L_PAREN "("
+                                IDENT "u8"
+                                COLON ":"
+                                WHITESPACE " "
+                                AMP "&"
+                                LIFETIME_IDENT "'u8"
+                                WHITESPACE " "
+                                IDENT "u8"
+                                R_PAREN ")"
+                              WHITESPACE " "
+                              MINUS "-"
+                              R_ANGLE ">"
+                              WHITESPACE " "
+                              AMP "&"
+                              LIFETIME_IDENT "'u8"
+                              WHITESPACE " "
+                              IDENT "u8"
+                              WHITESPACE " "
+                              TOKEN_TREE
+                                L_CURLY "{"
+                                WHITESPACE "\n                            "
+                                STRING "\"u8\""
+                                SEMICOLON ";"
+                                WHITESPACE "\n                            "
+                                IDENT "u8"
+                                WHITESPACE "\n                        "
+                                R_CURLY "}"
+                              WHITESPACE "\n                    "
+                              R_CURLY "}"
+                            WHITESPACE "\n                "
+                            R_CURLY "}"
+                          SEMICOLON ";"
+                          WHITESPACE "\n            "
+                          R_CURLY "}"
+                        WHITESPACE "\n\n            "
+                        IDENT "u8"
+                        BANG "!"
+                        TOKEN_TREE
+                          L_PAREN "("
+                          IDENT "u8"
+                          R_PAREN ")"
+                        SEMICOLON ";"
+                        WHITESPACE "\n            "
+                        LET_KW "let"
+                        WHITESPACE " "
+                        AMP "&"
+                        IDENT "u8"
+                        COLON ":"
+                        WHITESPACE " "
+                        AMP "&"
+                        IDENT "u8"
+                        WHITESPACE " "
+                        EQ "="
+                        WHITESPACE " "
+                        IDENT "u8"
+                        COLON ":"
+                        COLON ":"
+                        IDENT "u8"
+                        TOKEN_TREE
+                          L_PAREN "("
+                          AMP "&"
+                          INT_NUMBER "8u8"
+                          R_PAREN ")"
+                        SEMICOLON ";"
+                        WHITESPACE "\n            "
+                        CRATE_KW "crate"
+                        COLON ":"
+                        COLON ":"
+                        IDENT "u8"
+                        TOKEN_TREE
+                          L_PAREN "("
+                          INT_NUMBER "0u8"
+                          R_PAREN ")"
+                        SEMICOLON ";"
+                        WHITESPACE "\n            "
+                        IDENT "u8"
+                        WHITESPACE "\n        "
+                        R_CURLY "}"
+                      R_PAREN ")"
+                SEMICOLON ";"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "fishy"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert_eq"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                IDENT "String"
+                COLON ":"
+                COLON ":"
+                IDENT "from"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"><>\""
+                  R_PAREN ")"
+                COMMA ","
+                WHITESPACE "\n               "
+                IDENT "String"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                COLON ":"
+                COLON ":"
+                IDENT "from"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"><>\""
+                  R_PAREN ")"
+                DOT "."
+                IDENT "chars"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
+                DOT "."
+                IDENT "rev"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
+                DOT "."
+                IDENT "collect"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                IDENT "String"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "union"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        UNION
+          UNION_KW "union"
+          WHITESPACE " "
+          NAME
+            IDENT "union"
+          GENERIC_PARAM_LIST
+            L_ANGLE "<"
+            LIFETIME_PARAM
+              LIFETIME
+                LIFETIME_IDENT "'union"
+            R_ANGLE ">"
+          WHITESPACE " "
+          RECORD_FIELD_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            RECORD_FIELD
+              NAME
+                IDENT "union"
+              COLON ":"
+              WHITESPACE " "
+              REF_TYPE
+                AMP "&"
+                LIFETIME
+                  LIFETIME_IDENT "'union"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "union"
+                      GENERIC_ARG_LIST
+                        L_ANGLE "<"
+                        LIFETIME_ARG
+                          LIFETIME
+                            LIFETIME_IDENT "'union"
+                        R_ANGLE ">"
+            COMMA ","
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "special_characters"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "val"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          PREFIX_EXPR
+            BANG "!"
+            PAREN_EXPR
+              L_PAREN "("
+              BIN_EXPR
+                CALL_EXPR
+                  PAREN_EXPR
+                    L_PAREN "("
+                    CLOSURE_EXPR
+                      PARAM_LIST
+                        PIPE "|"
+                        PARAM
+                          TUPLE_PAT
+                            L_PAREN "("
+                            REST_PAT
+                              DOT2 ".."
+                            R_PAREN ")"
+                          COLON ":"
+                          TUPLE_TYPE
+                            L_PAREN "("
+                            INFER_TYPE
+                              UNDERSCORE "_"
+                            COMMA ","
+                            INFER_TYPE
+                              UNDERSCORE "_"
+                            R_PAREN ")"
+                        COMMA ","
+                        PARAM
+                          IDENT_PAT
+                            NAME
+                              IDENT "__"
+                            AT "@"
+                            WILDCARD_PAT
+                              UNDERSCORE "_"
+                        PIPE "|"
+                      PATH_EXPR
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "__"
+                    R_PAREN ")"
+                  ARG_LIST
+                    L_PAREN "("
+                    TUPLE_EXPR
+                      L_PAREN "("
+                      REF_EXPR
+                        AMP "&"
+                        PREFIX_EXPR
+                          STAR "*"
+                          LITERAL
+                            STRING "\"\\\\\""
+                      COMMA ","
+                      LITERAL
+                        CHAR "'🤔'"
+                      R_PAREN ")"
+                    COMMENT "/**/"
+                    COMMA ","
+                    BLOCK_EXPR
+                      STMT_LIST
+                        L_CURLY "{"
+                        R_CURLY "}"
+                    R_PAREN ")"
+                EQ2 "=="
+                BLOCK_EXPR
+                  STMT_LIST
+                    L_CURLY "{"
+                    EXPR_STMT
+                      REF_EXPR
+                        AMP "&"
+                        INDEX_EXPR
+                          ARRAY_EXPR
+                            L_BRACK "["
+                            RANGE_EXPR
+                              DOT2EQ "..="
+                              RANGE_EXPR
+                                DOT2 ".."
+                            R_BRACK "]"
+                          L_BRACK "["
+                          RANGE_EXPR
+                            DOT2 ".."
+                          R_BRACK "]"
+                      SEMICOLON ";"
+                    R_CURLY "}"
+              R_PAREN ")"
+          COMMENT "//"
+          WHITESPACE "\n    "
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                BANG "!"
+                IDENT "val"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "punch_card"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      IMPL_TRAIT_TYPE
+        IMPL_KW "impl"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "std"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "fmt"
+                COLON2 "::"
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Debug"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        RANGE_EXPR
+          DOT2EQ "..="
+          RANGE_EXPR
+            DOT2EQ "..="
+            RANGE_EXPR
+              DOT2 ".."
+              WHITESPACE " "
+              RANGE_EXPR
+                DOT2 ".."
+                WHITESPACE "    "
+                RANGE_EXPR
+                  DOT2 ".."
+                  WHITESPACE " "
+                  RANGE_EXPR
+                    DOT2 ".."
+                    WHITESPACE " "
+                    RANGE_EXPR
+                      DOT2 ".."
+                      WHITESPACE " "
+                      RANGE_EXPR
+                        DOT2 ".."
+                        WHITESPACE "    "
+                        RANGE_EXPR
+                          DOT2 ".."
+                          WHITESPACE " "
+                          RANGE_EXPR
+                            DOT2 ".."
+                            WHITESPACE " "
+                            RANGE_EXPR
+                              DOT2 ".."
+                              WHITESPACE " "
+                              RANGE_EXPR
+                                DOT2 ".."
+                                WHITESPACE "    "
+                                RANGE_EXPR
+                                  DOT2 ".."
+                                  WHITESPACE " "
+                                  RANGE_EXPR
+                                    DOT2EQ "..="
+                                    RANGE_EXPR
+                                      DOT2 ".."
+                                      WHITESPACE " "
+                                      RANGE_EXPR
+                                        DOT2 ".."
+                                        WHITESPACE "\n    "
+                                        RANGE_EXPR
+                                          DOT2EQ "..="
+                                          RANGE_EXPR
+                                            DOT2 ".."
+                                            WHITESPACE " "
+                                            RANGE_EXPR
+                                              DOT2EQ "..="
+                                              RANGE_EXPR
+                                                DOT2 ".."
+                                                WHITESPACE "    "
+                                                RANGE_EXPR
+                                                  DOT2 ".."
+                                                  WHITESPACE " "
+                                                  RANGE_EXPR
+                                                    DOT2 ".."
+                                                    WHITESPACE " "
+                                                    RANGE_EXPR
+                                                      DOT2 ".."
+                                                      WHITESPACE " "
+                                                      RANGE_EXPR
+                                                        DOT2 ".."
+                                                        WHITESPACE "    "
+                                                        RANGE_EXPR
+                                                          DOT2 ".."
+                                                          WHITESPACE " "
+                                                          RANGE_EXPR
+                                                            DOT2 ".."
+                                                            WHITESPACE " "
+                                                            RANGE_EXPR
+                                                              DOT2 ".."
+                                                              WHITESPACE " "
+                                                              RANGE_EXPR
+                                                                DOT2 ".."
+                                                                WHITESPACE "    "
+                                                                RANGE_EXPR
+                                                                  DOT2EQ "..="
+                                                                  RANGE_EXPR
+                                                                    DOT2EQ "..="
+                                                                    RANGE_EXPR
+                                                                      DOT2EQ "..="
+                                                                      RANGE_EXPR
+                                                                        DOT2 ".."
+                                                                        WHITESPACE "\n    "
+                                                                        RANGE_EXPR
+                                                                          DOT2EQ "..="
+                                                                          RANGE_EXPR
+                                                                            DOT2 ".."
+                                                                            WHITESPACE " "
+                                                                            RANGE_EXPR
+                                                                              DOT2EQ "..="
+                                                                              RANGE_EXPR
+                                                                                DOT2 ".."
+                                                                                WHITESPACE "    "
+                                                                                RANGE_EXPR
+                                                                                  DOT2EQ "..="
+                                                                                  RANGE_EXPR
+                                                                                    DOT2 ".."
+                                                                                    WHITESPACE " "
+                                                                                    RANGE_EXPR
+                                                                                      DOT2EQ "..="
+                                                                                      RANGE_EXPR
+                                                                                        DOT2 ".."
+                                                                                        WHITESPACE "    "
+                                                                                        RANGE_EXPR
+                                                                                          DOT2 ".."
+                                                                                          WHITESPACE " "
+                                                                                          RANGE_EXPR
+                                                                                            DOT2EQ "..="
+                                                                                            RANGE_EXPR
+                                                                                              DOT2EQ "..="
+                                                                                              RANGE_EXPR
+                                                                                                DOT2 ".."
+                                                                                                WHITESPACE "    "
+                                                                                                RANGE_EXPR
+                                                                                                  DOT2 ".."
+                                                                                                  WHITESPACE " "
+                                                                                                  RANGE_EXPR
+                                                                                                    DOT2EQ "..="
+                                                                                                    RANGE_EXPR
+                                                                                                      DOT2 ".."
+                                                                                                      WHITESPACE " "
+                                                                                                      RANGE_EXPR
+                                                                                                        DOT2 ".."
+                                                                                                        WHITESPACE "\n    "
+                                                                                                        RANGE_EXPR
+                                                                                                          DOT2EQ "..="
+                                                                                                          RANGE_EXPR
+                                                                                                            DOT2EQ "..="
+                                                                                                            RANGE_EXPR
+                                                                                                              DOT2 ".."
+                                                                                                              WHITESPACE " "
+                                                                                                              RANGE_EXPR
+                                                                                                                DOT2 ".."
+                                                                                                                WHITESPACE "    "
+                                                                                                                RANGE_EXPR
+                                                                                                                  DOT2EQ "..="
+                                                                                                                  RANGE_EXPR
+                                                                                                                    DOT2 ".."
+                                                                                                                    WHITESPACE " "
+                                                                                                                    RANGE_EXPR
+                                                                                                                      DOT2EQ "..="
+                                                                                                                      RANGE_EXPR
+                                                                                                                        DOT2 ".."
+                                                                                                                        WHITESPACE "    "
+                                                                                                                        RANGE_EXPR
+                                                                                                                          DOT2EQ "..="
+                                                                                                                          RANGE_EXPR
+                                                                                                                            DOT2 ".."
+                                                                                                                            WHITESPACE " "
+                                                                                                                            RANGE_EXPR
+                                                                                                                              DOT2 ".."
+                                                                                                                              WHITESPACE " "
+                                                                                                                              RANGE_EXPR
+                                                                                                                                DOT2 ".."
+                                                                                                                                WHITESPACE "    "
+                                                                                                                                RANGE_EXPR
+                                                                                                                                  DOT2 ".."
+                                                                                                                                  WHITESPACE " "
+                                                                                                                                  RANGE_EXPR
+                                                                                                                                    DOT2EQ "..="
+                                                                                                                                    RANGE_EXPR
+                                                                                                                                      DOT2 ".."
+                                                                                                                                      WHITESPACE " "
+                                                                                                                                      RANGE_EXPR
+                                                                                                                                        DOT2 ".."
+                                                                                                                                        WHITESPACE "\n    "
+                                                                                                                                        RANGE_EXPR
+                                                                                                                                          DOT2EQ "..="
+                                                                                                                                          RANGE_EXPR
+                                                                                                                                            DOT2 ".."
+                                                                                                                                            WHITESPACE " "
+                                                                                                                                            RANGE_EXPR
+                                                                                                                                              DOT2EQ "..="
+                                                                                                                                              RANGE_EXPR
+                                                                                                                                                DOT2 ".."
+                                                                                                                                                WHITESPACE "    "
+                                                                                                                                                RANGE_EXPR
+                                                                                                                                                  DOT2EQ "..="
+                                                                                                                                                  RANGE_EXPR
+                                                                                                                                                    DOT2 ".."
+                                                                                                                                                    WHITESPACE " "
+                                                                                                                                                    RANGE_EXPR
+                                                                                                                                                      DOT2EQ "..="
+                                                                                                                                                      RANGE_EXPR
+                                                                                                                                                        DOT2 ".."
+                                                                                                                                                        WHITESPACE "    "
+                                                                                                                                                        RANGE_EXPR
+                                                                                                                                                          DOT2 ".."
+                                                                                                                                                          WHITESPACE " "
+                                                                                                                                                          RANGE_EXPR
+                                                                                                                                                            DOT2EQ "..="
+                                                                                                                                                            RANGE_EXPR
+                                                                                                                                                              DOT2 ".."
+                                                                                                                                                              WHITESPACE " "
+                                                                                                                                                              RANGE_EXPR
+                                                                                                                                                                DOT2 ".."
+                                                                                                                                                                WHITESPACE "    "
+                                                                                                                                                                RANGE_EXPR
+                                                                                                                                                                  DOT2 ".."
+                                                                                                                                                                  WHITESPACE " "
+                                                                                                                                                                  RANGE_EXPR
+                                                                                                                                                                    DOT2EQ "..="
+                                                                                                                                                                    RANGE_EXPR
+                                                                                                                                                                      DOT2 ".."
+                                                                                                                                                                      WHITESPACE " "
+                                                                                                                                                                      RANGE_EXPR
+                                                                                                                                                                        DOT2 ".."
+                                                                                                                                                                        WHITESPACE "\n    "
+                                                                                                                                                                        RANGE_EXPR
+                                                                                                                                                                          DOT2EQ "..="
+                                                                                                                                                                          RANGE_EXPR
+                                                                                                                                                                            DOT2 ".."
+                                                                                                                                                                            WHITESPACE " "
+                                                                                                                                                                            RANGE_EXPR
+                                                                                                                                                                              DOT2EQ "..="
+                                                                                                                                                                              RANGE_EXPR
+                                                                                                                                                                                DOT2 ".."
+                                                                                                                                                                                WHITESPACE "    "
+                                                                                                                                                                                RANGE_EXPR
+                                                                                                                                                                                  DOT2EQ "..="
+                                                                                                                                                                                  RANGE_EXPR
+                                                                                                                                                                                    DOT2 ".."
+                                                                                                                                                                                    WHITESPACE " "
+                                                                                                                                                                                    RANGE_EXPR
+                                                                                                                                                                                      DOT2EQ "..="
+                                                                                                                                                                                      RANGE_EXPR
+                                                                                                                                                                                        DOT2 ".."
+                                                                                                                                                                                        WHITESPACE "    "
+                                                                                                                                                                                        RANGE_EXPR
+                                                                                                                                                                                          DOT2 ".."
+                                                                                                                                                                                          WHITESPACE " "
+                                                                                                                                                                                          RANGE_EXPR
+                                                                                                                                                                                            DOT2 ".."
+                                                                                                                                                                                            WHITESPACE " "
+                                                                                                                                                                                            RANGE_EXPR
+                                                                                                                                                                                              DOT2EQ "..="
+                                                                                                                                                                                              RANGE_EXPR
+                                                                                                                                                                                                DOT2 ".."
+                                                                                                                                                                                                WHITESPACE "    "
+                                                                                                                                                                                                RANGE_EXPR
+                                                                                                                                                                                                  DOT2 ".."
+                                                                                                                                                                                                  WHITESPACE " "
+                                                                                                                                                                                                  RANGE_EXPR
+                                                                                                                                                                                                    DOT2EQ "..="
+                                                                                                                                                                                                    RANGE_EXPR
+                                                                                                                                                                                                      DOT2 ".."
+                                                                                                                                                                                                      WHITESPACE " "
+                                                                                                                                                                                                      RANGE_EXPR
+                                                                                                                                                                                                        DOT2 ".."
+                                                                                                                                                                                                        WHITESPACE "\n    "
+                                                                                                                                                                                                        RANGE_EXPR
+                                                                                                                                                                                                          DOT2EQ "..="
+                                                                                                                                                                                                          RANGE_EXPR
+                                                                                                                                                                                                            DOT2 ".."
+                                                                                                                                                                                                            WHITESPACE " "
+                                                                                                                                                                                                            RANGE_EXPR
+                                                                                                                                                                                                              DOT2EQ "..="
+                                                                                                                                                                                                              RANGE_EXPR
+                                                                                                                                                                                                                DOT2 ".."
+                                                                                                                                                                                                                WHITESPACE "    "
+                                                                                                                                                                                                                RANGE_EXPR
+                                                                                                                                                                                                                  DOT2 ".."
+                                                                                                                                                                                                                  WHITESPACE " "
+                                                                                                                                                                                                                  RANGE_EXPR
+                                                                                                                                                                                                                    DOT2EQ "..="
+                                                                                                                                                                                                                    RANGE_EXPR
+                                                                                                                                                                                                                      DOT2EQ "..="
+                                                                                                                                                                                                                      RANGE_EXPR
+                                                                                                                                                                                                                        DOT2 ".."
+                                                                                                                                                                                                                        WHITESPACE "    "
+                                                                                                                                                                                                                        RANGE_EXPR
+                                                                                                                                                                                                                          DOT2EQ "..="
+                                                                                                                                                                                                                          RANGE_EXPR
+                                                                                                                                                                                                                            DOT2EQ "..="
+                                                                                                                                                                                                                            RANGE_EXPR
+                                                                                                                                                                                                                              DOT2 ".."
+                                                                                                                                                                                                                              WHITESPACE " "
+                                                                                                                                                                                                                              RANGE_EXPR
+                                                                                                                                                                                                                                DOT2 ".."
+                                                                                                                                                                                                                                WHITESPACE "    "
+                                                                                                                                                                                                                                RANGE_EXPR
+                                                                                                                                                                                                                                  DOT2 ".."
+                                                                                                                                                                                                                                  WHITESPACE " "
+                                                                                                                                                                                                                                  RANGE_EXPR
+                                                                                                                                                                                                                                    DOT2EQ "..="
+                                                                                                                                                                                                                                    RANGE_EXPR
+                                                                                                                                                                                                                                      DOT2 ".."
+                                                                                                                                                                                                                                      WHITESPACE " "
+                                                                                                                                                                                                                                      RANGE_EXPR
+                                                                                                                                                                                                                                        DOT2 ".."
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "ktulhu"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        EXPR_STMT
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        SEMICOLON ";"
+        TUPLE_EXPR
+          L_PAREN "("
+          R_PAREN ")"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "strange"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "funny"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "what"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "zombiejesus"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "notsure"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "canttouchthis"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "angrydome"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "evil_lincoln"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "dots"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u8"
+            ARG_LIST
+              L_PAREN "("
+              LITERAL
+                INT_NUMBER "8u8"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "fishy"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "union"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "special_characters"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "punch_card"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "ktulhu"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

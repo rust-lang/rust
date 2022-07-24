@@ -1,0 +1,10 @@
+[package]
+name = "la-arena"
+version = "0.3.0"
+description = "Simple index-based arena without deletion."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/la-arena"
+documentation = "https://docs.rs/la-arena"
+categories = ["data-structures", "memory-management", "rust-patterns"]
+edition = "2021"
+rust-version = "1.56"

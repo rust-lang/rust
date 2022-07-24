@@ -1,0 +1,28 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      SELF_PARAM
+        ATTR
+          POUND "#"
+          L_BRACK "["
+          META
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "must_use"
+          R_BRACK "]"
+        WHITESPACE " "
+        NAME
+          SELF_KW "self"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

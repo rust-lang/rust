@@ -1,0 +1,37 @@
+SOURCE_FILE
+  MACRO_RULES
+    COMMENT "/// Some docs"
+    WHITESPACE "\n"
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "macro_export"
+      R_BRACK "]"
+    WHITESPACE "\n"
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      TOKEN_TREE
+        L_PAREN "("
+        R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      R_ANGLE ">"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+      SEMICOLON ";"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

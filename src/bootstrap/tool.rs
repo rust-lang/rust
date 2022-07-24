@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
@@ -683,6 +683,50 @@ impl Step for LldWrapper {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustAnalyzer {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/rust-analyzer").default_condition(
+            builder.config.extended
+                && builder
+                    .config
+                    .tools
+                    .as_ref()
+                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
+        )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzer {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer",
+            mode: Mode::ToolStd,
+            path: "src/tools/rust-analyzer",
+            extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
+        })
+    }
+}
+
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,
@@ -780,7 +824,6 @@ tool_extended!((self, builder),
     // and this is close enough for now.
     RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
-    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=true, submodule="rust-analyzer", {};
 );
 
 impl<'a> Builder<'a> {
