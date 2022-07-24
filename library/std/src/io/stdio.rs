@@ -220,7 +220,7 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut buffer = String::new();
-///     let mut stdin = io::stdin(); // We get `Stdin` here.
+///     let stdin = io::stdin(); // We get `Stdin` here.
 ///     stdin.read_line(&mut buffer)?;
 ///     Ok(())
 /// }
