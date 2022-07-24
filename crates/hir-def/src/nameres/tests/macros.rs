@@ -1,4 +1,5 @@
 use super::*;
+use itertools::Itertools;
 
 #[test]
 fn macro_rules_are_globally_visible() {
@@ -1171,11 +1172,15 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     );
 
     let root = &def_map[def_map.root()].scope;
-    let actual = root.legacy_macros().map(|(name, _)| format!("{name}\n")).collect::<String>();
+    let actual = root
+        .legacy_macros()
+        .sorted_by(|a, b| std::cmp::Ord::cmp(&a.0, &b.0))
+        .map(|(name, _)| format!("{name}\n"))
+        .collect::<String>();
 
     expect![[r#"
-        macro20
         legacy
+        macro20
         proc_attr
     "#]]
     .assert_eq(&actual);
