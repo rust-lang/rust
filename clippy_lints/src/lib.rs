@@ -174,6 +174,7 @@ mod as_conversions;
 mod as_underscore;
 mod asm_syntax;
 mod assertions_on_constants;
+mod assertions_on_result_states;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
@@ -727,6 +728,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(unnecessary_sort_by::UnnecessarySortBy));
     store.register_late_pass(move || Box::new(unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api)));
     store.register_late_pass(|| Box::new(assertions_on_constants::AssertionsOnConstants));
+    store.register_late_pass(|| Box::new(assertions_on_result_states::AssertionsOnResultStates));
     store.register_late_pass(|| Box::new(transmuting_null::TransmutingNull));
     store.register_late_pass(|| Box::new(path_buf_push_overwrite::PathBufPushOverwrite));
     store.register_late_pass(|| Box::new(inherent_to_string::InherentToString));
