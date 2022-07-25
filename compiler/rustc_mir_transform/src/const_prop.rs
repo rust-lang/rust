@@ -155,18 +155,18 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     }
 }
 
-struct ConstPropMachine<'mir, 'tcx> {
+pub struct ConstPropMachine<'mir, 'tcx> {
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx>>,
     /// `OnlyInsideOwnBlock` locals that were written in the current block get erased at the end.
-    written_only_inside_own_block_locals: FxHashSet<Local>,
+    pub written_only_inside_own_block_locals: FxHashSet<Local>,
     /// Locals that need to be cleared after every block terminates.
-    only_propagate_inside_block_locals: BitSet<Local>,
-    can_const_prop: IndexVec<Local, ConstPropMode>,
+    pub only_propagate_inside_block_locals: BitSet<Local>,
+    pub can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
 impl ConstPropMachine<'_, '_> {
-    fn new(
+    pub fn new(
         only_propagate_inside_block_locals: BitSet<Local>,
         can_const_prop: IndexVec<Local, ConstPropMode>,
     ) -> Self {
@@ -816,7 +816,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 /// The mode that `ConstProp` is allowed to run in for a given `Local`.
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum ConstPropMode {
+pub enum ConstPropMode {
     /// The `Local` can be propagated into and reads of this `Local` can also be propagated.
     FullConstProp,
     /// The `Local` can only be propagated into and from its own block.
@@ -828,7 +828,7 @@ enum ConstPropMode {
     NoPropagation,
 }
 
-struct CanConstProp {
+pub struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
     found_assignment: BitSet<Local>,
@@ -838,7 +838,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
-    fn check<'tcx>(
+    pub fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,
