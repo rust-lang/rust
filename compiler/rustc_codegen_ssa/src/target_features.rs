@@ -249,6 +249,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("bulk-memory", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),
+    ("sign-ext", Some(sym::wasm_target_feature)),
 ];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
