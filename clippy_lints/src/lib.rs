@@ -916,7 +916,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
     store.register_late_pass(move || Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
     store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
-    store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports));
+    store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports::default()));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
