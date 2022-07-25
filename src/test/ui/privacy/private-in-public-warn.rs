@@ -247,7 +247,7 @@ mod aliases_priv {
         //~^ ERROR private trait `PrivTr1` in public interface
         //~| WARNING hard error
     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
-        //~^ ERROR private trait `PrivTr1<Priv2>` in public interface
+        //~^ ERROR private trait `PrivTr1<aliases_priv::PrivAlias>` in public interface
         //~| WARNING hard error
         //~| ERROR private type `Priv2` in public interface
         //~| WARNING hard error
