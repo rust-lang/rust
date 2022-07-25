@@ -1384,9 +1384,13 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
         }
 
-        if mode == "run-make" && suite.ends_with("fulldeps") {
+        if mode == "run-make" {
             let rust_demangler = builder
-                .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
+                .ensure(tool::RustDemangler {
+                    compiler,
+                    target: compiler.host,
+                    extra_features: Vec::new(),
+                })
                 .expect("in-tree tool");
             cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
