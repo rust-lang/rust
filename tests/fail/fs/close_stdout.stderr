@@ -1,8 +1,8 @@
-error: unsupported operation: stdout cannot be closed
+error: unsupported operation: cannot close stdout
   --> $DIR/close_stdout.rs:LL:CC
    |
 LL |         libc::close(1);
-   |         ^^^^^^^^^^^^^^ stdout cannot be closed
+   |         ^^^^^^^^^^^^^^ cannot close stdout
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
    = note: backtrace:
