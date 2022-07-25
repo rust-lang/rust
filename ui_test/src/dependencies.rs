@@ -5,7 +5,7 @@ use std::{
     process::Command,
 };
 
-use crate::Config;
+use crate::{Config, OutputConflictHandling};
 
 #[derive(Default, Debug)]
 pub struct Dependencies {
@@ -40,6 +40,9 @@ pub fn build_dependencies(config: &Config) -> Result<Dependencies> {
     let setup_command = |cmd: &mut Command| {
         cmd.envs(envs.iter().map(|(k, v)| (k, v)));
         cmd.arg("--manifest-path").arg(manifest_path);
+        if matches!(config.output_conflict_handling, OutputConflictHandling::Error) {
+            cmd.arg("--locked");
+        }
     };
 
     setup_command(&mut build);
