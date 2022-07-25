@@ -328,14 +328,18 @@ fn data_id_for_static(
 
     let attrs = tcx.codegen_fn_attrs(def_id);
 
-    let data_id = module
-        .declare_data(
-            &*symbol_name,
-            linkage,
-            is_mutable,
-            attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
-        )
-        .unwrap();
+    let data_id = match module.declare_data(
+        &*symbol_name,
+        linkage,
+        is_mutable,
+        attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
+    ) {
+        Ok(data_id) => data_id,
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+            "attempt to declare `{symbol_name}` as static, but it was already declared as function"
+        )),
+        Err(err) => Err::<_, _>(err).unwrap(),
+    };
 
     if rlinkage.is_some() {
         // Comment copied from https://github.com/rust-lang/rust/blob/45060c2a66dfd667f88bd8b94261b28a58d85bd5/src/librustc_codegen_llvm/consts.rs#L141
@@ -441,7 +445,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function(instance) => {
                     assert_eq!(addend, 0);
-                    let func_id = crate::abi::import_function(tcx, module, instance);
+                    let func_id =
+                        crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
                     let local_func_id = module.declare_func_in_data(func_id, &mut data_ctx);
                     data_ctx.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;
