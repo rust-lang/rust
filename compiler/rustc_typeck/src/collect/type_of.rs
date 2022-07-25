@@ -538,9 +538,9 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
 
     impl ConstraintLocator<'_> {
         #[instrument(skip(self), level = "debug")]
-        fn check(&mut self, def_id: LocalDefId) {
+        fn check(&mut self, item_def_id: LocalDefId) {
             // Don't try to check items that cannot possibly constrain the type.
-            if !self.tcx.has_typeck_results(def_id) {
+            if !self.tcx.has_typeck_results(item_def_id) {
                 debug!("no constraint: no typeck results");
                 return;
             }
@@ -555,26 +555,20 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             // // because we again need to reveal `Foo` so we can check whether the
             // // constant does not contain interior mutability.
             // ```
-            let tables = self.tcx.typeck(def_id);
+            let tables = self.tcx.typeck(item_def_id);
             if let Some(_) = tables.tainted_by_errors {
                 self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error() });
                 return;
             }
-            if tables.concrete_opaque_types.get(&self.def_id).is_none() {
+            if !tables.concrete_opaque_types.contains_key(&self.def_id) {
                 debug!("no constraints in typeck results");
                 return;
             }
             // Use borrowck to get the type with unerased regions.
-            let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
+            let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
-            for &(def_id, concrete_type) in concrete_opaque_types {
-                if def_id != self.def_id {
-                    // Ignore constraints for other opaque types.
-                    continue;
-                }
-
+            if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
                 debug!(?concrete_type, "found constraint");
-
                 if let Some(prev) = self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev).references_error() {
                         prev.report_mismatch(&concrete_type, self.tcx);
