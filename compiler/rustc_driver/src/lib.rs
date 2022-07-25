@@ -123,8 +123,7 @@ impl Callbacks for TimePassesCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // If a --prints=... option has been given, we don't print the "total"
         // time because it will mess up the --prints output. See #64339.
-        self.time_passes = config.opts.prints.is_empty()
-            && (config.opts.unstable_opts.time_passes || config.opts.unstable_opts.time);
+        self.time_passes = config.opts.prints.is_empty() && config.opts.time_passes();
         config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }

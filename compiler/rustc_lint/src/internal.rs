@@ -432,3 +432,38 @@ impl LateLintPass<'_> for Diagnostics {
         }
     }
 }
+
+declare_tool_lint! {
+    pub rustc::BAD_OPT_ACCESS,
+    Deny,
+    "prevent using options by field access when there is a wrapper function",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(BadOptAccess => [ BAD_OPT_ACCESS ]);
+
+impl LateLintPass<'_> for BadOptAccess {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let ExprKind::Field(base, target) = expr.kind else { return };
+        let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
+        // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
+        // avoided.
+        if !cx.tcx.has_attr(adt_def.did(), sym::rustc_lint_opt_ty) {
+            return;
+        }
+
+        for field in adt_def.all_fields() {
+            if field.name == target.name &&
+                let Some(attr) = cx.tcx.get_attr(field.did, sym::rustc_lint_opt_deny_field_access) &&
+                let Some(items) = attr.meta_item_list()  &&
+                let Some(item) = items.first()  &&
+                let Some(literal) = item.literal()  &&
+                let ast::LitKind::Str(val, _) = literal.kind
+            {
+                cx.struct_span_lint(BAD_OPT_ACCESS, expr.span, |lint| {
+                    lint.build(val.as_str()).emit(); }
+                );
+            }
+        }
+    }
+}

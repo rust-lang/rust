@@ -509,6 +509,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_pass(|| Box::new(TyTyKind));
     store.register_lints(&Diagnostics::get_lints());
     store.register_late_pass(|| Box::new(Diagnostics));
+    store.register_lints(&BadOptAccess::get_lints());
+    store.register_late_pass(|| Box::new(BadOptAccess));
     store.register_lints(&PassByValue::get_lints());
     store.register_late_pass(|| Box::new(PassByValue));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
@@ -527,6 +529,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(EXISTING_DOC_KEYWORD),
+            LintId::of(BAD_OPT_ACCESS),
         ],
     );
 }

@@ -121,6 +121,10 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_lint_diagnostics => {
                     self.check_rustc_lint_diagnostics(&attr, span, target)
                 }
+                sym::rustc_lint_opt_ty => self.check_rustc_lint_opt_ty(&attr, span, target),
+                sym::rustc_lint_opt_deny_field_access => {
+                    self.check_rustc_lint_opt_deny_field_access(&attr, span, target)
+                }
                 sym::rustc_clean
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
@@ -1380,6 +1384,35 @@ impl CheckAttrVisitor<'_> {
     /// method.
     fn check_rustc_lint_diagnostics(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         self.check_applied_to_fn_or_method(attr, span, target)
+    }
+
+    /// Checks that the `#[rustc_lint_opt_ty]` attribute is only applied to a struct.
+    fn check_rustc_lint_opt_ty(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::Struct => true,
+            _ => {
+                self.tcx.sess.emit_err(errors::RustcLintOptTy { attr_span: attr.span, span });
+                false
+            }
+        }
+    }
+
+    /// Checks that the `#[rustc_lint_opt_deny_field_access]` attribute is only applied to a field.
+    fn check_rustc_lint_opt_deny_field_access(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Field => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .emit_err(errors::RustcLintOptDenyFieldAccess { attr_span: attr.span, span });
+                false
+            }
+        }
     }
 
     /// Checks that the dep-graph debugging attributes are only present when the query-dep-graph
