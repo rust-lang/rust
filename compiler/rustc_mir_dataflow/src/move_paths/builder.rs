@@ -229,7 +229,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         if !self.errors.is_empty() {
             Err((self.data, self.errors))
         } else {
-            Ok((self.un_derefer.derefer_sidetable.clone(), self.data))
+            Ok((self.un_derefer.derefer_sidetable, self.data))
         }
     }
 }
