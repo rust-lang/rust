@@ -1260,6 +1260,7 @@ symbols! {
         rustc_promotable,
         rustc_regions,
         rustc_reservation_impl,
+        rustc_select_quick_discard,
         rustc_serialize,
         rustc_skip_array_during_method_dispatch,
         rustc_specialization_trait,

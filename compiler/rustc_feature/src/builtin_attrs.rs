@@ -605,6 +605,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_conversion_suggestion, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
+
+    rustc_attr!(
+        rustc_select_quick_discard, Normal, template!(Word), ErrorFollowing, INTERNAL_UNSTABLE
+    ),
+
     // Prevents field reads in the marked trait or method to be considered
     // during dead code analysis.
     rustc_attr!(

@@ -121,6 +121,9 @@ impl CheckAttrVisitor<'_> {
                 sym::rustc_lint_diagnostics => {
                     self.check_rustc_lint_diagnostics(&attr, span, target)
                 }
+                sym::rustc_select_quick_discard => {
+                    self.check_rustc_select_quick_discard(&attr, span, target)
+                }
                 sym::rustc_clean
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
@@ -1429,6 +1432,24 @@ impl CheckAttrVisitor<'_> {
     /// method.
     fn check_rustc_lint_diagnostics(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         self.check_applied_to_fn_or_method(attr, span, target)
+    }
+
+    fn check_rustc_select_quick_discard(
+        &self,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+    ) -> bool {
+        if matches!(target, Target::Impl) {
+            true
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to an impl")
+                .span_label(span, "not an impl")
+                .emit();
+            false
+        }
     }
 
     /// Checks that the dep-graph debugging attributes are only present when the query-dep-graph
