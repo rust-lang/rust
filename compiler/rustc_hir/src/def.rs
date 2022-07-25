@@ -713,7 +713,7 @@ impl<Id> Res<Id> {
 }
 
 /// Resolution for a lifetime appearing in a type.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LifetimeRes {
     /// Successfully linked the lifetime to a generic parameter.
     Param {

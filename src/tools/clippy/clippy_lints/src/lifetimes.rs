@@ -9,12 +9,14 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, LifetimeParamKind, ParamName, PolyTraitRef,
-    PredicateOrigin, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
+    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, PredicateOrigin,
+    TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter as middle_nested_filter;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Ident, Symbol};
 
@@ -129,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 enum RefLt {
     Unnamed,
     Static,
-    Named(Symbol),
+    Named(LocalDefId),
 }
 
 fn check_fn_inner<'tcx>(
@@ -232,7 +234,7 @@ fn could_use_elision<'tcx>(
     // level of the current item.
 
     // check named LTs
-    let allowed_lts = allowed_lts_from(named_generics);
+    let allowed_lts = allowed_lts_from(cx.tcx, named_generics);
 
     // these will collect all the lifetimes for references in arg/return types
     let mut input_visitor = RefVisitor::new(cx);
@@ -251,22 +253,6 @@ fn could_use_elision<'tcx>(
     }
 
     if input_visitor.abort() || output_visitor.abort() {
-        return false;
-    }
-
-    if allowed_lts
-        .intersection(
-            &input_visitor
-                .nested_elision_site_lts
-                .iter()
-                .chain(output_visitor.nested_elision_site_lts.iter())
-                .cloned()
-                .filter(|v| matches!(v, RefLt::Named(_)))
-                .collect(),
-        )
-        .next()
-        .is_some()
-    {
         return false;
     }
 
@@ -303,6 +289,31 @@ fn could_use_elision<'tcx>(
         }
     }
 
+    // check for higher-ranked trait bounds
+    if !input_visitor.nested_elision_site_lts.is_empty() || !output_visitor.nested_elision_site_lts.is_empty() {
+        let allowed_lts: FxHashSet<_> = allowed_lts
+            .iter()
+            .filter_map(|lt| match lt {
+                RefLt::Named(def_id) => Some(cx.tcx.item_name(def_id.to_def_id())),
+                _ => None,
+            })
+            .collect();
+        for lt in input_visitor.nested_elision_site_lts {
+            if let RefLt::Named(def_id) = lt {
+                if allowed_lts.contains(&cx.tcx.item_name(def_id.to_def_id())) {
+                    return false;
+                }
+            }
+        }
+        for lt in output_visitor.nested_elision_site_lts {
+            if let RefLt::Named(def_id) = lt {
+                if allowed_lts.contains(&cx.tcx.item_name(def_id.to_def_id())) {
+                    return false;
+                }
+            }
+        }
+    }
+
     // no input lifetimes? easy case!
     if input_lts.is_empty() {
         false
@@ -335,14 +346,11 @@ fn could_use_elision<'tcx>(
     }
 }
 
-fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
+fn allowed_lts_from(tcx: TyCtxt<'_>, named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
     let mut allowed_lts = FxHashSet::default();
     for par in named_generics.iter() {
-        if let GenericParamKind::Lifetime {
-            kind: LifetimeParamKind::Explicit,
-        } = par.kind
-        {
-            allowed_lts.insert(RefLt::Named(par.name.ident().name));
+        if let GenericParamKind::Lifetime { .. } = par.kind {
+            allowed_lts.insert(RefLt::Named(tcx.hir().local_def_id(par.hir_id)));
         }
     }
     allowed_lts.insert(RefLt::Unnamed);
@@ -385,8 +393,10 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
                 self.lts.push(RefLt::Unnamed);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
+            } else if let LifetimeName::Param(def_id, _) = lt.name {
+                self.lts.push(RefLt::Named(def_id));
             } else {
-                self.lts.push(RefLt::Named(lt.name.ident().name));
+                self.lts.push(RefLt::Unnamed);
             }
         } else {
             self.lts.push(RefLt::Unnamed);
@@ -434,10 +444,15 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             TyKind::OpaqueDef(item, bounds) => {
                 let map = self.cx.tcx.hir();
                 let item = map.item(item);
+                let len = self.lts.len();
                 walk_item(self, item);
-                walk_ty(self, ty);
+                self.lts.truncate(len);
                 self.lts.extend(bounds.iter().filter_map(|bound| match bound {
-                    GenericArg::Lifetime(l) => Some(RefLt::Named(l.name.ident().name)),
+                    GenericArg::Lifetime(l) => Some(if let LifetimeName::Param(def_id, _) = l.name {
+                        RefLt::Named(def_id)
+                    } else {
+                        RefLt::Unnamed
+                    }),
                     _ => None,
                 }));
             },
@@ -456,9 +471,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 }
                 return;
             },
-            _ => (),
+            _ => walk_ty(self, ty),
         }
-        walk_ty(self, ty);
     }
 }
 
@@ -477,7 +491,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                     return true;
                 }
                 // if the bounds define new lifetimes, they are fine to occur
-                let allowed_lts = allowed_lts_from(pred.bound_generic_params);
+                let allowed_lts = allowed_lts_from(cx.tcx, pred.bound_generic_params);
                 // now walk the bounds
                 for bound in pred.bounds.iter() {
                     walk_param_bound(&mut visitor, bound);
