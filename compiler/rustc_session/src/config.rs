@@ -208,15 +208,15 @@ impl LinkerPluginLto {
 /// `to_flavor` method, and never the enrichment variants.
 ///
 /// Currently used to represent finer-grained uses of `gcc`, to improve ease-of-use for wrapping a
-/// given linker like `lld`, `gold` or `mold`.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+/// given linker (currently: only `lld`).
+#[derive(Clone, Debug, PartialEq)]
 pub enum LinkerFlavorCli {
     /// When the CLI option is one of the well-known linker-flavors that don't need special
     /// handling.
     WellKnown(LinkerFlavor),
 
-    /// Enrichments to the `LinkerFlavor::Gcc` flavor, to specify the linker via `-fuse-ld`
-    Gcc { use_ld: String },
+    /// Enrichments to the `LinkerFlavor::Gcc` flavor, to specify the linker via `-fuse-ld`.
+    Gcc { use_ld: LdImpl },
 }
 
 impl LinkerFlavorCli {
@@ -241,17 +241,11 @@ impl FromStr for LinkerFlavorCli {
 
         // Otherwise, it should be the enrichments to the gcc/cc flavor: wrapping a given linker
         // separated by a colon like `gcc:lld`.
-        let parts: Vec<_> = s.split("gcc:").collect();
-        if parts.len() != 2 {
+        if s != "gcc:lld" {
             return Err(());
         }
 
-        let wrapped_linker = parts[1];
-        if !wrapped_linker.is_empty() {
-            Ok(LinkerFlavorCli::Gcc { use_ld: wrapped_linker.to_string() })
-        } else {
-            Err(())
-        }
+        Ok(LinkerFlavorCli::Gcc { use_ld: LdImpl::Lld })
     }
 }
 
@@ -2442,24 +2436,14 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    if let Some(LinkerFlavorCli::Gcc { use_ld }) = &cg.linker_flavor {
+    if let Some(LinkerFlavorCli::Gcc { .. }) = &cg.linker_flavor {
         // For testing purposes, until we have more feedback about these options: ensure `-Z
         // unstable-options` is enabled when using the `gcc` linker flavor enrichments.
         if !unstable_opts.unstable_options {
             early_error(
                 error_format,
-                "the `gcc:*` linker flavor is unstable, the `-Z unstable-options` \
+                "the `gcc:lld` linker flavor is unstable, the `-Z unstable-options` \
                  flag must also be passed to use it",
-            );
-        }
-
-        // Until the unstable flag is removed, ensure `-Zgcc-ld=lld` and `-Clinker-flavor=gcc:lld`
-        // have a matching linker choice.
-        if use_ld != "lld" && unstable_opts.gcc_ld == Some(LdImpl::Lld) {
-            early_error(
-                error_format,
-                "`-Zgcc-ld=lld` and `-Clinker-flavor` differ in their \
-                    linker choice. The latter should be `-Clinker-flavor=gcc:lld`",
             );
         }
     }

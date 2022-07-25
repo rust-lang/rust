@@ -1,9 +1,7 @@
 // check-fail
-// revisions: lld other
-// [lld] compile-flags: -C linker-flavor=gcc:lld
-// [other] compile-flags: -C linker-flavor=gcc:other
+// compile-flags: -C linker-flavor=gcc:lld
 
-// Test ensuring that the unstable `gcc:*` values of the stable `-C linker-flavor` flag require
+// Test ensuring that the unstable `gcc:lld` value of the stable `-C linker-flavor` flag requires
 // using `-Z unstable options`
 
 fn main() {}

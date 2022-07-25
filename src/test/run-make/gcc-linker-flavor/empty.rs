@@ -1,4 +1,4 @@
-// Test ensuring that the enriched `gcc` linker flavor requesting an arbitrary linker (`-C
-// linker-flavor=gcc:$linker`) is passed to `cc` as `-fuse-ld`
+// Test ensuring that the enriched `gcc` linker flavor requesting `lld` (`-C
+// linker-flavor=gcc:lld`) is passed to `cc` as `-fuse-ld=lld`
 
 fn main() {}

@@ -2696,8 +2696,9 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
 
 /// This takes care of the various possible enrichments to the linking that can be requested on the
 /// CLI (and emitting errors and warnings when applicable):
-/// - shortcuts to `-fuse-ld` with the `gcc` flavor
-/// - the unstable `-Zgcc-ld=lld` flag to use `rust-lld`, stabilized as the following item
+/// - the unstable `-Zgcc-ld=lld` flag to use `rust-lld`
+/// - the shortcut to `-fuse-ld=lld` with the `gcc` flavor, to eventually use `rust-lld` when
+///   `-Clink-self-contained=linker` is introduced.
 fn handle_cli_linker_flavors(
     cmd: &mut dyn Linker,
     sess: &Session,
@@ -2705,19 +2706,18 @@ fn handle_cli_linker_flavors(
     crt_objects_fallback: bool,
 ) {
     let unstable_gcc_lld = sess.opts.unstable_opts.gcc_ld == Some(LdImpl::Lld);
-    if unstable_gcc_lld {
-        // Sanity check: ensure `gcc` is the currently selected flavor.
-        if LinkerFlavor::Gcc != flavor {
-            sess.fatal("`-Zgcc-ld` is used even though the linker flavor is not `gcc`");
-        }
+
+    // Sanity check: ensure `gcc` is the currently selected flavor.
+    if unstable_gcc_lld && LinkerFlavor::Gcc != flavor {
+        sess.fatal("`-Zgcc-ld` is used even though the linker flavor is not `gcc`");
     }
 
     let cg = &sess.opts.cg;
 
     // The `-C linker-flavor` CLI flag can optionally enrich linker-flavors. Check whether that's
     // applicable, and emit errors if sanity checks fail. There's currently only one enrichment:
-    // adding an argument to the `cc` invocation to use the `use_ld` given linker.
-    let use_ld = match &cg.linker_flavor {
+    // adding an argument to the `cc` invocation to use `lld`.
+    match &cg.linker_flavor {
         Some(LinkerFlavorCli::Gcc { use_ld }) => {
             // Ensure `gcc` is the currently selected flavor.
             //
@@ -2733,79 +2733,71 @@ fn handle_cli_linker_flavors(
                 );
             }
 
-            use_ld
-        }
-
-        // Note: exhaustive match arm here, to avoid fallthroughs if new linker-flavor enrichments
-        // are added in the future.
-        Some(LinkerFlavorCli::WellKnown(_)) | None => {
-            if unstable_gcc_lld {
-                "lld"
-            } else {
+            if *use_ld != LdImpl::Lld {
                 // We're not in a situation needing enrichments.
                 return;
             }
         }
-    };
 
-    // From now on in this function, we handle the `gcc` linker-flavor enrichment.
-
-    // Except for `lld`, the given linker executable will be passed straight to `-fuse-ld`.
-    if use_ld == "lld" {
-        // Start by checking if we're in the context of a known issue that users might hit when
-        // using `lld`:
-        //
-        // 1. when requesting self-contained CRT linking (or on a target that does it
-        // automatically), and coverage/profile generation: point at #79555 "Coverage is not
-        // generated when using rust-lld as linker"
-        let instrument_coverage = cg.instrument_coverage.is_some()
-            && cg.instrument_coverage != Some(InstrumentCoverage::Off);
-        let generate_profile = cg.profile_generate.enabled();
-        if crt_objects_fallback && (instrument_coverage || generate_profile) {
-            sess.warn(
-                "Using `lld`, self-contained linking, and coverage or profile generation has known \
-                issues. See issue #79555 for more details, at \
-                https://github.com/rust-lang/rust/issues/79555",
-            );
+        Some(LinkerFlavorCli::WellKnown(_)) | None => {
+            if !unstable_gcc_lld {
+                // We're not in a situation needing enrichments.
+                return;
+            }
         }
+    }
 
-        // 2. Maybe point at https://github.com/flamegraph-rs/flamegraph/pull/157 or the
-        // corresponding rust/LLVM issue when/if it's tracked, depending on whether we use the
-        // workaround argument `--no-rosegment` by default when invoking `lld`.
-        //
-        // 3. If in the future, other linker flavors and targets are eligible to a `rust-lld`
-        // enrichment, maybe also point at target-specific issues like:
-        // - MSVC + ThinLTO blocker https://github.com/rust-lang/rust/issues/81408
-        // - the "lld on MSVC" tracking issue https://github.com/rust-lang/rust/issues/71520
-        //   containing a list of blocking issues
+    // From now on in this function, we handle the `gcc` linker-flavor enrichment to use `lld`.
 
-        // Now, handle `rust-lld`. If the `-Zgcc-ld=lld` flag was provided, we use `rust-lld`, the
-        // rustup-distributed version of `lld` (when applicable, i.e. not in distro-builds) by:
-        // - checking the `lld-wrapper`s exist in the sysroot
-        // - adding their folder as a search path, or requesting to use a wrapper directly
-        if unstable_gcc_lld {
-            // A `gcc-ld` folder (containing the `lld-wrapper`s that will run `rust-lld`) is present in
-            // the sysroot's target-specific tool binaries folder.
-            let tools_path = sess.get_tools_search_paths(false);
-            let gcc_ld_dir = tools_path
-                .into_iter()
-                .map(|p| p.join("gcc-ld"))
-                .find(|p| p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists())
-                .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
+    // Start by checking if we're in the context of a known issue that users might hit when
+    // using `lld`:
+    //
+    // 1. when requesting self-contained CRT linking (or on a target that does it
+    // automatically), and coverage/profile generation: point at #79555 "Coverage is not
+    // generated when using rust-lld as linker"
+    let instrument_coverage =
+        cg.instrument_coverage.is_some() && cg.instrument_coverage != Some(InstrumentCoverage::Off);
+    let generate_profile = cg.profile_generate.enabled();
+    if crt_objects_fallback && (instrument_coverage || generate_profile) {
+        sess.warn(
+            "Using `lld`, self-contained linking, and coverage or profile generation has known \
+            issues. See issue #79555 for more details, at \
+            https://github.com/rust-lang/rust/issues/79555",
+        );
+    }
 
-            cmd.arg({
-                let mut arg = OsString::from("-B");
-                arg.push(gcc_ld_dir);
-                arg
-            });
-            cmd.arg(format!("-Wl,-rustc-lld-flavor={}", sess.target.lld_flavor.as_str()));
-        } else {
-            // We were asked to use `lld` but not `rust-lld`.
-            cmd.arg("-fuse-ld=lld");
-        }
+    // 2. Maybe point at https://github.com/flamegraph-rs/flamegraph/pull/157 or the
+    // corresponding rust/LLVM issue when/if it's tracked, depending on whether we use the
+    // workaround argument `--no-rosegment` by default when invoking `lld`.
+    //
+    // 3. If in the future, other linker flavors and targets are eligible to a `rust-lld`
+    // enrichment, maybe also point at target-specific issues like:
+    // - MSVC + ThinLTO blocker https://github.com/rust-lang/rust/issues/81408
+    // - the "lld on MSVC" tracking issue https://github.com/rust-lang/rust/issues/71520
+    //   containing a list of blocking issues
+
+    // Now, handle `rust-lld`. If the `-Zgcc-ld=lld` flag was provided, we use `rust-lld`, the
+    // rustup-distributed version of `lld` (when applicable, i.e. not in distro-builds) by:
+    // - checking the `lld-wrapper`s exist in the sysroot
+    // - adding their folder as a search path, or requesting to use a wrapper directly
+    if unstable_gcc_lld {
+        // A `gcc-ld` folder (containing the `lld-wrapper`s that will run `rust-lld`) is present in
+        // the sysroot's target-specific tool binaries folder.
+        let tools_path = sess.get_tools_search_paths(false);
+        let gcc_ld_dir = tools_path
+            .into_iter()
+            .map(|p| p.join("gcc-ld"))
+            .find(|p| p.join(if sess.host.is_like_windows { "ld.exe" } else { "ld" }).exists())
+            .unwrap_or_else(|| sess.fatal("rust-lld (as ld) not found"));
+
+        cmd.arg({
+            let mut arg = OsString::from("-B");
+            arg.push(gcc_ld_dir);
+            arg
+        });
+        cmd.arg(format!("-Wl,-rustc-lld-flavor={}", sess.target.lld_flavor.as_str()));
     } else {
-        // Otherwise, we were just asked to use a linker executable, and it's expected that `cc`
-        // will find it on the $PATH.
-        cmd.arg(format!("-fuse-ld={}", use_ld));
+        // Otherwise, we were asked to use `lld` but not `rust-lld`.
+        cmd.arg("-fuse-ld=lld");
     }
 }

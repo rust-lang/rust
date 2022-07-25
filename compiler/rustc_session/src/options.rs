@@ -384,8 +384,7 @@ mod desc {
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = "one of: `em`, `gcc`, `l4-bender`, `ld`, `msvc`, \
-        `ptx-linker`, `bpf-linker`, `wasm-ld`, `ld64.lld`, `ld.lld`, `lld-link`, \
-        or a `gcc:`-prefixed linker to use with the gcc flavor, like `gcc:lld` or `gcc:gold,`";
+        `ptx-linker`, `bpf-linker`, `wasm-ld`, `ld64.lld`, `ld.lld`, `lld-link`, or `gcc:lld`";
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_instrument_coverage: &str =
@@ -1618,7 +1617,7 @@ pub enum WasiExecModel {
     Reactor,
 }
 
-#[derive(Clone, Copy, Hash, PartialEq)]
+#[derive(Clone, Copy, Hash, PartialEq, Debug)]
 pub enum LdImpl {
     Lld,
 }

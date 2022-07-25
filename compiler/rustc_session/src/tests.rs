@@ -32,19 +32,17 @@ pub fn parse_well_known_linker_flavor() {
     assert_eq!(LinkerFlavorCli::from_str("unknown_linker"), Err(()));
 }
 
-/// Enrichments can currently allow for the `gcc` flavor to specify for a given linker to be
-/// used, much like you'd use `-fuse-ld` as a link arg. When using `-C
-/// linker-flavor=gcc:$linker`, the `$linker` will be passed directly to `cc`.
+/// Enrichments can currently allow the `gcc` flavor to use `lld`, much like you'd use `-fuse-ld` as
+/// a link arg.
 #[test]
 pub fn parse_gcc_enrichment_linker_flavor() {
     assert_eq!(
         LinkerFlavorCli::from_str("gcc:lld"),
-        Ok(LinkerFlavorCli::Gcc { use_ld: "lld".to_string() })
+        Ok(LinkerFlavorCli::Gcc { use_ld: LdImpl::Lld })
     );
-    assert_eq!(
-        LinkerFlavorCli::from_str("gcc:gold"),
-        Ok(LinkerFlavorCli::Gcc { use_ld: "gold".to_string() })
-    );
+
+    // Only `gcc:lld` is supported for now
+    assert_eq!(LinkerFlavorCli::from_str("gcc:gold"), Err(()));
 
     // No linker actually mentioned
     assert_eq!(LinkerFlavorCli::from_str("gcc:"), Err(()));

@@ -1,2 +1,4 @@
-error: `-Zgcc-ld=lld` and `-Clinker-flavor` differ in their linker choice. The latter should be `-Clinker-flavor=gcc:lld`
+error: `-Zgcc-ld` is used even though the linker flavor is not `gcc`
+
+error: aborting due to previous error
 

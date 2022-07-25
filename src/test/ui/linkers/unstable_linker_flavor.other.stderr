@@ -1,2 +1,0 @@
-error: the `gcc:*` linker flavor is unstable, the `-Z unstable-options` flag must also be passed to use it
-
