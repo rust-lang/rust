@@ -31,9 +31,30 @@ const NO_ANN: &dyn Display = &70;
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 //^ there should be no lints on this line
 
-// issue #8493
-thread_local! {
-    static THREAD_LOCAL: Cell<i32> = const { Cell::new(0) };
+mod issue_8493 {
+    use std::cell::Cell;
+
+    // https://github.com/rust-lang/rust-clippy/issues/9224
+    tokio::task_local! {
+        pub static _FOO: String;
+    }
+
+    thread_local! {
+        static _BAR: Cell<i32> = const { Cell::new(0) };
+    }
+
+    macro_rules! issue_8493 {
+        () => {
+            const _BAZ: Cell<usize> = Cell::new(0); //~ ERROR interior mutable
+            static _FOOBAR: () = {
+                thread_local! {
+                    static _VAR: Cell<i32> = const { Cell::new(0) };
+                }
+            };
+        };
+    }
+
+    issue_8493!();
 }
 
 fn main() {}

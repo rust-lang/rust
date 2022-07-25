@@ -251,14 +251,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
         if let ItemKind::Const(hir_ty, body_id) = it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            if !macro_backtrace(it.span).last().map_or(false, |macro_call| {
-                matches!(
-                    cx.tcx.get_diagnostic_name(macro_call.def_id),
-                    Some(sym::thread_local_macro)
-                )
-            }) && is_unfrozen(cx, ty)
-                && is_value_unfrozen_poly(cx, body_id, ty)
-            {
+            if !ignored_macro(cx, it) && is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, body_id, ty) {
                 lint(cx, Source::Item { item: it.span });
             }
         }
@@ -444,4 +437,13 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             }
         }
     }
+}
+
+fn ignored_macro(cx: &LateContext<'_>, it: &rustc_hir::Item<'_>) -> bool {
+    macro_backtrace(it.span).any(|macro_call| {
+        matches!(
+            cx.tcx.get_diagnostic_name(macro_call.def_id),
+            Some(sym::thread_local_macro)
+        )
+    })
 }
