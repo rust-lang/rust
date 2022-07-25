@@ -20,4 +20,21 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=MIRITESTVAR");
     println!("cargo:rustc-env=MIRITESTVAR=testval");
+
+    // Test that autocfg works. This invokes RUSTC.
+    let a = autocfg::new();
+    assert!(a.probe_sysroot_crate("std"));
+    assert!(!a.probe_sysroot_crate("doesnotexist"));
+    assert!(a.probe_rustc_version(1, 0));
+    assert!(!a.probe_rustc_version(2, 0));
+    assert!(a.probe_type("i128"));
+    assert!(!a.probe_type("doesnotexist"));
+    assert!(a.probe_trait("Send"));
+    assert!(!a.probe_trait("doesnotexist"));
+    assert!(a.probe_path("std::num"));
+    assert!(!a.probe_path("doesnotexist"));
+    assert!(a.probe_constant("i32::MAX"));
+    assert!(!a.probe_constant("doesnotexist"));
+    assert!(a.probe_expression("Box::new(0)"));
+    assert!(!a.probe_expression("doesnotexist"));
 }
