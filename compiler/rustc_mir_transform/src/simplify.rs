@@ -315,7 +315,7 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// with `0` executions.
 ///
 /// If there are no live `Counter` `Coverage` statements remaining, we remove
-/// dead `Coverage` statements along with the dead blocks. Since at least one
+/// `Coverage` statements along with the dead blocks. Since at least one
 /// counter per function is required by LLVM (and necessary, to add the
 /// `function_hash` to the counter's call to the LLVM intrinsic
 /// `instrprof.increment()`).
@@ -339,6 +339,16 @@ fn save_unreachable_coverage(
             let CoverageKind::Counter { .. } = coverage.kind else { continue };
             let instance = statement.source_info.scope.inlined_instance(source_scopes);
             live.insert(instance);
+        }
+    }
+
+    for block in &mut basic_blocks.raw[..first_dead_block] {
+        for statement in &mut block.statements {
+            let StatementKind::Coverage(_) = &statement.kind else { continue };
+            let instance = statement.source_info.scope.inlined_instance(source_scopes);
+            if !live.contains(&instance) {
+                statement.make_nop();
+            }
         }
     }
 
