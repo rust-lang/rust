@@ -18,9 +18,9 @@ fn reg_to_abi_param(reg: Reg) -> AbiParam {
     let clif_ty = match (reg.kind, reg.size.bytes()) {
         (RegKind::Integer, 1) => types::I8,
         (RegKind::Integer, 2) => types::I16,
-        (RegKind::Integer, 4) => types::I32,
-        (RegKind::Integer, 8) => types::I64,
-        (RegKind::Integer, 16) => types::I128,
+        (RegKind::Integer, 3..=4) => types::I32,
+        (RegKind::Integer, 5..=8) => types::I64,
+        (RegKind::Integer, 9..=16) => types::I128,
         (RegKind::Float, 4) => types::F32,
         (RegKind::Float, 8) => types::F64,
         (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
@@ -48,23 +48,9 @@ fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
         )
     };
 
-    if cast.prefix.iter().all(|x| x.is_none()) {
-        // Simplify to a single unit when there is no prefix and size <= unit size
-        if cast.rest.total <= cast.rest.unit.size {
-            let clif_ty = match (cast.rest.unit.kind, cast.rest.unit.size.bytes()) {
-                (RegKind::Integer, 1) => types::I8,
-                (RegKind::Integer, 2) => types::I16,
-                (RegKind::Integer, 3..=4) => types::I32,
-                (RegKind::Integer, 5..=8) => types::I64,
-                (RegKind::Integer, 9..=16) => types::I128,
-                (RegKind::Float, 4) => types::F32,
-                (RegKind::Float, 8) => types::F64,
-                (RegKind::Vector, size) => types::I8.by(u16::try_from(size).unwrap()).unwrap(),
-                _ => unreachable!("{:?}", cast.rest.unit),
-            };
-            return smallvec![AbiParam::new(clif_ty)];
-        }
-    }
+    // Note: Unlike the LLVM equivalent of this code we don't have separate branches for when there
+    // is no prefix as a single unit, an array and a heterogeneous struct are not represented using
+    // different types in Cranelift IR. Instead a single array of primitive types is used.
 
     // Create list of fields in the main structure
     let mut args = cast
@@ -230,7 +216,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     is_owned: bool,
 ) -> SmallVec<[Value; 2]> {
-    assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty);
+    assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty, 16);
     match arg_abi.mode {
         PassMode::Ignore => smallvec![],
         PassMode::Direct(_) => smallvec![arg.load_scalar(fx)],
