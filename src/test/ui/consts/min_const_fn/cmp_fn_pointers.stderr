@@ -1,10 +1,26 @@
-error: pointers cannot be reliably compared during const eval
-  --> $DIR/cmp_fn_pointers.rs:2:14
+error[E0277]: can't compare `fn()` with `_` in const contexts
+  --> $DIR/cmp_fn_pointers.rs:2:16
    |
 LL |     unsafe { x == y }
-   |              ^^^^^^
+   |                ^^ no implementation for `fn() == _`
    |
-   = note: see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information
+   = help: the trait `~const PartialEq<_>` is not implemented for `fn()`
+note: the trait `PartialEq<_>` is implemented for `fn()`, but that implementation is not `const`
+  --> $DIR/cmp_fn_pointers.rs:2:16
+   |
+LL |     unsafe { x == y }
+   |                ^^
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             extern "C" fn() -> Ret
+             extern "C" fn(A, B) -> Ret
+             extern "C" fn(A, B, ...) -> Ret
+             extern "C" fn(A, B, C) -> Ret
+             extern "C" fn(A, B, C, ...) -> Ret
+             extern "C" fn(A, B, C, D) -> Ret
+             extern "C" fn(A, B, C, D, ...) -> Ret
+             extern "C" fn(A, B, C, D, E) -> Ret
+           and 68 others
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.
