@@ -2,7 +2,7 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use attr::StabilityLevel;
-use rustc_attr::{self as attr, ConstStability, Stability, Unstable};
+use rustc_attr::{self as attr, ConstStability, Stability, Unstable, UnstableReason};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -634,12 +634,9 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         // while maintaining the invariant that all sysroot crates are unstable
         // by default and are unable to be used.
         if tcx.sess.opts.unstable_opts.force_unstable_if_unmarked {
-            let reason = "this crate is being loaded from the sysroot, an \
-                          unstable location; did you mean to load this crate \
-                          from crates.io via `Cargo.toml` instead?";
             let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
-                    reason: Some(Symbol::intern(reason)),
+                    reason: UnstableReason::Default,
                     issue: NonZeroU32::new(27812),
                     is_soft: false,
                     implied_by: None,

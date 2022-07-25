@@ -1528,6 +1528,9 @@ symbols! {
         unsized_locals,
         unsized_tuple_coercion,
         unstable,
+        unstable_location_reason_default: "this crate is being loaded from the sysroot, an \
+                          unstable location; did you mean to load this crate \
+                          from crates.io via `Cargo.toml` instead?",
         untagged_unions,
         unused_imports,
         unused_qualifications,

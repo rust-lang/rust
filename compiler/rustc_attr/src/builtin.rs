@@ -138,7 +138,7 @@ pub enum StabilityLevel {
     /// `#[unstable]`
     Unstable {
         /// Reason for the current stability level.
-        reason: Option<Symbol>,
+        reason: UnstableReason,
         /// Relevant `rust-lang/rust` issue.
         issue: Option<NonZeroU32>,
         is_soft: bool,
@@ -179,6 +179,32 @@ impl StabilityLevel {
     }
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
+    }
+}
+
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub enum UnstableReason {
+    None,
+    Default,
+    Some(Symbol),
+}
+
+impl UnstableReason {
+    fn from_opt_reason(reason: Option<Symbol>) -> Self {
+        // UnstableReason::Default constructed manually
+        match reason {
+            Some(r) => Self::Some(r),
+            None => Self::None,
+        }
+    }
+
+    pub fn to_opt_reason(&self) -> Option<Symbol> {
+        match self {
+            Self::None => None,
+            Self::Default => Some(sym::unstable_location_reason_default),
+            Self::Some(r) => Some(*r),
+        }
     }
 }
 
@@ -371,7 +397,12 @@ where
                                 );
                                 continue;
                             }
-                            let level = Unstable { reason, issue: issue_num, is_soft, implied_by };
+                            let level = Unstable {
+                                reason: UnstableReason::from_opt_reason(reason),
+                                issue: issue_num,
+                                is_soft,
+                                implied_by,
+                            };
                             if sym::unstable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
                             } else {

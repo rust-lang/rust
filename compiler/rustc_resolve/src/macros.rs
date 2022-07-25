@@ -812,7 +812,7 @@ impl<'a> Resolver<'a> {
                     stability::report_unstable(
                         self.session,
                         feature,
-                        reason,
+                        reason.to_opt_reason(),
                         issue,
                         None,
                         is_soft,
