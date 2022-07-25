@@ -828,7 +828,7 @@ pub enum ConstPropMode {
     NoPropagation,
 }
 
-struct CanConstProp {
+pub struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
     found_assignment: BitSet<Local>,
@@ -838,7 +838,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
-    fn check<'tcx>(
+    pub fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,

@@ -1,6 +1,7 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
+use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
 use crate::MirLint;
@@ -13,11 +14,11 @@ use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
-    AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalKind, Location,
-    Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind,
-    Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, Location, Operand, Place,
+    Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator,
+    TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -519,125 +520,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         self.use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, place))
-    }
-}
-
-struct CanConstProp {
-    can_const_prop: IndexVec<Local, ConstPropMode>,
-    // False at the beginning. Once set, no more assignments are allowed to that local.
-    found_assignment: BitSet<Local>,
-    // Cache of locals' information
-    local_kinds: IndexVec<Local, LocalKind>,
-}
-
-impl CanConstProp {
-    /// Returns true if `local` can be propagated
-    fn check<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-        body: &Body<'tcx>,
-    ) -> IndexVec<Local, ConstPropMode> {
-        let mut cpv = CanConstProp {
-            can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
-            found_assignment: BitSet::new_empty(body.local_decls.len()),
-            local_kinds: IndexVec::from_fn_n(
-                |local| body.local_kind(local),
-                body.local_decls.len(),
-            ),
-        };
-        for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
-            let ty = body.local_decls[local].ty;
-            match tcx.layout_of(param_env.and(ty)) {
-                Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
-                // Either the layout fails to compute, then we can't use this local anyway
-                // or the local is too large, then we don't want to.
-                _ => {
-                    *val = ConstPropMode::NoPropagation;
-                    continue;
-                }
-            }
-            // Cannot use args at all
-            // Cannot use locals because if x < y { y - x } else { x - y } would
-            //        lint for x != y
-            // FIXME(oli-obk): lint variables until they are used in a condition
-            // FIXME(oli-obk): lint if return value is constant
-            if cpv.local_kinds[local] == LocalKind::Arg {
-                *val = ConstPropMode::OnlyPropagateInto;
-                trace!(
-                    "local {:?} can't be const propagated because it's a function argument",
-                    local
-                );
-            } else if cpv.local_kinds[local] == LocalKind::Var {
-                *val = ConstPropMode::OnlyInsideOwnBlock;
-                trace!(
-                    "local {:?} will only be propagated inside its block, because it's a user variable",
-                    local
-                );
-            }
-        }
-        cpv.visit_body(&body);
-        cpv.can_const_prop
-    }
-}
-
-impl Visitor<'_> for CanConstProp {
-    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
-        use rustc_middle::mir::visit::PlaceContext::*;
-        match context {
-            // Projections are fine, because `&mut foo.x` will be caught by
-            // `MutatingUseContext::Borrow` elsewhere.
-            MutatingUse(MutatingUseContext::Projection)
-            // These are just stores, where the storing is not propagatable, but there may be later
-            // mutations of the same local via `Store`
-            | MutatingUse(MutatingUseContext::Call)
-            | MutatingUse(MutatingUseContext::AsmOutput)
-            | MutatingUse(MutatingUseContext::Deinit)
-            // Actual store that can possibly even propagate a value
-            | MutatingUse(MutatingUseContext::SetDiscriminant)
-            | MutatingUse(MutatingUseContext::Store) => {
-                if !self.found_assignment.insert(local) {
-                    match &mut self.can_const_prop[local] {
-                        // If the local can only get propagated in its own block, then we don't have
-                        // to worry about multiple assignments, as we'll nuke the const state at the
-                        // end of the block anyway, and inside the block we overwrite previous
-                        // states as applicable.
-                        ConstPropMode::OnlyInsideOwnBlock => {}
-                        ConstPropMode::NoPropagation => {}
-                        ConstPropMode::OnlyPropagateInto => {}
-                        other @ ConstPropMode::FullConstProp => {
-                            trace!(
-                                "local {:?} can't be propagated because of multiple assignments. Previous state: {:?}",
-                                local, other,
-                            );
-                            *other = ConstPropMode::OnlyInsideOwnBlock;
-                        }
-                    }
-                }
-            }
-            // Reading constants is allowed an arbitrary number of times
-            NonMutatingUse(NonMutatingUseContext::Copy)
-            | NonMutatingUse(NonMutatingUseContext::Move)
-            | NonMutatingUse(NonMutatingUseContext::Inspect)
-            | NonMutatingUse(NonMutatingUseContext::Projection)
-            | NonUse(_) => {}
-
-            // These could be propagated with a smarter analysis or just some careful thinking about
-            // whether they'd be fine right now.
-            MutatingUse(MutatingUseContext::Yield)
-            | MutatingUse(MutatingUseContext::Drop)
-            | MutatingUse(MutatingUseContext::Retag)
-            // These can't ever be propagated under any scheme, as we can't reason about indirect
-            // mutation.
-            | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-            | NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-            | NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
-            | NonMutatingUse(NonMutatingUseContext::AddressOf)
-            | MutatingUse(MutatingUseContext::Borrow)
-            | MutatingUse(MutatingUseContext::AddressOf) => {
-                trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
-                self.can_const_prop[local] = ConstPropMode::NoPropagation;
-            }
-        }
     }
 }
 
