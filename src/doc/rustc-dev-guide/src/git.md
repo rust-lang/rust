@@ -387,7 +387,7 @@ you might want to get used to the main concepts of Git before reading this secti
 
 The `rust-lang/rust` repository uses [Git submodules] as a way to use other
 Rust projects from within the `rust` repo. Examples include Rust's fork of
-`llvm-project` and many devtools such as `cargo`, `rust-analyzer` and `rls`.
+`llvm-project` and many devtools such as `cargo` and `rls`.
 
 Those projects are developed and maintained in an separate Git (and GitHub)
 repository, and they have their own Git history/commits, issue tracker and PRs.

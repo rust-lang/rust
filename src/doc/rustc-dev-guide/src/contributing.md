@@ -184,6 +184,7 @@ differently from other crates that are directly in this repo:
 
 * [Clippy](https://github.com/rust-lang/rust-clippy)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
+* [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
