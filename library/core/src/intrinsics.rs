@@ -2449,6 +2449,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -2535,6 +2536,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
