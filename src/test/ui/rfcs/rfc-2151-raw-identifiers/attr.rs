@@ -7,7 +7,7 @@ struct Test {
 }
 
 #[r#derive(r#Debug)]
-struct Test2(u32);
+struct Test2(#[allow(unused_tuple_struct_fields)] u32);
 
 pub fn main() {
     assert_eq!(mem::size_of::<Test>(), 9);

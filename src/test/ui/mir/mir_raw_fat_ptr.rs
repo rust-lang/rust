@@ -103,6 +103,7 @@ impl<T> Foo for T {
     }
 }
 
+#[allow(unused_tuple_struct_fields)]
 struct S<T:?Sized>(u32, T);
 
 fn main_ref() {
