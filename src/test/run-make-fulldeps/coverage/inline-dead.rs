@@ -1,8 +1,15 @@
 // Regression test for issue #98833.
-// compile-flags: -Zinline-mir
+// compile-flags: -Zinline-mir -Cdebug-assertions=off
 
 fn main() {
     println!("{}", live::<false>());
+
+    let f = |x: bool| {
+        debug_assert!(
+            x
+        );
+    };
+    f(false);
 }
 
 #[inline]
