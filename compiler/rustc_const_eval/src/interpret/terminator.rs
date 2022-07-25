@@ -571,8 +571,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
-                let ty::VtblEntry::Method(fn_inst) = self.get_vtable_entries(vptr)?[idx] else {
-                    span_bug!(self.cur_span(), "dyn call index points at something that is not a method")
+                let Some(ty::VtblEntry::Method(fn_inst)) = self.get_vtable_entries(vptr)?.get(idx).copied() else {
+                    throw_ub_format!("`dyn` call trying to call something that is not a method")
                 };
                 if cfg!(debug_assertions) {
                     let tcx = *self.tcx;

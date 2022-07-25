@@ -435,18 +435,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Place(place) => place,
             LocalRef::UnsizedPlace(place) => bx.load_operand(place).deref(cx),
             LocalRef::Operand(..) => {
-                if let Some(elem) = place_ref
-                    .projection
-                    .iter()
-                    .enumerate()
-                    .find(|elem| matches!(elem.1, mir::ProjectionElem::Deref))
-                {
-                    base = elem.0 + 1;
+                if place_ref.has_deref() {
+                    base = 1;
                     let cg_base = self.codegen_consume(
                         bx,
-                        mir::PlaceRef { projection: &place_ref.projection[..elem.0], ..place_ref },
+                        mir::PlaceRef { projection: &place_ref.projection[..0], ..place_ref },
                     );
-
                     cg_base.deref(bx.cx())
                 } else {
                     bug!("using operand local {:?} as place", place_ref);

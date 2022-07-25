@@ -382,6 +382,14 @@ pub mod token_stream {
                 bridge::TokenTree::Literal(tt) => TokenTree::Literal(Literal(tt)),
             })
         }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.0.size_hint()
+        }
+
+        fn count(self) -> usize {
+            self.0.count()
+        }
     }
 
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
