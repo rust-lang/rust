@@ -516,6 +516,9 @@ mod tests {
                     mark
                 ))
             })
+            // HashSet iteration order isn't defined - it's different on
+            // x86_64 and i686 at the very least
+            .sorted()
             .collect::<String>();
         expect.assert_eq(&actual)
     }
@@ -588,6 +591,7 @@ mod tests {
 
                 Some(format!("{}:\n{:?}\n", name, map))
             })
+            .sorted()
             .collect::<String>();
 
         expect.assert_eq(&actual)
@@ -621,15 +625,15 @@ mod tests {
             struct Priv;
         ",
             expect![[r#"
+                lib:
+                - Pub (t)
+                - Pub2 (t)
+                - Pub2 (v)
                 main:
                 - publ1 (t)
                 - real_pu2 (t)
                 - real_pub (t)
                 - real_pub::Pub (t)
-                lib:
-                - Pub (t)
-                - Pub2 (t)
-                - Pub2 (v)
             "#]],
         );
     }
@@ -671,13 +675,13 @@ mod tests {
             pub struct S;
         ",
             expect![[r#"
+                lib:
+                - S (t)
+                - S (v)
                 main:
                 - m (t)
                 - m::S (t)
                 - m::S (v)
-                lib:
-                - S (t)
-                - S (v)
             "#]],
         );
     }
@@ -697,11 +701,11 @@ mod tests {
             }
         ",
             expect![[r#"
+                lib:
+                - pub_macro (m)
                 main:
                 - m (t)
                 - m::pub_macro (m)
-                lib:
-                - pub_macro (m)
             "#]],
         );
     }
@@ -719,14 +723,14 @@ mod tests {
             }
         ",
             expect![[r#"
-                main:
-                - reexported_module (t)
-                - reexported_module::S (t)
-                - reexported_module::S (v)
                 lib:
                 - module (t)
                 - module::S (t)
                 - module::S (v)
+                main:
+                - reexported_module (t)
+                - reexported_module::S (t)
+                - reexported_module::S (v)
             "#]],
         );
     }
@@ -831,10 +835,10 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
-                dep::fmt::Display::format_method (a)
                 dep::fmt::Display (t)
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
+                dep::fmt::Display::format_method (a)
             "#]],
         );
     }
@@ -860,10 +864,10 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy).assoc_items_only(),
             expect![[r#"
-            dep::fmt::Display::format_method (a)
-            dep::fmt::Display::FMT_CONST (a)
-            dep::fmt::Display::format_function (a)
-        "#]],
+                dep::fmt::Display::FMT_CONST (a)
+                dep::fmt::Display::format_function (a)
+                dep::fmt::Display::format_method (a)
+            "#]],
         );
 
         check_search(
@@ -920,13 +924,13 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
-                dep::fmt (t)
-                dep::format (f)
-                dep::Fmt (v)
                 dep::Fmt (m)
                 dep::Fmt (t)
-                dep::fmt::Display::fmt (a)
+                dep::Fmt (v)
+                dep::fmt (t)
                 dep::fmt::Display (t)
+                dep::fmt::Display::fmt (a)
+                dep::format (f)
             "#]],
         );
 
@@ -935,10 +939,10 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).search_mode(SearchMode::Equals),
             expect![[r#"
-                dep::fmt (t)
-                dep::Fmt (v)
                 dep::Fmt (m)
                 dep::Fmt (t)
+                dep::Fmt (v)
+                dep::fmt (t)
                 dep::fmt::Display::fmt (a)
             "#]],
         );
@@ -948,12 +952,12 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).search_mode(SearchMode::Contains),
             expect![[r#"
-                dep::fmt (t)
-                dep::Fmt (v)
                 dep::Fmt (m)
                 dep::Fmt (t)
-                dep::fmt::Display::fmt (a)
+                dep::Fmt (v)
+                dep::fmt (t)
                 dep::fmt::Display (t)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
     }
@@ -989,12 +993,12 @@ mod tests {
             "main",
             Query::new("fmt".to_string()),
             expect![[r#"
-                dep::fmt (t)
-                dep::Fmt (v)
                 dep::Fmt (m)
                 dep::Fmt (t)
-                dep::fmt::Display::fmt (a)
+                dep::Fmt (v)
+                dep::fmt (t)
                 dep::fmt::Display (t)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
 
@@ -1003,10 +1007,10 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).name_only(),
             expect![[r#"
-                dep::fmt (t)
-                dep::Fmt (v)
                 dep::Fmt (m)
                 dep::Fmt (t)
+                dep::Fmt (v)
+                dep::fmt (t)
                 dep::fmt::Display::fmt (a)
             "#]],
         );
@@ -1027,10 +1031,10 @@ mod tests {
             "main",
             Query::new("FMT".to_string()),
             expect![[r#"
-                dep::fmt (t)
-                dep::FMT (v)
-                dep::fmt (v)
                 dep::FMT (t)
+                dep::FMT (v)
+                dep::fmt (t)
+                dep::fmt (v)
             "#]],
         );
 
@@ -1068,10 +1072,10 @@ mod tests {
             "main",
             Query::new("".to_string()).limit(2),
             expect![[r#"
-                dep::fmt (t)
+                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
+                dep::fmt (t)
             "#]],
         );
     }
@@ -1091,10 +1095,10 @@ mod tests {
             "main",
             Query::new("FMT".to_string()),
             expect![[r#"
-                dep::fmt (t)
-                dep::FMT (v)
-                dep::fmt (v)
                 dep::FMT (t)
+                dep::FMT (v)
+                dep::fmt (t)
+                dep::fmt (v)
             "#]],
         );
 

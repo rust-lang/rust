@@ -84,4 +84,9 @@ mbe = { path = "../mbe" }
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
-in-rust-tree = ["proc-macro-srv/sysroot-abi"]
+in-rust-tree = [
+    "proc-macro-srv/sysroot-abi",
+    "sourcegen/in-rust-tree",
+    "ide/in-rust-tree",
+    "syntax/in-rust-tree"
+]
