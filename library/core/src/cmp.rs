@@ -1503,9 +1503,10 @@ mod impls {
     // & pointers
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
+    #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+    impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
     where
-        A: PartialEq<B>,
+        A: ~const PartialEq<B>,
     {
         #[inline]
         fn eq(&self, other: &&B) -> bool {
