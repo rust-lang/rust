@@ -436,7 +436,7 @@ enum ModuleKind {
     ///     f(); // Resolves to (1)
     /// }
     /// ```
-    Block(NodeId),
+    Block,
     /// Any module with a name.
     ///
     /// This could be:
@@ -453,7 +453,7 @@ impl ModuleKind {
     /// Get name of the module.
     pub fn name(&self) -> Option<Symbol> {
         match self {
-            ModuleKind::Block(..) => None,
+            ModuleKind::Block => None,
             ModuleKind::Def(.., name) => Some(*name),
         }
     }
@@ -529,7 +529,7 @@ impl<'a> ModuleData<'a> {
     ) -> Self {
         let is_foreign = match kind {
             ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
-            ModuleKind::Block(_) => false,
+            ModuleKind::Block => false,
         };
         ModuleData {
             parent,
