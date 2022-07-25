@@ -3391,6 +3391,7 @@ dependencies = [
  "thin-vec",
  "tracing",
  "winapi",
+ "xxh3-port",
 ]
 
 [[package]]
@@ -5469,6 +5470,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "xxh3-port"
+version = "0.1.0"
+source = "git+https://github.com/michaelwoerister/xxh3-port#f2071121875c9b0a474dcdbbd4c4411011b0c266"
+dependencies = [
+ "cfg-if 1.0.0",
 ]
 
 [[package]]

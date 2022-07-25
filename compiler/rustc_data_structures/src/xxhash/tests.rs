@@ -2,6 +2,8 @@ use super::*;
 
 use std::hash::{Hash, Hasher};
 
+use super::test_data::SINGLE_SHOT_U128;
+
 // Hash just the bytes of the slice, without length prefix
 struct Bytes<'a>(&'a [u8]);
 
@@ -27,7 +29,7 @@ fn hash<T: Hash>(x: &T) -> (u64, u64) {
 #[cfg(target_arch = "arm")]
 fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
-    assert!(hash(&(val as u64)) != hash(&(val as usize)));
+    assert_ne!(hash(&(val as u64)), hash(&(val as usize)));
     assert_eq!(hash(&(val as u32)), hash(&(val as usize)));
 }
 #[test]
@@ -35,13 +37,13 @@ fn test_hash_usize() {
 fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
     assert_eq!(hash(&(val as u64)), hash(&(val as usize)));
-    assert!(hash(&(val as u32)) != hash(&(val as usize)));
+    assert_ne!(hash(&(val as u32)), hash(&(val as usize)));
 }
 #[test]
 #[cfg(target_arch = "x86")]
 fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
-    assert!(hash(&(val as u64)) != hash(&(val as usize)));
+    assert_ne!(hash(&(val as u64)), hash(&(val as usize)));
     assert_eq!(hash(&(val as u32)), hash(&(val as usize)));
 }
 
@@ -57,14 +59,14 @@ fn test_hash_idempotent() {
 fn test_hash_no_bytes_dropped_64() {
     let val = 0xdeadbeef_deadbeef_u64;
 
-    assert!(hash(&val) != hash(&zero_byte(val, 0)));
-    assert!(hash(&val) != hash(&zero_byte(val, 1)));
-    assert!(hash(&val) != hash(&zero_byte(val, 2)));
-    assert!(hash(&val) != hash(&zero_byte(val, 3)));
-    assert!(hash(&val) != hash(&zero_byte(val, 4)));
-    assert!(hash(&val) != hash(&zero_byte(val, 5)));
-    assert!(hash(&val) != hash(&zero_byte(val, 6)));
-    assert!(hash(&val) != hash(&zero_byte(val, 7)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 0)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 1)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 2)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 3)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 4)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 5)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 6)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 7)));
 
     fn zero_byte(val: u64, byte: usize) -> u64 {
         assert!(byte < 8);
@@ -76,10 +78,10 @@ fn test_hash_no_bytes_dropped_64() {
 fn test_hash_no_bytes_dropped_32() {
     let val = 0xdeadbeef_u32;
 
-    assert!(hash(&val) != hash(&zero_byte(val, 0)));
-    assert!(hash(&val) != hash(&zero_byte(val, 1)));
-    assert!(hash(&val) != hash(&zero_byte(val, 2)));
-    assert!(hash(&val) != hash(&zero_byte(val, 3)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 0)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 1)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 2)));
+    assert_ne!(hash(&val), hash(&zero_byte(val, 3)));
 
     fn zero_byte(val: u32, byte: usize) -> u32 {
         assert!(byte < 4);
@@ -100,8 +102,8 @@ fn test_hash_no_concat_alias() {
     let v = (&u[..1], &u[1..3], &u[3..]);
     let w = (&u[..], &u[4..4], &u[4..4]);
 
-    assert!(v != w);
-    assert!(hash(&v) != hash(&w));
+    assert_ne!(v, w);
+    assert_ne!(hash(&v), hash(&w));
 }
 
 #[test]
@@ -156,4 +158,89 @@ fn test_short_write_works() {
     let h2_hash = h2.finish128();
 
     assert_eq!(h1_hash, h2_hash);
+}
+
+fn test_128(
+    bytes: &[u8],
+    seed: u64,
+    expected_hash: Hash128,
+    hash_fn: &dyn Fn(&[u8], u64) -> Hash128,
+) {
+    let actual_hash = hash_fn(bytes, seed);
+
+    assert!(
+        actual_hash == expected_hash,
+        "Hash mismatch for input with length {} and seed {}",
+        bytes.len(),
+        seed
+    );
+}
+
+fn for_each_test_config(f: &dyn Fn(&[u8], u64, Hash128)) {
+    for &(bytes, hashes) in SINGLE_SHOT_U128 {
+        for (seed, low64, high64) in hashes {
+            if seed != 0 {
+                continue;
+            }
+
+            f(bytes, seed, Hash128 { low64, high64 });
+        }
+    }
+}
+
+fn test_streaming(accesses: &[usize], seeds: &[u64]) {
+    for_each_test_config(&|bytes, seed, expected_hash| {
+        if !seeds.contains(&seed) {
+            return;
+        }
+
+        test_128(bytes, seed, expected_hash, &|mut bytes, _seed| {
+            let mut state = Xxh3Hasher::default();
+
+            let mut access_index = 0;
+
+            while bytes.len() > 0 {
+                let chunk_len = std::cmp::min(accesses[access_index], bytes.len());
+
+                state.update(&bytes[..chunk_len]);
+
+                bytes = &bytes[chunk_len..];
+                access_index = (access_index + 1) % accesses.len();
+            }
+
+            let hash = state.digest128();
+
+            hash
+        });
+    });
+}
+
+#[test]
+fn single_shot_128() {
+    for_each_test_config(&|bytes, seed, hash| {
+        if seed == 0 {
+            test_128(bytes, seed, hash, &|bytes, _| xxh3_128bits(bytes));
+        }
+    });
+}
+
+#[test]
+fn streaming_128() {
+    test_streaming(&[1, 2, 3, 4], &[0]);
+    test_streaming(&[4, 8, 1, 2, 16, 17], &[0]);
+    test_streaming(&[usize::MAX], &[0]);
+    test_streaming(&[1], &[0]);
+}
+
+pub fn xxh3_128bits(input: &[u8]) -> Hash128 {
+    xxh3_128bits_internal(input, 0, &XXH3_K_SECRET.0[..], xxh3_hash_long_128b_default)
+}
+
+fn xxh3_hash_long_128b_default(input: &[u8], _seed: u64, _secret: &[u8]) -> Hash128 {
+    return xxh3_hash_long_128b_internal(
+        input,
+        &XXH3_K_SECRET.0[..],
+        XXH3_ACCUMULATE_512,
+        XXH3_SCRAMBLE_ACC,
+    );
 }

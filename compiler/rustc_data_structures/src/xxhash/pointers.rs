@@ -65,7 +65,7 @@ macro_rules! define_ptr {
             }
 
             #[inline]
-            pub fn addr(&self) -> usize {
+            fn addr(&self) -> usize {
                 self.ptr as usize
             }
 
@@ -156,7 +156,7 @@ impl<T: Copy> PtrMut<T> {
         {
             assert!(self.addr() >= self.lower_bound);
             assert!(self.addr() < self.upper_bound);
-            assert!(self.addr() % std::mem::align_of::<T>() == 0);
+            assert_eq!(self.addr() % std::mem::align_of::<T>(), 0);
         }
 
         unsafe {
