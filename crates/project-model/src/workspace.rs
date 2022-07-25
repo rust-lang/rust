@@ -230,8 +230,14 @@ impl ProjectWorkspace {
         project_json: ProjectJson,
         target: Option<&str>,
     ) -> Result<ProjectWorkspace> {
-        let sysroot = match &project_json.sysroot_src {
-            Some(path) => Some(Sysroot::load(path.clone())?),
+        let sysroot = match project_json.sysroot_src.clone() {
+            Some(sysroot_src) => {
+                // if `sysroot` isn't specified (only `sysroot_src`), we won't have
+                // a real sysroot path, that's fine. it's just used to discover
+                // the standalone `proc-macro-srv` binary.
+                let sysroot = project_json.sysroot.clone().unwrap_or_else(|| sysroot_src.clone());
+                Some(Sysroot::load(sysroot, sysroot_src)?)
+            }
             None => None,
         };
         let rustc_cfg = rustc_cfg::get(None, target);
@@ -345,7 +351,7 @@ impl ProjectWorkspace {
                     })
                     .chain(sysroot.iter().map(|sysroot| PackageRoot {
                         is_local: false,
-                        include: vec![sysroot.root().to_path_buf()],
+                        include: vec![sysroot.src_root().to_path_buf()],
                         exclude: Vec::new(),
                     }))
                     .chain(rustc.iter().flat_map(|rustc| {

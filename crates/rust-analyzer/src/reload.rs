@@ -305,8 +305,34 @@ impl GlobalState {
 
         if self.proc_macro_clients.is_empty() {
             if let Some((path, args)) = self.config.proc_macro_srv() {
-                self.proc_macro_clients = (0..self.workspaces.len())
-                    .map(|_| {
+                self.proc_macro_clients = self
+                    .workspaces
+                    .iter()
+                    .map(|ws| {
+                        let mut path = path.clone();
+                        if let ProjectWorkspace::Cargo { sysroot, .. } = ws {
+                            tracing::info!("Found a cargo workspace...");
+                            if let Some(sysroot) = sysroot.as_ref() {
+                                tracing::info!("Found a cargo workspace with a sysroot...");
+                                let server_path = sysroot
+                                    .root()
+                                    .join("libexec")
+                                    .join("rust-analyzer-proc-macro-srv");
+                                if std::fs::metadata(&server_path).is_ok() {
+                                    tracing::info!(
+                                        "And the server exists at {}",
+                                        server_path.display()
+                                    );
+                                    path = server_path;
+                                } else {
+                                    tracing::info!(
+                                        "And the server does not exist at {}",
+                                        server_path.display()
+                                    );
+                                }
+                            }
+                        }
+
                         ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
                             let error = format!(
                                 "Failed to run proc_macro_srv from path {}, error: {:?}",
