@@ -1,9 +1,7 @@
 use super::tcp as uefi_tcp;
-use super::uefi_service_binding;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4};
-use crate::os::uefi;
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::unsupported;
 use crate::time::Duration;
 

@@ -3,7 +3,6 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::num::NonZeroI32;
-use crate::os::uefi;
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
@@ -22,7 +21,6 @@ pub struct Command {
     args: crate::ffi::OsString,
     stdout_key: Option<crate::ffi::OsString>,
     stderr_key: Option<crate::ffi::OsString>,
-    stdin_key: Option<crate::ffi::OsString>,
 }
 // passed back to std::process with the pipes connected to the child, if any were requested
 #[derive(Default)]
@@ -32,6 +30,7 @@ pub struct StdioPipes {
     pub stderr: Option<AnonPipe>,
 }
 
+#[derive(Clone, Copy)]
 pub enum Stdio {
     Inherit,
     Null,
@@ -46,7 +45,6 @@ impl Command {
             args: program.to_os_string(),
             stdout_key: None,
             stderr_key: None,
-            stdin_key: None,
         }
     }
 
@@ -77,7 +75,16 @@ impl Command {
 
     pub fn stdout(&mut self, stdout: Stdio) {
         match stdout {
-            Stdio::Inherit => {}
+            Stdio::Inherit => {
+                if let Ok(current_exe) = crate::env::current_exe() {
+                    let mut key = current_exe.into_os_string();
+                    key.push("_stdout");
+                    if let Some(val) = crate::env::var_os(&key) {
+                        self.env.set(&key, &val);
+                        self.stderr_key = Some(val);
+                    }
+                }
+            }
             Stdio::Null => {
                 let mut key = self.program.clone();
                 key.push("_stdout");
@@ -96,7 +103,16 @@ impl Command {
 
     pub fn stderr(&mut self, stderr: Stdio) {
         match stderr {
-            Stdio::Inherit => {}
+            Stdio::Inherit => {
+                if let Ok(current_exe) = crate::env::current_exe() {
+                    let mut key = current_exe.into_os_string();
+                    key.push("_stderr");
+                    if let Some(val) = crate::env::var_os(&key) {
+                        self.env.set(&key, &val);
+                        self.stderr_key = Some(val);
+                    }
+                }
+            }
             Stdio::Null => {
                 let mut key = self.program.clone();
                 key.push("_stderr");
@@ -137,6 +153,23 @@ impl Command {
         let cmd = uefi_command::Command::load_image(self.program.as_os_str())?;
         cmd.set_args(self.args.as_os_str())?;
 
+        let mut stdio_pipe = StdioPipes::default();
+
+        // Set defaults
+        if self.stdout_key.is_none() {
+            self.stdout(default);
+        }
+        if self.stderr_key.is_none() {
+            self.stderr(default);
+        }
+
+        if let Some(x) = &self.stdout_key {
+            stdio_pipe.stdout = Some(AnonPipe::new(x));
+        }
+        if let Some(x) = &self.stderr_key {
+            stdio_pipe.stderr = Some(AnonPipe::new(x));
+        }
+
         // Set env varibles
         for (key, val) in self.env.iter() {
             match val {
@@ -145,14 +178,6 @@ impl Command {
             }
         }
 
-        let mut stdio_pipe = StdioPipes::default();
-
-        if let Some(x) = &self.stdout_key {
-            stdio_pipe.stdout = Some(AnonPipe::new(x));
-        }
-        if let Some(x) = &self.stderr_key {
-            stdio_pipe.stderr = Some(AnonPipe::new(x));
-        }
         // Initially thought to implement start at wait. However, it seems like everything expectes
         // stdio output to be ready for reading before calling wait, which is not possible at least
         // in current implementation.
@@ -196,13 +221,13 @@ impl ExitStatus {
 
 impl fmt::Debug for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&super::common::status_to_io_error(&self.0), f)
+        fmt::Debug::fmt(&super::common::status_to_io_error(self.0), f)
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&super::common::status_to_io_error(&self.0), f)
+        fmt::Display::fmt(&super::common::status_to_io_error(self.0), f)
     }
 }
 
@@ -329,7 +354,7 @@ mod uefi_command {
                 )
             };
             if r.is_error() {
-                Err(super::super::common::status_to_io_error(&r))
+                Err(super::super::common::status_to_io_error(r))
             } else {
                 let child_handle = unsafe { child_handle.assume_init() };
                 match NonNull::new(child_handle) {
@@ -364,17 +389,17 @@ mod uefi_command {
         }
 
         pub fn set_args(&self, args: &OsStr) -> io::Result<()> {
+            let mut guid = loaded_image::PROTOCOL_GUID;
             let protocol: NonNull<loaded_image::Protocol> =
-                uefi::env::get_handle_protocol(self.inner, &mut loaded_image::PROTOCOL_GUID)
-                    .ok_or(io::Error::new(
-                        io::ErrorKind::Uncategorized,
-                        "Failed to acquire loaded image protocol for child handle",
-                    ))?;
+                uefi::env::get_handle_protocol(self.inner, &mut guid).ok_or(io::Error::new(
+                    io::ErrorKind::Uncategorized,
+                    "Failed to acquire loaded image protocol for child handle",
+                ))?;
             let mut args = ManuallyDrop::new(args.to_ffi_string());
             let args_size = (crate::mem::size_of::<u16>() * args.len()) as u32;
             unsafe {
                 (*protocol.as_ptr()).load_options_size = args_size;
-                crate::mem::replace(
+                let _ = crate::mem::replace(
                     &mut (*protocol.as_ptr()).load_options,
                     args.as_mut_ptr() as *mut crate::ffi::c_void,
                 );
@@ -388,88 +413,6 @@ mod uefi_command {
         fn drop(&mut self) {
             if let Some(boot_services) = uefi::env::get_boot_services() {
                 let _ = unsafe { ((*boot_services.as_ptr()).unload_image)(self.inner.as_ptr()) };
-            }
-        }
-    }
-}
-
-mod uefi_stdio_pip {
-    use crate::io;
-    use crate::os::uefi;
-    use crate::ptr::NonNull;
-    use r_efi::protocols::simple_text_output;
-
-    pub struct ProtocolHandler<T> {
-        handle: Option<NonNull<crate::ffi::c_void>>,
-        guid: r_efi::efi::Guid,
-        protocol: T,
-    }
-
-    impl<T> ProtocolHandler<T> {
-        pub fn new(
-            handle: Option<NonNull<crate::ffi::c_void>>,
-            guid: r_efi::efi::Guid,
-            protocol: T,
-        ) -> Self {
-            Self { handle, guid, protocol }
-        }
-
-        // Panics if protocol not installed yet
-        pub unsafe fn get_handle_raw(&self) -> *mut crate::ffi::c_void {
-            self.handle.unwrap().as_ptr()
-        }
-
-        pub fn get_protocol(&mut self) -> &mut T {
-            &mut self.protocol
-        }
-
-        pub fn install_protocol(&mut self) -> io::Result<()> {
-            let boot_services = uefi::env::get_boot_services().ok_or(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Failed to acquire boot services",
-            ))?;
-
-            let mut new_handle: r_efi::efi::Handle = match self.handle {
-                Some(x) => x.as_ptr(),
-                None => crate::ptr::null_mut(),
-            };
-            let r = unsafe {
-                ((*boot_services.as_ptr()).install_multiple_protocol_interfaces)(
-                    &mut new_handle,
-                    (&mut self.guid) as *mut _ as *mut crate::ffi::c_void,
-                    (&mut self.protocol) as *mut _ as *mut crate::ffi::c_void,
-                )
-            };
-
-            if r.is_error() {
-                Err(super::super::common::status_to_io_error(&r))
-            } else {
-                self.handle = match NonNull::new(new_handle) {
-                    None => {
-                        return Err(io::Error::new(
-                            io::ErrorKind::Uncategorized,
-                            "Null Handle returned",
-                        ));
-                    }
-                    Some(x) => Some(x),
-                };
-                Ok(())
-            }
-        }
-    }
-
-    impl<T> Drop for ProtocolHandler<T> {
-        fn drop(&mut self) {
-            if let (Some(handle), Some(boot_services)) =
-                (self.handle, uefi::env::get_boot_services())
-            {
-                let _ = unsafe {
-                    ((*boot_services.as_ptr()).uninstall_multiple_protocol_interfaces)(
-                        &mut handle.as_ptr(),
-                        (&mut self.guid) as *mut _ as *mut crate::ffi::c_void,
-                        (&mut self.protocol) as *mut _ as *mut crate::ffi::c_void,
-                    )
-                };
             }
         }
     }

@@ -96,7 +96,7 @@ pub(crate) mod uefi_pipe {
             } {
                 Ok(()) => {
                     // Reaching this means whole buffer has been read
-                    self.clear();
+                    let _ = self.clear();
                     return Ok(buf_size);
                 }
                 Err(e) => match e.kind() {
@@ -141,7 +141,7 @@ pub(crate) mod uefi_pipe {
             } {
                 Ok(()) => {
                     // Reaching this means whole buffer has been read
-                    self.clear();
+                    let _ = self.clear();
                     return Ok(());
                 }
                 Err(e) => match e.kind() {
@@ -162,7 +162,7 @@ pub(crate) mod uefi_pipe {
             }?;
             unsafe { buf.set_len(buf_size) };
 
-            self.clear();
+            let _ = self.clear();
             Ok(())
         }
 
@@ -175,27 +175,28 @@ pub(crate) mod uefi_pipe {
                 io::ErrorKind::Uncategorized,
                 "Failed to Acquire Runtime Services",
             ))?;
+            let mut guid = PIPE_GUID;
             let r = unsafe {
                 ((*runtime_services.as_ptr()).get_variable)(
                     key,
-                    &mut PIPE_GUID,
+                    &mut guid,
                     crate::ptr::null_mut(),
                     buf_size,
                     buf,
                 )
             };
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(()) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
         pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
             let mut buf = buf.to_vec();
             let buf_len = buf.len();
-            const attr: u32 =
+            const ATTR: u32 =
                 r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS | r_efi::efi::VARIABLE_APPEND_WRITE;
             match unsafe {
                 Self::write_raw(
                     self.key.as_ptr() as *mut u16,
-                    attr,
+                    ATTR,
                     buf_len,
                     buf.as_mut_ptr().cast(),
                 )
@@ -215,10 +216,11 @@ pub(crate) mod uefi_pipe {
                 io::ErrorKind::Uncategorized,
                 "Failed to Acquire Runtime Services",
             ))?;
+            let mut guid = PIPE_GUID;
             let r = unsafe {
-                ((*runtime_services.as_ptr()).set_variable)(key, &mut PIPE_GUID, attr, buf_len, buf)
+                ((*runtime_services.as_ptr()).set_variable)(key, &mut guid, attr, buf_len, buf)
             };
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(()) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
     }
 }

@@ -71,7 +71,7 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     use r_efi::efi::Status;
 
     if let Ok(code) = usize::try_from(code) {
-        common::status_to_io_error(&Status::from_usize(code)).kind()
+        common::status_to_io_error(Status::from_usize(code)).kind()
     } else {
         ErrorKind::Uncategorized
     }

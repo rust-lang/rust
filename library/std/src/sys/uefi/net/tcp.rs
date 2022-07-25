@@ -27,7 +27,7 @@ impl TcpProtocol {
                     );
                     let tcp4_protocol = match tcp4::Tcp4Protocol::create(service_binding) {
                         Ok(x) => x,
-                        Err(e) => {
+                        Err(_) => {
                             continue;
                         }
                     };
@@ -40,7 +40,7 @@ impl TcpProtocol {
                         &SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0),
                     ) {
                         Ok(()) => return Ok(Self::from(tcp4_protocol)),
-                        Err(e) => {
+                        Err(_) => {
                             continue;
                         }
                     }

@@ -3,7 +3,9 @@ use crate::io;
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv4Addr, SocketAddrV4};
 use crate::os::uefi;
+use crate::os::uefi::raw::VariableSizeType;
 use crate::ptr::NonNull;
+use crate::sys::uefi::common::status_to_io_error;
 use r_efi::efi::Status;
 use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
 
@@ -48,12 +50,10 @@ impl Tcp4Protocol {
             // FIXME: Maybe provide a rust default one at some point
             control_option: crate::ptr::null_mut(),
         };
-        Self::config_raw(self.protocol.as_ptr(), &mut config_data)
+        unsafe { Self::config_raw(self.protocol.as_ptr(), &mut config_data) }
     }
 
     pub fn accept(&self) -> io::Result<Tcp4Protocol> {
-        let protocol = self.protocol.as_ptr();
-
         let accept_event = uefi::thread::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
@@ -68,50 +68,13 @@ impl Tcp4Protocol {
             new_child_handle: unsafe { MaybeUninit::<r_efi::efi::Handle>::uninit().assume_init() },
         };
 
-        let r = unsafe { ((*protocol).accept)(protocol, &mut listen_token) };
+        unsafe { Self::accept_raw(self.protocol.as_ptr(), &mut listen_token) }?;
 
-        if r.is_error() {
-            return match r {
-                Status::NOT_STARTED => Err(io::Error::new(
-                    io::ErrorKind::Unsupported,
-                    "This EFI TCPv6 Protocol instance has not been configured",
-                )),
-                Status::ACCESS_DENIED => {
-                    Err(io::Error::new(io::ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"))
-                }
-                Status::INVALID_PARAMETER => {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-                }
-                Status::OUT_OF_RESOURCES => Err(io::Error::new(
-                    io::ErrorKind::OutOfMemory,
-                    "Could not allocate enough resource to finish the operation",
-                )),
-                _ => Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Status: {}", r.as_usize()),
-                )),
-            };
-        }
         accept_event.wait()?;
 
         let r = listen_token.completion_token.status;
         if r.is_error() {
-            match r {
-                Status::CONNECTION_RESET => Err(io::Error::new(
-                    io::ErrorKind::ConnectionReset,
-                    "The accept fails because the
-connection is reset either by instance itself or communication peer",
-                )),
-                Status::ABORTED => Err(io::Error::new(
-                    io::ErrorKind::ConnectionAborted,
-                    "The accept request has been aborted",
-                )),
-                Status::SECURITY_VIOLATION => Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "The accept operation was failed because of IPSec policy check",
-                )),
-                _ => Err(io::Error::new(io::ErrorKind::Other, format!("Status: {}", r.as_usize()))),
-            }
+            Err(status_to_io_error(r))
         } else {
             let child_handle = NonNull::new(listen_token.new_child_handle)
                 .ok_or(io::Error::new(io::ErrorKind::Other, "Null Child Handle"))?;
@@ -138,46 +101,34 @@ connection is reset either by instance itself or communication peer",
             // FIXME: Probably dangerous
             fragment_buffer: buf.as_ptr() as *mut crate::ffi::c_void,
         };
-        let mut transmit_data = tcp4::TransmitData {
-            push: r_efi::efi::Boolean::from(true),
-            urgent: r_efi::efi::Boolean::from(false),
-            data_length: buf_size,
-            fragment_count: 1,
-            fragment_table: [],
+
+        let mut transmit_data: VariableSizeType<tcp4::TransmitData> = VariableSizeType::from_size(
+            crate::mem::size_of::<tcp4::TransmitData>()
+                + crate::mem::size_of::<tcp4::FragmentData>(),
+        )?;
+
+        // Initialize VariableSizeType
+        unsafe {
+            (*transmit_data.as_ptr()).push = r_efi::efi::Boolean::from(true);
+            (*transmit_data.as_ptr()).urgent = r_efi::efi::Boolean::from(false);
+            (*transmit_data.as_ptr()).data_length = buf_size;
+            (*transmit_data.as_ptr()).fragment_count = 1;
+            crate::ptr::copy(
+                [fragment_table].as_ptr(),
+                (*transmit_data.as_ptr()).fragment_table.as_mut_ptr(),
+                1,
+            )
         };
 
-        unsafe { transmit_data.fragment_table.as_mut_ptr().swap([fragment_table].as_mut_ptr()) };
-
-        let packet = tcp4::IoTokenPacket { tx_data: &mut transmit_data };
+        let packet = tcp4::IoTokenPacket { tx_data: transmit_data.as_ptr() };
         let mut transmit_token = tcp4::IoToken { completion_token, packet };
-        Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token)?;
+        unsafe { Self::transmit_raw(self.protocol.as_ptr(), &mut transmit_token) }?;
 
         transmit_event.wait()?;
 
         let r = transmit_token.completion_token.status;
         if r.is_error() {
-            match r {
-                Status::CONNECTION_FIN => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_CONNECTION_FIN"))
-                }
-                Status::CONNECTION_RESET => {
-                    Err(io::Error::new(io::ErrorKind::ConnectionReset, "EFI_CONNECTION_RESET"))
-                }
-                Status::ABORTED => {
-                    Err(io::Error::new(io::ErrorKind::ConnectionAborted, "EFI_ABORTED"))
-                }
-                Status::TIMEOUT => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::NETWORK_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::HOST_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::PROTOCOL_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::PORT_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                Status::ICMP_ERROR => Err(io::Error::new(io::ErrorKind::Other, "EFI_ICMP_ERROR")),
-                Status::DEVICE_ERROR => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_DEVICE_ERROR"))
-                }
-                Status::NO_MEDIA => Err(io::Error::new(io::ErrorKind::Other, "EFI_NO_MEDIA")),
-                _ => Err(io::Error::new(io::ErrorKind::Other, format!("Status: {}", r.as_usize()))),
-            }
+            Err(status_to_io_error(r))
         } else {
             Ok(unsafe { (*transmit_token.packet.tx_data).data_length } as usize)
         }
@@ -195,47 +146,34 @@ connection is reset either by instance itself or communication peer",
             fragment_length: buf_size,
             fragment_buffer: buf.as_mut_ptr().cast(),
         };
-        let mut receive_data = tcp4::ReceiveData {
-            urgent_flag: r_efi::efi::Boolean::from(false),
-            data_length: buf_size,
-            fragment_count: 1,
-            fragment_table: [],
-        };
 
-        unsafe { receive_data.fragment_table.as_mut_ptr().swap([fragment_table].as_mut_ptr()) };
+        let receive_data: VariableSizeType<tcp4::ReceiveData> = VariableSizeType::from_size(
+            crate::mem::size_of::<tcp4::ReceiveData>()
+                + crate::mem::size_of::<tcp4::FragmentData>(),
+        )?;
 
-        let packet = tcp4::IoTokenPacket { rx_data: &mut receive_data };
+        unsafe {
+            (*receive_data.as_ptr()).urgent_flag = r_efi::efi::Boolean::from(false);
+            (*receive_data.as_ptr()).data_length = buf_size;
+            (*receive_data.as_ptr()).fragment_count = 1;
+            crate::ptr::copy(
+                [fragment_table].as_ptr(),
+                (*receive_data.as_ptr()).fragment_table.as_mut_ptr(),
+                1,
+            )
+        }
+
+        let packet = tcp4::IoTokenPacket { rx_data: receive_data.as_ptr() };
         let completion_token =
             tcp4::CompletionToken { event: receive_event.as_raw_event(), status: Status::ABORTED };
         let mut receive_token = tcp4::IoToken { completion_token, packet };
-        Self::receive_raw(self.protocol.as_ptr(), &mut receive_token)?;
+        unsafe { Self::receive_raw(self.protocol.as_ptr(), &mut receive_token) }?;
 
         receive_event.wait()?;
 
         let r = receive_token.completion_token.status;
         if r.is_error() {
-            match r {
-                Status::CONNECTION_FIN => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_CONNECTION_FIN"))
-                }
-                Status::CONNECTION_RESET => {
-                    Err(io::Error::new(io::ErrorKind::ConnectionReset, "EFI_CONNECTION_RESET"))
-                }
-                Status::ABORTED => {
-                    Err(io::Error::new(io::ErrorKind::ConnectionAborted, "EFI_ABORTED"))
-                }
-                Status::TIMEOUT => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::NETWORK_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::HOST_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::PROTOCOL_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                // Status::PORT_UNREACHABLE => Err(io::Error::new(io::ErrorKind::TimedOut, "EFI_TIMEOUT")),
-                Status::ICMP_ERROR => Err(io::Error::new(io::ErrorKind::Other, "EFI_ICMP_ERROR")),
-                Status::DEVICE_ERROR => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_DEVICE_ERROR"))
-                }
-                Status::NO_MEDIA => Err(io::Error::new(io::ErrorKind::Other, "EFI_NO_MEDIA")),
-                _ => Err(io::Error::new(io::ErrorKind::Other, format!("Status: {}", r.as_usize()))),
-            }
+            Err(status_to_io_error(r))
         } else {
             Ok(unsafe { (*receive_token.packet.rx_data).data_length } as usize)
         }
@@ -259,49 +197,13 @@ connection is reset either by instance itself or communication peer",
         let r = unsafe { ((*protocol).close)(protocol, &mut close_token) };
 
         if r.is_error() {
-            return match r {
-                Status::NOT_STARTED => Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "This EFI TCPv6 Protocol instance has not been configured",
-                )),
-                Status::ACCESS_DENIED => {
-                    Err(io::Error::new(io::ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"))
-                }
-                Status::INVALID_PARAMETER => {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-                }
-                Status::OUT_OF_RESOURCES => Err(io::Error::new(
-                    io::ErrorKind::OutOfMemory,
-                    "Could not allocate enough resource to finish the operation",
-                )),
-                Status::DEVICE_ERROR => {
-                    Err(io::Error::new(io::ErrorKind::NetworkDown, "EFI_DEVICE_ERROR"))
-                }
-                _ => Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Status: {}", r.as_usize()),
-                )),
-            };
+            return Err(status_to_io_error(r));
         }
 
         close_event.wait()?;
 
         let r = close_token.completion_token.status;
-        if r.is_error() {
-            match r {
-                Status::ABORTED => Err(io::Error::new(
-                    io::ErrorKind::ConnectionAborted,
-                    "The accept request has been aborted",
-                )),
-                Status::SECURITY_VIOLATION => Err(io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "The accept operation was failed because of IPSec policy check",
-                )),
-                _ => Err(io::Error::new(io::ErrorKind::Other, format!("Status: {}", r.as_usize()))),
-            }
-        } else {
-            Ok(())
-        }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
     pub fn remote_socket(&self) -> io::Result<SocketAddrV4> {
@@ -358,16 +260,7 @@ connection is reset either by instance itself or communication peer",
         };
 
         if r.is_error() {
-            match r {
-                Status::NOT_STARTED => Err(io::Error::new(io::ErrorKind::Other, "EFI_NOT_STARTED")),
-                Status::INVALID_PARAMETER => {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-                }
-                _ => Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Status: {}", r.as_usize()),
-                )),
-            }
+            Err(status_to_io_error(r))
         } else {
             unsafe {
                 state.assume_init_drop();
@@ -379,114 +272,40 @@ connection is reset either by instance itself or communication peer",
         }
     }
 
-    fn receive_raw(protocol: *mut tcp4::Protocol, token: *mut tcp4::IoToken) -> io::Result<()> {
+    unsafe fn receive_raw(
+        protocol: *mut tcp4::Protocol,
+        token: *mut tcp4::IoToken,
+    ) -> io::Result<()> {
         let r = unsafe { ((*protocol).receive)(protocol, token) };
 
-        if r.is_error() {
-            match r {
-                Status::NOT_STARTED => Err(io::Error::new(io::ErrorKind::Other, "EFI_NOT_STARTED")),
-                Status::NO_MAPPING => Err(io::Error::new(io::ErrorKind::Other, "EFI_NO_MAPPING")),
-                Status::INVALID_PARAMETER => {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-                }
-                Status::OUT_OF_RESOURCES => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_OUT_OF_RESOURCES"))
-                }
-                Status::DEVICE_ERROR => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_DEVICE_ERROR"))
-                }
-                Status::ACCESS_DENIED => {
-                    Err(io::Error::new(io::ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"))
-                }
-                Status::CONNECTION_FIN => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_CONNECTION_FIN"))
-                }
-                Status::NOT_READY => Err(io::Error::new(io::ErrorKind::Other, "EFI_NOT_READY")),
-                Status::NO_MEDIA => Err(io::Error::new(io::ErrorKind::Other, "EFI_NO_MEDIA")),
-                _ => Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Status: {}", r.as_usize()),
-                )),
-            }
-        } else {
-            Ok(())
-        }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    fn transmit_raw(protocol: *mut tcp4::Protocol, token: *mut tcp4::IoToken) -> io::Result<()> {
+    unsafe fn transmit_raw(
+        protocol: *mut tcp4::Protocol,
+        token: *mut tcp4::IoToken,
+    ) -> io::Result<()> {
         let r = unsafe { ((*protocol).transmit)(protocol, token) };
 
-        if r.is_error() {
-            match r {
-                Status::NOT_STARTED => Err(io::Error::new(io::ErrorKind::Other, "EFI_NOT_STARTED")),
-                Status::NO_MAPPING => Err(io::Error::new(io::ErrorKind::Other, "EFI_NO_MAPPING")),
-                Status::INVALID_PARAMETER => {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-                }
-                Status::OUT_OF_RESOURCES => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_OUT_OF_RESOURCES"))
-                }
-                Status::DEVICE_ERROR => {
-                    Err(io::Error::new(io::ErrorKind::Other, "EFI_DEVICE_ERROR"))
-                }
-                Status::ACCESS_DENIED => {
-                    Err(io::Error::new(io::ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"))
-                }
-                Status::NO_MEDIA => Err(io::Error::new(io::ErrorKind::Other, "EFI_NO_MEDIA")),
-                Status::NOT_READY => Err(io::Error::new(io::ErrorKind::Other, "EFI_NOT_READY")),
-                // Status::NETWORK_UNREACHABLE => {
-                //     Err(io::Error::new(io::ErrorKind::Other, "EFI_NETWORK_UNREACHABLE"))
-                // }
-                _ => Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Status: {}", r.as_usize()),
-                )),
-            }
-        } else {
-            Ok(())
-        }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    fn config_raw(
+    unsafe fn config_raw(
         protocol: *mut tcp4::Protocol,
         config_data: *mut tcp4::ConfigData,
     ) -> io::Result<()> {
         let r = unsafe { ((*protocol).configure)(protocol, config_data) };
 
-        if r.is_error() {
-            let e = match r {
-                Status::NO_MAPPING => io::Error::new(
-                    io::ErrorKind::Other,
-                    "The underlying IPv6 driver was responsible for choosing a source address for this instance, but no source address was available for use",
-                ),
-                Status::INVALID_PARAMETER => {
-                    io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
-                }
-                Status::ACCESS_DENIED => io::Error::new(
-                    io::ErrorKind::PermissionDenied,
-                    "Configuring TCP instance when it is configured without calling Configure() with NULL to reset it",
-                ),
-                Status::UNSUPPORTED => io::Error::new(
-                    io::ErrorKind::Unsupported,
-                    "One or more of the control options are not supported in the implementation.",
-                ),
-                Status::OUT_OF_RESOURCES => io::Error::new(
-                    io::ErrorKind::OutOfMemory,
-                    "Could not allocate enough system resources when executing Configure()",
-                ),
-                Status::DEVICE_ERROR => io::Error::new(
-                    io::ErrorKind::Other,
-                    "An unexpected network or system error occurred",
-                ),
-                _ => io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Unknown Error: {}", r.as_usize()),
-                ),
-            };
-            Err(e)
-        } else {
-            Ok(())
-        }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+    }
+
+    unsafe fn accept_raw(
+        protocol: *mut tcp4::Protocol,
+        token: *mut tcp4::ListenToken,
+    ) -> io::Result<()> {
+        let r = unsafe { ((*protocol).accept)(protocol, token) };
+
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 }
 

@@ -1,11 +1,10 @@
 //! Implemented using File Protocol
 
-use crate::ffi::OsString;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 // use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
-use crate::os::uefi;
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
@@ -139,7 +138,9 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         let dir_entry = self.inner.read_dir_entry();
         if let Some(Ok(ref x)) = dir_entry {
-            if x.file_name() == OsString::from(".") || x.file_name() == OsString::from("..") {
+            if x.file_name().as_os_str() == OsStr::new(".")
+                || x.file_name().as_os_str() == OsStr::new("..")
+            {
                 self.next()
             } else {
                 dir_entry
@@ -216,7 +217,7 @@ impl File {
         let file_opened = rootfs.open(path, opts.open_mode, opts.attr)?;
         let file = File { ptr: file_opened };
         if opts.append {
-            file.seek(SeekFrom::End(0));
+            file.seek(SeekFrom::End(0))?;
         }
         Ok(file)
     }
@@ -282,7 +283,6 @@ impl File {
     }
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
-        const FILE_END: u64 = 0xFFFFFFFFFFFFFFFu64;
         let position: u64 = match pos {
             SeekFrom::Start(x) => x,
             SeekFrom::Current(x) => ((self.ptr.get_position()? as i64) + x) as u64,
@@ -459,7 +459,6 @@ mod uefi_fs {
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
     use crate::path::Path;
     use crate::ptr::NonNull;
-    use r_efi::efi::Status;
     use r_efi::protocols::file;
 
     // Wrapper around File Protocol. Automatically closes file/directories on being dropped.
@@ -528,7 +527,7 @@ mod uefi_fs {
             };
 
             if r.is_error() {
-                Err(status_to_io_error(&r))
+                Err(status_to_io_error(r))
             } else {
                 let p = NonNull::new(unsafe { file_opened.assume_init() })
                     .ok_or(io::Error::new(io::ErrorKind::Other, "File is Null"))?;
@@ -542,7 +541,7 @@ mod uefi_fs {
 
             let r = unsafe { ((*protocol).set_position)(protocol, pos) };
 
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(pos) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(pos) }
         }
 
         pub(crate) fn get_position(&self) -> io::Result<u64> {
@@ -551,7 +550,7 @@ mod uefi_fs {
 
             let r = unsafe { ((*protocol).get_position)(protocol, &mut pos) };
 
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(pos) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(pos) }
         }
 
         pub(crate) fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -567,7 +566,7 @@ mod uefi_fs {
                 )
             };
 
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(buffer_size) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(buffer_size) }
         }
 
         unsafe fn raw_read(
@@ -577,7 +576,7 @@ mod uefi_fs {
         ) -> io::Result<()> {
             let r = unsafe { ((*protocol).read)(protocol, buf_size, buf) };
 
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(()) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
         pub(crate) fn read<T>(&self, buf: &mut [T], buffer_size: &mut usize) -> io::Result<()> {
@@ -590,7 +589,7 @@ mod uefi_fs {
 
             let r = unsafe { ((*protocol).flush)(protocol) };
 
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(()) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
         pub fn read_dir_entry(&self) -> Option<io::Result<DirEntry>> {
@@ -662,7 +661,7 @@ mod uefi_fs {
                     _ => return Err(e),
                 },
             }
-            let mut buf: uefi::raw::VariableSizeType<file::Info> =
+            let buf: uefi::raw::VariableSizeType<file::Info> =
                 uefi::raw::VariableSizeType::from_size(buf_size)?;
             match unsafe {
                 Self::get_file_info_raw(self.inner.as_ptr(), &mut buf_size, buf.as_ptr().cast())
@@ -679,7 +678,7 @@ mod uefi_fs {
         ) -> io::Result<()> {
             let mut info_guid = file::INFO_ID;
             let r = unsafe { ((*protocol).get_info)(protocol, &mut info_guid, buf_size, buf) };
-            if r.is_error() { Err(status_to_io_error(&r)) } else { Ok(()) }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 
         pub(crate) fn delete(self) -> io::Result<()> {

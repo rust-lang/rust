@@ -138,13 +138,13 @@ pub fn getpid() -> u32 {
     panic!("no pids on this platform")
 }
 
-mod uefi_vars {
+pub(crate) mod uefi_vars {
     // It is possible to directly store and use UTF-8 data. So no need to convert to and from UCS-2
     use super::super::common;
     use crate::ffi::{OsStr, OsString};
     use crate::io;
     use crate::os::uefi;
-    use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+    use crate::os::uefi::ffi::OsStrExt;
 
     const ENVIRONMENT_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
         0x49bb4029,
@@ -159,14 +159,6 @@ mod uefi_vars {
         set_variable_inner(key, val.bytes(), r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS)
     }
 
-    pub fn append_variable(key: &OsStr, val: &[u8]) -> io::Result<()> {
-        set_variable_inner(
-            key,
-            val,
-            r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS | r_efi::efi::VARIABLE_APPEND_WRITE,
-        )
-    }
-
     fn set_variable_inner(key: &OsStr, val: &[u8], attr: u32) -> io::Result<()> {
         let runtime_services = uefi::env::get_runtime_services().ok_or(io::Error::new(
             io::ErrorKind::Uncategorized,
@@ -176,26 +168,28 @@ mod uefi_vars {
         // applications
         let mut val_copy = val.to_vec();
         let val_len = val_copy.len();
+        let mut guid = ENVIRONMENT_GUID;
         let r = unsafe {
             ((*runtime_services.as_ptr()).set_variable)(
                 key.to_ffi_string().as_mut_ptr(),
-                &mut ENVIRONMENT_GUID,
+                &mut guid,
                 attr,
                 val_len,
                 val_copy.as_mut_ptr().cast(),
             )
         };
 
-        if r.is_error() { Err(common::status_to_io_error(&r)) } else { Ok(()) }
+        if r.is_error() { Err(common::status_to_io_error(r)) } else { Ok(()) }
     }
 
     pub fn get_variable(key: &OsStr) -> Option<OsString> {
         let runtime_services = uefi::env::get_runtime_services()?;
         let mut buf_size = 0;
+        let mut guid = ENVIRONMENT_GUID;
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_variable)(
                 key.to_ffi_string().as_mut_ptr(),
-                &mut ENVIRONMENT_GUID,
+                &mut guid,
                 crate::ptr::null_mut(),
                 &mut buf_size,
                 crate::ptr::null_mut(),
@@ -207,10 +201,11 @@ mod uefi_vars {
         }
 
         let mut buf: Vec<u8> = Vec::with_capacity(buf_size);
+        let mut guid = ENVIRONMENT_GUID;
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_variable)(
                 key.to_ffi_string().as_mut_ptr(),
-                &mut ENVIRONMENT_GUID,
+                &mut guid,
                 crate::ptr::null_mut(),
                 &mut buf_size,
                 buf.as_mut_ptr().cast(),
