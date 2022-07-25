@@ -216,7 +216,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     is_owned: bool,
 ) -> SmallVec<[Value; 2]> {
-    assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty);
+    assert_assignable(fx, arg.layout().ty, arg_abi.layout.ty, 16);
     match arg_abi.mode {
         PassMode::Ignore => smallvec![],
         PassMode::Direct(_) => smallvec![arg.load_scalar(fx)],
