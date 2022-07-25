@@ -850,13 +850,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span.push_span_label(
-                    *span,
-                    "this has an implicit `'static` lifetime requirement".to_string(),
-                );
+                multi_span
+                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement".to_string(),
+                    "calling this method introduces the `impl`'s 'static` requirement",
                 );
                 err.span_note(multi_span, "the used `impl` has a `'static` requirement");
                 err.span_suggestion_verbose(
