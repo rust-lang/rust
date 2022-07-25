@@ -586,17 +586,6 @@ impl SourceMap {
         }
     }
 
-    /// Returns whether or not this span points into a file
-    /// in the current crate. This may be `false` for spans
-    /// produced by a macro expansion, or for spans associated
-    /// with the definition of an item in a foreign crate
-    pub fn is_local_span(&self, sp: Span) -> bool {
-        let local_begin = self.lookup_byte_offset(sp.lo());
-        let local_end = self.lookup_byte_offset(sp.hi());
-        // This might be a weird span that covers multiple files
-        local_begin.sf.src.is_some() && local_end.sf.src.is_some()
-    }
-
     pub fn is_span_accessible(&self, sp: Span) -> bool {
         self.span_to_source(sp, |src, start_index, end_index| {
             Ok(src.get(start_index..end_index).is_some())
