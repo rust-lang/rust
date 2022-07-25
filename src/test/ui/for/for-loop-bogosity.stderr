@@ -1,11 +1,10 @@
-error[E0277]: `MyStruct` is not an iterator
+error[E0277]: `MyStruct` cannot be converted to an iterator
   --> $DIR/for-loop-bogosity.rs:17:14
    |
 LL |     for x in bogus {
-   |              ^^^^^ `MyStruct` is not an iterator
+   |              ^^^^^ `MyStruct` cannot be converted to an iterator
    |
-   = help: the trait `Iterator` is not implemented for `MyStruct`
-   = note: required because of the requirements on the impl of `IntoIterator` for `MyStruct`
+   = help: the trait `IntoIterator` is not implemented for `MyStruct`
 
 error: aborting due to previous error
 

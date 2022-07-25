@@ -99,6 +99,11 @@ use crate::future::Future;
 /// }
 /// ```
 #[stable(feature = "into_future", since = "1.64.0")]
+#[rustc_on_unimplemented(
+    label = "`{Self}` cannot be converted to a future",
+    message = "`{Self}` cannot be converted to a future",
+    note = "{Self} must be a future or must implement `IntoFuture` to be awaited"
+)]
 pub trait IntoFuture {
     /// The output that the future will produce on completion.
     #[stable(feature = "into_future", since = "1.64.0")]

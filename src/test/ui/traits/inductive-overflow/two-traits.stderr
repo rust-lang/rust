@@ -14,11 +14,11 @@ help: consider further restricting this bound
 LL | impl<T: Magic + std::marker::Sync> Magic for T {
    |               +++++++++++++++++++
 
-error[E0275]: overflow evaluating the requirement `*mut (): Magic`
-  --> $DIR/two-traits.rs:20:5
+error[E0277]: the trait bound `*mut (): Magic` is not satisfied
+  --> $DIR/two-traits.rs:20:14
    |
 LL |     wizard::<*mut ()>();
-   |     ^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^ the trait `Magic` is not implemented for `*mut ()`
    |
 note: required by a bound in `wizard`
   --> $DIR/two-traits.rs:17:14
@@ -28,5 +28,4 @@ LL | fn wizard<T: Magic>() { check::<<T as Magic>::X>(); }
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0275, E0277.
-For more information about an error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0277`.

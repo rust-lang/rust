@@ -8,23 +8,38 @@ LL | #![feature(specialization)]
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
 
-error[E0275]: overflow evaluating the requirement `T: FromA<U>`
+error[E0277]: the trait bound `T: FromA<U>` is not satisfied
   --> $DIR/issue-39448.rs:45:13
    |
 LL |     x.foo(y.to()).to()
-   |             ^^
+   |             ^^ the trait `FromA<U>` is not implemented for `T`
    |
-note: required because of the requirements on the impl of `FromA<U>` for `T`
-  --> $DIR/issue-39448.rs:24:29
-   |
-LL | impl<T: A, U: A + FromA<T>> FromA<T> for U {
-   |                             ^^^^^^^^     ^
 note: required because of the requirements on the impl of `ToA<T>` for `U`
   --> $DIR/issue-39448.rs:34:12
    |
 LL | impl<T, U> ToA<U> for T
    |            ^^^^^^     ^
+help: consider further restricting this bound
+   |
+LL | fn foo<T: A + FromA<U>, U: A>(x: T, y: U) -> U {
+   |             ++++++++++
 
-error: aborting due to previous error; 1 warning emitted
+error[E0277]: the trait bound `U: FromA<T>` is not satisfied
+  --> $DIR/issue-39448.rs:45:19
+   |
+LL |     x.foo(y.to()).to()
+   |                   ^^ the trait `FromA<T>` is not implemented for `U`
+   |
+note: required because of the requirements on the impl of `ToA<U>` for `T`
+  --> $DIR/issue-39448.rs:34:12
+   |
+LL | impl<T, U> ToA<U> for T
+   |            ^^^^^^     ^
+help: consider further restricting this bound
+   |
+LL | fn foo<T: A, U: A + FromA<T>>(x: T, y: U) -> U {
+   |                   ++++++++++
 
-For more information about this error, try `rustc --explain E0275`.
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

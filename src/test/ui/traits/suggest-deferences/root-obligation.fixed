@@ -3,7 +3,7 @@
 fn get_vowel_count(string: &str) -> usize {
     string
         .chars()
-        .filter(|c| "aeiou".contains(*c))
+        .filter(|c| "aeiou".contains(c))
         //~^ ERROR expected a `Fn<(char,)>` closure, found `char`
         .count()
 }

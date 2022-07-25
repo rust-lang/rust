@@ -1412,6 +1412,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query is_general_impl(def_id: DefId) -> bool {
+        desc { |tcx| "looking up whether `{}` is a general impl", tcx.def_path_str(def_id) }
+    }
+
     query check_well_formed(key: LocalDefId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }

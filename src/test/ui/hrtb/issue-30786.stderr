@@ -1,48 +1,38 @@
-error[E0599]: the method `filterx` exists for struct `Map<Repeat, [closure@$DIR/issue-30786.rs:117:27: 117:34]>`, but its trait bounds were not satisfied
+error[E0599]: no method named `filterx` found for struct `Map` in the current scope
   --> $DIR/issue-30786.rs:118:22
    |
 LL | pub struct Map<S, F> {
-   | --------------------
-   | |
-   | method `filterx` not found for this struct
-   | doesn't satisfy `_: StreamExt`
+   | -------------------- method `filterx` not found for this struct
 ...
 LL |     let filter = map.filterx(|x: &_| true);
-   |                      ^^^^^^^ method cannot be called on `Map<Repeat, [closure@$DIR/issue-30786.rs:117:27: 117:34]>` due to unsatisfied trait bounds
+   |                      ^^^^^^^ method not found in `Map<Repeat, [closure@$DIR/issue-30786.rs:117:27: 117:34]>`
    |
-note: the following trait bounds were not satisfied:
-      `&'a mut &Map<Repeat, [closure@$DIR/issue-30786.rs:117:27: 117:34]>: Stream`
-      `&'a mut &mut Map<Repeat, [closure@$DIR/issue-30786.rs:117:27: 117:34]>: Stream`
-      `&'a mut Map<Repeat, [closure@$DIR/issue-30786.rs:117:27: 117:34]>: Stream`
-  --> $DIR/issue-30786.rs:96:50
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
+  --> $DIR/issue-30786.rs:64:1
    |
-LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
-   |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
 help: one of the expressions' fields has a method of the same name
    |
 LL |     let filter = map.stream.filterx(|x: &_| true);
    |                      +++++++
 
-error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>`, but its trait bounds were not satisfied
+error[E0599]: no method named `countx` found for struct `Filter` in the current scope
   --> $DIR/issue-30786.rs:130:24
    |
 LL | pub struct Filter<S, F> {
-   | -----------------------
-   | |
-   | method `countx` not found for this struct
-   | doesn't satisfy `_: StreamExt`
+   | ----------------------- method `countx` not found for this struct
 ...
 LL |     let count = filter.countx();
-   |                        ^^^^^^ method cannot be called on `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>` due to unsatisfied trait bounds
+   |                        ^^^^^^ method not found in `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>`
    |
-note: the following trait bounds were not satisfied:
-      `&'a mut &Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>: Stream`
-      `&'a mut &mut Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>: Stream`
-      `&'a mut Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>: Stream`
-  --> $DIR/issue-30786.rs:96:50
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `StreamExt` defines an item `countx`, perhaps you need to implement it
+  --> $DIR/issue-30786.rs:64:1
    |
-LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
-   |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
+LL | pub trait StreamExt
+   | ^^^^^^^^^^^^^^^^^^^
 help: one of the expressions' fields has a method of the same name
    |
 LL |     let count = filter.stream.countx();

@@ -2,6 +2,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
     self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
 };
@@ -460,6 +461,13 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
     }
 }
 
+fn is_general_impl(tcx: TyCtxt<'_>, id: DefId) -> bool {
+    let Some(trait_ref) = tcx.impl_trait_ref(id) else {
+        span_bug!(tcx.def_span(id), "expected impl, found `{:?} for `{:?}`", tcx.def_kind(id), id);
+    };
+    tcx.uses_unique_generic_params(trait_ref.substs, IgnoreRegions::No).is_ok()
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
@@ -469,6 +477,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        is_general_impl,
         conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers
     };

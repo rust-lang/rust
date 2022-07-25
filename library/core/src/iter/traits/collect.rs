@@ -227,6 +227,35 @@ pub trait FromIterator<A>: Sized {
 /// ```
 #[rustc_diagnostic_item = "IntoIterator"]
 #[rustc_skip_array_during_method_dispatch]
+#[rustc_on_unimplemented(
+    on(
+        _Self = "std::ops::RangeTo<Idx>",
+        label = "if you meant to iterate until a value, add a starting value",
+        note = "`..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a \
+              bounded `Range`: `0..end`"
+    ),
+    on(
+        _Self = "std::ops::RangeToInclusive<Idx>",
+        label = "if you meant to iterate until a value (including it), add a starting value",
+        note = "`..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant \
+              to have a bounded `RangeInclusive`: `0..=end`"
+    ),
+    on(
+        _Self = "&str",
+        label = "cannot implicitly convert `{Self}` to an iterator; try calling `.chars()` or `.bytes()`"
+    ),
+    on(
+        _Self = "std::string::String",
+        label = "cannot implicitly convert `{Self}` to an iterator; try calling `.chars()` or `.bytes()`"
+    ),
+    on(
+        _Self = "{integral}",
+        note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
+              syntax `start..end` or the inclusive range syntax `start..=end`"
+    ),
+    label = "`{Self}` cannot be converted to an iterator",
+    message = "`{Self}` cannot be converted to an iterator"
+)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.

@@ -12,27 +12,15 @@ note: required by a bound in `cloned`
 LL |         Self: Sized + Iterator<Item = &'a T>,
    |                                ^^^^^^^^^^^^ required by this bound in `cloned`
 
-error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as Iterator>::Item == &_`
+error[E0277]: `Cloned<std::collections::hash_map::Iter<'_, _, _>>` cannot be converted to an iterator
   --> $DIR/issue-33941.rs:6:14
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Cloned<std::collections::hash_map::Iter<'_, _, _>>` cannot be converted to an iterator
    |
-   = note:  expected tuple `(&_, &_)`
-           found reference `&_`
-   = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
-   = note: required because of the requirements on the impl of `IntoIterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
+   = help: the trait `IntoIterator` is not implemented for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
 
-error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as Iterator>::Item == &_`
-  --> $DIR/issue-33941.rs:6:14
-   |
-LL |     for _ in HashMap::new().iter().cloned() {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference
-   |
-   = note:  expected tuple `(&_, &_)`
-           found reference `&_`
-   = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0271`.
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

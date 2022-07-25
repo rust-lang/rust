@@ -1,11 +1,11 @@
-error: implementation of `FnOnce` is not general enough
+error[E0277]: the trait bound `for<'a> [closure@$DIR/issue-57843.rs:25:18: 25:21]: ClonableFn<&'a bool>` is not satisfied
   --> $DIR/issue-57843.rs:25:9
    |
 LL |     Foo(Box::new(|_| ()));
-   |         ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |         ^^^^^^^^^^^^^^^^ the trait `for<'a> ClonableFn<&'a bool>` is not implemented for `[closure@$DIR/issue-57843.rs:25:18: 25:21]`
    |
-   = note: closure with signature `fn(&'2 bool)` must implement `FnOnce<(&'1 bool,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 bool,)>`, for some specific lifetime `'2`
+   = note: required for the cast from `[closure@$DIR/issue-57843.rs:25:18: 25:21]` to the object type `dyn for<'a> ClonableFn<&'a bool>`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

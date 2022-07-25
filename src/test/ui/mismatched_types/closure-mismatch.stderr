@@ -1,31 +1,15 @@
-error: implementation of `FnOnce` is not general enough
+error[E0277]: the trait bound `[closure@$DIR/closure-mismatch.rs:8:9: 8:12]: Foo` is not satisfied
   --> $DIR/closure-mismatch.rs:8:5
    |
 LL |     baz(|_| ());
-   |     ^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |     ^^^ the trait `Foo` is not implemented for `[closure@$DIR/closure-mismatch.rs:8:9: 8:12]`
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
-
-error[E0308]: mismatched types
-  --> $DIR/closure-mismatch.rs:8:5
-   |
-LL |     baz(|_| ());
-   |     ^^^^^^^^^^^ one type is more general than the other
-   |
-   = note: expected trait `for<'r> Fn<(&'r (),)>`
-              found trait `Fn<(&(),)>`
-note: this closure does not fulfill the lifetime requirements
-  --> $DIR/closure-mismatch.rs:8:9
-   |
-LL |     baz(|_| ());
-   |         ^^^
-note: the lifetime requirement is introduced here
+note: required by a bound in `baz`
   --> $DIR/closure-mismatch.rs:5:11
    |
 LL | fn baz<T: Foo>(_: T) {}
-   |           ^^^
+   |           ^^^ required by this bound in `baz`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0277`.

@@ -135,8 +135,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // candidate which assumes $0 == int, one that assumes `$0 ==
         // usize`, etc. This spells an ambiguity.
 
-        let mut candidates = self.filter_impls(candidates, stack.obligation);
-
+        let candidates = self.filter_impls(candidates, stack.obligation);
+        let mut candidates = candidates
+            .into_iter()
+            .map(|c| match c {
+                ImplCandidate(impl_def) if self.tcx().is_general_impl(impl_def) => {
+                    match self.evaluate_candidate(stack, &c) {
+                        Ok(eval) if eval.may_apply() => Ok(Some(c)),
+                        Ok(_) => Ok(None),
+                        Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
+                        Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
+                        Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
+                    }
+                }
+                _ => Ok(Some(c)),
+            })
+            .flat_map(Result::transpose)
+            .collect::<Result<Vec<_>, _>>()?;
         // If there is more than one candidate, first winnow them down
         // by considering extra conditions (nested obligations and so
         // forth). We don't winnow if there is exactly one
