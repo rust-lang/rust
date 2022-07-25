@@ -230,16 +230,26 @@ impl ProjectWorkspace {
         project_json: ProjectJson,
         target: Option<&str>,
     ) -> Result<ProjectWorkspace> {
-        let sysroot = match project_json.sysroot_src.clone() {
-            Some(sysroot_src) => {
-                // if `sysroot` isn't specified (only `sysroot_src`), we won't have
-                // a real sysroot path, that's fine. it's just used to discover
-                // the standalone `proc-macro-srv` binary.
-                let sysroot = project_json.sysroot.clone().unwrap_or_else(|| sysroot_src.clone());
+        let sysroot = match (project_json.sysroot.clone(), project_json.sysroot_src.clone()) {
+            (Some(sysroot), Some(sysroot_src)) => Some(Sysroot::load(sysroot, sysroot_src)?),
+            (Some(sysroot), None) => {
+                // assume sysroot is structured like rustup's and guess `sysroot_src`
+                let sysroot_src =
+                    sysroot.join("lib").join("rustlib").join("src").join("rust").join("library");
+
                 Some(Sysroot::load(sysroot, sysroot_src)?)
             }
-            None => None,
+            (None, Some(sysroot_src)) => {
+                // assume sysroot is structured like rustup's and guess `sysroot`
+                let mut sysroot = sysroot_src.clone();
+                for _ in 0..5 {
+                    sysroot.pop();
+                }
+                Some(Sysroot::load(sysroot, sysroot_src)?)
+            }
+            (None, None) => None,
         };
+
         let rustc_cfg = rustc_cfg::get(None, target);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
     }
