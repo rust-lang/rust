@@ -677,7 +677,7 @@ pub enum Bound<T> {
 impl<T> Bound<T> {
     /// Converts from `&Bound<T>` to `Bound<&T>`.
     #[inline]
-    #[unstable(feature = "bound_as_ref", issue = "80996")]
+    #[stable(feature = "bound_as_ref_shared", since = "CURRENT_RUSTC_VERSION")]
     pub fn as_ref(&self) -> Bound<&T> {
         match *self {
             Included(ref x) => Included(x),
