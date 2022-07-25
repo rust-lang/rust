@@ -1855,7 +1855,6 @@ in storage.js plus the media query with (min-width: 701px)
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
 		margin-left: 0;
-		background-color: rgba(0,0,0,0);
 		margin: 0;
 		padding: 0;
 		z-index: 11;
