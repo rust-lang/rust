@@ -317,11 +317,11 @@ use crate::vec::Vec;
 ///
 /// ```text
 /// 0
-/// 5
-/// 10
-/// 20
-/// 20
-/// 40
+/// 8
+/// 16
+/// 16
+/// 32
+/// 32
 /// ```
 ///
 /// At first, we have no memory allocated at all, but as we append to the
