@@ -330,6 +330,17 @@ fn main() {
     static REF1: &u8 = &42;
     static REF2: &u8 = REF1;
     assert_eq!(*REF1, *REF2);
+
+    extern "C" {
+        type A;
+    }
+
+    fn main() {
+        let x: &A = unsafe { &*(1usize as *const A) };
+
+        assert_eq!(unsafe { intrinsics::size_of_val(x) }, 0);
+        assert_eq!(unsafe { intrinsics::min_align_of_val(x) }, 1);
+}
 }
 
 #[cfg(all(not(jit), target_arch = "x86_64", target_os = "linux"))]
