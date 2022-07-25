@@ -1,5 +1,4 @@
 use super::callee::DeferredCallResolution;
-use super::MaybeInProgressTables;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -29,7 +28,7 @@ use std::ops::Deref;
 pub struct Inherited<'a, 'tcx> {
     pub(super) infcx: InferCtxt<'a, 'tcx>,
 
-    pub(super) typeck_results: super::MaybeInProgressTables<'a, 'tcx>,
+    pub(super) typeck_results: &'a RefCell<ty::TypeckResults<'tcx>>,
 
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
 
@@ -110,11 +109,11 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = tcx.hir().maybe_body_owned_by(item_id);
+        let typeck_results =
+            infcx.in_progress_typeck_results.expect("building `FnCtxt` without typeck results");
 
         Inherited {
-            typeck_results: MaybeInProgressTables {
-                maybe_typeck_results: infcx.in_progress_typeck_results,
-            },
+            typeck_results,
             infcx,
             fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
             locals: RefCell::new(Default::default()),
