@@ -309,7 +309,9 @@ impl GlobalState {
                     .workspaces
                     .iter()
                     .map(|ws| {
+                        let mut args = args.clone();
                         let mut path = path.clone();
+
                         if let ProjectWorkspace::Cargo { sysroot, .. } = ws {
                             tracing::info!("Found a cargo workspace...");
                             if let Some(sysroot) = sysroot.as_ref() {
@@ -324,6 +326,7 @@ impl GlobalState {
                                         server_path.display()
                                     );
                                     path = server_path;
+                                    args = vec![];
                                 } else {
                                     tracing::info!(
                                         "And the server does not exist at {}",
@@ -333,6 +336,11 @@ impl GlobalState {
                             }
                         }
 
+                        tracing::info!(
+                            "Using proc-macro server at {} with args {:?}",
+                            path.display(),
+                            args
+                        );
                         ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
                             let error = format!(
                                 "Failed to run proc_macro_srv from path {}, error: {:?}",

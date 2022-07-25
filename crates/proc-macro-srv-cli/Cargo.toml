@@ -13,5 +13,5 @@ proc-macro-srv = { version = "0.0.0", path = "../proc-macro-srv" }
 sysroot-abi = ["proc-macro-srv/sysroot-abi"]
 
 [[bin]]
-name = "proc-macro-srv"
+name = "rust-analyzer-proc-macro-srv"
 path = "src/main.rs"
