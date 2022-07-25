@@ -99,9 +99,6 @@ rm -r src/test/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 # ============
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
 
-rm -r src/test/ui/polymorphization/ # polymorphization not yet supported
-rm src/test/codegen-units/polymorphization/unused_type_parameters.rs # same
-
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
 rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
