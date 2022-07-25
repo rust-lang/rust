@@ -34,11 +34,6 @@ static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 mod issue_8493 {
     use std::cell::Cell;
 
-    // https://github.com/rust-lang/rust-clippy/issues/9224
-    tokio::task_local! {
-        pub static _FOO: String;
-    }
-
     thread_local! {
         static _BAR: Cell<i32> = const { Cell::new(0) };
     }
