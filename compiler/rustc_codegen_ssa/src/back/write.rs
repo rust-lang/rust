@@ -37,6 +37,7 @@ use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use std::any::Any;
 use std::fs;
 use std::io;
+use std::marker::PhantomData;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -475,10 +476,13 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         metadata_module,
         crate_info,
 
-        coordinator_send,
         codegen_worker_receive,
         shared_emitter_main,
-        future: coordinator_thread,
+        coordinator: Coordinator {
+            sender: coordinator_send,
+            future: Some(coordinator_thread),
+            phantom: PhantomData,
+        },
         output_filenames: tcx.output_filenames(()).clone(),
     }
 }
@@ -1273,6 +1277,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // work to be done.
         while !codegen_done
             || running > 0
+            || main_thread_worker_state == MainThreadWorkerState::LLVMing
             || (!codegen_aborted
                 && !(work_items.is_empty()
                     && needs_fat_lto.is_empty()
@@ -1492,7 +1497,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!codegen_aborted);
                     codegen_done = true;
                     codegen_aborted = true;
-                    assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                 }
                 Message::Done { result: Ok(compiled_module), worker_id } => {
                     free_worker(worker_id);
@@ -1537,6 +1541,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 }
                 Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
+        }
+
+        if codegen_aborted {
+            return Err(());
         }
 
         let needs_link = mem::take(&mut needs_link);
@@ -1828,16 +1836,39 @@ impl SharedEmitterMain {
     }
 }
 
+pub struct Coordinator<B: ExtraBackendMethods> {
+    pub sender: Sender<Box<dyn Any + Send>>,
+    future: Option<thread::JoinHandle<Result<CompiledModules, ()>>>,
+    // Only used for the Message type.
+    phantom: PhantomData<B>,
+}
+
+impl<B: ExtraBackendMethods> Coordinator<B> {
+    fn join(mut self) -> std::thread::Result<Result<CompiledModules, ()>> {
+        self.future.take().unwrap().join()
+    }
+}
+
+impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
+    fn drop(&mut self) {
+        if let Some(future) = self.future.take() {
+            // If we haven't joined yet, signal to the coordinator that it should spawn no more
+            // work, and wait for worker threads to finish.
+            drop(self.sender.send(Box::new(Message::CodegenAborted::<B>)));
+            drop(future.join());
+        }
+    }
+}
+
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
     pub metadata: EncodedMetadata,
     pub metadata_module: Option<CompiledModule>,
     pub crate_info: CrateInfo,
-    pub coordinator_send: Sender<Box<dyn Any + Send>>,
     pub codegen_worker_receive: Receiver<Message<B>>,
     pub shared_emitter_main: SharedEmitterMain,
-    pub future: thread::JoinHandle<Result<CompiledModules, ()>>,
     pub output_filenames: Arc<OutputFilenames>,
+    pub coordinator: Coordinator<B>,
 }
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
@@ -1845,8 +1876,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         let _timer = sess.timer("finish_ongoing_codegen");
 
         self.shared_emitter_main.check(sess, true);
-        let future = self.future;
-        let compiled_modules = sess.time("join_worker_thread", || match future.join() {
+        let compiled_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
             Ok(Err(())) => {
                 sess.abort_if_errors();
@@ -1894,26 +1924,13 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         // These are generally cheap and won't throw off scheduling.
         let cost = 0;
-        submit_codegened_module_to_llvm(&self.backend, &self.coordinator_send, module, cost);
+        submit_codegened_module_to_llvm(&self.backend, &self.coordinator.sender, module, cost);
     }
 
     pub fn codegen_finished(&self, tcx: TyCtxt<'_>) {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
-        drop(self.coordinator_send.send(Box::new(Message::CodegenComplete::<B>)));
-    }
-
-    /// Consumes this context indicating that codegen was entirely aborted, and
-    /// we need to exit as quickly as possible.
-    ///
-    /// This method blocks the current thread until all worker threads have
-    /// finished, and all worker threads should have exited or be real close to
-    /// exiting at this point.
-    pub fn codegen_aborted(self) {
-        // Signal to the coordinator it should spawn no more work and start
-        // shutdown.
-        drop(self.coordinator_send.send(Box::new(Message::CodegenAborted::<B>)));
-        drop(self.future.join());
+        drop(self.coordinator.sender.send(Box::new(Message::CodegenComplete::<B>)));
     }
 
     pub fn check_for_errors(&self, sess: &Session) {
