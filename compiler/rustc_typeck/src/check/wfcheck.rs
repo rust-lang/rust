@@ -7,9 +7,8 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
-use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::query::Providers;
@@ -689,10 +688,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     wf_tys: &FxHashSet<Ty<'tcx>>,
-    add_constraints: impl for<'a> FnOnce(
-        &'a InferCtxt<'a, 'tcx>,
-        &'a Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
-    ),
+    add_constraints: impl for<'a> FnOnce(&'a InferCtxt<'a, 'tcx>, &'a RegionBoundPairs<'tcx>),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each

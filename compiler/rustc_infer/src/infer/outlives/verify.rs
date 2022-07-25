@@ -6,7 +6,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst};
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, OutlivesPredicate, Ty, TyCtxt};
 
 use smallvec::smallvec;
 
@@ -259,16 +259,17 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // The problem is that the type of `x` is `&'a A`. To be
         // well-formed, then, A must outlive `'a`, but we don't know that
         // this holds from first principles.
-        let from_region_bound_pairs = self.region_bound_pairs.iter().filter_map(|&(r, p)| {
-            debug!(
-                "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
-                (r, p)
-            );
-            let p_ty = p.to_ty(tcx);
-            let erased_p_ty = self.tcx.erase_regions(p_ty);
-            (erased_p_ty == erased_ty)
-                .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
-        });
+        let from_region_bound_pairs =
+            self.region_bound_pairs.iter().filter_map(|&OutlivesPredicate(p, r)| {
+                debug!(
+                    "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
+                    (r, p)
+                );
+                let p_ty = p.to_ty(tcx);
+                let erased_p_ty = self.tcx.erase_regions(p_ty);
+                (erased_p_ty == erased_ty)
+                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
+            });
 
         param_bounds
             .chain(from_region_bound_pairs)

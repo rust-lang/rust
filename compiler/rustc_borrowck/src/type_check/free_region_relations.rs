@@ -2,6 +2,7 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives;
+use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
@@ -34,18 +35,6 @@ pub(crate) struct UniversalRegionRelations<'tcx> {
     inverse_outlives: TransitiveRelation<RegionVid>,
 }
 
-/// Each RBP `('a, GK)` indicates that `GK: 'a` can be assumed to
-/// be true. These encode relationships like `T: 'a` that are
-/// added via implicit bounds.
-///
-/// Each region here is guaranteed to be a key in the `indices`
-/// map. We use the "original" regions (i.e., the keys from the
-/// map, and not the values) because the code in
-/// `process_registered_region_obligations` has some special-cased
-/// logic expecting to see (e.g.) `ReStatic`, and if we supplied
-/// our special inference variable there, we would mess that up.
-type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
-
 /// As part of computing the free region relations, we also have to
 /// normalize the input-output types, which we then need later. So we
 /// return those. This vector consists of first the input types and
@@ -71,7 +60,7 @@ pub(crate) fn create<'tcx>(
         implicit_region_bound,
         constraints,
         universal_regions: universal_regions.clone(),
-        region_bound_pairs: Vec::new(),
+        region_bound_pairs: Default::default(),
         relations: UniversalRegionRelations {
             universal_regions: universal_regions.clone(),
             outlives: Default::default(),
@@ -371,11 +360,13 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
 
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
                 }
             }
         }
