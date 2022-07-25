@@ -36,17 +36,17 @@ impl ops::Index<SysrootCrate> for Sysroot {
 }
 
 impl Sysroot {
-    /// Returns sysroot directory, where `bin/`, `etc/`, `lib/`, `libexec/`
+    /// Returns sysroot "root" directory, where `bin/`, `etc/`, `lib/`, `libexec/`
     /// subfolder live, like:
-    /// `$HOME/.rustup/toolchains/nightly-2022-07-23-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library`
-    pub fn src_root(&self) -> &AbsPath {
-        &self.src_root
-    }
-
-    /// Returns sysroot "src" directory, where stdlib sources are located, like:
     /// `$HOME/.rustup/toolchains/nightly-2022-07-23-x86_64-unknown-linux-gnu`
     pub fn root(&self) -> &AbsPath {
         &self.root
+    }
+
+    /// Returns the sysroot "source" directory, where stdlib sources are located, like:
+    /// `$HOME/.rustup/toolchains/nightly-2022-07-23-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library`
+    pub fn src_root(&self) -> &AbsPath {
+        &self.src_root
     }
 
     pub fn public_deps(&self) -> impl Iterator<Item = (&'static str, SysrootCrate, bool)> + '_ {
