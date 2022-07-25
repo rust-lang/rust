@@ -1,19 +1,17 @@
 use super::ffi::OsStrExt;
-use super::raw::protocols::{device_path, device_path_from_text, device_path_to_text};
 use crate::alloc::{Allocator, Global, Layout};
 use crate::ffi::OsStr;
 use crate::io;
 use crate::path::{Path, PathBuf};
 use crate::ptr::NonNull;
 use crate::sys_common::ucs2;
+use r_efi::protocols::{device_path, device_path_from_text, device_path_to_text};
 
 #[unstable(feature = "uefi_std", issue = "none")]
 impl TryFrom<NonNull<device_path::Protocol>> for PathBuf {
     type Error = crate::io::Error;
 
-    fn try_from(
-        value: NonNull<super::raw::protocols::device_path::Protocol>,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(value: NonNull<device_path::Protocol>) -> Result<Self, Self::Error> {
         let device_path_to_text_handles =
             super::env::locate_handles(device_path_to_text::PROTOCOL_GUID)?;
         for handle in device_path_to_text_handles {
@@ -25,8 +23,8 @@ impl TryFrom<NonNull<device_path::Protocol>> for PathBuf {
             let path_ucs2 = unsafe {
                 ((*protocol.as_ptr()).convert_device_path_to_text)(
                     value.as_ptr(),
-                    super::raw::Boolean::FALSE,
-                    super::raw::Boolean::FALSE,
+                    r_efi::efi::Boolean::FALSE,
+                    r_efi::efi::Boolean::FALSE,
                 )
             };
             let ucs2_iter = match unsafe { ucs2::Ucs2Units::new(path_ucs2) } {

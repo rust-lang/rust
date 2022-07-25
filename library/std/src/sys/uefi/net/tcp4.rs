@@ -3,9 +3,9 @@ use crate::io;
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv4Addr, SocketAddrV4};
 use crate::os::uefi;
-use crate::os::uefi::raw::protocols::{ip4, managed_network, simple_network, tcp4};
-use crate::os::uefi::raw::Status;
 use crate::ptr::NonNull;
+use r_efi::efi::Status;
+use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
 
 // FIXME: Discuss what the values these constants should have
 const TYPE_OF_SERVICE: u8 = 8;
@@ -37,13 +37,13 @@ impl Tcp4Protocol {
             // FIXME: Check in mailing list what hop_limit should be used
             time_to_live: TIME_TO_LIVE,
             access_point: tcp4::AccessPoint {
-                use_default_address: uefi::raw::Boolean::from(use_default_address),
-                station_address: uefi::raw::Ipv4Address::from(station_addr.ip()),
+                use_default_address: r_efi::efi::Boolean::from(use_default_address),
+                station_address: r_efi::efi::Ipv4Address::from(station_addr.ip()),
                 station_port: station_addr.port(),
-                subnet_mask: uefi::raw::Ipv4Address::from(subnet_mask),
-                remote_address: uefi::raw::Ipv4Address::from(remote_addr.ip()),
+                subnet_mask: r_efi::efi::Ipv4Address::from(subnet_mask),
+                remote_address: r_efi::efi::Ipv4Address::from(remote_addr.ip()),
                 remote_port: remote_addr.port(),
-                active_flag: uefi::raw::Boolean::from(active_flag),
+                active_flag: r_efi::efi::Boolean::from(active_flag),
             },
             // FIXME: Maybe provide a rust default one at some point
             control_option: crate::ptr::null_mut(),
@@ -55,8 +55,8 @@ impl Tcp4Protocol {
         let protocol = self.protocol.as_ptr();
 
         let accept_event = uefi::thread::Event::create(
-            uefi::raw::EVT_NOTIFY_WAIT,
-            uefi::raw::TPL_CALLBACK,
+            r_efi::efi::EVT_NOTIFY_WAIT,
+            r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
             None,
         )?;
@@ -65,7 +65,7 @@ impl Tcp4Protocol {
 
         let mut listen_token = tcp4::ListenToken {
             completion_token,
-            new_child_handle: unsafe { MaybeUninit::<uefi::raw::Handle>::uninit().assume_init() },
+            new_child_handle: unsafe { MaybeUninit::<r_efi::efi::Handle>::uninit().assume_init() },
         };
 
         let r = unsafe { ((*protocol).accept)(protocol, &mut listen_token) };
@@ -126,8 +126,8 @@ connection is reset either by instance itself or communication peer",
     pub fn transmit(&self, buf: &[u8]) -> io::Result<usize> {
         let buf_size = buf.len() as u32;
         let transmit_event = uefi::thread::Event::create(
-            uefi::raw::EVT_NOTIFY_WAIT,
-            uefi::raw::TPL_CALLBACK,
+            r_efi::efi::EVT_NOTIFY_WAIT,
+            r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
             None,
         )?;
@@ -139,8 +139,8 @@ connection is reset either by instance itself or communication peer",
             fragment_buffer: buf.as_ptr() as *mut crate::ffi::c_void,
         };
         let mut transmit_data = tcp4::TransmitData {
-            push: uefi::raw::Boolean::from(true),
-            urgent: uefi::raw::Boolean::from(false),
+            push: r_efi::efi::Boolean::from(true),
+            urgent: r_efi::efi::Boolean::from(false),
             data_length: buf_size,
             fragment_count: 1,
             fragment_table: [],
@@ -186,8 +186,8 @@ connection is reset either by instance itself or communication peer",
     pub fn receive(&self, buf: &mut [u8]) -> io::Result<usize> {
         let buf_size = buf.len() as u32;
         let receive_event = uefi::thread::Event::create(
-            uefi::raw::EVT_NOTIFY_WAIT,
-            uefi::raw::TPL_CALLBACK,
+            r_efi::efi::EVT_NOTIFY_WAIT,
+            r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
             None,
         )?;
@@ -196,7 +196,7 @@ connection is reset either by instance itself or communication peer",
             fragment_buffer: buf.as_mut_ptr().cast(),
         };
         let mut receive_data = tcp4::ReceiveData {
-            urgent_flag: uefi::raw::Boolean::from(false),
+            urgent_flag: r_efi::efi::Boolean::from(false),
             data_length: buf_size,
             fragment_count: 1,
             fragment_table: [],
@@ -245,15 +245,15 @@ connection is reset either by instance itself or communication peer",
         let protocol = self.protocol.as_ptr();
 
         let close_event = uefi::thread::Event::create(
-            uefi::raw::EVT_NOTIFY_WAIT,
-            uefi::raw::TPL_CALLBACK,
+            r_efi::efi::EVT_NOTIFY_WAIT,
+            r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
             None,
         )?;
         let completion_token =
             tcp4::CompletionToken { event: close_event.as_raw_event(), status: Status::ABORTED };
         let mut close_token = tcp4::CloseToken {
-            abort_on_close: uefi::raw::Boolean::from(abort_on_close),
+            abort_on_close: r_efi::efi::Boolean::from(abort_on_close),
             completion_token,
         };
         let r = unsafe { ((*protocol).close)(protocol, &mut close_token) };
@@ -498,4 +498,4 @@ impl Drop for Tcp4Protocol {
 }
 
 #[no_mangle]
-pub extern "efiapi" fn nop_notify4(_: uefi::raw::Event, _: *mut crate::ffi::c_void) {}
+pub extern "efiapi" fn nop_notify4(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}

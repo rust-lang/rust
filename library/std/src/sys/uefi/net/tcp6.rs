@@ -4,9 +4,9 @@ use crate::io;
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv6Addr, SocketAddrV6};
 use crate::os::uefi;
-use crate::os::uefi::raw::protocols::{ip6, managed_network, simple_network, tcp6};
-use crate::os::uefi::raw::Status;
 use crate::ptr::NonNull;
+use r_efi::efi::Status;
+use r_efi::protocols::{ip6, managed_network, simple_network, tcp6};
 
 // FIXME: Discuss what the values these constants should have
 const TRAFFIC_CLASS: u8 = 0;
@@ -93,11 +93,11 @@ impl Tcp6Protocol {
             // FIXME: Check in mailing list what hop_limit should be used
             hop_limit: HOP_LIMIT,
             access_point: tcp6::AccessPoint {
-                station_address: uefi::raw::Ipv6Address::from(station_addr.ip()),
+                station_address: r_efi::efi::Ipv6Address::from(station_addr.ip()),
                 station_port: station_addr.port(),
-                remote_address: uefi::raw::Ipv6Address::from(remote_addr.ip()),
+                remote_address: r_efi::efi::Ipv6Address::from(remote_addr.ip()),
                 remote_port: remote_addr.port(),
-                active_flag: uefi::raw::Boolean::from(active_flag),
+                active_flag: r_efi::efi::Boolean::from(active_flag),
             },
             // FIXME: Maybe provide a rust default one at some point
             control_option: crate::ptr::null_mut(),
@@ -144,8 +144,8 @@ impl Tcp6Protocol {
         let protocol = self.protocol.as_ptr();
 
         let accept_event = uefi::thread::Event::create(
-            uefi::raw::EVT_NOTIFY_SIGNAL,
-            uefi::raw::TPL_CALLBACK,
+            r_efi::efi::EVT_NOTIFY_SIGNAL,
+            r_efi::efi::TPL_CALLBACK,
             Some(nop_notify),
             None,
         )?;
@@ -154,7 +154,7 @@ impl Tcp6Protocol {
 
         let mut listen_token = tcp6::ListenToken {
             completion_token,
-            new_child_handle: unsafe { MaybeUninit::<uefi::raw::Handle>::uninit().assume_init() },
+            new_child_handle: unsafe { MaybeUninit::<r_efi::efi::Handle>::uninit().assume_init() },
         };
 
         let r = unsafe { ((*protocol).accept)(protocol, &mut listen_token) };
@@ -226,15 +226,15 @@ connection is reset either by instance itself or communication peer",
         let protocol = self.protocol.as_ptr();
 
         let close_event = uefi::thread::Event::create(
-            uefi::raw::EVT_NOTIFY_SIGNAL,
-            uefi::raw::TPL_CALLBACK,
+            r_efi::efi::EVT_NOTIFY_SIGNAL,
+            r_efi::efi::TPL_CALLBACK,
             Some(nop_notify),
             None,
         )?;
         let completion_token =
             tcp6::CompletionToken { event: close_event.as_raw_event(), status: Status::ABORTED };
         let mut close_token = tcp6::CloseToken {
-            abort_on_close: uefi::raw::Boolean::from(abort_on_close),
+            abort_on_close: r_efi::efi::Boolean::from(abort_on_close),
             completion_token,
         };
         let r = unsafe { ((*protocol).close)(protocol, &mut close_token) };
@@ -313,4 +313,4 @@ impl Drop for Tcp6Protocol {
 }
 
 #[no_mangle]
-pub extern "efiapi" fn nop_notify(_: uefi::raw::Event, _: *mut crate::ffi::c_void) {}
+pub extern "efiapi" fn nop_notify(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}

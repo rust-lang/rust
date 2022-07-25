@@ -1,7 +1,6 @@
 //! This module just re-exports stuff from r-efi crate
 
-pub use r_efi::efi::*;
-pub use r_efi::system;
+pub use r_efi::efi::{BootServices, RuntimeServices, SystemTable};
 
 use crate::alloc::{Allocator, Global, Layout};
 use crate::io;

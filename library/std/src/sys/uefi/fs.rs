@@ -6,10 +6,10 @@ use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 // use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi;
-use crate::os::uefi::raw::protocols::file;
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
+use r_efi::protocols::file;
 
 // FIXME: Do not store FileProtocol Instead store Handle
 pub struct File {
@@ -457,23 +457,24 @@ mod uefi_fs {
     use crate::mem::MaybeUninit;
     use crate::os::uefi;
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
-    use crate::os::uefi::raw::{protocols::file, Status};
     use crate::path::Path;
     use crate::ptr::NonNull;
+    use r_efi::efi::Status;
+    use r_efi::protocols::file;
 
     // Wrapper around File Protocol. Automatically closes file/directories on being dropped.
     #[derive(Clone)]
     pub(crate) struct FileProtocol {
-        inner: NonNull<uefi::raw::protocols::file::Protocol>,
+        inner: NonNull<file::Protocol>,
     }
 
     impl FileProtocol {
-        fn new(inner: NonNull<uefi::raw::protocols::file::Protocol>) -> FileProtocol {
+        fn new(inner: NonNull<file::Protocol>) -> FileProtocol {
             FileProtocol { inner }
         }
 
         pub(crate) fn get_rootfs() -> io::Result<FileProtocol> {
-            use uefi::raw::protocols::{loaded_image, simple_file_system};
+            use r_efi::protocols::{loaded_image, simple_file_system};
 
             let mut loaded_image_guid = loaded_image::PROTOCOL_GUID;
             let loaded_image_protocol = uefi::env::get_current_handle_protocol::<
@@ -515,8 +516,7 @@ mod uefi_fs {
         ) -> io::Result<FileProtocol> {
             let rootfs = self.inner.as_ptr();
 
-            let mut file_opened: MaybeUninit<*mut uefi::raw::protocols::file::Protocol> =
-                MaybeUninit::uninit();
+            let mut file_opened: MaybeUninit<*mut file::Protocol> = MaybeUninit::uninit();
             let r = unsafe {
                 ((*rootfs).open)(
                     rootfs,

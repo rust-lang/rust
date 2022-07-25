@@ -8,7 +8,7 @@ use crate::os::uefi;
 use crate::path::{self, PathBuf};
 
 pub fn errno() -> i32 {
-    uefi::raw::Status::ABORTED.as_usize() as i32
+    r_efi::efi::Status::ABORTED.as_usize() as i32
 }
 
 pub fn error_string(_errno: i32) -> String {
@@ -63,7 +63,7 @@ impl StdError for JoinPathsError {
 }
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    use uefi::raw::protocols::{device_path, loaded_image_device_path};
+    use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
     let mut protocol_guid = loaded_image_device_path::PROTOCOL_GUID;
     match uefi::env::get_current_handle_protocol::<device_path::Protocol>(&mut protocol_guid) {
@@ -120,8 +120,8 @@ pub fn home_dir() -> Option<PathBuf> {
 
 pub fn exit(code: i32) -> ! {
     let code = match usize::try_from(code) {
-        Ok(x) => uefi::raw::Status::from_usize(x),
-        Err(_) => uefi::raw::Status::ABORTED,
+        Ok(x) => r_efi::efi::Status::from_usize(x),
+        Err(_) => r_efi::efi::Status::ABORTED,
     };
 
     if let (Some(boot_services), Some(handle)) =
@@ -146,7 +146,7 @@ mod uefi_vars {
     use crate::os::uefi;
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 
-    const ENVIRONMENT_GUID: uefi::raw::Guid = uefi::raw::Guid::from_fields(
+    const ENVIRONMENT_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
         0x49bb4029,
         0x7d2b,
         0x4bf7,
@@ -156,14 +156,14 @@ mod uefi_vars {
     );
 
     pub fn set_variable(key: &OsStr, val: &OsStr) -> io::Result<()> {
-        set_variable_inner(key, val.bytes(), uefi::raw::VARIABLE_BOOTSERVICE_ACCESS)
+        set_variable_inner(key, val.bytes(), r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS)
     }
 
     pub fn append_variable(key: &OsStr, val: &[u8]) -> io::Result<()> {
         set_variable_inner(
             key,
             val,
-            uefi::raw::VARIABLE_BOOTSERVICE_ACCESS | uefi::raw::VARIABLE_APPEND_WRITE,
+            r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS | r_efi::efi::VARIABLE_APPEND_WRITE,
         )
     }
 
@@ -202,7 +202,7 @@ mod uefi_vars {
             )
         };
 
-        if r.is_error() && r != uefi::raw::Status::BUFFER_TOO_SMALL {
+        if r.is_error() && r != r_efi::efi::Status::BUFFER_TOO_SMALL {
             return None;
         }
 

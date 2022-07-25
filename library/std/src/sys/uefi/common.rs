@@ -1,11 +1,10 @@
 use crate::alloc::{Allocator, Global, Layout};
 use crate::io;
-use crate::os::uefi;
 use crate::ptr::NonNull;
 
-pub(crate) fn status_to_io_error(s: &uefi::raw::Status) -> crate::io::Error {
+pub(crate) fn status_to_io_error(s: &r_efi::efi::Status) -> crate::io::Error {
     use io::ErrorKind;
-    use uefi::raw::Status;
+    use r_efi::efi::Status;
 
     match s {
         &Status::INVALID_PARAMETER => {

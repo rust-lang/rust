@@ -1,4 +1,4 @@
-use super::{tcp4, tcp6, uefi_service_binding};
+use super::{tcp4, uefi_service_binding};
 use crate::{
     io::{self, IoSlice, IoSliceMut},
     net::{Ipv4Addr, Shutdown, SocketAddr, SocketAddrV4},
@@ -6,6 +6,7 @@ use crate::{
     sync::Arc,
     sys::unsupported,
 };
+use r_efi::protocols;
 
 pub enum TcpProtocol {
     V4(Arc<tcp4::Tcp4Protocol>),
@@ -15,14 +16,13 @@ impl TcpProtocol {
     pub fn bind(addr: &SocketAddr) -> io::Result<Self> {
         match addr {
             SocketAddr::V4(x) => {
-                let handles = uefi::env::locate_handles(
-                    uefi::raw::protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID,
-                )?;
+                let handles =
+                    uefi::env::locate_handles(protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID)?;
 
                 // Try all handles
                 for handle in handles {
                     let service_binding = uefi_service_binding::ServiceBinding::new(
-                        uefi::raw::protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID,
+                        protocols::tcp4::SERVICE_BINDING_PROTOCOL_GUID,
                         handle,
                     );
                     let tcp4_protocol = match tcp4::Tcp4Protocol::create(service_binding) {

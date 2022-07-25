@@ -1,7 +1,7 @@
-use super::raw::{self, EventNotify, Status, Tpl};
 use crate::ffi::c_void;
 use crate::io;
 use crate::ptr::NonNull;
+use r_efi::efi::{EventNotify, Status, Tpl};
 
 pub(crate) struct Event {
     inner: NonNull<c_void>,
@@ -12,7 +12,7 @@ impl Event {
         Self { inner }
     }
 
-    fn from_raw_event(ptr: raw::Event) -> Option<Self> {
+    fn from_raw_event(ptr: r_efi::efi::Event) -> Option<Self> {
         Some(Self::new(NonNull::new(ptr)?))
     }
 
@@ -25,7 +25,7 @@ impl Event {
         let boot_services = super::env::get_boot_services()
             .ok_or(io::Error::new(io::ErrorKind::Other, "Failed to Acquire Boot Services"))?;
 
-        let mut event: raw::Event = crate::ptr::null_mut();
+        let mut event: r_efi::efi::Event = crate::ptr::null_mut();
         let notify_context = match notify_context {
             None => crate::ptr::null_mut(),
             Some(x) => x.as_ptr(),
@@ -92,7 +92,7 @@ impl Event {
         }
     }
 
-    pub(crate) fn as_raw_event(&self) -> raw::Event {
+    pub(crate) fn as_raw_event(&self) -> r_efi::efi::Event {
         self.inner.as_ptr()
     }
 }

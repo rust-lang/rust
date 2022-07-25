@@ -1,20 +1,21 @@
 //! UEFI-specific extensions to the primitives in `std::env` module
 
-use super::raw::{system, BootServices, Guid, Handle, RuntimeServices, Status, SystemTable};
+use super::raw::{BootServices, RuntimeServices, SystemTable};
 use crate::ffi::c_void;
 use crate::io;
 use crate::mem::MaybeUninit;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
+use r_efi::efi::{Guid, Handle, Status};
+use r_efi::system;
 
 static GLOBAL_SYSTEM_TABLE: AtomicPtr<SystemTable> = AtomicPtr::new(crate::ptr::null_mut());
 static GLOBAL_SYSTEM_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(crate::ptr::null_mut());
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Initializes Global Atomic Pointers to SystemTable and Handle.
 /// Should only be called once in the program execution under normal circumstances.
 /// The caller should ensure that the pointers are valid.
-pub fn init_globals(handle: NonNull<c_void>, system_table: NonNull<SystemTable>) {
+pub(crate) fn init_globals(handle: NonNull<c_void>, system_table: NonNull<SystemTable>) {
     GLOBAL_SYSTEM_TABLE.store(system_table.as_ptr(), Ordering::SeqCst);
     GLOBAL_SYSTEM_HANDLE.store(handle.as_ptr(), Ordering::SeqCst);
 }
@@ -47,10 +48,9 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
     NonNull::new(runtime_services)
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Get the Protocol for current system handle.
 /// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
-pub fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
+pub(crate) fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
     let system_handle = get_system_handle()?;
     get_handle_protocol(system_handle, protocol_guid)
 }
@@ -124,7 +124,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>>
     ) -> io::Result<()> {
         let r = unsafe {
             ((*boot_services.as_ptr()).locate_handle)(
-                super::raw::BY_PROTOCOL,
+                r_efi::efi::BY_PROTOCOL,
                 guid,
                 crate::ptr::null_mut(),
                 buf_size,

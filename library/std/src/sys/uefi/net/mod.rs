@@ -9,19 +9,19 @@ mod uefi_service_binding {
     use crate::io;
     use crate::mem::MaybeUninit;
     use crate::os::uefi;
-    use crate::os::uefi::raw::protocols::service_binding;
-    use crate::os::uefi::raw::Status;
     use crate::ptr::NonNull;
+    use r_efi::efi::Status;
+    use r_efi::protocols::service_binding;
 
     #[derive(Clone, Copy)]
     pub struct ServiceBinding {
-        service_binding_guid: uefi::raw::Guid,
+        service_binding_guid: r_efi::efi::Guid,
         handle: NonNull<crate::ffi::c_void>,
     }
 
     impl ServiceBinding {
         pub fn new(
-            service_binding_guid: uefi::raw::Guid,
+            service_binding_guid: r_efi::efi::Guid,
             handle: NonNull<crate::ffi::c_void>,
         ) -> Self {
             Self { service_binding_guid, handle }
@@ -30,7 +30,7 @@ mod uefi_service_binding {
         pub fn create_child(&self) -> io::Result<NonNull<crate::ffi::c_void>> {
             let service_binding_protocol: NonNull<service_binding::Protocol> =
                 uefi::env::open_protocol(self.handle, self.service_binding_guid)?;
-            let mut child_handle: MaybeUninit<uefi::raw::Handle> = MaybeUninit::uninit();
+            let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let r = unsafe {
                 ((*service_binding_protocol.as_ptr()).create_child)(
                     service_binding_protocol.as_ptr(),

@@ -68,29 +68,10 @@ pub fn unsupported_err() -> std_io::Error {
 
 pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     use crate::io::ErrorKind;
-    use crate::os::uefi::raw::Status;
+    use r_efi::efi::Status;
 
     if let Ok(code) = usize::try_from(code) {
-        match uefi::raw::Status::from_usize(code) {
-            Status::INVALID_PARAMETER => ErrorKind::InvalidInput,
-            Status::UNSUPPORTED => ErrorKind::Unsupported,
-            Status::BAD_BUFFER_SIZE | Status::CRC_ERROR | Status::INVALID_LANGUAGE => {
-                ErrorKind::InvalidData
-            }
-            Status::BUFFER_TOO_SMALL => ErrorKind::FileTooLarge,
-            Status::NOT_READY => ErrorKind::ResourceBusy,
-            Status::WRITE_PROTECTED => ErrorKind::ReadOnlyFilesystem,
-            Status::VOLUME_FULL => ErrorKind::StorageFull,
-            Status::MEDIA_CHANGED => ErrorKind::StaleNetworkFileHandle,
-            Status::NOT_FOUND => ErrorKind::NotFound,
-            Status::ACCESS_DENIED | Status::SECURITY_VIOLATION => ErrorKind::PermissionDenied,
-            Status::NO_RESPONSE => ErrorKind::HostUnreachable,
-            Status::TIMEOUT => ErrorKind::TimedOut,
-            Status::END_OF_FILE => ErrorKind::UnexpectedEof,
-            Status::IP_ADDRESS_CONFLICT => ErrorKind::AddrInUse,
-            Status::HTTP_ERROR => ErrorKind::NetworkUnreachable,
-            _ => ErrorKind::Uncategorized,
-        }
+        common::status_to_io_error(&Status::from_usize(code)).kind()
     } else {
         ErrorKind::Uncategorized
     }
@@ -103,7 +84,7 @@ pub fn abort_internal() -> ! {
         let _ = unsafe {
             ((*boot_services.as_ptr()).exit)(
                 handle.as_ptr(),
-                uefi::raw::Status::ABORTED,
+                r_efi::efi::Status::ABORTED,
                 0,
                 [0].as_mut_ptr(),
             )
@@ -149,24 +130,17 @@ extern "C" {
 // FIXME: Do not generate this in case of `no_main`
 #[no_mangle]
 pub unsafe extern "efiapi" fn efi_main(
-    handle: uefi::raw::Handle,
-    st: *mut uefi::raw::SystemTable,
-) -> uefi::raw::Status {
-    unsafe {
-        let mut msg = [
-            0x0048u16, 0x0065u16, 0x006cu16, 0x006cu16, 0x006fu16, 0x000du16, 0x000au16, 0x0000u16,
-        ];
-        ((*(*st).std_err).output_string)((*st).std_err, msg.as_mut_ptr());
-    }
-
+    handle: r_efi::efi::Handle,
+    st: *mut r_efi::efi::SystemTable,
+) -> r_efi::efi::Status {
     if let (Some(system_table), Some(system_handle)) = (NonNull::new(st), NonNull::new(handle)) {
         uefi::env::init_globals(system_handle, system_table);
 
         match unsafe { main(0, crate::ptr::null()) } {
-            0 => uefi::raw::Status::SUCCESS,
-            _ => uefi::raw::Status::ABORTED, // Or some other status code
+            0 => r_efi::efi::Status::SUCCESS,
+            _ => r_efi::efi::Status::ABORTED, // Or some other status code
         }
     } else {
-        uefi::raw::Status::ABORTED
+        r_efi::efi::Status::ABORTED
     }
 }

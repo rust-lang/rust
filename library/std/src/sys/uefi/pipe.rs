@@ -55,7 +55,7 @@ pub(crate) mod uefi_pipe {
 
     type Ucs2Key = Vec<u16>;
 
-    const PIPE_GUID: uefi::raw::Guid = uefi::raw::Guid::from_fields(
+    const PIPE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
         0x49e41342,
         0x5446,
         0x4914,
@@ -77,7 +77,7 @@ pub(crate) mod uefi_pipe {
             unsafe {
                 Self::write_raw(
                     self.key.as_ptr() as *mut u16,
-                    uefi::raw::VARIABLE_BOOTSERVICE_ACCESS,
+                    r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
                     0,
                     crate::ptr::null_mut(),
                 )
@@ -121,7 +121,7 @@ pub(crate) mod uefi_pipe {
             unsafe {
                 Self::write_raw(
                     self.key.as_ptr() as *mut u16,
-                    uefi::raw::VARIABLE_BOOTSERVICE_ACCESS,
+                    r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
                     buf_size - buf.len(),
                     (&mut new_buf[(buf.len())..]).as_mut_ptr().cast(),
                 )
@@ -191,7 +191,7 @@ pub(crate) mod uefi_pipe {
             let mut buf = buf.to_vec();
             let buf_len = buf.len();
             const attr: u32 =
-                uefi::raw::VARIABLE_BOOTSERVICE_ACCESS | uefi::raw::VARIABLE_APPEND_WRITE;
+                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS | r_efi::efi::VARIABLE_APPEND_WRITE;
             match unsafe {
                 Self::write_raw(
                     self.key.as_ptr() as *mut u16,

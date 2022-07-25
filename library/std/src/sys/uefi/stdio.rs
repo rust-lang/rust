@@ -1,7 +1,7 @@
-use crate::os::uefi::raw::protocols::{simple_text_input, simple_text_output};
-use crate::os::uefi::raw::system::BootWaitForEvent;
 use crate::sys_common::ucs2;
 use crate::{io, os::uefi, ptr::NonNull};
+use r_efi::protocols::{simple_text_input, simple_text_output};
+use r_efi::system::BootWaitForEvent;
 
 pub struct Stdin(());
 pub struct Stdout(());
@@ -47,7 +47,7 @@ impl Stdin {
 
     // FIXME Improve Errors
     fn reset_weak(con_in: NonNull<simple_text_input::Protocol>) -> io::Result<()> {
-        let r = unsafe { ((*con_in.as_ptr()).reset)(con_in.as_ptr(), uefi::raw::Boolean::TRUE) };
+        let r = unsafe { ((*con_in.as_ptr()).reset)(con_in.as_ptr(), r_efi::efi::Boolean::TRUE) };
 
         if r.is_error() {
             Err(io::Error::new(io::ErrorKind::InvalidInput, "Device Error"))
@@ -179,7 +179,7 @@ impl io::Write for Stderr {
 }
 
 pub fn is_ebadf(err: &io::Error) -> bool {
-    err.raw_os_error() == Some(uefi::raw::Status::DEVICE_ERROR.as_usize() as i32)
+    err.raw_os_error() == Some(r_efi::efi::Status::DEVICE_ERROR.as_usize() as i32)
 }
 
 pub fn panic_output() -> Option<impl io::Write> {

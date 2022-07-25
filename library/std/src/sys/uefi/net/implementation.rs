@@ -4,7 +4,6 @@ use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4};
 use crate::os::uefi;
-use crate::os::uefi::raw::protocols::tcp4;
 use crate::sys::unsupported;
 use crate::time::Duration;
 

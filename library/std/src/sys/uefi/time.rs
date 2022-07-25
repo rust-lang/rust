@@ -32,7 +32,7 @@ impl Instant {
 impl SystemTime {
     pub fn now() -> SystemTime {
         if let Some(runtime_services) = uefi::env::get_runtime_services() {
-            let mut t = uefi::raw::Time::default();
+            let mut t = r_efi::efi::Time::default();
             let r =
                 unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
 
@@ -59,9 +59,9 @@ impl SystemTime {
     }
 }
 
-impl From<uefi::raw::system::Time> for SystemTime {
+impl From<r_efi::system::Time> for SystemTime {
     // FIXME: Don't know how to use Daylight Saving thing
-    fn from(t: uefi::raw::system::Time) -> Self {
+    fn from(t: r_efi::system::Time) -> Self {
         const SEC_IN_MIN: u64 = 60;
         const SEC_IN_HOUR: u64 = SEC_IN_MIN * 60;
         const SEC_IN_DAY: u64 = SEC_IN_HOUR * 24;

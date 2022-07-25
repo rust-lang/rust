@@ -182,7 +182,7 @@ impl fmt::Debug for Command {
 }
 
 #[derive(Copy, PartialEq, Eq, Clone)]
-pub struct ExitStatus(uefi::raw::Status);
+pub struct ExitStatus(r_efi::efi::Status);
 
 impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
@@ -243,7 +243,7 @@ impl From<u8> for ExitCode {
 }
 
 pub struct Process {
-    status: uefi::raw::Status,
+    status: r_efi::efi::Status,
     env: CommandEnv,
 }
 
@@ -299,8 +299,8 @@ mod uefi_command {
     use crate::mem::{ManuallyDrop, MaybeUninit};
     use crate::os::uefi;
     use crate::os::uefi::ffi::OsStrExt;
-    use crate::os::uefi::raw::protocols::loaded_image;
     use crate::ptr::NonNull;
+    use r_efi::protocols::loaded_image;
 
     pub struct Command {
         inner: NonNull<crate::ffi::c_void>,
@@ -317,10 +317,10 @@ mod uefi_command {
                 "Failed to acquire System Handle",
             ))?;
             let path = uefi::path::DevicePath::try_from(p)?;
-            let mut child_handle: MaybeUninit<uefi::raw::Handle> = MaybeUninit::uninit();
+            let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let r = unsafe {
                 ((*boot_services.as_ptr()).load_image)(
-                    uefi::raw::Boolean::FALSE,
+                    r_efi::efi::Boolean::FALSE,
                     system_handle.as_ptr(),
                     path.as_ptr(),
                     crate::ptr::null_mut(),
@@ -339,7 +339,7 @@ mod uefi_command {
             }
         }
 
-        pub fn start_image(&self) -> io::Result<uefi::raw::Status> {
+        pub fn start_image(&self) -> io::Result<r_efi::efi::Status> {
             let boot_services = uefi::env::get_boot_services().ok_or(io::Error::new(
                 io::ErrorKind::Uncategorized,
                 "Failed to acquire boot_services",
@@ -381,30 +381,6 @@ mod uefi_command {
             };
             Ok(())
         }
-
-        pub fn change_stdout(
-            &self,
-            stdout_protocol: &mut super::uefi_stdio_pip::StdOutProtocol,
-        ) -> io::Result<()> {
-            let protocol: NonNull<loaded_image::Protocol> =
-                uefi::env::get_handle_protocol(self.inner, &mut loaded_image::PROTOCOL_GUID)
-                    .ok_or(io::Error::new(
-                        io::ErrorKind::Uncategorized,
-                        "Failed to acquire loaded image protocol for child handle",
-                    ))?;
-            unsafe {
-                crate::mem::swap(
-                    &mut (*(*protocol.as_ptr()).system_table).con_out,
-                    &mut (stdout_protocol.get_protocol()
-                        as *mut uefi::raw::protocols::simple_text_output::Protocol),
-                );
-                crate::mem::swap(
-                    &mut (*(*protocol.as_ptr()).system_table).console_out_handle,
-                    &mut stdout_protocol.get_handle_raw(),
-                );
-            }
-            Ok(())
-        }
     }
 
     impl Drop for Command {
@@ -420,19 +396,19 @@ mod uefi_command {
 mod uefi_stdio_pip {
     use crate::io;
     use crate::os::uefi;
-    use crate::os::uefi::raw::protocols::simple_text_output;
     use crate::ptr::NonNull;
+    use r_efi::protocols::simple_text_output;
 
     pub struct ProtocolHandler<T> {
         handle: Option<NonNull<crate::ffi::c_void>>,
-        guid: uefi::raw::Guid,
+        guid: r_efi::efi::Guid,
         protocol: T,
     }
 
     impl<T> ProtocolHandler<T> {
         pub fn new(
             handle: Option<NonNull<crate::ffi::c_void>>,
-            guid: uefi::raw::Guid,
+            guid: r_efi::efi::Guid,
             protocol: T,
         ) -> Self {
             Self { handle, guid, protocol }
@@ -453,7 +429,7 @@ mod uefi_stdio_pip {
                 "Failed to acquire boot services",
             ))?;
 
-            let mut new_handle: uefi::raw::Handle = match self.handle {
+            let mut new_handle: r_efi::efi::Handle = match self.handle {
                 Some(x) => x.as_ptr(),
                 None => crate::ptr::null_mut(),
             };
@@ -497,71 +473,4 @@ mod uefi_stdio_pip {
             }
         }
     }
-
-    extern "efiapi" fn null_stdio_1(
-        _: *mut simple_text_output::Protocol,
-        _: uefi::raw::Boolean,
-    ) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    extern "efiapi" fn null_stdio_2(
-        _: *mut simple_text_output::Protocol,
-        _: *mut uefi::raw::Char16,
-    ) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    extern "efiapi" fn null_stdio_3(
-        _: *mut simple_text_output::Protocol,
-        _: *mut uefi::raw::Char16,
-    ) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    extern "efiapi" fn null_stdio_4(
-        _: *mut simple_text_output::Protocol,
-        _: usize,
-        _: *mut usize,
-        _: *mut usize,
-    ) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    extern "efiapi" fn null_stdio_5(
-        _: *mut simple_text_output::Protocol,
-        _: usize,
-    ) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    extern "efiapi" fn null_stdio_6(_: *mut simple_text_output::Protocol) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    extern "efiapi" fn null_stdio_7(
-        _: *mut simple_text_output::Protocol,
-        _: usize,
-        _: usize,
-    ) -> uefi::raw::Status {
-        uefi::raw::Status::SUCCESS
-    }
-
-    pub fn get_null_stdio() -> ProtocolHandler<simple_text_output::Protocol> {
-        let protocol = simple_text_output::Protocol {
-            reset: null_stdio_1,
-            output_string: null_stdio_2,
-            test_string: null_stdio_3,
-            query_mode: null_stdio_4,
-            set_mode: null_stdio_5,
-            set_attribute: null_stdio_5,
-            clear_screen: null_stdio_6,
-            set_cursor_position: null_stdio_7,
-            enable_cursor: null_stdio_1,
-            mode: crate::ptr::null_mut(),
-        };
-        ProtocolHandler::new(None, simple_text_output::PROTOCOL_GUID, protocol)
-    }
-
-    pub type StdOutProtocol = ProtocolHandler<simple_text_output::Protocol>;
 }

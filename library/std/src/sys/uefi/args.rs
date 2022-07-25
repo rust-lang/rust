@@ -13,7 +13,7 @@ pub struct Args {
 
 // Implement using EFI_LOADED_IMAGE_PROTOCOL
 pub fn args() -> Args {
-    use uefi::raw::protocols::loaded_image;
+    use r_efi::efi::protocols::loaded_image;
 
     let mut protocol_guid = loaded_image::PROTOCOL_GUID;
     match uefi::env::get_current_handle_protocol::<loaded_image::Protocol>(&mut protocol_guid) {
