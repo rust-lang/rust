@@ -44,7 +44,8 @@
 //! - u.fold_with(folder)
 //! ```
 use crate::mir;
-use crate::ty::{self, Binder, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitable};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 
 use std::collections::BTreeMap;
@@ -533,12 +534,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn replace_escaping_bound_vars_uncached<T: TypeFoldable<'tcx>>(
         self,
         value: T,
-        mut delegate: impl BoundVarReplacerDelegate<'tcx>,
+        delegate: &mut impl BoundVarReplacerDelegate<'tcx>,
     ) -> T {
         if !value.has_escaping_bound_vars() {
             value
         } else {
-            let mut replacer = BoundVarReplacer::new(self, &mut delegate);
+            let mut replacer = BoundVarReplacer::new(self, delegate);
             value.fold_with(&mut replacer)
         }
     }
@@ -549,9 +550,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn replace_bound_vars_uncached<T: TypeFoldable<'tcx>>(
         self,
         value: Binder<'tcx, T>,
-        delegate: impl BoundVarReplacerDelegate<'tcx>,
+        mut delegate: impl BoundVarReplacerDelegate<'tcx>,
     ) -> T {
-        self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate)
+        self.replace_escaping_bound_vars_uncached(value.skip_binder(), &mut delegate)
     }
 
     /// Replaces any late-bound regions bound in `value` with
@@ -579,7 +580,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let shift_bv = |bv: ty::BoundVar| ty::BoundVar::from_usize(bv.as_usize() + bound_vars);
         self.replace_escaping_bound_vars_uncached(
             value,
-            FnMutDelegate {
+            &mut FnMutDelegate {
                 regions: |r: ty::BoundRegion| {
                     self.mk_region(ty::ReLateBound(
                         ty::INNERMOST,
@@ -638,6 +639,50 @@ impl<'tcx> TyCtxt<'tcx> {
         let bound_vars = self.mk_bound_variable_kinds(
             (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i))),
         );
+        Binder::bind_with_vars(inner, bound_vars)
+    }
+
+    /// Anonymize all bound variables in `value`, this is mostly used to improve caching.
+    pub fn anonymize_bound_vars<T>(self, value: Binder<'tcx, T>) -> Binder<'tcx, T>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        struct Anonymize<'tcx> {
+            tcx: TyCtxt<'tcx>,
+            map: FxIndexMap<ty::BoundVar, ty::BoundVariableKind>,
+        }
+        impl<'tcx> BoundVarReplacerDelegate<'tcx> for Anonymize<'tcx> {
+            fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
+                let entry = self.map.entry(br.var);
+                let index = entry.index();
+                let var = ty::BoundVar::from_usize(index);
+                let kind = entry
+                    .or_insert_with(|| ty::BoundVariableKind::Region(ty::BrAnon(index as u32)))
+                    .expect_region();
+                let br = ty::BoundRegion { var, kind };
+                self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
+            }
+            fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
+                let entry = self.map.entry(bt.var);
+                let index = entry.index();
+                let var = ty::BoundVar::from_usize(index);
+                let kind = entry
+                    .or_insert_with(|| ty::BoundVariableKind::Ty(ty::BoundTyKind::Anon))
+                    .expect_ty();
+                self.tcx.mk_ty(ty::Bound(ty::INNERMOST, BoundTy { var, kind }))
+            }
+            fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+                let entry = self.map.entry(bv);
+                let index = entry.index();
+                let var = ty::BoundVar::from_usize(index);
+                let () = entry.or_insert_with(|| ty::BoundVariableKind::Const).expect_const();
+                self.tcx.mk_const(ty::ConstS { ty, kind: ty::ConstKind::Bound(ty::INNERMOST, var) })
+            }
+        }
+
+        let mut delegate = Anonymize { tcx: self, map: Default::default() };
+        let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), &mut delegate);
+        let bound_vars = self.mk_bound_variable_kinds(delegate.map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 }

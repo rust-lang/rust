@@ -71,7 +71,7 @@ where
     if var_values.var_values.is_empty() {
         value
     } else {
-        let delegate = FnMutDelegate {
+        let mut delegate = FnMutDelegate {
             regions: |br: ty::BoundRegion| match var_values.var_values[br.var].unpack() {
                 GenericArgKind::Lifetime(l) => l,
                 r => bug!("{:?} is a region but value is {:?}", br, r),
@@ -86,6 +86,6 @@ where
             },
         };
 
-        tcx.replace_escaping_bound_vars_uncached(value, delegate)
+        tcx.replace_escaping_bound_vars_uncached(value, &mut delegate)
     }
 }
