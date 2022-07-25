@@ -27,13 +27,13 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct FreeRegionMap<'tcx> {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     //
     // Invariant: only free regions like `'x` or `'static` are stored
     // in this relation, not scopes.
-    relation: TransitiveRelation<Region<'tcx>>,
+    pub(crate) relation: TransitiveRelation<Region<'tcx>>,
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
@@ -43,15 +43,6 @@ impl<'tcx> FreeRegionMap<'tcx> {
 
     pub fn is_empty(&self) -> bool {
         self.relation.is_empty()
-    }
-
-    // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
-    // (with the exception that `'static: 'x` is not notable)
-    pub fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
-        debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
-        if sub.is_free_or_static() && sup.is_free() {
-            self.relation.add(sub, sup)
-        }
     }
 
     /// Tests whether `r_a <= r_b`.

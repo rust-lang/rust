@@ -104,8 +104,9 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
             return;
         }
 
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
+        let mut outlives_environment = OutlivesEnvironment::builder(param_env);
         outlives_environment.add_implied_bounds(infcx, assumed_wf_types, body_id);
+        let outlives_environment = outlives_environment.build();
         infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
     })
 }
@@ -694,8 +695,9 @@ fn resolve_regions_with_wf_tys<'tcx>(
     // region constraints get added and solved there and we need to test each
     // call individually.
     tcx.infer_ctxt().enter(|infcx| {
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
+        let mut outlives_environment = OutlivesEnvironment::builder(param_env);
         outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id);
+        let outlives_environment = outlives_environment.build();
         let region_bound_pairs = outlives_environment.region_bound_pairs();
 
         add_constraints(&infcx, region_bound_pairs);

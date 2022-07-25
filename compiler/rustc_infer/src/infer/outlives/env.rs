@@ -2,6 +2,7 @@ use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
 
 use super::explicit_outlives_bounds;
@@ -51,23 +52,39 @@ pub struct OutlivesEnvironment<'tcx> {
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
+/// Builder of OutlivesEnvironment. Use this structure if you need to add more outlives
+/// bounds than `explicit_outlives_bounds(param_env)`.
+pub struct OutlivesEnvironmentBuilder<'tcx> {
+    pub param_env: ty::ParamEnv<'tcx>,
+    region_relation: TransitiveRelationBuilder<Region<'tcx>>,
+
+    region_bound_pairs: RegionBoundPairs<'tcx>,
+}
+
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
 pub type RegionBoundPairs<'tcx> =
     FxIndexSet<ty::OutlivesPredicate<GenericKind<'tcx>, Region<'tcx>>>;
 
-impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
-    pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
-        let mut env = OutlivesEnvironment {
+impl<'tcx> OutlivesEnvironment<'tcx> {
+    /// Create a builder using `ParamEnv` and add explicit outlives bounds into it.
+    pub fn builder(param_env: ty::ParamEnv<'tcx>) -> OutlivesEnvironmentBuilder<'tcx> {
+        let mut builder = OutlivesEnvironmentBuilder {
             param_env,
-            free_region_map: Default::default(),
+            region_relation: Default::default(),
             region_bound_pairs: Default::default(),
         };
 
-        env.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
+        builder.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
 
-        env
+        builder
+    }
+
+    #[inline]
+    /// Create a new `OutlivesEnvironment` without extra outlives bounds.
+    pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
+        Self::builder(param_env).build()
     }
 
     /// Borrows current value of the `free_region_map`.
@@ -78,6 +95,26 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     /// Borrows current `region_bound_pairs`.
     pub fn region_bound_pairs(&self) -> &RegionBoundPairs<'tcx> {
         &self.region_bound_pairs
+    }
+}
+
+impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
+    #[inline]
+    pub fn build(self) -> OutlivesEnvironment<'tcx> {
+        OutlivesEnvironment {
+            param_env: self.param_env,
+            free_region_map: FreeRegionMap { relation: self.region_relation.freeze() },
+            region_bound_pairs: self.region_bound_pairs,
+        }
+    }
+
+    // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
+    // (with the exception that `'static: 'x` is not notable)
+    fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
+        debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
+        if sub.is_free_or_static() && sup.is_free() {
+            self.region_relation.add(sub, sup)
+        }
     }
 
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
@@ -122,7 +159,7 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
                         // system to be more general and to make use
                         // of *every* relationship that arises here,
                         // but presently we do not.)
-                        self.free_region_map.relate_regions(r_a, r_b);
+                        self.relate_regions(r_a, r_b);
                     }
                 }
             }

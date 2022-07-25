@@ -166,8 +166,7 @@ fn get_impl_substs<'tcx>(
             return None;
         };
         Some((impl1_substs, impl2_substs))
-    })
-}
+    })}
 
 /// Returns a list of all of the unconstrained subst of the given impl.
 ///

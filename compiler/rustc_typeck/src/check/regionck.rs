@@ -1,7 +1,7 @@
 use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_infer::infer::outlives::env::OutlivesEnvironmentBuilder;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::Ty;
 
@@ -14,7 +14,7 @@ pub(crate) trait OutlivesEnvironmentExt<'tcx> {
     );
 }
 
-impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
+impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironmentBuilder<'tcx> {
     /// This method adds "implied bounds" into the outlives environment.
     /// Implied bounds are outlives relationships that we can deduce
     /// on the basis that certain types must be well-formed -- these are
