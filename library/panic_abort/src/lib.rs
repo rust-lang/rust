@@ -37,12 +37,11 @@ pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
     abort();
 
     cfg_if::cfg_if! {
-        if #[cfg(unix)] {
+        if #[cfg(any(unix, target_os = "solid_asp3"))] {
             unsafe fn abort() -> ! {
                 libc::abort();
             }
         } else if #[cfg(any(target_os = "hermit",
-                            target_os = "solid_asp3",
                             all(target_vendor = "fortanix", target_env = "sgx")
         ))] {
             unsafe fn abort() -> ! {
