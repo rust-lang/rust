@@ -2356,10 +2356,7 @@ impl<'a> Parser<'a> {
         let is_in_a_let_chains_context_but_nested_in_other_expr = self.let_expr_allowed
             && !matches!(
                 self.prev_token.kind,
-                TokenKind::AndAnd
-                    | TokenKind::CloseDelim(Delimiter::Brace)
-                    | TokenKind::Ident(kw::If, _)
-                    | TokenKind::Ident(kw::While, _)
+                TokenKind::AndAnd | TokenKind::Ident(kw::If, _) | TokenKind::Ident(kw::While, _)
             );
         if !self.let_expr_allowed || is_in_a_let_chains_context_but_nested_in_other_expr {
             self.struct_span_err(self.token.span, "expected expression, found `let` statement")
