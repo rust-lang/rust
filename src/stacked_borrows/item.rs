@@ -22,7 +22,7 @@ impl Item {
         assert!(tag.0.get() <= TAG_MASK);
         let packed_tag = tag.0.get();
         let packed_perm = perm.to_bits() << PERM_SHIFT;
-        let packed_protected = (protected as u64) << PROTECTED_SHIFT;
+        let packed_protected = u64::from(protected) << PROTECTED_SHIFT;
 
         let new = Self(packed_tag | packed_perm | packed_protected);
 

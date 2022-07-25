@@ -73,7 +73,7 @@ impl<'tcx> TlsData<'tcx> {
         self.keys.try_insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
 
-        if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits() as u128) {
+        if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits()) {
             throw_unsup_format!("we ran out of TLS key space");
         }
         Ok(new_key)

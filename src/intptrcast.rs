@@ -230,6 +230,7 @@ impl<'mir, 'tcx> GlobalStateInner {
 
         // Wrapping "addr - base_addr"
         let dl = ecx.data_layout();
+        #[allow(clippy::cast_possible_wrap)] // we want to wrap here
         let neg_base_addr = (base_addr as i64).wrapping_neg();
         Some((
             alloc_id,

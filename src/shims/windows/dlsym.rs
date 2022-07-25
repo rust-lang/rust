@@ -84,7 +84,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     } else {
                         io::stderr().write(buf_cont)
                     };
-                    res.ok().map(|n| n as u32)
+                    // We write at most `n` bytes, which is a `u32`, so we cannot have written more than that.
+                    res.ok().map(|n| u32::try_from(n).unwrap())
                 } else {
                     throw_unsup_format!(
                         "on Windows, writing to anything except stdout/stderr is not supported"
@@ -102,7 +103,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Return whether this was a success. >= 0 is success.
                 // For the error code we arbitrarily pick 0xC0000185, STATUS_IO_DEVICE_ERROR.
                 this.write_scalar(
-                    Scalar::from_i32(if written.is_some() { 0 } else { 0xC0000185u32 as i32 }),
+                    Scalar::from_u32(if written.is_some() { 0 } else { 0xC0000185u32 }),
                     dest,
                 )?;
             }

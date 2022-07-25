@@ -202,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let env_block_ptr = this.read_pointer(env_block_op)?;
         let result = this.deallocate_ptr(env_block_ptr, None, MiriMemoryKind::Runtime.into());
         // If the function succeeds, the return value is nonzero.
-        Ok(result.is_ok() as i32)
+        Ok(i32::from(result.is_ok()))
     }
 
     fn setenv(
@@ -459,7 +459,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // The reason we need to do this wacky of a conversion is because
         // `libc::getpid` returns an i32, however, `std::process::id()` return an u32.
         // So we un-do the conversion that stdlib does and turn it back into an i32.
-
+        #[allow(clippy::cast_possible_wrap)]
         Ok(std::process::id() as i32)
     }
 

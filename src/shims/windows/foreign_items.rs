@@ -116,7 +116,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Initialize with `0`.
                 this.write_bytes_ptr(
                     system_info.ptr,
-                    iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
+                    iter::repeat(0u8).take(system_info.layout.size.bytes_usize()),
                 )?;
                 // Set selected fields.
                 let word_layout = this.machine.layouts.u16;

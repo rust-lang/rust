@@ -117,10 +117,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
                     err_ub_format!("overflow computing total size of `{intrinsic_name}`")
                 })?;
-                this.write_bytes_ptr(
-                    ptr,
-                    iter::repeat(val_byte).take(byte_count.bytes() as usize),
-                )?;
+                this.write_bytes_ptr(ptr, iter::repeat(val_byte).take(byte_count.bytes_usize()))?;
             }
 
             // Floating-point operations
