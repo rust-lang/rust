@@ -1135,6 +1135,20 @@ fn codegen_regular_intrinsic_call<'tcx>(
             // FIXME implement black_box semantics
             ret.write_cvalue(fx, a);
         };
+
+        // FIXME implement variadics in cranelift
+        va_copy, (o _dest, o _src) {
+            fx.tcx.sess.span_fatal(
+                source_info.span,
+                "Defining variadic functions is not yet supported by Cranelift",
+            );
+        };
+        va_arg | va_end, (o _valist) {
+            fx.tcx.sess.span_fatal(
+                source_info.span,
+                "Defining variadic functions is not yet supported by Cranelift",
+            );
+        };
     }
 
     let ret_block = fx.get_block(destination.unwrap());

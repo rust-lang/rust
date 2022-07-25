@@ -193,6 +193,15 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     }
 
     let fn_abi = fx.fn_abi.take().unwrap();
+
+    // FIXME implement variadics in cranelift
+    if fn_abi.c_variadic {
+        fx.tcx.sess.span_fatal(
+            fx.mir.span,
+            "Defining variadic functions is not yet supported by Cranelift",
+        );
+    }
+
     let mut arg_abis_iter = fn_abi.args.iter();
 
     let func_params = fx
