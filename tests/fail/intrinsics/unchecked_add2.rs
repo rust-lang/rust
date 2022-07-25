@@ -1,7 +1,6 @@
-#![feature(core_intrinsics)]
+#![feature(unchecked_math)]
+
 fn main() {
     // MIN overflow
-    unsafe {
-        std::intrinsics::unchecked_add(-30000i16, -8000); //~ ERROR: overflow executing `unchecked_add`
-    }
+    let _val = unsafe { (-30000i16).unchecked_add(-8000) }; //~ ERROR: overflow executing `unchecked_add`
 }

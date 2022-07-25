@@ -4,6 +4,7 @@
 
 #![feature(core_intrinsics)]
 
+use std::ptr;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering::*;
 use std::thread::spawn;
@@ -30,7 +31,7 @@ pub fn main() {
         let x_ptr = x as *const AtomicU32 as *const u32;
         let x_split = split_u32_ptr(x_ptr);
         unsafe {
-            let hi = &(*x_split)[0] as *const u16;
+            let hi = ptr::addr_of!((*x_split)[0]);
             std::intrinsics::atomic_load_relaxed(hi); //~ ERROR: imperfectly overlapping
         }
     });

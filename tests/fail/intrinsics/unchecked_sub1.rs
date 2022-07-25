@@ -1,7 +1,5 @@
-#![feature(core_intrinsics)]
+#![feature(unchecked_math)]
 fn main() {
     // MIN overflow
-    unsafe {
-        std::intrinsics::unchecked_sub(14u32, 22); //~ ERROR: overflow executing `unchecked_sub`
-    }
+    let _val = unsafe { 14u32.unchecked_sub(22) }; //~ ERROR: overflow executing `unchecked_sub`
 }

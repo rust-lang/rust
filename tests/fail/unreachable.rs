@@ -1,4 +1,3 @@
-//@error-pattern: entering unreachable code
 fn main() {
-    unsafe { std::hint::unreachable_unchecked() }
+    unsafe { std::hint::unreachable_unchecked() } //~ERROR: entering unreachable code
 }

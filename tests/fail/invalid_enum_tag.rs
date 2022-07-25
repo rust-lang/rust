@@ -2,8 +2,6 @@
 // Make sure we find these even with many checks disabled.
 //@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
-//@error-pattern: enum value has invalid tag
-
 use std::mem;
 
 #[repr(C)]
@@ -16,5 +14,5 @@ pub enum Foo {
 
 fn main() {
     let f = unsafe { std::mem::transmute::<i32, Foo>(42) };
-    let _val = mem::discriminant(&f);
+    let _val = mem::discriminant(&f); //~ERROR: enum value has invalid tag
 }

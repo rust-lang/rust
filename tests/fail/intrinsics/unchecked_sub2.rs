@@ -1,7 +1,5 @@
-#![feature(core_intrinsics)]
+#![feature(unchecked_math)]
 fn main() {
     // MAX overflow
-    unsafe {
-        std::intrinsics::unchecked_sub(30000i16, -7000); //~ ERROR: overflow executing `unchecked_sub`
-    }
+    let _val = unsafe { 30000i16.unchecked_sub(-7000) }; //~ ERROR: overflow executing `unchecked_sub`
 }

@@ -1,18 +1,13 @@
 error: Undefined Behavior: entering unreachable code
-  --> RUSTLIB/core/src/hint.rs:LL:CC
+  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
    |
-LL |     unsafe { intrinsics::unreachable() }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
+LL |             std::hint::unreachable_unchecked();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: backtrace:
-   = note: inside `std::hint::unreachable_unchecked` at RUSTLIB/core/src/hint.rs:LL:CC
-note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
-  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
-   |
-LL |             std::hint::unreachable_unchecked();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
 note: inside `main` at $DIR/cpp20_rwc_syncs.rs:LL:CC
   --> $DIR/cpp20_rwc_syncs.rs:LL:CC
    |

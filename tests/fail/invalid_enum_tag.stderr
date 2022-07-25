@@ -1,18 +1,13 @@
 error: Undefined Behavior: enum value has invalid tag: $HEX
-  --> RUSTLIB/core/src/mem/mod.rs:LL:CC
+  --> $DIR/invalid_enum_tag.rs:LL:CC
    |
-LL |     Discriminant(intrinsics::discriminant_value(v))
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ enum value has invalid tag: $HEX
+LL |     let _val = mem::discriminant(&f);
+   |                ^^^^^^^^^^^^^^^^^^^^^ enum value has invalid tag: $HEX
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: backtrace:
-   = note: inside `std::mem::discriminant::<Foo>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
-note: inside `main` at $DIR/invalid_enum_tag.rs:LL:CC
-  --> $DIR/invalid_enum_tag.rs:LL:CC
-   |
-LL |     let _val = mem::discriminant(&f);
-   |                ^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `main` at $DIR/invalid_enum_tag.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
