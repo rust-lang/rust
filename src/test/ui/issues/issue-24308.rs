@@ -4,7 +4,7 @@ pub trait Foo {
     fn method2();
 }
 
-struct Slice<'a, T: 'a>(&'a [T]);
+struct Slice<'a, T: 'a>(#[allow(unused_tuple_struct_fields)] &'a [T]);
 
 impl<'a, T: 'a> Foo for Slice<'a, T> {
     fn method2() {
