@@ -36,8 +36,8 @@ fn main() {
             match new_lint::create(
                 matches.get_one::<String>("pass"),
                 matches.get_one::<String>("name"),
-                matches.get_one::<String>("category"),
-                matches.get_one::<String>("type"),
+                matches.get_one::<String>("category").map(String::as_str),
+                matches.get_one::<String>("type").map(String::as_str),
                 matches.contains_id("msrv"),
             ) {
                 Ok(_) => update_lints::update(update_lints::UpdateMode::Change),

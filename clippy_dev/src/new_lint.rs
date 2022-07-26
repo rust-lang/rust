@@ -38,15 +38,20 @@ impl<T> Context for io::Result<T> {
 pub fn create(
     pass: Option<&String>,
     lint_name: Option<&String>,
-    category: Option<&String>,
-    ty: Option<&String>,
+    category: Option<&str>,
+    mut ty: Option<&str>,
     msrv: bool,
 ) -> io::Result<()> {
+    if category == Some("cargo") && ty.is_none() {
+        // `cargo` is a special category, these lints should always be in `clippy_lints/src/cargo`
+        ty = Some("cargo");
+    }
+
     let lint = LintData {
         pass: pass.map_or("", String::as_str),
         name: lint_name.expect("`name` argument is validated by clap"),
         category: category.expect("`category` argument is validated by clap"),
-        ty: ty.map(String::as_str),
+        ty,
         project_root: clippy_project_root(),
     };
 
@@ -95,7 +100,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
         create_project_layout(lint.name, &test_dir, "fail", "Content that triggers the lint goes here")?;
         create_project_layout(lint.name, &test_dir, "pass", "This file should not trigger the lint")?;
 
-        println!("Generated test directories: `{}`, `{}`", format!("{}/pass", relative_test_dir), format!("{}/fail", relative_test_dir));
+        println!("Generated test directories: `{relative_test_dir}/pass`, `{relative_test_dir}/fail`");
     } else {
         let test_path = format!("tests/ui/{}.rs", lint.name);
         let test_contents = get_test_file_contents(lint.name, None);
@@ -341,7 +346,7 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
             "Lints of type `cargo` must have the `cargo` category"
         ),
         _ if lint.category == "cargo" => panic!("Lints of category `cargo` must have the `cargo` type"),
-        _ => {}
+        _ => {},
     }
 
     let ty_dir = lint.project_root.join(format!("clippy_lints/src/{}", ty));
@@ -405,7 +410,10 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
 
     write_file(lint_file_path.as_path(), lint_file_contents)?;
     println!("Generated lint file: `clippy_lints/src/{}/{}.rs`", ty, lint.name);
-    println!("Be sure to add a call to `{}::check` in `clippy_lints/src/{}/mod.rs`!", lint.name, ty);
+    println!(
+        "Be sure to add a call to `{}::check` in `clippy_lints/src/{}/mod.rs`!",
+        lint.name, ty
+    );
 
     Ok(())
 }
