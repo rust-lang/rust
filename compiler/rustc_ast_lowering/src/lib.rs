@@ -1877,7 +1877,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let context = ImplTraitContext::ReturnPositionOpaqueTy {
                     origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                 };
-                self.lower_ty(ty, context, true)
+                self.lower_ty(ty, context, false)
             }
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
