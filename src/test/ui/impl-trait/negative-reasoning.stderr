@@ -7,7 +7,7 @@ LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
 LL | impl AnotherTrait for D<OpaqueType> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<OpaqueType>`
    |
-   = note: downstream crates may implement trait `std::fmt::Debug` for type `OpaqueType`
+   = note: upstream crates may add a new impl of trait `std::fmt::Debug` for type `OpaqueType` in future versions
 
 error: cannot implement trait on type alias impl trait
   --> $DIR/negative-reasoning.rs:19:25
