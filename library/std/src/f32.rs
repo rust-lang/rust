@@ -958,4 +958,24 @@ impl f32 {
     pub fn atanh(self) -> f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
+
+    /// Gamma function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_gamma)]
+    /// let x = 5.0f32;
+    ///
+    /// let abs_difference = (x.gamma() - 24.0).abs();
+    ///
+    /// assert!(abs_difference <= f32::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_gamma", issue = "none")]
+    #[inline]
+    pub fn gamma(self) -> f32 {
+        unsafe { cmath::tgammaf(self) }
+    }
 }

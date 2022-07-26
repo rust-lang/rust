@@ -984,4 +984,24 @@ impl f64 {
             Self::NAN // log(-Inf) = NaN
         }
     }
+
+    /// Gamma function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_gamma)]
+    /// let x = 5.0f64;
+    ///
+    /// let abs_difference = (x.gamma() - 24.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_gamma", issue = "none")]
+    #[inline]
+    pub fn gamma(self) -> f64 {
+        unsafe { cmath::tgamma(self) }
+    }
 }

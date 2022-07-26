@@ -653,6 +653,21 @@ fn test_atanh() {
 }
 
 #[test]
+fn test_gamma() {
+    assert_eq!(0.0f32.gamma(), f32::INFINITY);
+    assert_eq!(1.0f32.gamma(), 1.0f32);
+    assert_eq!(2.0f32.gamma(), 1.0f32);
+    assert_eq!(3.0f32.gamma(), 2.0f32);
+    assert_eq!(4.0f32.gamma(), 6.0f32);
+    assert_eq!(5.0f32.gamma(), 24.0f32);
+
+    assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt());
+    assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt());
+
+    assert!((-1.0f32).gamma().is_nan());
+}
+
+#[test]
 fn test_real_consts() {
     use super::consts;
 
