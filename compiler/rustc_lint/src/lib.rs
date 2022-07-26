@@ -511,6 +511,10 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_pass(|| Box::new(Diagnostics));
     store.register_lints(&PassByValue::get_lints());
     store.register_late_pass(|| Box::new(PassByValue));
+    // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
+    // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
+    // these lints will trigger all of the time - change this once migration to diagnostic structs
+    // and translation is completed
     store.register_group(
         false,
         "rustc::internal",
