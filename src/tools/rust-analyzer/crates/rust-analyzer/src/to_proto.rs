@@ -53,7 +53,8 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Macro
         | SymbolKind::BuiltinAttr
         | SymbolKind::Attribute
-        | SymbolKind::Derive => lsp_types::SymbolKind::FUNCTION,
+        | SymbolKind::Derive
+        | SymbolKind::DeriveHelper => lsp_types::SymbolKind::FUNCTION,
         SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::MODULE,
         SymbolKind::TypeAlias | SymbolKind::TypeParam | SymbolKind::SelfType => {
             lsp_types::SymbolKind::TYPE_PARAMETER
@@ -117,6 +118,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
             SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Derive => lsp_types::CompletionItemKind::FUNCTION,
+            SymbolKind::DeriveHelper => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Enum => lsp_types::CompletionItemKind::ENUM,
             SymbolKind::Field => lsp_types::CompletionItemKind::FIELD,
             SymbolKind::Function => lsp_types::CompletionItemKind::FUNCTION,
@@ -561,6 +563,7 @@ fn semantic_token_type_and_modifiers(
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Attribute => semantic_tokens::ATTRIBUTE,
             SymbolKind::Derive => semantic_tokens::DERIVE,
+            SymbolKind::DeriveHelper => semantic_tokens::DERIVE_HELPER,
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
             SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,

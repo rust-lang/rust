@@ -370,6 +370,7 @@ pub(super) fn definition(
         // FIXME: We should be able to show more info about these
         Definition::BuiltinAttr(it) => return render_builtin_attr(db, it),
         Definition::ToolModule(it) => return Some(Markup::fenced_block(&it.name(db))),
+        Definition::DeriveHelper(it) => (format!("derive_helper {}", it.name(db)), None),
     };
 
     let docs = match config.documentation {

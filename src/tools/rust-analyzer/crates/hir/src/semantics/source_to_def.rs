@@ -247,6 +247,7 @@ impl SourceToDefCtx<'_, '_> {
         map[keys::ATTR_MACRO_CALL].get(&src.value).copied()
     }
 
+    /// (AttrId, derive attribute call id, derive call ids)
     pub(super) fn attr_to_derive_macro_call(
         &mut self,
         item: InFile<&ast::Adt>,
@@ -257,6 +258,7 @@ impl SourceToDefCtx<'_, '_> {
             .get(&src.value)
             .map(|&(attr_id, call_id, ref ids)| (attr_id, call_id, &**ids))
     }
+
     pub(super) fn has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
         self.dyn_map(adt).as_ref().map_or(false, |map| !map[keys::DERIVE_MACRO_CALL].is_empty())
     }

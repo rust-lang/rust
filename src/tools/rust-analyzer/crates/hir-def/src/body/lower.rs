@@ -96,6 +96,7 @@ pub(super) fn lower(
         expander,
         name_to_pat_grouping: Default::default(),
         is_lowering_inside_or_pat: false,
+        is_lowering_assignee_expr: false,
     }
     .collect(params, body)
 }
@@ -109,6 +110,7 @@ struct ExprCollector<'a> {
     // a poor-mans union-find?
     name_to_pat_grouping: FxHashMap<Name, Vec<PatId>>,
     is_lowering_inside_or_pat: bool,
+    is_lowering_assignee_expr: bool,
 }
 
 impl ExprCollector<'_> {
@@ -283,7 +285,10 @@ impl ExprCollector<'_> {
                 } else {
                     Box::default()
                 };
-                self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::Call { callee, args, is_assignee_expr: self.is_lowering_assignee_expr },
+                    syntax_ptr,
+                )
             }
             ast::Expr::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.receiver());
@@ -359,6 +364,7 @@ impl ExprCollector<'_> {
             ast::Expr::RecordExpr(e) => {
                 let path =
                     e.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
+                let is_assignee_expr = self.is_lowering_assignee_expr;
                 let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
@@ -378,9 +384,16 @@ impl ExprCollector<'_> {
                         })
                         .collect();
                     let spread = nfl.spread().map(|s| self.collect_expr(s));
-                    Expr::RecordLit { path, fields, spread }
+                    let ellipsis = nfl.dotdot_token().is_some();
+                    Expr::RecordLit { path, fields, spread, ellipsis, is_assignee_expr }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: None }
+                    Expr::RecordLit {
+                        path,
+                        fields: Box::default(),
+                        spread: None,
+                        ellipsis: false,
+                        is_assignee_expr,
+                    }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)
@@ -458,14 +471,21 @@ impl ExprCollector<'_> {
                 )
             }
             ast::Expr::BinExpr(e) => {
-                let lhs = self.collect_expr_opt(e.lhs());
-                let rhs = self.collect_expr_opt(e.rhs());
                 let op = e.op_kind();
+                if let Some(ast::BinaryOp::Assignment { op: None }) = op {
+                    self.is_lowering_assignee_expr = true;
+                }
+                let lhs = self.collect_expr_opt(e.lhs());
+                self.is_lowering_assignee_expr = false;
+                let rhs = self.collect_expr_opt(e.rhs());
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {
                 let exprs = e.fields().map(|expr| self.collect_expr(expr)).collect();
-                self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
+                self.alloc_expr(
+                    Expr::Tuple { exprs, is_assignee_expr: self.is_lowering_assignee_expr },
+                    syntax_ptr,
+                )
             }
             ast::Expr::BoxExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
@@ -477,8 +497,14 @@ impl ExprCollector<'_> {
 
                 match kind {
                     ArrayExprKind::ElementList(e) => {
-                        let exprs = e.map(|expr| self.collect_expr(expr)).collect();
-                        self.alloc_expr(Expr::Array(Array::ElementList(exprs)), syntax_ptr)
+                        let elements = e.map(|expr| self.collect_expr(expr)).collect();
+                        self.alloc_expr(
+                            Expr::Array(Array::ElementList {
+                                elements,
+                                is_assignee_expr: self.is_lowering_assignee_expr,
+                            }),
+                            syntax_ptr,
+                        )
                     }
                     ArrayExprKind::Repeat { initializer, repeat } => {
                         let initializer = self.collect_expr_opt(initializer);

@@ -29,9 +29,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, BindingMode, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
-    HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path,
-    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Access, BindingMode, BuiltinAttr, Callable, ConstParam, Crate, DeriveHelper, Field, Function,
+    HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef,
+    Name, Path, ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +47,7 @@ pub enum PathResolution {
     SelfType(Impl),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
+    DeriveHelper(DeriveHelper),
 }
 
 impl PathResolution {
@@ -71,6 +72,7 @@ impl PathResolution {
             PathResolution::BuiltinAttr(_)
             | PathResolution::ToolModule(_)
             | PathResolution::Local(_)
+            | PathResolution::DeriveHelper(_)
             | PathResolution::ConstParam(_) => None,
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
@@ -733,6 +735,8 @@ impl<'db> SemanticsImpl<'db> {
             Some(it) => it,
             None => return,
         };
+        let def_map = sa.resolver.def_map();
+
         let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
@@ -764,7 +768,7 @@ impl<'db> SemanticsImpl<'db> {
         while let Some(token) = stack.pop() {
             self.db.unwind_if_cancelled();
             let was_not_remapped = (|| {
-                // are we inside an attribute macro call
+                // First expand into attribute invocations
                 let containing_attribute_macro_call = self.with_ctx(|ctx| {
                     token.value.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
                         if item.attrs().next().is_none() {
@@ -784,53 +788,19 @@ impl<'db> SemanticsImpl<'db> {
                     );
                 }
 
-                // or are we inside a function-like macro call
-                if let Some(tt) =
-                    // FIXME replace map.while_some with take_while once stable
-                    token
-                        .value
-                        .parent_ancestors()
-                        .map(ast::TokenTree::cast)
-                        .while_some()
-                        .last()
-                {
-                    let parent = tt.syntax().parent()?;
-                    // check for derive attribute here
-                    let macro_call = match_ast! {
-                        match parent {
-                            ast::MacroCall(mcall) => mcall,
-                            // attribute we failed expansion for earlier, this might be a derive invocation
-                            // so try downmapping the token into the pseudo derive expansion
-                            // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
-                            ast::Meta(meta) => {
-                                let attr = meta.parent_attr()?;
-                                let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
-                                let call_id = self.with_ctx(|ctx| {
-                                    let (_, call_id, _) = ctx.attr_to_derive_macro_call(
-                                        token.with_value(&adt),
-                                        token.with_value(attr),
-                                    )?;
-                                    Some(call_id)
-                                })?;
-                                let file_id = call_id.as_file();
-                                return process_expansion_for_token(
-                                    &mut stack,
-                                    file_id,
-                                    Some(adt.into()),
-                                    token.as_ref(),
-                                );
-                            },
-                            _ => return None,
-                        }
-                    };
+                // Then check for token trees, that means we are either in a function-like macro or
+                // secondary attribute inputs
+                let tt = token.value.parent_ancestors().map_while(ast::TokenTree::cast).last()?;
+                let parent = tt.syntax().parent()?;
 
-                    if tt.left_delimiter_token().map_or(false, |it| it == token.value) {
-                        return None;
-                    }
-                    if tt.right_delimiter_token().map_or(false, |it| it == token.value) {
-                        return None;
-                    }
+                if tt.left_delimiter_token().map_or(false, |it| it == token.value) {
+                    return None;
+                }
+                if tt.right_delimiter_token().map_or(false, |it| it == token.value) {
+                    return None;
+                }
 
+                if let Some(macro_call) = ast::MacroCall::cast(parent.clone()) {
                     let mcall = token.with_value(macro_call);
                     let file_id = match mcache.get(&mcall) {
                         Some(&it) => it,
@@ -840,11 +810,77 @@ impl<'db> SemanticsImpl<'db> {
                             it
                         }
                     };
-                    return process_expansion_for_token(&mut stack, file_id, None, token.as_ref());
-                }
+                    process_expansion_for_token(&mut stack, file_id, None, token.as_ref())
+                } else if let Some(meta) = ast::Meta::cast(parent.clone()) {
+                    // attribute we failed expansion for earlier, this might be a derive invocation
+                    // or derive helper attribute
+                    let attr = meta.parent_attr()?;
 
-                // outside of a macro invocation so this is a "final" token
-                None
+                    let adt = if let Some(adt) = attr.syntax().parent().and_then(ast::Adt::cast) {
+                        // this might be a derive, or a derive helper on an ADT
+                        let derive_call = self.with_ctx(|ctx| {
+                            // so try downmapping the token into the pseudo derive expansion
+                            // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
+                            ctx.attr_to_derive_macro_call(
+                                token.with_value(&adt),
+                                token.with_value(attr.clone()),
+                            )
+                            .map(|(_, call_id, _)| call_id)
+                        });
+
+                        match derive_call {
+                            Some(call_id) => {
+                                // resolved to a derive
+                                let file_id = call_id.as_file();
+                                return process_expansion_for_token(
+                                    &mut stack,
+                                    file_id,
+                                    Some(adt.into()),
+                                    token.as_ref(),
+                                );
+                            }
+                            None => Some(adt),
+                        }
+                    } else {
+                        // Otherwise this could be a derive helper on a variant or field
+                        if let Some(field) = attr.syntax().parent().and_then(ast::RecordField::cast)
+                        {
+                            field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
+                        } else if let Some(field) =
+                            attr.syntax().parent().and_then(ast::TupleField::cast)
+                        {
+                            field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
+                        } else if let Some(variant) =
+                            attr.syntax().parent().and_then(ast::Variant::cast)
+                        {
+                            variant.syntax().ancestors().nth(2).and_then(ast::Adt::cast)
+                        } else {
+                            None
+                        }
+                    }?;
+                    if !self.with_ctx(|ctx| ctx.has_derives(InFile::new(token.file_id, &adt))) {
+                        return None;
+                    }
+                    // Not an attribute, nor a derive, so it's either a builtin or a derive helper
+                    // Try to resolve to a derive helper and downmap
+                    let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
+                    let id = self.db.ast_id_map(token.file_id).ast_id(&adt);
+                    let helpers =
+                        def_map.derive_helpers_in_scope(InFile::new(token.file_id, id))?;
+                    let item = Some(adt.into());
+                    let mut res = None;
+                    for (.., derive) in helpers.iter().filter(|(helper, ..)| *helper == attr_name) {
+                        res = res.or(process_expansion_for_token(
+                            &mut stack,
+                            derive.as_file(),
+                            item.clone(),
+                            token.as_ref(),
+                        ));
+                    }
+                    res
+                } else {
+                    None
+                }
             })()
             .is_none();
 
