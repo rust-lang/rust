@@ -330,7 +330,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
             ty::PredicateKind::Trait(pred) => bound_predicate.rebind(pred).clean(cx),
             ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
-            ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
+            ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
             ty::PredicateKind::ConstEvaluatable(..) => None,
             ty::PredicateKind::WellFormed(..) => None,
 
@@ -418,13 +418,14 @@ impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, WherePredicate> for ty::ProjectionPredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> WherePredicate {
-        let ty::ProjectionPredicate { projection_ty, term } = self;
-        WherePredicate::EqPredicate {
-            lhs: clean_projection(*projection_ty, cx, None),
-            rhs: term.clean(cx),
-        }
+fn clean_projection_predicate<'tcx>(
+    pred: ty::ProjectionPredicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> WherePredicate {
+    let ty::ProjectionPredicate { projection_ty, term } = pred;
+    WherePredicate::EqPredicate {
+        lhs: clean_projection(projection_ty, cx, None),
+        rhs: term.clean(cx),
     }
 }
 
