@@ -10,16 +10,6 @@ note: the trait `PartialEq<_>` is implemented for `fn()`, but that implementatio
    |
 LL |     unsafe { x == y }
    |                ^^
-   = help: the following other types implement trait `PartialEq<Rhs>`:
-             extern "C" fn() -> Ret
-             extern "C" fn(A, B) -> Ret
-             extern "C" fn(A, B, ...) -> Ret
-             extern "C" fn(A, B, C) -> Ret
-             extern "C" fn(A, B, C, ...) -> Ret
-             extern "C" fn(A, B, C, D) -> Ret
-             extern "C" fn(A, B, C, D, ...) -> Ret
-             extern "C" fn(A, B, C, D, E) -> Ret
-           and 68 others
 
 error: aborting due to previous error
 

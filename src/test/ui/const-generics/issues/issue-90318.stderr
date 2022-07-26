@@ -10,7 +10,6 @@ note: the trait `PartialEq<_>` is implemented for `TypeId`, but that implementat
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |                            ^^
-   = help: the trait `PartialEq` is implemented for `TypeId`
 
 error[E0277]: can't compare `TypeId` with `_` in const contexts
   --> $DIR/issue-90318.rs:21:28
@@ -24,7 +23,6 @@ note: the trait `PartialEq<_>` is implemented for `TypeId`, but that implementat
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |                            ^^
-   = help: the trait `PartialEq` is implemented for `TypeId`
 
 error: aborting due to 2 previous errors
 

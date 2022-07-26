@@ -829,6 +829,14 @@ impl<'tcx> TraitPredicate<'tcx> {
     pub fn is_const_if_const(self) -> bool {
         self.constness == BoundConstness::ConstIfConst
     }
+
+    pub fn is_constness_satisfied_by(self, constness: hir::Constness) -> bool {
+        match (self.constness, constness) {
+            (BoundConstness::NotConst, _)
+            | (BoundConstness::ConstIfConst, hir::Constness::Const) => true,
+            (BoundConstness::ConstIfConst, hir::Constness::NotConst) => false,
+        }
+    }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {

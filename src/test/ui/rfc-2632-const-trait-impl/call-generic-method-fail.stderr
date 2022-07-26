@@ -9,13 +9,7 @@ note: the trait `PartialEq<_>` is implemented for `T`, but that implementation i
    |
 LL |     *t == *t
    |        ^^
-   = help: the following other types implement trait `PartialEq<Rhs>`:
-             <&A as PartialEq<&B>>
-             <&A as PartialEq<&mut B>>
-             <&mut A as PartialEq<&B>>
-             <&mut A as PartialEq<&mut B>>
-             <*const T as PartialEq>
-             <*mut T as PartialEq>
+   = help: the trait `PartialEq<&B>` is implemented for `&A`
 
 error: aborting due to previous error
 
