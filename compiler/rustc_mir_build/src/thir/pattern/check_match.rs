@@ -951,7 +951,7 @@ fn adt_defined_here<'p, 'tcx>(
         let mut span: MultiSpan =
             if spans.is_empty() { def_span.into() } else { spans.clone().into() };
 
-        span.push_span_label(def_span, String::new());
+        span.push_span_label(def_span, "");
         for pat in spans {
             span.push_span_label(pat, "not covered");
         }

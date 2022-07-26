@@ -382,7 +382,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id: DefId,
             generic_args: &'a GenericArgs<'a>,
             span: Span,
-            missing_type_params: Vec<String>,
+            missing_type_params: Vec<Symbol>,
             inferred_params: Vec<Span>,
             infer_args: bool,
             is_object: bool,
@@ -514,7 +514,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // defaults. This will lead to an ICE if we are not
                             // careful!
                             if self.default_needs_object_self(param) {
-                                self.missing_type_params.push(param.name.to_string());
+                                self.missing_type_params.push(param.name);
                                 tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
