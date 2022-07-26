@@ -196,6 +196,8 @@ impl TryToNav for Definition {
             Definition::BuiltinType(_) => None,
             Definition::ToolModule(_) => None,
             Definition::BuiltinAttr(_) => None,
+            // FIXME: The focus range should be set to the helper declaration
+            Definition::DeriveHelper(it) => it.derive().try_to_nav(db),
         }
     }
 }

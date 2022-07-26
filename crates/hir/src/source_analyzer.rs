@@ -35,6 +35,7 @@ use hir_ty::{
     method_resolution, Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution,
     TyExt, TyKind, TyLoweringContext,
 };
+use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
     ast::{self, AstNode},
@@ -43,8 +44,8 @@ use syntax::{
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
-    BuiltinType, Callable, Const, Field, Function, Local, Macro, ModuleDef, Static, Struct,
-    ToolModule, Trait, Type, TypeAlias, Variant,
+    BuiltinType, Callable, Const, DeriveHelper, Field, Function, Local, Macro, ModuleDef, Static,
+    Struct, ToolModule, Trait, Type, TypeAlias, Variant,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -429,19 +430,21 @@ impl SourceAnalyzer {
             }
         }
 
-        let is_path_of_attr = path
+        let meta_path = path
             .syntax()
             .ancestors()
-            .map(|it| it.kind())
-            .take_while(|&kind| ast::Path::can_cast(kind) || ast::Meta::can_cast(kind))
+            .take_while(|it| {
+                let kind = it.kind();
+                ast::Path::can_cast(kind) || ast::Meta::can_cast(kind)
+            })
             .last()
-            .map_or(false, ast::Meta::can_cast);
+            .and_then(ast::Meta::cast);
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
         // trying to resolve foo::bar.
         if path.parent_path().is_some() {
             return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path) {
-                None if is_path_of_attr => {
+                None if meta_path.is_some() => {
                     path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
                         ToolModule::by_name(db, self.resolver.krate().into(), &name_ref.text())
                             .map(PathResolution::ToolModule)
@@ -449,16 +452,56 @@ impl SourceAnalyzer {
                 }
                 res => res,
             };
-        } else if is_path_of_attr {
+        } else if let Some(meta_path) = meta_path {
             // Case where we are resolving the final path segment of a path in an attribute
             // in this case we have to check for inert/builtin attributes and tools and prioritize
             // resolution of attributes over other namespaces
-            let name_ref = path.as_single_name_ref();
-            let builtin = name_ref.as_ref().and_then(|name_ref| {
-                BuiltinAttr::by_name(db, self.resolver.krate().into(), &name_ref.text())
-            });
-            if let Some(_) = builtin {
-                return builtin.map(PathResolution::BuiltinAttr);
+            if let Some(name_ref) = path.as_single_name_ref() {
+                let builtin =
+                    BuiltinAttr::by_name(db, self.resolver.krate().into(), &name_ref.text());
+                if let Some(_) = builtin {
+                    return builtin.map(PathResolution::BuiltinAttr);
+                }
+
+                if let Some(attr) = meta_path.parent_attr() {
+                    let adt = if let Some(field) =
+                        attr.syntax().parent().and_then(ast::RecordField::cast)
+                    {
+                        field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
+                    } else if let Some(field) =
+                        attr.syntax().parent().and_then(ast::TupleField::cast)
+                    {
+                        field.syntax().ancestors().take(4).find_map(ast::Adt::cast)
+                    } else if let Some(variant) =
+                        attr.syntax().parent().and_then(ast::Variant::cast)
+                    {
+                        variant.syntax().ancestors().nth(2).and_then(ast::Adt::cast)
+                    } else {
+                        None
+                    };
+                    if let Some(adt) = adt {
+                        let ast_id = db.ast_id_map(self.file_id).ast_id(&adt);
+                        if let Some(helpers) = self
+                            .resolver
+                            .def_map()
+                            .derive_helpers_in_scope(InFile::new(self.file_id, ast_id))
+                        {
+                            // FIXME: Multiple derives can have the same helper
+                            let name_ref = name_ref.as_name();
+                            for (macro_id, mut helpers) in
+                                helpers.iter().group_by(|(_, macro_id, ..)| macro_id).into_iter()
+                            {
+                                if let Some(idx) = helpers.position(|(name, ..)| *name == name_ref)
+                                {
+                                    return Some(PathResolution::DeriveHelper(DeriveHelper {
+                                        derive: *macro_id,
+                                        idx,
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
             }
             return match resolve_hir_path_as_macro(db, &self.resolver, &hir_path) {
                 Some(m) => Some(PathResolution::Def(ModuleDef::Macro(m))),
