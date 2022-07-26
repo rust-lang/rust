@@ -390,7 +390,10 @@ impl GlobalState {
 
             let mut crate_graph = CrateGraph::default();
             for (idx, ws) in self.workspaces.iter().enumerate() {
-                let proc_macro_client = self.proc_macro_clients[idx].as_ref();
+                let proc_macro_client = match self.proc_macro_clients.get(idx) {
+                    Some(res) => res.as_ref().map_err(|e| &**e),
+                    None => Err("Proc macros are disabled"),
+                };
                 let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
                     load_proc_macro(
                         proc_macro_client,
@@ -574,7 +577,7 @@ impl SourceRootConfig {
 /// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
 /// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
-    server: Result<&ProcMacroServer, &String>,
+    server: Result<&ProcMacroServer, &str>,
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
