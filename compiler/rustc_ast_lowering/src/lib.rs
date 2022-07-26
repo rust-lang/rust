@@ -1471,11 +1471,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                 match res {
                     LifetimeRes::Param { param, binder } => {
-                        if !captured_lifetimes.binders_to_ignore.contains(&binder)
-                            && !binders_to_ignore
-                                .get(&lifetime.id)
-                                .unwrap_or(&Vec::new())
-                                .contains(&binder)
+                        if !binders_to_ignore
+                            .get(&lifetime.id)
+                            .unwrap_or(&Vec::new())
+                            .contains(&binder)
                         {
                             match captured_lifetimes.captures.entry(param) {
                                 Entry::Occupied(_) => {}
@@ -1497,11 +1496,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     LifetimeRes::Fresh { param, binder } => {
                         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                        if !captured_lifetimes.binders_to_ignore.contains(&binder)
-                            && !binders_to_ignore
-                                .get(&lifetime.id)
-                                .unwrap_or(&Vec::new())
-                                .contains(&binder)
+                        if !binders_to_ignore
+                            .get(&lifetime.id)
+                            .unwrap_or(&Vec::new())
+                            .contains(&binder)
                         {
                             let param = self.local_def_id(param);
                             match captured_lifetimes.captures.entry(param) {
