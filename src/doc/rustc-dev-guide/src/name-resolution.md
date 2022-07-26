@@ -45,7 +45,7 @@ namespaces and therefore can co-exist.
 The name resolution in Rust is a two-phase process. In the first phase, which runs
 during macro expansion, we build a tree of modules and resolve imports. Macro
 expansion and name resolution communicate with each other via the
-[`ResolverAstLowering`] trait.
+[`ResolverAstLoweringExt`] trait.
 
 The input to the second phase is the syntax tree, produced by parsing input
 files and expanding macros. This phase produces links from all the names in the
@@ -61,7 +61,7 @@ The name resolution lives in the `rustc_resolve` crate, with the meat in
 `lib.rs` and some helpers or symbol-type specific logic in the other modules.
 
 [`Resolver::resolve_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.resolve_crate
-[`ResolverAstLowering`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/trait.ResolverAstLowering.html
+[`ResolverAstLoweringExt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/trait.ResolverAstLoweringExt.html
 
 ## Namespaces
 
