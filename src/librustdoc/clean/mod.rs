@@ -421,7 +421,10 @@ impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
 impl<'tcx> Clean<'tcx, WherePredicate> for ty::ProjectionPredicate<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> WherePredicate {
         let ty::ProjectionPredicate { projection_ty, term } = self;
-        WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: term.clean(cx) }
+        WherePredicate::EqPredicate {
+            lhs: clean_projection(*projection_ty, cx, None),
+            rhs: term.clean(cx),
+        }
     }
 }
 
@@ -444,12 +447,6 @@ fn clean_projection<'tcx>(
         should_show_cast,
         self_type: Box::new(self_type),
         trait_,
-    }
-}
-
-impl<'tcx> Clean<'tcx, Type> for ty::ProjectionTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
-        clean_projection(*self, cx, None)
     }
 }
 
@@ -734,8 +731,12 @@ fn clean_ty_generics<'tcx>(
                             .filter(|b| !b.is_sized_bound(cx)),
                     );
 
-                    let proj = projection
-                        .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().term));
+                    let proj = projection.map(|p| {
+                        (
+                            clean_projection(p.skip_binder().projection_ty, cx, None),
+                            p.skip_binder().term,
+                        )
+                    });
                     if let Some(((_, trait_did, name), rhs)) = proj
                         .as_ref()
                         .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
