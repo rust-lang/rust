@@ -24,10 +24,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &Path,
         param_mode: ParamMode,
         itctx: ImplTraitContext,
-        captures: bool,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
-        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx, captures));
+        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
@@ -73,7 +72,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         param_mode,
                         parenthesized_generic_args,
                         itctx,
-                        captures,
                     )
                 },
             )),
@@ -120,7 +118,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 param_mode,
                 ParenthesizedGenericArgs::Err,
                 itctx,
-                captures,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -161,7 +158,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     param_mode,
                     ParenthesizedGenericArgs::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                    true,
                 )
             })),
             span: self.lower_span(p.span),
@@ -186,7 +182,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
         itctx: ImplTraitContext,
-        captures: bool,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
@@ -259,7 +254,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 segment.id,
                 segment.ident.span,
                 &mut generic_args,
-                captures,
             );
         }
 
@@ -289,7 +283,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         segment_id: NodeId,
         segment_ident_span: Span,
         generic_args: &mut GenericArgsCtor<'hir>,
-        captures: bool,
     ) {
         let (start, end) = match self.resolver.get_lifetime_res(segment_id) {
             Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
@@ -318,13 +311,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             0,
             (start.as_u32()..end.as_u32()).map(|i| {
                 let id = NodeId::from_u32(i);
-                let l = self.lower_lifetime(
-                    &Lifetime {
-                        id,
-                        ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
-                    },
-                    captures,
-                );
+                let l = self.lower_lifetime(&Lifetime {
+                    id,
+                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                });
                 GenericArg::Lifetime(l)
             }),
         );
@@ -368,18 +358,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|ty| {
-            self.lower_ty_direct(
-                ty,
-                ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
-                true,
-            )
+            self.lower_ty_direct(ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
         }));
         let output_ty = match output {
-            FnRetTy::Ty(ty) => self.lower_ty(
-                &ty,
-                ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn),
-                true,
-            ),
+            FnRetTy::Ty(ty) => {
+                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
+            }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
         let args = smallvec![GenericArg::Type(self.ty_tup(*inputs_span, inputs))];
