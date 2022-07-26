@@ -19,6 +19,8 @@ pub fn target() -> Target {
         pre_link_args,
         post_link_args,
         relocation_model: RelocModel::Pic,
+        crt_static_respected: true,
+        crt_static_default: true,
         panic_strategy: PanicStrategy::Unwind,
         no_default_libraries: false,
         families: cvs!["unix", "wasm"],
