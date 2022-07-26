@@ -86,6 +86,9 @@ enum LLVMRustAttribute {
   SanitizeMemTag = 34,
   NoCfCheck = 35,
   ShadowCallStack = 36,
+  AllocSize = 37,
+  AllocatedPointer = 38,
+  AllocAlign = 39,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

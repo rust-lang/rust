@@ -95,6 +95,14 @@ pub fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
     unsafe { LLVMRustCreateUWTableAttr(llcx, async_) }
 }
 
+pub fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
+    unsafe { LLVMRustCreateAllocSizeAttr(llcx, size_arg) }
+}
+
+pub fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
+    unsafe { LLVMRustCreateAllocKindAttr(llcx, kind_arg.bits()) }
+}
+
 #[derive(Copy, Clone)]
 pub enum AttributePlace {
     ReturnValue,
