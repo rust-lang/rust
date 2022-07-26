@@ -348,11 +348,6 @@ impl Checker {
                     return;
                 }
 
-                // These appear to be broken in mdbook right now?
-                if fragment.starts_with('-') {
-                    return;
-                }
-
                 parse_ids(&mut target_ids.borrow_mut(), &pretty_path, target_source, report);
 
                 if target_ids.borrow().contains(*fragment) {
