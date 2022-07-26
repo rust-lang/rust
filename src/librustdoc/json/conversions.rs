@@ -244,7 +244,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
         MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, header.unwrap(), tcx)),
         TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, header.unwrap(), tcx)),
-        ImplItem(i) => ItemEnum::Impl(i.into_tcx(tcx)),
+        ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
@@ -447,8 +447,8 @@ pub(crate) fn from_trait_bound_modifier(
 impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::{
-            Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive,
-            QPath, RawPointer, Slice, Tuple,
+            Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
+            RawPointer, Slice, Tuple,
         };
 
         match ty {
@@ -458,26 +458,10 @@ impl FromWithTcx<clean::Type> for Type {
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
                 param_names: Vec::new(),
             },
-            DynTrait(mut bounds, lt) => {
-                let first_trait = bounds.remove(0).trait_;
-
-                Type::ResolvedPath {
-                    name: first_trait.whole_name(),
-                    id: from_item_id(first_trait.def_id().into(), tcx),
-                    args: first_trait
-                        .segments
-                        .last()
-                        .map(|args| Box::new(args.clone().args.into_tcx(tcx))),
-                    param_names: bounds
-                        .into_iter()
-                        .map(|t| {
-                            clean::GenericBound::TraitBound(t, rustc_hir::TraitBoundModifier::None)
-                        })
-                        .chain(lt.map(clean::GenericBound::Outlives))
-                        .map(|bound| bound.into_tcx(tcx))
-                        .collect(),
-                }
-            }
+            clean::Type::DynTrait(bounds, lt) => Type::DynTrait(DynTrait {
+                lifetime: lt.map(|lt| lt.0.to_string()),
+                traits: bounds.into_iter().map(|t| t.into_tcx(tcx)).collect(),
+            }),
             Generic(s) => Type::Generic(s.to_string()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
@@ -568,10 +552,22 @@ impl FromWithTcx<clean::Trait> for Trait {
     }
 }
 
-impl FromWithTcx<Box<clean::Impl>> for Impl {
-    fn from_tcx(impl_: Box<clean::Impl>, tcx: TyCtxt<'_>) -> Self {
+impl FromWithTcx<clean::PolyTrait> for PolyTrait {
+    fn from_tcx(
+        clean::PolyTrait { trait_, generic_params }: clean::PolyTrait,
+        tcx: TyCtxt<'_>,
+    ) -> Self {
+        PolyTrait {
+            trait_: clean::Type::Path { path: trait_ }.into_tcx(tcx),
+            generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+        }
+    }
+}
+
+impl FromWithTcx<clean::Impl> for Impl {
+    fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
-        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = *impl_;
+        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
         // FIXME: should `trait_` be a clean::Path equivalent in JSON?
         let trait_ = trait_.map(|path| clean::Type::Path { path }.into_tcx(tcx));
         // FIXME: use something like ImplKind in JSON?
