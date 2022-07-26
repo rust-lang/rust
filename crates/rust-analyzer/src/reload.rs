@@ -303,6 +303,9 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
+        let standalone_server_name =
+            format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
+
         if self.proc_macro_clients.is_empty() {
             if let Some((path, args)) = self.config.proc_macro_srv() {
                 self.proc_macro_clients = self
@@ -316,10 +319,8 @@ impl GlobalState {
                             tracing::info!("Found a cargo workspace...");
                             if let Some(sysroot) = sysroot.as_ref() {
                                 tracing::info!("Found a cargo workspace with a sysroot...");
-                                let server_path = sysroot
-                                    .root()
-                                    .join("libexec")
-                                    .join("rust-analyzer-proc-macro-srv");
+                                let server_path =
+                                    sysroot.root().join("libexec").join(&standalone_server_name);
                                 if std::fs::metadata(&server_path).is_ok() {
                                     tracing::info!(
                                         "And the server exists at {}",
