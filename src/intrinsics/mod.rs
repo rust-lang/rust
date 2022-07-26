@@ -7,7 +7,7 @@ macro_rules! intrinsic_args {
         let ($($arg),*) = if let [$($arg),*] = $args {
             ($(codegen_operand($fx, $arg)),*)
         } else {
-            bug!("wrong number of args for intrinsic {}", $intrinsic);
+            $crate::intrinsics::bug_on_incorrect_arg_count($intrinsic);
         };
     }
 }
@@ -25,6 +25,10 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::prelude::*;
 use cranelift_codegen::ir::AtomicRmwOp;
+
+fn bug_on_incorrect_arg_count(intrinsic: impl std::fmt::Display) -> ! {
+    bug!("wrong number of args for intrinsic {}", intrinsic);
+}
 
 fn report_atomic_type_validation_error<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
