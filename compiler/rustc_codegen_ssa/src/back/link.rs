@@ -317,35 +317,41 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
-        if !sess.opts.unstable_opts.split_bundled_libs {
-            match lib.kind {
-                NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
-                    if flavor == RlibFlavor::Normal =>
-                {
-                    // Don't allow mixing +bundle with +whole_archive since an rlib may contain
-                    // multiple native libs, some of which are +whole-archive and some of which are
-                    // -whole-archive and it isn't clear how we can currently handle such a
-                    // situation correctly.
-                    // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
-                    sess.err(
-                        "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
-                        with each other when generating rlibs",
-                    );
-                }
-                NativeLibKind::Static { bundle: None | Some(true), .. } => {}
-                NativeLibKind::Static { bundle: Some(false), .. }
-                | NativeLibKind::Dylib { .. }
-                | NativeLibKind::Framework { .. }
-                | NativeLibKind::RawDylib
-                | NativeLibKind::Unspecified => continue,
-            }
-            if let Some(name) = lib.name {
+        match lib.kind {
+            NativeLibKind::Static { bundle: None | Some(true), whole_archive } => {
+                let Some(name) = lib.name else {
+                        continue;
+                    };
+
                 let location = find_library(
                     name.as_str(),
                     lib.verbatim.unwrap_or(false),
                     &lib_search_paths,
                     sess,
                 );
+                if flavor == RlibFlavor::Normal {
+                    if whole_archive == Some(true) && !sess.opts.unstable_opts.split_bundled_libs {
+                        // Don't allow mixing +bundle with +whole_archive since an rlib may contain
+                        // multiple native libs, some of which are +whole-archive and some of which are
+                        // -whole-archive and it isn't clear how we can currently handle such a
+                        // situation correctly.
+                        // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
+                        sess.err(
+                                "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
+                                with each other when generating rlibs",
+                            );
+                    }
+
+                    if sess.opts.unstable_opts.split_bundled_libs {
+                        let suffix = &sess.target.staticlib_suffix;
+                        let crate_name = out_filename.to_str().unwrap();
+                        let bundle_lib =
+                            PathBuf::from(&format!("{crate_name}.bundle.{name}{suffix}"));
+                        fs::copy(location, bundle_lib).unwrap();
+                        continue;
+                    }
+                }
+
                 ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
                     sess.fatal(&format!(
                         "failed to add native library {}: {}",
@@ -354,29 +360,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
                     ));
                 });
             }
-        } else {
-            match lib.kind {
-                NativeLibKind::Static { bundle: None | Some(true), .. }
-                    if flavor == RlibFlavor::Normal =>
-                {
-                    let Some(name) = lib.name else {
-                        continue;
-                    };
-
-                    let location = find_library(
-                        name.as_str(),
-                        lib.verbatim.unwrap_or(false),
-                        &lib_search_paths,
-                        sess,
-                    );
-
-                    let suffix = &sess.target.staticlib_suffix;
-                    let crate_name = out_filename.to_str().unwrap();
-                    let bundle_lib = PathBuf::from(&format!("{crate_name}.bundle.{name}{suffix}"));
-                    fs::copy(location, bundle_lib).unwrap();
-                }
-                _ => {}
-            }
+            _ => {}
         }
     }
 
@@ -2409,19 +2393,19 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             }
                         } else {
                             if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
-                            lib.kind
-                        {
-                            let verbatim = lib.verbatim.unwrap_or(false);
-                            if whole_archive == Some(true) {
-                                cmd.link_whole_staticlib(
-                                    name,
-                                    verbatim,
-                                    search_path.get_or_init(|| archive_search_paths(sess)),
-                                );
-                            } else {
-                                cmd.link_staticlib(name, verbatim);
+                                lib.kind
+                            {
+                                let verbatim = lib.verbatim.unwrap_or(false);
+                                if whole_archive == Some(true) {
+                                    cmd.link_whole_staticlib(
+                                        name,
+                                        verbatim,
+                                        search_path.get_or_init(|| archive_search_paths(sess)),
+                                    );
+                                } else {
+                                    cmd.link_staticlib(name, verbatim);
+                                }
                             }
-                        }
                         }
                     }
                 }
