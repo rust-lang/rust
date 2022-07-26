@@ -1378,6 +1378,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lctx.lower_param_bounds(bounds, itctx, true)
             } else {
                 if std::env::var("NEW_COLLECT_LIFETIMES").is_ok() {
+                    debug!(?lctx.captured_lifetimes);
+
                     let lifetime_stash = std::mem::replace(
                         &mut lctx.captured_lifetimes,
                         Some(LifetimeCaptureContext {
@@ -1388,6 +1390,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     );
 
                     let (lifetimes_in_bounds, binders_to_ignore) = ast::lifetimes_in_bounds(bounds);
+                    debug!(?lifetimes_in_bounds);
+                    debug!(?binders_to_ignore);
 
                     for lifetime in &lifetimes_in_bounds {
                         let ident = lifetime.ident;
@@ -1397,6 +1401,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .resolver
                             .get_lifetime_res(lifetime.id)
                             .unwrap_or(LifetimeRes::Error);
+                        debug!(?res);
 
                         if let Some(mut captured_lifetimes) = lctx.captured_lifetimes.take() {
                             match res {
