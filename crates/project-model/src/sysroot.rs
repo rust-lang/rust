@@ -15,6 +15,7 @@ use crate::{utf8_stdout, ManifestPath};
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
     root: AbsPathBuf,
+    src_root: AbsPathBuf,
     crates: Arena<SysrootCrateData>,
 }
 
@@ -35,8 +36,17 @@ impl ops::Index<SysrootCrate> for Sysroot {
 }
 
 impl Sysroot {
+    /// Returns sysroot "root" directory, where `bin/`, `etc/`, `lib/`, `libexec/`
+    /// subfolder live, like:
+    /// `$HOME/.rustup/toolchains/nightly-2022-07-23-x86_64-unknown-linux-gnu`
     pub fn root(&self) -> &AbsPath {
         &self.root
+    }
+
+    /// Returns the sysroot "source" directory, where stdlib sources are located, like:
+    /// `$HOME/.rustup/toolchains/nightly-2022-07-23-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library`
+    pub fn src_root(&self) -> &AbsPath {
+        &self.src_root
     }
 
     pub fn public_deps(&self) -> impl Iterator<Item = (&'static str, SysrootCrate, bool)> + '_ {
@@ -61,7 +71,7 @@ impl Sysroot {
         tracing::debug!("Discovering sysroot for {}", dir.display());
         let sysroot_dir = discover_sysroot_dir(dir)?;
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, dir)?;
-        let res = Sysroot::load(sysroot_src_dir)?;
+        let res = Sysroot::load(sysroot_dir, sysroot_src_dir)?;
         Ok(res)
     }
 
@@ -71,14 +81,15 @@ impl Sysroot {
         discover_sysroot_dir(current_dir).ok().and_then(|sysroot_dir| get_rustc_src(&sysroot_dir))
     }
 
-    pub fn load(sysroot_src_dir: AbsPathBuf) -> Result<Sysroot> {
-        let mut sysroot = Sysroot { root: sysroot_src_dir, crates: Arena::default() };
+    pub fn load(sysroot_dir: AbsPathBuf, sysroot_src_dir: AbsPathBuf) -> Result<Sysroot> {
+        let mut sysroot =
+            Sysroot { root: sysroot_dir, src_root: sysroot_src_dir, crates: Arena::default() };
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
             let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
                 .into_iter()
-                .map(|it| sysroot.root.join(it))
+                .map(|it| sysroot.src_root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
                 .find(|it| fs::metadata(it).is_ok());
 
@@ -119,7 +130,7 @@ impl Sysroot {
             };
             anyhow::bail!(
                 "could not find libcore in sysroot path `{}`{}",
-                sysroot.root.as_path().display(),
+                sysroot.src_root.as_path().display(),
                 var_note,
             );
         }

@@ -86,6 +86,7 @@ fn mk_child(
 ) -> io::Result<Child> {
     Command::new(path.as_os_str())
         .args(args)
+        .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
