@@ -51,20 +51,6 @@ fn typeck_results_of_method_fn<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
 ) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
-    // FIXME(rustdoc): Lints which use this function use typecheck results which can cause
-    // `rustdoc` to error if there are resolution failures.
-    //
-    // As internal lints are currently always run if there are `unstable_options`, they are added
-    // to the lint store of rustdoc. Internal lints are also not used via the `lint_mod` query.
-    // Crate lints run outside of a query so rustdoc currently doesn't disable them.
-    //
-    // Instead of relying on this, either change crate lints to a query disabled by rustdoc, only
-    // run internal lints if the user is explicitly opting in or figure out a different way to
-    // avoid running lints for rustdoc.
-    if cx.tcx.sess.opts.actually_rustdoc {
-        return None;
-    }
-
     match expr.kind {
         ExprKind::MethodCall(segment, _, _)
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>

@@ -589,6 +589,14 @@ impl Session {
     pub fn time_passes(&self) -> bool {
         self.opts.unstable_opts.time_passes || self.opts.unstable_opts.time
     }
+
+    /// Returns `true` if internal lints should be added to the lint store - i.e. if
+    /// `-Zunstable-options` is provided and this isn't rustdoc (internal lints can trigger errors
+    /// to be emitted under rustdoc).
+    pub fn enable_internal_lints(&self) -> bool {
+        self.unstable_options() && !self.opts.actually_rustdoc
+    }
+
     pub fn instrument_mcount(&self) -> bool {
         self.opts.unstable_opts.instrument_mcount
     }

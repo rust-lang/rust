@@ -249,7 +249,7 @@ fn run_compiler(
                     if sopts.describe_lints {
                         let mut lint_store = rustc_lint::new_lint_store(
                             sopts.unstable_opts.no_interleave_lints,
-                            compiler.session().unstable_options(),
+                            compiler.session().enable_internal_lints(),
                         );
                         let registered_lints =
                             if let Some(register_lints) = compiler.register_lints() {
