@@ -62,11 +62,14 @@ pub fn create(
 
 fn create_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
     if let Some(ty) = lint.ty {
-        generate_from_ty(lint, enable_msrv, ty)
+        create_lint_for_ty(lint, enable_msrv, ty)
     } else {
         let lint_contents = get_lint_file_contents(lint, enable_msrv);
         let lint_path = format!("clippy_lints/src/{}.rs", lint.name);
-        write_file(lint.project_root.join(&lint_path), lint_contents.as_bytes())
+        write_file(lint.project_root.join(&lint_path), lint_contents.as_bytes())?;
+        println!("Generated lint file: `{}`", lint_path);
+
+        Ok(())
     }
 }
 
@@ -86,16 +89,22 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
 
     if lint.category == "cargo" {
         let relative_test_dir = format!("tests/ui-cargo/{}", lint.name);
-        let test_dir = lint.project_root.join(relative_test_dir);
+        let test_dir = lint.project_root.join(&relative_test_dir);
         fs::create_dir(&test_dir)?;
 
         create_project_layout(lint.name, &test_dir, "fail", "Content that triggers the lint goes here")?;
-        create_project_layout(lint.name, &test_dir, "pass", "This file should not trigger the lint")
+        create_project_layout(lint.name, &test_dir, "pass", "This file should not trigger the lint")?;
+
+        println!("Generated test directories: `{}`, `{}`", format!("{}/pass", relative_test_dir), format!("{}/fail", relative_test_dir));
     } else {
         let test_path = format!("tests/ui/{}.rs", lint.name);
         let test_contents = get_test_file_contents(lint.name, None);
-        write_file(lint.project_root.join(test_path), test_contents)
+        write_file(lint.project_root.join(&test_path), test_contents)?;
+
+        println!("Generated test file: `{}`", test_path);
     }
+
+    Ok(())
 }
 
 fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
@@ -325,12 +334,14 @@ fn get_lint_declaration(name_upper: &str, category: &str) -> String {
     )
 }
 
-fn generate_from_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::Result<()> {
-    if ty == "cargo" {
-        assert_eq!(
+fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::Result<()> {
+    match ty {
+        "cargo" => assert_eq!(
             lint.category, "cargo",
             "Lints of type `cargo` must have the `cargo` category"
-        );
+        ),
+        _ if lint.category == "cargo" => panic!("Lints of category `cargo` must have the `cargo` type"),
+        _ => {}
     }
 
     let ty_dir = lint.project_root.join(format!("clippy_lints/src/{}", ty));
@@ -392,7 +403,9 @@ fn generate_from_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::Res
         );
     }
 
-    write_file(lint_file_path, lint_file_contents)?;
+    write_file(lint_file_path.as_path(), lint_file_contents)?;
+    println!("Generated lint file: `clippy_lints/src/{}/{}.rs`", ty, lint.name);
+    println!("Be sure to add a call to `{}::check` in `clippy_lints/src/{}/mod.rs`!", lint.name, ty);
 
     Ok(())
 }
