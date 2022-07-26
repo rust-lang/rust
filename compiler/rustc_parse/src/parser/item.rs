@@ -1216,6 +1216,25 @@ impl<'a> Parser<'a> {
 
     /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
+        if self.token.is_keyword(kw::Struct) {
+            let mut err = self.struct_span_err(
+                self.prev_token.span.to(self.token.span),
+                "`enum` and `struct` are mutually exclusive",
+            );
+            err.span_suggestion(
+                self.prev_token.span.to(self.token.span),
+                "replace `enum struct` with",
+                "enum",
+                Applicability::MachineApplicable,
+            );
+            if self.look_ahead(1, |t| t.is_ident()) {
+                self.bump();
+                err.emit();
+            } else {
+                return Err(err);
+            }
+        }
+
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
