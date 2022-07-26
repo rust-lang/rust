@@ -27,9 +27,9 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, ConstQualifs, Constant, LocalDecl, MirPass, MirPhase, Operand,
-    Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo, Statement, StatementKind,
-    TerminatorKind,
+    traversal, AnalysisPhase, Body, ConstQualifs, Constant, GeneratorInfo, LocalDecl, MirPass,
+    MirPhase, Operand, PassWhere, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
+    SourceInfo, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -123,6 +123,7 @@ pub fn provide(providers: &mut Providers) {
         mir_drops_elaborated_and_const_checked,
         mir_for_ctfe,
         mir_for_ctfe_of_const_arg,
+        mir_generator_info,
         optimized_mir,
         is_mir_available,
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
@@ -389,7 +390,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         .body_const_context(def.did)
         .expect("mir_for_ctfe should not be used for runtime functions");
 
-    let body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+    let body = tcx.mir_drops_elaborated_and_const_checked(def).0.borrow().clone();
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
 
@@ -427,7 +428,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
 fn mir_drops_elaborated_and_const_checked<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx Steal<Body<'tcx>> {
+) -> &'tcx (Steal<Body<'tcx>>, Option<GeneratorInfo<'tcx>>) {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
@@ -451,12 +452,16 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         body.tainted_by_errors = Some(error_reported);
     }
 
-    run_analysis_to_runtime_passes(tcx, &mut body);
+    let generator_layout = run_analysis_to_runtime_passes(tcx, true, &mut body);
 
-    tcx.alloc_steal_mir(body)
+    tcx.arena.alloc((Steal::new(body), generator_layout))
 }
 
-fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn run_analysis_to_runtime_passes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    lower_generator: bool,
+    body: &mut Body<'tcx>,
+) -> Option<GeneratorInfo<'tcx>> {
     assert!(body.phase == MirPhase::Analysis(AnalysisPhase::Initial));
     let did = body.source.def_id();
 
@@ -479,12 +484,14 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
     }
 
     debug!("runtime_mir_lowering({:?})", did);
-    run_runtime_lowering_passes(tcx, body);
+    let generator_layout = run_runtime_lowering_passes(tcx, lower_generator, body);
     assert!(body.phase == MirPhase::Runtime(RuntimePhase::Initial));
 
     debug!("runtime_mir_cleanup({:?})", did);
     run_runtime_cleanup_passes(tcx, body);
     assert!(body.phase == MirPhase::Runtime(RuntimePhase::PostCleanup));
+
+    generator_layout
 }
 
 // FIXME(JakobDegen): Can we make these lists of passes consts?
@@ -504,8 +511,12 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 }
 
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
-fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let passes: &[&dyn MirPass<'tcx>] = &[
+fn run_runtime_lowering_passes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    lower_generator: bool,
+    body: &mut Body<'tcx>,
+) -> Option<GeneratorInfo<'tcx>> {
+    let pre_generator_passes: &[&dyn MirPass<'tcx>] = &[
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
@@ -519,14 +530,45 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
         &elaborate_box_derefs::ElaborateBoxDerefs,
-        &generator::StateTransform,
+    ];
+    let post_generator_passes: &[&dyn MirPass<'tcx>] = &[
         &add_retag::AddRetag,
         // Deaggregator is necessary for const prop. We may want to consider implementing
         // CTFE support for aggregates.
         &deaggregator::Deaggregator,
         &Lint(const_prop_lint::ConstProp),
     ];
-    pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
+    pm::run_passes_no_validate(tcx, body, pre_generator_passes, None);
+
+    // We cannot use the pass manager for this transform, as it does not support additional output
+    // values, and we do not want to disable this pass.
+    rustc_middle::mir::dump_mir(tcx, None, "StateTransform", &"before", &body, |_, _| Ok(()));
+    let generator_layout = if lower_generator
+        && let Some(generator_kind) = tcx.generator_kind(body.source.def_id())
+    {
+        Some(generator::state_transform_body_for_generator(tcx, generator_kind, body))
+    } else {
+        None
+    };
+    // Output generator layout once, so we don't have to do it on each dump.
+    rustc_middle::mir::dump_mir(tcx, None, "StateTransform", &"after", &body, |position, file| {
+        if let PassWhere::BeforeCFG = position
+            && let Some(ref generator_layout) = generator_layout
+        {
+            writeln!(file, "/* generator_layout = {:#?} */", generator_layout.generator_layout)?;
+            writeln!(file)?;
+        }
+        Ok(())
+    });
+
+    pm::run_passes_no_validate(
+        tcx,
+        body,
+        post_generator_passes,
+        Some(MirPhase::Runtime(RuntimePhase::Initial)),
+    );
+
+    generator_layout
 }
 
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
@@ -537,7 +579,22 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify::SimplifyCfg::new("elaborate-drops"),
     ];
 
-    pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
+    // Do not validate, as this would cause a query cycle with `mir_generator_info`.
+    pm::run_passes_no_validate(
+        tcx,
+        body,
+        passes,
+        Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
+    );
+}
+
+fn mir_generator_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx GeneratorInfo<'tcx> {
+    let def_id = def_id.expect_local();
+    let (_body, generator_layout) =
+        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(def_id));
+    generator_layout
+        .as_ref()
+        .unwrap_or_else(|| bug!("mir_generator_info called for non-generator {:?}", def_id))
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -621,7 +678,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     }
     debug!("about to call mir_drops_elaborated...");
     let body =
-        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
+        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).0.steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
     debug!("body: {:#?}", body);
     run_optimization_passes(tcx, &mut body);
@@ -648,7 +705,8 @@ fn promoted_mir<'tcx>(
         if let Some(error_reported) = tainted_by_errors {
             body.tainted_by_errors = Some(error_reported);
         }
-        run_analysis_to_runtime_passes(tcx, body);
+        // Do not lower generators for promoted.
+        run_analysis_to_runtime_passes(tcx, false, body);
     }
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");

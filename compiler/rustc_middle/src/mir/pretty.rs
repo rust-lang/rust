@@ -131,9 +131,6 @@ fn dump_matched_mir_node<'tcx, F>(
             Some(promoted) => write!(file, "::{:?}`", promoted)?,
         }
         writeln!(file, " {} {}", disambiguator, pass_name)?;
-        if let Some(ref layout) = body.generator_layout() {
-            writeln!(file, "/* generator_layout = {:#?} */", layout)?;
-        }
         writeln!(file)?;
         extra_data(PassWhere::BeforeCFG, &mut file)?;
         write_user_type_annotations(tcx, body, &mut file)?;
@@ -1012,7 +1009,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
         write!(w, ": {} =", body.return_ty())?;
     }
 
-    if let Some(yield_ty) = body.yield_ty() {
+    if let Some(yield_ty) = body.yield_ty(tcx) {
         writeln!(w)?;
         writeln!(w, "yields {}", yield_ty)?;
     }

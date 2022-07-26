@@ -14,10 +14,6 @@ impl<'tcx> MirPass<'tcx> for RevealAll {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Do not apply this transformation to generators.
-        if body.generator.is_some() {
-            return;
-        }
-
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);
     }

@@ -419,9 +419,10 @@ rustc_queries! {
         }
     }
 
-    query mir_drops_elaborated_and_const_checked(
-        key: ty::WithOptConstParam<LocalDefId>
-    ) -> &'tcx Steal<mir::Body<'tcx>> {
+    query mir_drops_elaborated_and_const_checked(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx (
+        Steal<mir::Body<'tcx>>,
+        Option<mir::GeneratorInfo<'tcx>>,
+    ) {
         no_hash
         desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
     }
@@ -463,6 +464,12 @@ rustc_queries! {
             tcx.def_path_str(key.1.to_def_id()),
             tcx.def_path_str(key.0.to_def_id())
         }
+    }
+
+    query mir_generator_info(key: DefId) -> &'tcx mir::GeneratorInfo<'tcx> {
+        desc { |tcx| "generator glue MIR for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     /// MIR after our optimization passes have run. This is MIR that is ready

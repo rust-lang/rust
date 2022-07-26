@@ -88,8 +88,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     debug_assert!(
         !(body.local_decls.has_free_regions()
             || body.basic_blocks.has_free_regions()
-            || body.var_debug_info.has_free_regions()
-            || body.yield_ty().has_free_regions()),
+            || body.var_debug_info.has_free_regions()),
         "Unexpected free regions in MIR: {:?}",
         body,
     );
@@ -468,7 +467,7 @@ fn construct_fn<'tcx>(
 
     let arguments = &thir.params;
 
-    let (yield_ty, return_ty) = if generator_kind.is_some() {
+    let return_ty = if generator_kind.is_some() {
         let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let gen_sig = match gen_ty.kind() {
             ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
@@ -476,9 +475,9 @@ fn construct_fn<'tcx>(
                 span_bug!(span, "generator w/o generator type: {:?}", gen_ty)
             }
         };
-        (Some(gen_sig.yield_ty), gen_sig.return_ty)
+        gen_sig.return_ty
     } else {
-        (None, fn_sig.output())
+        fn_sig.output()
     };
 
     let infcx = tcx.infer_ctxt().build();
@@ -531,9 +530,6 @@ fn construct_fn<'tcx>(
     } else {
         None
     };
-    if yield_ty.is_some() {
-        body.generator.as_mut().unwrap().yield_ty = yield_ty;
-    }
     body
 }
 
@@ -616,7 +612,6 @@ fn construct_error<'tcx>(
 ) -> Body<'tcx> {
     let span = tcx.def_span(def);
     let hir_id = tcx.hir().local_def_id_to_hir_id(def);
-    let generator_kind = tcx.generator_kind(def);
 
     let ty = tcx.ty_error();
     let num_params = match body_owner_kind {
@@ -658,7 +653,7 @@ fn construct_error<'tcx>(
     }
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
-    let mut body = Body::new(
+    Body::new(
         MirSource::item(def.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
@@ -667,11 +662,8 @@ fn construct_error<'tcx>(
         num_params,
         vec![],
         span,
-        generator_kind,
         Some(err),
-    );
-    body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
-    body
+    )
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -758,7 +750,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.arg_count,
             self.var_debug_info,
             self.fn_span,
-            self.generator_kind,
             self.typeck_results.tainted_by_errors,
         )
     }

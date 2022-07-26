@@ -65,6 +65,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             storage_liveness,
             place_cache: Vec::new(),
             value_cache: Vec::new(),
+            is_generator: tcx.generator_kind(def_id).is_some(),
         }
         .visit_body(body);
     }
@@ -118,6 +119,7 @@ struct TypeChecker<'a, 'tcx> {
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
     place_cache: Vec<PlaceRef<'tcx>>,
     value_cache: Vec<u128>,
+    is_generator: bool,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -323,16 +325,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     &ty::Generator(def_id, substs, _) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
-                            let gen_body = if def_id == self.body.source.def_id() {
-                                self.body
-                            } else {
-                                self.tcx.optimized_mir(def_id)
-                            };
-
-                            let Some(layout) = gen_body.generator_layout() else {
-                                self.fail(location, format!("No generator layout for {:?}", parent_ty));
-                                return;
-                            };
+                            let generator_info = self.tcx.mir_generator_info(def_id);
+                            let layout = &generator_info.generator_layout;
 
                             let Some(&local) = layout.variant_fields[var].get(f) else {
                                 fail_out_of_bounds(self, location);
@@ -861,7 +855,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
-                if self.body.generator.is_none() {
+                if !self.is_generator {
                     self.fail(location, "`Yield` cannot appear outside generator bodies");
                 }
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
@@ -903,7 +897,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::GeneratorDrop => {
-                if self.body.generator.is_none() {
+                if !self.is_generator {
                     self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
                 }
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
