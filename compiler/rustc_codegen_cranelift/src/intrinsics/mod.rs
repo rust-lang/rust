@@ -404,7 +404,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         size_of_val, (c ptr) {
             let layout = fx.layout_of(substs.type_at(0));
-            let size = if layout.is_unsized() {
+            // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
+            // branch
+            let size = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
                 let (_ptr, info) = ptr.load_scalar_pair(fx);
                 let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
                 size
@@ -418,7 +420,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         min_align_of_val, (c ptr) {
             let layout = fx.layout_of(substs.type_at(0));
-            let align = if layout.is_unsized() {
+            // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
+            // branch
+            let align = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
                 let (_ptr, info) = ptr.load_scalar_pair(fx);
                 let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
                 align
@@ -1144,6 +1148,20 @@ fn codegen_regular_intrinsic_call<'tcx>(
         black_box, (c a) {
             // FIXME implement black_box semantics
             ret.write_cvalue(fx, a);
+        };
+
+        // FIXME implement variadics in cranelift
+        va_copy, (o _dest, o _src) {
+            fx.tcx.sess.span_fatal(
+                source_info.span,
+                "Defining variadic functions is not yet supported by Cranelift",
+            );
+        };
+        va_arg | va_end, (o _valist) {
+            fx.tcx.sess.span_fatal(
+                source_info.span,
+                "Defining variadic functions is not yet supported by Cranelift",
+            );
         };
     }
 

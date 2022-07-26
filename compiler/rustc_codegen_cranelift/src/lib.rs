@@ -141,7 +141,11 @@ impl<'tcx> CodegenCx<'tcx> {
 
         let unwind_context =
             UnwindContext::new(isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
-        let debug_context = if debug_info { Some(DebugContext::new(tcx, isa)) } else { None };
+        let debug_context = if debug_info && !tcx.sess.target.options.is_like_windows {
+            Some(DebugContext::new(tcx, isa))
+        } else {
+            None
+        };
         CodegenCx {
             tcx,
             global_asm: String::new(),
@@ -243,6 +247,7 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
+    flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
