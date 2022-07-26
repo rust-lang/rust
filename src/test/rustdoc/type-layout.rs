@@ -2,7 +2,7 @@
 
 // @has type_layout/struct.Foo.html 'Size: '
 // @has - ' bytes'
-// @matches - '<h2 id="layout".+Layout.+a href="#layout" class="anchor">'
+// @has - '//*[@id="layout"]/a[@href="#layout"]' ''
 pub struct Foo {
     pub a: usize,
     b: Vec<String>,
