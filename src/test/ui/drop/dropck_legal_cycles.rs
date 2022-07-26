@@ -1017,7 +1017,7 @@ impl<'a> Children<'a> for HM<'a> {
         where C: Context + PrePost<Self>, Self: Sized
     {
         if let Some(ref hm) = self.contents.get() {
-            for (k, v) in hm.iter().nth(index / 2) {
+            if let Some((k, v)) = hm.iter().nth(index / 2) {
                 [k, v][index % 2].descend_into_self(context);
             }
         }
@@ -1032,7 +1032,7 @@ impl<'a> Children<'a> for VD<'a> {
         where C: Context + PrePost<Self>, Self: Sized
     {
         if let Some(ref vd) = self.contents.get() {
-            for r in vd.iter().nth(index) {
+            if let Some(r) = vd.iter().nth(index) {
                 r.descend_into_self(context);
             }
         }
@@ -1047,7 +1047,7 @@ impl<'a> Children<'a> for VM<'a> {
         where C: Context + PrePost<VM<'a>>
     {
         if let Some(ref vd) = self.contents.get() {
-            for (_idx, r) in vd.iter().nth(index) {
+            if let Some((_idx, r)) = vd.iter().nth(index) {
                 r.descend_into_self(context);
             }
         }
@@ -1062,7 +1062,7 @@ impl<'a> Children<'a> for LL<'a> {
         where C: Context + PrePost<LL<'a>>
     {
         if let Some(ref ll) = self.contents.get() {
-            for r in ll.iter().nth(index) {
+            if let Some(r) = ll.iter().nth(index) {
                 r.descend_into_self(context);
             }
         }
@@ -1077,7 +1077,7 @@ impl<'a> Children<'a> for BH<'a> {
         where C: Context + PrePost<BH<'a>>
     {
         if let Some(ref bh) = self.contents.get() {
-            for r in bh.iter().nth(index) {
+            if let Some(r) = bh.iter().nth(index) {
                 r.descend_into_self(context);
             }
         }
@@ -1092,7 +1092,7 @@ impl<'a> Children<'a> for BTM<'a> {
         where C: Context + PrePost<BTM<'a>>
     {
         if let Some(ref bh) = self.contents.get() {
-            for (k, v) in bh.iter().nth(index / 2) {
+            if let Some((k, v)) = bh.iter().nth(index / 2) {
                 [k, v][index % 2].descend_into_self(context);
             }
         }
@@ -1107,7 +1107,7 @@ impl<'a> Children<'a> for BTS<'a> {
         where C: Context + PrePost<BTS<'a>>
     {
         if let Some(ref bh) = self.contents.get() {
-            for r in bh.iter().nth(index) {
+            if let Some(r) = bh.iter().nth(index) {
                 r.descend_into_self(context);
             }
         }
