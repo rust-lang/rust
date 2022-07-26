@@ -1,4 +1,5 @@
 use core::alloc::{Allocator, Layout};
+use core::iter::IntoIterator;
 use core::ptr::NonNull;
 use std::alloc::System;
 use std::assert_matches::assert_matches;
@@ -928,6 +929,15 @@ fn test_into_iter_debug() {
 #[test]
 fn test_into_iter_count() {
     assert_eq!([1, 2, 3].into_iter().count(), 3);
+}
+
+#[test]
+fn test_into_iter_next_chunk() {
+    let mut iter = b"lorem".to_vec().into_iter();
+
+    assert_eq!(iter.next_chunk().unwrap(), [b'l', b'o']); // N is inferred as 2
+    assert_eq!(iter.next_chunk().unwrap(), [b'r', b'e', b'm']); // N is inferred as 3
+    assert_eq!(iter.next_chunk::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
 }
 
 #[test]
