@@ -79,12 +79,6 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     if body.source.promoted.is_some() {
         return false;
     }
-    // Avoid inlining into generators, since their `optimized_mir` is used for layout computation,
-    // which can create a cycle, even when no attempt is made to inline the function in the other
-    // direction.
-    if tcx.generator_kind(def_id).is_some() {
-        return false;
-    }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
 

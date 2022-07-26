@@ -1,5 +1,4 @@
 // Checks that inliner doesn't introduce cycles when optimizing generators.
-// The outcome of optimization is not verfied, just the absence of the cycle.
 // Regression test for #76181.
 //
 // edition:2018
@@ -8,11 +7,13 @@
 
 pub struct S;
 
-impl S {
-    pub async fn g(&mut self) {
-        self.h();
-    }
-    pub fn h(&mut self) {
-        let _ = self.g();
-    }
+// EMIT_MIR inline_async.g.Inline.diff
+pub async fn g(s: &mut S) {
+    h(s);
+}
+
+// EMIT_MIR inline_async.h.Inline.diff
+#[inline(always)]
+pub fn h(s: &mut S) {
+    let _ = g(s);
 }

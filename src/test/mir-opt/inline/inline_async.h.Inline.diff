@@ -1,0 +1,29 @@
+- // MIR for `h` before Inline
++ // MIR for `h` after Inline
+  
+  fn h(_1: &mut S) -> () {
+      debug s => _1;                       // in scope 0 at $DIR/inline-async.rs:+0:10: +0:11
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-async.rs:+0:21: +0:21
+      let mut _2: std::future::from_generator::GenFuture<[static generator@$DIR/inline-async.rs:11:27: 13:2]>; // in scope 0 at $DIR/inline-async.rs:+1:13: +1:17
+      let mut _3: &mut S;                  // in scope 0 at $DIR/inline-async.rs:+1:15: +1:16
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/inline-async.rs:+1:13: +1:17
+          StorageLive(_3);                 // scope 0 at $DIR/inline-async.rs:+1:15: +1:16
+          _3 = &mut (*_1);                 // scope 0 at $DIR/inline-async.rs:+1:15: +1:16
+          _2 = g(move _3) -> bb1;          // scope 0 at $DIR/inline-async.rs:+1:13: +1:17
+                                           // mir::Constant
+                                           // + span: $DIR/inline-async.rs:18:13: 18:14
+                                           // + literal: Const { ty: for<'r> fn(&'r mut S) -> impl for<'r> Future<Output = ()> {g}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 0 at $DIR/inline-async.rs:+1:16: +1:17
+          StorageDead(_2);                 // scope 0 at $DIR/inline-async.rs:+1:17: +1:18
+          _0 = const ();                   // scope 0 at $DIR/inline-async.rs:+0:21: +2:2
+          return;                          // scope 0 at $DIR/inline-async.rs:+2:2: +2:2
+      }
+  }
+  

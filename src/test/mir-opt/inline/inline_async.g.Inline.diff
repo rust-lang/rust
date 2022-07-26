@@ -1,0 +1,34 @@
+- // MIR for `g` before Inline
++ // MIR for `g` after Inline
+  
+  fn g(_1: &mut S) -> std::future::from_generator::GenFuture<[static generator@$DIR/inline-async.rs:11:27: 13:2]> {
+      debug s => _1;                       // in scope 0 at $DIR/inline-async.rs:+0:16: +0:17
+      let mut _0: std::future::from_generator::GenFuture<[static generator@$DIR/inline-async.rs:11:27: 13:2]>; // return place in scope 0 at $DIR/inline-async.rs:+0:27: +0:27
+      let mut _2: [static generator@$DIR/inline-async.rs:11:27: 13:2]; // in scope 0 at $DIR/inline-async.rs:+0:27: +2:2
++     scope 1 (inlined std::future::from_generator::<[static generator@$DIR/inline-async.rs:11:27: 13:2]>) { // at $DIR/inline-async.rs:11:27: 13:2
++         debug gen => _2;                 // in scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
++         let mut _3: [static generator@$DIR/inline-async.rs:11:27: 13:2]; // in scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
++     }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/inline-async.rs:+0:27: +2:2
+          Deinit(_2);                      // scope 0 at $DIR/inline-async.rs:+0:27: +2:2
+          (_2.0: &mut S) = move _1;        // scope 0 at $DIR/inline-async.rs:+0:27: +2:2
+          discriminant(_2) = 0;            // scope 0 at $DIR/inline-async.rs:+0:27: +2:2
+-         _0 = std::future::from_generator::<[static generator@$DIR/inline-async.rs:11:27: 13:2]>(move _2) -> bb1; // scope 0 at $DIR/inline-async.rs:+0:27: +2:2
+-                                          // mir::Constant
+-                                          // + span: $DIR/inline-async.rs:11:27: 13:2
+-                                          // + literal: Const { ty: fn([static generator@$DIR/inline-async.rs:11:27: 13:2]) -> impl Future<Output = ()> {std::future::from_generator::<[static generator@$DIR/inline-async.rs:11:27: 13:2]>}, val: Value(<ZST>) }
+-     }
+- 
+-     bb1: {
++         StorageLive(_3);                 // scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
++         _3 = move _2;                    // scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
++         Deinit(_0);                      // scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
++         (_0.0: [static generator@$DIR/inline-async.rs:11:27: 13:2]) = move _3; // scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
++         StorageDead(_3);                 // scope 1 at $SRC_DIR/core/src/future/mod.rs:LL:COL
+          StorageDead(_2);                 // scope 0 at $DIR/inline-async.rs:+2:1: +2:2
+          return;                          // scope 0 at $DIR/inline-async.rs:+2:2: +2:2
+      }
+  }
+  
