@@ -17,7 +17,7 @@ where
     G: Get<T>,
 {
     move || {
-        //~^ ERROR hidden type for `impl Trait` captures lifetime
+        //~^ ERROR hidden type for `impl FnOnce()` captures lifetime
         *dest = g.get();
     }
 }

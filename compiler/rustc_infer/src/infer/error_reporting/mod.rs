@@ -237,12 +237,14 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
+    opaque_ty: ty::OpaqueTypeKey<'tcx>,
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    let opaque_ty = tcx.mk_opaque(opaque_ty.def_id.to_def_id(), opaque_ty.substs);
     let mut err = struct_span_err!(
         tcx.sess,
         span,
         E0700,
-        "hidden type for `impl Trait` captures lifetime that does not appear in bounds",
+        "hidden type for `{opaque_ty}` captures lifetime that does not appear in bounds",
     );
 
     // Explain the region we are capturing.
