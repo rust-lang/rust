@@ -967,7 +967,8 @@ fn create_generator_drop_shim<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
-    simplify::remove_dead_blocks(tcx, &mut body);
+    simplify::simplify_cfg(tcx, &mut body);
+    simplify::simplify_locals(&mut body, tcx);
 
     body
 }
