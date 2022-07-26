@@ -55,7 +55,7 @@
           ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:+1:23: +1:30
           discriminant(_2) = 1;            // scope 0 at $DIR/issue-73223.rs:+1:23: +1:30
           _3 = const 1_isize;              // scope 0 at $DIR/issue-73223.rs:+1:23: +1:30
-          goto -> bb2;                     // scope 0 at $DIR/issue-73223.rs:+1:17: +1:30
+          goto -> bb3;                     // scope 0 at $DIR/issue-73223.rs:+1:17: +1:30
       }
   
       bb1: {
@@ -66,6 +66,10 @@
       }
   
       bb2: {
+          unreachable;                     // scope 0 at $DIR/issue-73223.rs:+1:23: +1:30
+      }
+  
+      bb3: {
           StorageLive(_4);                 // scope 0 at $DIR/issue-73223.rs:+2:14: +2:15
           _4 = ((_2 as Some).0: i32);      // scope 0 at $DIR/issue-73223.rs:+2:14: +2:15
           _1 = _4;                         // scope 2 at $DIR/issue-73223.rs:+2:20: +2:21
@@ -108,10 +112,10 @@
           StorageDead(_17);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _15 = Not(move _16);             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_16);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          switchInt(move _15) -> [false: bb4, otherwise: bb3]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          switchInt(move _15) -> [false: bb5, otherwise: bb4]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
   
-      bb3: {
+      bb4: {
           StorageLive(_20);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           Deinit(_20);                     // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           discriminant(_20) = 0;           // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -141,7 +145,7 @@
                                            // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
       }
   
-      bb4: {
+      bb5: {
           nop;                             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_14);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

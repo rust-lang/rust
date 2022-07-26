@@ -30,7 +30,7 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
     bb0: {
         _2 = _1;                         // scope 0 at $DIR/simplify_try.rs:+1:31: +1:32
         _3 = discriminant(_2);           // scope 0 at $DIR/simplify_try.rs:+1:19: +1:33
-        switchInt(move _3) -> [0_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try.rs:+1:13: +1:33
+        switchInt(move _3) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/simplify_try.rs:+1:13: +1:33
     }
 
     bb1: {
@@ -41,6 +41,10 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
     }
 
     bb2: {
+        unreachable;                     // scope 0 at $DIR/simplify_try.rs:+1:19: +1:33
+    }
+
+    bb3: {
         StorageLive(_4);                 // scope 0 at $DIR/simplify_try.rs:+2:13: +2:14
         StorageLive(_5);                 // scope 2 at $DIR/simplify_try.rs:+2:37: +2:50
         StorageLive(_6);                 // scope 2 at $DIR/simplify_try.rs:+2:48: +2:49
