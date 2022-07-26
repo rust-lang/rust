@@ -865,27 +865,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .join("\n");
                         let actual_prefix = actual.prefix_string(self.tcx);
                         info!("unimplemented_traits.len() == {}", unimplemented_traits.len());
-                        let (primary_message, label) = if unimplemented_traits.len() == 1
-                            && unimplemented_traits_only
-                        {
-                            unimplemented_traits
-                                .into_iter()
-                                .next()
-                                .map(|(_, (trait_ref, obligation))| {
-                                    if trait_ref.self_ty().references_error()
-                                        || actual.references_error()
-                                    {
-                                        // Avoid crashing.
-                                        return (None, None);
-                                    }
-                                    let OnUnimplementedNote { message, label, .. } =
-                                        self.infcx.on_unimplemented_note(trait_ref, &obligation);
-                                    (message, label)
-                                })
-                                .unwrap_or((None, None))
-                        } else {
-                            (None, None)
-                        };
+                        let (primary_message, label) =
+                            if unimplemented_traits.len() == 1 && unimplemented_traits_only {
+                                unimplemented_traits
+                                    .into_iter()
+                                    .next()
+                                    .map(|(_, (trait_ref, obligation))| {
+                                        if trait_ref.self_ty().references_error()
+                                            || actual.references_error()
+                                        {
+                                            // Avoid crashing.
+                                            return (None, None);
+                                        }
+                                        let OnUnimplementedNote { message, label, .. } =
+                                            self.on_unimplemented_note(trait_ref, &obligation);
+                                        (message, label)
+                                    })
+                                    .unwrap_or((None, None))
+                            } else {
+                                (None, None)
+                            };
                         let primary_message = primary_message.unwrap_or_else(|| format!(
                             "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
                         ));
@@ -1648,7 +1647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call: &hir::Expr<'_>,
         span: Span,
     ) {
-        let output_ty = match self.infcx.get_impl_future_output_ty(ty) {
+        let output_ty = match self.get_impl_future_output_ty(ty) {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty).skip_binder(),
             _ => return,
         };

@@ -241,13 +241,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         make_adjustments: impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
-        assert!(a.is_ty_var() && self.infcx.shallow_resolve(a) == a);
-        assert!(self.infcx.shallow_resolve(b) == b);
+        assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
+        assert!(self.shallow_resolve(b) == b);
 
         if b.is_ty_var() {
             // Two unresolved type variables: create a `Coerce` predicate.
             let target_ty = if self.use_lub {
-                self.infcx.next_ty_var(TypeVariableOrigin {
+                self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::LatticeVariable,
                     span: self.cause.span,
                 })
@@ -991,7 +991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.autoderef(rustc_span::DUMMY_SP, expr_ty).nth(1).and_then(|(deref_ty, _)| {
             self.infcx
                 .type_implements_trait(
-                    self.infcx.tcx.lang_items().deref_mut_trait()?,
+                    self.tcx.lang_items().deref_mut_trait()?,
                     expr_ty,
                     ty::List::empty(),
                     self.param_env,

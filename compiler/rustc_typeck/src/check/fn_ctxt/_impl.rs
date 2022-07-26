@@ -185,12 +185,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !method.substs.is_empty() {
             let method_generics = self.tcx.generics_of(method.def_id);
             if !method_generics.params.is_empty() {
-                let user_type_annotation = self.infcx.probe(|_| {
+                let user_type_annotation = self.probe(|_| {
                     let user_substs = UserSubsts {
                         substs: InternalSubsts::for_item(self.tcx, method.def_id, |param, _| {
                             let i = param.index as usize;
                             if i < method_generics.parent_count {
-                                self.infcx.var_for_def(DUMMY_SP, param)
+                                self.var_for_def(DUMMY_SP, param)
                             } else {
                                 method.substs[i]
                             }
@@ -198,7 +198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         user_self_ty: None, // not relevant here
                     };
 
-                    self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
+                    self.canonicalize_user_type_annotation(UserType::TypeOf(
                         method.def_id,
                         user_substs,
                     ))
@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("fcx {}", self.tag());
 
         if Self::can_contain_user_lifetime_bounds((substs, user_self_ty)) {
-            let canonicalized = self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
+            let canonicalized = self.canonicalize_user_type_annotation(UserType::TypeOf(
                 def_id,
                 UserSubsts { substs, user_self_ty },
             ));
@@ -480,7 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         if Self::can_contain_user_lifetime_bounds(ty) {
-            let c_ty = self.infcx.canonicalize_response(UserType::Ty(ty));
+            let c_ty = self.canonicalize_response(UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
@@ -764,7 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
                     && let ty::Opaque(def_id, _) = *ty.kind()
                     && let Some(def_id) = def_id.as_local()
-                    && self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
+                    && self.opaque_type_origin(def_id, DUMMY_SP).is_some() {
                     return None;
                 }
             }
@@ -826,7 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.bound_type_of(def_id)
         };
-        let substs = self.infcx.fresh_substs_for_item(span, def_id);
+        let substs = self.fresh_substs_for_item(span, def_id);
         let ty = item_ty.subst(self.tcx, substs);
 
         self.write_resolution(hir_id, Ok((def_kind, def_id)));

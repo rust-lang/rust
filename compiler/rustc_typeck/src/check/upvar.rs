@@ -948,7 +948,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
             hir::CaptureBy::Value => ty, // For move closure the capture kind should be by value
@@ -1064,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
     ) -> Option<FxHashSet<UpvarMigrationInfo>> {
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
             debug!("does not have significant drop");

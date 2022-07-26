@@ -475,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggest_deref_binop(lhs_deref_ty);
                 } else if is_assign == IsAssign::No
                     && let Ref(_, lhs_deref_ty, _) = lhs_ty.kind() {
-                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty, lhs_expr.span) {
+                    if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty, lhs_expr.span) {
                         suggest_deref_binop(*lhs_deref_ty);
                     }
                 }
@@ -523,7 +523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => None,
                                     };
 
-                                    self.infcx.suggest_restricting_param_bound(
+                                    self.suggest_restricting_param_bound(
                                         &mut err,
                                         trait_pred,
                                         proj_pred,
@@ -740,7 +740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 error.obligation.predicate.to_opt_poly_trait_pred()
                             });
                         for pred in predicates {
-                            self.infcx.suggest_restricting_param_bound(
+                            self.suggest_restricting_param_bound(
                                 &mut err,
                                 pred,
                                 None,
