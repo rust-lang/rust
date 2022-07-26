@@ -21,7 +21,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
-use rustc_middle::ty::abstract_const::AbstractConst;
+use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
@@ -966,14 +966,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn member_constraint(
         &self,
-        opaque_type_def_id: LocalDefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
         in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
-            opaque_type_def_id,
+            key,
             definition_span,
             hidden_ty,
             region,
@@ -1675,7 +1675,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_resolve(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
+        mut param_env: ty::ParamEnv<'tcx>,
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
@@ -1686,10 +1686,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // variables
         if substs.has_infer_types_or_consts() {
             let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
-            if let Ok(None) = ac {
-                substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
-            } else {
-                return Err(ErrorHandled::TooGeneric);
+            match ac {
+                Ok(None) => {
+                    substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
+                    param_env = self.tcx.param_env(unevaluated.def.did);
+                }
+                Ok(Some(ct)) => {
+                    if ct.unify_failure_kind(self.tcx) == FailureKind::Concrete {
+                        substs = replace_param_and_infer_substs_with_placeholder(self.tcx, substs);
+                    } else {
+                        return Err(ErrorHandled::TooGeneric);
+                    }
+                }
+                Err(guar) => return Err(ErrorHandled::Reported(guar)),
             }
         }
 
@@ -1999,4 +2008,44 @@ impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
             self.sub_region, self.sup_type
         )
     }
+}
+
+/// Replaces substs that reference param or infer variables with suitable
+/// placeholders. This function is meant to remove these param and infer
+/// substs when they're not actually needed to evaluate a constant.
+fn replace_param_and_infer_substs_with_placeholder<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    substs: SubstsRef<'tcx>,
+) -> SubstsRef<'tcx> {
+    tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
+        match arg.unpack() {
+            GenericArgKind::Type(_)
+                if arg.has_param_types_or_consts() || arg.has_infer_types_or_consts() =>
+            {
+                tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                    universe: ty::UniverseIndex::ROOT,
+                    name: ty::BoundVar::from_usize(idx),
+                }))
+                .into()
+            }
+            GenericArgKind::Const(ct)
+                if ct.has_infer_types_or_consts() || ct.has_param_types_or_consts() =>
+            {
+                let ty = ct.ty();
+                // If the type references param or infer, replace that too...
+                if ty.has_param_types_or_consts() || ty.has_infer_types_or_consts() {
+                    bug!("const `{ct}`'s type should not reference params or types");
+                }
+                tcx.mk_const(ty::ConstS {
+                    ty,
+                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        name: ty::BoundConst { ty, var: ty::BoundVar::from_usize(idx) },
+                    }),
+                })
+                .into()
+            }
+            _ => arg,
+        }
+    }))
 }

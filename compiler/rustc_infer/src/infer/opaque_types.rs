@@ -394,15 +394,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            op: |r| {
-                self.member_constraint(
-                    opaque_type_key.def_id,
-                    span,
-                    concrete_ty,
-                    r,
-                    &choice_regions,
-                )
-            },
+            op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
         });
     }
 
