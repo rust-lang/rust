@@ -65,9 +65,9 @@ use crate::str;
 /// extern "C" { fn my_string() -> *const c_char; }
 ///
 /// fn my_string_safe() -> String {
-///     unsafe {
-///         String::from_utf8_lossy(CStr::from_ptr(my_string()))
-///     }
+///     let cstr = unsafe { CStr::from_ptr(my_string()) };
+///     // Get copy-on-write Cow<'_, str>, then guarantee a freshly-owned String allocation
+///     String::from_utf8_lossy(cstr.to_bytes()).to_string()
 /// }
 ///
 /// println!("string: {}", my_string_safe());
