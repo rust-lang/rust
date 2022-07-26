@@ -42,7 +42,7 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             "that does not derive `Copy`"
         };
         let message = format!(
-            "`{}` can't be derived on this `#[repr(packed)]` struct {} (error E0133)",
+            "`{}` can't be derived on this `#[repr(packed)]` struct {}",
             tcx.item_name(tcx.trait_id_of_impl(def_id.to_def_id()).expect("derived trait name")),
             extra
         );
