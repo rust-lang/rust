@@ -1423,7 +1423,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             |(_, (span, _, p_name, res))| {
                 let id = self.next_node_id();
                 let ident = Ident::new(p_name.ident().name, span);
-                let l = self.new_named_lifetime_with_res(id, span, ident, res, true);
+                let l = self.new_named_lifetime_with_res(id, span, ident, res, false);
                 hir::GenericArg::Lifetime(l)
             },
         ));
