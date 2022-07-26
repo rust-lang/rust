@@ -966,14 +966,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn member_constraint(
         &self,
-        opaque_type_def_id: LocalDefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
         in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
-            opaque_type_def_id,
+            key,
             definition_span,
             hidden_ty,
             region,

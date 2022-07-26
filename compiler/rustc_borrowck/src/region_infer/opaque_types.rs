@@ -246,7 +246,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // after producing an error for each of them.
         let definition_ty = instantiated_ty.ty.fold_with(&mut ReverseMapper::new(
             self.tcx,
-            def_id,
+            opaque_type_key,
             map,
             instantiated_ty.ty,
             instantiated_ty.span,
@@ -429,7 +429,7 @@ fn check_opaque_type_parameter_valid(
 struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    opaque_type_def_id: LocalDefId,
+    key: ty::OpaqueTypeKey<'tcx>,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
     map_missing_regions_to_empty: bool,
 
@@ -443,14 +443,14 @@ struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        opaque_type_def_id: LocalDefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
         Self {
             tcx,
-            opaque_type_def_id,
+            key,
             map,
             map_missing_regions_to_empty: false,
             hidden_ty: Some(hidden_ty),
@@ -504,7 +504,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             }
         }
 
-        let generics = self.tcx().generics_of(self.opaque_type_def_id);
+        let generics = self.tcx().generics_of(self.key.def_id);
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
@@ -513,9 +513,10 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
-                        self.tcx.def_span(self.opaque_type_def_id),
+                        self.tcx.def_span(self.key.def_id),
                         hidden_ty,
                         r,
+                        self.key,
                     )
                     .emit();
                 }
