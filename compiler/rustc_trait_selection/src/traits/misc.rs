@@ -63,8 +63,7 @@ pub fn can_type_implement_copy<'tcx>(
                 } else {
                     ObligationCause::dummy_with_span(span)
                 };
-                let ctx = traits::FulfillmentContext::new();
-                match traits::fully_normalize(&infcx, ctx, cause, param_env, ty) {
+                match traits::fully_normalize(&infcx, cause, param_env, ty) {
                     Ok(ty) => {
                         if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
                             infringing.push((field, ty));

@@ -222,15 +222,13 @@ fn do_normalize_predicates<'tcx>(
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
     tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let fulfill_cx = FulfillmentContext::new();
-        let predicates =
-            match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
-                Ok(predicates) => predicates,
-                Err(errors) => {
-                    let reported = infcx.report_fulfillment_errors(&errors, None, false);
-                    return Err(reported);
-                }
-            };
+        let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
+            Ok(predicates) => predicates,
+            Err(errors) => {
+                let reported = infcx.report_fulfillment_errors(&errors, None, false);
+                return Err(reported);
+            }
+        };
 
         debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
 
@@ -383,7 +381,6 @@ pub fn normalize_param_env_or_error<'tcx>(
 
 pub fn fully_normalize<'a, 'tcx, T>(
     infcx: &InferCtxt<'a, 'tcx>,
-    mut fulfill_cx: FulfillmentContext<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     value: T,
@@ -399,8 +396,10 @@ where
         "fully_normalize: normalized_value={:?} obligations={:?}",
         normalized_value, obligations
     );
+
+    let mut fulfill_cx = FulfillmentContext::new();
     for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
+        fulfill_cx.register_predicate_obligation(infcx, obligation);
     }
 
     debug!("fully_normalize: select_all_or_error start");

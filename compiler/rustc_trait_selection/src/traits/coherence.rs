@@ -302,7 +302,6 @@ fn negative_impl<'cx, 'tcx>(
         let impl_env = tcx.param_env(impl1_def_id);
         let subject1 = match traits::fully_normalize(
             &infcx,
-            FulfillmentContext::new(),
             ObligationCause::dummy(),
             impl_env,
             tcx.impl_subject(impl1_def_id),

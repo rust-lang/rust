@@ -153,7 +153,6 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     tcx.infer_ctxt().enter(|infcx| {
         let impl1_trait_ref = match traits::fully_normalize(
             &infcx,
-            FulfillmentContext::new(),
             ObligationCause::dummy(),
             penv,
             impl1_trait_ref,
