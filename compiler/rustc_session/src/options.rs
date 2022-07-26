@@ -1512,6 +1512,8 @@ options! {
                  file which is ignored by the linker
         `single`: sections which do not require relocation are written into object file but ignored
                   by the linker"),
+    split_bundled_libs: bool = (false, parse_bool, [TRACKED],
+             "split bundled libs"),
     split_dwarf_inlining: bool = (true, parse_bool, [TRACKED],
         "provide minimal debug info in the object/executable to facilitate online \
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),

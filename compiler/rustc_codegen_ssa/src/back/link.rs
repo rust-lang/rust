@@ -317,37 +317,66 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
-        match lib.kind {
-            NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
-                if flavor == RlibFlavor::Normal =>
-            {
-                // Don't allow mixing +bundle with +whole_archive since an rlib may contain
-                // multiple native libs, some of which are +whole-archive and some of which are
-                // -whole-archive and it isn't clear how we can currently handle such a
-                // situation correctly.
-                // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
-                sess.err(
-                    "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
+        if !sess.opts.unstable_opts.split_bundled_libs {
+            match lib.kind {
+                NativeLibKind::Static { bundle: None | Some(true), whole_archive: Some(true) }
+                    if flavor == RlibFlavor::Normal =>
+                {
+                    // Don't allow mixing +bundle with +whole_archive since an rlib may contain
+                    // multiple native libs, some of which are +whole-archive and some of which are
+                    // -whole-archive and it isn't clear how we can currently handle such a
+                    // situation correctly.
+                    // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
+                    sess.err(
+                        "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
                         with each other when generating rlibs",
-                );
+                    );
+                }
+                NativeLibKind::Static { bundle: None | Some(true), .. } => {}
+                NativeLibKind::Static { bundle: Some(false), .. }
+                | NativeLibKind::Dylib { .. }
+                | NativeLibKind::Framework { .. }
+                | NativeLibKind::RawDylib
+                | NativeLibKind::Unspecified => continue,
             }
-            NativeLibKind::Static { bundle: None | Some(true), .. } => {}
-            NativeLibKind::Static { bundle: Some(false), .. }
-            | NativeLibKind::Dylib { .. }
-            | NativeLibKind::Framework { .. }
-            | NativeLibKind::RawDylib
-            | NativeLibKind::Unspecified => continue,
-        }
-        if let Some(name) = lib.name {
-            let location =
-                find_library(name.as_str(), lib.verbatim.unwrap_or(false), &lib_search_paths, sess);
-            ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
-                sess.fatal(&format!(
-                    "failed to add native library {}: {}",
-                    location.to_string_lossy(),
-                    e
-                ));
-            });
+            if let Some(name) = lib.name {
+                let location = find_library(
+                    name.as_str(),
+                    lib.verbatim.unwrap_or(false),
+                    &lib_search_paths,
+                    sess,
+                );
+                ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
+                    sess.fatal(&format!(
+                        "failed to add native library {}: {}",
+                        location.to_string_lossy(),
+                        e
+                    ));
+                });
+            }
+        } else {
+            match lib.kind {
+                NativeLibKind::Static { bundle: None | Some(true), .. }
+                    if flavor == RlibFlavor::Normal =>
+                {
+                    let Some(name) = lib.name else {
+                        continue;
+                    };
+
+                    let location = find_library(
+                        name.as_str(),
+                        lib.verbatim.unwrap_or(false),
+                        &lib_search_paths,
+                        sess,
+                    );
+
+                    let suffix = &sess.target.staticlib_suffix;
+                    let crate_name = out_filename.to_str().unwrap();
+                    let bundle_lib = PathBuf::from(&format!("{crate_name}.bundle.{name}{suffix}"));
+                    fs::copy(location, bundle_lib).unwrap();
+                }
+                _ => {}
+            }
         }
     }
 
@@ -2362,7 +2391,24 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             (lib.name, lib.kind, lib.verbatim)
                         };
 
-                        if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
+                        if sess.opts.unstable_opts.split_bundled_libs {
+                            if let NativeLibKind::Static {
+                                bundle: Some(true) | None,
+                                whole_archive,
+                            } = lib.kind
+                            {
+                                let suffix = &sess.target.staticlib_suffix;
+                                let crate_path = src.paths().next().unwrap().to_str().unwrap();
+                                let bundle_lib =
+                                    PathBuf::from(&format!("{crate_path}.bundle.{name}{suffix}"));
+                                if whole_archive == Some(true) {
+                                    cmd.link_whole_rlib(&bundle_lib);
+                                } else {
+                                    cmd.link_rlib(&bundle_lib);
+                                }
+                            }
+                        } else {
+                            if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
                             lib.kind
                         {
                             let verbatim = lib.verbatim.unwrap_or(false);
@@ -2375,6 +2421,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             } else {
                                 cmd.link_staticlib(name, verbatim);
                             }
+                        }
                         }
                     }
                 }
