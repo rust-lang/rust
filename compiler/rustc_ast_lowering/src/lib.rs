@@ -751,31 +751,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    /// Setup lifetime capture for and impl-trait.
-    /// The captures will be added to `captures`.
-    fn while_capturing_lifetimes<T>(
-        &mut self,
-        parent_def_id: LocalDefId,
-        captures: &mut FxHashMap<LocalDefId, (Span, NodeId, ParamName, LifetimeRes)>,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        let lifetime_stash = std::mem::replace(
-            &mut self.captured_lifetimes,
-            Some(LifetimeCaptureContext {
-                parent_def_id,
-                captures: std::mem::take(captures),
-                binders_to_ignore: Default::default(),
-            }),
-        );
-
-        let ret = f(self);
-
-        let ctxt = std::mem::replace(&mut self.captured_lifetimes, lifetime_stash).unwrap();
-        *captures = ctxt.captures;
-
-        ret
-    }
-
     /// Register a binder to be ignored for lifetime capture.
     #[tracing::instrument(level = "debug", skip(self, f))]
     #[inline]
@@ -1786,20 +1761,36 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?captures);
 
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
-            let future_bound =
-                this.while_capturing_lifetimes(opaque_ty_def_id, &mut captures, |this| {
-                    // We have to be careful to get elision right here. The
-                    // idea is that we create a lifetime parameter for each
-                    // lifetime in the return type.  So, given a return type
-                    // like `async fn foo(..) -> &[&u32]`, we lower to `impl
-                    // Future<Output = &'1 [ &'2 u32 ]>`.
-                    //
-                    // Then, we will create `fn foo(..) -> Foo<'_, '_>`, and
-                    // hence the elision takes place at the fn site.
-                    this.lower_async_fn_output_type_to_future_bound(output, fn_def_id, span)
-                });
-            debug!("lower_async_fn_ret_ty: future_bound={:#?}", future_bound);
-            debug!("lower_async_fn_ret_ty: captures={:#?}", captures);
+            let lifetime_stash = std::mem::replace(
+                &mut this.captured_lifetimes,
+                Some(LifetimeCaptureContext {
+                    parent_def_id: opaque_ty_def_id,
+                    captures: std::mem::take(&mut captures),
+                    binders_to_ignore: Default::default(),
+                }),
+            );
+
+            let (lifetimes_in_bounds, binders_to_ignore) = ast::lifetimes_in_ret_ty(output);
+            debug!(?lifetimes_in_bounds);
+            debug!(?binders_to_ignore);
+
+            this.create_and_capture_lifetime_defs(&lifetimes_in_bounds, &binders_to_ignore);
+
+            // We have to be careful to get elision right here. The
+            // idea is that we create a lifetime parameter for each
+            // lifetime in the return type.  So, given a return type
+            // like `async fn foo(..) -> &[&u32]`, we lower to `impl
+            // Future<Output = &'1 [ &'2 u32 ]>`.
+            //
+            // Then, we will create `fn foo(..) -> Foo<'_, '_>`, and
+            // hence the elision takes place at the fn site.
+            let ret = this.lower_async_fn_output_type_to_future_bound(output, fn_def_id, span);
+
+            let ctxt = std::mem::replace(&mut this.captured_lifetimes, lifetime_stash).unwrap();
+
+            captures = ctxt.captures;
+
+            let future_bound = ret;
 
             let generic_params =
                 this.arena.alloc_from_iter(captures.iter().map(|(_, &(span, p_id, p_name, _))| {
