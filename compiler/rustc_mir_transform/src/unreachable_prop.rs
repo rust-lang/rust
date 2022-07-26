@@ -12,9 +12,8 @@ pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        // Enable only under -Zmir-opt-level=4 as in some cases (check the deeply-nested-opt
-        // perf benchmark) LLVM may spend quite a lot of time optimizing the generated code.
-        sess.mir_opt_level() >= 4
+        // Enable only under -Zmir-opt-level=2 as this can make programs less debuggable.
+        sess.mir_opt_level() >= 2
     }
 
     fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
