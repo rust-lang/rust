@@ -163,7 +163,7 @@ impl<'a> Resolver<'a> {
 
         let container = match parent.kind {
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
-            ModuleKind::Block(..) => "block",
+            ModuleKind::Block => "block",
         };
 
         let old_noun = match old_binding.is_import() {

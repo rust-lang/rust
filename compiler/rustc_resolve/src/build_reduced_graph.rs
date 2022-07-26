@@ -524,7 +524,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         let crate_root = self.r.resolve_crate_root(source.ident);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(.., name) => name,
-                            ModuleKind::Block(..) => unreachable!(),
+                            ModuleKind::Block => unreachable!(),
                         };
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
                         // in `source` breaks `src/test/ui/imports/import-crate-var.rs`,
@@ -936,7 +936,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         if self.block_needs_anonymous_module(block) {
             let module = self.r.new_module(
                 Some(parent),
-                ModuleKind::Block(block.id),
+                ModuleKind::Block,
                 expansion.to_expn_id(),
                 block.span,
                 parent.no_implicit_prelude,

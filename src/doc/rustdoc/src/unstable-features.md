@@ -466,7 +466,7 @@ Note that the third item is the crate root, which in this case is undocumented.
 and is also accepted on stable toolchains.
 
 It can also be used with `--show-coverage`. Take a look at its
-[documentation](#--show-coverage-get-statistics-about-code-documentation-coverage) for more
+[documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more
 information.
 
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
