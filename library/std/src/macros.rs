@@ -27,12 +27,23 @@ macro_rules! panic {
 /// necessary to use [`io::stdout().flush()`][flush] to ensure the output is emitted
 /// immediately.
 ///
+/// The `print!` macro will lock the standard output on each call. If you call
+/// `print!` within a hot loop, this behavior may be the bottleneck of the loop.
+/// To avoid this, lock stdout with [`io::stdout().lock()`][lock]:
+/// ```
+/// use std::io::{stdout, Write};
+///
+/// let mut lock = stdout().lock();
+/// write!(lock, "hello world").unwrap();
+/// ```
+///
 /// Use `print!` only for the primary output of your program. Use
 /// [`eprint!`] instead to print error and progress messages.
 ///
 /// [flush]: crate::io::Write::flush
 /// [`println!`]: crate::println
 /// [`eprint!`]: crate::eprint
+/// [lock]: crate::io::Stdout
 ///
 /// # Panics
 ///
@@ -75,11 +86,22 @@ macro_rules! print {
 /// This macro uses the same syntax as [`format!`], but writes to the standard output instead.
 /// See [`std::fmt`] for more information.
 ///
+/// The `println!` macro will lock the standard output on each call. If you call
+/// `println!` within a hot loop, this behavior may be the bottleneck of the loop.
+/// To avoid this, lock stdout with [`io::stdout().lock()`][lock]:
+/// ```
+/// use std::io::{stdout, Write};
+///
+/// let mut lock = stdout().lock();
+/// writeln!(lock, "hello world").unwrap();
+/// ```
+///
 /// Use `println!` only for the primary output of your program. Use
 /// [`eprintln!`] instead to print error and progress messages.
 ///
 /// [`std::fmt`]: crate::fmt
 /// [`eprintln!`]: crate::eprintln
+/// [lock]: crate::io::Stdout
 ///
 /// # Panics
 ///
