@@ -1720,6 +1720,14 @@ rustc_queries! {
         desc { "checking mut restrictions" }
     }
 
+    query adt_expression_restriction(variant_def_id: DefId) -> ty::Restriction {
+        desc {
+            "computing where `{}` can be constructed via an ADT expression",
+            tcx.def_path_str(variant_def_id)
+        }
+        cache_on_disk_if { true }
+    }
+
     query dep_kind(_: CrateNum) -> CrateDepKind {
         eval_always
         desc { "fetching what a dependency looks like" }
