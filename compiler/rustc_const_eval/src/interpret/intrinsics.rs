@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{ConstValue, GlobalId, InterpResult, Scalar},
+    interpret::{ConstValue, GlobalId, InterpResult, PointerArithmetic, Scalar},
     BinOp,
 };
 use rustc_middle::ty;
@@ -328,7 +328,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // We managed to find a valid allocation for one pointer, but not the other.
                             // That means they are definitely not pointing to the same allocation.
                             throw_ub_format!(
-                                "{} called on pointers into different allocations",
+                                "`{}` called on pointers into different allocations",
                                 intrinsic_name
                             );
                         }
@@ -336,7 +336,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             // Found allocation for both. They must be into the same allocation.
                             if a_alloc_id != b_alloc_id {
                                 throw_ub_format!(
-                                    "{} called on pointers into different allocations",
+                                    "`{}` called on pointers into different allocations",
                                     intrinsic_name
                                 );
                             }
@@ -346,47 +346,71 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     };
 
                 // Compute distance.
-                let distance = {
-                    // The subtraction is always done in `isize` to enforce
-                    // the "no more than `isize::MAX` apart" requirement.
-                    let a_offset = ImmTy::from_uint(a_offset, isize_layout);
-                    let b_offset = ImmTy::from_uint(b_offset, isize_layout);
-                    let (val, overflowed, _ty) =
-                        self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
+                let dist = {
+                    // Addresses are unsigned, so this is a `usize` computation. We have to do the
+                    // overflow check separately anyway.
+                    let (val, overflowed, _ty) = {
+                        let a_offset = ImmTy::from_uint(a_offset, usize_layout);
+                        let b_offset = ImmTy::from_uint(b_offset, usize_layout);
+                        self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?
+                    };
                     if overflowed {
-                        throw_ub_format!("pointers were too far apart for {}", intrinsic_name);
+                        // a < b
+                        if intrinsic_name == sym::ptr_offset_from_unsigned {
+                            throw_ub_format!(
+                                "`{}` called when first pointer has smaller offset than second: {} < {}",
+                                intrinsic_name,
+                                a_offset,
+                                b_offset,
+                            );
+                        }
+                        // The signed form of the intrinsic allows this. If we interpret the
+                        // difference as isize, we'll get the proper signed difference. If that
+                        // seems *positive*, they were more than isize::MAX apart.
+                        let dist = val.to_machine_isize(self)?;
+                        if dist >= 0 {
+                            throw_ub_format!(
+                                "`{}` called when first pointer is too far before second",
+                                intrinsic_name
+                            );
+                        }
+                        dist
+                    } else {
+                        // b >= a
+                        let dist = val.to_machine_isize(self)?;
+                        // If converting to isize produced a *negative* result, we had an overflow
+                        // because they were more than isize::MAX apart.
+                        if dist < 0 {
+                            throw_ub_format!(
+                                "`{}` called when first pointer is too far ahead of second",
+                                intrinsic_name
+                            );
+                        }
+                        dist
                     }
-                    val.to_machine_isize(self)?
                 };
 
                 // Check that the range between them is dereferenceable ("in-bounds or one past the
                 // end of the same allocation"). This is like the check in ptr_offset_inbounds.
-                let min_ptr = if distance >= 0 { b } else { a };
+                let min_ptr = if dist >= 0 { b } else { a };
                 self.check_ptr_access_align(
                     min_ptr,
-                    Size::from_bytes(distance.unsigned_abs()),
+                    Size::from_bytes(dist.unsigned_abs()),
                     Align::ONE,
                     CheckInAllocMsg::OffsetFromTest,
                 )?;
 
-                if intrinsic_name == sym::ptr_offset_from_unsigned && distance < 0 {
-                    throw_ub_format!(
-                        "{} called when first pointer has smaller offset than second: {} < {}",
-                        intrinsic_name,
-                        a_offset,
-                        b_offset,
-                    );
-                }
-
                 // Perform division by size to compute return value.
                 let ret_layout = if intrinsic_name == sym::ptr_offset_from_unsigned {
+                    assert!(0 <= dist && dist <= self.machine_isize_max());
                     usize_layout
                 } else {
+                    assert!(self.machine_isize_min() <= dist && dist <= self.machine_isize_max());
                     isize_layout
                 };
                 let pointee_layout = self.layout_of(substs.type_at(0))?;
                 // If ret_layout is unsigned, we checked that so is the distance, so we are good.
-                let val = ImmTy::from_int(distance, ret_layout);
+                let val = ImmTy::from_int(dist, ret_layout);
                 let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
                 self.exact_div(&val, &size, dest)?;
             }

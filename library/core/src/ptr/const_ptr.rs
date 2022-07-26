@@ -730,7 +730,7 @@ impl<T: ?Sized> *const T {
     /// }
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
-    /// // ptr1.offset_from(ptr2)
+    /// // ptr1.sub_ptr(ptr2)
     /// ```
     #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
     #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
