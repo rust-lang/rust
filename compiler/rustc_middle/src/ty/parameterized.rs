@@ -117,6 +117,7 @@ macro_rules! parameterized_over_tcx {
 parameterized_over_tcx! {
     crate::middle::exported_symbols::ExportedSymbol,
     crate::mir::Body,
+    crate::mir::GeneratorLayout,
     ty::Ty,
     ty::FnSig,
     ty::GenericPredicates,

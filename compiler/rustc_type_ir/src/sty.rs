@@ -170,7 +170,7 @@ pub enum TyKind<I: Interner> {
     ///
     /// This variant is only using when `drop_tracking_mir` is set.
     /// This contains the `DefId` and the `SubstRef` of the generator.
-    /// The actual witness types are computed on MIR by the `mir_generator_info` query.
+    /// The actual witness types are computed on MIR by the `mir_generator_witnesses` query.
     ///
     /// Looking at the following example, the witness for this generator
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:

@@ -471,6 +471,13 @@ rustc_queries! {
         }
     }
 
+    query mir_generator_witnesses(key: DefId) -> mir::GeneratorLayout<'tcx> {
+        arena_cache
+        desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for codegen. This is also the only query that can fetch non-local MIR, at present.
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
