@@ -153,11 +153,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
     layout: TyAndLayout<'tcx>,
     info: Value,
 ) -> (Value, Value) {
-    if !layout.is_unsized() {
-        let size = fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64);
-        let align = fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64);
-        return (size, align);
-    }
+    assert!(layout.is_unsized() || layout.abi == Abi::Uninhabited);
     match layout.ty.kind() {
         ty::Dynamic(..) => {
             // load size/align from vtable

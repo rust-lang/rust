@@ -86,7 +86,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
         let mut entries = Vec::new();
 
-        for (entry_name, entry) in self.entries {
+        for (mut entry_name, entry) in self.entries {
             // FIXME only read the symbol table of the object files to avoid having to keep all
             // object files in memory at once, or read them twice.
             let data = match entry {
@@ -109,6 +109,23 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             };
 
             if !self.no_builtin_ranlib {
+                if symbol_table.contains_key(&entry_name) {
+                    // The ar crate can't handle creating a symbol table in case of multiple archive
+                    // members with the same name. Work around this by prepending a number until we
+                    // get a unique name.
+                    for i in 1.. {
+                        let new_name = format!("{}_", i)
+                            .into_bytes()
+                            .into_iter()
+                            .chain(entry_name.iter().copied())
+                            .collect::<Vec<_>>();
+                        if !symbol_table.contains_key(&new_name) {
+                            entry_name = new_name;
+                            break;
+                        }
+                    }
+                }
+
                 match object::File::parse(&*data) {
                     Ok(object) => {
                         symbol_table.insert(
