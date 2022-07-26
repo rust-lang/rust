@@ -651,6 +651,12 @@ impl Step for Rustc {
             panic!("Cannot use and generate PGO profiles at the same time");
         }
 
+        // With LLD, we can use ICF (identical code folding) to reduce the executable size
+        // of librustc_driver/rustc and to improve i-cache utilization.
+        if builder.config.use_lld {
+            cargo.rustflag("-Clink-args=-Wl,--icf=all");
+        }
+
         let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
             if compiler.stage == 1 {
                 cargo.rustflag(&format!("-Cprofile-generate={}", path));
