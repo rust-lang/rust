@@ -306,8 +306,6 @@ fn inline(
         if let Some(body) = ast::BlockExpr::cast(insert_ws_into(fn_body.syntax().clone())) {
             body
         } else {
-            // FIXME(zachs18): I believe this should be unreachable,
-            // since insert_ws_into shouldn't change the kind of the SyntaxNode.
             fn_body.clone_for_update()
         }
     } else {
