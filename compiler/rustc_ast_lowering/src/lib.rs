@@ -1392,80 +1392,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 debug!(?lifetimes_in_bounds);
                 debug!(?binders_to_ignore);
 
-                for lifetime in &lifetimes_in_bounds {
-                    let ident = lifetime.ident;
-                    let span = ident.span;
-
-                    let res =
-                        lctx.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
-                    debug!(?res);
-
-                    if let Some(mut captured_lifetimes) = lctx.captured_lifetimes.take() {
-                        match res {
-                            LifetimeRes::Param { param, binder } => {
-                                if !captured_lifetimes.binders_to_ignore.contains(&binder)
-                                    && !binders_to_ignore
-                                        .get(&lifetime.id)
-                                        .unwrap_or(&Vec::new())
-                                        .contains(&binder)
-                                {
-                                    match captured_lifetimes.captures.entry(param) {
-                                        Entry::Occupied(_) => {}
-                                        Entry::Vacant(v) => {
-                                            let node_id = lctx.next_node_id();
-                                            let name = ParamName::Plain(ident);
-
-                                            lctx.create_def(
-                                                captured_lifetimes.parent_def_id,
-                                                node_id,
-                                                DefPathData::LifetimeNs(name.ident().name),
-                                            );
-
-                                            v.insert((span, node_id, name, res));
-                                        }
-                                    }
-                                }
-                            }
-
-                            LifetimeRes::Fresh { param, binder } => {
-                                debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                                if !captured_lifetimes.binders_to_ignore.contains(&binder)
-                                    && !binders_to_ignore
-                                        .get(&lifetime.id)
-                                        .unwrap_or(&Vec::new())
-                                        .contains(&binder)
-                                {
-                                    let param = lctx.local_def_id(param);
-                                    match captured_lifetimes.captures.entry(param) {
-                                        Entry::Occupied(_) => {}
-                                        Entry::Vacant(v) => {
-                                            let node_id = lctx.next_node_id();
-
-                                            let name = ParamName::Fresh;
-
-                                            lctx.create_def(
-                                                captured_lifetimes.parent_def_id,
-                                                node_id,
-                                                DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                                            );
-
-                                            v.insert((span, node_id, name, res));
-                                        }
-                                    }
-                                }
-                            }
-
-                            LifetimeRes::Infer | LifetimeRes::Static | LifetimeRes::Error => {}
-
-                            res => panic!(
-                                "Unexpected lifetime resolution {:?} for {:?} at {:?}",
-                                res, lifetime.ident, lifetime.ident.span
-                            ),
-                        }
-
-                        lctx.captured_lifetimes = Some(captured_lifetimes);
-                    }
-                }
+                lctx.create_and_capture_lifetime_defs(&lifetimes_in_bounds, &binders_to_ignore);
 
                 let ret = lctx.lower_param_bounds(bounds, itctx, false);
 
@@ -1552,6 +1479,86 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span: self.lower_span(opaque_ty_span),
         };
         hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))
+    }
+
+    fn create_and_capture_lifetime_defs(
+        &mut self,
+        lifetimes_in_bounds: &[&Lifetime],
+        binders_to_ignore: &FxHashMap<NodeId, Vec<NodeId>>,
+    ) {
+        for lifetime in lifetimes_in_bounds {
+            let ident = lifetime.ident;
+            let span = ident.span;
+
+            let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
+            debug!(?res);
+
+            if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
+                match res {
+                    LifetimeRes::Param { param, binder } => {
+                        if !captured_lifetimes.binders_to_ignore.contains(&binder)
+                            && !binders_to_ignore
+                                .get(&lifetime.id)
+                                .unwrap_or(&Vec::new())
+                                .contains(&binder)
+                        {
+                            match captured_lifetimes.captures.entry(param) {
+                                Entry::Occupied(_) => {}
+                                Entry::Vacant(v) => {
+                                    let node_id = self.next_node_id();
+                                    let name = ParamName::Plain(ident);
+
+                                    self.create_def(
+                                        captured_lifetimes.parent_def_id,
+                                        node_id,
+                                        DefPathData::LifetimeNs(name.ident().name),
+                                    );
+
+                                    v.insert((span, node_id, name, res));
+                                }
+                            }
+                        }
+                    }
+
+                    LifetimeRes::Fresh { param, binder } => {
+                        debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                        if !captured_lifetimes.binders_to_ignore.contains(&binder)
+                            && !binders_to_ignore
+                                .get(&lifetime.id)
+                                .unwrap_or(&Vec::new())
+                                .contains(&binder)
+                        {
+                            let param = self.local_def_id(param);
+                            match captured_lifetimes.captures.entry(param) {
+                                Entry::Occupied(_) => {}
+                                Entry::Vacant(v) => {
+                                    let node_id = self.next_node_id();
+
+                                    let name = ParamName::Fresh;
+
+                                    self.create_def(
+                                        captured_lifetimes.parent_def_id,
+                                        node_id,
+                                        DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                                    );
+
+                                    v.insert((span, node_id, name, res));
+                                }
+                            }
+                        }
+                    }
+
+                    LifetimeRes::Infer | LifetimeRes::Static | LifetimeRes::Error => {}
+
+                    res => panic!(
+                        "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                        res, lifetime.ident, lifetime.ident.span
+                    ),
+                }
+
+                self.captured_lifetimes = Some(captured_lifetimes);
+            }
+        }
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
