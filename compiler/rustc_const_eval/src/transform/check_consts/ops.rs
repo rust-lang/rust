@@ -23,8 +23,8 @@ use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
 use crate::errors::{
-    MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrComparisonErr, RawPtrToIntErr,
-    StaticAccessErr, TransientMutBorrowErr, TransientMutBorrowErrRaw,
+    MutDerefErr, NonConstOpErr, PanicNonStrErr, RawPtrToIntErr, StaticAccessErr,
+    TransientMutBorrowErr, TransientMutBorrowErrRaw,
 };
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
@@ -654,10 +654,10 @@ pub struct RawPtrComparison;
 impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
     fn build_error(
         &self,
-        ccx: &ConstCx<'_, 'tcx>,
+        _: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(RawPtrComparisonErr { span })
+        span_bug!(span, "raw ptr comparison should already be caught in the trait system");
     }
 }
 
