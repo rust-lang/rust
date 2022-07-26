@@ -601,6 +601,7 @@ impl<'a> Builder<'a> {
                 tool::Cargo,
                 tool::Rls,
                 tool::RustAnalyzer,
+                tool::RustAnalyzerProcMacroSrv,
                 tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
