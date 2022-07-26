@@ -145,7 +145,7 @@ impl FromWithTcx<clean::GenericArg> for GenericArg {
     fn from_tcx(arg: clean::GenericArg, tcx: TyCtxt<'_>) -> Self {
         use clean::GenericArg::*;
         match arg {
-            Lifetime(l) => GenericArg::Lifetime(l.0.to_string()),
+            Lifetime(l) => GenericArg::Lifetime(convert_lifetime(l)),
             Type(t) => GenericArg::Type(t.into_tcx(tcx)),
             Const(box c) => GenericArg::Const(c.into_tcx(tcx)),
             Infer => GenericArg::Infer,
@@ -347,6 +347,10 @@ fn convert_abi(a: RustcAbi) -> Abi {
     }
 }
 
+fn convert_lifetime(l: clean::Lifetime) -> String {
+    l.0.to_string()
+}
+
 impl FromWithTcx<clean::Generics> for Generics {
     fn from_tcx(generics: clean::Generics, tcx: TyCtxt<'_>) -> Self {
         Generics {
@@ -374,7 +378,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
         use clean::GenericParamDefKind::*;
         match kind {
             Lifetime { outlives } => GenericParamDefKind::Lifetime {
-                outlives: outlives.into_iter().map(|lt| lt.0.to_string()).collect(),
+                outlives: outlives.into_iter().map(convert_lifetime).collect(),
             },
             Type { did: _, bounds, default, synthetic } => GenericParamDefKind::Type {
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
@@ -405,7 +409,7 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                     .collect(),
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
-                lifetime: lifetime.0.to_string(),
+                lifetime: convert_lifetime(lifetime)
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             },
             EqPredicate { lhs, rhs } => {
@@ -428,7 +432,7 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
                     modifier: from_trait_bound_modifier(modifier),
                 }
             }
-            Outlives(lifetime) => GenericBound::Outlives(lifetime.0.to_string()),
+            Outlives(lifetime) => GenericBound::Outlives(convert_lifetime(lifetime)),
         }
     }
 }
@@ -459,7 +463,7 @@ impl FromWithTcx<clean::Type> for Type {
                 param_names: Vec::new(),
             },
             clean::Type::DynTrait(bounds, lt) => Type::DynTrait(DynTrait {
-                lifetime: lt.map(|lt| lt.0.to_string()),
+                lifetime: lt.map(convert_lifetime),
                 traits: bounds.into_iter().map(|t| t.into_tcx(tcx)).collect(),
             }),
             Generic(s) => Type::Generic(s.to_string()),
@@ -475,7 +479,7 @@ impl FromWithTcx<clean::Type> for Type {
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
             BorrowedRef { lifetime, mutability, type_ } => Type::BorrowedRef {
-                lifetime: lifetime.map(|l| l.0.to_string()),
+                lifetime: lifetime.map(convert_lifetime),
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
