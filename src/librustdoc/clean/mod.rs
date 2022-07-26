@@ -1993,6 +1993,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
                 let items =
                     item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
+
                 TraitItem(Trait {
                     def_id,
                     items,
