@@ -11,9 +11,6 @@ macro_rules! intrinsic_pat {
     (kw.$name:ident) => {
         kw::$name
     };
-    ($name:literal) => {
-        $name
-    };
 }
 
 macro_rules! intrinsic_arg {
@@ -24,6 +21,17 @@ macro_rules! intrinsic_arg {
     (v $fx:expr, $arg:ident) => {
         let $arg = codegen_operand($fx, $arg).load_scalar($fx);
     };
+}
+
+macro_rules! intrinsic_args {
+    ($fx:expr, $args:expr => ($($arg:tt),*); $intrinsic:expr) => {
+        #[allow(unused_parens)]
+        let ($($arg),*) = if let [$($arg),*] = $args {
+            ($(codegen_operand($fx, $arg)),*)
+        } else {
+            bug!("wrong number of args for intrinsic {}", $intrinsic);
+        };
+    }
 }
 
 macro_rules! intrinsic_match {
