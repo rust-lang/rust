@@ -327,7 +327,9 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(pred) => bound_predicate.rebind(pred).clean(cx),
+            ty::PredicateKind::Trait(pred) => {
+                clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
+            }
             ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred, cx),
             ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
             ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
@@ -344,22 +346,23 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::PolyTraitPredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-        if self.skip_binder().constness == ty::BoundConstness::ConstIfConst
-            && Some(self.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
-        {
-            return None;
-        }
-
-        let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
-        Some(WherePredicate::BoundPredicate {
-            ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
-            bounds: vec![poly_trait_ref.clean(cx)],
-            bound_params: Vec::new(),
-        })
+fn clean_poly_trait_predicate<'tcx>(
+    pred: ty::PolyTraitPredicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
+    if pred.skip_binder().constness == ty::BoundConstness::ConstIfConst
+        && Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
+    {
+        return None;
     }
+
+    let poly_trait_ref = pred.map_bound(|pred| pred.trait_ref);
+    Some(WherePredicate::BoundPredicate {
+        ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
+        bounds: vec![poly_trait_ref.clean(cx)],
+        bound_params: Vec::new(),
+    })
 }
 
 fn clean_region_outlives_predicate<'tcx>(
