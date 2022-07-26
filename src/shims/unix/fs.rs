@@ -24,38 +24,56 @@ struct FileHandle {
 }
 
 trait FileDescriptor: std::fmt::Debug {
-    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle>;
+    fn name(&self) -> &'static str;
+
+    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
+        throw_unsup_format!("{} cannot be used as FileHandle", self.name());
+    }
 
     fn read<'tcx>(
         &mut self,
-        communicate_allowed: bool,
-        bytes: &mut [u8],
-    ) -> InterpResult<'tcx, io::Result<usize>>;
+        _communicate_allowed: bool,
+        _bytes: &mut [u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot read from {}", self.name());
+    }
 
     fn write<'tcx>(
         &self,
-        communicate_allowed: bool,
-        bytes: &[u8],
-    ) -> InterpResult<'tcx, io::Result<usize>>;
+        _communicate_allowed: bool,
+        _bytes: &[u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot write to {}", self.name());
+    }
 
     fn seek<'tcx>(
         &mut self,
-        communicate_allowed: bool,
-        offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>>;
+        _communicate_allowed: bool,
+        _offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
+        throw_unsup_format!("cannot seek on {}", self.name());
+    }
 
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>>;
+    ) -> InterpResult<'tcx, io::Result<i32>> {
+        throw_unsup_format!("cannot close {}", self.name());
+    }
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 
     #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32>;
+    fn as_unix_host_fd(&self) -> Option<i32> {
+        None
+    }
 }
 
 impl FileDescriptor for FileHandle {
+    fn name(&self) -> &'static str {
+        "FILE"
+    }
+
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         Ok(self)
     }
@@ -126,8 +144,8 @@ impl FileDescriptor for FileHandle {
 }
 
 impl FileDescriptor for io::Stdin {
-    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        throw_unsup_format!("stdin cannot be used as FileHandle");
+    fn name(&self) -> &'static str {
+        "stdin"
     }
 
     fn read<'tcx>(
@@ -142,29 +160,6 @@ impl FileDescriptor for io::Stdin {
         Ok(Read::read(self, bytes))
     }
 
-    fn write<'tcx>(
-        &self,
-        _communicate_allowed: bool,
-        _bytes: &[u8],
-    ) -> InterpResult<'tcx, io::Result<usize>> {
-        throw_unsup_format!("cannot write to stdin");
-    }
-
-    fn seek<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        throw_unsup_format!("cannot seek on stdin");
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
-        throw_unsup_format!("stdin cannot be closed");
-    }
-
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdin()))
     }
@@ -176,16 +171,8 @@ impl FileDescriptor for io::Stdin {
 }
 
 impl FileDescriptor for io::Stdout {
-    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        throw_unsup_format!("stdout cannot be used as FileHandle");
-    }
-
-    fn read<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _bytes: &mut [u8],
-    ) -> InterpResult<'tcx, io::Result<usize>> {
-        throw_unsup_format!("cannot read from stdout");
+    fn name(&self) -> &'static str {
+        "stdout"
     }
 
     fn write<'tcx>(
@@ -205,21 +192,6 @@ impl FileDescriptor for io::Stdout {
         Ok(result)
     }
 
-    fn seek<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        throw_unsup_format!("cannot seek on stdout");
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
-        throw_unsup_format!("stdout cannot be closed");
-    }
-
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdout()))
     }
@@ -231,16 +203,8 @@ impl FileDescriptor for io::Stdout {
 }
 
 impl FileDescriptor for io::Stderr {
-    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        throw_unsup_format!("stderr cannot be used as FileHandle");
-    }
-
-    fn read<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _bytes: &mut [u8],
-    ) -> InterpResult<'tcx, io::Result<usize>> {
-        throw_unsup_format!("cannot read from stderr");
+    fn name(&self) -> &'static str {
+        "stderr"
     }
 
     fn write<'tcx>(
@@ -251,21 +215,6 @@ impl FileDescriptor for io::Stderr {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
         Ok(Write::write(&mut { self }, bytes))
-    }
-
-    fn seek<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        throw_unsup_format!("cannot seek on stderr");
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
-        throw_unsup_format!("stderr cannot be closed");
     }
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
@@ -282,16 +231,8 @@ impl FileDescriptor for io::Stderr {
 struct DummyOutput;
 
 impl FileDescriptor for DummyOutput {
-    fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
-        throw_unsup_format!("stderr and stdout cannot be used as FileHandle");
-    }
-
-    fn read<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _bytes: &mut [u8],
-    ) -> InterpResult<'tcx, io::Result<usize>> {
-        throw_unsup_format!("cannot read from stderr or stdout");
+    fn name(&self) -> &'static str {
+        "stderr and stdout"
     }
 
     fn write<'tcx>(
@@ -303,28 +244,8 @@ impl FileDescriptor for DummyOutput {
         Ok(Ok(bytes.len()))
     }
 
-    fn seek<'tcx>(
-        &mut self,
-        _communicate_allowed: bool,
-        _offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        throw_unsup_format!("cannot seek on stderr or stdout");
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        _communicate_allowed: bool,
-    ) -> InterpResult<'tcx, io::Result<i32>> {
-        throw_unsup_format!("stderr and stdout cannot be closed");
-    }
-
     fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(DummyOutput))
-    }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        None
     }
 }
 
