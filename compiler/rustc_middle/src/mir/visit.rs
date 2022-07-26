@@ -979,16 +979,6 @@ macro_rules! extra_body_methods {
 
 macro_rules! super_body {
     ($self:ident, $body:ident, $($mutability:ident, $invalidate:tt)?) => {
-        let span = $body.span;
-        if let Some(gen) = &$($mutability)? $body.generator {
-            if let Some(yield_ty) = $(& $mutability)? gen.yield_ty {
-                $self.visit_ty(
-                    yield_ty,
-                    TyContext::YieldTy(SourceInfo::outermost(span))
-                );
-            }
-        }
-
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
             $self.visit_basic_block_data(bb, data);
         }

@@ -52,7 +52,6 @@
 use crate::deref_separator::deref_finder;
 use crate::simplify;
 use crate::util::expand_aggregate;
-use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -72,8 +71,6 @@ use rustc_mir_dataflow::{self, Analysis};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
 use std::{iter, ops};
-
-pub struct StateTransform;
 
 struct RenameLocalVisitor<'tcx> {
     from: Local,
@@ -972,8 +969,6 @@ fn create_generator_drop_shim<'tcx>(
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(tcx, &mut body);
 
-    dump_mir(tcx, None, "generator_drop", &0, &body, |_, _| Ok(()));
-
     body
 }
 
@@ -1073,6 +1068,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
 fn create_generator_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generator_kind: hir::GeneratorKind,
     transform: TransformVisitor<'tcx>,
     body: &mut Body<'tcx>,
     can_return: bool,
@@ -1118,8 +1114,6 @@ fn create_generator_resume_function<'tcx>(
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
 
     // Panic when resumed on the returned or poisoned state
-    let generator_kind = body.generator_kind().unwrap();
-
     if can_unwind {
         cases.insert(
             1,
@@ -1142,8 +1136,6 @@ fn create_generator_resume_function<'tcx>(
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
     simplify::remove_dead_blocks(tcx, body);
-
-    dump_mir(tcx, None, "generator_resume", &0, body, |_, _| Ok(()));
 }
 
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
@@ -1239,141 +1231,146 @@ fn create_cases<'tcx>(
         .collect()
 }
 
-impl<'tcx> MirPass<'tcx> for StateTransform {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let Some(yield_ty) = body.yield_ty() else {
-            // This only applies to generators
-            return;
-        };
+pub(crate) fn state_transform_body_for_generator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    generator_kind: hir::GeneratorKind,
+    body: &mut Body<'tcx>,
+) -> GeneratorInfo<'tcx> {
+    // The first argument is the generator type passed by value
+    let gen_ty = body.local_decls.raw[1].ty;
 
-        assert!(body.generator_drop().is_none());
-
-        // The first argument is the generator type passed by value
-        let gen_ty = body.local_decls.raw[1].ty;
-
-        // Get the interior types and substs which typeck computed
-        let (upvars, interior, discr_ty, movable) = match *gen_ty.kind() {
-            ty::Generator(_, substs, movability) => {
-                let substs = substs.as_generator();
-                (
-                    substs.upvar_tys().collect(),
-                    substs.witness(),
-                    substs.discr_ty(tcx),
-                    movability == hir::Movability::Movable,
-                )
-            }
-            _ => {
-                tcx.sess
-                    .delay_span_bug(body.span, &format!("unexpected generator type {}", gen_ty));
-                return;
-            }
-        };
-
-        // Compute GeneratorState<yield_ty, return_ty>
-        let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
-        let state_adt_ref = tcx.adt_def(state_did);
-        let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
-        let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
-        // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
-        // RETURN_PLACE then is a fresh unused local with type ret_ty.
-        let new_ret_local = replace_local(RETURN_PLACE, ret_ty, body, tcx);
-
-        // We also replace the resume argument and insert an `Assign`.
-        // This is needed because the resume argument `_2` might be live across a `yield`, in which
-        // case there is no `Assign` to it that the transform can turn into a store to the generator
-        // state. After the yield the slot in the generator state would then be uninitialized.
-        let resume_local = Local::new(2);
-        let new_resume_local =
-            replace_local(resume_local, body.local_decls[resume_local].ty, body, tcx);
-
-        // When first entering the generator, move the resume argument into its new local.
-        let source_info = SourceInfo::outermost(body.span);
-        let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
-        stmts.insert(
-            0,
-            Statement {
-                source_info,
-                kind: StatementKind::Assign(Box::new((
-                    new_resume_local.into(),
-                    Rvalue::Use(Operand::Move(resume_local.into())),
-                ))),
-            },
-        );
-
-        let always_live_locals = always_storage_live_locals(&body);
-
-        let liveness_info =
-            locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
-
-        sanitize_witness(tcx, body, interior, upvars, &liveness_info.saved_locals);
-
-        if tcx.sess.opts.unstable_opts.validate_mir {
-            let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
-                assigned_local: None,
-                saved_locals: &liveness_info.saved_locals,
-                storage_conflicts: &liveness_info.storage_conflicts,
-            };
-
-            vis.visit_body(body);
+    // Get the interior types and substs which typeck computed
+    let (yield_ty, return_ty, upvars, interior, discr_ty, movable) = match *gen_ty.kind() {
+        ty::Generator(_, substs, movability) => {
+            let substs = substs.as_generator();
+            (
+                substs.sig().yield_ty,
+                substs.sig().return_ty,
+                substs.upvar_tys().collect(),
+                substs.witness(),
+                substs.discr_ty(tcx),
+                movability == hir::Movability::Movable,
+            )
         }
+        _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
+    };
 
-        // Extract locals which are live across suspension point into `layout`
-        // `remap` gives a mapping from local indices onto generator struct indices
-        // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
+    // Compute GeneratorState<yield_ty, return_ty>
+    let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+    let state_adt_ref = tcx.adt_def(state_did);
+    let state_substs = tcx.intern_substs(&[yield_ty.into(), return_ty.into()]);
+    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-        let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
+    // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
+    // RETURN_PLACE then is a fresh unused local with type ret_ty.
+    let new_ret_local = replace_local(RETURN_PLACE, ret_ty, body, tcx);
 
-        // Run the transformation which converts Places from Local to generator struct
-        // accesses for locals in `remap`.
-        // It also rewrites `return x` and `yield y` as writing a new generator state and returning
-        // GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
-        let mut transform = TransformVisitor {
-            tcx,
-            state_adt_ref,
-            state_substs,
-            remap,
-            storage_liveness,
-            always_live_locals,
-            suspension_points: Vec::new(),
-            new_ret_local,
-            discr_ty,
+    // We also replace the resume argument and insert an `Assign`.
+    // This is needed because the resume argument `_2` might be live across a `yield`, in which
+    // case there is no `Assign` to it that the transform can turn into a store to the generator
+    // state. After the yield the slot in the generator state would then be uninitialized.
+    let resume_local = Local::new(2);
+    let new_resume_local =
+        replace_local(resume_local, body.local_decls[resume_local].ty, body, tcx);
+
+    // When first entering the generator, move the resume argument into its new local.
+    let source_info = SourceInfo::outermost(body.span);
+    let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
+    stmts.insert(
+        0,
+        Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                new_resume_local.into(),
+                Rvalue::Use(Operand::Move(resume_local.into())),
+            ))),
+        },
+    );
+
+    let always_live_locals = always_storage_live_locals(&body);
+
+    let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+
+    sanitize_witness(tcx, body, interior, upvars, &liveness_info.saved_locals);
+
+    if tcx.sess.opts.unstable_opts.validate_mir {
+        let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
+            assigned_local: None,
+            saved_locals: &liveness_info.saved_locals,
+            storage_conflicts: &liveness_info.storage_conflicts,
         };
-        transform.visit_body(body);
 
-        // Update our MIR struct to reflect the changes we've made
-        body.arg_count = 2; // self, resume arg
-        body.spread_arg = None;
-
-        body.generator.as_mut().unwrap().yield_ty = None;
-        body.generator.as_mut().unwrap().generator_layout = Some(layout);
-
-        // Insert `drop(generator_struct)` which is used to drop upvars for generators in
-        // the unresumed state.
-        // This is expanded to a drop ladder in `elaborate_generator_drops`.
-        let drop_clean = insert_clean_drop(body);
-
-        dump_mir(tcx, None, "generator_pre-elab", &0, body, |_, _| Ok(()));
-
-        // Expand `drop(generator_struct)` to a drop ladder which destroys upvars.
-        // If any upvars are moved out of, drop elaboration will handle upvar destruction.
-        // However we need to also elaborate the code generated by `insert_clean_drop`.
-        elaborate_generator_drops(tcx, body);
-
-        dump_mir(tcx, None, "generator_post-transform", &0, body, |_, _| Ok(()));
-
-        // Create a copy of our MIR and use it to create the drop shim for the generator
-        let drop_shim = create_generator_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
-
-        body.generator.as_mut().unwrap().generator_drop = Some(drop_shim);
-
-        // Create the Generator::resume function
-        create_generator_resume_function(tcx, transform, body, can_return);
-
-        // Run derefer to fix Derefs that are not in the first place
-        deref_finder(tcx, body);
+        vis.visit_body(body);
     }
+
+    // Extract locals which are live across suspension point into `layout`
+    // `remap` gives a mapping from local indices onto generator struct indices
+    // `storage_liveness` tells us which locals have live storage at suspension points
+    let (remap, generator_layout, storage_liveness) = compute_layout(liveness_info, body);
+
+    let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
+
+    // Run the transformation which converts Places from Local to generator struct
+    // accesses for locals in `remap`.
+    // It also rewrites `return x` and `yield y` as writing a new generator state and returning
+    // GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
+    let mut transform = TransformVisitor {
+        tcx,
+        state_adt_ref,
+        state_substs,
+        remap,
+        storage_liveness,
+        always_live_locals,
+        suspension_points: Vec::new(),
+        new_ret_local,
+        discr_ty,
+    };
+    transform.visit_body(body);
+
+    // Update our MIR struct to reflect the changes we've made
+    body.arg_count = 2; // self, resume arg
+    body.spread_arg = None;
+
+    // Insert `drop(generator_struct)` which is used to drop upvars for generators in
+    // the unresumed state.
+    // This is expanded to a drop ladder in `elaborate_generator_drops`.
+    let drop_clean = insert_clean_drop(body);
+
+    dump_mir(tcx, None, "generator_pre-elab", &0, body, |_, _| Ok(()));
+
+    // Expand `drop(generator_struct)` to a drop ladder which destroys upvars.
+    // If any upvars are moved out of, drop elaboration will handle upvar destruction.
+    // However we need to also elaborate the code generated by `insert_clean_drop`.
+    elaborate_generator_drops(tcx, body);
+
+    dump_mir(tcx, None, "generator_post-transform", &0, body, |_, _| Ok(()));
+
+    // Create a copy of our MIR and use it to create the drop shim for the generator
+    let generator_drop = create_generator_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
+
+    dump_mir(tcx, None, "generator_drop", &0, &generator_drop, |position, file| {
+        if let PassWhere::BeforeCFG = position {
+            writeln!(file, "/* generator_layout = {:#?} */", generator_layout)?;
+            writeln!(file)?;
+        }
+        Ok(())
+    });
+
+    // Create the Generator::resume function
+    create_generator_resume_function(tcx, generator_kind, transform, body, can_return);
+
+    dump_mir(tcx, None, "generator_resume", &0, body, |position, file| {
+        if let PassWhere::BeforeCFG = position {
+            writeln!(file, "/* generator_layout = {:#?} */", generator_layout)?;
+            writeln!(file)?;
+        }
+        Ok(())
+    });
+
+    // Run derefer to fix Derefs that are not in the first place
+    deref_finder(tcx, body);
+
+    GeneratorInfo { generator_drop, generator_layout }
 }
 
 /// Looks for any assignments between locals (e.g., `_4 = _5`) that will both be converted to fields

@@ -2291,7 +2291,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns layout of a generator. Layout might be unavailable if the
     /// generator is tainted by errors.
     pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx GeneratorLayout<'tcx>> {
-        self.optimized_mir(def_id).generator_layout()
+        if self.generator_kind(def_id).is_some() {
+            Some(&self.mir_generator_info(def_id).generator_layout)
+        } else {
+            None
+        }
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

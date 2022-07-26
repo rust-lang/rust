@@ -1,4 +1,5 @@
 // MIR for `main::{closure#0}` 0 generator_drop
+
 /* generator_layout = GeneratorLayout {
     field_tys: {
         _0: std::string::String,

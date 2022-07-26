@@ -82,7 +82,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     // Avoid inlining into generators, since their `optimized_mir` is used for layout computation,
     // which can create a cycle, even when no attempt is made to inline the function in the other
     // direction.
-    if body.generator.is_some() {
+    if tcx.generator_kind(def_id).is_some() {
         return false;
     }
 
@@ -888,16 +888,8 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 }
                 &ty::Generator(def_id, substs, _) => {
                     let f_ty = if let Some(var) = parent_ty.variant_index {
-                        let gen_body = if def_id == self.callee_body.source.def_id() {
-                            self.callee_body
-                        } else {
-                            self.tcx.optimized_mir(def_id)
-                        };
-
-                        let Some(layout) = gen_body.generator_layout() else {
-                            self.validation = Err("malformed MIR");
-                            return;
-                        };
+                        let generator_info = self.tcx.mir_generator_info(def_id);
+                        let layout = &generator_info.generator_layout;
 
                         let Some(&local) = layout.variant_fields[var].get(f) else {
                             self.validation = Err("malformed MIR");

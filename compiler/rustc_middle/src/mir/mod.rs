@@ -179,18 +179,11 @@ impl<'tcx> MirSource<'tcx> {
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorInfo<'tcx> {
-    /// The yield type of the function, if it is a generator.
-    pub yield_ty: Option<Ty<'tcx>>,
-
     /// Generator drop glue.
-    pub generator_drop: Option<Body<'tcx>>,
+    pub generator_drop: Body<'tcx>,
 
     /// The layout of a generator. Produced by the state transformation.
-    pub generator_layout: Option<GeneratorLayout<'tcx>>,
-
-    /// If this is a generator then record the type of source expression that caused this generator
-    /// to be created.
-    pub generator_kind: GeneratorKind,
+    pub generator_layout: GeneratorLayout<'tcx>,
 }
 
 /// The lowered representation of a single function.
@@ -212,8 +205,6 @@ pub struct Body<'tcx> {
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
-
-    pub generator: Option<Box<GeneratorInfo<'tcx>>>,
 
     /// Declarations of locals.
     ///
@@ -279,7 +270,6 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        generator_kind: Option<GeneratorKind>,
         tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -295,14 +285,6 @@ impl<'tcx> Body<'tcx> {
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
-            generator: generator_kind.map(|generator_kind| {
-                Box::new(GeneratorInfo {
-                    yield_ty: None,
-                    generator_drop: None,
-                    generator_layout: None,
-                    generator_kind,
-                })
-            }),
             local_decls,
             user_type_annotations,
             arg_count,
@@ -328,7 +310,6 @@ impl<'tcx> Body<'tcx> {
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
-            generator: None,
             local_decls: IndexVec::new(),
             user_type_annotations: IndexVec::new(),
             arg_count: 0,
@@ -460,24 +441,15 @@ impl<'tcx> Body<'tcx> {
             .unwrap_or_else(|| Either::Right(block_data.terminator()))
     }
 
-    #[inline]
-    pub fn yield_ty(&self) -> Option<Ty<'tcx>> {
-        self.generator.as_ref().and_then(|generator| generator.yield_ty)
-    }
-
-    #[inline]
-    pub fn generator_layout(&self) -> Option<&GeneratorLayout<'tcx>> {
-        self.generator.as_ref().and_then(|generator| generator.generator_layout.as_ref())
-    }
-
-    #[inline]
-    pub fn generator_drop(&self) -> Option<&Body<'tcx>> {
-        self.generator.as_ref().and_then(|generator| generator.generator_drop.as_ref())
-    }
-
-    #[inline]
-    pub fn generator_kind(&self) -> Option<GeneratorKind> {
-        self.generator.as_ref().map(|generator| generator.generator_kind)
+    pub fn yield_ty(&self, tcx: TyCtxt<'_>) -> Option<Ty<'tcx>> {
+        if tcx.generator_kind(self.source.def_id()).is_none() {
+            return None;
+        };
+        let gen_ty = self.local_decls.raw[1].ty;
+        match *gen_ty.kind() {
+            ty::Generator(_, substs, _) => Some(substs.as_generator().sig().yield_ty),
+            _ => None,
+        }
     }
 }
 

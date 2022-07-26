@@ -199,18 +199,18 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
-            let (yield_ty, return_ty) = if body.generator_kind.is_some() {
+            let return_ty = if body.generator_kind.is_some() {
                 let gen_ty = tcx.typeck_body(body_id).node_type(id);
                 let gen_sig = match gen_ty.kind() {
                     ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
                     _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
                 };
-                (Some(gen_sig.yield_ty), gen_sig.return_ty)
+                gen_sig.return_ty
             } else {
-                (None, fn_sig.output())
+                fn_sig.output()
             };
 
-            let mut mir = build::construct_fn(
+            build::construct_fn(
                 &thir,
                 &infcx,
                 def,
@@ -223,11 +223,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 body,
                 expr,
                 span_with_body,
-            );
-            if yield_ty.is_some() {
-                mir.generator.as_mut().unwrap().yield_ty = yield_ty;
-            }
-            mir
+            )
         } else {
             // Get the revealed type of this const. This is *not* the adjusted
             // type of its body, which may be a subtype of this type. For
@@ -273,8 +269,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         debug_assert!(
             !(body.local_decls.has_free_regions()
                 || body.basic_blocks.has_free_regions()
-                || body.var_debug_info.has_free_regions()
-                || body.yield_ty().has_free_regions()),
+                || body.var_debug_info.has_free_regions()),
             "Unexpected free regions in MIR: {:?}",
             body,
         );
@@ -797,7 +792,7 @@ fn construct_error<'a, 'tcx>(
     }
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
-    let mut body = Body::new(
+    Body::new(
         MirSource::item(def.did.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
@@ -806,11 +801,8 @@ fn construct_error<'a, 'tcx>(
         num_params,
         vec![],
         span,
-        generator_kind,
         Some(err),
-    );
-    body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
-    body
+    )
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -897,7 +889,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.arg_count,
             self.var_debug_info,
             self.fn_span,
-            self.generator_kind,
             self.typeck_results.tainted_by_errors,
         )
     }

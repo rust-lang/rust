@@ -222,7 +222,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if self.ccx.is_async() || body.generator.is_some() {
+        if self.ccx.is_async() || tcx.generator_kind(def_id).is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }

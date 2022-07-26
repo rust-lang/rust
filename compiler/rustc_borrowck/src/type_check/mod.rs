@@ -1473,7 +1473,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(value, term_location);
 
                 let value_ty = value.ty(body, tcx);
-                match body.yield_ty() {
+                match body.yield_ty(tcx) {
                     None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) => {
                         if let Err(terr) = self.sub_types(

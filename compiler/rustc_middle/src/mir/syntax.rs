@@ -112,8 +112,6 @@ pub enum RuntimePhase {
     /// In addition to the semantic changes, beginning with this phase, the following variants are
     /// disallowed:
     /// * [`TerminatorKind::DropAndReplace`]
-    /// * [`TerminatorKind::Yield`]
-    /// * [`TerminatorKind::GeneratorDrop`]
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     ///
     /// And the following variants are allowed:
@@ -126,7 +124,13 @@ pub enum RuntimePhase {
     /// Beginning with this phase, the following variant is disallowed:
     /// * [`ProjectionElem::Deref`] of `Box`
     PostCleanup = 1,
-    Optimized = 2,
+    /// Beginning with this phase, the following variant is disallowed:
+    /// * [`TerminatorKind::Yield`]
+    /// * [`TerminatorKind::GeneratorDrop`]
+    ///
+    /// Furthermore, `Copy` operands are allowed for non-`Copy` types.
+    GeneratorsLowered = 2,
+    Optimized = 3,
 }
 
 ///////////////////////////////////////////////////////////////////////////

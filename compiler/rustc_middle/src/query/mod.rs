@@ -423,6 +423,21 @@ rustc_queries! {
         }
     }
 
+    query mir_generator_lowered(key: LocalDefId) -> &'tcx (
+        Steal<mir::Body<'tcx>>,
+        Option<mir::GeneratorInfo<'tcx>>,
+
+    ) {
+        no_hash
+        desc { |tcx| "computing generator MIR for `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
+    query mir_generator_info(key: DefId) -> &'tcx mir::GeneratorInfo<'tcx> {
+        desc { |tcx| "generator glue MIR for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
+    }
+
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for codegen. This is also the only query that can fetch non-local MIR, at present.
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {

@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::middle::exported_symbols::ExportedSymbol;
-use crate::mir::Body;
+use crate::mir::{Body, GeneratorInfo};
 use crate::ty::abstract_const::Node;
 use crate::ty::{
     self, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
@@ -117,6 +117,7 @@ parameterized_over_tcx! {
     Predicate,
     GeneratorDiagnosticData,
     Body,
+    GeneratorInfo,
     Node,
     ExportedSymbol,
 }

@@ -28,9 +28,9 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, ConstQualifs, Constant, LocalDecl, MirPass, MirPhase, Operand,
-    Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo, Statement, StatementKind,
-    TerminatorKind,
+    traversal, AnalysisPhase, Body, ConstQualifs, Constant, GeneratorInfo, LocalDecl, MirPass,
+    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -140,6 +140,8 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir_of_const_arg: |tcx, (did, param_did)| {
             promoted_mir(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
         },
+        mir_generator_lowered,
+        mir_generator_info,
         ..*providers
     };
 }
@@ -519,7 +521,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
         &elaborate_box_derefs::ElaborateBoxDerefs,
-        &generator::StateTransform,
         &add_retag::AddRetag,
         // Deaggregator is necessary for const prop. We may want to consider implementing
         // CTFE support for aggregates.
@@ -540,6 +541,42 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     ];
 
     pm::run_passes(tcx, body, passes);
+}
+
+fn mir_generator_lowered<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    did: LocalDefId,
+) -> &'tcx (Steal<Body<'tcx>>, Option<GeneratorInfo<'tcx>>) {
+    assert_eq!(ty::WithOptConstParam::try_lookup(did, tcx), None);
+
+    debug!("about to call mir_drops_elaborated...");
+    let body =
+        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
+    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
+    debug!("body: {:#?}", body);
+
+    debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
+    debug_assert_eq!(body.phase, MirPhase::Runtime(RuntimePhase::PostCleanup));
+
+    rustc_middle::mir::dump_mir(tcx, None, "StateTransform", &"before", &body, |_, _| Ok(()));
+
+    let generator_info = if let Some(generator_kind) = tcx.generator_kind(did) {
+        Some(generator::state_transform_body_for_generator(tcx, generator_kind, &mut body))
+    } else {
+        None
+    };
+
+    rustc_middle::mir::dump_mir(tcx, None, "StateTransform", &"after", &body, |_, _| Ok(()));
+    // Mark phase after dumping MIR since `dump_mir` inspects it to know whether calling
+    // `mir_generator_info` is safe.
+    body.phase = MirPhase::Runtime(RuntimePhase::GeneratorsLowered);
+
+    tcx.arena.alloc((Steal::new(body), generator_info))
+}
+
+fn mir_generator_info<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx GeneratorInfo<'tcx> {
+    let did = did.expect_local();
+    tcx.mir_generator_lowered(did).1.as_ref().unwrap()
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -621,10 +658,8 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }
-    debug!("about to call mir_drops_elaborated...");
-    let body =
-        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
-    let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
+    debug!("about to call mir_generator_lowered...");
+    let mut body = tcx.mir_generator_lowered(did).0.steal();
     debug!("body: {:#?}", body);
     run_optimization_passes(tcx, &mut body);
 

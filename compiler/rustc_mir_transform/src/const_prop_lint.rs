@@ -113,7 +113,6 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
             body.arg_count,
             Default::default(),
             body.span,
-            body.generator_kind(),
             body.tainted_by_errors,
         );
 
