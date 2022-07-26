@@ -119,6 +119,16 @@ where
     }
 }
 
+impl<I, T, U> FromWithTcx<I> for Vec<U>
+where
+    I: IntoIterator<Item = T>,
+    U: FromWithTcx<T>,
+{
+    fn from_tcx(f: I, tcx: TyCtxt<'_>) -> Vec<U> {
+        f.into_iter().map(|x| x.into_tcx(tcx)).collect()
+    }
+}
+
 pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
     #[rustfmt::skip]
     let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
@@ -130,11 +140,11 @@ impl FromWithTcx<clean::GenericArgs> for GenericArgs {
         use clean::GenericArgs::*;
         match args {
             AngleBracketed { args, bindings } => GenericArgs::AngleBracketed {
-                args: args.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
-                bindings: bindings.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                args: args.into_vec().into_tcx(tcx),
+                bindings: bindings.into_tcx(tcx),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
-                inputs: inputs.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                inputs: inputs.into_vec().into_tcx(tcx),
                 output: output.map(|a| (*a).into_tcx(tcx)),
             },
         }
@@ -177,9 +187,7 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
         use clean::TypeBindingKind::*;
         match kind {
             Equality { term } => TypeBindingKind::Equality(term.into_tcx(tcx)),
-            Constraint { bounds } => {
-                TypeBindingKind::Constraint(bounds.into_iter().map(|a| a.into_tcx(tcx)).collect())
-            }
+            Constraint { bounds } => TypeBindingKind::Constraint(bounds.into_tcx(tcx)),
         }
     }
 }
@@ -260,12 +268,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: (*g).into_tcx(tcx),
-            bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            bounds: b.into_tcx(tcx),
             default: None,
         },
         AssocTypeItem(t, b) => ItemEnum::AssocType {
             generics: t.generics.into_tcx(tcx),
-            bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            bounds: b.into_tcx(tcx),
             default: Some(t.item_type.unwrap_or(t.type_).into_tcx(tcx)),
         },
         // `convert_item` early returns `None` for stripped items and keywords.
@@ -354,12 +362,8 @@ fn convert_lifetime(l: clean::Lifetime) -> String {
 impl FromWithTcx<clean::Generics> for Generics {
     fn from_tcx(generics: clean::Generics, tcx: TyCtxt<'_>) -> Self {
         Generics {
-            params: generics.params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            where_predicates: generics
-                .where_predicates
-                .into_iter()
-                .map(|x| x.into_tcx(tcx))
-                .collect(),
+            params: generics.params.into_tcx(tcx),
+            where_predicates: generics.where_predicates.into_tcx(tcx),
         }
     }
 }
@@ -381,7 +385,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 outlives: outlives.into_iter().map(convert_lifetime).collect(),
             },
             Type { did: _, bounds, default, synthetic } => GenericParamDefKind::Type {
-                bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                bounds: bounds.into_tcx(tcx),
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
@@ -399,7 +403,7 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
         match predicate {
             BoundPredicate { ty, bounds, bound_params } => WherePredicate::BoundPredicate {
                 type_: ty.into_tcx(tcx),
-                bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                bounds: bounds.into_tcx(tcx),
                 generic_params: bound_params
                     .into_iter()
                     .map(|x| GenericParamDef {
@@ -409,8 +413,8 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                     .collect(),
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
-                lifetime: convert_lifetime(lifetime)
-                bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                lifetime: convert_lifetime(lifetime),
+                bounds: bounds.into_tcx(tcx),
             },
             EqPredicate { lhs, rhs } => {
                 WherePredicate::EqPredicate { lhs: lhs.into_tcx(tcx), rhs: rhs.into_tcx(tcx) }
@@ -428,7 +432,7 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
                 let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 GenericBound::TraitBound {
                     trait_,
-                    generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                    generic_params: generic_params.into_tcx(tcx),
                     modifier: from_trait_bound_modifier(modifier),
                 }
             }
@@ -464,15 +468,15 @@ impl FromWithTcx<clean::Type> for Type {
             },
             clean::Type::DynTrait(bounds, lt) => Type::DynTrait(DynTrait {
                 lifetime: lt.map(convert_lifetime),
-                traits: bounds.into_iter().map(|t| t.into_tcx(tcx)).collect(),
+                traits: bounds.into_tcx(tcx),
             }),
             Generic(s) => Type::Generic(s.to_string()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
-            Tuple(t) => Type::Tuple(t.into_iter().map(|x| x.into_tcx(tcx)).collect()),
+            Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
             Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s },
-            ImplTrait(g) => Type::ImplTrait(g.into_iter().map(|x| x.into_tcx(tcx)).collect()),
+            ImplTrait(g) => Type::ImplTrait(g.into_tcx(tcx)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
                 mutable: mutability == ast::Mutability::Mut,
@@ -516,7 +520,7 @@ impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
                 async_: false,
                 abi: convert_abi(abi),
             },
-            generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            generic_params: generic_params.into_tcx(tcx),
             decl: decl.into_tcx(tcx),
         }
     }
@@ -550,7 +554,7 @@ impl FromWithTcx<clean::Trait> for Trait {
             is_unsafe,
             items: ids(items, tcx),
             generics: generics.into_tcx(tcx),
-            bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            bounds: bounds.into_tcx(tcx),
             implementations: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -563,7 +567,7 @@ impl FromWithTcx<clean::PolyTrait> for PolyTrait {
     ) -> Self {
         PolyTrait {
             trait_: clean::Type::Path { path: trait_ }.into_tcx(tcx),
-            generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            generic_params: generic_params.into_tcx(tcx),
         }
     }
 }
@@ -730,10 +734,7 @@ impl FromWithTcx<Box<clean::Typedef>> for Typedef {
 
 impl FromWithTcx<clean::OpaqueTy> for OpaqueTy {
     fn from_tcx(opaque: clean::OpaqueTy, tcx: TyCtxt<'_>) -> Self {
-        OpaqueTy {
-            bounds: opaque.bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            generics: opaque.generics.into_tcx(tcx),
-        }
+        OpaqueTy { bounds: opaque.bounds.into_tcx(tcx), generics: opaque.generics.into_tcx(tcx) }
     }
 }
 
@@ -749,10 +750,7 @@ impl FromWithTcx<clean::Static> for Static {
 
 impl FromWithTcx<clean::TraitAlias> for TraitAlias {
     fn from_tcx(alias: clean::TraitAlias, tcx: TyCtxt<'_>) -> Self {
-        TraitAlias {
-            generics: alias.generics.into_tcx(tcx),
-            params: alias.bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-        }
+        TraitAlias { generics: alias.generics.into_tcx(tcx), params: alias.bounds.into_tcx(tcx) }
     }
 }
 
