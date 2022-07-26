@@ -319,6 +319,21 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
             NativeLibKind::Static { bundle: None | Some(true), whole_archive } => {
+                if flavor == RlibFlavor::Normal
+                    && whole_archive == Some(true)
+                    && !sess.opts.unstable_opts.split_bundled_libs
+                {
+                    // Don't allow mixing +bundle with +whole_archive since an rlib may contain
+                    // multiple native libs, some of which are +whole-archive and some of which are
+                    // -whole-archive and it isn't clear how we can currently handle such a
+                    // situation correctly.
+                    // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
+                    sess.err(
+                        "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
+                                with each other when generating rlibs",
+                    );
+                }
+
                 let Some(name) = lib.name else {
                         continue;
                     };
@@ -329,27 +344,13 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
                     &lib_search_paths,
                     sess,
                 );
-                if flavor == RlibFlavor::Normal {
-                    if whole_archive == Some(true) && !sess.opts.unstable_opts.split_bundled_libs {
-                        // Don't allow mixing +bundle with +whole_archive since an rlib may contain
-                        // multiple native libs, some of which are +whole-archive and some of which are
-                        // -whole-archive and it isn't clear how we can currently handle such a
-                        // situation correctly.
-                        // See https://github.com/rust-lang/rust/issues/88085#issuecomment-901050897
-                        sess.err(
-                                "the linking modifiers `+bundle` and `+whole-archive` are not compatible \
-                                with each other when generating rlibs",
-                            );
-                    }
 
-                    if sess.opts.unstable_opts.split_bundled_libs {
-                        let suffix = &sess.target.staticlib_suffix;
-                        let crate_name = out_filename.to_str().unwrap();
-                        let bundle_lib =
-                            PathBuf::from(&format!("{crate_name}.bundle.{name}{suffix}"));
-                        fs::copy(location, bundle_lib).unwrap();
-                        continue;
-                    }
+                if (flavor == RlibFlavor::Normal) && sess.opts.unstable_opts.split_bundled_libs {
+                    let suffix = &sess.target.staticlib_suffix;
+                    let crate_name = out_filename.to_str().unwrap();
+                    let bundle_lib = PathBuf::from(&format!("{crate_name}.bundle.{name}{suffix}"));
+                    fs::copy(location, bundle_lib).unwrap();
+                    continue;
                 }
 
                 ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
