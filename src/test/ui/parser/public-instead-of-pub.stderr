@@ -1,5 +1,5 @@
 error: expected one of `!` or `::`, found keyword `struct`
-  --> $DIR/public-instead-of-pub.rs:3:8
+  --> $DIR/public-instead-of-pub.rs:4:8
    |
 LL | public struct MyStruct;
    |        ^^^^^^ expected one of `!` or `::`
