@@ -66,7 +66,7 @@ use crate::str;
 ///
 /// fn my_string_safe() -> String {
 ///     unsafe {
-///         CStr::from_ptr(my_string()).to_string_lossy().into_owned()
+///         String::from_utf8_lossy(CStr::from_ptr(my_string()))
 ///     }
 /// }
 ///
