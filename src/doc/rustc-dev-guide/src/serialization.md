@@ -123,22 +123,22 @@ is in the cache, then instead of serializing the type as usual, the byte offset
 within the file being written is encoded instead. A similar scheme is used for
 `ty::Predicate`.
 
-## `Lazy<T>`
+## `LazyValue<T>`
 
 Crate metadata is initially loaded before the `TyCtxt<'tcx>` is created, so
 some deserialization needs to be deferred from the initial loading of metadata.
-The [`Lazy<T>`] type wraps the (relative) offset in the crate metadata where a
-`T` has been serialized.
+The [`LazyValue<T>`] type wraps the (relative) offset in the crate metadata where a
+`T` has been serialized. There are also some variants, [`LazyArray<T>`] and [`LazyTable<I, T>`].
 
-The `Lazy<[T]>` and `Lazy<Table<I, T>>` type provide some functionality over
+The `Lazy<[T]>` and `LazyTable<I, T>` type provide some functionality over
 `Lazy<Vec<T>>` and `Lazy<HashMap<I, T>>`:
 
-- It's possible to encode a `Lazy<[T]>` directly from an iterator, without
+- It's possible to encode a `LazyArray<T>` directly from an iterator, without
   first collecting into a `Vec<T>`.
-- Indexing into a `Lazy<Table<I, T>>` does not require decoding entries other
+- Indexing into a `LazyTable<I, T>` does not require decoding entries other
   than the one being read.
 
-**note**: `Lazy<T>` does not cache its value after being deserialized the first
+**note**: `LazyValue<T>` does not cache its value after being deserialized the first
 time. Instead the query system is the main way of caching these results.
 
 ## Specialization
@@ -155,7 +155,9 @@ for `Encodable<CacheEncoder>`.
 [serialize]: https://en.wikipedia.org/wiki/Serialization
 
 [`CrateInfo`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/struct.CrateInfo.html
-[`Lazy<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.Lazy.html
+[`LazyArray<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
+[`LazyTable<I, T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
+[`LazyValue<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
 [`RefDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/codec/trait.RefDecodable.html
 [`rustc_metadata::rmeta::decoder::DecodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/decoder/struct.DecodeContext.html
 [`rustc_metadata::rmeta::encoder::EncodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/encoder/struct.EncodeContext.html
