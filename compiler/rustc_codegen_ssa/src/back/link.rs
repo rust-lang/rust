@@ -120,7 +120,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         &out_filename,
                         codegen_results,
                         path.as_ref(),
-                    );
+                    )?;
                 }
             }
             if sess.opts.json_artifact_notifications {
@@ -650,7 +650,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-) {
+) -> Result<(), ErrorGuaranteed> {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
     let mut cmd = linker_with_args::<B>(
@@ -661,7 +661,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         tmpdir,
         out_filename,
         codegen_results,
-    );
+    )?;
 
     linker::disable_localization(&mut cmd);
 
@@ -1000,6 +1000,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             (Strip::None, _) => {}
         }
     }
+
+    Ok(())
 }
 
 // Temporarily support both -Z strip and -C strip
@@ -1848,7 +1850,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     tmpdir: &Path,
     out_filename: &Path,
     codegen_results: &CodegenResults,
-) -> Command {
+) -> Result<Command, ErrorGuaranteed> {
     let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
     let cmd = &mut *super::linker::get_linker(
         sess,
@@ -1955,6 +1957,18 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         add_upstream_native_libraries(cmd, sess, codegen_results);
     }
 
+    // Link with the import library generated for any raw-dylib functions.
+    for (raw_dylib_name, raw_dylib_imports) in
+        collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
+    {
+        cmd.add_object(&B::create_dll_import_lib(
+            sess,
+            &raw_dylib_name,
+            &raw_dylib_imports,
+            tmpdir,
+        ));
+    }
+
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
     // command line shorter, reset it to default here before adding more libraries.
     cmd.reset_per_library_state();
@@ -1998,7 +2012,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // to it and remove the option.
     add_post_link_args(cmd, sess, flavor);
 
-    cmd.take_cmd()
+    Ok(cmd.take_cmd())
 }
 
 fn add_order_independent_options(
@@ -2227,8 +2241,7 @@ fn add_local_native_libraries(
                 }
             }
             NativeLibKind::RawDylib => {
-                // FIXME(#58713): Proper handling for raw dylibs.
-                bug!("raw_dylib feature not yet implemented");
+                // Ignore RawDylib here, they are handled separately in linker_with_args().
             }
         }
     }
