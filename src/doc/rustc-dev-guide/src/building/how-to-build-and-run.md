@@ -63,7 +63,7 @@ If you set `download-ci-llvm = true`, in some circumstances, such as when
 updating the version of LLVM used by `rustc`, you may want to temporarily
 disable this feature. See the ["Updating LLVM" section] for more.
 
-["Updating LLVM" section]: /backend/updating-llvm.md#feature-updates
+["Updating LLVM" section]: ../backend/updating-llvm.md#feature-updates
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
 execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py
@@ -254,7 +254,7 @@ For examples of the complete configuration necessary to build a target, please v
 select any target under the "Platform Support" heading on the left,
 and see the section related to building a compiler for that target.
 For targets without a corresponding page in the rustc book,
-it may be useful to [inspect the Dockerfiles](/tests/docker.md)
+it may be useful to [inspect the Dockerfiles](../tests/docker.md)
 that the Rust infrastructure itself uses to set up and configure cross-compilation.
 
 If you have followed the directions from the prior section on creating a rustup toolchain,
