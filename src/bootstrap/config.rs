@@ -411,7 +411,11 @@ pub struct Target {
 impl Target {
     pub fn from_triple(triple: &str) -> Self {
         let mut target: Self = Default::default();
-        if triple.contains("-none") || triple.contains("nvptx") || triple.contains("switch") {
+        if triple.contains("-none")
+            || triple.contains("nvptx")
+            || triple.contains("switch")
+            || triple.contains("-uefi")
+        {
             target.no_std = true;
         }
         target
