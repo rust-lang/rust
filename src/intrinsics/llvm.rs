@@ -64,23 +64,11 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                 0 => FloatCC::Equal,
                 1 => FloatCC::LessThan,
                 2 => FloatCC::LessThanOrEqual,
-                7 => {
-                    unimplemented!(
-                        "Compares corresponding elements in `a` and `b` to see if neither is `NaN`."
-                    );
-                }
-                3 => {
-                    unimplemented!(
-                        "Compares corresponding elements in `a` and `b` to see if either is `NaN`."
-                    );
-                }
+                7 => FloatCC::Ordered,
+                3 => FloatCC::Unordered,
                 4 => FloatCC::NotEqual,
-                5 => {
-                    unimplemented!("not less than");
-                }
-                6 => {
-                    unimplemented!("not less than or equal");
-                }
+                5 => FloatCC::UnorderedOrGreaterThanOrEqual,
+                6 => FloatCC::UnorderedOrGreaterThan,
                 kind => unreachable!("kind {:?}", kind),
             };
 
