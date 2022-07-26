@@ -72,7 +72,9 @@ impl TcpProtocol {
 
     // FIXME: Maybe can implment using Fragment Tables
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        crate::io::default_read_vectored(|buf| self.read(buf), bufs)
+        match self {
+            TcpProtocol::V4(x) => x.receive_vectored(bufs),
+        }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -83,7 +85,9 @@ impl TcpProtocol {
 
     // FIXME: Maybe can implment using Fragment Tables
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        crate::io::default_write_vectored(|buf| self.write(buf), bufs)
+        match self {
+            TcpProtocol::V4(x) => x.transmit_vectored(bufs),
+        }
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
