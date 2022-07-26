@@ -225,7 +225,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         debug!("{:?} normalized to {:?}", t, norm_ty);
 
-        for data in constraints {
+        if let Some(data) = constraints {
             ConstraintConversion::new(
                 self.infcx,
                 &self.borrowck_context.universal_regions,
