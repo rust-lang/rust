@@ -328,8 +328,8 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
             ty::PredicateKind::Trait(pred) => bound_predicate.rebind(pred).clean(cx),
-            ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
-            ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
+            ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred, cx),
+            ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
             ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
             ty::PredicateKind::ConstEvaluatable(..) => None,
             ty::PredicateKind::WellFormed(..) => None,
@@ -362,39 +362,37 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::PolyTraitPredicate<'tcx> 
     }
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>>
-    for ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
-{
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(a, b) = self;
+fn clean_region_outlives_predicate<'tcx>(
+    pred: ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    let ty::OutlivesPredicate(a, b) = pred;
 
-        if a.is_empty() && b.is_empty() {
-            return None;
-        }
-
-        Some(WherePredicate::RegionPredicate {
-            lifetime: a.clean(cx).expect("failed to clean lifetime"),
-            bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))],
-        })
+    if a.is_empty() && b.is_empty() {
+        return None;
     }
+
+    Some(WherePredicate::RegionPredicate {
+        lifetime: a.clean(cx).expect("failed to clean lifetime"),
+        bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))],
+    })
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>>
-    for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>
-{
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(ty, lt) = self;
+fn clean_type_outlives_predicate<'tcx>(
+    pred: ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    let ty::OutlivesPredicate(ty, lt) = pred;
 
-        if lt.is_empty() {
-            return None;
-        }
-
-        Some(WherePredicate::BoundPredicate {
-            ty: clean_middle_ty(*ty, cx, None),
-            bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
-            bound_params: Vec::new(),
-        })
+    if lt.is_empty() {
+        return None;
     }
+
+    Some(WherePredicate::BoundPredicate {
+        ty: clean_middle_ty(ty, cx, None),
+        bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
+        bound_params: Vec::new(),
+    })
 }
 
 impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
