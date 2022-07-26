@@ -14,8 +14,7 @@ use rustc_span::source_map::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, Fallible, NoSolution};
 use rustc_trait_selection::traits::wf;
-use rustc_trait_selection::traits::FulfillmentContext;
-use rustc_trait_selection::traits::TraitEngine;
+use rustc_trait_selection::traits::{TraitEngine, TraitEngineExt};
 use smallvec::{smallvec, SmallVec};
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -52,7 +51,7 @@ fn compute_implied_outlives_bounds<'tcx>(
 
     let mut implied_bounds = vec![];
 
-    let mut fulfill_cx = FulfillmentContext::new();
+    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
 
     while let Some(arg) = wf_args.pop() {
         if !checked_wf_args.insert(arg) {

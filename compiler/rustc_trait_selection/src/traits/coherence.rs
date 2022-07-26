@@ -11,7 +11,7 @@ use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
-    PredicateObligations, SelectionContext,
+    PredicateObligations, SelectionContext, TraitEngineExt,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
@@ -385,7 +385,7 @@ fn resolve_negative_obligation<'cx, 'tcx>(
         return false;
     };
 
-    let mut fulfillment_cx = FulfillmentContext::new();
+    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
     fulfillment_cx.register_predicate_obligation(infcx, o);
 
     let errors = fulfillment_cx.select_all_or_error(infcx);

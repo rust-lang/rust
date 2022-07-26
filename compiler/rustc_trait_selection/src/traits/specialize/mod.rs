@@ -14,7 +14,9 @@ use specialization_graph::GraphExt;
 
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use crate::traits::{
+    self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine, TraitEngineExt,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, EmissionGuarantee, LintDiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -24,8 +26,8 @@ use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
 
-use super::util;
-use super::{FulfillmentContext, SelectionContext};
+use super::SelectionContext;
+use super::{util, FulfillmentContext};
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
@@ -207,7 +209,7 @@ fn fulfill_implication<'a, 'tcx>(
     // (which are packed up in penv)
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
         for oblig in obligations.chain(more_obligations) {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }

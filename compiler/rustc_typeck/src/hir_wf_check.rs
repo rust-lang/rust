@@ -7,7 +7,7 @@ use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Region, ToPredicate, TyCtxt, TypeFoldable, TypeFolder};
-use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::{self, TraitEngineExt};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
@@ -66,7 +66,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             self.tcx.infer_ctxt().enter(|infcx| {
-                let mut fulfill = traits::FulfillmentContext::new();
+                let mut fulfill = <dyn TraitEngine<'tcx>>::new(self.tcx);
                 let tcx_ty =
                     self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
                 let cause = traits::ObligationCause::new(
