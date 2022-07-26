@@ -1701,33 +1701,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 Ok(Some(ct)) => {
                     if ct.unify_failure_kind(self.tcx) == FailureKind::Concrete {
-                        substs = self.tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
-                            let needs_replacement =
-                                arg.has_param_types_or_consts() || arg.has_infer_types_or_consts();
-                            match arg.unpack() {
-                                GenericArgKind::Type(_) if needs_replacement => self
-                                    .tcx
-                                    .mk_ty(ty::Placeholder(ty::PlaceholderType {
-                                        universe: ty::UniverseIndex::ROOT,
-                                        name: ty::BoundVar::from_usize(idx),
-                                    }))
-                                    .into(),
-                                GenericArgKind::Const(ct) if needs_replacement => self
-                                    .tcx
-                                    .mk_const(ty::ConstS {
-                                        ty: ct.ty(),
-                                        kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
-                                            universe: ty::UniverseIndex::ROOT,
-                                            name: ty::BoundConst {
-                                                var: ty::BoundVar::from_usize(idx),
-                                                ty: ct.ty(),
-                                            },
-                                        }),
-                                    })
-                                    .into(),
-                                _ => arg,
-                            }
-                        }));
+                        substs = replace_param_and_infer_substs_with_placeholder(self.tcx, substs);
                     } else {
                         return Err(ErrorHandled::TooGeneric);
                     }
@@ -2051,4 +2025,44 @@ impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
             self.sub_region, self.sup_type
         )
     }
+}
+
+/// Replaces substs that reference param or infer variables with suitable
+/// placeholders. This function is meant to remove these param and infer
+/// substs when they're not actually needed to evaluate a constant.
+fn replace_param_and_infer_substs_with_placeholder<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    substs: SubstsRef<'tcx>,
+) -> SubstsRef<'tcx> {
+    tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
+        match arg.unpack() {
+            GenericArgKind::Type(_)
+                if arg.has_param_types_or_consts() || arg.has_infer_types_or_consts() =>
+            {
+                tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                    universe: ty::UniverseIndex::ROOT,
+                    name: ty::BoundVar::from_usize(idx),
+                }))
+                .into()
+            }
+            GenericArgKind::Const(ct)
+                if ct.has_infer_types_or_consts() || ct.has_param_types_or_consts() =>
+            {
+                let ty = ct.ty();
+                // If the type references param or infer, replace that too...
+                if ty.has_param_types_or_consts() || ty.has_infer_types_or_consts() {
+                    bug!("const `{ct}`'s type should not reference params or types");
+                }
+                tcx.mk_const(ty::ConstS {
+                    ty,
+                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        name: ty::BoundConst { ty, var: ty::BoundVar::from_usize(idx) },
+                    }),
+                })
+                .into()
+            }
+            _ => arg,
+        }
+    }))
 }
