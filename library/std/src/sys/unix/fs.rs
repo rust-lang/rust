@@ -1126,6 +1126,19 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
+        #[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let info = Box::<libc::kinfo_file>::new_zeroed();
+            let mut info = unsafe { info.assume_init() };
+            info.kf_structsize = mem::size_of::<libc::kinfo_file>() as libc::c_int;
+            let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
+            if n == -1 {
+                return None;
+            }
+            let buf = unsafe { CStr::from_ptr(info.kf_path.as_mut_ptr()).to_bytes().to_vec() };
+            Some(PathBuf::from(OsString::from_vec(buf)))
+        }
+
         #[cfg(target_os = "vxworks")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let mut buf = vec![0; libc::PATH_MAX as usize];
@@ -1142,6 +1155,7 @@ impl fmt::Debug for File {
             target_os = "linux",
             target_os = "macos",
             target_os = "vxworks",
+            all(target_os = "freebsd", target_arch = "x86_64"),
             target_os = "netbsd"
         )))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {

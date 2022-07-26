@@ -1520,21 +1520,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn get_expr_coercion_span(&self, expr: &hir::Expr<'_>) -> rustc_span::Span {
         let check_in_progress = |elem: &hir::Expr<'_>| {
-            self.in_progress_typeck_results
-                .and_then(|typeck_results| typeck_results.borrow().node_type_opt(elem.hir_id))
-                .and_then(|ty| {
-                    if ty.is_never() {
-                        None
-                    } else {
-                        Some(match elem.kind {
-                            // Point at the tail expression when possible.
-                            hir::ExprKind::Block(block, _) => {
-                                block.expr.map_or(block.span, |e| e.span)
-                            }
-                            _ => elem.span,
-                        })
-                    }
-                })
+            self.typeck_results.borrow().node_type_opt(elem.hir_id).filter(|ty| !ty.is_never()).map(
+                |_| match elem.kind {
+                    // Point at the tail expression when possible.
+                    hir::ExprKind::Block(block, _) => block.expr.map_or(block.span, |e| e.span),
+                    _ => elem.span,
+                },
+            )
         };
 
         if let hir::ExprKind::If(_, _, Some(el)) = expr.kind {

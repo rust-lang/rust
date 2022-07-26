@@ -488,7 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
                                         def_id: t.def_id(),
-                                        substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
+                                        substs: self.tcx.mk_substs_trait(outer_ty, &[]),
                                     },
                                     constness: t.constness,
                                     polarity: t.polarity,
@@ -496,9 +496,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let obl = Obligation::new(
                                 o.cause.clone(),
                                 self.param_env,
-                                pred.to_predicate(self.infcx.tcx),
+                                pred.to_predicate(self.tcx),
                             );
-                            suggest_box &= self.infcx.predicate_must_hold_modulo_regions(&obl);
+                            suggest_box &= self.predicate_must_hold_modulo_regions(&obl);
                             if !suggest_box {
                                 // We've encountered some obligation that didn't hold, so the
                                 // return expression can't just be boxed. We don't need to

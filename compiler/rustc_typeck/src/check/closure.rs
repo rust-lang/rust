@@ -96,7 +96,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
         );
 
-        let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+        let tupled_upvars_ty = self.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::ClosureSynthetic,
             span: self.tcx.hir().span(expr.hir_id),
         });
@@ -141,7 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Create a type variable (for now) to represent the closure kind.
             // It will be unified during the upvar inference phase (`upvar.rs`)
-            None => self.infcx.next_ty_var(TypeVariableOrigin {
+            None => self.next_ty_var(TypeVariableOrigin {
                 // FIXME(eddyb) distinguish closure kind inference variables from the rest.
                 kind: TypeVariableOriginKind::ClosureSynthetic,
                 span: expr.span,
@@ -531,7 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // [c1]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341089706
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
-        self.infcx.commit_if_ok(|_| {
+        self.commit_if_ok(|_| {
             let mut all_obligations = vec![];
 
             // The liberated version of this signature should be a subtype
@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
             ) {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                let supplied_ty = self.infcx.replace_bound_vars_with_fresh_vars(
+                let supplied_ty = self.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
                     supplied_sig.inputs().rebind(supplied_ty),
@@ -557,7 +557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.extend(obligations);
             }
 
-            let supplied_output_ty = self.infcx.replace_bound_vars_with_fresh_vars(
+            let supplied_output_ty = self.replace_bound_vars_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
                 supplied_sig.output(),

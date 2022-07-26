@@ -8,7 +8,7 @@ use rustc_middle::ty;
 use rustc_session::parse::feature_err;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use std::collections::BTreeSet;
 
@@ -17,7 +17,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// the type parameter's name as a placeholder.
     pub(crate) fn complain_about_missing_type_params(
         &self,
-        missing_type_params: Vec<String>,
+        missing_type_params: Vec<Symbol>,
         def_id: DefId,
         span: Span,
         empty_generic_args: bool,

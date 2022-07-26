@@ -90,9 +90,10 @@ fn compare_predicate_entailment<'tcx>(
     let mut cause = ObligationCause::new(
         impl_m_span,
         impl_m_hir_id,
-        ObligationCauseCode::CompareImplMethodObligation {
+        ObligationCauseCode::CompareImplItemObligation {
             impl_item_def_id: impl_m.def_id.expect_local(),
             trait_item_def_id: trait_m.def_id,
+            kind: impl_m.kind,
         },
     );
 
@@ -223,9 +224,10 @@ fn compare_predicate_entailment<'tcx>(
             let cause = ObligationCause::new(
                 span,
                 impl_m_hir_id,
-                ObligationCauseCode::CompareImplMethodObligation {
+                ObligationCauseCode::CompareImplItemObligation {
                     impl_item_def_id: impl_m.def_id.expect_local(),
                     trait_item_def_id: trait_m.def_id,
+                    kind: impl_m.kind,
                 },
             );
             ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
@@ -1079,7 +1081,11 @@ pub(crate) fn compare_const_impl<'tcx>(
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
-            ObligationCauseCode::CompareImplConstObligation,
+            ObligationCauseCode::CompareImplItemObligation {
+                impl_item_def_id: impl_c.def_id.expect_local(),
+                trait_item_def_id: trait_c.def_id,
+                kind: impl_c.kind,
+            },
         );
 
         // There is no "body" here, so just pass dummy id.
@@ -1212,15 +1218,6 @@ fn compare_type_predicate_entailment<'tcx>(
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
-    let cause = ObligationCause::new(
-        impl_ty_span,
-        impl_ty_hir_id,
-        ObligationCauseCode::CompareImplTypeObligation {
-            impl_item_def_id: impl_ty.def_id.expect_local(),
-            trait_item_def_id: trait_ty.def_id,
-        },
-    );
-
     debug!("compare_type_predicate_entailment: trait_to_impl_substs={:?}", trait_to_impl_substs);
 
     // The predicates declared by the impl definition, the trait and the
@@ -1239,7 +1236,7 @@ fn compare_type_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause.clone());
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     tcx.infer_ctxt().enter(|infcx| {
         let ocx = ObligationCtxt::new(&infcx);
 
@@ -1247,12 +1244,25 @@ fn compare_type_predicate_entailment<'tcx>(
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        for predicate in impl_ty_own_bounds.predicates {
+        assert_eq!(impl_ty_own_bounds.predicates.len(), impl_ty_own_bounds.spans.len());
+        for (span, predicate) in
+            std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
+        {
+            let cause = ObligationCause::misc(span, impl_ty_hir_id);
             let traits::Normalized { value: predicate, obligations } =
-                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), predicate);
+                traits::normalize(&mut selcx, param_env, cause, predicate);
 
+            let cause = ObligationCause::new(
+                span,
+                impl_ty_hir_id,
+                ObligationCauseCode::CompareImplItemObligation {
+                    impl_item_def_id: impl_ty.def_id.expect_local(),
+                    trait_item_def_id: trait_ty.def_id,
+                    kind: impl_ty.kind,
+                },
+            );
             ocx.register_obligations(obligations);
-            ocx.register_obligation(traits::Obligation::new(cause.clone(), param_env, predicate));
+            ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
         }
 
         // Check that all obligations are satisfied by the implementation's

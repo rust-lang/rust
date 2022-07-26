@@ -660,12 +660,8 @@ impl<T> Trait<T> for X {
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )
         );
-        let impl_comparison = matches!(
-            cause_code,
-            ObligationCauseCode::CompareImplMethodObligation { .. }
-                | ObligationCauseCode::CompareImplTypeObligation { .. }
-                | ObligationCauseCode::CompareImplConstObligation
-        );
+        let impl_comparison =
+            matches!(cause_code, ObligationCauseCode::CompareImplItemObligation { .. });
         let assoc = self.associated_item(proj_ty.item_def_id);
         if !callable_scope || impl_comparison {
             // We do not want to suggest calling functions when the reason of the

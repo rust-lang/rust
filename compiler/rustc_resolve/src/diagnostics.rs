@@ -565,8 +565,7 @@ impl<'a> Resolver<'a> {
                     } else if let Some(sp) = sm.generate_fn_name_span(span) {
                         err.span_label(
                             sp,
-                            "try adding a local generic parameter in this method instead"
-                                .to_string(),
+                            "try adding a local generic parameter in this method instead",
                         );
                     } else {
                         err.help("try using a local generic parameter instead");

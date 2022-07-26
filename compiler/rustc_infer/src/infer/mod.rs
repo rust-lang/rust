@@ -405,15 +405,7 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplMethodObligation {
-        span: Span,
-        impl_item_def_id: LocalDefId,
-        trait_item_def_id: DefId,
-    },
-
-    /// Comparing the signature and requirements of an impl associated type
-    /// against the containing trait
-    CompareImplTypeObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
+    CompareImplItemObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
@@ -1945,8 +1937,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             ReborrowUpvar(a, _) => a,
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
-            CompareImplMethodObligation { span, .. } => span,
-            CompareImplTypeObligation { span, .. } => span,
+            CompareImplItemObligation { span, .. } => span,
             CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
@@ -1960,19 +1951,11 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span)
             }
 
-            traits::ObligationCauseCode::CompareImplMethodObligation {
+            traits::ObligationCauseCode::CompareImplItemObligation {
                 impl_item_def_id,
                 trait_item_def_id,
-            } => SubregionOrigin::CompareImplMethodObligation {
-                span: cause.span,
-                impl_item_def_id,
-                trait_item_def_id,
-            },
-
-            traits::ObligationCauseCode::CompareImplTypeObligation {
-                impl_item_def_id,
-                trait_item_def_id,
-            } => SubregionOrigin::CompareImplTypeObligation {
+                kind: _,
+            } => SubregionOrigin::CompareImplItemObligation {
                 span: cause.span,
                 impl_item_def_id,
                 trait_item_def_id,
