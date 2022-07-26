@@ -64,20 +64,9 @@ impl PositionalNamedArg {
     /// Determines what span to replace with the name of the named argument
     fn get_span_to_replace(&self, cx: &Context<'_, '_>) -> Option<Span> {
         if let Some(inner_span) = &self.inner_span_to_replace {
-            return match self.ty {
-                PositionalNamedArgType::Arg | PositionalNamedArgType::Width => Some(Span::new(
-                    cx.fmtsp.lo() + BytePos(inner_span.start.try_into().unwrap()),
-                    cx.fmtsp.lo() + BytePos(inner_span.end.try_into().unwrap()),
-                    self.positional_named_arg_span.ctxt(),
-                    self.positional_named_arg_span.parent(),
-                )),
-                PositionalNamedArgType::Precision => Some(Span::new(
-                    cx.fmtsp.lo() + BytePos(inner_span.start.try_into().unwrap()) + BytePos(1),
-                    cx.fmtsp.lo() + BytePos(inner_span.end.try_into().unwrap()),
-                    self.positional_named_arg_span.ctxt(),
-                    self.positional_named_arg_span.parent(),
-                )),
-            };
+            return Some(
+                cx.fmtsp.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end }),
+            );
         } else if self.ty == PositionalNamedArgType::Arg {
             // In the case of a named argument whose position is implicit, there will not be a span
             // to replace. Instead, we insert the name after the `{`, which is the first character
@@ -111,7 +100,7 @@ impl PositionalNamedArgsLint {
         format_argument_index: usize,
         ty: PositionalNamedArgType,
         cur_piece: usize,
-        inner_span: Option<rustc_parse_format::InnerSpan>,
+        mut inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
         names: &FxHashMap<Symbol, (usize, Span)>,
     ) {
         let named_arg = names
@@ -120,10 +109,19 @@ impl PositionalNamedArgsLint {
             .map(|found| found.clone());
 
         if let Some(named_arg) = named_arg {
+            // In FormatSpec, `precision_span` starts at the leading `.`, which we want to keep in
+            // the lint suggestion, so increment `start` by 1 when `PositionalArgumentType` is
+            // `Precision`.
+            if ty == PositionalNamedArgType::Precision {
+                inner_span_to_replace = inner_span_to_replace.map(|mut is| {
+                    is.start += 1;
+                    is
+                });
+            }
             self.positional_named_args.push(PositionalNamedArg {
                 ty,
                 cur_piece,
-                inner_span_to_replace: inner_span,
+                inner_span_to_replace,
                 replacement: named_arg.0.clone(),
                 positional_named_arg_span: named_arg.1.1.clone(),
             });
