@@ -427,20 +427,13 @@ pub fn impossible_predicates<'tcx>(
         infcx.set_tainted_by_errors();
 
         let param_env = ty::ParamEnv::reveal_all();
-        let mut selcx = SelectionContext::new(&infcx);
-        let mut fulfill_cx = FulfillmentContext::new();
-        let cause = ObligationCause::dummy();
-        let Normalized { value: predicates, obligations } =
-            normalize(&mut selcx, param_env, cause.clone(), predicates);
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
+        let ocx = ObligationCtxt::new(&infcx);
+        let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
         for predicate in predicates {
-            let obligation = Obligation::new(cause.clone(), param_env, predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+            let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+            ocx.register_obligation(obligation);
         }
-
-        let errors = fulfill_cx.select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
 
         // Clean up after ourselves
         let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
