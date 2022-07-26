@@ -301,13 +301,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span = obligation.cause.span;
                     }
                 }
-                if let ObligationCauseCode::CompareImplMethodObligation {
+                if let ObligationCauseCode::CompareImplItemObligation {
                     impl_item_def_id,
                     trait_item_def_id,
-                }
-                | ObligationCauseCode::CompareImplTypeObligation {
-                    impl_item_def_id,
-                    trait_item_def_id,
+                    kind: _,
                 } = *obligation.cause.code()
                 {
                     self.report_extra_impl_obligation(

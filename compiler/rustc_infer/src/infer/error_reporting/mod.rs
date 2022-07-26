@@ -1883,7 +1883,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
-        if let ObligationCauseCode::CompareImplMethodObligation { .. } = cause.code() {
+        if let ObligationCauseCode::CompareImplItemObligation { .. } = cause.code() {
             return;
         }
 
@@ -2351,7 +2351,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             GenericKind::Projection(ref p) => format!("the associated type `{}`", p),
         };
 
-        if let Some(SubregionOrigin::CompareImplMethodObligation {
+        if let Some(SubregionOrigin::CompareImplItemObligation {
             span,
             impl_item_def_id,
             trait_item_def_id,
@@ -2788,8 +2788,15 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
         use self::FailureCode::*;
         use crate::traits::ObligationCauseCode::*;
         match self.code() {
-            CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
-            CompareImplTypeObligation { .. } => Error0308("type not compatible with trait"),
+            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
+                Error0308("method not compatible with trait")
+            }
+            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => {
+                Error0308("type not compatible with trait")
+            }
+            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
+                Error0308("const not compatible with trait")
+            }
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => {
                 Error0308(match source {
                     hir::MatchSource::TryDesugar => "`?` operator has incompatible types",
@@ -2823,8 +2830,15 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
     fn as_requirement_str(&self) -> &'static str {
         use crate::traits::ObligationCauseCode::*;
         match self.code() {
-            CompareImplMethodObligation { .. } => "method type is compatible with trait",
-            CompareImplTypeObligation { .. } => "associated type is compatible with trait",
+            CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => {
+                "method type is compatible with trait"
+            }
+            CompareImplItemObligation { kind: ty::AssocKind::Type, .. } => {
+                "associated type is compatible with trait"
+            }
+            CompareImplItemObligation { kind: ty::AssocKind::Const, .. } => {
+                "const is compatible with trait"
+            }
             ExprAssignable => "expression is assignable",
             IfExpression { .. } => "`if` and `else` have incompatible types",
             IfExpressionWithNoElse => "`if` missing an `else` returns `()`",
