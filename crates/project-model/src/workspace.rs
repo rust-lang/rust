@@ -230,10 +230,26 @@ impl ProjectWorkspace {
         project_json: ProjectJson,
         target: Option<&str>,
     ) -> Result<ProjectWorkspace> {
-        let sysroot = match &project_json.sysroot_src {
-            Some(path) => Some(Sysroot::load(path.clone())?),
-            None => None,
+        let sysroot = match (project_json.sysroot.clone(), project_json.sysroot_src.clone()) {
+            (Some(sysroot), Some(sysroot_src)) => Some(Sysroot::load(sysroot, sysroot_src)?),
+            (Some(sysroot), None) => {
+                // assume sysroot is structured like rustup's and guess `sysroot_src`
+                let sysroot_src =
+                    sysroot.join("lib").join("rustlib").join("src").join("rust").join("library");
+
+                Some(Sysroot::load(sysroot, sysroot_src)?)
+            }
+            (None, Some(sysroot_src)) => {
+                // assume sysroot is structured like rustup's and guess `sysroot`
+                let mut sysroot = sysroot_src.clone();
+                for _ in 0..5 {
+                    sysroot.pop();
+                }
+                Some(Sysroot::load(sysroot, sysroot_src)?)
+            }
+            (None, None) => None,
         };
+
         let rustc_cfg = rustc_cfg::get(None, target);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
     }
@@ -345,7 +361,7 @@ impl ProjectWorkspace {
                     })
                     .chain(sysroot.iter().map(|sysroot| PackageRoot {
                         is_local: false,
-                        include: vec![sysroot.root().to_path_buf()],
+                        include: vec![sysroot.src_root().to_path_buf()],
                         exclude: Vec::new(),
                     }))
                     .chain(rustc.iter().flat_map(|rustc| {

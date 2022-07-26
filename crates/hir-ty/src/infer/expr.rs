@@ -276,7 +276,7 @@ impl<'a> InferenceContext<'a> {
 
                 closure_ty
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone());
                 let mut res = None;
@@ -421,7 +421,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 TyKind::Never.intern(Interner)
             }
-            Expr::RecordLit { path, fields, spread } => {
+            Expr::RecordLit { path, fields, spread, .. } => {
                 let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
                 if let Some(variant) = def_id {
                     self.write_variant_resolution(tgt_expr.into(), variant);
@@ -693,7 +693,7 @@ impl<'a> InferenceContext<'a> {
                     self.err_ty()
                 }
             }
-            Expr::Tuple { exprs } => {
+            Expr::Tuple { exprs, .. } => {
                 let mut tys = match expected
                     .only_has_type(&mut self.table)
                     .as_ref()
@@ -724,12 +724,12 @@ impl<'a> InferenceContext<'a> {
 
                 let expected = Expectation::has_type(elem_ty.clone());
                 let len = match array {
-                    Array::ElementList(items) => {
-                        for &expr in items.iter() {
+                    Array::ElementList { elements, .. } => {
+                        for &expr in elements.iter() {
                             let cur_elem_ty = self.infer_expr_inner(expr, &expected);
                             coerce.coerce(self, Some(expr), &cur_elem_ty);
                         }
-                        consteval::usize_const(Some(items.len() as u128))
+                        consteval::usize_const(Some(elements.len() as u128))
                     }
                     &Array::Repeat { initializer, repeat } => {
                         self.infer_expr_coerce(initializer, &Expectation::has_type(elem_ty));
@@ -850,7 +850,7 @@ impl<'a> InferenceContext<'a> {
         let rhs_ty = self.resolve_ty_shallow(rhs_ty);
 
         let ty = match &self.body[lhs] {
-            Expr::Tuple { exprs } => {
+            Expr::Tuple { exprs, .. } => {
                 // We don't consider multiple ellipses. This is analogous to
                 // `hir_def::body::lower::ExprCollector::collect_tuple_pat()`.
                 let ellipsis = exprs.iter().position(|e| is_rest_expr(*e));
@@ -858,7 +858,7 @@ impl<'a> InferenceContext<'a> {
 
                 self.infer_tuple_pat_like(&rhs_ty, (), ellipsis, &exprs)
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 // Tuple structs
                 let path = match &self.body[*callee] {
                     Expr::Path(path) => Some(path),
@@ -872,7 +872,7 @@ impl<'a> InferenceContext<'a> {
 
                 self.infer_tuple_struct_pat_like(path, &rhs_ty, (), lhs, ellipsis, &args)
             }
-            Expr::Array(Array::ElementList(elements)) => {
+            Expr::Array(Array::ElementList { elements, .. }) => {
                 let elem_ty = match rhs_ty.kind(Interner) {
                     TyKind::Array(st, _) => st.clone(),
                     _ => self.err_ty(),

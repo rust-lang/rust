@@ -293,6 +293,37 @@ fn x(a: S) {
     }
 
     #[test]
+    fn missing_record_expr_in_assignee_expr() {
+        check_diagnostics(
+            r"
+struct S { s: usize, t: usize }
+struct S2 { s: S, t: () }
+struct T(S);
+fn regular(a: S) {
+    let s;
+    S { s, .. } = a;
+}
+fn nested(a: S2) {
+    let s;
+    S2 { s: S { s, .. }, .. } = a;
+}
+fn in_tuple(a: (S,)) {
+    let s;
+    (S { s, .. },) = a;
+}
+fn in_array(a: [S;1]) {
+    let s;
+    [S { s, .. },] = a;
+}
+fn in_tuple_struct(a: T) {
+    let s;
+    T(S { s, .. }) = a;
+}
+            ",
+        );
+    }
+
+    #[test]
     fn range_mapping_out_of_macros() {
         check_fix(
             r#"

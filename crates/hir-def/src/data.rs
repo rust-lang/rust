@@ -12,7 +12,7 @@ use crate::{
     db::DefDatabase,
     intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
-    nameres::{attr_resolution::ResolvedAttr, DefMap},
+    nameres::{attr_resolution::ResolvedAttr, proc_macro::ProcMacroKind, DefMap},
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -348,7 +348,8 @@ impl MacroRulesData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcMacroData {
     pub name: Name,
-    // FIXME: Record deriver helper here?
+    /// Derive helpers, if this is a derive
+    pub helpers: Option<Box<[Name]>>,
 }
 
 impl ProcMacroData {
@@ -360,17 +361,23 @@ impl ProcMacroData {
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
 
-        let name = if let Some(def) = item_tree
+        let (name, helpers) = if let Some(def) = item_tree
             .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
             .parse_proc_macro_decl(&makro.name)
         {
-            def.name
+            (
+                def.name,
+                match def.kind {
+                    ProcMacroKind::CustomDerive { helpers } => Some(helpers),
+                    ProcMacroKind::FnLike | ProcMacroKind::Attr => None,
+                },
+            )
         } else {
             // eeeh...
             stdx::never!("proc macro declaration is not a proc macro");
-            makro.name.clone()
+            (makro.name.clone(), None)
         };
-        Arc::new(ProcMacroData { name })
+        Arc::new(ProcMacroData { name, helpers })
     }
 }
 

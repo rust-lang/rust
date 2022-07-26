@@ -17,6 +17,9 @@ use crate::cfg_flag::CfgFlag;
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
+    /// e.g. `path/to/sysroot`
+    pub(crate) sysroot: Option<AbsPathBuf>,
+    /// e.g. `path/to/sysroot/lib/rustlib/src/rust`
     pub(crate) sysroot_src: Option<AbsPathBuf>,
     project_root: AbsPathBuf,
     crates: Vec<Crate>,
@@ -52,6 +55,7 @@ impl ProjectJson {
     ///            configuration.
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
+            sysroot: data.sysroot.map(|it| base.join(it)),
             sysroot_src: data.sysroot_src.map(|it| base.join(it)),
             project_root: base.to_path_buf(),
             crates: data
@@ -122,6 +126,7 @@ impl ProjectJson {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ProjectJsonData {
+    sysroot: Option<PathBuf>,
     sysroot_src: Option<PathBuf>,
     crates: Vec<CrateData>,
 }

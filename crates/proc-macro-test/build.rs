@@ -62,8 +62,7 @@ fn main() {
         Command::new(toolchain::cargo())
     };
 
-    cmd
-        .current_dir(&staging_dir)
+    cmd.current_dir(&staging_dir)
         .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
         // cargo is using, or we'll deadlock.

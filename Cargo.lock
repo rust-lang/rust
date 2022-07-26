@@ -1199,6 +1199,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-srv-cli"
+version = "0.0.0"
+dependencies = [
+ "proc-macro-srv",
+]
+
+[[package]]
 name = "proc-macro-test"
 version = "0.0.0"
 dependencies = [

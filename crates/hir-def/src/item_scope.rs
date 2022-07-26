@@ -66,10 +66,14 @@ pub struct ItemScope {
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
-    derive_macros: FxHashMap<
-        AstId<ast::Adt>,
-        SmallVec<[(AttrId, MacroCallId, SmallVec<[Option<MacroCallId>; 1]>); 1]>,
-    >,
+    derive_macros: FxHashMap<AstId<ast::Adt>, SmallVec<[DeriveMacroInvocation; 1]>>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct DeriveMacroInvocation {
+    attr_id: AttrId,
+    attr_call_id: MacroCallId,
+    derive_call_ids: SmallVec<[Option<MacroCallId>; 1]>,
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
@@ -210,12 +214,14 @@ impl ItemScope {
         &mut self,
         adt: AstId<ast::Adt>,
         call: MacroCallId,
-        attr_id: AttrId,
+        id: AttrId,
         idx: usize,
     ) {
         if let Some(derives) = self.derive_macros.get_mut(&adt) {
-            if let Some((.., invocs)) = derives.iter_mut().find(|&&mut (id, ..)| id == attr_id) {
-                invocs[idx] = Some(call);
+            if let Some(DeriveMacroInvocation { derive_call_ids, .. }) =
+                derives.iter_mut().find(|&&mut DeriveMacroInvocation { attr_id, .. }| id == attr_id)
+            {
+                derive_call_ids[idx] = Some(call);
             }
         }
     }
@@ -227,10 +233,14 @@ impl ItemScope {
         &mut self,
         adt: AstId<ast::Adt>,
         attr_id: AttrId,
-        call_id: MacroCallId,
+        attr_call_id: MacroCallId,
         len: usize,
     ) {
-        self.derive_macros.entry(adt).or_default().push((attr_id, call_id, smallvec![None; len]));
+        self.derive_macros.entry(adt).or_default().push(DeriveMacroInvocation {
+            attr_id,
+            attr_call_id,
+            derive_call_ids: smallvec![None; len],
+        });
     }
 
     pub(crate) fn derive_macro_invocs(
@@ -242,7 +252,12 @@ impl ItemScope {
         ),
     > + '_ {
         self.derive_macros.iter().map(|(k, v)| {
-            (*k, v.iter().map(|&(attr_id, call_id, ref invocs)| (attr_id, call_id, &**invocs)))
+            (
+                *k,
+                v.iter().map(|DeriveMacroInvocation { attr_id, attr_call_id, derive_call_ids }| {
+                    (*attr_id, *attr_call_id, &**derive_call_ids)
+                }),
+            )
         })
     }
 

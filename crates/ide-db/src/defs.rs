@@ -7,9 +7,9 @@
 
 use arrayvec::ArrayVec;
 use hir::{
-    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, Field, Function,
-    GenericParam, HasVisibility, Impl, ItemInNs, Label, Local, Macro, Module, ModuleDef, Name,
-    PathResolution, Semantics, Static, ToolModule, Trait, TypeAlias, Variant, Visibility,
+    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Crate, DeriveHelper, Field,
+    Function, GenericParam, HasVisibility, Impl, ItemInNs, Label, Local, Macro, Module, ModuleDef,
+    Name, PathResolution, Semantics, Static, ToolModule, Trait, TypeAlias, Variant, Visibility,
 };
 use stdx::impl_from;
 use syntax::{
@@ -37,6 +37,7 @@ pub enum Definition {
     Local(Local),
     GenericParam(GenericParam),
     Label(Label),
+    DeriveHelper(DeriveHelper),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
 }
@@ -69,6 +70,7 @@ impl Definition {
             Definition::Local(it) => it.module(db),
             Definition::GenericParam(it) => it.module(db),
             Definition::Label(it) => it.module(db),
+            Definition::DeriveHelper(it) => it.derive().module(db),
             Definition::BuiltinAttr(_) | Definition::BuiltinType(_) | Definition::ToolModule(_) => {
                 return None
             }
@@ -94,7 +96,8 @@ impl Definition {
             | Definition::SelfType(_)
             | Definition::Local(_)
             | Definition::GenericParam(_)
-            | Definition::Label(_) => return None,
+            | Definition::Label(_)
+            | Definition::DeriveHelper(_) => return None,
         };
         Some(vis)
     }
@@ -118,6 +121,7 @@ impl Definition {
             Definition::Label(it) => it.name(db),
             Definition::BuiltinAttr(_) => return None, // FIXME
             Definition::ToolModule(_) => return None,  // FIXME
+            Definition::DeriveHelper(it) => it.name(db),
         };
         Some(name)
     }
@@ -500,6 +504,7 @@ impl From<PathResolution> for Definition {
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
             PathResolution::BuiltinAttr(attr) => Definition::BuiltinAttr(attr),
             PathResolution::ToolModule(tool) => Definition::ToolModule(tool),
+            PathResolution::DeriveHelper(helper) => Definition::DeriveHelper(helper),
         }
     }
 }
