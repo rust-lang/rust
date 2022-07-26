@@ -142,6 +142,6 @@ who really want to take a deep dive into the topic :)
 [`TyCtxt::associated_items()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.associated_items
 [`AssocItems`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/assoc/struct.AssocItems.html
 [`clippy_utils::ty::get_iterator_item_ty()`]: https://github.com/rust-lang/rust-clippy/blob/305177342fbc622c0b3cb148467bab4b9524c934/clippy_utils/src/ty.rs#L55-L72
-[clippy-Common-tools-for-writing-lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md
+[clippy-Common-tools-for-writing-lints]: https://doc.rust-lang.org/nightly/clippy/development/common_tools_writing_lints.html
 [rust#60966]: https://github.com/rust-lang/rust/pull/60966
 [rust-clippy#5393]: https://github.com/rust-lang/rust-clippy/issues/5393
