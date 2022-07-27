@@ -64,14 +64,11 @@ impl<'a> StringReader<'a> {
         let mut spacing = Spacing::Joint;
 
         // Skip `#!` at the start of the file
-        let start_src_index = self.src_index(self.pos);
-        let text: &str = &self.src[start_src_index..self.end_src_index];
-        let is_beginning_of_file = self.pos == self.start_pos;
-        if is_beginning_of_file {
-            if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-                self.pos = self.pos + BytePos::from_usize(shebang_len);
-                spacing = Spacing::Alone;
-            }
+        if self.pos == self.start_pos
+            && let Some(shebang_len) = rustc_lexer::strip_shebang(self.src)
+        {
+            self.pos = self.pos + BytePos::from_usize(shebang_len);
+            spacing = Spacing::Alone;
         }
 
         // Skip trivial (whitespace & comments) tokens
