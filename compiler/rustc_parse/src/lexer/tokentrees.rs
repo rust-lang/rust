@@ -277,6 +277,7 @@ struct TokenStreamBuilder {
 }
 
 impl TokenStreamBuilder {
+    #[inline(always)]
     fn push(&mut self, tree: TokenTree) {
         if let Some(TokenTree::Token(prev_token, Spacing::Joint)) = self.buf.last()
             && let TokenTree::Token(token, joint) = &tree
