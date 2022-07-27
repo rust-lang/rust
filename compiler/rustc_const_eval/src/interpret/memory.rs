@@ -962,15 +962,10 @@ impl<'tcx, 'a, Prov: Provenance, Extra> AllocRef<'a, 'tcx, Prov, Extra> {
     }
 
     /// `range` is relative to this allocation reference, not the base of the allocation.
-    pub fn check_bytes(
-        &self,
-        range: AllocRange,
-        allow_uninit: bool,
-        allow_ptr: bool,
-    ) -> InterpResult<'tcx> {
+    pub fn check_bytes(&self, range: AllocRange) -> InterpResult<'tcx> {
         Ok(self
             .alloc
-            .check_bytes(&self.tcx, self.range.subrange(range), allow_uninit, allow_ptr)
+            .check_bytes(&self.tcx, self.range.subrange(range))
             .map_err(|e| e.to_interp_error(self.alloc_id))?)
     }
 
