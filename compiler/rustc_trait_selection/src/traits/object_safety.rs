@@ -17,11 +17,10 @@ use hir::def::DefKind;
 use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst};
+use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_middle::ty::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -843,15 +842,19 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
             //
             // If `AbstractConst::from_const` returned an error we already failed compilation
             // so we don't have to emit an additional error here.
-            use rustc_middle::ty::abstract_const::Node;
-            if let Ok(Some(ct)) = AbstractConst::from_const(self.tcx, ct) {
-                walk_abstract_const(self.tcx, ct, |node| match node.root(self.tcx) {
-                    Node::Leaf(leaf) => self.visit_const(leaf),
-                    Node::Cast(_, _, ty) => self.visit_ty(ty),
-                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
-                        ControlFlow::CONTINUE
-                    }
-                })
+            //
+            // We currently recurse into abstract consts here but do not recurse in
+            // `is_const_evaluatable`. This means that the object safety check is more
+            // liberal than the const eval check.
+            //
+            // This shouldn't really matter though as we can't really use any
+            // constants which are not considered const evaluatable.
+            if let ty::ConstKind::Unevaluated(uv) = ct.kind() &&
+                let Ok(Some(ct)) = self
+                .tcx
+                .expand_bound_abstract_const(self.tcx.bound_abstract_const(uv.def), uv.substs)
+            {
+                self.visit_const(ct)
             } else {
                 ct.super_visit_with(self)
             }

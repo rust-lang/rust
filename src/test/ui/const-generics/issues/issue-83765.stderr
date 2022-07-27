@@ -1,21 +1,122 @@
-error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>::DIM`
-  --> $DIR/issue-83765.rs:5:5
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:49:5
    |
-LL |     const DIM: usize;
-   |     ^^^^^^^^^^^^^^^^
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
    |
-note: ...which requires computing candidate for `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>`...
-  --> $DIR/issue-83765.rs:4:1
-   |
-LL | trait TensorDimension {
-   | ^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when computing candidate for `<LazyUpdim<'_, T, { T::DIM }, DIM> as TensorDimension>`
-  --> $DIR/issue-83765.rs:4:1
-   |
-LL | trait TensorDimension {
-   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
 
-error: aborting due to previous error
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:57:5
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
 
-For more information about this error, try `rustc --explain E0391`.
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:84:5
+   |
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:96:5
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:60:27
+   |
+LL |         if !self.inbounds(index) {
+   |                           ^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0277]: the trait bound `[usize; _]: Default` is not satisfied
+  --> $DIR/issue-83765.rs:65:41
+   |
+LL |         let newindex: [usize; T::DIM] = Default::default();
+   |                                         ^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `[usize; _]`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a, T, { T::DIM }, DIM> where [usize; _]: Default {
+   |                                                                                                  +++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:86:24
+   |
+LL |         self.reference.size()
+   |                        ^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); Self::DIM]:`
+note: required by a bound in `TensorSize::size`
+  --> $DIR/issue-83765.rs:15:31
+   |
+LL |     fn size(&self) -> [usize; Self::DIM];
+   |                               ^^^^^^^^^ required by this bound in `TensorSize::size`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:86:9
+   |
+LL |         self.reference.size()
+   |         ^^^^^^^^^^^^^^^^^^^^^ expected `DIM`, found `Self::DIM`
+   |
+   = note: expected constant `DIM`
+              found constant `Self::DIM`
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:98:24
+   |
+LL |         self.reference.bget(index).map(&self.closure)
+   |                        ^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); Self::DIM]:`
+note: required by a bound in `Broadcastable::bget`
+  --> $DIR/issue-83765.rs:23:35
+   |
+LL |     fn bget(&self, index: [usize; Self::DIM]) -> Option<Self::Element>;
+   |                                   ^^^^^^^^^ required by this bound in `Broadcastable::bget`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:98:29
+   |
+LL |         self.reference.bget(index).map(&self.closure)
+   |                             ^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:122:15
+   |
+LL |     let bbv = bv.bmap(|x| x * x);
+   |               ^^^^^^^^^^^^^^^^^^ expected `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`, found `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`
+   |
+   = note: expected constant `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`
+              found constant `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:125:43
+   |
+LL |     println!("The size of v is {:?}", bbv.bget([0, 2]).expect("Out of bounds."));
+   |                                           ^^^^ expected `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`, found `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`
+   |
+   = note: expected constant `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`
+              found constant `<LazyUpdim<'_, Vec<{integer}>, { Self::DIM }, 2> as TensorDimension>::DIM`
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

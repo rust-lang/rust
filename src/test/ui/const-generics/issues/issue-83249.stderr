@@ -1,14 +1,12 @@
-error[E0282]: type annotations needed
-  --> $DIR/issue-83249.rs:19:9
+error[E0308]: mismatched types
+  --> $DIR/issue-83249.rs:17:21
    |
-LL |     let _ = foo([0; 1]);
-   |         ^
+LL |     let _: u8 = foo([0; 1]);
+   |                     ^^^^^^ expected `<_ as Foo>::N`, found `<u8 as Foo>::N`
    |
-help: consider giving this pattern a type
-   |
-LL |     let _: _ = foo([0; 1]);
-   |          +++
+   = note: expected constant `<_ as Foo>::N`
+              found constant `<u8 as Foo>::N`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0308`.

@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_hir::def::DefKind;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -452,8 +453,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    let tcx = self.selcx.tcx();
                     assert!(
-                        self.selcx.tcx().features().generic_const_exprs,
+                        tcx.features().generic_const_exprs,
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
                     debug!(?c1, ?c2, "equating consts");
@@ -461,12 +463,39 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     // if the constants depend on generic parameters.
                     //
                     // Let's just see where this breaks :shrug:
-                    if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
-                        (c1.kind(), c2.kind())
-                    {
-                        if infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                            return ProcessResult::Changed(vec![]);
+                    match (c1.kind(), c2.kind()) {
+                        (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) => {
+                            if tcx.def_kind(a.def.did) == DefKind::AssocConst
+                                || tcx.def_kind(b.def.did) == DefKind::AssocConst
+                            {
+                                // Two different constants using generic parameters ~> error.
+                                let expected_found = ExpectedFound::new(true, c1, c2);
+                                return ProcessResult::Error(
+                                    FulfillmentErrorCode::CodeConstEquateError(
+                                        expected_found,
+                                        TypeError::ConstMismatch(expected_found),
+                                    ),
+                                );
+                            }
+                            if let (Ok(Some(a)), Ok(Some(b))) = (
+                                    tcx.expand_bound_abstract_const(
+                                        tcx.bound_abstract_const(a.def),
+                                        a.substs,
+                                    ),
+                                    tcx.expand_bound_abstract_const(
+                                        tcx.bound_abstract_const(b.def),
+                                        b.substs,
+                                    ),
+                                ) && a.ty() == b.ty() &&
+                                  let Ok(new_obligations) = infcx
+                                      .at(&obligation.cause, obligation.param_env)
+                                      .eq(a, b) {
+                                            return ProcessResult::Changed(mk_pending(
+                                                new_obligations.into_obligations(),
+                                            ));
+                                }
                         }
+                        _ => {}
                     }
 
                     let stalled_on = &mut pending_obligation.stalled_on;

@@ -366,7 +366,7 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
     // FIXME(compiler-errors): Why isn't this a LazyArray?
-    thir_abstract_const: Table<DefIndex, LazyValue<&'static [ty::abstract_const::Node<'static>]>>,
+    thir_abstract_const: Table<DefIndex, LazyValue<ty::Const<'static>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     constness: Table<DefIndex, hir::Constness>,

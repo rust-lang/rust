@@ -644,12 +644,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
-        ty::codec::RefDecodable::decode(d)
-    }
-}
-
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)

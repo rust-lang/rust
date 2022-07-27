@@ -476,6 +476,10 @@ impl<'tcx> WfPredicates<'tcx> {
                                 ty::Binder::dummy(ty::PredicateKind::WellFormed(ct.into())),
                             ));
                         }
+                        // FIXME(julianknodt): need to infer any nested consts here
+                        // so walk and search recursively?
+                        ty::ConstKind::Expr(_) => unimplemented!(),
+
                         ty::ConstKind::Error(_)
                         | ty::ConstKind::Param(_)
                         | ty::ConstKind::Bound(..)

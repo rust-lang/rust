@@ -561,6 +561,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
                 throw_inval!(TooGeneric)
             }
+            ty::ConstKind::Expr(_) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(reported) => {
                 throw_inval!(AlreadyReported(reported))
             }

@@ -193,6 +193,18 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
                 ) => relator.relate(predicate.rebind(a), predicate.rebind(b)).is_ok(),
+                /*
+                ) => {
+                    if let (Ok(Some(a)), Ok(Some(b))) = (
+                        tcx.expand_bound_abstract_const(tcx.bound_abstract_const(a.def), a.substs),
+                        tcx.expand_bound_abstract_const(tcx.bound_abstract_const(b.def), b.substs),
+                    ) && a.ty() == b.ty() {
+                        return relator.relate(a, b).is_ok();
+                    } else {
+                        false
+                    }
+                }
+                */
                 (
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),

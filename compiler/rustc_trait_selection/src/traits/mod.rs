@@ -929,10 +929,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
         is_impossible_method,
-        try_unify_abstract_consts: |tcx, param_env_and| {
-            let (param_env, (a, b)) = param_env_and.into_parts();
-            const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)
-        },
         ..*providers
     };
 }

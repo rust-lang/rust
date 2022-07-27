@@ -5,7 +5,7 @@
 //! subtyping, type equality, etc.
 
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::{self, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
@@ -613,7 +613,10 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     if a_ty != b_ty {
         relation.tcx().sess.delay_span_bug(
             DUMMY_SP,
-            &format!("cannot relate constants of different types: {} != {}", a_ty, b_ty),
+            &format!(
+                "cannot relate constants ({:?}, {:?}) of different types: {} != {}",
+                a, b, a_ty, b_ty
+            ),
         );
     }
 
@@ -647,13 +650,21 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().generic_const_exprs =>
         {
-            tcx.try_unify_abstract_consts(relation.param_env().and((au, bu)))
+            if let (Ok(Some(a)), Ok(Some(b))) = (
+                tcx.expand_bound_abstract_const(tcx.bound_abstract_const(au.def), au.substs),
+                tcx.expand_bound_abstract_const(tcx.bound_abstract_const(bu.def), bu.substs),
+            ) && a.ty() == b.ty() {
+                return relation.consts(a, b);
+            } else {
+                false
+            }
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `generic_const_exprs` can
         // be stabilized.
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu)) if au.def == bu.def => {
+            assert_eq!(a.ty(), b.ty());
             let substs = relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
@@ -664,6 +675,50 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def: au.def, substs }),
                 a.ty(),
             ));
+        }
+        // Before calling relate on exprs, it is necessary to ensure that the nested consts
+        // have identical types.
+        (ty::ConstKind::Expr(ae), ty::ConstKind::Expr(be)) => {
+            let r = relation;
+
+            // FIXME(julianknodt): is it possible to relate two consts which are not identical
+            // exprs? Should we care about that?
+            let expr = match (ae, be) {
+                (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br))
+                    if a_op == b_op && al.ty() == bl.ty() && ar.ty() == br.ty() =>
+                {
+                    Expr::Binop(a_op, r.consts(al, bl)?, r.consts(ar, br)?)
+                }
+                (Expr::UnOp(a_op, av), Expr::UnOp(b_op, bv))
+                    if a_op == b_op && av.ty() == bv.ty() =>
+                {
+                    Expr::UnOp(a_op, r.consts(av, bv)?)
+                }
+                (Expr::Cast(ak, av, at), Expr::Cast(bk, bv, bt))
+                    if ak == bk && av.ty() == bv.ty() =>
+                {
+                    Expr::Cast(ak, r.consts(av, bv)?, r.tys(at, bt)?)
+                }
+                (Expr::FunctionCall(af, aa), Expr::FunctionCall(bf, ba))
+                    if aa.len() == ba.len()
+                        && af.ty() == bf.ty()
+                        && aa
+                            .iter()
+                            .zip(ba.iter())
+                            .all(|(a_arg, b_arg)| a_arg.ty() == b_arg.ty()) =>
+                {
+                    let func = r.consts(af, bf)?;
+                    let mut related_args = Vec::with_capacity(aa.len());
+                    for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {
+                        related_args.push(r.consts(a_arg, b_arg)?);
+                    }
+                    let related_args = tcx.mk_const_list(related_args.iter());
+                    Expr::FunctionCall(func, related_args)
+                }
+                _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),
+            };
+            let kind = ty::ConstKind::Expr(expr);
+            return Ok(tcx.mk_const(kind, a.ty()));
         }
         _ => false,
     };

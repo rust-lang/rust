@@ -657,8 +657,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEquate(c1, c2) => {
+                    let tcx = self.tcx();
                     assert!(
-                        self.tcx().features().generic_const_exprs,
+                        tcx.features().generic_const_exprs,
                         "`ConstEquate` without a feature gate: {c1:?} {c2:?}",
                     );
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
@@ -670,9 +671,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                         (c1.kind(), c2.kind())
                     {
-                        if self.infcx.try_unify_abstract_consts(a, b, obligation.param_env) {
-                            return Ok(EvaluatedToOk);
-                        }
+                        if let (Ok(Some(a)), Ok(Some(b))) = (
+                                tcx.expand_bound_abstract_const(
+                                    tcx.bound_abstract_const(a.def),
+                                    a.substs,
+                                ),
+                                tcx.expand_bound_abstract_const(
+                                    tcx.bound_abstract_const(b.def),
+                                    b.substs,
+                                ),
+                            ) && a.ty() == b.ty() && let Ok(new_obligations) =
+                                    self.infcx.at(&obligation.cause, obligation.param_env).eq(a, b)
+                                {
+                                    let mut obligations = new_obligations.obligations;
+                                    self.add_depth(
+                                        obligations.iter_mut(),
+                                        obligation.recursion_depth,
+                                    );
+                                    return self.evaluate_predicates_recursively(
+                                        previous_stack,
+                                        obligations.into_iter(),
+                                    );
+                                }
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {

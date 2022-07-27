@@ -2714,6 +2714,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn mk_const_list<I: InternAs<[ty::Const<'tcx>], &'tcx List<ty::Const<'tcx>>>>(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_const_list(xs))
+    }
+
+    pub fn intern_const_list(self, cs: &[ty::Const<'tcx>]) -> &'tcx List<ty::Const<'tcx>> {
+        if cs.is_empty() { List::empty() } else { List::from_arena(self.arena, cs) }
+    }
+
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
         if ts.is_empty() {
             List::empty()
