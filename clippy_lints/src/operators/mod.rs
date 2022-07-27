@@ -1,9 +1,3 @@
-use rustc_hir::{Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-
-pub(crate) mod arithmetic;
-
 mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
@@ -26,6 +20,12 @@ mod op_ref;
 mod ptr_eq;
 mod self_assignment;
 mod verbose_bit_mask;
+
+pub(crate) mod arithmetic;
+
+use rustc_hir::{Body, Expr, ExprKind, UnOp};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
