@@ -1,16 +1,16 @@
 // MIR for `identity` after PreCodegen
 
 fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
-    debug x => _1;                       // in scope 0 at $DIR/separate_const_switch.rs:28:13: 28:14
-    let mut _0: std::result::Result<i32, i32>; // return place in scope 0 at $DIR/separate_const_switch.rs:28:37: 28:53
-    let mut _2: i32;                     // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-    let mut _3: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-    let mut _4: std::result::Result<i32, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:9
-    let _5: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-    let mut _6: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-    let _7: i32;                         // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
+    debug x => _1;                       // in scope 0 at $DIR/separate_const_switch.rs:+0:13: +0:14
+    let mut _0: std::result::Result<i32, i32>; // return place in scope 0 at $DIR/separate_const_switch.rs:+0:37: +0:53
+    let mut _2: i32;                     // in scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+    let mut _3: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>; // in scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+    let mut _4: std::result::Result<i32, i32>; // in scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
+    let _5: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+    let mut _6: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+    let _7: i32;                         // in scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
     scope 1 {
-        debug residual => _5;            // in scope 1 at $DIR/separate_const_switch.rs:29:9: 29:10
+        debug residual => _5;            // in scope 1 at $DIR/separate_const_switch.rs:+1:9: +1:10
         scope 2 {
             scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) { // at $DIR/separate_const_switch.rs:29:8: 29:10
                 debug residual => _6;    // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -27,7 +27,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         }
     }
     scope 3 {
-        debug val => _7;                 // in scope 3 at $DIR/separate_const_switch.rs:29:8: 29:10
+        debug val => _7;                 // in scope 3 at $DIR/separate_const_switch.rs:+1:8: +1:10
         scope 4 {
         }
     }
@@ -48,11 +48,11 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-        StorageLive(_3);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-        StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:9
-        _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:9
-        StorageLive(_8);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
+        StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        StorageLive(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
+        _4 = _1;                         // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:9
+        StorageLive(_8);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
         _8 = discriminant(_4);           // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         switchInt(move _8) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
     }
@@ -72,12 +72,12 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         discriminant(_3) = 1;            // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_12);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-        StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-        StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        StorageLive(_5);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        _5 = ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>); // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        StorageLive(_6);                 // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
-        _6 = _5;                         // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
+        StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        StorageLive(_5);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        _5 = ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>); // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        StorageLive(_6);                 // scope 2 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        _6 = _5;                         // scope 2 at $DIR/separate_const_switch.rs:+1:9: +1:10
         StorageLive(_14);                // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
         _14 = move ((_6 as Err).0: i32); // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageLive(_15);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -90,11 +90,11 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         discriminant(_0) = 1;            // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_15);                // scope 9 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_14);                // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
-        StorageDead(_6);                 // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
-        StorageDead(_5);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:29:10: 29:11
-        StorageDead(_3);                 // scope 0 at $DIR/separate_const_switch.rs:30:1: 30:2
-        return;                          // scope 0 at $DIR/separate_const_switch.rs:30:2: 30:2
+        StorageDead(_6);                 // scope 2 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        StorageDead(_5);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+1:10: +1:11
+        StorageDead(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+2:1: +2:2
+        return;                          // scope 0 at $DIR/separate_const_switch.rs:+2:2: +2:2
     }
 
     bb2: {
@@ -111,17 +111,17 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         discriminant(_3) = 0;            // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_10);                // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_9);                 // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-        StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-        StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        StorageLive(_7);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-        _7 = ((_3 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-        _2 = _7;                         // scope 4 at $DIR/separate_const_switch.rs:29:8: 29:10
-        StorageDead(_7);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        Deinit(_0);                      // scope 0 at $DIR/separate_const_switch.rs:29:5: 29:11
-        ((_0 as Ok).0: i32) = move _2;   // scope 0 at $DIR/separate_const_switch.rs:29:5: 29:11
-        discriminant(_0) = 0;            // scope 0 at $DIR/separate_const_switch.rs:29:5: 29:11
-        StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:29:10: 29:11
-        StorageDead(_3);                 // scope 0 at $DIR/separate_const_switch.rs:30:1: 30:2
-        return;                          // scope 0 at $DIR/separate_const_switch.rs:30:2: 30:2
+        StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        StorageLive(_7);                 // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        _7 = ((_3 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        _2 = _7;                         // scope 4 at $DIR/separate_const_switch.rs:+1:8: +1:10
+        StorageDead(_7);                 // scope 0 at $DIR/separate_const_switch.rs:+1:9: +1:10
+        Deinit(_0);                      // scope 0 at $DIR/separate_const_switch.rs:+1:5: +1:11
+        ((_0 as Ok).0: i32) = move _2;   // scope 0 at $DIR/separate_const_switch.rs:+1:5: +1:11
+        discriminant(_0) = 0;            // scope 0 at $DIR/separate_const_switch.rs:+1:5: +1:11
+        StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:+1:10: +1:11
+        StorageDead(_3);                 // scope 0 at $DIR/separate_const_switch.rs:+2:1: +2:2
+        return;                          // scope 0 at $DIR/separate_const_switch.rs:+2:2: +2:2
     }
 }
