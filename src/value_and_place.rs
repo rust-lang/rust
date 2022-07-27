@@ -621,6 +621,14 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
+    pub(crate) fn place_opaque_cast(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        ty: Ty<'tcx>,
+    ) -> CPlace<'tcx> {
+        CPlace { inner: self.inner, layout: fx.layout_of(ty) }
+    }
+
     pub(crate) fn place_field(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
