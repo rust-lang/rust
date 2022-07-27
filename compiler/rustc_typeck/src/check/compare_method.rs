@@ -1154,8 +1154,10 @@ pub(crate) fn compare_const_impl<'tcx>(
         }
 
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        infcx
-            .resolve_regions_and_report_errors(impl_c.def_id.expect_local(), &outlives_environment);
+        infcx.check_region_obligations_and_report_errors(
+            impl_c.def_id.expect_local(),
+            &outlives_environment,
+        );
     });
 }
 
