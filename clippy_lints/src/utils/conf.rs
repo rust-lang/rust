@@ -68,6 +68,7 @@ pub enum DisallowedType {
 pub struct TryConf {
     pub conf: Conf,
     pub errors: Vec<Box<dyn Error>>,
+    pub warnings: Vec<Box<dyn Error>>,
 }
 
 impl TryConf {
@@ -75,6 +76,7 @@ impl TryConf {
         Self {
             conf: Conf::default(),
             errors: vec![Box::new(error)],
+            warnings: vec![],
         }
     }
 }
@@ -97,7 +99,7 @@ fn conf_error(s: String) -> Box<dyn Error> {
 macro_rules! define_Conf {
     ($(
         $(#[doc = $doc:literal])+
-        $(#[conf_deprecated($dep:literal)])?
+        $(#[conf_deprecated($dep:literal, $new_conf:ident)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
@@ -137,17 +139,23 @@ macro_rules! define_Conf {
 
             fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error> where V: MapAccess<'de> {
                 let mut errors = Vec::new();
+                let mut warnings = Vec::new();
                 $(let mut $name = None;)*
                 // could get `Field` here directly, but get `str` first for diagnostics
                 while let Some(name) = map.next_key::<&str>()? {
                     match Field::deserialize(name.into_deserializer())? {
                         $(Field::$name => {
-                            $(errors.push(conf_error(format!("deprecated field `{}`. {}", name, $dep)));)?
+                            $(warnings.push(conf_error(format!("deprecated field `{}`. {}", name, $dep)));)?
                             match map.next_value() {
                                 Err(e) => errors.push(conf_error(e.to_string())),
                                 Ok(value) => match $name {
                                     Some(_) => errors.push(conf_error(format!("duplicate field `{}`", name))),
-                                    None => $name = Some(value),
+                                    None => {
+                                        $name = Some(value);
+                                        // $new_conf is the same as one of the defined `$name`s, so
+                                        // this variable is defined in line 2 of this function.
+                                        $($new_conf = Some(value);)?
+                                    },
                                 }
                             }
                         })*
@@ -156,7 +164,7 @@ macro_rules! define_Conf {
                     }
                 }
                 let conf = Conf { $($name: $name.unwrap_or_else(defaults::$name),)* };
-                Ok(TryConf { conf, errors })
+                Ok(TryConf { conf, errors, warnings })
             }
         }
 
@@ -216,8 +224,8 @@ define_Conf! {
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY.
     ///
     /// Use the Cognitive Complexity lint instead.
-    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
-    (cyclomatic_complexity_threshold: Option<u64> = None),
+    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
+    (cyclomatic_complexity_threshold: u64 = 25),
     /// Lint: DOC_MARKDOWN.
     ///
     /// The list of words this lint should not consider as identifiers needing ticks. The value
