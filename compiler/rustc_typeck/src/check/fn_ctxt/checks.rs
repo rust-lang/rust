@@ -15,7 +15,7 @@ use crate::check::{
 use crate::structured_errors::StructuredDiagnostic;
 
 use rustc_ast as ast;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticId, MultiSpan};
+use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -645,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     "argument"
                                 ),
                                 potentially_plural_count(provided_args.len(), "argument"),
-                                if provided_args.len() == 1 { "was" } else { "were" }
+                                pluralize!("was", provided_args.len())
                             ),
                             DiagnosticId::Error(err_code.to_owned()),
                         );
@@ -770,7 +770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if c_variadic { "at least " } else { "" },
                     potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
                     potentially_plural_count(provided_args.len(), "argument"),
-                    if provided_args.len() == 1 { "was" } else { "were" }
+                    pluralize!("was", provided_args.len())
                 ),
                 DiagnosticId::Error(err_code.to_owned()),
             )

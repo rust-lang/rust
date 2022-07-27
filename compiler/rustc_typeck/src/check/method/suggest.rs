@@ -1122,7 +1122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          add a `use` for {one_of_them}:",
                         an = if candidates.len() == 1 { "an" } else { "" },
                         s = pluralize!(candidates.len()),
-                        were = if candidates.len() == 1 { "was" } else { "were" },
+                        were = pluralize!("was", candidates.len()),
                         one_of_them = if candidates.len() == 1 { "it" } else { "one_of_them" },
                     );
                     self.suggest_use_candidates(&mut err, help, candidates);
