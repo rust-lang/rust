@@ -1,0 +1,30 @@
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:8:5
+   |
+LL |     unsf();
+   |     ^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+note: the lint level is defined here
+  --> $DIR/wrapping-unsafe-block-sugg.rs:3:9
+   |
+LL | #![deny(unsafe_op_in_unsafe_fn)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+help: consider wrapping the function body in an unsafe block
+   |
+LL ~ pub unsafe fn foo() { unsafe {
+LL |     unsf();
+LL |     unsf();
+LL ~ }}
+   |
+
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/wrapping-unsafe-block-sugg.rs:9:5
+   |
+LL |     unsf();
+   |     ^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: aborting due to 2 previous errors
+

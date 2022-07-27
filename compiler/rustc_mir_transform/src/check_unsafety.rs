@@ -527,6 +527,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 
     let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
+    // Only suggest wrapping the entire function body in an unsafe block once
+    let mut suggest_unsafe_block = true;
 
     for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
         let details = errors::RequiresUnsafeDetail { violation: details, span: source_info.span };
@@ -561,12 +563,24 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     op_in_unsafe_fn_allowed,
                 });
             }
-            UnsafetyViolationKind::UnsafeFn => tcx.emit_spanned_lint(
-                UNSAFE_OP_IN_UNSAFE_FN,
-                lint_root,
-                source_info.span,
-                errors::UnsafeOpInUnsafeFn { details },
-            ),
+            UnsafetyViolationKind::UnsafeFn => {
+                tcx.emit_spanned_lint(
+                    UNSAFE_OP_IN_UNSAFE_FN,
+                    lint_root,
+                    source_info.span,
+                    errors::UnsafeOpInUnsafeFn {
+                        details,
+                        suggest_unsafe_block: suggest_unsafe_block.then(|| {
+                            let body = tcx.hir().body_owned_by(def_id);
+                            let body_span = tcx.hir().body(body).value.span;
+                            let start = tcx.sess.source_map().start_point(body_span).shrink_to_hi();
+                            let end = tcx.sess.source_map().end_point(body_span).shrink_to_lo();
+                            (start, end)
+                        }),
+                    },
+                );
+                suggest_unsafe_block = false;
+            }
         }
     }
 
