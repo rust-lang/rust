@@ -634,9 +634,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         &format!(
                                             "expected a closure taking {} argument{}, but one taking {} argument{} was given",
                                             given.len(),
-                                            if given.len() == 1 { "" } else { "s" },
+                                            pluralize!(given.len()),
                                             expected.len(),
-                                            if expected.len() == 1 { "" } else { "s" },
+                                            pluralize!(expected.len()),
                                         )
                                     );
                                 } else if !self.same_type_modulo_infer(given_ty, expected_ty) {
