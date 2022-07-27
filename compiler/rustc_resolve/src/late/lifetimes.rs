@@ -1486,6 +1486,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             let map = &self.map;
             let generics = self.tcx.generics_of(def_id);
+
+            // `type_def_id` points to an item, so there is nothing to inherit generics from.
+            debug_assert_eq!(generics.parent_count, 0);
+
             let set_to_region = |set: ObjectLifetimeDefault| match set {
                 ObjectLifetimeDefault::Empty => {
                     if in_body {
@@ -1496,8 +1500,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 ObjectLifetimeDefault::Static => Some(Region::Static),
                 ObjectLifetimeDefault::Param(param_def_id) => {
-                    let index = generics.param_def_id_to_index[&param_def_id];
-                    generic_args.args.get(index as usize).and_then(|arg| match arg {
+                    // This index can be used with `generic_args` since `parent_count == 0`.
+                    let index = generics.param_def_id_to_index[&param_def_id] as usize;
+                    generic_args.args.get(index).and_then(|arg| match arg {
                         GenericArg::Lifetime(lt) => map.defs.get(&lt.hir_id).copied(),
                         _ => None,
                     })
