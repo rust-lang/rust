@@ -924,7 +924,12 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(|it| it.value)
+        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
+            |InFile { file_id, value }| {
+                self.cache(find_root(value.syntax()), file_id);
+                value
+            },
+        )
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
