@@ -233,10 +233,3 @@ pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
   x
 }
-
-// CHECK: noalias {{i8\*|ptr}} @allocator()
-#[no_mangle]
-#[rustc_allocator]
-pub fn allocator() -> *const i8 {
-  std::ptr::null()
-}
