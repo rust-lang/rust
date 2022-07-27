@@ -1628,14 +1628,21 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Chunks<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksMut<'a, T: 'a> {
-    v: &'a mut [T],
+    /// # Safety
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
+    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
+    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
+    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
+    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    v: *mut [T],
     chunk_size: usize,
+    _marker: PhantomData<&'a mut T>,
 }
 
 impl<'a, T: 'a> ChunksMut<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T], size: usize) -> Self {
-        Self { v: slice, chunk_size: size }
+        Self { v: slice, chunk_size: size, _marker: PhantomData }
     }
 }
 
@@ -1649,10 +1656,11 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
             None
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(sz);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (head, tail) = unsafe { self.v.split_at_mut(sz) };
             self.v = tail;
-            Some(head)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *head })
         }
     }
 
@@ -1684,11 +1692,13 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
                 Some(sum) => cmp::min(self.v.len(), sum),
                 None => self.v.len(),
             };
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(end);
-            let (_, nth) = head.split_at_mut(start);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (head, tail) = unsafe { self.v.split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (_, nth) = unsafe { head.split_at_mut(start) };
             self.v = tail;
-            Some(nth)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *nth })
         }
     }
 
@@ -1698,13 +1708,14 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
             None
         } else {
             let start = (self.v.len() - 1) / self.chunk_size * self.chunk_size;
-            Some(&mut self.v[start..])
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *self.v.get_unchecked_mut(start..) })
         }
     }
 
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
-        // SAFETY: see comments for `Chunks::__iterator_get_unchecked`.
+        // SAFETY: see comments for `Chunks::__iterator_get_unchecked` and `self.v`.
         //
         // Also note that the caller also guarantees that we're never called
         // with the same index again, and that no other methods that will
@@ -1726,12 +1737,12 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let tmp_len = tmp.len();
+            let len = self.v.len();
             // SAFETY: Similar to `Chunks::next_back`
-            let (head, tail) = unsafe { tmp.split_at_mut_unchecked(tmp_len - sz) };
+            let (head, tail) = unsafe { self.v.split_at_mut_unchecked(len - sz) };
             self.v = head;
-            Some(tail)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *tail })
         }
     }
 
@@ -1747,10 +1758,13 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
                 Some(res) => cmp::min(self.v.len(), res),
                 None => self.v.len(),
             };
-            let (temp, _tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
-            let (head, nth_back) = temp.split_at_mut(start);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (temp, _tail) = unsafe { self.v.split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (head, nth_back) = unsafe { temp.split_at_mut(start) };
             self.v = head;
-            Some(nth_back)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *nth_back })
         }
     }
 }
@@ -1956,9 +1970,16 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExact<'a, T> {
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksExactMut<'a, T: 'a> {
-    v: &'a mut [T],
-    rem: &'a mut [T],
+    /// # Safety
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
+    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
+    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
+    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
+    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    v: *mut [T],
+    rem: &'a mut [T], // The iterator never yields from here, so this can be unique
     chunk_size: usize,
+    _marker: PhantomData<&'a mut T>,
 }
 
 impl<'a, T> ChunksExactMut<'a, T> {
@@ -1968,7 +1989,7 @@ impl<'a, T> ChunksExactMut<'a, T> {
         let fst_len = slice.len() - rem;
         // SAFETY: 0 <= fst_len <= slice.len() by construction above
         let (fst, snd) = unsafe { slice.split_at_mut_unchecked(fst_len) };
-        Self { v: fst, rem: snd, chunk_size }
+        Self { v: fst, rem: snd, chunk_size, _marker: PhantomData }
     }
 
     /// Returns the remainder of the original slice that is not going to be
@@ -1990,10 +2011,11 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
         if self.v.len() < self.chunk_size {
             None
         } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(self.chunk_size);
+            // SAFETY: self.chunk_size is inbounds because we compared above against self.v.len()
+            let (head, tail) = unsafe { self.v.split_at_mut(self.chunk_size) };
             self.v = tail;
-            Some(head)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *head })
         }
     }
 
@@ -2015,8 +2037,8 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
             self.v = &mut [];
             None
         } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (_, snd) = tmp.split_at_mut(start);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (_, snd) = unsafe { self.v.split_at_mut(start) };
             self.v = snd;
             self.next()
         }
@@ -2029,7 +2051,7 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
 
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let start = idx * self.chunk_size;
-        // SAFETY: see comments for `ChunksMut::__iterator_get_unchecked`.
+        // SAFETY: see comments for `Chunks::__iterator_get_unchecked` and `self.v`.
         unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size) }
     }
 }
@@ -2041,11 +2063,11 @@ impl<'a, T> DoubleEndedIterator for ChunksExactMut<'a, T> {
         if self.v.len() < self.chunk_size {
             None
         } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let tmp_len = tmp.len();
-            let (head, tail) = tmp.split_at_mut(tmp_len - self.chunk_size);
+            // SAFETY: This subtraction is inbounds because of the check above
+            let (head, tail) = unsafe { self.v.split_at_mut(self.v.len() - self.chunk_size) };
             self.v = head;
-            Some(tail)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *tail })
         }
     }
 
@@ -2058,10 +2080,13 @@ impl<'a, T> DoubleEndedIterator for ChunksExactMut<'a, T> {
         } else {
             let start = (len - 1 - n) * self.chunk_size;
             let end = start + self.chunk_size;
-            let (temp, _tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
-            let (head, nth_back) = temp.split_at_mut(start);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (temp, _tail) = unsafe { mem::replace(&mut self.v, &mut []).split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (head, nth_back) = unsafe { temp.split_at_mut(start) };
             self.v = head;
-            Some(nth_back)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *nth_back })
         }
     }
 }
@@ -2645,14 +2670,21 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunks<'a, T> {
 #[stable(feature = "rchunks", since = "1.31.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksMut<'a, T: 'a> {
-    v: &'a mut [T],
+    /// # Safety
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
+    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
+    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
+    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
+    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    v: *mut [T],
     chunk_size: usize,
+    _marker: PhantomData<&'a mut T>,
 }
 
 impl<'a, T: 'a> RChunksMut<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T], size: usize) -> Self {
-        Self { v: slice, chunk_size: size }
+        Self { v: slice, chunk_size: size, _marker: PhantomData }
     }
 }
 
@@ -2666,16 +2698,16 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
             None
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let tmp_len = tmp.len();
+            let len = self.v.len();
             // SAFETY: split_at_mut_unchecked just requires the argument be less
             // than the length. This could only happen if the expression
-            // `tmp_len - sz` overflows. This could only happen if `sz >
-            // tmp_len`, which is impossible as we initialize it as the `min` of
-            // `self.v.len()` (e.g. `tmp_len`) and `self.chunk_size`.
-            let (head, tail) = unsafe { tmp.split_at_mut_unchecked(tmp_len - sz) };
+            // `len - sz` overflows. This could only happen if `sz >
+            // len`, which is impossible as we initialize it as the `min` of
+            // `self.v.len()` (e.g. `len`) and `self.chunk_size`.
+            let (head, tail) = unsafe { self.v.split_at_mut_unchecked(len - sz) };
             self.v = head;
-            Some(tail)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *tail })
         }
     }
 
@@ -2709,11 +2741,15 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
                 Some(sum) => sum,
                 None => 0,
             };
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(start);
-            let (nth, _) = tail.split_at_mut(end - start);
+            // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
+            // Therefore the bounds check in split_at_mut guarantess the split point is inbounds.
+            let (head, tail) = unsafe { self.v.split_at_mut(start) };
+            // SAFETY: This type ensures that self.v is a valid pointer with a correct len.
+            // Therefore the bounds check in split_at_mut guarantess the split point is inbounds.
+            let (nth, _) = unsafe { tail.split_at_mut(end - start) };
             self.v = head;
-            Some(nth)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *nth })
         }
     }
 
@@ -2724,7 +2760,8 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
         } else {
             let rem = self.v.len() % self.chunk_size;
             let end = if rem == 0 { self.chunk_size } else { rem };
-            Some(&mut self.v[0..end])
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *self.v.get_unchecked_mut(0..end) })
         }
     }
 
@@ -2735,7 +2772,7 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
             Some(start) => start,
         };
         // SAFETY: see comments for `RChunks::__iterator_get_unchecked` and
-        // `ChunksMut::__iterator_get_unchecked`
+        // `ChunksMut::__iterator_get_unchecked`, `self.v`.
         unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), end - start) }
     }
 }
@@ -2749,11 +2786,11 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
-            let tmp = mem::replace(&mut self.v, &mut []);
             // SAFETY: Similar to `Chunks::next_back`
-            let (head, tail) = unsafe { tmp.split_at_mut_unchecked(sz) };
+            let (head, tail) = unsafe { self.v.split_at_mut_unchecked(sz) };
             self.v = tail;
-            Some(head)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *head })
         }
     }
 
@@ -2768,10 +2805,13 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
             let offset_from_end = (len - 1 - n) * self.chunk_size;
             let end = self.v.len() - offset_from_end;
             let start = end.saturating_sub(self.chunk_size);
-            let (tmp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
-            let (_, nth_back) = tmp.split_at_mut(start);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (tmp, tail) = unsafe { self.v.split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (_, nth_back) = unsafe { tmp.split_at_mut(start) };
             self.v = tail;
-            Some(nth_back)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *nth_back })
         }
     }
 }
@@ -2897,8 +2937,7 @@ impl<'a, T> Iterator for RChunksExact<'a, T> {
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = end - self.chunk_size;
-        // SAFETY:
-        // SAFETY: mostmy identical to `Chunks::__iterator_get_unchecked`.
+        // SAFETY: mostly identical to `Chunks::__iterator_get_unchecked`.
         unsafe { from_raw_parts(self.v.as_ptr().add(start), self.chunk_size) }
     }
 }
@@ -2981,7 +3020,13 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
 #[stable(feature = "rchunks", since = "1.31.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksExactMut<'a, T: 'a> {
-    v: &'a mut [T],
+    /// # Safety
+    /// This slice pointer must point at a valid region of `T` with at least length `v.len()`. Normally,
+    /// those requirements would mean that we could instead use a `&mut [T]` here, but we cannot
+    /// because `__iterator_get_unchecked` needs to return `&mut [T]`, which guarantees certain aliasing
+    /// properties that we cannot uphold if we hold on to the full original `&mut [T]`. Wrapping a raw
+    /// slice instead lets us hand out non-overlapping `&mut [T]` subslices of the slice we wrap.
+    v: *mut [T],
     rem: &'a mut [T],
     chunk_size: usize,
 }
@@ -3014,11 +3059,12 @@ impl<'a, T> Iterator for RChunksExactMut<'a, T> {
         if self.v.len() < self.chunk_size {
             None
         } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let tmp_len = tmp.len();
-            let (head, tail) = tmp.split_at_mut(tmp_len - self.chunk_size);
+            let len = self.v.len();
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (head, tail) = unsafe { self.v.split_at_mut(len - self.chunk_size) };
             self.v = head;
-            Some(tail)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *tail })
         }
     }
 
@@ -3040,9 +3086,9 @@ impl<'a, T> Iterator for RChunksExactMut<'a, T> {
             self.v = &mut [];
             None
         } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let tmp_len = tmp.len();
-            let (fst, _) = tmp.split_at_mut(tmp_len - end);
+            let len = self.v.len();
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (fst, _) = unsafe { self.v.split_at_mut(len - end) };
             self.v = fst;
             self.next()
         }
@@ -3056,7 +3102,7 @@ impl<'a, T> Iterator for RChunksExactMut<'a, T> {
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         let end = self.v.len() - idx * self.chunk_size;
         let start = end - self.chunk_size;
-        // SAFETY: see comments for `RChunksMut::__iterator_get_unchecked`.
+        // SAFETY: see comments for `RChunksMut::__iterator_get_unchecked` and `self.v`.
         unsafe { from_raw_parts_mut(self.v.as_mut_ptr().add(start), self.chunk_size) }
     }
 }
@@ -3068,10 +3114,11 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
         if self.v.len() < self.chunk_size {
             None
         } else {
-            let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(self.chunk_size);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (head, tail) = unsafe { self.v.split_at_mut(self.chunk_size) };
             self.v = tail;
-            Some(head)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *head })
         }
     }
 
@@ -3087,10 +3134,13 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
             let offset = (len - n) * self.chunk_size;
             let start = self.v.len() - offset;
             let end = start + self.chunk_size;
-            let (tmp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
-            let (_, nth_back) = tmp.split_at_mut(start);
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (tmp, tail) = unsafe { self.v.split_at_mut(end) };
+            // SAFETY: The self.v contract ensures that any split_at_mut is valid.
+            let (_, nth_back) = unsafe { tmp.split_at_mut(start) };
             self.v = tail;
-            Some(nth_back)
+            // SAFETY: Nothing else points to or will point to the contents of this slice.
+            Some(unsafe { &mut *nth_back })
         }
     }
 }
