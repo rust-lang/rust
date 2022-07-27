@@ -509,14 +509,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = self.read_scalar(value)?;
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                if M::enforce_number_init(self.ecx) {
-                    try_validation!(
-                        value.check_init(),
-                        self.path,
-                        err_ub!(InvalidUninitBytes(..)) =>
-                            { "{:x}", value } expected { "initialized bytes" }
-                    );
-                }
+                try_validation!(
+                    value.check_init(),
+                    self.path,
+                    err_ub!(InvalidUninitBytes(..)) =>
+                        { "{:x}", value } expected { "initialized bytes" }
+                );
                 // As a special exception we *do* match on a `Scalar` here, since we truly want
                 // to know its underlying representation (and *not* cast it to an integer).
                 let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
@@ -621,13 +619,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // i.e. that we go over the `check_init` below.
         let size = scalar_layout.size(self.ecx);
         let is_full_range = match scalar_layout {
-            ScalarAbi::Initialized { .. } => {
-                if M::enforce_number_init(self.ecx) {
-                    false // not "full" since uninit is not accepted
-                } else {
-                    scalar_layout.is_always_valid(self.ecx)
-                }
-            }
+            ScalarAbi::Initialized { .. } => false, // not "full" since uninit is not valid
             ScalarAbi::Union { .. } => true,
         };
         if is_full_range {
@@ -903,7 +895,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),
-                    /*allow_uninit*/ !M::enforce_number_init(self.ecx),
+                    /*allow_uninit*/ false,
                     /*allow_ptr*/ false,
                 ) {
                     // In the happy case, we needn't check anything else.
