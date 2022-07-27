@@ -515,9 +515,15 @@ macro_rules! r#try {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
+#[allow_internal_unstable(autoref)]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => {
-        $dst.write_fmt($crate::format_args!($($arg)*))
+        match $crate::ops::autoref::autoref_mut!($dst) {
+            mut _dst => {
+                let result = _dst.write_fmt($crate::format_args!($($arg)*));
+                result
+            }
+        }
     };
 }
 
@@ -549,13 +555,18 @@ macro_rules! write {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
-#[allow_internal_unstable(format_args_nl)]
+#[allow_internal_unstable(autoref, format_args_nl)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
     };
     ($dst:expr, $($arg:tt)*) => {
-        $dst.write_fmt($crate::format_args_nl!($($arg)*))
+        match $crate::ops::autoref::autoref_mut!($dst) {
+            mut _dst => {
+                let result = _dst.write_fmt($crate::format_args_nl!($($arg)*));
+                result
+            }
+        }
     };
 }
 

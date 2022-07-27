@@ -139,6 +139,9 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod arith;
+#[doc(hidden)]
+#[unstable(feature = "autoref", issue = "none")]
+pub mod autoref;
 mod bit;
 mod control_flow;
 mod deref;
