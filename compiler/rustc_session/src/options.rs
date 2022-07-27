@@ -1504,6 +1504,8 @@ options! {
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
+    split_bundled_libs: bool = (false, parse_bool, [TRACKED],
+        "if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries"),
     split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [TRACKED],
         "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
         (default: `split`)
@@ -1512,8 +1514,6 @@ options! {
                  file which is ignored by the linker
         `single`: sections which do not require relocation are written into object file but ignored
                   by the linker"),
-    split_bundled_libs: bool = (false, parse_bool, [TRACKED],
-             "split bundled libs"),
     split_dwarf_inlining: bool = (true, parse_bool, [TRACKED],
         "provide minimal debug info in the object/executable to facilitate online \
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),

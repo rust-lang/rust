@@ -145,6 +145,7 @@
     -Z                         stack-protector=val -- control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)
     -Z                      strict-init-checks=val -- control if mem::uninitialized and mem::zeroed panic on more UB
     -Z                                   strip=val -- tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)
+    -Z                      split-bundled-libs=val -- if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries
     -Z                        split-dwarf-kind=val -- split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
         (default: `split`)
 
