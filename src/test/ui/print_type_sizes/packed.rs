@@ -3,6 +3,7 @@
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
 //     FIXME: consider using an attribute instead of side-effects.
+// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // This file illustrates how packing is handled; it should cause
 // the elimination of padding that would normally be introduced

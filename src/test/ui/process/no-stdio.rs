@@ -1,5 +1,6 @@
 // run-pass
 // ignore-android
+// ignore-uefi not sure how to remove stdio
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // revisions: mir thir

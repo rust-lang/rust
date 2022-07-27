@@ -3,13 +3,14 @@
 #![allow(overflowing_literals)]
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 // Test that using the `vec!` macro nested within itself works when
 // the contents implement Drop and we hit a panic in the middle of
 // construction.
 
-use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 
 static LOG: AtomicUsize = AtomicUsize::new(0);
 
@@ -29,12 +30,16 @@ impl Drop for D {
 }
 
 fn main() {
-    fn die() -> D { panic!("Oh no"); }
+    fn die() -> D {
+        panic!("Oh no");
+    }
     let g = thread::spawn(|| {
-        let _nested = vec![vec![D( 1), D( 2), D( 3), D( 4)],
-                           vec![D( 5), D( 6), D( 7), D( 8)],
-                           vec![D( 9), D(10), die(), D(12)],
-                           vec![D(13), D(14), D(15), D(16)]];
+        let _nested = vec![
+            vec![D(1), D(2), D(3), D(4)],
+            vec![D(5), D(6), D(7), D(8)],
+            vec![D(9), D(10), die(), D(12)],
+            vec![D(13), D(14), D(15), D(16)],
+        ];
     });
     assert!(g.join().is_err());
 

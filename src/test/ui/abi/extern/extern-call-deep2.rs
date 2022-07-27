@@ -1,6 +1,7 @@
 // run-pass
 #![allow(unused_must_use)]
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 #![feature(rustc_private)]
 
 extern crate libc;

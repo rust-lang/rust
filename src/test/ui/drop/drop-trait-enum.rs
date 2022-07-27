@@ -3,6 +3,7 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 // needs-unwind
 
 use std::thread;

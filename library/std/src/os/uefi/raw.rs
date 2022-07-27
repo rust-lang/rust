@@ -37,6 +37,10 @@ impl<T> VariableSizeType<T> {
     pub(crate) fn as_ref(&self) -> &T {
         unsafe { self.inner.as_ref() }
     }
+
+    pub(crate) fn size(&self) -> usize {
+        self.layout.size()
+    }
 }
 
 impl<T> Drop for VariableSizeType<T> {

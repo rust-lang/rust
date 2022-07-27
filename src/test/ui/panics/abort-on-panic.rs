@@ -8,6 +8,7 @@
 
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-uefi no thread
 
 use std::io;
 use std::io::prelude::*;

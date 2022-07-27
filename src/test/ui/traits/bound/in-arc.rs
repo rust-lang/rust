@@ -4,6 +4,7 @@
 // and shared between threads as long as all types fulfill Send.
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 use std::sync::Arc;
 use std::sync::mpsc::channel;

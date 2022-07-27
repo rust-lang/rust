@@ -1,6 +1,7 @@
 // run-pass
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-uefi no threads
 
 use std::cell::RefCell;
 use std::env;

@@ -4,6 +4,7 @@
 //[nomiropt]compile-flags: -Z mir-opt-level=0
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 // compile-flags: --test
 
 #![feature(generators, generator_trait)]

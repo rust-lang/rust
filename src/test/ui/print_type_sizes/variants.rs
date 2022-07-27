@@ -1,5 +1,6 @@
 // compile-flags: -Z print-type-sizes
 // build-pass
+// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // This file illustrates two things:
 //
@@ -11,7 +12,7 @@
 
 #![feature(start)]
 
-pub struct SevenBytes([u8;  7]);
+pub struct SevenBytes([u8; 7]);
 pub struct FiftyBytes([u8; 50]);
 
 pub enum Enum {

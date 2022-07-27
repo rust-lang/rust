@@ -30,7 +30,6 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod stdio;
-#[path = "../unsupported/thread.rs"]
 pub mod thread;
 #[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;

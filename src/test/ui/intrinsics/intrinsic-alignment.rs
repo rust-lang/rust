@@ -52,7 +52,7 @@ mod m {
     }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "uefi"))]
 mod m {
     pub fn main() {
         unsafe {

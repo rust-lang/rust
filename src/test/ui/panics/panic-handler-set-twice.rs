@@ -6,6 +6,7 @@
 #![feature(std_panic)]
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::panic;

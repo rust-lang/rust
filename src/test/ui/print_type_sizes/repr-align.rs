@@ -3,6 +3,7 @@
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
 //     FIXME: consider using an attribute instead of side-effects.
+// ignore-uefi Cannot be fixed until a better way to hook into rust start comes along
 
 // This file illustrates how padding is handled: alignment
 // requirements can lead to the introduction of padding, either before
@@ -20,7 +21,7 @@ struct A(i32);
 
 enum E {
     A(i32),
-    B(A)
+    B(A),
 }
 
 #[derive(Default)]

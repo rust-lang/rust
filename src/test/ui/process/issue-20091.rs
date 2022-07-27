@@ -20,5 +20,5 @@ fn main() {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "uefi"))]
 fn main() {}

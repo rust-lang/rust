@@ -9,6 +9,7 @@
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-fuchsia no exception handler registered for segfault
+// ignore-uefi no rust_test_helpers
 
 use std::env;
 use std::mem::MaybeUninit;

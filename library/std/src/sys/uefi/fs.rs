@@ -4,7 +4,6 @@ use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
-// use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
@@ -39,6 +38,7 @@ pub struct OpenOptions {
     open_mode: u64,
     attr: u64,
     append: bool,
+    truncate: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -172,7 +172,7 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         // These options open file in readonly mode
-        OpenOptions { open_mode: file::MODE_READ, attr: 0, append: false }
+        OpenOptions { open_mode: file::MODE_READ, attr: 0, append: false, truncate: false }
     }
 
     pub fn read(&mut self, read: bool) {
@@ -196,8 +196,9 @@ impl OpenOptions {
         self.append = append;
     }
 
-    // FIXME: Should be possible to implement
-    pub fn truncate(&mut self, _truncate: bool) {}
+    pub fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
 
     pub fn create(&mut self, create: bool) {
         if create {
@@ -214,6 +215,9 @@ impl OpenOptions {
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let file_opened = uefi_fs::FileProtocol::from_path(path, opts.open_mode, opts.attr)?;
+        if opts.truncate {
+            file_opened.set_file_info(0)?;
+        }
         let file = File { ptr: file_opened };
         if opts.append {
             file.seek(SeekFrom::End(0))?;
@@ -376,7 +380,7 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let opts = OpenOptions { open_mode: file::MODE_READ, attr: 0, append: false };
+    let opts = OpenOptions { open_mode: file::MODE_READ, attr: 0, append: false, truncate: false };
     File::open(p, &opts)?.file_attr()
 }
 
@@ -657,6 +661,22 @@ mod uefi_fs {
             }
         }
 
+        pub fn set_file_info(&self, file_size: u64) -> io::Result<()> {
+            let old_info = self.get_file_info()?;
+            // Update fields with new values
+            unsafe {
+                (*old_info.as_ptr()).file_size = file_size;
+            }
+            unsafe {
+                Self::set_info_raw(
+                    self.inner.as_ptr(),
+                    file::INFO_ID,
+                    old_info.size(),
+                    old_info.as_ptr().cast(),
+                )
+            }
+        }
+
         pub fn delete(self) -> io::Result<()> {
             let file = crate::mem::ManuallyDrop::new(self);
             unsafe { Self::delete_raw(file.inner.as_ptr()) }
@@ -718,6 +738,16 @@ mod uefi_fs {
             buf: *mut crate::ffi::c_void,
         ) -> io::Result<()> {
             let r = unsafe { ((*protocol).get_info)(protocol, &mut info_guid, buf_size, buf) };
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+        }
+
+        unsafe fn set_info_raw(
+            protocol: *mut file::Protocol,
+            mut info_guid: r_efi::efi::Guid,
+            buf_size: usize,
+            buf: *mut crate::ffi::c_void,
+        ) -> io::Result<()> {
+            let r = unsafe { ((*protocol).set_info)(protocol, &mut info_guid, buf_size, buf) };
             if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
 

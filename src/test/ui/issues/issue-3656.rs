@@ -7,6 +7,7 @@
 
 // pretty-expanded FIXME #23616
 // ignore-wasm32-bare no libc to test with
+// ignore-uefi no libc to test with
 #![feature(rustc_private)]
 
 extern crate libc;

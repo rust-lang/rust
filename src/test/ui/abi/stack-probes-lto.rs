@@ -9,6 +9,7 @@
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-musl FIXME #31506
+// ignore-uefi no rust_test_helpers
 // ignore-pretty
 // ignore-fuchsia no exception handler registered for segfault
 // compile-flags: -C lto

@@ -1,6 +1,7 @@
 // run-pass
 // ignore-windows
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 use std::cell::Cell;
 use std::fmt;

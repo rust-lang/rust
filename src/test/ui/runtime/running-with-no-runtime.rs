@@ -1,6 +1,7 @@
 // run-pass
 // ignore-emscripten spawning processes is not supported
 // ignore-sgx no processes
+// ignore-uefi no unwind
 // revisions: mir thir
 // [thir]compile-flags: -Zthir-unsafeck
 

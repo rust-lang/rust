@@ -6,6 +6,7 @@
 // pretty-expanded FIXME #23616
 // ignore-msvc
 // ignore-emscripten emcc asserts on an empty struct as an argument
+// ignore-uefi no rust_test_helpers
 
 #[repr(C)]
 struct TwoU8s {

@@ -6,6 +6,7 @@
 // no-prefer-dynamic
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-uefi no unwind
 
 use std::process::Command;
 use std::env;

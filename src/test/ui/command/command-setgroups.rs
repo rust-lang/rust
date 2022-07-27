@@ -1,5 +1,6 @@
 // run-pass
 // ignore-windows - this is a unix-specific test
+// ignore-uefi - this is a unix-specific test
 // ignore-emscripten
 // ignore-sgx
 // ignore-musl - returns dummy result for _SC_NGROUPS_MAX

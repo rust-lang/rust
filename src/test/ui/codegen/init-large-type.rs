@@ -8,7 +8,7 @@
 
 // pretty-expanded FIXME #23616
 // ignore-emscripten no threads support
-
+// ignore-uefi no threads support
 #![feature(intrinsics)]
 
 use std::{mem, thread};
@@ -19,5 +19,6 @@ fn main() {
     // do the test in a new thread to avoid (spurious?) stack overflows
     thread::spawn(|| {
         let _memory: [u8; SIZE] = unsafe { mem::zeroed() };
-    }).join();
+    })
+    .join();
 }

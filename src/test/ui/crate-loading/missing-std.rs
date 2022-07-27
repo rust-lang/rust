@@ -1,4 +1,5 @@
 // compile-flags: --target x86_64-unknown-uefi
+// ignore-uefi should probably remove/change this test
 // needs-llvm-components: x86
 // rustc-env:CARGO=/usr/bin/cargo
 #![feature(no_core)]

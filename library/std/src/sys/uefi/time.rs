@@ -9,10 +9,22 @@ pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::ZERO);
 
-// FIXME: Implement using `EFI_TIMESTAMP_PROTOCOL.GetTimestamp()`
+// FIXME: Maybe optionally use `EFI_TIMESTAMP_PROTOCOL.GetTimestamp()`?
 impl Instant {
     pub fn now() -> Instant {
-        panic!("time not implemented on this platform")
+        if let Some(runtime_services) = uefi::env::get_runtime_services() {
+            let mut t = r_efi::efi::Time::default();
+            let r =
+                unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
+
+            if r.is_error() {
+                panic!("time not implemented on this platform")
+            } else {
+                Instant(uefi_time_to_duration(t))
+            }
+        } else {
+            panic!("Runtime Services are needed for Time to work")
+        }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
@@ -42,7 +54,7 @@ impl SystemTime {
                 SystemTime::from(t)
             }
         } else {
-            panic!("time not implemented on this platform")
+            panic!("Runtime Services are needed for Time to work")
         }
     }
 
@@ -60,24 +72,28 @@ impl SystemTime {
 }
 
 impl From<r_efi::system::Time> for SystemTime {
-    // FIXME: Don't know how to use Daylight Saving thing
     fn from(t: r_efi::system::Time) -> Self {
-        const SEC_IN_MIN: u64 = 60;
-        const SEC_IN_HOUR: u64 = SEC_IN_MIN * 60;
-        const SEC_IN_DAY: u64 = SEC_IN_HOUR * 24;
-        const SEC_IN_YEAR: u64 = SEC_IN_DAY * 365;
-        const MONTH_DAYS: [u64; 12] = [0, 31, 59, 90, 120, 151, 181, 211, 242, 272, 303, 333];
-
-        let localtime_epoch: u64 = u64::from(t.year - 1970) * SEC_IN_YEAR
-            + u64::from((t.year - 1968) / 4) * SEC_IN_DAY
-            + MONTH_DAYS[usize::from(t.month - 1)] * SEC_IN_DAY
-            + u64::from(t.day - 1) * SEC_IN_DAY
-            + u64::from(t.hour) * SEC_IN_HOUR
-            + u64::from(t.minute) * SEC_IN_MIN
-            + u64::from(t.second);
-        let timezone_epoch: i64 = i64::from(t.timezone) * (SEC_IN_MIN as i64);
-        let utc_epoch: u64 = ((localtime_epoch as i64) + timezone_epoch) as u64;
-
-        SystemTime(Duration::new(utc_epoch, t.nanosecond))
+        SystemTime(uefi_time_to_duration(t))
     }
+}
+
+// FIXME: Don't know how to use Daylight Saving thing
+fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
+    const SEC_IN_MIN: u64 = 60;
+    const SEC_IN_HOUR: u64 = SEC_IN_MIN * 60;
+    const SEC_IN_DAY: u64 = SEC_IN_HOUR * 24;
+    const SEC_IN_YEAR: u64 = SEC_IN_DAY * 365;
+    const MONTH_DAYS: [u64; 12] = [0, 31, 59, 90, 120, 151, 181, 211, 242, 272, 303, 333];
+
+    let localtime_epoch: u64 = u64::from(t.year - 1970) * SEC_IN_YEAR
+        + u64::from((t.year - 1968) / 4) * SEC_IN_DAY
+        + MONTH_DAYS[usize::from(t.month - 1)] * SEC_IN_DAY
+        + u64::from(t.day - 1) * SEC_IN_DAY
+        + u64::from(t.hour) * SEC_IN_HOUR
+        + u64::from(t.minute) * SEC_IN_MIN
+        + u64::from(t.second);
+    let timezone_epoch: i64 = i64::from(t.timezone) * (SEC_IN_MIN as i64);
+    let utc_epoch: u64 = ((localtime_epoch as i64) + timezone_epoch) as u64;
+
+    Duration::new(utc_epoch, t.nanosecond)
 }

@@ -2,6 +2,7 @@
 #![allow(unused_must_use)]
 #![allow(unused_mut)]
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 use std::thread;
 

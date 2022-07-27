@@ -1,6 +1,7 @@
 // run-pass
 #![allow(unused_parens)]
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 use std::sync::mpsc::{channel, Sender};
 use std::thread;

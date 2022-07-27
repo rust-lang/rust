@@ -1,6 +1,5 @@
 // run-pass
 // needs-unwind
-
 static mut CHECK: usize = 0;
 
 struct DropChecker(usize);

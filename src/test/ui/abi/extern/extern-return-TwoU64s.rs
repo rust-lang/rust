@@ -2,6 +2,7 @@
 #![allow(improper_ctypes)]
 
 // ignore-wasm32-bare no libc to test ffi with
+// ignore-uefi no rust_test_helpers
 
 pub struct TwoU64s {
     one: u64,

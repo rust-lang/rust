@@ -1,5 +1,6 @@
 // run-pass
 // ignore-wasm32-bare no libc to test ffi with
+// ignore-uefi no rust_test_helpers
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
@@ -7,9 +8,7 @@ extern "C" {
 }
 
 fn main() {
-    let x = unsafe {
-        rust_int8_to_int32(-1)
-    };
+    let x = unsafe { rust_int8_to_int32(-1) };
 
     assert!(x == -1);
 }

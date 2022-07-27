@@ -1,5 +1,6 @@
 // run-pass
 // ignore-windows
+// ignore-uefi no thread
 // ignore-android
 // ignore-emscripten no processes
 // ignore-haiku

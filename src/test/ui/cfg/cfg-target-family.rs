@@ -1,5 +1,6 @@
 // build-pass
 // ignore-sgx
+// ignore-uefi no uefi family
 
 // pretty-expanded FIXME #23616
 
@@ -11,3 +12,4 @@ pub fn main() {}
 
 #[cfg(all(target_family = "wasm", not(target_os = "emscripten")))]
 pub fn main() {}
+

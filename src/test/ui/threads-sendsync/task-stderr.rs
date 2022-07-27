@@ -1,5 +1,6 @@
 // run-pass
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 // needs-unwind
 
 #![feature(internal_output_capture)]

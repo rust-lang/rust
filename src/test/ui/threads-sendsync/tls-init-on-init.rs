@@ -2,6 +2,7 @@
 #![allow(stable_features)]
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 #![feature(thread_local_try_with)]
 

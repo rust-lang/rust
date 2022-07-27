@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 // compile-flags: -C codegen-units=3
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 // Test unwinding through multiple compilation units.
 

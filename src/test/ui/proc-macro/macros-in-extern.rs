@@ -1,6 +1,7 @@
 // run-pass
 // aux-build:test-macros.rs
 // ignore-wasm32
+// ignore-uefi rust_test_helpers do not work
 
 #[macro_use]
 extern crate test_macros;

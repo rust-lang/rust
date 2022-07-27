@@ -6,9 +6,10 @@
 // destructor.
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
-use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 
 static LOG: AtomicUsize = AtomicUsize::new(0);
 
@@ -22,17 +23,19 @@ impl Drop for D {
             old,
             old << 4 | self.0 as usize,
             Ordering::SeqCst,
-            Ordering::SeqCst
+            Ordering::SeqCst,
         );
     }
 }
 
 fn main() {
-    fn die() -> D { panic!("Oh no"); }
+    fn die() -> D {
+        panic!("Oh no");
+    }
     let g = thread::spawn(|| {
-        let _b1: Box<[D; 4]> = Box::new([D( 1), D( 2), D( 3), D( 4)]);
-        let _b2: Box<[D; 4]> = Box::new([D( 5), D( 6), D( 7), D( 8)]);
-        let _b3: Box<[D; 4]> = Box::new([D( 9), D(10), die(), D(12)]);
+        let _b1: Box<[D; 4]> = Box::new([D(1), D(2), D(3), D(4)]);
+        let _b2: Box<[D; 4]> = Box::new([D(5), D(6), D(7), D(8)]);
+        let _b3: Box<[D; 4]> = Box::new([D(9), D(10), die(), D(12)]);
         let _b4: Box<[D; 4]> = Box::new([D(13), D(14), D(15), D(16)]);
     });
     assert!(g.join().is_err());

@@ -1,6 +1,7 @@
 // run-fail
 // error-pattern:thread '<unnamed>' panicked at 'test'
 // ignore-emscripten Needs threads
+// ignore-uefi Needs threads
 
 use std::thread;
 

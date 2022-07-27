@@ -2,6 +2,7 @@
 #![allow(improper_ctypes)]
 
 // ignore-wasm32-bare no libc for ffi testing
+// ignore-uefi no rust_test_helpers
 
 // Test a foreign function that accepts and returns a struct
 // by value.

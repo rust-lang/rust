@@ -3,6 +3,7 @@
 #![allow(stable_features)]
 
 // ignore-emscripten no threads support
+// ignore-uefi no threads support
 
 #![feature(std_panic)]
 

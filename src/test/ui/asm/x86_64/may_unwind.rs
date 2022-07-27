@@ -2,6 +2,7 @@
 // run-pass
 // needs-asm-support
 // needs-unwind
+// ignore-uefi no unwind
 
 #![feature(asm_unwind)]
 

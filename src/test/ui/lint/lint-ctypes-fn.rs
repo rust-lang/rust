@@ -164,10 +164,10 @@ pub extern "C" fn good17(p: TransparentCustomZst) { }
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn good18(_: &String) { }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "uefi")))]
 pub extern "C" fn good1(size: *const libc::c_int) { }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "uefi")))]
 pub extern "C" fn good2(size: *const libc::c_uint) { }
 
 pub extern "C" fn unused_generic1<T>(size: *const Foo) { }

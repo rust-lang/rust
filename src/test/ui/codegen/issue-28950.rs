@@ -1,5 +1,6 @@
 // run-pass
 // ignore-emscripten no threads
+// ignore-uefi no threads
 // compile-flags: -O
 
 // Tests that the `vec!` macro does not overflow the stack when it is

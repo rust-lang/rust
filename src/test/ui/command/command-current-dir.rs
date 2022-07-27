@@ -35,16 +35,9 @@ fn main() {
     // https://github.com/rust-lang/rust/issues/37868. On Windows,
     // it is relative *before* changing the directory, and on Unix
     // it is *after* changing the directory.
-    let relative_exe = if cfg!(windows) {
-        Path::new("foo").join(exe)
-    } else {
-        Path::new("../foo").join(exe)
-    };
+    let relative_exe =
+        if cfg!(windows) { Path::new("foo").join(exe) } else { Path::new("../foo").join(exe) };
 
-    let status = Command::new(relative_exe)
-        .arg("current-dir")
-        .current_dir("bar")
-        .status()
-        .unwrap();
+    let status = Command::new(relative_exe).arg("current-dir").current_dir("bar").status().unwrap();
     assert!(status.success());
 }

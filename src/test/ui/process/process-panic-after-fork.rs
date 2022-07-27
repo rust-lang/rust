@@ -3,6 +3,7 @@
 // ignore-wasm32-bare no libc
 // ignore-windows
 // ignore-sgx no libc
+// ignore-uefi no libc
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-fuchsia no fork

@@ -1,4 +1,5 @@
 // only-x86_64
+// ignore-uefi sse is disabled
 
 #![feature(repr_simd, never_type)]
 
