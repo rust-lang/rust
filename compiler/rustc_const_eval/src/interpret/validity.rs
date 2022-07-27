@@ -893,11 +893,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // We also accept uninit, for consistency with the slow path.
                 let alloc = self.ecx.get_ptr_alloc(mplace.ptr, size, mplace.align)?.expect("we already excluded size 0");
 
-                match alloc.check_bytes(
-                    alloc_range(Size::ZERO, size),
-                    /*allow_uninit*/ false,
-                    /*allow_ptr*/ false,
-                ) {
+                match alloc.check_bytes(alloc_range(Size::ZERO, size)) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}
                     // Some error happened, try to provide a more detailed description.
