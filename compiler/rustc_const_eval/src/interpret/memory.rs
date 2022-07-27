@@ -445,8 +445,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
-                    if M::force_int_for_alignment_check(self) {
-                        // `force_int_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
+                    if M::use_addr_for_alignment_check(self) {
+                        // `use_addr_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
                         check_offset_align(ptr.addr().bytes(), align)?;
                     } else {
                         // Check allocation alignment and offset alignment.
