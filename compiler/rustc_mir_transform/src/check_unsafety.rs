@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirId;
@@ -569,6 +569,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 
     let UnsafetyCheckResult { violations, unused_unsafes, .. } = tcx.unsafety_check_result(def_id);
+    // Only suggest wrapping the entire function body in an unsafe block once
+    let mut suggest_unsafe_block = true;
 
     for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
         let (description, note) = details.description_and_note();
@@ -597,13 +599,16 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 lint_root,
                 source_info.span,
                 |lint| {
-                    lint.build(&format!(
+                    let mut err = lint.build(&format!(
                         "{} is unsafe and requires unsafe block (error E0133)",
                         description,
-                    ))
-                    .span_label(source_info.span, description)
-                    .note(note)
-                    .emit();
+                    ));
+                    err.span_label(source_info.span, description).note(note);
+                    if suggest_unsafe_block {
+                        suggest_wrapping_unsafe_block(tcx, def_id, &mut err);
+                        suggest_unsafe_block = false;
+                    }
+                    err.emit();
                 },
             ),
         }
@@ -612,6 +617,25 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     for &(block_id, kind) in unused_unsafes.as_ref().unwrap() {
         report_unused_unsafe(tcx, kind, block_id);
     }
+}
+
+fn suggest_wrapping_unsafe_block(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    err: &mut DiagnosticBuilder<'_, ()>,
+) {
+    let body_span = tcx.hir().body(tcx.hir().body_owned_by(def_id)).value.span;
+
+    let suggestion = vec![
+        (tcx.sess.source_map().start_point(body_span).shrink_to_hi(), " unsafe {".into()),
+        (tcx.sess.source_map().end_point(body_span).shrink_to_lo(), "}".into()),
+    ];
+
+    err.multipart_suggestion_verbose(
+        "consider wrapping the function in an unsafe block",
+        suggestion,
+        Applicability::MaybeIncorrect,
+    );
 }
 
 fn unsafe_op_in_unsafe_fn_allowed(tcx: TyCtxt<'_>, id: HirId) -> bool {
