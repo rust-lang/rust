@@ -162,11 +162,52 @@ impl<'a> CompletionContext<'a> {
     }
 
     /// Calculate the expected type and name of the cursor position.
-    fn expected_type_and_name(&self) -> (Option<Type>, Option<NameOrNameRef>) {
+    fn expected_type_and_name(
+        &self,
+        name_like: &ast::NameLike,
+    ) -> (Option<Type>, Option<NameOrNameRef>) {
         let mut node = match self.token.parent() {
             Some(it) => it,
             None => return (None, None),
         };
+
+        let strip_refs = |mut ty: Type| match name_like {
+            ast::NameLike::NameRef(n) => {
+                let p = match n.syntax().parent() {
+                    Some(it) => it,
+                    None => return ty,
+                };
+                let top_syn = match_ast! {
+                    match p {
+                        ast::FieldExpr(e) => e
+                            .syntax()
+                            .ancestors()
+                            .map_while(ast::FieldExpr::cast)
+                            .last()
+                            .map(|it| it.syntax().clone()),
+                        ast::PathSegment(e) => e
+                            .syntax()
+                            .ancestors()
+                            .skip(1)
+                            .take_while(|it| ast::Path::can_cast(it.kind()) || ast::PathExpr::can_cast(it.kind()))
+                            .find_map(ast::PathExpr::cast)
+                            .map(|it| it.syntax().clone()),
+                        _ => None
+                    }
+                };
+                let top_syn = match top_syn {
+                    Some(it) => it,
+                    None => return ty,
+                };
+                for _ in top_syn.ancestors().skip(1).map_while(ast::RefExpr::cast) {
+                    cov_mark::hit!(expected_type_fn_param_ref);
+                    ty = ty.strip_reference();
+                }
+                ty
+            }
+            _ => ty,
+        };
+
         loop {
             break match_ast! {
                 match node {
@@ -199,13 +240,9 @@ impl<'a> CompletionContext<'a> {
                             self.token.clone(),
                         ).map(|ap| {
                             let name = ap.ident().map(NameOrNameRef::Name);
-                            let ty = if has_ref(&self.token) {
-                                cov_mark::hit!(expected_type_fn_param_ref);
-                                ap.ty.remove_ref()
-                            } else {
-                                Some(ap.ty)
-                            };
-                            (ty, name)
+
+                            let ty = strip_refs(ap.ty);
+                            (Some(ty), name)
                         })
                         .unwrap_or((None, None))
                     },
@@ -330,8 +367,6 @@ impl<'a> CompletionContext<'a> {
             return None;
         }
 
-        (self.expected_type, self.expected_name) = self.expected_type_and_name();
-
         // Overwrite the path kind for derives
         if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
             if let Some(ast::NameLike::NameRef(name_ref)) =
@@ -389,6 +424,7 @@ impl<'a> CompletionContext<'a> {
                 return Some(analysis);
             }
         };
+        (self.expected_type, self.expected_name) = self.expected_type_and_name(&name_like);
         let analysis = match name_like {
             ast::NameLike::Lifetime(lifetime) => CompletionAnalysis::Lifetime(
                 Self::classify_lifetime(&self.sema, original_file, lifetime)?,
@@ -1139,19 +1175,6 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
     let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
     let use_tree = use_tree_list.syntax().parent().and_then(ast::UseTree::cast)?;
     Some((use_tree.path()?, true))
-}
-
-fn has_ref(token: &SyntaxToken) -> bool {
-    let mut token = token.clone();
-    for skip in [SyntaxKind::IDENT, SyntaxKind::WHITESPACE, T![mut]] {
-        if token.kind() == skip {
-            token = match token.prev_token() {
-                Some(it) => it,
-                None => return false,
-            }
-        }
-    }
-    token.kind() == T![&]
 }
 
 pub(crate) fn is_in_token_of_for_loop(element: SyntaxElement) -> bool {
