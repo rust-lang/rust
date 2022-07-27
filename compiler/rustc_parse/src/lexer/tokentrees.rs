@@ -284,9 +284,9 @@ impl TokenStreamBuilder {
         {
             self.buf.pop();
             self.buf.push(TokenTree::Token(glued, *joint));
-            return;
+        } else {
+            self.buf.push(tree)
         }
-        self.buf.push(tree);
     }
 
     fn into_token_stream(self) -> TokenStream {
