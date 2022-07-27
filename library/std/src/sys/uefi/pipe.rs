@@ -142,6 +142,7 @@ pub(crate) mod uefi_pipe {
                 Ok(()) => {
                     // Reaching this means whole buffer has been read
                     let _ = self.clear();
+                    unsafe { buf.set_len(buf_size) };
                     return Ok(());
                 }
                 Err(e) => match e.kind() {

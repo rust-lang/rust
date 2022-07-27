@@ -43,6 +43,7 @@ where
     }
 
     // Create OsString from an FFI obtained pointer.
+    // Len is the number of elemented in the string, not number of bytes.
     // Note: This string is assumed to be null terminated
     #[inline]
     unsafe fn from_ffi(ucs: *mut u16, len: usize) -> Self {

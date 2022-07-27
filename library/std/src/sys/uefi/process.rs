@@ -39,10 +39,11 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
+        let program = super::path::absolute(&crate::path::PathBuf::from(program)).unwrap();
         Command {
             env: Default::default(),
-            program: program.to_os_string(),
-            args: program.to_os_string(),
+            program: program.clone().into_os_string(),
+            args: program.into_os_string(),
             stdout_key: None,
             stderr_key: None,
         }
