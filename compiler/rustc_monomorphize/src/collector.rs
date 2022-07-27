@@ -189,7 +189,8 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitable, VtblEntry,
+    self, GenericParamDefKind, Instance, TraitObjectRepresentation, Ty, TyCtxt, TypeFoldable,
+    TypeVisitable, VtblEntry,
 };
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
@@ -689,7 +690,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 mir::CastKind::Pointer(PointerCast::Unsize),
                 ref operand,
                 target_ty,
-            ) => {
+            )
+            | mir::Rvalue::Cast(mir::CastKind::DynStar, ref operand, target_ty) => {
                 let target_ty = self.monomorphize(target_ty);
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
@@ -698,7 +700,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 // This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
-                if target_ty.is_trait() && !source_ty.is_trait() {
+                if (target_ty.is_trait() || target_ty.is_dyn_star()) && !source_ty.is_trait() {
                     create_mono_items_for_vtable_methods(
                         self.tcx,
                         target_ty,
@@ -1110,6 +1112,11 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
+        }
+
+        // T as dyn* Trait
+        (_, &ty::Dynamic(_, _, TraitObjectRepresentation::Sized)) => {
+            ptr_vtable(source_ty, target_ty)
         }
 
         (&ty::Adt(source_adt_def, source_substs), &ty::Adt(target_adt_def, target_substs)) => {

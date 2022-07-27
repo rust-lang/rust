@@ -16,7 +16,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitable, TraitObjectRepresentation};
+use rustc_middle::ty::{self, Instance, TraitObjectRepresentation, Ty, TypeVisitable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
@@ -451,7 +451,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
                 //
                 // SO THEN WE CAN USE THE ABOVE CODE.
-                todo!()
+                let virtual_drop = Instance {
+                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                    substs: drop_fn.substs,
+                };
+                debug!("ty = {:?}", ty);
+                debug!("drop_fn = {:?}", drop_fn);
+                debug!("args = {:?}", args);
+                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                let data = args[0];
+                let data_ty = bx.cx().backend_type(place.layout);
+                let vtable_ptr =
+                    bx.gep(data_ty, data, &[bx.cx().const_i32(0), bx.cx().const_i32(1)]);
+                let vtable = bx.load(bx.type_i8p(), vtable_ptr, abi::Align::ONE);
+                // Truncate vtable off of args list
+                args = &args[..1];
+                debug!("args' = {:?}", args);
+                (
+                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                        .get_fn(&mut bx, vtable, ty, &fn_abi),
+                    fn_abi,
+                )
             }
             _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, ty::List::empty())),
         };

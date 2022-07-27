@@ -216,10 +216,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let from_ty = CastTy::from_ty(ty);
                 let cast_ty = CastTy::from_ty(expr.ty);
-                debug!(
-                    "ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}",
-                     expr.ty,
-                );
+                debug!("ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}", expr.ty,);
                 let cast_kind = match (from_ty, cast_ty) {
                     (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
                         CastKind::PointerExposeAddress

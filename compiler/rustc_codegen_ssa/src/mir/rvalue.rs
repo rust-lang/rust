@@ -4,6 +4,7 @@ use super::{FunctionCx, LocalRef};
 
 use crate::base;
 use crate::common::{self, IntPredicate};
+use crate::meth::get_vtable;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -11,6 +12,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::TraitObjectRepresentation;
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 
@@ -271,14 +273,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("unexpected non-pair operand");
                         }
                     }
-                    #[allow(unreachable_code, unused)] // FIXME: remove this
                     mir::CastKind::DynStar => {
                         let data = match operand.val {
                             OperandValue::Ref(_, _, _) => todo!(),
-                            OperandValue::Immediate(_) => todo!(),
+                            OperandValue::Immediate(v) => v,
                             OperandValue::Pair(_, _) => todo!(),
                         };
-                        let vtable = todo!();
+                        // FIXME: find the real vtable!
+                        let trait_ref = if let ty::Dynamic(data, _, TraitObjectRepresentation::Sized) = cast.ty.kind() {
+                            data.principal()
+                        } else {
+                            bug!("Only valid to do a DynStar cast into a DynStar type")
+                        };
+                        let vtable = get_vtable(bx.cx(), source.ty(self.mir, bx.tcx()), trait_ref);
                         OperandValue::Pair(data, vtable)
                     }
                     mir::CastKind::Pointer(
