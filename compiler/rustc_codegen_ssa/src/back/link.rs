@@ -2391,21 +2391,23 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                                 } else {
                                     cmd.link_rlib(&bundle_lib);
                                 }
+
+                                continue;
                             }
-                        } else {
-                            if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
-                                lib.kind
-                            {
-                                let verbatim = lib.verbatim.unwrap_or(false);
-                                if whole_archive == Some(true) {
-                                    cmd.link_whole_staticlib(
-                                        name,
-                                        verbatim,
-                                        search_path.get_or_init(|| archive_search_paths(sess)),
-                                    );
-                                } else {
-                                    cmd.link_staticlib(name, verbatim);
-                                }
+                        }
+
+                        if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
+                            lib.kind
+                        {
+                            let verbatim = lib.verbatim.unwrap_or(false);
+                            if whole_archive == Some(true) {
+                                cmd.link_whole_staticlib(
+                                    name,
+                                    verbatim,
+                                    search_path.get_or_init(|| archive_search_paths(sess)),
+                                );
+                            } else {
+                                cmd.link_staticlib(name, verbatim);
                             }
                         }
                     }
