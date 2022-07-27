@@ -146,6 +146,10 @@ pub use crate::repro as repro2;
 /// ### Top-doc Prose sub-sub-heading
 ///
 /// Text below sub-sub-heading
+///
+/// #### You know the drill.
+///
+/// More text.
 pub struct HeavilyDocumentedStruct {
     /// # Title for field
     /// ## Sub-heading for field

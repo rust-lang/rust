@@ -625,3 +625,21 @@ pub struct UnusedMultiple {
     pub other: Span,
     pub name: Symbol,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_lint_opt_ty)]
+pub struct RustcLintOptTy {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(passes::rustc_lint_opt_deny_field_access)]
+pub struct RustcLintOptDenyFieldAccess {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}

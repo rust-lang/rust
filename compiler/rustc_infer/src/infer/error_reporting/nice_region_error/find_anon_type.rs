@@ -100,23 +100,6 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 // the lifetime of the TyRptr
                 let hir_id = lifetime.hir_id;
                 match (self.tcx.named_region(hir_id), self.bound_region) {
-                    // Find the index of the anonymous region that was part of the
-                    // error. We will then search the function parameters for a bound
-                    // region at the right depth with the same index
-                    (
-                        Some(rl::Region::LateBoundAnon(debruijn_index, _, anon_index)),
-                        ty::BrAnon(br_index),
-                    ) => {
-                        debug!(
-                            "LateBoundAnon depth = {:?} anon_index = {:?} br_index={:?}",
-                            debruijn_index, anon_index, br_index
-                        );
-                        if debruijn_index == self.current_index && anon_index == br_index {
-                            self.found_type = Some(arg);
-                            return; // we can stop visiting now
-                        }
-                    }
-
                     // Find the index of the named region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
@@ -151,8 +134,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                             rl::Region::Static
                             | rl::Region::Free(_, _)
                             | rl::Region::EarlyBound(_, _)
-                            | rl::Region::LateBound(_, _, _)
-                            | rl::Region::LateBoundAnon(_, _, _),
+                            | rl::Region::LateBound(_, _, _),
                         )
                         | None,
                         _,
@@ -206,16 +188,6 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
         match (self.tcx.named_region(lifetime.hir_id), self.bound_region) {
             // the lifetime of the TyPath!
-            (
-                Some(rl::Region::LateBoundAnon(debruijn_index, _, anon_index)),
-                ty::BrAnon(br_index),
-            ) => {
-                if debruijn_index == self.current_index && anon_index == br_index {
-                    self.found_it = true;
-                    return;
-                }
-            }
-
             (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
                 debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                 if id == def_id {
@@ -239,7 +211,6 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
                     rl::Region::Static
                     | rl::Region::EarlyBound(_, _)
                     | rl::Region::LateBound(_, _, _)
-                    | rl::Region::LateBoundAnon(_, _, _)
                     | rl::Region::Free(_, _),
                 )
                 | None,

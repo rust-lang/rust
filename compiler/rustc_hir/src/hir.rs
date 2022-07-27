@@ -90,9 +90,6 @@ pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId, ParamName),
 
-    /// User wrote nothing (e.g., the lifetime in `&u32`).
-    Implicit,
-
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
     /// lifetime that they default to must appear elsewhere within the
@@ -110,8 +107,9 @@ pub enum LifetimeName {
     /// that was already reported.
     Error,
 
-    /// User wrote specifies `'_`.
-    Underscore,
+    /// User wrote an anonymous lifetime, either `'_` or nothing.
+    /// The semantics of this lifetime should be inferred by typechecking code.
+    Infer,
 
     /// User wrote `'static`.
     Static,
@@ -120,10 +118,8 @@ pub enum LifetimeName {
 impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
-            LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
-            | LifetimeName::Error => Ident::empty(),
-            LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
+            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Error => Ident::empty(),
+            LifetimeName::Infer => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
             LifetimeName::Param(_, param_name) => param_name.ident(),
         }
@@ -132,8 +128,7 @@ impl LifetimeName {
     pub fn is_anonymous(&self) -> bool {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
-            | LifetimeName::Underscore
+            | LifetimeName::Infer
             | LifetimeName::Param(_, ParamName::Fresh)
             | LifetimeName::Error => true,
             LifetimeName::Static | LifetimeName::Param(..) => false,
@@ -142,9 +137,7 @@ impl LifetimeName {
 
     pub fn is_elided(&self) -> bool {
         match self {
-            LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
-            | LifetimeName::Underscore => true,
+            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
 
             // It might seem surprising that `Fresh` counts as
             // *not* elided -- but this is because, as far as the code

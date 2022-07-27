@@ -12,7 +12,6 @@ pub enum Region {
     Static,
     EarlyBound(/* index */ u32, /* lifetime decl */ DefId),
     LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
-    LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
 }
 

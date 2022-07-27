@@ -167,7 +167,7 @@ h2, h3, h4 {
 h2,
 .top-doc .docblock > h3,
 .top-doc .docblock > h4 {
-	border-bottom: 1px solid;
+	border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 h3.code-header {
 	font-size: 1.125rem; /* 18px */
@@ -652,7 +652,7 @@ h2.location a {
 }
 
 .top-doc .docblock h2 { font-size: 1.375rem; }
-.top-doc .docblock h3 { font-size: 1.25; }
+.top-doc .docblock h3 { font-size: 1.25rem; }
 .top-doc .docblock h4,
 .top-doc .docblock h5 {
 	font-size: 1.125rem;
