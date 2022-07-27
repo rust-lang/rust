@@ -213,7 +213,7 @@ impl<'a> Iterator for TokenIter<'a> {
             return None;
         }
         let token = rustc_lexer::first_token(self.src);
-        let (text, rest) = self.src.split_at(token.len);
+        let (text, rest) = self.src.split_at(token.len as usize);
         self.src = rest;
         Some((token.kind, text))
     }
