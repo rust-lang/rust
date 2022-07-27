@@ -1,5 +1,3 @@
-// Preparing for a rustc behavior change that'll happen soon: (FIXME remove this after the next submodule bump succeeded)
-//@normalize-stderr-test: "`(ptr_offset_from_unsigned)`" -> "$1"
 #![feature(ptr_sub_ptr)]
 
 fn main() {
