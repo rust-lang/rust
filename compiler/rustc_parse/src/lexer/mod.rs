@@ -37,8 +37,7 @@ pub(crate) fn parse_token_trees<'a>(
     start_pos: BytePos,
     override_span: Option<Span>,
 ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
-    StringReader { sess, start_pos, pos: start_pos, end_src_index: src.len(), src, override_span }
-        .into_token_trees()
+    StringReader { sess, start_pos, pos: start_pos, src, override_span }.into_token_trees()
 }
 
 struct StringReader<'a> {
@@ -47,8 +46,6 @@ struct StringReader<'a> {
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
     pos: BytePos,
-    /// Stop reading src at this index.
-    end_src_index: usize,
     /// Source text to tokenize.
     src: &'a str,
     override_span: Option<Span>,
@@ -74,7 +71,7 @@ impl<'a> StringReader<'a> {
         // Skip trivial (whitespace & comments) tokens
         loop {
             let start_src_index = self.src_index(self.pos);
-            let text: &str = &self.src[start_src_index..self.end_src_index];
+            let text: &str = &self.src[start_src_index..];
 
             if text.is_empty() {
                 let span = self.mk_sp(self.pos, self.pos);
