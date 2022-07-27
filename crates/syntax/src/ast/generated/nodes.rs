@@ -880,7 +880,6 @@ impl ForExpr {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
-    pub fn iterable(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -890,7 +889,6 @@ pub struct IfExpr {
 impl ast::HasAttrs for IfExpr {}
 impl IfExpr {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
-    pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn else_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![else]) }
 }
 
@@ -1051,7 +1049,6 @@ pub struct WhileExpr {
 impl ast::HasAttrs for WhileExpr {}
 impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
-    pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1170,7 +1167,6 @@ pub struct MatchGuard {
 }
 impl MatchGuard {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
-    pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
