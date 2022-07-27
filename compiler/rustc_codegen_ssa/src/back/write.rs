@@ -1475,14 +1475,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     if !cgcx.opts.unstable_opts.no_parallel_llvm {
                         helper.request_token();
                     }
-                    assert!(!codegen_aborted);
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
 
                 Message::CodegenComplete => {
                     codegen_done = true;
-                    assert!(!codegen_aborted);
                     assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
@@ -1494,7 +1492,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 // then conditions above will ensure no more work is spawned but
                 // we'll keep executing this loop until `running` hits 0.
                 Message::CodegenAborted => {
-                    assert!(!codegen_aborted);
                     codegen_done = true;
                     codegen_aborted = true;
                 }
@@ -1536,8 +1533,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 Message::Done { result: Err(None), worker_id: _ } => {
                     bug!("worker thread panicked");
                 }
-                Message::Done { result: Err(Some(WorkerFatalError)), worker_id: _ } => {
-                    return Err(());
+                Message::Done { result: Err(Some(WorkerFatalError)), worker_id } => {
+                    // Similar to CodegenAborted, wait for remaining work to finish.
+                    free_worker(worker_id);
+                    codegen_done = true;
+                    codegen_aborted = true;
                 }
                 Message::CodegenItem => bug!("the coordinator should not receive codegen requests"),
             }
