@@ -147,3 +147,12 @@ assert-false: "noscript section"
 javascript: false
 reload:
 assert-css: ("noscript section", {"display": "block"})
+javascript: true
+
+// Check for the display on small screen
+show-text: true
+reload:
+size: (300, 1000)
+click: "#settings-menu"
+wait-for: "#settings"
+assert-css: ("#settings .slider", {"width": "45px"}, ALL)
