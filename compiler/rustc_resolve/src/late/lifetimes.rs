@@ -1409,17 +1409,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         );
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn visit_segment_args(
         &mut self,
         res: Res,
         depth: usize,
         generic_args: &'tcx hir::GenericArgs<'tcx>,
     ) {
-        debug!(
-            "visit_segment_args(res={:?}, depth={:?}, generic_args={:?})",
-            res, depth, generic_args,
-        );
-
         if generic_args.parenthesized {
             self.visit_fn_like_elision(
                 generic_args.inputs(),
@@ -1451,7 +1447,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             _ => None,
         };
 
-        debug!("visit_segment_args: type_def_id={:?}", type_def_id);
+        debug!(?type_def_id);
 
         // Compute a vector of defaults, one for each type parameter,
         // per the rules given in RFCs 599 and 1156. Example:
@@ -1516,7 +1512,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 .collect()
         });
 
-        debug!("visit_segment_args: object_lifetime_defaults={:?}", object_lifetime_defaults);
+        debug!(?object_lifetime_defaults);
 
         let mut i = 0;
         for arg in generic_args.args {
