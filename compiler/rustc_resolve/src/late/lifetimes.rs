@@ -1437,13 +1437,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         // Figure out if this is a type/trait segment,
         // which requires object lifetime defaults.
-        let parent_def_id = |this: &mut Self, def_id: DefId| {
-            let def_key = this.tcx.def_key(def_id);
-            DefId { krate: def_id.krate, index: def_key.parent.expect("missing parent") }
-        };
         let type_def_id = match res {
-            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(parent_def_id(self, def_id)),
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(parent_def_id(self, def_id)),
+            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(self.tcx.parent(def_id)),
+            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(self.tcx.parent(def_id)),
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union
