@@ -327,10 +327,12 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(pred) => bound_predicate.rebind(pred).clean(cx),
-            ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
-            ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
-            ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
+            ty::PredicateKind::Trait(pred) => {
+                clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
+            }
+            ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred, cx),
+            ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
+            ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
             ty::PredicateKind::ConstEvaluatable(..) => None,
             ty::PredicateKind::WellFormed(..) => None,
 
@@ -344,57 +346,56 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::PolyTraitPredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
-        if self.skip_binder().constness == ty::BoundConstness::ConstIfConst
-            && Some(self.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
-        {
-            return None;
-        }
-
-        let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
-        Some(WherePredicate::BoundPredicate {
-            ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
-            bounds: vec![poly_trait_ref.clean(cx)],
-            bound_params: Vec::new(),
-        })
+fn clean_poly_trait_predicate<'tcx>(
+    pred: ty::PolyTraitPredicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
+    if pred.skip_binder().constness == ty::BoundConstness::ConstIfConst
+        && Some(pred.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
+    {
+        return None;
     }
+
+    let poly_trait_ref = pred.map_bound(|pred| pred.trait_ref);
+    Some(WherePredicate::BoundPredicate {
+        ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
+        bounds: vec![poly_trait_ref.clean(cx)],
+        bound_params: Vec::new(),
+    })
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>>
-    for ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
-{
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(a, b) = self;
+fn clean_region_outlives_predicate<'tcx>(
+    pred: ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    let ty::OutlivesPredicate(a, b) = pred;
 
-        if a.is_empty() && b.is_empty() {
-            return None;
-        }
-
-        Some(WherePredicate::RegionPredicate {
-            lifetime: a.clean(cx).expect("failed to clean lifetime"),
-            bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))],
-        })
+    if a.is_empty() && b.is_empty() {
+        return None;
     }
+
+    Some(WherePredicate::RegionPredicate {
+        lifetime: a.clean(cx).expect("failed to clean lifetime"),
+        bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))],
+    })
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>>
-    for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>
-{
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(ty, lt) = self;
+fn clean_type_outlives_predicate<'tcx>(
+    pred: ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    let ty::OutlivesPredicate(ty, lt) = pred;
 
-        if lt.is_empty() {
-            return None;
-        }
-
-        Some(WherePredicate::BoundPredicate {
-            ty: clean_middle_ty(*ty, cx, None),
-            bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
-            bound_params: Vec::new(),
-        })
+    if lt.is_empty() {
+        return None;
     }
+
+    Some(WherePredicate::BoundPredicate {
+        ty: clean_middle_ty(ty, cx, None),
+        bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
+        bound_params: Vec::new(),
+    })
 }
 
 impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
@@ -418,10 +419,14 @@ impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, WherePredicate> for ty::ProjectionPredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> WherePredicate {
-        let ty::ProjectionPredicate { projection_ty, term } = self;
-        WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: term.clean(cx) }
+fn clean_projection_predicate<'tcx>(
+    pred: ty::ProjectionPredicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> WherePredicate {
+    let ty::ProjectionPredicate { projection_ty, term } = pred;
+    WherePredicate::EqPredicate {
+        lhs: clean_projection(projection_ty, cx, None),
+        rhs: term.clean(cx),
     }
 }
 
@@ -444,12 +449,6 @@ fn clean_projection<'tcx>(
         should_show_cast,
         self_type: Box::new(self_type),
         trait_,
-    }
-}
-
-impl<'tcx> Clean<'tcx, Type> for ty::ProjectionTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Type {
-        clean_projection(*self, cx, None)
     }
 }
 
@@ -734,8 +733,12 @@ fn clean_ty_generics<'tcx>(
                             .filter(|b| !b.is_sized_bound(cx)),
                     );
 
-                    let proj = projection
-                        .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().term));
+                    let proj = projection.map(|p| {
+                        (
+                            clean_projection(p.skip_binder().projection_ty, cx, None),
+                            p.skip_binder().term,
+                        )
+                    });
                     if let Some(((_, trait_did, name), rhs)) = proj
                         .as_ref()
                         .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
