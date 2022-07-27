@@ -132,9 +132,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether to enforce integers and floats being initialized.
-    fn enforce_number_init(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
-
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         true
@@ -440,11 +437,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         // We do not support `use_addr`.
         false
-    }
-
-    #[inline(always)]
-    fn enforce_number_init(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        true
     }
 
     #[inline(always)]
