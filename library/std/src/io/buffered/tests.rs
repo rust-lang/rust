@@ -523,6 +523,7 @@ fn bench_buffered_reader_small_reads(b: &mut test::Bencher) {
         let mut buf = [0u8; 4];
         for _ in 0..1024 {
             reader.read_exact(&mut buf).unwrap();
+            core::hint::black_box(&buf);
         }
     });
 }
