@@ -470,47 +470,44 @@ fn projection_to_path_segment<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, GenericParamDef> for ty::GenericParamDef {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericParamDef {
-        let (name, kind) = match self.kind {
-            ty::GenericParamDefKind::Lifetime => {
-                (self.name, GenericParamDefKind::Lifetime { outlives: vec![] })
-            }
-            ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-                let default = if has_default {
-                    Some(clean_middle_ty(cx.tcx.type_of(self.def_id), cx, Some(self.def_id)))
-                } else {
-                    None
-                };
-                (
-                    self.name,
-                    GenericParamDefKind::Type {
-                        did: self.def_id,
-                        bounds: vec![], // These are filled in from the where-clauses.
-                        default: default.map(Box::new),
-                        synthetic,
-                    },
-                )
-            }
-            ty::GenericParamDefKind::Const { has_default } => (
-                self.name,
-                GenericParamDefKind::Const {
-                    did: self.def_id,
-                    ty: Box::new(clean_middle_ty(
-                        cx.tcx.type_of(self.def_id),
-                        cx,
-                        Some(self.def_id),
-                    )),
-                    default: match has_default {
-                        true => Some(Box::new(cx.tcx.const_param_default(self.def_id).to_string())),
-                        false => None,
-                    },
+fn clean_generic_param_def<'tcx>(
+    def: &ty::GenericParamDef,
+    cx: &mut DocContext<'tcx>,
+) -> GenericParamDef {
+    let (name, kind) = match def.kind {
+        ty::GenericParamDefKind::Lifetime => {
+            (def.name, GenericParamDefKind::Lifetime { outlives: vec![] })
+        }
+        ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
+            let default = if has_default {
+                Some(clean_middle_ty(cx.tcx.type_of(def.def_id), cx, Some(def.def_id)))
+            } else {
+                None
+            };
+            (
+                def.name,
+                GenericParamDefKind::Type {
+                    did: def.def_id,
+                    bounds: vec![], // These are filled in from the where-clauses.
+                    default: default.map(Box::new),
+                    synthetic,
                 },
-            ),
-        };
+            )
+        }
+        ty::GenericParamDefKind::Const { has_default } => (
+            def.name,
+            GenericParamDefKind::Const {
+                did: def.def_id,
+                ty: Box::new(clean_middle_ty(cx.tcx.type_of(def.def_id), cx, Some(def.def_id))),
+                default: match has_default {
+                    true => Some(Box::new(cx.tcx.const_param_default(def.def_id).to_string())),
+                    false => None,
+                },
+            },
+        ),
+    };
 
-        GenericParamDef { name, kind }
-    }
+    GenericParamDef { name, kind }
 }
 
 fn clean_generic_param<'tcx>(
@@ -668,7 +665,7 @@ fn clean_ty_generics<'tcx>(
         .iter()
         .filter_map(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime if param.name == kw::UnderscoreLifetime => None,
-            ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
+            ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
                     assert_eq!(param.index, 0);
@@ -678,9 +675,9 @@ fn clean_ty_generics<'tcx>(
                     impl_trait.insert(param.index.into(), vec![]);
                     return None;
                 }
-                Some(param.clean(cx))
+                Some(clean_generic_param_def(param, cx))
             }
-            ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
+            ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
         })
         .collect::<Vec<GenericParamDef>>();
 
