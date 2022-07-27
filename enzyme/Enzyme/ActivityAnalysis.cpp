@@ -1650,6 +1650,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
         }
       }
 
+      if (auto CB = dyn_cast<CallInst>(I)) {
+        if (CB->onlyAccessesInaccessibleMemory())
+          AARes = ModRefInfo::NoModRef;
+      }
+
       // TODO this aliasing information is too conservative, the question
       // isn't merely aliasing but whether there is a path for THIS value to
       // eventually be loaded by it not simply because there isnt aliasing

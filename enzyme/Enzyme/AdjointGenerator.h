@@ -530,9 +530,17 @@ public:
           }
         } else {
           Value *newip = gutils->invertPointerM(&I, BuilderZ);
+          if (EnzymeRuntimeActivityCheck && TR.query(&I)[{-1}].isFloat()) {
+            Value *shadow = BuilderZ.CreateICmpNE(
+                gutils->getNewFromOriginal(I.getOperand(0)),
+                gutils->invertPointerM(I.getOperand(0), BuilderZ));
+            newip = BuilderZ.CreateSelect(
+                shadow, newip, Constant::getNullValue(newip->getType()));
+          }
           assert(newip->getType() == type);
           placeholder->replaceAllUsesWith(newip);
           gutils->erase(placeholder);
+          gutils->invertedPointers.erase(&I);
           gutils->invertedPointers.insert(std::make_pair(
               (const Value *)&I, InvertedPointerVH(gutils, newip)));
         }
