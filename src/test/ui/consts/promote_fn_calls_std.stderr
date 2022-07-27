@@ -1,0 +1,267 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:4:27
+   |
+LL |     let x: &'static u8 = &u8::max_value();
+   |            -----------    ^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:6:28
+   |
+LL |     let x: &'static u16 = &u16::max_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:8:28
+   |
+LL |     let x: &'static u32 = &u32::max_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:10:28
+   |
+LL |     let x: &'static u64 = &u64::max_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:12:29
+   |
+LL |     let x: &'static u128 = &u128::max_value();
+   |            -------------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:14:30
+   |
+LL |     let x: &'static usize = &usize::max_value();
+   |            --------------    ^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:16:27
+   |
+LL |     let x: &'static u8 = &u8::min_value();
+   |            -----------    ^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:18:28
+   |
+LL |     let x: &'static u16 = &u16::min_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:20:28
+   |
+LL |     let x: &'static u32 = &u32::min_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:22:28
+   |
+LL |     let x: &'static u64 = &u64::min_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:24:29
+   |
+LL |     let x: &'static u128 = &u128::min_value();
+   |            -------------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:26:30
+   |
+LL |     let x: &'static usize = &usize::min_value();
+   |            --------------    ^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:28:27
+   |
+LL |     let x: &'static i8 = &i8::max_value();
+   |            -----------    ^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:30:28
+   |
+LL |     let x: &'static i16 = &i16::max_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:32:28
+   |
+LL |     let x: &'static i32 = &i32::max_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:34:28
+   |
+LL |     let x: &'static i64 = &i64::max_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:36:29
+   |
+LL |     let x: &'static i128 = &i128::max_value();
+   |            -------------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:38:30
+   |
+LL |     let x: &'static isize = &isize::max_value();
+   |            --------------    ^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:40:27
+   |
+LL |     let x: &'static i8 = &i8::min_value();
+   |            -----------    ^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:42:28
+   |
+LL |     let x: &'static i16 = &i16::min_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:44:28
+   |
+LL |     let x: &'static i32 = &i32::min_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:46:28
+   |
+LL |     let x: &'static i64 = &i64::min_value();
+   |            ------------    ^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:48:29
+   |
+LL |     let x: &'static i128 = &i128::min_value();
+   |            -------------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote_fn_calls_std.rs:50:30
+   |
+LL |     let x: &'static isize = &isize::min_value();
+   |            --------------    ^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 24 previous errors
+
+For more information about this error, try `rustc --explain E0716`.
