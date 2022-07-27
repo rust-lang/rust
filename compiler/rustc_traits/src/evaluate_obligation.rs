@@ -16,6 +16,8 @@ fn evaluate_obligation<'tcx>(
     canonical_goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {
     debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
+    // HACK This bubble is required for this tests to pass:
+    // impl-trait/issue99642.rs
     tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_with_canonical(
         DUMMY_SP,
         &canonical_goal,

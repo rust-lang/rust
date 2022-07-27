@@ -258,6 +258,8 @@ fn type_op_prove_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
+    // HACK This bubble is required for this test to pass:
+    // impl-trait/issue-99642.rs
     tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_canonical_trait_query(
         &canonicalized,
         |infcx, fulfill_cx, key| {
