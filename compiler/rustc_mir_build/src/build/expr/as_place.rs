@@ -293,6 +293,10 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.base
     }
 
+    pub(crate) fn projection(&self) -> &[PlaceElem<'tcx>] {
+        &self.projection
+    }
+
     pub(crate) fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
         self.project(PlaceElem::Field(f, ty))
     }

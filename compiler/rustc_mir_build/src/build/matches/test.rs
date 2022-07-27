@@ -729,7 +729,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // e.g., `(x as Variant).0`
             let place = downcast_place.clone().field(subpattern.field, subpattern.pattern.ty);
             // e.g., `(x as Variant).0 @ P1`
-            MatchPair::new(place, &subpattern.pattern)
+            MatchPair::new(place, &subpattern.pattern, self)
         });
 
         candidate.match_pairs.extend(consequent_match_pairs);

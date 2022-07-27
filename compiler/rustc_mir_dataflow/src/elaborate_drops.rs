@@ -893,7 +893,7 @@ where
             }
             ty::Slice(ety) => self.open_drop_for_array(*ety, None),
 
-            _ => bug!("open drop from non-ADT `{:?}`", ty),
+            _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }
     }
 

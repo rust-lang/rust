@@ -244,7 +244,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|arm| {
                 let arm = &self.thir[arm];
                 let arm_has_guard = arm.guard.is_some();
-                let arm_candidate = Candidate::new(scrutinee.clone(), &arm.pattern, arm_has_guard);
+                let arm_candidate =
+                    Candidate::new(scrutinee.clone(), &arm.pattern, arm_has_guard, self);
                 (arm, arm_candidate)
             })
             .collect()
@@ -578,7 +579,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let mut candidate = Candidate::new(initializer.clone(), &irrefutable_pat, false);
+        let mut candidate = Candidate::new(initializer.clone(), &irrefutable_pat, false, self);
         let fake_borrow_temps = self.lower_match_tree(
             block,
             irrefutable_pat.span,
@@ -859,11 +860,16 @@ struct Candidate<'pat, 'tcx> {
 }
 
 impl<'tcx, 'pat> Candidate<'pat, 'tcx> {
-    fn new(place: PlaceBuilder<'tcx>, pattern: &'pat Pat<'tcx>, has_guard: bool) -> Self {
+    fn new(
+        place: PlaceBuilder<'tcx>,
+        pattern: &'pat Pat<'tcx>,
+        has_guard: bool,
+        cx: &Builder<'_, 'tcx>,
+    ) -> Self {
         Candidate {
             span: pattern.span,
             has_guard,
-            match_pairs: smallvec![MatchPair::new(place, pattern)],
+            match_pairs: smallvec![MatchPair::new(place, pattern, cx)],
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             subcandidates: Vec::new(),
@@ -1383,7 +1389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("candidate={:#?}\npats={:#?}", candidate, pats);
         let mut or_candidates: Vec<_> = pats
             .iter()
-            .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard))
+            .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard, self))
             .collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
         let otherwise = if candidate.otherwise_block.is_some() {
@@ -1779,8 +1785,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
         let wildcard = Pat::wildcard_from_ty(pat.ty);
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
-        let mut otherwise_candidate = Candidate::new(expr_place_builder.clone(), &wildcard, false);
+        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false, self);
+        let mut otherwise_candidate =
+            Candidate::new(expr_place_builder.clone(), &wildcard, false, self);
         let fake_borrow_temps = self.lower_match_tree(
             block,
             pat.span,
@@ -2276,8 +2283,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let (matching, failure) = self.in_if_then_scope(*let_else_scope, |this| {
             let scrutinee = unpack!(block = this.lower_scrutinee(block, init, initializer_span));
             let pat = Pat { ty: init.ty, span: else_block_span, kind: PatKind::Wild };
-            let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false);
-            let mut candidate = Candidate::new(scrutinee.clone(), pattern, false);
+            let mut wildcard = Candidate::new(scrutinee.clone(), &pat, false, this);
+            let mut candidate = Candidate::new(scrutinee.clone(), pattern, false, this);
             let fake_borrow_temps = this.lower_match_tree(
                 block,
                 initializer_span,

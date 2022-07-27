@@ -132,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
             .map(|box pat| {
-                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
+                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard, self);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })
@@ -164,7 +164,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     });
                 }
 
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
 
                 Ok(())
             }
@@ -194,7 +194,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
                 }
 
                 Ok(())
@@ -305,7 +305,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Deref { ref subpattern } => {
                 let place_builder = match_pair.place.deref();
-                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern));
+                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern, self));
                 Ok(())
             }
 

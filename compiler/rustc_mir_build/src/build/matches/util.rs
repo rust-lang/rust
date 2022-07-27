@@ -1,9 +1,11 @@
+use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
+use rustc_middle::ty::TypeVisitable;
 use smallvec::SmallVec;
 use std::convert::TryInto;
 
@@ -17,7 +19,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .iter()
             .map(|fieldpat| {
                 let place = place.clone().field(fieldpat.field, fieldpat.pattern.ty);
-                MatchPair::new(place, &fieldpat.pattern)
+                MatchPair::new(place, &fieldpat.pattern, self)
             })
             .collect()
     }
@@ -45,7 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
             let place = place.clone().project(elem);
-            MatchPair::new(place, subpattern)
+            MatchPair::new(place, subpattern, self)
         }));
 
         if let Some(subslice_pat) = opt_slice {
@@ -55,7 +57,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 to: if exact_size { min_length - suffix_len } else { suffix_len },
                 from_end: !exact_size,
             });
-            match_pairs.push(MatchPair::new(subslice, subslice_pat));
+            match_pairs.push(MatchPair::new(subslice, subslice_pat, self));
         }
 
         match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
@@ -66,7 +68,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 from_end: !exact_size,
             };
             let place = place.clone().project(elem);
-            MatchPair::new(place, subpattern)
+            MatchPair::new(place, subpattern, self)
         }));
     }
 
@@ -95,14 +97,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
     pub(in crate::build) fn new(
-        mut place: PlaceBuilder<'tcx>,
+        place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
+        cx: &Builder<'_, 'tcx>,
     ) -> MatchPair<'pat, 'tcx> {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
-        // FIXME(oli-obk): only add this projection if `place` actually had an opaque
-        // type before the projection.
-        place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
+        let mut place = match place.try_upvars_resolved(cx) {
+            Ok(val) | Err(val) => val,
+        };
+        let may_need_cast = match place.base() {
+            PlaceBase::Local(local) => {
+                let ty = Place::ty_from(local, place.projection(), &cx.local_decls, cx.tcx).ty;
+                ty != pattern.ty && ty.has_opaque_types()
+            }
+            _ => true,
+        };
+        if may_need_cast {
+            place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
+        }
         MatchPair { place, pattern }
     }
 }
