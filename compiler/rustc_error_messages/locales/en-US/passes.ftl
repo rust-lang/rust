@@ -256,3 +256,9 @@ passes-unused-duplicate = unused attribute
 passes-unused-multiple = multiple `{$name}` attributes
     .suggestion = remove this attribute
     .note = attribute also specified here
+
+passes-rustc-lint-opt-ty = `#[rustc_lint_opt_ty]` should be applied to a struct
+    .label = not a struct
+
+passes-rustc-lint-opt-deny-field-access = `#[rustc_lint_opt_deny_field_access]` should be applied to a field
+    .label = not a field
