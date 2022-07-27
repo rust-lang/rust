@@ -405,14 +405,12 @@ fn clean_middle_term<'tcx>(term: ty::Term<'tcx>, cx: &mut DocContext<'tcx>) -> T
     }
 }
 
-impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
-        match self {
-            hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
-            hir::Term::Const(c) => {
-                let def_id = cx.tcx.hir().local_def_id(c.hir_id);
-                Term::Constant(clean_middle_const(ty::Const::from_anon_const(cx.tcx, def_id), cx))
-            }
+fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
+    match term {
+        hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
+        hir::Term::Const(c) => {
+            let def_id = cx.tcx.hir().local_def_id(c.hir_id);
+            Term::Constant(clean_middle_const(ty::Const::from_anon_const(cx.tcx, def_id), cx))
         }
     }
 }
@@ -2283,7 +2281,7 @@ impl<'tcx> Clean<'tcx, TypeBindingKind> for hir::TypeBindingKind<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> TypeBindingKind {
         match *self {
             hir::TypeBindingKind::Equality { ref term } => {
-                TypeBindingKind::Equality { term: term.clean(cx) }
+                TypeBindingKind::Equality { term: clean_hir_term(term, cx) }
             }
             hir::TypeBindingKind::Constraint { bounds } => TypeBindingKind::Constraint {
                 bounds: bounds.iter().filter_map(|b| b.clean(cx)).collect(),
