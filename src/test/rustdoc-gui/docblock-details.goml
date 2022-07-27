@@ -9,12 +9,12 @@ reload:
 assert-text: (".top-doc .docblock > h3", "Hello")
 assert-css: (
     ".top-doc .docblock > h3",
-    {"border-bottom": "1px solid rgb(221, 221, 221)"},
+    {"border-bottom": "1px solid rgb(210, 210, 210)"},
 )
 // We now check that the `<summary>` doesn't have a bottom border and has the correct display.
 assert-css: (
     ".top-doc .docblock summary h4",
-    {"border-bottom": "0px none rgb(221, 221, 221)"},
+    {"border-bottom": "0px none rgb(210, 210, 210)"},
 )
 // This allows to ensure that summary is on one line only!
 assert-property: (".top-doc .docblock summary h4", {"offsetHeight": "33"})
