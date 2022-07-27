@@ -95,9 +95,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
     pub(in crate::build) fn new(
-        place: PlaceBuilder<'tcx>,
+        mut place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
     ) -> MatchPair<'pat, 'tcx> {
+        // Force the place type to the pattern's type.
+        // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
+        // FIXME(oli-obk): only add this projection if `place` actually had an opaque
+        // type before the projection.
+        place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
         MatchPair { place, pattern }
     }
 }

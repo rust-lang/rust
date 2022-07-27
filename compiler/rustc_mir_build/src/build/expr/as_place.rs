@@ -102,6 +102,8 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
                 variant = Some(*idx);
                 continue;
             }
+            // These do not affect anything, they just make sure we know the right type.
+            ProjectionElem::OpaqueCast(_) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. } => {
@@ -168,7 +170,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
 /// `PlaceBuilder` now starts from `PlaceBase::Local`.
 ///
 /// Returns a Result with the error being the PlaceBuilder (`from_builder`) that was not found.
-#[instrument(level = "trace", skip(cx))]
+#[instrument(level = "trace", skip(cx), ret)]
 fn to_upvars_resolved_place_builder<'tcx>(
     from_builder: PlaceBuilder<'tcx>,
     cx: &Builder<'_, 'tcx>,
@@ -213,7 +215,6 @@ fn to_upvars_resolved_place_builder<'tcx>(
                 &capture.captured_place.place.projections,
             );
             upvar_resolved_place_builder.projection.extend(remaining_projections);
-            trace!(?upvar_resolved_place_builder);
 
             Ok(upvar_resolved_place_builder)
         }
@@ -232,16 +233,21 @@ fn strip_prefix<'tcx>(
     prefix_projections: &[HirProjection<'tcx>],
 ) -> impl Iterator<Item = PlaceElem<'tcx>> {
     let mut iter = projections.into_iter();
+    let mut next = || match iter.next()? {
+        // Filter out opaque casts, they are unnecessary in the prefix.
+        ProjectionElem::OpaqueCast(..) => iter.next(),
+        other => Some(other),
+    };
     for projection in prefix_projections {
         match projection.kind {
             HirProjectionKind::Deref => {
-                assert!(matches!(iter.next(), Some(ProjectionElem::Deref)));
+                assert!(matches!(next(), Some(ProjectionElem::Deref)));
             }
             HirProjectionKind::Field(..) => {
                 if base_ty.is_enum() {
-                    assert!(matches!(iter.next(), Some(ProjectionElem::Downcast(..))));
+                    assert!(matches!(next(), Some(ProjectionElem::Downcast(..))));
                 }
-                assert!(matches!(iter.next(), Some(ProjectionElem::Field(..))));
+                assert!(matches!(next(), Some(ProjectionElem::Field(..))));
             }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);
@@ -711,6 +717,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ProjectionElem::Field(..)
                     | ProjectionElem::Downcast(..)
+                    | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. } => (),
                 }

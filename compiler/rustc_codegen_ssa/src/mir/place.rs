@@ -400,6 +400,21 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         downcast
     }
 
+    pub fn project_type<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
+        &self,
+        bx: &mut Bx,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        let mut downcast = *self;
+        downcast.layout = bx.cx().layout_of(ty);
+
+        // Cast to the appropriate type.
+        let variant_ty = bx.cx().backend_type(downcast.layout);
+        downcast.llval = bx.pointercast(downcast.llval, bx.cx().type_ptr_to(variant_ty));
+
+        downcast
+    }
+
     pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_start(self.llval, self.layout.size);
     }
@@ -442,6 +457,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Field(ref field, _) => {
                     cg_base.project_field(bx, field.index())
                 }
+                mir::ProjectionElem::OpaqueCast(ty) => cg_base.project_type(bx, ty),
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);

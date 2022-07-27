@@ -656,6 +656,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Downcast(..)
+            | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {}
