@@ -8,7 +8,12 @@ fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
 }
 
-fn run_tests(mode: Mode, path: &str, target: Option<String>) -> Result<()> {
+fn run_tests(
+    mode: Mode,
+    path: &str,
+    target: Option<String>,
+    with_dependencies: bool,
+) -> Result<()> {
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
 
     // Add some flags we always want.
@@ -68,7 +73,7 @@ fn run_tests(mode: Mode, path: &str, target: Option<String>) -> Result<()> {
         path_filter: path_filter.collect(),
         program: miri_path(),
         output_conflict_handling,
-        dependencies_crate_manifest_path: use_std
+        dependencies_crate_manifest_path: (with_dependencies && use_std)
             .then(|| Path::new("test_dependencies").join("Cargo.toml")),
         dependency_builder: Some(DependencyBuilder {
             program: std::env::var_os("CARGO").unwrap().into(),
@@ -132,7 +137,14 @@ regexes! {
     r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
 }
 
-fn ui(mode: Mode, path: &str) -> Result<()> {
+enum Dependencies {
+    WithDependencies,
+    WithoutDependencies,
+}
+
+use Dependencies::*;
+
+fn ui(mode: Mode, path: &str, with_dependencies: Dependencies) -> Result<()> {
     let target = get_target();
 
     let msg = format!(
@@ -141,7 +153,11 @@ fn ui(mode: Mode, path: &str) -> Result<()> {
     );
     eprintln!("{}", msg.green().bold());
 
-    run_tests(mode, path, target)
+    let with_dependencies = match with_dependencies {
+        WithDependencies => true,
+        WithoutDependencies => false,
+    };
+    run_tests(mode, path, target, with_dependencies)
 }
 
 fn get_target() -> Option<String> {
@@ -156,9 +172,10 @@ fn main() -> Result<()> {
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
     env::set_var("MIRI_TEMP", env::temp_dir());
 
-    ui(Mode::Pass, "tests/pass")?;
-    ui(Mode::Panic, "tests/panic")?;
-    ui(Mode::Fail, "tests/fail")?;
+    ui(Mode::Pass, "tests/pass", WithoutDependencies)?;
+    ui(Mode::Pass, "tests/pass-dep", WithDependencies)?;
+    ui(Mode::Panic, "tests/panic", WithDependencies)?;
+    ui(Mode::Fail, "tests/fail", WithDependencies)?;
 
     Ok(())
 }
