@@ -1883,29 +1883,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 hir::LifetimeName::Param(param, ParamName::Fresh)
             }
-            LifetimeRes::Anonymous { binder, elided } => {
-                let mut l_name = None;
-                if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
-                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
-                        let p_id = self.next_node_id();
-                        let p_def_id = self.create_def(
-                            captured_lifetimes.parent_def_id,
-                            p_id,
-                            DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                        );
-                        captured_lifetimes
-                            .captures
-                            .insert(p_def_id, (span, p_id, ParamName::Fresh, res));
-                        l_name = Some(hir::LifetimeName::Param(p_def_id, ParamName::Fresh));
-                    }
-                    self.captured_lifetimes = Some(captured_lifetimes);
-                };
-                l_name.unwrap_or(if elided {
-                    hir::LifetimeName::Implicit
-                } else {
-                    hir::LifetimeName::Underscore
-                })
-            }
+            LifetimeRes::Infer => hir::LifetimeName::Infer,
             LifetimeRes::Static => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,
             res => panic!("Unexpected lifetime resolution {:?} for {:?} at {:?}", res, ident, span),

@@ -738,13 +738,8 @@ pub enum LifetimeRes {
         binder: NodeId,
     },
     /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution.  Shifting the work to the HIR lifetime resolver.
-    Anonymous {
-        /// Id of the introducing place. See `Param`.
-        binder: NodeId,
-        /// Whether this lifetime was spelled or elided.
-        elided: bool,
-    },
+    /// late resolution.  Those lifetimes will be inferred by typechecking.
+    Infer,
     /// Explicit `'static` lifetime.
     Static,
     /// Resolution failure.

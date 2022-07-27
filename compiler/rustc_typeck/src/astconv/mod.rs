@@ -221,14 +221,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::LateBoundAnon(debruijn, index, anon_index)) => {
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::from_u32(index),
-                    kind: ty::BrAnon(anon_index),
-                };
-                tcx.mk_region(ty::ReLateBound(debruijn, br))
-            }
-
             Some(rl::Region::EarlyBound(index, id)) => {
                 let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))

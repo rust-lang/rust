@@ -262,9 +262,6 @@ enum LifetimeRibKind {
     /// error on default object bounds (e.g., `Box<dyn Foo>`).
     AnonymousReportError,
 
-    /// Pass responsibility to `resolve_lifetime` code for all cases.
-    AnonymousPassThrough(NodeId),
-
     /// Replace all anonymous lifetimes by provided lifetime.
     Elided(LifetimeRes),
 
@@ -698,14 +695,25 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     },
                     |this| {
                         this.visit_generic_params(&bare_fn.generic_params, false);
-                        this.resolve_fn_signature(
-                            ty.id,
-                            None,
-                            false,
-                            // We don't need to deal with patterns in parameters, because
-                            // they are not possible for foreign or bodiless functions.
-                            bare_fn.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
-                            &bare_fn.decl.output,
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: ty.id,
+                                report_in_path: false,
+                            },
+                            |this| {
+                                this.resolve_fn_signature(
+                                    ty.id,
+                                    false,
+                                    // We don't need to deal with patterns in parameters, because
+                                    // they are not possible for foreign or bodiless functions.
+                                    bare_fn
+                                        .decl
+                                        .inputs
+                                        .iter()
+                                        .map(|Param { ty, .. }| (None, &**ty)),
+                                    &bare_fn.decl.output,
+                                )
+                            },
                         );
                     },
                 )
@@ -785,12 +793,19 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             | FnKind::Fn(_, _, sig, _, generics, None) => {
                 self.visit_fn_header(&sig.header);
                 self.visit_generics(generics);
-                self.resolve_fn_signature(
-                    fn_id,
-                    None,
-                    sig.decl.has_self(),
-                    sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
-                    &sig.decl.output,
+                self.with_lifetime_rib(
+                    LifetimeRibKind::AnonymousCreateParameter {
+                        binder: fn_id,
+                        report_in_path: false,
+                    },
+                    |this| {
+                        this.resolve_fn_signature(
+                            fn_id,
+                            sig.decl.has_self(),
+                            sig.decl.inputs.iter().map(|Param { ty, .. }| (None, &**ty)),
+                            &sig.decl.output,
+                        )
+                    },
                 );
                 return;
             }
@@ -815,15 +830,22 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let declaration = &sig.decl;
                         let async_node_id = sig.header.asyncness.opt_return_id();
 
-                        this.resolve_fn_signature(
-                            fn_id,
-                            async_node_id,
-                            declaration.has_self(),
-                            declaration
-                                .inputs
-                                .iter()
-                                .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
-                            &declaration.output,
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: fn_id,
+                                report_in_path: async_node_id.is_some(),
+                            },
+                            |this| {
+                                this.resolve_fn_signature(
+                                    fn_id,
+                                    declaration.has_self(),
+                                    declaration
+                                        .inputs
+                                        .iter()
+                                        .map(|Param { pat, ty, .. }| (Some(&**pat), &**ty)),
+                                    &declaration.output,
+                                )
+                            },
                         );
 
                         // Construct the list of in-scope lifetime parameters for async lowering.
@@ -868,7 +890,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             let previous_state = replace(&mut this.in_func_body, true);
                             // Resolve the function body, potentially inside the body of an async closure
                             this.with_lifetime_rib(
-                                LifetimeRibKind::AnonymousPassThrough(fn_id),
+                                LifetimeRibKind::Elided(LifetimeRes::Infer),
                                 |this| this.visit_block(body),
                             );
 
@@ -896,7 +918,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         this.with_lifetime_rib(
                             match binder {
                                 ClosureBinder::NotPresent => {
-                                    LifetimeRibKind::AnonymousPassThrough(fn_id)
+                                    LifetimeRibKind::Elided(LifetimeRes::Infer)
                                 }
                                 ClosureBinder::For { .. } => LifetimeRibKind::AnonymousReportError,
                             },
@@ -908,7 +930,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         let previous_state = replace(&mut this.in_func_body, true);
                         // Resolve the function body, potentially inside the body of an async closure
                         this.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(fn_id),
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
                             |this| this.visit_expr(body),
                         );
 
@@ -1038,12 +1060,19 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 kind: LifetimeBinderKind::PolyTrait,
                                 ..
                             } => {
-                                self.resolve_fn_signature(
-                                    binder,
-                                    None,
-                                    false,
-                                    p_args.inputs.iter().map(|ty| (None, &**ty)),
-                                    &p_args.output,
+                                self.with_lifetime_rib(
+                                    LifetimeRibKind::AnonymousCreateParameter {
+                                        binder,
+                                        report_in_path: false,
+                                    },
+                                    |this| {
+                                        this.resolve_fn_signature(
+                                            binder,
+                                            false,
+                                            p_args.inputs.iter().map(|ty| (None, &**ty)),
+                                            &p_args.output,
+                                        )
+                                    },
                                 );
                                 break;
                             }
@@ -1053,8 +1082,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                                 visit::walk_generic_args(self, path_span, args);
                                 break;
                             }
-                            LifetimeRibKind::AnonymousPassThrough(..)
-                            | LifetimeRibKind::AnonymousCreateParameter { .. }
+                            LifetimeRibKind::AnonymousCreateParameter { .. }
                             | LifetimeRibKind::AnonymousReportError
                             | LifetimeRibKind::Elided(_)
                             | LifetimeRibKind::ElisionFailure
@@ -1415,8 +1443,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     | LifetimeRibKind::AnonymousReportError
                                     | LifetimeRibKind::ElisionFailure => Some(LifetimeUseSet::Many),
                                     // An anonymous lifetime is legal here, go ahead.
-                                    LifetimeRibKind::AnonymousPassThrough(_)
-                                    | LifetimeRibKind::AnonymousCreateParameter { .. } => {
+                                    LifetimeRibKind::AnonymousCreateParameter { .. } => {
                                         Some(LifetimeUseSet::One { use_span: ident.span, use_ctxt })
                                     }
                                     // Only report if eliding the lifetime would have the same
@@ -1527,14 +1554,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
                     return;
                 }
-                LifetimeRibKind::AnonymousPassThrough(node_id) => {
-                    self.record_lifetime_res(
-                        lifetime.id,
-                        LifetimeRes::Anonymous { binder: node_id, elided },
-                        elision_candidate,
-                    );
-                    return;
-                }
                 LifetimeRibKind::Elided(res) => {
                     self.record_lifetime_res(lifetime.id, res, elision_candidate);
                     return;
@@ -1632,6 +1651,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | PathSource::Struct
                 | PathSource::TupleStruct(..) => false,
             };
+            if !missing && !segment.has_generic_args {
+                continue;
+            }
 
             let elided_lifetime_span = if segment.has_generic_args {
                 // If there are brackets, but not generic arguments, then use the opening bracket
@@ -1653,37 +1675,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             if !missing {
                 // Do not create a parameter for patterns and expressions.
-                for rib in self.lifetime_ribs.iter().rev() {
-                    match rib.kind {
-                        LifetimeRibKind::AnonymousPassThrough(binder) => {
-                            let res = LifetimeRes::Anonymous { binder, elided: true };
-                            for id in node_ids {
-                                self.record_lifetime_res(id, res, LifetimeElisionCandidate::Named);
-                            }
-                            break;
-                        }
-                        // `LifetimeRes::Error`, which would usually be used in the case of
-                        // `ReportError`, is unsuitable here, as we don't emit an error yet.  Instead,
-                        // we simply resolve to an implicit lifetime, which will be checked later, at
-                        // which point a suitable error will be emitted.
-                        LifetimeRibKind::AnonymousReportError | LifetimeRibKind::Item => {
-                            // FIXME(cjgillot) This resolution is wrong, but this does not matter
-                            // since these cases are erroneous anyway.  Lifetime resolution should
-                            // emit a "missing lifetime specifier" diagnostic.
-                            let res =
-                                LifetimeRes::Anonymous { binder: DUMMY_NODE_ID, elided: true };
-                            for id in node_ids {
-                                self.record_lifetime_res(id, res, LifetimeElisionCandidate::Named);
-                            }
-                            break;
-                        }
-                        LifetimeRibKind::AnonymousCreateParameter { .. }
-                        | LifetimeRibKind::Elided(_)
-                        | LifetimeRibKind::ElisionFailure
-                        | LifetimeRibKind::Generics { .. }
-                        | LifetimeRibKind::ConstGeneric
-                        | LifetimeRibKind::AnonConst => {}
-                    }
+                for id in node_ids {
+                    self.record_lifetime_res(
+                        id,
+                        LifetimeRes::Infer,
+                        LifetimeElisionCandidate::Named,
+                    );
                 }
                 continue;
             }
@@ -1746,19 +1743,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 id,
                                 res,
                                 replace(&mut candidate, LifetimeElisionCandidate::Named),
-                            );
-                        }
-                        break;
-                    }
-                    // `PassThrough` is the normal case.
-                    LifetimeRibKind::AnonymousPassThrough(binder) => {
-                        let res = LifetimeRes::Anonymous { binder, elided: true };
-                        let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
-                        for id in node_ids {
-                            self.record_lifetime_res(
-                                id,
-                                res,
-                                replace(&mut candidate, LifetimeElisionCandidate::Ignore),
                             );
                         }
                         break;
@@ -1837,15 +1821,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             )
         }
         match res {
-            LifetimeRes::Param { .. }
-            | LifetimeRes::Fresh { .. }
-            | LifetimeRes::Anonymous { .. }
-            | LifetimeRes::Static => {
+            LifetimeRes::Param { .. } | LifetimeRes::Fresh { .. } | LifetimeRes::Static => {
                 if let Some(ref mut candidates) = self.lifetime_elision_candidates {
                     candidates.insert(res, candidate);
                 }
             }
-            LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
+            LifetimeRes::Infer | LifetimeRes::Error | LifetimeRes::ElidedAnchor { .. } => {}
         }
     }
 
@@ -1864,18 +1845,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn resolve_fn_signature(
         &mut self,
         fn_id: NodeId,
-        async_node_id: Option<NodeId>,
         has_self: bool,
         inputs: impl Iterator<Item = (Option<&'ast Pat>, &'ast Ty)> + Clone,
         output_ty: &'ast FnRetTy,
     ) {
         // Add each argument to the rib.
-        let parameter_rib = LifetimeRibKind::AnonymousCreateParameter {
-            binder: fn_id,
-            report_in_path: async_node_id.is_some(),
-        };
-        let elision_lifetime =
-            self.with_lifetime_rib(parameter_rib, |this| this.resolve_fn_params(has_self, inputs));
+        let elision_lifetime = self.resolve_fn_params(has_self, inputs);
         debug!(?elision_lifetime);
 
         let outer_failures = take(&mut self.diagnostic_metadata.current_elision_failures);
@@ -2268,26 +2243,23 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
                     });
-                    this.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(item.id),
-                        |this| {
-                            if let Some(expr) = expr {
-                                let constant_item_kind = match item.kind {
-                                    ItemKind::Const(..) => ConstantItemKind::Const,
-                                    ItemKind::Static(..) => ConstantItemKind::Static,
-                                    _ => unreachable!(),
-                                };
-                                // We already forbid generic params because of the above item rib,
-                                // so it doesn't matter whether this is a trivial constant.
-                                this.with_constant_rib(
-                                    IsRepeatExpr::No,
-                                    HasGenericParams::Yes,
-                                    Some((item.ident, constant_item_kind)),
-                                    |this| this.visit_expr(expr),
-                                );
-                            }
-                        },
-                    );
+                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        if let Some(expr) = expr {
+                            let constant_item_kind = match item.kind {
+                                ItemKind::Const(..) => ConstantItemKind::Const,
+                                ItemKind::Static(..) => ConstantItemKind::Static,
+                                _ => unreachable!(),
+                            };
+                            // We already forbid generic params because of the above item rib,
+                            // so it doesn't matter whether this is a trivial constant.
+                            this.with_constant_rib(
+                                IsRepeatExpr::No,
+                                HasGenericParams::Yes,
+                                Some((item.ident, constant_item_kind)),
+                                |this| this.visit_expr(expr),
+                            );
+                        }
+                    });
                 });
             }
 
@@ -2544,7 +2516,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         // Type parameters can already be used and as associated consts are
                         // not used as part of the type system, this is far less surprising.
                         self.with_lifetime_rib(
-                            LifetimeRibKind::AnonymousPassThrough(item.id),
+                            LifetimeRibKind::Elided(LifetimeRes::Infer),
                             |this| {
                                 this.with_constant_rib(
                                     IsRepeatExpr::No,
@@ -2717,17 +2689,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     //
                     // Type parameters can already be used and as associated consts are
                     // not used as part of the type system, this is far less surprising.
-                    self.with_lifetime_rib(
-                        LifetimeRibKind::AnonymousPassThrough(item.id),
-                        |this| {
-                            this.with_constant_rib(
-                                IsRepeatExpr::No,
-                                HasGenericParams::Yes,
-                                None,
-                                |this| this.visit_expr(expr),
-                            )
-                        },
-                    );
+                    self.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        this.with_constant_rib(
+                            IsRepeatExpr::No,
+                            HasGenericParams::Yes,
+                            None,
+                            |this| this.visit_expr(expr),
+                        )
+                    });
                 }
             }
             AssocItemKind::Fn(box Fn { generics, .. }) => {
