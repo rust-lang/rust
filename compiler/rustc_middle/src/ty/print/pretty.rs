@@ -2556,7 +2556,7 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        if let ty::BoundConstness::ConstIfConst = self.constness {
+        if let ty::BoundConstness::ConstIfConst = self.constness && cx.tcx().features().const_trait_impl {
             p!("~const ");
         }
         p!(print(self.trait_ref.print_only_trait_path()))

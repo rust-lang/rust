@@ -2,7 +2,7 @@ use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -474,7 +474,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
         unsatisfied_bounds.sort();
 
         if !unsatisfied_bounds.is_empty() {
-            let plural = if unsatisfied_bounds.len() > 1 { "s" } else { "" };
+            let plural = pluralize!(unsatisfied_bounds.len());
             let mut err = tcx.sess.struct_span_err(
                 gat_item_hir.span,
                 &format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),

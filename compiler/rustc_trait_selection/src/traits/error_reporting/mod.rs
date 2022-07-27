@@ -631,9 +631,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         &format!(
                                             "expected a closure taking {} argument{}, but one taking {} argument{} was given",
                                             given.len(),
-                                            if given.len() == 1 { "" } else { "s" },
+                                            pluralize!(given.len()),
                                             expected.len(),
-                                            if expected.len() == 1 { "" } else { "s" },
+                                            pluralize!(expected.len()),
                                         )
                                     );
                                 } else if !self.same_type_modulo_infer(given_ty, expected_ty) {
@@ -666,7 +666,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             );
                         } else if !suggested {
                             // Can't show anything else useful, try to find similar impls.
-                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                            let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
@@ -701,7 +701,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 {
                                     let trait_ref = trait_pred.to_poly_trait_ref();
                                     let impl_candidates =
-                                        self.find_similar_impl_candidates(trait_ref);
+                                        self.find_similar_impl_candidates(trait_pred);
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
@@ -1325,7 +1325,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
 
     fn find_similar_impl_candidates(
         &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>>;
 
     fn report_similar_impl_candidates(
@@ -1694,18 +1694,22 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
     fn find_similar_impl_candidates(
         &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
         self.tcx
-            .all_impls(trait_ref.def_id())
+            .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
-                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative
+                    || !trait_pred
+                        .skip_binder()
+                        .is_constness_satisfied_by(self.tcx.constness(def_id))
+                {
                     return None;
                 }
 
                 let imp = self.tcx.impl_trait_ref(def_id).unwrap();
 
-                self.fuzzy_match_tys(trait_ref.skip_binder().self_ty(), imp.self_ty(), false)
+                self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false)
                     .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
             })
             .collect()

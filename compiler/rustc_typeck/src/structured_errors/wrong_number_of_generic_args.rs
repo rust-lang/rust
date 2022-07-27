@@ -420,12 +420,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let provided_lt_args = self.num_provided_lifetime_args();
         let provided_type_or_const_args = self.num_provided_type_or_const_args();
 
-        let get_verb = |num_args| if num_args == 1 { "was" } else { "were" };
-
         let (provided_args_str, verb) = match self.gen_args_info {
             MissingLifetimes { .. } | ExcessLifetimes { .. } => (
                 format!("{} lifetime argument{}", provided_lt_args, pluralize!(provided_lt_args)),
-                get_verb(provided_lt_args),
+                pluralize!("was", provided_lt_args),
             ),
             MissingTypesOrConsts { .. } | ExcessTypesOrConsts { .. } => (
                 format!(
@@ -433,7 +431,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     provided_type_or_const_args,
                     pluralize!(provided_type_or_const_args)
                 ),
-                get_verb(provided_type_or_const_args),
+                pluralize!("was", provided_type_or_const_args),
             ),
         };
 

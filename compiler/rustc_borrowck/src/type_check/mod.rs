@@ -21,7 +21,6 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{
     InferCtxt, InferOk, LateBoundRegion, LateBoundRegionConversionTime, NllRegionVariableOrigin,
 };
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::AssertKind;
@@ -225,26 +224,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     )
                     .unwrap();
                     let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
-                    // Check that RPITs are only constrained in their outermost
-                    // function, otherwise report a mismatched types error.
-                    if let OpaqueTyOrigin::FnReturn(parent) | OpaqueTyOrigin::AsyncFn(parent)
-                            = infcx.opaque_ty_origin_unchecked(opaque_type_key.def_id, hidden_type.span)
-                        && parent.to_def_id() != body.source.def_id()
-                    {
-                        infcx
-                            .report_mismatched_types(
-                                &ObligationCause::misc(
-                                    hidden_type.span,
-                                    infcx.tcx.hir().local_def_id_to_hir_id(
-                                        body.source.def_id().expect_local(),
-                                    ),
-                                ),
-                                infcx.tcx.mk_opaque(opaque_type_key.def_id.to_def_id(), opaque_type_key.substs),
-                                hidden_type.ty,
-                                ty::error::TypeError::Mismatch,
-                            )
-                            .emit();
-                    }
                     trace!(
                         "finalized opaque type {:?} to {:#?}",
                         opaque_type_key,
