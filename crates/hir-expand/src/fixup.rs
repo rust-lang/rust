@@ -175,8 +175,26 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                         ]);
                     }
                 },
+                ast::LoopExpr(it) => {
+                    if it.loop_body().is_none() {
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
                 // FIXME: foo::
-                // FIXME: for, loop, match etc.
+                // FIXME: for, match etc.
                 _ => (),
             }
         }
@@ -450,6 +468,20 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {while __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn fixup_loop() {
+        check(
+            r#"
+fn foo() {
+    loop
+}
+"#,
+            expect![[r#"
+fn foo () {loop {}}
 "#]],
         )
     }
