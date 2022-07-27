@@ -398,12 +398,10 @@ fn clean_type_outlives_predicate<'tcx>(
     })
 }
 
-impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
-        match self {
-            ty::Term::Ty(ty) => Term::Type(clean_middle_ty(*ty, cx, None)),
-            ty::Term::Const(c) => Term::Constant(clean_middle_const(*c, cx)),
-        }
+fn clean_middle_term<'tcx>(term: ty::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
+    match term {
+        ty::Term::Ty(ty) => Term::Type(clean_middle_ty(ty, cx, None)),
+        ty::Term::Const(c) => Term::Constant(clean_middle_const(c, cx)),
     }
 }
 
@@ -426,7 +424,7 @@ fn clean_projection_predicate<'tcx>(
     let ty::ProjectionPredicate { projection_ty, term } = pred;
     WherePredicate::EqPredicate {
         lhs: clean_projection(projection_ty, cx, None),
-        rhs: term.clean(cx),
+        rhs: clean_middle_term(term, cx),
     }
 }
 
@@ -1682,7 +1680,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
                             .projection_ty,
                         cx,
                     ),
-                    kind: TypeBindingKind::Equality { term: pb.skip_binder().term.clean(cx) },
+                    kind: TypeBindingKind::Equality {
+                        term: clean_middle_term(pb.skip_binder().term, cx),
+                    },
                 });
             }
 
@@ -1746,7 +1746,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                                     Some(TypeBinding {
                                         assoc: projection_to_path_segment(proj.projection_ty, cx),
                                         kind: TypeBindingKind::Equality {
-                                            term: proj.term.clean(cx),
+                                            term: clean_middle_term(proj.term, cx),
                                         },
                                     })
                                 } else {
