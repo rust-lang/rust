@@ -149,3 +149,110 @@ passes-cold = {passes-should-be-applied-to-fn}
 passes-link = attribute should be applied to an `extern` block with non-Rust ABI
     .warn = {-passes-previously-accepted}
     .label = not an `extern` block
+
+passes-link-name = attribute should be applied to a foreign function or static
+    .warn = {-passes-previously-accepted}
+    .label = not a foreign function or static
+    .help = try `#[link(name = "{$value}")]` instead
+
+passes-no-link = attribute should be applied to an `extern crate` item
+    .label = not an `extern crate` item
+
+passes-export-name = attribute should be applied to a free function, impl method or static
+    .label = not a free function, impl method or static
+
+passes-rustc-layout-scalar-valid-range-not-struct = attribute should be applied to a struct
+    .label = not a struct
+
+passes-rustc-layout-scalar-valid-range-arg = expected exactly one integer literal argument
+
+passes-rustc-legacy-const-generics-only = #[rustc_legacy_const_generics] functions must only have const generics
+    .label = non-const generic parameter
+
+passes-rustc-legacy-const-generics-index = #[rustc_legacy_const_generics] must have one index for each generic parameter
+    .label = generic parameters
+
+passes-rustc-legacy-const-generics-index-exceed = index exceeds number of arguments
+    .label = there {$arg_count ->
+        [one] is
+        *[other] are
+    } only {$arg_count} {$arg_count ->
+        [one] argument
+        *[other] arguments
+    }
+
+passes-rustc-legacy-const-generics-index-negative = arguments should be non-negative integers
+
+passes-rustc-dirty-clean = attribute requires -Z query-dep-graph to be enabled
+
+passes-link-section = attribute should be applied to a function or static
+    .warn = {-passes-previously-accepted}
+    .label = not a function or static
+
+passes-no-mangle-foreign = `#[no_mangle]` has no effect on a foreign {$foreign_item_kind}
+    .warn = {-passes-previously-accepted}
+    .label = foreign {$foreign_item_kind}
+    .note = symbol names in extern blocks are not mangled
+    .suggestion = remove this attribute
+
+passes-no-mangle = attribute should be applied to a free function, impl method or static
+    .warn = {-passes-previously-accepted}
+    .label = not a free function, impl method or static
+
+passes-repr-ident = meta item in `repr` must be an identifier
+
+passes-repr-conflicting = conflicting representation hints
+
+passes-used-static = attribute must be applied to a `static` variable
+
+passes-used-compiler-linker = `used(compiler)` and `used(linker)` can't be used together
+
+passes-allow-internal-unstable = attribute should be applied to a macro
+    .label = not a macro
+
+passes-debug-visualizer-placement = attribute should be applied to a module
+
+passes-debug-visualizer-invalid = invalid argument
+    .note-1 = expected: `natvis_file = "..."`
+    .note-2 = OR
+    .note-3 = expected: `gdb_script_file = "..."`
+
+passes-rustc-allow-const-fn-unstable = attribute should be applied to `const fn`
+    .label = not a `const fn`
+
+passes-rustc-std-internal-symbol = attribute should be applied to functions or statics
+    .label = not a function or static
+
+passes-const-trait = attribute should be applied to a trait
+
+passes-stability-promotable = attribute cannot be applied to an expression
+
+passes-deprecated = attribute is ignored here
+
+passes-macro-use = `#[{$name}]` only has an effect on `extern crate` and modules
+
+passes-macro-export = `#[macro_export]` only has an effect on macro definitions
+
+passes-plugin-registrar = `#[plugin_registrar]` only has an effect on functions
+
+passes-unused-empty-lints-note = attribute `{$name}` with an empty list has no effect
+
+passes-unused-no-lints-note = attribute `{$name}` without any lints has no effect
+
+passes-unused-default-method-body-const-note =
+    `default_method_body_is_const` has been replaced with `#[const_trait]` on traits
+
+passes-unused = unused attribute
+    .suggestion = remove this attribute
+
+passes-non-exported-macro-invalid-attrs = attribute should be applied to function or closure
+    .label = not a function or closure
+
+passes-unused-duplicate = unused attribute
+    .suggestion = remove this attribute
+    .note = attribute also specified here
+    .warn = {-passes-previously-accepted}
+
+passes-unused-multiple = multiple `{$name}` attributes
+    .suggestion = remove this attribute
+    .note = attribute also specified here

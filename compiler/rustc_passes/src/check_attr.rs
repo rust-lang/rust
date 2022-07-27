@@ -7,7 +7,7 @@
 use crate::errors;
 use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{fluent, struct_span_err, Applicability, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -1180,30 +1180,22 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions/statics and some crates
                 // used this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    let mut diag =
-                        lint.build("attribute should be applied to a foreign function or static");
-                    diag.warn(
-                        "this was previously accepted by the compiler but is \
-                         being phased out; it will become a hard error in \
-                         a future release!",
+                let attr_span = matches!(target, Target::ForeignMod).then_some(attr.span);
+                if let Some(s) = attr.value_str() {
+                    self.tcx.emit_spanned_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        attr.span,
+                        errors::LinkName { span, attr_span, value: s.as_str() },
                     );
-
-                    // See issue #47725
-                    if let Target::ForeignMod = target {
-                        if let Some(value) = attr.value_str() {
-                            diag.span_help(
-                                attr.span,
-                                &format!(r#"try `#[link(name = "{value}")]` instead"#),
-                            );
-                        } else {
-                            diag.span_help(attr.span, r#"try `#[link(name = "...")]` instead"#);
-                        }
-                    }
-
-                    diag.span_label(span, "not a foreign function or static");
-                    diag.emit();
-                });
+                } else {
+                    self.tcx.emit_spanned_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        attr.span,
+                        errors::LinkName { span, attr_span, value: "..." },
+                    );
+                };
             }
         }
     }
@@ -1221,14 +1213,7 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(
-                        attr.span,
-                        "attribute should be applied to an `extern crate` item",
-                    )
-                    .span_label(span, "not an `extern crate` item")
-                    .emit();
+                self.tcx.sess.emit_err(errors::NoLink { attr_span: attr.span, span });
                 false
             }
         }
@@ -1258,14 +1243,7 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(
-                        attr.span,
-                        "attribute should be applied to a free function, impl method or static",
-                    )
-                    .span_label(span, "not a free function, impl method or static")
-                    .emit();
+                self.tcx.sess.emit_err(errors::ExportName { attr_span: attr.span, span });
                 false
             }
         }
@@ -1278,11 +1256,10 @@ impl CheckAttrVisitor<'_> {
         target: Target,
     ) -> bool {
         if target != Target::Struct {
-            self.tcx
-                .sess
-                .struct_span_err(attr.span, "attribute should be applied to a struct")
-                .span_label(span, "not a struct")
-                .emit();
+            self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeNotStruct {
+                attr_span: attr.span,
+                span,
+            });
             return false;
         }
 
@@ -1293,10 +1270,7 @@ impl CheckAttrVisitor<'_> {
         if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
             true
         } else {
-            self.tcx
-                .sess
-                .struct_span_err(attr.span, "expected exactly one integer literal argument")
-                .emit();
+            self.tcx.sess.emit_err(errors::RustcLayoutScalarValidRangeArg { attr_span: attr.span });
             false
         }
     }
@@ -1311,11 +1285,10 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         let is_function = matches!(target, Target::Fn);
         if !is_function {
-            self.tcx
-                .sess
-                .struct_span_err(attr.span, "attribute should be applied to a function")
-                .span_label(span, "not a function")
-                .emit();
+            self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
+                attr_span: attr.span,
+                defn_span: span,
+            });
             return false;
         }
 
@@ -1335,29 +1308,20 @@ impl CheckAttrVisitor<'_> {
             match param.kind {
                 hir::GenericParamKind::Const { .. } => {}
                 _ => {
-                    self.tcx
-                        .sess
-                        .struct_span_err(
-                            attr.span,
-                            "#[rustc_legacy_const_generics] functions must \
-                             only have const generics",
-                        )
-                        .span_label(param.span, "non-const generic parameter")
-                        .emit();
+                    self.tcx.sess.emit_err(errors::RustcLegacyConstGenericsOnly {
+                        attr_span: attr.span,
+                        param_span: param.span,
+                    });
                     return false;
                 }
             }
         }
 
         if list.len() != generics.params.len() {
-            self.tcx
-                .sess
-                .struct_span_err(
-                    attr.span,
-                    "#[rustc_legacy_const_generics] must have one index for each generic parameter",
-                )
-                .span_label(generics.span, "generic parameters")
-                .emit();
+            self.tcx.sess.emit_err(errors::RustcLegacyConstGenericsIndex {
+                attr_span: attr.span,
+                generics_span: generics.span,
+            });
             return false;
         }
 
@@ -1367,19 +1331,10 @@ impl CheckAttrVisitor<'_> {
             if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
                 if *val >= arg_count {
                     let span = meta.span();
-                    self.tcx
-                        .sess
-                        .struct_span_err(span, "index exceeds number of arguments")
-                        .span_label(
-                            span,
-                            format!(
-                                "there {} only {} argument{}",
-                                pluralize!("is", arg_count),
-                                arg_count,
-                                pluralize!(arg_count)
-                            ),
-                        )
-                        .emit();
+                    self.tcx.sess.emit_err(errors::RustcLegacyConstGenericsIndexExceed {
+                        span,
+                        arg_count: arg_count as usize,
+                    });
                     return false;
                 }
             } else {
@@ -1388,10 +1343,7 @@ impl CheckAttrVisitor<'_> {
         }
 
         if !invalid_args.is_empty() {
-            self.tcx
-                .sess
-                .struct_span_err(invalid_args, "arguments should be non-negative integers")
-                .emit();
+            self.tcx.sess.emit_err(errors::RustcLegacyConstGenericsIndexNegative { invalid_args });
             false
         } else {
             true
@@ -1403,11 +1355,10 @@ impl CheckAttrVisitor<'_> {
     fn check_applied_to_fn_or_method(&self, attr: &Attribute, span: Span, target: Target) -> bool {
         let is_function = matches!(target, Target::Fn | Target::Method(..));
         if !is_function {
-            self.tcx
-                .sess
-                .struct_span_err(attr.span, "attribute should be applied to a function")
-                .span_label(span, "not a function")
-                .emit();
+            self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToFn {
+                attr_span: attr.span,
+                defn_span: span,
+            });
             false
         } else {
             true
@@ -1437,10 +1388,7 @@ impl CheckAttrVisitor<'_> {
         if self.tcx.sess.opts.unstable_opts.query_dep_graph {
             true
         } else {
-            self.tcx
-                .sess
-                .struct_span_err(attr.span, "attribute requires -Z query-dep-graph to be enabled")
-                .emit();
+            self.tcx.sess.emit_err(errors::RustcDirtyClean { span: attr.span });
             false
         }
     }
@@ -1459,16 +1407,12 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 // FIXME: #[link_section] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("attribute should be applied to a function or static")
-                        .warn(
-                            "this was previously accepted by the compiler but is \
-                             being phased out; it will become a hard error in \
-                             a future release!",
-                        )
-                        .span_label(span, "not a function or static")
-                        .emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::LinkSection { span },
+                );
             }
         }
     }
@@ -1494,41 +1438,22 @@ impl CheckAttrVisitor<'_> {
                     Target::ForeignStatic => "static",
                     _ => unreachable!(),
                 };
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build(&format!(
-                        "`#[no_mangle]` has no effect on a foreign {foreign_item_kind}"
-                    ))
-                    .warn(
-                        "this was previously accepted by the compiler but is \
-                            being phased out; it will become a hard error in \
-                            a future release!",
-                    )
-                    .span_label(span, format!("foreign {foreign_item_kind}"))
-                    .note("symbol names in extern blocks are not mangled")
-                    .span_suggestion(
-                        attr.span,
-                        "remove this attribute",
-                        "",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::NoMangleForeign { span, attr_span: attr.span, foreign_item_kind },
+                );
             }
             _ => {
                 // FIXME: #[no_mangle] was previously allowed on non-functions/statics and some
                 // crates used this, so only emit a warning.
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build(
-                        "attribute should be applied to a free function, impl method or static",
-                    )
-                    .warn(
-                        "this was previously accepted by the compiler but is \
-                         being phased out; it will become a hard error in \
-                         a future release!",
-                    )
-                    .span_label(span, "not a free function, impl method or static")
-                    .emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::NoMangle { span },
+                );
             }
         }
     }
@@ -1561,13 +1486,7 @@ impl CheckAttrVisitor<'_> {
 
         for hint in &hints {
             if !hint.is_meta_item() {
-                struct_span_err!(
-                    self.tcx.sess,
-                    hint.span(),
-                    E0565,
-                    "meta item in `repr` must be an identifier"
-                )
-                .emit();
+                self.tcx.sess.emit_err(errors::ReprIdent { span: hint.span() });
                 continue;
             }
 
@@ -1688,15 +1607,11 @@ impl CheckAttrVisitor<'_> {
                     return false;
                 }))
         {
-            self.tcx.struct_span_lint_hir(
+            self.tcx.emit_spanned_lint(
                 CONFLICTING_REPR_HINTS,
                 hir_id,
                 hint_spans.collect::<Vec<Span>>(),
-                |lint| {
-                    lint.build("conflicting representation hints")
-                        .code(rustc_errors::error_code!(E0566))
-                        .emit();
-                },
+                errors::ReprConflicting,
             );
         }
     }
@@ -1706,9 +1621,7 @@ impl CheckAttrVisitor<'_> {
         let mut used_compiler_span = None;
         for attr in attrs.iter().filter(|attr| attr.has_name(sym::used)) {
             if target != Target::Static {
-                self.tcx
-                    .sess
-                    .span_err(attr.span, "attribute must be applied to a `static` variable");
+                self.tcx.sess.emit_err(errors::UsedStatic { span: attr.span });
             }
             let inner = attr.meta_item_list();
             match inner.as_deref() {
@@ -1734,14 +1647,9 @@ impl CheckAttrVisitor<'_> {
             }
         }
         if let (Some(linker_span), Some(compiler_span)) = (used_linker_span, used_compiler_span) {
-            let spans = vec![linker_span, compiler_span];
             self.tcx
                 .sess
-                .struct_span_err(
-                    spans,
-                    "`used(compiler)` and `used(linker)` can't be used together",
-                )
-                .emit();
+                .emit_err(errors::UsedCompilerLinker { spans: vec![linker_span, compiler_span] });
         }
     }
 
@@ -1783,9 +1691,7 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(attr.span, "attribute should be applied to a macro")
-                    .span_label(span, "not a macro")
-                    .emit();
+                    .emit_err(errors::AllowInternalUnstable { attr_span: attr.span, span });
                 false
             }
         }
@@ -1796,29 +1702,26 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Mod => {}
             _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(attr.span, "attribute should be applied to a module")
-                    .emit();
+                self.tcx.sess.emit_err(errors::DebugVisualizerPlacement { span: attr.span });
                 return false;
             }
         }
 
         let Some(hints) = attr.meta_item_list() else {
-            self.emit_debugger_visualizer_err(attr.span);
+            self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: attr.span });
             return false;
         };
 
         let hint = match hints.len() {
             1 => &hints[0],
             _ => {
-                self.emit_debugger_visualizer_err(attr.span);
+                self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: attr.span });
                 return false;
             }
         };
 
         let Some(meta_item) = hint.meta_item() else {
-            self.emit_debugger_visualizer_err(attr.span);
+            self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: attr.span });
             return false;
         };
 
@@ -1826,7 +1729,7 @@ impl CheckAttrVisitor<'_> {
             (sym::natvis_file, Some(value)) => value,
             (sym::gdb_script_file, Some(value)) => value,
             (_, _) => {
-                self.emit_debugger_visualizer_err(meta_item.span);
+                self.tcx.sess.emit_err(errors::DebugVisualizerInvalid { span: meta_item.span });
                 return false;
             }
         };
@@ -1855,16 +1758,6 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    fn emit_debugger_visualizer_err(&self, span: Span) {
-        self.tcx
-            .sess
-            .struct_span_err(span, "invalid argument")
-            .note(r#"expected: `natvis_file = "..."`"#)
-            .note(r#"OR"#)
-            .note(r#"expected: `gdb_script_file = "..."`"#)
-            .emit();
-    }
-
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
     /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
@@ -1891,9 +1784,7 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(attr.span, "attribute should be applied to `const fn`")
-                    .span_label(span, "not a `const fn`")
-                    .emit();
+                    .emit_err(errors::RustcAllowConstFnUnstable { attr_span: attr.span, span });
                 false
             }
         }
@@ -1910,9 +1801,7 @@ impl CheckAttrVisitor<'_> {
             _ => {
                 self.tcx
                     .sess
-                    .struct_span_err(attr.span, "attribute should be applied functions or statics")
-                    .span_label(span, "not a function or static")
-                    .emit();
+                    .emit_err(errors::RustcStdInternalSymbol { attr_span: attr.span, span });
                 false
             }
         }
@@ -1923,10 +1812,7 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::Trait => true,
             _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(attr.span, "attribute should be applied to a trait")
-                    .emit();
+                self.tcx.sess.emit_err(errors::ConstTrait { attr_span: attr.span });
                 false
             }
         }
@@ -1935,10 +1821,7 @@ impl CheckAttrVisitor<'_> {
     fn check_stability_promotable(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
         match target {
             Target::Expression => {
-                self.tcx
-                    .sess
-                    .struct_span_err(attr.span, "attribute cannot be applied to an expression")
-                    .emit();
+                self.tcx.sess.emit_err(errors::StabilityPromotable { attr_span: attr.span });
                 false
             }
             _ => true,
@@ -1948,9 +1831,12 @@ impl CheckAttrVisitor<'_> {
     fn check_deprecated(&self, hir_id: HirId, attr: &Attribute, _span: Span, target: Target) {
         match target {
             Target::Closure | Target::Expression | Target::Statement | Target::Arm => {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("attribute is ignored here").emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::Deprecated,
+                );
             }
             _ => {}
         }
@@ -1961,29 +1847,30 @@ impl CheckAttrVisitor<'_> {
         match target {
             Target::ExternCrate | Target::Mod => {}
             _ => {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build(&format!(
-                        "`#[{name}]` only has an effect on `extern crate` and modules"
-                    ))
-                    .emit();
-                });
+                self.tcx.emit_spanned_lint(
+                    UNUSED_ATTRIBUTES,
+                    hir_id,
+                    attr.span,
+                    errors::MacroUse { name },
+                );
             }
         }
     }
 
     fn check_macro_export(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         if target != Target::MacroDef {
-            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                lint.build("`#[macro_export]` only has an effect on macro definitions").emit();
-            });
+            self.tcx.emit_spanned_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::MacroExport);
         }
     }
 
     fn check_plugin_registrar(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         if target != Target::Fn {
-            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                lint.build("`#[plugin_registrar]` only has an effect on functions").emit();
-            });
+            self.tcx.emit_spanned_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr.span,
+                errors::PluginRegistrar,
+            );
         }
     }
 
@@ -2002,10 +1889,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::target_feature
         ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
         {
-            format!(
-                "attribute `{}` with an empty list has no effect",
-                attr.name_or_empty()
-            )
+            errors::UnusedNote::EmptyList { name: attr.name_or_empty() }
         } else if matches!(
                 attr.name_or_empty(),
                 sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
@@ -2015,27 +1899,19 @@ impl CheckAttrVisitor<'_> {
             && let MetaItemKind::NameValue(_) = &item.kind
             && item.path == sym::reason
         {
-            format!(
-                "attribute `{}` without any lints has no effect",
-                attr.name_or_empty()
-            )
+            errors::UnusedNote::NoLints { name: attr.name_or_empty() }
         } else if attr.name_or_empty() == sym::default_method_body_is_const {
-            format!("`default_method_body_is_const` has been replaced with `#[const_trait]` on traits")
+            errors::UnusedNote::DefaultMethodBodyConst
         } else {
             return;
         };
 
-        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-            lint.build("unused attribute")
-                .span_suggestion(
-                    attr.span,
-                    "remove this attribute",
-                    "",
-                    Applicability::MachineApplicable,
-                )
-                .note(&note)
-                .emit();
-        });
+        self.tcx.emit_spanned_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            attr.span,
+            errors::Unused { attr_span: attr.span, note },
+        );
     }
 }
 
@@ -2206,14 +2082,7 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
 
     for attr in attrs {
         if attr.has_name(sym::inline) {
-            struct_span_err!(
-                tcx.sess,
-                attr.span,
-                E0518,
-                "attribute should be applied to function or closure",
-            )
-            .span_label(attr.span, "not a function or closure")
-            .emit();
+            tcx.sess.emit_err(errors::NonExportedMacroInvalidAttrs { attr_span: attr.span });
         }
     }
 }
@@ -2253,23 +2122,20 @@ fn check_duplicates(
                     } else {
                         (attr.span, *entry.get())
                     };
-                    tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, this, |lint| {
-                        let mut db = lint.build("unused attribute");
-                        db.span_note(other, "attribute also specified here").span_suggestion(
+                    tcx.emit_spanned_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        this,
+                        errors::UnusedDuplicate {
                             this,
-                            "remove this attribute",
-                            "",
-                            Applicability::MachineApplicable,
-                        );
-                        if matches!(duplicates, FutureWarnFollowing | FutureWarnPreceding) {
-                            db.warn(
-                                "this was previously accepted by the compiler but is \
-                                 being phased out; it will become a hard error in \
-                                 a future release!",
-                            );
-                        }
-                        db.emit();
-                    });
+                            other,
+                            warning: matches!(
+                                duplicates,
+                                FutureWarnFollowing | FutureWarnPreceding
+                            )
+                            .then_some(()),
+                        },
+                    );
                 }
                 Entry::Vacant(entry) => {
                     entry.insert(attr.span);
@@ -2284,19 +2150,11 @@ fn check_duplicates(
                 } else {
                     (attr.span, *entry.get())
                 };
-                tcx.sess
-                    .struct_span_err(
-                        this,
-                        &format!("multiple `{}` attributes", attr.name_or_empty()),
-                    )
-                    .span_note(other, "attribute also specified here")
-                    .span_suggestion(
-                        this,
-                        "remove this attribute",
-                        "",
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                tcx.sess.emit_err(errors::UnusedMultiple {
+                    this,
+                    other,
+                    name: attr.name_or_empty(),
+                });
             }
             Entry::Vacant(entry) => {
                 entry.insert(attr.span);
