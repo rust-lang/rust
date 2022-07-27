@@ -22,6 +22,13 @@ mod unicode_chars;
 
 use unescape_error_reporting::{emit_unescape_error, escaped_char};
 
+// This type is used a lot. Make sure it doesn't unintentionally get bigger.
+//
+// This assertion is in this crate, rather than in `rustc_lexer`, because that
+// crate cannot depend on `rustc_data_structures`.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(rustc_lexer::Token, 72);
+
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
     pub expected_delim: Delimiter,
