@@ -41,7 +41,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.
     ///
-    /// This is only meant to be invoked as part of constructing an
+    /// This can be invoked as part of constructing an
     /// inference context at the start of a query (see
     /// `InferCtxtBuilder::enter_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
@@ -63,8 +63,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // in them, so this code has no effect, but it is looking
         // forward to the day when we *do* want to carry universes
         // through into queries.
-        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(ty::UniverseIndex::ROOT)
-            .chain((0..canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
+        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(self.universe())
+            .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
         let canonical_inference_vars =
