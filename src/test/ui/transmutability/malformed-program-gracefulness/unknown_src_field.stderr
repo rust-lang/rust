@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/unknown_src_field.rs:20:27
+   |
+LL |     #[repr(C)] struct Dst(Missing);
+   |                           ^^^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

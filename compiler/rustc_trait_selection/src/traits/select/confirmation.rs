@@ -48,6 +48,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(data)
             }
 
+            TransmutabilityCandidate => {
+                let data = self.confirm_transmutability_candidate(obligation)?;
+                ImplSource::Builtin(data)
+            }
+
             ParamCandidate(param) => {
                 let obligations =
                     self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
@@ -265,6 +270,53 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligations);
 
         ImplSourceBuiltinData { nested: obligations }
+    }
+
+    fn confirm_transmutability_candidate(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+    ) -> Result<ImplSourceBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        debug!(?obligation, "confirm_transmutability_candidate");
+
+        let predicate = obligation.predicate;
+
+        let type_at = |i| predicate.map_bound(|p| p.trait_ref.substs.type_at(i));
+        let bool_at = |i| {
+            predicate
+                .skip_binder()
+                .trait_ref
+                .substs
+                .const_at(i)
+                .try_eval_bool(self.tcx(), obligation.param_env)
+                .unwrap_or(true)
+        };
+
+        let src_and_dst = predicate.map_bound(|p| rustc_transmute::Types {
+            src: p.trait_ref.substs.type_at(1),
+            dst: p.trait_ref.substs.type_at(0),
+        });
+
+        let scope = type_at(2).skip_binder();
+
+        let assume = rustc_transmute::Assume {
+            alignment: bool_at(3),
+            lifetimes: bool_at(4),
+            validity: bool_at(5),
+            visibility: bool_at(6),
+        };
+
+        let cause = obligation.cause.clone();
+
+        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
+
+        let maybe_transmutable = transmute_env.is_transmutable(cause, src_and_dst, scope, assume);
+
+        use rustc_transmute::Answer;
+
+        match maybe_transmutable {
+            Answer::Yes => Ok(ImplSourceBuiltinData { nested: vec![] }),
+            _ => Err(Unimplemented),
+        }
     }
 
     /// This handles the case where an `auto trait Foo` impl is being used.
