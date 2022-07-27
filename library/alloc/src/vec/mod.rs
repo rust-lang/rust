@@ -358,11 +358,19 @@ mod spec_extend;
 /// and it may prove desirable to use a non-constant growth factor. Whatever
 /// strategy is used will of course guarantee *O*(1) amortized [`push`].
 ///
-/// `vec![x; n]`, `vec![a, b, c, d]`, and
-/// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
-/// with exactly the requested capacity. If <code>[len] == [capacity]</code>,
-/// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
-/// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
+/// `vec![x; n]` and [`Vec::with_capacity(n)`] produce a `Vec` that allocates `n` capacity.
+/// `vec![a, b, c, d, e]` produces a `Vec` which allocates once for all items (in this case 5).
+/// An allocator may return an allocation with a size larger than the requested capacity.
+/// In that case, [`capacity`] may return either the requested capacity or actual allocated size.
+/// `Vec` has preferred either answer at different times and may change again.
+/// However, `Vec::with_capacity(5)` will not deliberately "round up" to `Vec::with_capacity(8)`
+/// for any non-zero-sized type, to respect programmer intent.
+///
+/// Excess capacity an allocator has given `Vec` is still discarded by [`shrink_to_fit`].
+/// If <code>[len] == [capacity]</code>, then a `Vec<T>` can be converted
+/// to and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
+/// `Vec` exploits this fact as much as reasonable when implementing common conversions
+/// such as [`into_boxed_slice`].
 ///
 /// `Vec` will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
@@ -392,8 +400,10 @@ mod spec_extend;
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
+/// [`Vec::with_capacity(n)`]: Vec::with_capacity
 /// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
+/// [`into_boxed_slice`]: Vec::into_boxed_slice
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
