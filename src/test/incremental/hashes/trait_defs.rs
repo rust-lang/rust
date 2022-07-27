@@ -1066,9 +1066,9 @@ trait TraitAddTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T> { }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T: 'a> { }
 
@@ -1144,9 +1144,9 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0 + Refer
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a> { }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a + 'b> { }
 
@@ -1201,9 +1201,9 @@ trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0
 trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> { }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> where T: 'a { }
 
@@ -1254,9 +1254,9 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T: 'a { }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,generics_of,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T: 'a + 'b { }
 
