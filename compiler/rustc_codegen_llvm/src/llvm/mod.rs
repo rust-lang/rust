@@ -166,12 +166,6 @@ pub fn SetUniqueComdat(llmod: &Module, val: &Value) {
     }
 }
 
-pub fn UnsetComdat(val: &Value) {
-    unsafe {
-        LLVMRustUnsetComdat(val);
-    }
-}
-
 pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
     unsafe {
         LLVMSetUnnamedAddress(global, unnamed);

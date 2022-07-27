@@ -7,6 +7,7 @@
 use crate::fs::{self, Metadata, OpenOptions};
 use crate::io;
 use crate::path::Path;
+use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut};
 
@@ -502,17 +503,20 @@ impl MetadataExt for Metadata {
 /// Windows-specific extensions to [`fs::FileType`].
 ///
 /// On Windows, a symbolic link knows whether it is a file or directory.
-#[unstable(feature = "windows_file_type_ext", issue = "none")]
-pub trait FileTypeExt {
+#[stable(feature = "windows_file_type_ext", since = "1.64.0")]
+pub trait FileTypeExt: Sealed {
     /// Returns `true` if this file type is a symbolic link that is also a directory.
-    #[unstable(feature = "windows_file_type_ext", issue = "none")]
+    #[stable(feature = "windows_file_type_ext", since = "1.64.0")]
     fn is_symlink_dir(&self) -> bool;
     /// Returns `true` if this file type is a symbolic link that is also a file.
-    #[unstable(feature = "windows_file_type_ext", issue = "none")]
+    #[stable(feature = "windows_file_type_ext", since = "1.64.0")]
     fn is_symlink_file(&self) -> bool;
 }
 
-#[unstable(feature = "windows_file_type_ext", issue = "none")]
+#[stable(feature = "windows_file_type_ext", since = "1.64.0")]
+impl Sealed for fs::FileType {}
+
+#[stable(feature = "windows_file_type_ext", since = "1.64.0")]
 impl FileTypeExt for fs::FileType {
     fn is_symlink_dir(&self) -> bool {
         self.as_inner().is_symlink_dir()

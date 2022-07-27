@@ -1880,7 +1880,11 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         return;
     }
 
-    writeln!(w, "<h2 class=\"small-section-header\">Layout</h2>");
+    writeln!(
+        w,
+        "<h2 id=\"layout\" class=\"small-section-header\"> \
+        Layout<a href=\"#layout\" class=\"anchor\"></a></h2>"
+    );
     writeln!(w, "<div class=\"docblock\">");
 
     let tcx = cx.tcx();

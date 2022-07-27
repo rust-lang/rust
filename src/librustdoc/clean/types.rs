@@ -2175,8 +2175,8 @@ impl Path {
     pub(crate) fn whole_name(&self) -> String {
         self.segments
             .iter()
-            .map(|s| if s.name == kw::PathRoot { String::new() } else { s.name.to_string() })
-            .intersperse("::".into())
+            .map(|s| if s.name == kw::PathRoot { "" } else { s.name.as_str() })
+            .intersperse("::")
             .collect()
     }
 
