@@ -221,6 +221,7 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
 }
 
 /// Parses the first token from the provided input string.
+#[inline]
 pub fn first_token(input: &str) -> Token {
     debug_assert!(!input.is_empty());
     Cursor::new(input).advance_token()
