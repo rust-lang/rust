@@ -66,13 +66,13 @@ pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_V
 ///
 /// Metadata is effective a tree, encoded in post-order,
 /// and with the root's position written next to the header.
-/// That means every single `Lazy` points to some previous
+/// That means every single `LazyValue` points to some previous
 /// location in the metadata and is part of a larger node.
 ///
-/// The first `Lazy` in a node is encoded as the backwards
+/// The first `LazyValue` in a node is encoded as the backwards
 /// distance from the position where the containing node
-/// starts and where the `Lazy` points to, while the rest
-/// use the forward distance from the previous `Lazy`.
+/// starts and where the `LazyValue` points to, while the rest
+/// use the forward distance from the previous `LazyValue`.
 /// Distances start at 1, as 0-byte nodes are invalid.
 /// Also invalid are nodes being referred in a different
 /// order than they were encoded in.
@@ -94,12 +94,12 @@ impl<T> LazyValue<T> {
 
 /// A list of lazily-decoded values.
 ///
-/// Unlike `Lazy<Vec<T>>`, the length is encoded next to the
+/// Unlike `LazyValue<Vec<T>>`, the length is encoded next to the
 /// position, not at the position, which means that the length
 /// doesn't need to be known before encoding all the elements.
 ///
 /// If the length is 0, no position is encoded, but otherwise,
-/// the encoding is that of `Lazy`, with the distinction that
+/// the encoding is that of `LazyArray`, with the distinction that
 /// the minimal distance the length of the sequence, i.e.
 /// it's assumed there's no 0-byte element in the sequence.
 struct LazyArray<T> {
@@ -167,17 +167,17 @@ impl<I, T> Clone for LazyTable<I, T> {
     }
 }
 
-/// Encoding / decoding state for `Lazy`.
+/// Encoding / decoding state for `Lazy`s (`LazyValue`, `LazyArray`, and `LazyTable`).
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum LazyState {
     /// Outside of a metadata node.
     NoNode,
 
-    /// Inside a metadata node, and before any `Lazy`.
+    /// Inside a metadata node, and before any `Lazy`s.
     /// The position is that of the node itself.
     NodeStart(NonZeroUsize),
 
-    /// Inside a metadata node, with a previous `Lazy`.
+    /// Inside a metadata node, with a previous `Lazy`s.
     /// The position is where that previous `Lazy` would start.
     Previous(NonZeroUsize),
 }
