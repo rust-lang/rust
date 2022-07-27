@@ -62,6 +62,23 @@ impl Buffer {
         self.pos = cmp::min(self.pos + amt, self.filled);
     }
 
+    /// If there are `amt` bytes available in the buffer, pass a slice containing those bytes to
+    /// `visitor` and return true. If there are not enough bytes available, return false.
+    #[inline]
+    pub fn consume_with<V>(&mut self, amt: usize, mut visitor: V) -> bool
+    where
+        V: FnMut(&[u8]),
+    {
+        if let Some(claimed) = self.buffer().get(..amt) {
+            visitor(claimed);
+            // If the indexing into self.buffer() succeeds, amt must be a valid increment.
+            self.pos += amt;
+            true
+        } else {
+            false
+        }
+    }
+
     #[inline]
     pub fn unconsume(&mut self, amt: usize) {
         self.pos = self.pos.saturating_sub(amt);

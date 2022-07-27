@@ -290,9 +290,7 @@ impl<R: Read> Read for BufReader<R> {
     // generation for the common path where the buffer has enough bytes to fill the passed-in
     // buffer.
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        if let Some(claimed) = self.buffer().get(..buf.len()) {
-            buf.copy_from_slice(claimed);
-            self.consume(claimed.len());
+        if self.buf.consume_with(buf.len(), |claimed| buf.copy_from_slice(claimed)) {
             return Ok(());
         }
 
