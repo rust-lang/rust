@@ -347,11 +347,11 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
                 if flavor == RlibFlavor::Normal && sess.opts.unstable_opts.split_bundled_libs {
                     let suffix = &sess.target.staticlib_suffix;
-                    let bundle_lib = PathBuf::from(format!("{}.bundle.{name}{suffix}", out_filename.display()));
-                    match fs::copy(location, bundle_lib) {
-                        Ok(_) => {}, 
-                        Err(_) => sess.fatal("unable to create file for bundle lib"),
-                    }
+                    let bundle_lib =
+                        PathBuf::from(format!("{}.bundle.{name}{suffix}", out_filename.display()));
+                    fs::copy(location, bundle_lib).unwrap_or_else(|e| {
+                        sess.fatal(format!("Unable to create bundle lib: {}", e));
+                    });
                 } else {
                     ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
                         sess.fatal(&format!(
@@ -2387,8 +2387,10 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             {
                                 let suffix = &sess.target.staticlib_suffix;
                                 let cratepath = &src.rlib.as_ref().unwrap().0;
-                                let bundle_lib =
-                                    PathBuf::from(format!("{}.bundle.{name}{suffix}", cratepath.display()));
+                                let bundle_lib = PathBuf::from(format!(
+                                    "{}.bundle.{name}{suffix}",
+                                    cratepath.display()
+                                ));
                                 if whole_archive == Some(true) {
                                     cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&bundle_lib));
                                 } else {
