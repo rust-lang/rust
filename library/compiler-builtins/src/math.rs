@@ -63,6 +63,8 @@ no_mangle! {
     fn tanhf(n: f32) -> f32;
     fn ldexp(f: f64, n: i32) -> f64;
     fn ldexpf(f: f32, n: i32) -> f32;
+    fn tgamma(x: f64) -> f64;
+    fn tgammaf(x: f32) -> f32;
 }
 
 #[cfg(any(
