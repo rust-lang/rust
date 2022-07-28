@@ -1839,12 +1839,6 @@ fn clean_variant_data<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, Vec<Item>> for hir::VariantData<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Vec<Item> {
-        self.fields().iter().map(|x| clean_field(x, cx)).collect()
-    }
-}
-
 impl<'tcx> Clean<'tcx, Item> for ty::VariantDef {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let kind = match self.ctor_kind {
@@ -1868,7 +1862,9 @@ impl<'tcx> Clean<'tcx, Variant> for hir::VariantData<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Variant {
         match self {
             hir::VariantData::Struct(..) => Variant::Struct(clean_variant_data(self, cx)),
-            hir::VariantData::Tuple(..) => Variant::Tuple(self.clean(cx)),
+            hir::VariantData::Tuple(..) => {
+                Variant::Tuple(self.fields().iter().map(|x| clean_field(x, cx)).collect())
+            }
             hir::VariantData::Unit(..) => Variant::CLike,
         }
     }
