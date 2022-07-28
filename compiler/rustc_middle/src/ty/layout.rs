@@ -232,6 +232,10 @@ fn sanity_check_layout<'tcx>(
         assert!(layout.abi.is_uninhabited());
     }
 
+    if layout.size.bytes() % layout.align.abi.bytes() != 0 {
+        bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
+    }
+
     if cfg!(debug_assertions) {
         fn check_layout_abi<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) {
             match layout.abi() {
