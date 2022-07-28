@@ -44,7 +44,6 @@ fn baz() {
             st Record
             st Tuple
             st Unit
-            tt Trait
             un Union
             ev TupleV(…)     TupleV(u32)
             bt u32
@@ -137,7 +136,6 @@ impl Unit {
             st Record
             st Tuple
             st Unit
-            tt Trait
             tp TypeParam
             un Union
             ev TupleV(…)    TupleV(u32)

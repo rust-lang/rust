@@ -1347,7 +1347,6 @@ fn main() {
                 fn main() []
                 fn foo(…) []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1394,7 +1393,6 @@ fn main() {
                 fn main() []
                 fn foo(…) []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1492,7 +1490,6 @@ fn main() {
                 fn &bar() [type]
                 fn foo(…) []
                 md core []
-                tt Sized []
             "#]],
         )
     }

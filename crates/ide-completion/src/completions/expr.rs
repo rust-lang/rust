@@ -202,10 +202,21 @@ pub(crate) fn complete_expr_path(
                     }
                 }
             }
-            ctx.process_all_names(&mut |name, def| {
-                if scope_def_applicable(def) {
-                    acc.add_path_resolution(ctx, path_ctx, name, def);
+            ctx.process_all_names(&mut |name, def| match def {
+                ScopeDef::ModuleDef(hir::ModuleDef::Trait(t)) => {
+                    let assocs = t.items_with_supertraits(ctx.db);
+                    match &*assocs {
+                        // traits with no assoc items are unusable as expressions since
+                        // there is no associated item path that can be constructed with them
+                        [] => (),
+                        // FIXME: Render the assoc item with the trait qualified
+                        &[_item] => acc.add_path_resolution(ctx, path_ctx, name, def),
+                        // FIXME: Append `::` to the thing here, since a trait on its own won't work
+                        [..] => acc.add_path_resolution(ctx, path_ctx, name, def),
+                    }
                 }
+                _ if scope_def_applicable(def) => acc.add_path_resolution(ctx, path_ctx, name, def),
+                _ => (),
             });
 
             if is_func_update.is_none() {
