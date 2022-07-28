@@ -920,49 +920,53 @@ impl<'a> CompletionContext<'a> {
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
         // calculate the qualifier context
-        if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
+        if let Some((qualifier, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
             path_ctx.use_tree_parent = use_tree_parent;
             if !use_tree_parent && segment.coloncolon_token().is_some() {
                 path_ctx.qualified = Qualified::Absolute;
             } else {
-                let path = path
+                let qualifier = qualifier
                     .segment()
                     .and_then(|it| find_node_in_file(original_file, &it))
                     .map(|it| it.parent_path());
-                if let Some(path) = path {
-                    // `<_>::$0`
-                    let is_infer_qualifier = path.qualifier().is_none()
-                        && matches!(
-                            path.segment().and_then(|it| it.kind()),
-                            Some(ast::PathSegmentKind::Type {
-                                type_ref: Some(ast::Type::InferType(_)),
-                                trait_ref: None,
-                            })
-                        );
+                if let Some(qualifier) = qualifier {
+                    let type_anchor = match qualifier.segment().and_then(|it| it.kind()) {
+                        Some(ast::PathSegmentKind::Type {
+                            type_ref: Some(type_ref),
+                            trait_ref,
+                        }) if qualifier.qualifier().is_none() => Some((type_ref, trait_ref)),
+                        _ => None,
+                    };
 
-                    path_ctx.qualified = if is_infer_qualifier {
-                        Qualified::Infer
+                    path_ctx.qualified = if let Some((ty, trait_ref)) = type_anchor {
+                        let ty = match ty {
+                            ast::Type::InferType(_) => None,
+                            ty => sema.resolve_type(&ty),
+                        };
+                        let trait_ = trait_ref.and_then(|it| sema.resolve_trait(&it.path()?));
+                        Qualified::TypeAnchor { ty, trait_ }
                     } else {
-                        let res = sema.resolve_path(&path);
+                        let res = sema.resolve_path(&qualifier);
 
                         // For understanding how and why super_chain_len is calculated the way it
                         // is check the documentation at it's definition
                         let mut segment_count = 0;
-                        let super_count = iter::successors(Some(path.clone()), |p| p.qualifier())
-                            .take_while(|p| {
-                                p.segment()
-                                    .and_then(|s| {
-                                        segment_count += 1;
-                                        s.super_token()
-                                    })
-                                    .is_some()
-                            })
-                            .count();
+                        let super_count =
+                            iter::successors(Some(qualifier.clone()), |p| p.qualifier())
+                                .take_while(|p| {
+                                    p.segment()
+                                        .and_then(|s| {
+                                            segment_count += 1;
+                                            s.super_token()
+                                        })
+                                        .is_some()
+                                })
+                                .count();
 
                         let super_chain_len =
                             if segment_count > super_count { None } else { Some(super_count) };
 
-                        Qualified::With { path, resolution: res, super_chain_len }
+                        Qualified::With { path: qualifier, resolution: res, super_chain_len }
                     }
                 };
             }
