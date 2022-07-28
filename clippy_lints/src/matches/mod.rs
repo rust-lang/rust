@@ -1,13 +1,3 @@
-use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
-use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
-use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
-use rustc_lexer::{tokenize, TokenKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{Span, SpanData, SyntaxContext};
-
 mod collapsible_match;
 mod infallible_destructuring_match;
 mod manual_map;
@@ -30,6 +20,16 @@ mod significant_drop_in_scrutinee;
 mod single_match;
 mod try_err;
 mod wild_in_or_pats;
+
+use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
+use clippy_utils::{higher, in_constant, meets_msrv, msrvs};
+use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
+use rustc_lexer::{tokenize, TokenKind};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::{Span, SpanData, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -793,18 +793,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// # use std::sync::Mutex;
-    ///
     /// # struct State {}
-    ///
     /// # impl State {
     /// #     fn foo(&self) -> bool {
     /// #         true
     /// #     }
-    ///
     /// #     fn bar(&self) {}
     /// # }
-    ///
-    ///
     /// let mutex = Mutex::new(State {});
     ///
     /// match mutex.lock().unwrap().foo() {
@@ -815,22 +810,17 @@ declare_clippy_lint! {
     /// };
     ///
     /// println!("All done!");
-    ///
     /// ```
     /// Use instead:
     /// ```rust
     /// # use std::sync::Mutex;
-    ///
     /// # struct State {}
-    ///
     /// # impl State {
     /// #     fn foo(&self) -> bool {
     /// #         true
     /// #     }
-    ///
     /// #     fn bar(&self) {}
     /// # }
-    ///
     /// let mutex = Mutex::new(State {});
     ///
     /// let is_foo = mutex.lock().unwrap().foo();

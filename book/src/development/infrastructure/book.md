@@ -25,7 +25,7 @@ instructions for other options.
 ## Make changes
 
 The book's
-[src](https://github.com/joshrotenberg/rust-clippy/tree/clippy_guide/book/src)
+[src](https://github.com/rust-lang/rust-clippy/tree/master/book/src)
 directory contains all of the markdown files used to generate the book. If you
 want to see your changes in real time, you can use the mdbook `serve` command to
 run a web server locally that will automatically update changes as they are

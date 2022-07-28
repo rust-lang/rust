@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{def::Res, HirId, Path, PathSegment};
-use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, symbol::kw, Symbol};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::{sym, symbol::kw, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     ///
     /// Crates which have `no_std` compatibility and may optionally require alloc may wish to ensure types are
-    /// imported from alloc to ensure disabling `alloc` does not cause the crate to fail to compile. This lint
+    /// imported from core to ensure disabling `alloc` does not cause the crate to fail to compile. This lint
     /// is also useful for crates migrating to become `no_std` compatible.
     ///
     /// ### Example
@@ -81,39 +81,55 @@ declare_clippy_lint! {
     "type is imported from alloc when available in core"
 }
 
-declare_lint_pass!(StdReexports => [STD_INSTEAD_OF_CORE, STD_INSTEAD_OF_ALLOC, ALLOC_INSTEAD_OF_CORE]);
+#[derive(Default)]
+pub struct StdReexports {
+    // Paths which can be either a module or a macro (e.g. `std::env`) will cause this check to happen
+    // twice. First for the mod, second for the macro. This is used to avoid the lint reporting for the macro
+    // when the path could be also be used to access the module.
+    prev_span: Span,
+}
+impl_lint_pass!(StdReexports => [STD_INSTEAD_OF_CORE, STD_INSTEAD_OF_ALLOC, ALLOC_INSTEAD_OF_CORE]);
 
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
-        // std_instead_of_core
-        check_path(cx, path, sym::std, sym::core, STD_INSTEAD_OF_CORE);
-        // std_instead_of_alloc
-        check_path(cx, path, sym::std, sym::alloc, STD_INSTEAD_OF_ALLOC);
-        // alloc_instead_of_core
-        check_path(cx, path, sym::alloc, sym::core, ALLOC_INSTEAD_OF_CORE);
-    }
-}
-
-fn check_path(cx: &LateContext<'_>, path: &Path<'_>, krate: Symbol, suggested_crate: Symbol, lint: &'static Lint) {
-    if_chain! {
-        // check if path resolves to the suggested crate.
-        if let Res::Def(_, def_id) = path.res;
-        if suggested_crate == cx.tcx.crate_name(def_id.krate);
-
-        // check if the first segment of the path is the crate we want to identify
-        if let Some(path_root_segment) = get_first_segment(path);
-
-        // check if the path matches the crate we want to suggest the other path for.
-        if krate == path_root_segment.ident.name;
-        then {
-            span_lint_and_help(
-                cx,
-                lint,
-                path.span,
-                &format!("used import from `{}` instead of `{}`", krate, suggested_crate),
-                None,
-                &format!("consider importing the item from `{}`", suggested_crate),
-            );
+        if let Res::Def(_, def_id) = path.res
+            && let Some(first_segment) = get_first_segment(path)
+        {
+            let (lint, msg, help) = match first_segment.ident.name {
+                sym::std => match cx.tcx.crate_name(def_id.krate) {
+                    sym::core => (
+                        STD_INSTEAD_OF_CORE,
+                        "used import from `std` instead of `core`",
+                        "consider importing the item from `core`",
+                    ),
+                    sym::alloc => (
+                        STD_INSTEAD_OF_ALLOC,
+                        "used import from `std` instead of `alloc`",
+                        "consider importing the item from `alloc`",
+                    ),
+                    _ => {
+                        self.prev_span = path.span;
+                        return;
+                    },
+                },
+                sym::alloc => {
+                    if cx.tcx.crate_name(def_id.krate) == sym::core {
+                        (
+                            ALLOC_INSTEAD_OF_CORE,
+                            "used import from `alloc` instead of `core`",
+                            "consider importing the item from `core`",
+                        )
+                    } else {
+                        self.prev_span = path.span;
+                        return;
+                    }
+                },
+                _ => return,
+            };
+            if path.span != self.prev_span {
+                span_lint_and_help(cx, lint, path.span, msg, None, help);
+                self.prev_span = path.span;
+            }
         }
     }
 }
@@ -123,12 +139,10 @@ fn check_path(cx: &LateContext<'_>, path: &Path<'_>, krate: Symbol, suggested_cr
 /// If this is a global path (such as `::std::fmt::Debug`), then the segment after [`kw::PathRoot`]
 /// is returned.
 fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    let segment = path.segments.first()?;
-
-    // A global path will have PathRoot as the first segment. In this case, return the segment after.
-    if segment.ident.name == kw::PathRoot {
-        path.segments.get(1)
-    } else {
-        Some(segment)
+    match path.segments {
+        // A global path will have PathRoot as the first segment. In this case, return the segment after.
+        [x, y, ..] if x.ident.name == kw::PathRoot => Some(y),
+        [x, ..] => Some(x),
+        _ => None,
     }
 }
