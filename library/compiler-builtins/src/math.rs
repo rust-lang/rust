@@ -72,6 +72,7 @@ no_mangle! {
         not(target_env = "wasi")
     ),
     target_os = "xous",
+    all(target_arch = "x86_64", target_os = "uefi"),
     all(target_arch = "xtensa", target_os = "none"),
     all(target_vendor = "fortanix", target_env = "sgx")
 ))]
@@ -95,7 +96,7 @@ no_mangle! {
     fn tanf(n: f32) -> f32;
 }
 
-#[cfg(target_os = "xous")]
+#[cfg(any(target_os = "xous", target_os = "uefi"))]
 no_mangle! {
     fn sqrtf(x: f32) -> f32;
     fn sqrt(x: f64) -> f64;
@@ -103,7 +104,8 @@ no_mangle! {
 
 #[cfg(any(
     all(target_vendor = "fortanix", target_env = "sgx"),
-    target_os = "xous"
+    target_os = "xous",
+    target_os = "uefi"
 ))]
 no_mangle! {
     fn ceil(x: f64) -> f64;
