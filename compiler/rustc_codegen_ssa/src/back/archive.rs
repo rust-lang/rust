@@ -41,7 +41,7 @@ pub(super) fn find_library(
 }
 
 pub trait ArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path) -> Self;
+    fn new(sess: &'a Session) -> Self;
 
     fn add_file(&mut self, path: &Path);
 
@@ -49,7 +49,7 @@ pub trait ArchiveBuilder<'a> {
     where
         F: FnMut(&str) -> bool + 'static;
 
-    fn build(self) -> bool;
+    fn build(self, output: &Path) -> bool;
 
     fn sess(&self) -> &Session;
 

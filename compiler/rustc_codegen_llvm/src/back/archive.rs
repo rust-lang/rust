@@ -18,7 +18,6 @@ use rustc_session::Session;
 #[must_use = "must call build() to finish building the archive"]
 pub struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
-    dst: PathBuf,
     additions: Vec<Addition>,
 }
 
@@ -56,8 +55,8 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Creates a new static archive, ready for modifying the archive specified
     /// by `config`.
-    fn new(sess: &'a Session, output: &Path) -> LlvmArchiveBuilder<'a> {
-        LlvmArchiveBuilder { sess, dst: output.to_path_buf(), additions: Vec::new() }
+    fn new(sess: &'a Session) -> LlvmArchiveBuilder<'a> {
+        LlvmArchiveBuilder { sess, additions: Vec::new() }
     }
 
     fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
@@ -88,8 +87,8 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(mut self) -> bool {
-        match self.build_with_llvm() {
+    fn build(mut self, output: &Path) -> bool {
+        match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
             Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
         }
@@ -241,7 +240,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
-    fn build_with_llvm(&mut self) -> io::Result<bool> {
+    fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
         let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
             self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
@@ -251,7 +250,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let mut strings = Vec::new();
         let mut members = Vec::new();
 
-        let dst = CString::new(self.dst.to_str().unwrap())?;
+        let dst = CString::new(output.to_str().unwrap())?;
 
         unsafe {
             for addition in &mut additions {

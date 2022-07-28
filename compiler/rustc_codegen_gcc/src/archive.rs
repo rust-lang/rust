@@ -8,7 +8,6 @@ use rustc_session::cstore::DllImport;
 
 struct ArchiveConfig<'a> {
     sess: &'a Session,
-    dst: PathBuf,
     use_native_ar: bool,
     use_gnu_style_archive: bool,
 }
@@ -31,10 +30,9 @@ pub struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path) -> Self {
+    fn new(sess: &'a Session) -> Self {
         let config = ArchiveConfig {
             sess,
-            dst: output.to_path_buf(),
             use_native_ar: false,
             // FIXME test for linux and System V derivatives instead
             use_gnu_style_archive: sess.target.options.archive_format == "gnu",
@@ -77,7 +75,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self) -> bool {
+    fn build(mut self, output: &Path) -> bool {
         use std::process::Command;
 
         fn add_file_using_ar(archive: &Path, file: &Path) {
@@ -97,17 +95,17 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         }
 
         let mut builder = if self.config.use_native_ar {
-            BuilderKind::NativeAr(&self.config.dst)
+            BuilderKind::NativeAr(output)
         } else if self.config.use_gnu_style_archive {
             BuilderKind::Gnu(ar::GnuBuilder::new(
-                File::create(&self.config.dst).unwrap(),
+                File::create(output).unwrap(),
                 self.entries
                     .iter()
                     .map(|(name, _)| name.as_bytes().to_vec())
                     .collect(),
             ))
         } else {
-            BuilderKind::Bsd(ar::Builder::new(File::create(&self.config.dst).unwrap()))
+            BuilderKind::Bsd(ar::Builder::new(File::create(output).unwrap()))
         };
 
         let any_members = !self.entries.is_empty();
@@ -164,10 +162,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         std::mem::drop(builder);
 
         // Run ranlib to be able to link the archive
-        let status = std::process::Command::new("ranlib")
-            .arg(self.config.dst)
-            .status()
-            .expect("Couldn't run ranlib");
+        let status =
+            std::process::Command::new("ranlib").arg(output).status().expect("Couldn't run ranlib");
 
         if !status.success() {
             self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));

@@ -101,14 +101,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
-                    link_rlib::<B>(
-                        sess,
-                        codegen_results,
-                        RlibFlavor::Normal,
-                        &out_filename,
-                        &path,
-                    )?
-                    .build();
+                    info!("preparing rlib to {:?}", out_filename);
+                    link_rlib::<B>(sess, codegen_results, RlibFlavor::Normal, &path)?
+                        .build(&out_filename);
                 }
                 CrateType::Staticlib => {
                     link_staticlib::<B>(sess, codegen_results, &out_filename, &path)?;
@@ -249,14 +244,11 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
     flavor: RlibFlavor,
-    out_filename: &Path,
     tmpdir: &MaybeTempDir,
 ) -> Result<B, ErrorGuaranteed> {
-    info!("preparing rlib to {:?}", out_filename);
-
     let lib_search_paths = archive_search_paths(sess);
 
-    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename);
+    let mut ab = <B as ArchiveBuilder>::new(sess);
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
@@ -451,8 +443,8 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     out_filename: &Path,
     tempdir: &MaybeTempDir,
 ) -> Result<(), ErrorGuaranteed> {
-    let mut ab =
-        link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir)?;
+    info!("preparing staticlib to {:?}", out_filename);
+    let mut ab = link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, tempdir)?;
     let mut all_native_libs = vec![];
 
     let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
@@ -514,7 +506,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         sess.fatal(&e);
     }
 
-    ab.build();
+    ab.build(out_filename);
 
     if !all_native_libs.is_empty() {
         if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
@@ -2479,7 +2471,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             let is_builtins = sess.target.no_builtins
                 || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
-            let mut archive = <B as ArchiveBuilder>::new(sess, &dst);
+            let mut archive = <B as ArchiveBuilder>::new(sess);
             if let Err(e) = archive.add_archive(cratepath, move |f| {
                 if f == METADATA_FILENAME {
                     return true;
@@ -2510,7 +2502,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             }) {
                 sess.fatal(&format!("failed to build archive from rlib: {}", e));
             }
-            if archive.build() {
+            if archive.build(&dst) {
                 link_upstream(&dst);
             }
         });
