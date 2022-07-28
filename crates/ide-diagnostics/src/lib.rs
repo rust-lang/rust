@@ -50,6 +50,7 @@ mod handlers {
     pub(crate) mod field_shorthand;
     pub(crate) mod useless_braces;
     pub(crate) mod unlinked_file;
+    pub(crate) mod json_is_not_rust;
 }
 
 #[cfg(test)]
@@ -175,6 +176,7 @@ pub fn diagnostics(
     for node in parse.tree().syntax().descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
+        handlers::json_is_not_rust::json_in_items(&mut res, file_id, &node);
     }
 
     let module = sema.to_module_def(file_id);
