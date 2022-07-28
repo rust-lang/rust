@@ -174,6 +174,7 @@ mod as_conversions;
 mod as_underscore;
 mod asm_syntax;
 mod assertions_on_constants;
+mod assertions_on_result_states;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
@@ -548,6 +549,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| Box::new(utils::internal_lints::MsrvAttrImpl));
     }
 
+    let arithmetic_allowed = conf.arithmetic_allowed.clone();
+    store.register_late_pass(move || Box::new(operators::arithmetic::Arithmetic::new(arithmetic_allowed.clone())));
     store.register_late_pass(|| Box::new(utils::dump_hir::DumpHir));
     store.register_late_pass(|| Box::new(utils::author::Author));
     let await_holding_invalid_types = conf.await_holding_invalid_types.clone();
@@ -727,6 +730,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(unnecessary_sort_by::UnnecessarySortBy));
     store.register_late_pass(move || Box::new(unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api)));
     store.register_late_pass(|| Box::new(assertions_on_constants::AssertionsOnConstants));
+    store.register_late_pass(|| Box::new(assertions_on_result_states::AssertionsOnResultStates));
     store.register_late_pass(|| Box::new(transmuting_null::TransmutingNull));
     store.register_late_pass(|| Box::new(path_buf_push_overwrite::PathBufPushOverwrite));
     store.register_late_pass(|| Box::new(inherent_to_string::InherentToString));
@@ -782,7 +786,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(|| Box::new(default::Default::default()));
-    store.register_late_pass(|| Box::new(unused_self::UnusedSelf));
+    store.register_late_pass(move || Box::new(unused_self::UnusedSelf::new(avoid_breaking_exported_api)));
     store.register_late_pass(|| Box::new(mutable_debug_assertion::DebugAssertWithMutCall));
     store.register_late_pass(|| Box::new(exit::Exit));
     store.register_late_pass(|| Box::new(to_digit_is_some::ToDigitIsSome));
@@ -916,7 +920,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let verbose_bit_mask_threshold = conf.verbose_bit_mask_threshold;
     store.register_late_pass(move || Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
     store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
-    store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports));
+    store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports::default()));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

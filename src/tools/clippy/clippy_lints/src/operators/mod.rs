@@ -1,7 +1,3 @@
-use rustc_hir::{Body, Expr, ExprKind, UnOp};
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-
 mod absurd_extreme_comparisons;
 mod assign_op_pattern;
 mod bit_mask;
@@ -24,6 +20,12 @@ mod op_ref;
 mod ptr_eq;
 mod self_assignment;
 mod verbose_bit_mask;
+
+pub(crate) mod arithmetic;
+
+use rustc_hir::{Body, Expr, ExprKind, UnOp};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -55,6 +57,42 @@ declare_clippy_lint! {
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
     "a comparison with a maximum or minimum value that is always true or false"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for any kind of arithmetic operation of any type.
+    ///
+    /// Operators like `+`, `-`, `*` or `<<` are usually capable of overflowing according to the [Rust
+    /// Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#overflow),
+    /// or can panic (`/`, `%`). Known safe built-in types like `Wrapping` or `Saturing` are filtered
+    /// away.
+    ///
+    /// ### Why is this bad?
+    /// Integer overflow will trigger a panic in debug builds or will wrap in
+    /// release mode. Division by zero will cause a panic in either mode. In some applications one
+    /// wants explicitly checked, wrapping or saturating arithmetic.
+    ///
+    /// #### Example
+    /// ```rust
+    /// # let a = 0;
+    /// a + 1;
+    /// ```
+    ///
+    /// Third-party types also tend to overflow.
+    ///
+    /// #### Example
+    /// ```ignore,rust
+    /// use rust_decimal::Decimal;
+    /// let _n = Decimal::MAX + Decimal::MAX;
+    /// ```
+    ///
+    /// ### Allowed types
+    /// Custom allowed types can be specified through the "arithmetic-allowed" filter.
+    #[clippy::version = "1.64.0"]
+    pub ARITHMETIC,
+    restriction,
+    "any arithmetic expression that could overflow or panic"
 }
 
 declare_clippy_lint! {
@@ -747,6 +785,7 @@ pub struct Operators {
 }
 impl_lint_pass!(Operators => [
     ABSURD_EXTREME_COMPARISONS,
+    ARITHMETIC,
     INTEGER_ARITHMETIC,
     FLOAT_ARITHMETIC,
     ASSIGN_OP_PATTERN,

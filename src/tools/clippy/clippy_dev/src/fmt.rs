@@ -13,7 +13,7 @@ pub enum CliError {
     IoError(io::Error),
     RustfmtNotInstalled,
     WalkDirError(walkdir::Error),
-    RaSetupActive,
+    IntellijSetupActive,
 }
 
 impl From<io::Error> for CliError {
@@ -48,7 +48,7 @@ pub fn run(check: bool, verbose: bool) {
             .expect("Failed to read clippy Cargo.toml")
             .contains(&"[target.'cfg(NOT_A_PLATFORM)'.dependencies]")
         {
-            return Err(CliError::RaSetupActive);
+            return Err(CliError::IntellijSetupActive);
         }
 
         rustfmt_test(context)?;
@@ -93,11 +93,11 @@ pub fn run(check: bool, verbose: bool) {
             CliError::WalkDirError(err) => {
                 eprintln!("error: {}", err);
             },
-            CliError::RaSetupActive => {
+            CliError::IntellijSetupActive => {
                 eprintln!(
                     "error: a local rustc repo is enabled as path dependency via `cargo dev setup intellij`.
 Not formatting because that would format the local repo as well!
-Please revert the changes to Cargo.tomls first."
+Please revert the changes to Cargo.tomls with `cargo dev remove intellij`."
                 );
             },
         }

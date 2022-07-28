@@ -1028,9 +1028,10 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             let mut app = Applicability::MachineApplicable;
             let (snip, snip_is_macro) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
             span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, state.msg, |diag| {
+                let calls_field = matches!(expr.kind, ExprKind::Field(..)) && matches!(data.position, Position::Callee);
                 let sugg = if !snip_is_macro
-                    && expr.precedence().order() < data.position.precedence()
                     && !has_enclosing_paren(&snip)
+                    && (expr.precedence().order() < data.position.precedence() || calls_field)
                 {
                     format!("({})", snip)
                 } else {
