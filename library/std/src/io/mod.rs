@@ -2234,8 +2234,12 @@ pub trait BufRead: Read {
     /// Returns an iterator over the lines of this reader.
     ///
     /// The iterator returned from this function will yield instances of
-    /// <code>[io::Result]<[String]></code>. Each string returned will *not* have a newline
-    /// byte (the `0xA` byte) or `CRLF` (`0xD`, `0xA` bytes) at the end.
+    /// <code>[io::Result]<[String]></code>, bubbling up any IO errors
+    /// encountered reading from the source or any errors parsing the read
+    /// bytes as UTF-8.
+    ///
+    /// Each string returned will *not* have a newline byte (`0xA`) or the
+    /// `CRLF` bytes (`0xD`, `0xA`) at the end.
     ///
     /// [io::Result]: self::Result "io::Result"
     ///
