@@ -1960,6 +1960,7 @@ impl<'test> TestCx<'test> {
                     "-Zdump-mir=all",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
+                    "-Zmir-pretty-relative-line-numbers=yes",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
                     rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);

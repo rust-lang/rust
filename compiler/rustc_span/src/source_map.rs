@@ -463,6 +463,33 @@ impl SourceMap {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
+    /// Format the span location suitable for pretty printing anotations with relative line numbers
+    pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
+        if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {
+            return "no-location".to_string();
+        }
+
+        let lo = self.lookup_char_pos(sp.lo());
+        let hi = self.lookup_char_pos(sp.hi());
+        let offset = self.lookup_char_pos(relative_to.lo());
+
+        if lo.file.name != offset.file.name {
+            return self.span_to_embeddable_string(sp);
+        }
+
+        let lo_line = lo.line.saturating_sub(offset.line);
+        let hi_line = hi.line.saturating_sub(offset.line);
+
+        format!(
+            "{}:+{}:{}: +{}:{}",
+            lo.file.name.display(FileNameDisplayPreference::Remapped),
+            lo_line,
+            lo.col.to_usize() + 1,
+            hi_line,
+            hi.col.to_usize() + 1,
+        )
+    }
+
     /// Format the span location to be printed in diagnostics. Must not be emitted
     /// to build artifacts as this may leak local file paths. Use span_to_embeddable_string
     /// for string suitable for embedding.

@@ -1379,6 +1379,8 @@ options! {
         "use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be \
         enabled, overriding all other checks. Passes that are not specified are enabled or \
         disabled by other flags as usual."),
+    mir_pretty_relative_line_numbers: bool = (false, parse_bool, [UNTRACKED],
+        "use line numbers relative to the function in mir pretty printing"),
     #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field"))]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),

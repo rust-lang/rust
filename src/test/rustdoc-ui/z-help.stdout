@@ -76,6 +76,7 @@
     -Z                              meta-stats=val -- gather metadata statistics (default: no)
     -Z                          mir-emit-retag=val -- emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 (default: no)
     -Z                       mir-enable-passes=val -- use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be enabled, overriding all other checks. Passes that are not specified are enabled or disabled by other flags as usual.
+    -Z        mir-pretty-relative-line-numbers=val -- use line numbers relative to the function in mir pretty printing
     -Z                           mir-opt-level=val -- MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)
     -Z                         move-size-limit=val -- the size at which the `large_assignments` lint starts to be emitted
     -Z                         mutable-noalias=val -- emit noalias metadata for mutable references (default: yes)

@@ -360,7 +360,7 @@ where
             "{:A$} // {}{}",
             indented_body,
             if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-            comment(tcx, statement.source_info),
+            comment(tcx, statement.source_info, body.span),
             A = ALIGN,
         )?;
 
@@ -381,7 +381,7 @@ where
         "{:A$} // {}{}",
         indented_terminator,
         if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-        comment(tcx, data.terminator().source_info),
+        comment(tcx, data.terminator().source_info, body.span),
         A = ALIGN,
     )?;
 
@@ -518,8 +518,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     }
 }
 
-fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    format!("scope {} at {}", scope.index(), tcx.sess.source_map().span_to_embeddable_string(span))
+fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo, function_span: Span) -> String {
+    let location = if tcx.sess.opts.unstable_opts.mir_pretty_relative_line_numbers {
+        tcx.sess.source_map().span_to_relative_line_string(span, function_span)
+    } else {
+        tcx.sess.source_map().span_to_embeddable_string(span)
+    };
+
+    format!("scope {} at {}", scope.index(), location,)
 }
 
 /// Prints local variables in a scope tree.
@@ -550,7 +556,7 @@ fn write_scope_tree(
             "{0:1$} // in {2}",
             indented_debug_info,
             ALIGN,
-            comment(tcx, var_debug_info.source_info),
+            comment(tcx, var_debug_info.source_info, body.span),
         )?;
     }
 
@@ -585,7 +591,7 @@ fn write_scope_tree(
             indented_decl,
             ALIGN,
             local_name,
-            comment(tcx, local_decl.source_info),
+            comment(tcx, local_decl.source_info, body.span),
         )?;
     }
 
