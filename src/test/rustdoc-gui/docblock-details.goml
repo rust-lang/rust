@@ -1,7 +1,7 @@
 // This ensures that the `<details>`/`<summary>` elements are displayed as expected.
 goto: file://|DOC_PATH|/test_docs/details/struct.Details.html
 show-text: true
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 
 // We first check that the headers in the `.top-doc` doc block still have their

@@ -12,6 +12,7 @@ window.mainTheme = document.getElementById("mainThemeStyle");
 // If you update this line, then you also need to update the two media queries with the same
 // warning in rustdoc.css
 window.RUSTDOC_MOBILE_BREAKPOINT = 701;
+const CURRENT_THEME_SETTING_VERSION = "2";
 
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
@@ -47,7 +48,7 @@ function isUsingSystemTheme() {
 }
 
 function getTheme() {
-    const current = getSettingValue("theme2");
+    const current = getSettingValue(`theme${CURRENT_THEME_SETTING_VERSION}`);
     if (current === null) {
         // We try to get what's being used in the previous version.
         return getSettingValue("theme");

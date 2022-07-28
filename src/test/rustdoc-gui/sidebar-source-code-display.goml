@@ -33,7 +33,7 @@ assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 show-text: true
 
 // First we start with the light theme.
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 reload:
 // Waiting for the sidebar to be displayed...
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
@@ -88,7 +88,7 @@ assert-css: (
 )
 
 // Now with the dark theme.
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 // Waiting for the sidebar to be displayed...
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
@@ -143,7 +143,7 @@ assert-css: (
 )
 
 // And finally with the ayu theme.
-local-storage: {"rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme2": "ayu"}
 reload:
 // Waiting for the sidebar to be displayed...
 wait-for-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})

@@ -1,7 +1,7 @@
 // Checks multiple things on the sidebar display (width of its elements, colors, etc).
 goto: file://|DOC_PATH|/test_docs/index.html
 show-text: true
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 // We reload the page so the local storage settings are being used.
 reload:
 

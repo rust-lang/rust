@@ -1,7 +1,7 @@
 // Local js definitions:
 /* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
 /* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
-/* global MAIN_ID, getVar, getSettingsButton, isUsingSystemTheme */
+/* global MAIN_ID, getVar, getSettingsButton, isUsingSystemTheme, CURRENT_THEME_SETTING_VERSION */
 
 "use strict";
 
@@ -12,7 +12,7 @@
         updateLocalStorage(settingName, value);
 
         switch (settingName) {
-            case "theme":
+            case `theme${CURRENT_THEME_SETTING_VERSION}`:
             case "preferred-dark-theme":
             case "preferred-light-theme":
                 updateSystemTheme();
@@ -92,6 +92,13 @@
         });
     }
 
+    function getOr(obj, property, or) {
+        if (obj[property] !== undefined) {
+            return obj[property];
+        }
+        return or;
+    }
+
     /**
      * This function builds the sections inside the "settings page". It takes a `settings` list
      * as argument which describes each setting and how to render it. It returns a string
@@ -107,6 +114,7 @@
         for (const setting of settings) {
             output += "<div class=\"setting-line\">";
             const js_data_name = setting["js_name"];
+            const js_data_version = getOr(setting, "js_name_version", "");
             const setting_name = setting["name"];
 
             if (setting["options"] !== undefined) {
@@ -119,8 +127,8 @@
                     const checked = optionAttr === setting["default"] ? " checked" : "";
 
                     output += `<label for="${js_data_name}-${optionAttr}" class="choice">\
-                           <input type="radio" name="${js_data_name}" \
-                                id="${js_data_name}-${optionAttr}" value="${optionAttr}"${checked}>\
+                           <input type="radio" name="${js_data_name}${js_data_version}" \
+                               id="${js_data_name}-${optionAttr}" value="${optionAttr}"${checked}>\
                            <span>${option}</span>\
                         </label>`;
                 });
@@ -150,6 +158,7 @@
             {
                 "name": "Theme",
                 "js_name": "theme",
+                "js_name_version": CURRENT_THEME_SETTING_VERSION,
                 "default": "system-preference",
                 "options": themes.concat("system preference"),
             },

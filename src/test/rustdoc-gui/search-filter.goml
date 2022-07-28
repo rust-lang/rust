@@ -53,7 +53,7 @@ assert-text: (".search-results-title", "Results in all crates", STARTS_WITH)
 
 // Checking the display of the crate filter.
 // We start with the light theme.
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 reload:
 
 timeout: 2000

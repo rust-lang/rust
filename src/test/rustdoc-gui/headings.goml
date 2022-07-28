@@ -152,7 +152,7 @@ assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
 
 // Checking colors now.
 show-text: true
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 assert-css: (
     ".top-doc .docblock h2",
@@ -183,7 +183,7 @@ assert-css: (
     {"color": "rgb(0, 0, 0)", "border-bottom": "0px none rgb(221, 221, 221)"},
 )
 
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 assert-css: (
     ".top-doc .docblock h2",
@@ -214,7 +214,7 @@ assert-css: (
     {"color": "rgb(221, 221, 221)", "border-bottom": "0px none rgb(210, 210, 210)"},
 )
 
-local-storage: {"rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme2": "ayu"}
 reload:
 assert-css: (
     ".top-doc .docblock h2",
@@ -245,14 +245,14 @@ assert-css: (
     {"color": "rgb(197, 197, 197)", "border-bottom": "0px none rgb(92, 103, 115)"},
 )
 
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
 
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
 
-local-storage: {"rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme2": "ayu"}
 reload:
 assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)

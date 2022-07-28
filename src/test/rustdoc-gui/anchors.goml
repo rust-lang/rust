@@ -5,7 +5,7 @@ goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 show-text: true
 
 // Set the theme to light.
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 // We reload the page so the local storage settings are being used.
 reload:
 
@@ -56,7 +56,7 @@ assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
 //
 // We do the same checks with the dark theme now.
 //
-local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme2": "dark"}
 goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 
 assert-css: ("#toggle-all-docs", {"color": "rgb(221, 221, 221)"})
@@ -106,7 +106,7 @@ assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
 //
 // We do the same checks with the ayu theme now.
 //
-local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
+local-storage: {"rustdoc-theme2": "ayu"}
 goto: file://|DOC_PATH|/staged_api/struct.Foo.html
 
 assert-css: ("#toggle-all-docs", {"color": "rgb(197, 197, 197)"})

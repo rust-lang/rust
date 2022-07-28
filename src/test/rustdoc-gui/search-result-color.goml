@@ -5,7 +5,7 @@ goto: file://|DOC_PATH|/test_docs/index.html?search=coo
 show-text: true
 
 // Ayu theme
-local-storage: {"rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme2": "ayu"}
 reload:
 
 // Waiting for the search results to appear...
@@ -43,7 +43,7 @@ assert-css: (
 )
 
 // Dark theme
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 
 // Waiting for the search results to appear...
@@ -81,7 +81,7 @@ assert-css: (
 )
 
 // Light theme
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 reload:
 
 // Waiting for the search results to appear...
@@ -122,7 +122,7 @@ assert-css: (
 goto: file://|DOC_PATH|/test_docs/index.html
 // We set the theme so we're sure that the correct values will be used, whatever the computer
 // this test is running on.
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
 // We reload the page so the local storage settings are being used.

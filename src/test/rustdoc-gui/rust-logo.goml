@@ -2,7 +2,7 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 
 // First we start with the dark theme.
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 
 assert-css: (
@@ -13,7 +13,7 @@ assert-css: (
 // In the source view page now.
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 
 assert-css: (
@@ -22,7 +22,7 @@ assert-css: (
 )
 
 // Then with the ayu theme.
-local-storage: {"rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme2": "ayu"}
 reload:
 
 assert-css: (
@@ -33,7 +33,7 @@ assert-css: (
 // In the source view page now.
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 
-local-storage: {"rustdoc-theme": "ayu"}
+local-storage: {"rustdoc-theme2": "ayu"}
 reload:
 
 assert-css: (
@@ -42,7 +42,7 @@ assert-css: (
 )
 
 // And finally with the light theme.
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 reload:
 
 assert-css: (
@@ -53,7 +53,7 @@ assert-css: (
 // In the source view page now.
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 
-local-storage: {"rustdoc-theme": "light"}
+local-storage: {"rustdoc-theme2": "light"}
 reload:
 
 assert-css: (

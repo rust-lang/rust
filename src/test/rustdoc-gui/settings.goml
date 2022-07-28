@@ -30,7 +30,7 @@ wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
 // Now let's check the content of the settings menu.
-local-storage: {"rustdoc-theme": "dark"}
+local-storage: {"rustdoc-theme2": "dark"}
 reload:
 click: "#settings-menu"
 wait-for: "#settings"
@@ -111,7 +111,7 @@ assert-text: ("#theme-system-preference + span", "system preference")
 // Wait for the hidden element to show up.
 wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
 assert: ".setting-line:not(.hidden) #preferred-light-theme"
-assert-local-storage: {"rustdoc-theme": "system-preference"}
+assert-local-storage: {"rustdoc-theme2": "system-preference"}
 
 // We check their text as well.
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
