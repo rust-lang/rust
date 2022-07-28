@@ -387,7 +387,7 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Result<MoveDat<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    ) -> MoveDat<'tcx> {
         builder::gather_moves(body, tcx, param_env)
     }
 

@@ -207,12 +207,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
-pub type MoveDat<'tcx> = (FxHashMap<Local, Place<'tcx>>, MoveData<'tcx>);
+pub type MoveDat<'tcx> = Result<
+    (FxHashMap<Local, Place<'tcx>>, MoveData<'tcx>),
+    (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
+>;
 
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn finalize(
-        self,
-    ) -> Result<MoveDat<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    fn finalize(self) -> MoveDat<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -237,7 +238,7 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<MoveDat<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+) -> MoveDat<'tcx> {
     let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();
