@@ -141,10 +141,6 @@
     -Z                               show-span=val -- show spans for compiler debugging (expr|pat|ty)
     -Z                              span-debug=val -- forward proc_macro::Span's `Debug` impl to `Span`
     -Z                       span-free-formats=val -- exclude spans when debug-printing compiler state (default: no)
-    -Z                      src-hash-algorithm=val -- hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)
-    -Z                         stack-protector=val -- control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)
-    -Z                      strict-init-checks=val -- control if mem::uninitialized and mem::zeroed panic on more UB
-    -Z                                   strip=val -- tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)
     -Z                      split-bundled-libs=val -- if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries
     -Z                        split-dwarf-kind=val -- split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
         (default: `split`)
@@ -154,6 +150,10 @@
         `single`: sections which do not require relocation are written into object file but ignored
                   by the linker
     -Z                    split-dwarf-inlining=val -- provide minimal debug info in the object/executable to facilitate online symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF
+    -Z                      src-hash-algorithm=val -- hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)
+    -Z                         stack-protector=val -- control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)
+    -Z                      strict-init-checks=val -- control if mem::uninitialized and mem::zeroed panic on more UB
+    -Z                                   strip=val -- tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)
     -Z                 symbol-mangling-version=val -- which mangling version to use for symbol names ('legacy' (default) or 'v0')
     -Z                                   teach=val -- show extended diagnostic help (default: no)
     -Z                               temps-dir=val -- the directory the intermediate files are written to
