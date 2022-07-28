@@ -206,7 +206,9 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Otherwise try using
-    /// ```rust
+    /// ```rust,ignore
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
     /// option?;
     ///
     /// // or
