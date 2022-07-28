@@ -398,23 +398,19 @@ fn clean_type_outlives_predicate<'tcx>(
     })
 }
 
-impl<'tcx> Clean<'tcx, Term> for ty::Term<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
-        match self {
-            ty::Term::Ty(ty) => Term::Type(clean_middle_ty(*ty, cx, None)),
-            ty::Term::Const(c) => Term::Constant(clean_middle_const(*c, cx)),
-        }
+fn clean_middle_term<'tcx>(term: ty::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
+    match term {
+        ty::Term::Ty(ty) => Term::Type(clean_middle_ty(ty, cx, None)),
+        ty::Term::Const(c) => Term::Constant(clean_middle_const(c, cx)),
     }
 }
 
-impl<'tcx> Clean<'tcx, Term> for hir::Term<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Term {
-        match self {
-            hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
-            hir::Term::Const(c) => {
-                let def_id = cx.tcx.hir().local_def_id(c.hir_id);
-                Term::Constant(clean_middle_const(ty::Const::from_anon_const(cx.tcx, def_id), cx))
-            }
+fn clean_hir_term<'tcx>(term: &hir::Term<'tcx>, cx: &mut DocContext<'tcx>) -> Term {
+    match term {
+        hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
+        hir::Term::Const(c) => {
+            let def_id = cx.tcx.hir().local_def_id(c.hir_id);
+            Term::Constant(clean_middle_const(ty::Const::from_anon_const(cx.tcx, def_id), cx))
         }
     }
 }
@@ -426,7 +422,7 @@ fn clean_projection_predicate<'tcx>(
     let ty::ProjectionPredicate { projection_ty, term } = pred;
     WherePredicate::EqPredicate {
         lhs: clean_projection(projection_ty, cx, None),
-        rhs: term.clean(cx),
+        rhs: clean_middle_term(term, cx),
     }
 }
 
@@ -474,47 +470,44 @@ fn projection_to_path_segment<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, GenericParamDef> for ty::GenericParamDef {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericParamDef {
-        let (name, kind) = match self.kind {
-            ty::GenericParamDefKind::Lifetime => {
-                (self.name, GenericParamDefKind::Lifetime { outlives: vec![] })
-            }
-            ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-                let default = if has_default {
-                    Some(clean_middle_ty(cx.tcx.type_of(self.def_id), cx, Some(self.def_id)))
-                } else {
-                    None
-                };
-                (
-                    self.name,
-                    GenericParamDefKind::Type {
-                        did: self.def_id,
-                        bounds: vec![], // These are filled in from the where-clauses.
-                        default: default.map(Box::new),
-                        synthetic,
-                    },
-                )
-            }
-            ty::GenericParamDefKind::Const { has_default } => (
-                self.name,
-                GenericParamDefKind::Const {
-                    did: self.def_id,
-                    ty: Box::new(clean_middle_ty(
-                        cx.tcx.type_of(self.def_id),
-                        cx,
-                        Some(self.def_id),
-                    )),
-                    default: match has_default {
-                        true => Some(Box::new(cx.tcx.const_param_default(self.def_id).to_string())),
-                        false => None,
-                    },
+fn clean_generic_param_def<'tcx>(
+    def: &ty::GenericParamDef,
+    cx: &mut DocContext<'tcx>,
+) -> GenericParamDef {
+    let (name, kind) = match def.kind {
+        ty::GenericParamDefKind::Lifetime => {
+            (def.name, GenericParamDefKind::Lifetime { outlives: vec![] })
+        }
+        ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
+            let default = if has_default {
+                Some(clean_middle_ty(cx.tcx.type_of(def.def_id), cx, Some(def.def_id)))
+            } else {
+                None
+            };
+            (
+                def.name,
+                GenericParamDefKind::Type {
+                    did: def.def_id,
+                    bounds: vec![], // These are filled in from the where-clauses.
+                    default: default.map(Box::new),
+                    synthetic,
                 },
-            ),
-        };
+            )
+        }
+        ty::GenericParamDefKind::Const { has_default } => (
+            def.name,
+            GenericParamDefKind::Const {
+                did: def.def_id,
+                ty: Box::new(clean_middle_ty(cx.tcx.type_of(def.def_id), cx, Some(def.def_id))),
+                default: match has_default {
+                    true => Some(Box::new(cx.tcx.const_param_default(def.def_id).to_string())),
+                    false => None,
+                },
+            },
+        ),
+    };
 
-        GenericParamDef { name, kind }
-    }
+    GenericParamDef { name, kind }
 }
 
 fn clean_generic_param<'tcx>(
@@ -672,7 +665,7 @@ fn clean_ty_generics<'tcx>(
         .iter()
         .filter_map(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime if param.name == kw::UnderscoreLifetime => None,
-            ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
+            ty::GenericParamDefKind::Lifetime => Some(clean_generic_param_def(param, cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
                     assert_eq!(param.index, 0);
@@ -682,9 +675,9 @@ fn clean_ty_generics<'tcx>(
                     impl_trait.insert(param.index.into(), vec![]);
                     return None;
                 }
-                Some(param.clean(cx))
+                Some(clean_generic_param_def(param, cx))
             }
-            ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
+            ty::GenericParamDefKind::Const { .. } => Some(clean_generic_param_def(param, cx)),
         })
         .collect::<Vec<GenericParamDef>>();
 
@@ -1682,7 +1675,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
                             .projection_ty,
                         cx,
                     ),
-                    kind: TypeBindingKind::Equality { term: pb.skip_binder().term.clean(cx) },
+                    kind: TypeBindingKind::Equality {
+                        term: clean_middle_term(pb.skip_binder().term, cx),
+                    },
                 });
             }
 
@@ -1746,7 +1741,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                                     Some(TypeBinding {
                                         assoc: projection_to_path_segment(proj.projection_ty, cx),
                                         kind: TypeBindingKind::Equality {
-                                            term: proj.term.clean(cx),
+                                            term: clean_middle_term(proj.term, cx),
                                         },
                                     })
                                 } else {
@@ -2283,7 +2278,7 @@ impl<'tcx> Clean<'tcx, TypeBindingKind> for hir::TypeBindingKind<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> TypeBindingKind {
         match *self {
             hir::TypeBindingKind::Equality { ref term } => {
-                TypeBindingKind::Equality { term: term.clean(cx) }
+                TypeBindingKind::Equality { term: clean_hir_term(term, cx) }
             }
             hir::TypeBindingKind::Constraint { bounds } => TypeBindingKind::Constraint {
                 bounds: bounds.iter().filter_map(|b| b.clean(cx)).collect(),
