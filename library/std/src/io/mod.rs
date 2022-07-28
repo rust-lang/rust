@@ -2147,8 +2147,8 @@ pub trait BufRead: Read {
     ///
     /// # Errors
     ///
-    /// This function has the same error semantics as [`read_until`] and will
-    /// also return an error if the read bytes are not valid UTF-8. If an I/O
+    /// This function has the same error semantics as [`read_until`] in addition
+    /// to also returning an error if the read bytes are not valid UTF-8. If an I/O
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
     ///
