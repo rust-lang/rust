@@ -172,10 +172,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         any_members
     }
 
-    fn sess(&self) -> &Session {
-        self.config.sess
-    }
-
     fn create_dll_import_lib(
         _sess: &Session,
         _lib_name: &str,
