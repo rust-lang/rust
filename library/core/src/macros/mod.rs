@@ -496,10 +496,9 @@ macro_rules! r#try {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
 macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => {{
-        let result = $dst.write_fmt($crate::format_args!($($arg)*));
-        result
-    }};
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args!($($arg)*))
+    };
 }
 
 /// Write formatted data into a buffer, with a newline appended.
@@ -554,10 +553,9 @@ macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
     };
-    ($dst:expr, $($arg:tt)*) => {{
-        let result = $dst.write_fmt($crate::format_args_nl!($($arg)*));
-        result
-    }};
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args_nl!($($arg)*))
+    };
 }
 
 /// Indicates unreachable code.

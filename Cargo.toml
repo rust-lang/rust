@@ -60,7 +60,7 @@ exclude = [
 # verify that this is the case. This requires, however, that the crate is built
 # without overflow checks and debug assertions. Forcefully disable debug
 # assertions and overflow checks here which should ensure that even if these
-# assertions are enabled for libstd we won't enable then for compiler_builtins
+# assertions are enabled for libstd we won't enable them for compiler_builtins
 # which should ensure we still link everything correctly.
 debug-assertions = false
 overflow-checks = false

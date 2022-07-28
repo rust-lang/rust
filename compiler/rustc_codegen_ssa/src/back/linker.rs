@@ -566,9 +566,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn no_gc_sections(&mut self) {
-        if self.sess.target.is_like_osx {
-            self.linker_arg("-no_dead_strip");
-        } else if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
+        if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
             self.linker_arg("--no-gc-sections");
         }
     }
