@@ -197,12 +197,21 @@ declare_clippy_lint! {
     /// result.unwrap();
     /// ```
     ///
-    /// Use instead:
+    /// If [expect_used](#expect_used) is allowed, instead:
     /// ```rust
     /// # let option = Some(1);
     /// # let result: Result<usize, ()> = Ok(1);
     /// option.expect("more helpful message");
     /// result.expect("more helpful message");
+    /// ```
+    ///
+    /// Otherwise try using
+    /// ```rust
+    /// option?;
+    ///
+    /// // or
+    ///
+    /// result?;
     /// ```
     #[clippy::version = "1.45.0"]
     pub UNWRAP_USED,
