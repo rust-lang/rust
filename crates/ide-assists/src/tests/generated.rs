@@ -535,7 +535,7 @@ mod foo {
     pub struct Baz;
 }
 
-use foo::{Baz, Bar};
+use foo::{Bar, Baz};
 
 fn qux(bar: Bar, baz: Baz) {}
 "#####,
