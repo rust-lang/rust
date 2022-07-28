@@ -92,8 +92,8 @@ impl fmt::Display for ConfError {
 
 impl Error for ConfError {}
 
-fn conf_error(s: String) -> Box<dyn Error> {
-    Box::new(ConfError(s))
+fn conf_error(s: impl Into<String>) -> Box<dyn Error> {
+    Box::new(ConfError(s.into()))
 }
 
 macro_rules! define_Conf {
@@ -154,7 +154,13 @@ macro_rules! define_Conf {
                                         $name = Some(value);
                                         // $new_conf is the same as one of the defined `$name`s, so
                                         // this variable is defined in line 2 of this function.
-                                        $($new_conf = Some(value);)?
+                                        $(match $new_conf {
+                                            Some(_) => errors.push(conf_error(concat!(
+                                                "duplicate field `", stringify!($new_conf),
+                                                "` (provided as `", stringify!($name), "`)"
+                                            ))),
+                                            None => $new_conf = Some(value),
+                                        })?
                                     },
                                 }
                             }

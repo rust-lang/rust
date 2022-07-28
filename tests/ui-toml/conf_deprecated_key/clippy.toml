@@ -1,4 +1,4 @@
-# that one is an error
+# that one is a warning
 cyclomatic-complexity-threshold = 2
 
 # that one is white-listed
