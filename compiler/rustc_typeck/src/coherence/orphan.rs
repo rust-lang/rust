@@ -52,12 +52,14 @@ fn do_orphan_check_impl<'tcx>(
 
     // Ensure no opaque types are present in this impl header. See issues #76202 and #86411 for examples,
     // and #84660 where it would otherwise allow unsoundness.
-    if trait_ref.has_opaque_types() {
+    if trait_ref.has_opaque_types() || trait_ref.has_projections() {
+        let param_env = tcx.param_env(def_id);
         trace!("{:#?}", item);
         // First we find the opaque type in question.
         for ty in trait_ref.substs {
             for ty in ty.walk() {
                 let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
+                let ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
                 let ty::Opaque(def_id, _) = *ty.kind() else { continue };
                 trace!(?def_id);
 
@@ -99,7 +101,6 @@ fn do_orphan_check_impl<'tcx>(
                 return Err(reported);
             }
         }
-        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
     }
 
     match traits::orphan_check(tcx, item.def_id.to_def_id()) {

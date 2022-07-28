@@ -1,0 +1,14 @@
+error: cannot implement trait on type alias impl trait
+  --> $DIR/impl_trait_for_tait.rs:20:1
+   |
+LL | impl Yay for <() as HideIt>::Assoc {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/impl_trait_for_tait.rs:4:14
+   |
+LL | type Alias = impl Sized;
+   |              ^^^^^^^^^^
+
+error: aborting due to previous error
+
