@@ -22,6 +22,7 @@ intrinsics! {
     // custom calling convention which can't be implemented using a normal Rust function.
     #[naked]
     #[cfg(not(target_env = "msvc"))]
+    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_uidivmod() {
         core::arch::asm!(
             "push {{lr}}",
@@ -36,6 +37,7 @@ intrinsics! {
     }
 
     #[naked]
+    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_uldivmod() {
         core::arch::asm!(
             "push {{r4, lr}}",
@@ -52,6 +54,7 @@ intrinsics! {
     }
 
     #[naked]
+    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_idivmod() {
         core::arch::asm!(
             "push {{r0, r1, r4, lr}}",
@@ -65,6 +68,7 @@ intrinsics! {
     }
 
     #[naked]
+    #[cfg_attr(all(not(windows), not(target_vendor="apple")), linkage = "weak")]
     pub unsafe extern "C" fn __aeabi_ldivmod() {
         core::arch::asm!(
             "push {{r4, lr}}",
