@@ -1,0 +1,49 @@
+error[E0409]: variable `y` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/suggest-adding-or-removing-ref-for-binding-pattern.rs:11:43
+   |
+LL |         Blah::A(_, x, ref y) | Blah::B(x, y) => {}
+   |                           - first binding ^ bound in different ways
+
+error[E0409]: variable `y` is bound inconsistently across alternatives separated by `|`
+  --> $DIR/suggest-adding-or-removing-ref-for-binding-pattern.rs:17:43
+   |
+LL |         Blah::A(_, x, y) | Blah::B(x, ref y) => {}
+   |                       - first binding     ^ bound in different ways
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-adding-or-removing-ref-for-binding-pattern.rs:11:43
+   |
+LL |     match Blah::A(1, 1, 2) {
+   |           ---------------- this expression has type `Blah`
+LL |         Blah::A(_, x, ref y) | Blah::B(x, y) => {}
+   |                       -----               ^ expected `&usize`, found `usize`
+   |                       |
+   |                       first introduced with type `&usize` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+help: consider adding `ref`
+   |
+LL |         Blah::A(_, x, ref y) | Blah::B(x, ref y) => {}
+   |                                           +++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-adding-or-removing-ref-for-binding-pattern.rs:17:39
+   |
+LL |     match Blah::A(1, 1, 2) {
+   |           ---------------- this expression has type `Blah`
+LL |         Blah::A(_, x, y) | Blah::B(x, ref y) => {}
+   |                       -               ^^^^^ expected `usize`, found `&usize`
+   |                       |
+   |                       first introduced with type `usize` here
+   |
+   = note: in the same arm, a binding must have the same type in all alternatives
+help: consider removing `ref`
+   |
+LL -         Blah::A(_, x, y) | Blah::B(x, ref y) => {}
+LL +         Blah::A(_, x, y) | Blah::B(x, y) => {}
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0409.
+For more information about an error, try `rustc --explain E0308`.
