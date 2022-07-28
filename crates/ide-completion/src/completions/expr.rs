@@ -11,7 +11,14 @@ pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    &ExprCtx {
+    expr_ctx: &ExprCtx,
+) {
+    let _p = profile::span("complete_expr_path");
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
+
+    let &ExprCtx {
         in_block_expr,
         in_loop_body,
         after_if_expr,
@@ -23,12 +30,7 @@ pub(crate) fn complete_expr_path(
         ref impl_,
         in_match_guard,
         ..
-    }: &ExprCtx,
-) {
-    let _p = profile::span("complete_expr_path");
-    if !ctx.qualifier_ctx.none() {
-        return;
-    }
+    } = expr_ctx;
 
     let wants_mut_token =
         ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
