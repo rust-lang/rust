@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use rustc_codegen_ssa::back::archive::ArchiveBuilder;
+use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use rustc_session::Session;
 
 use rustc_session::cstore::DllImport;
@@ -21,6 +21,35 @@ enum ArchiveEntry {
     File(PathBuf),
 }
 
+pub struct ArArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+        let config = ArchiveConfig {
+            sess,
+            use_native_ar: false,
+            // FIXME test for linux and System V derivatives instead
+            use_gnu_style_archive: sess.target.options.archive_format == "gnu",
+        };
+
+        Box::new(ArArchiveBuilder {
+            config,
+            src_archives: vec![],
+            entries: vec![],
+        })
+    }
+
+    fn create_dll_import_lib(
+        &self,
+        _sess: &Session,
+        _lib_name: &str,
+        _dll_imports: &[DllImport],
+        _tmpdir: &Path,
+    ) -> PathBuf {
+        unimplemented!();
+    }
+}
+
 pub struct ArArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     src_archives: Vec<(PathBuf, ar::Archive<File>)>,
@@ -30,21 +59,6 @@ pub struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session) -> Self {
-        let config = ArchiveConfig {
-            sess,
-            use_native_ar: false,
-            // FIXME test for linux and System V derivatives instead
-            use_gnu_style_archive: sess.target.options.archive_format == "gnu",
-        };
-
-        ArArchiveBuilder {
-            config,
-            src_archives: vec![],
-            entries: vec![],
-        }
-    }
-
     fn add_file(&mut self, file: &Path) {
         self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string(),
@@ -52,10 +66,11 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ));
     }
 
-    fn add_archive<F>(&mut self, archive_path: &Path, mut skip: F) -> std::io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static,
-    {
+    fn add_archive(
+        &mut self,
+        archive_path: &Path,
+        mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> std::io::Result<()> {
         let mut archive = ar::Archive::new(std::fs::File::open(&archive_path)?);
         let archive_index = self.src_archives.len();
 
@@ -75,7 +90,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self, output: &Path) -> bool {
+    fn build(mut self: Box<Self>, output: &Path) -> bool {
         use std::process::Command;
 
         fn add_file_using_ar(archive: &Path, file: &Path) {
@@ -170,14 +185,5 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         }
 
         any_members
-    }
-
-    fn create_dll_import_lib(
-        _sess: &Session,
-        _lib_name: &str,
-        _dll_imports: &[DllImport],
-        _tmpdir: &Path,
-    ) -> PathBuf {
-        unimplemented!();
     }
 }
