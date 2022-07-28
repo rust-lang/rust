@@ -654,6 +654,8 @@ pub unsafe fn zeroed<T>() -> T {
 /// produce a value of type `T`, while doing nothing at all.
 ///
 /// **This function is deprecated.** Use [`MaybeUninit<T>`] instead.
+/// It also might be slower than using `MaybeUninit<T>` due to mitigations that were put in place to
+/// limit the potential harm caused by incorrect use of this function in legacy code.
 ///
 /// The reason for deprecation is that the function basically cannot be used
 /// correctly: it has the same effect as [`MaybeUninit::uninit().assume_init()`][uninit].
@@ -683,7 +685,15 @@ pub unsafe fn uninitialized<T>() -> T {
     // SAFETY: the caller must guarantee that an uninitialized value is valid for `T`.
     unsafe {
         intrinsics::assert_uninit_valid::<T>();
-        MaybeUninit::uninit().assume_init()
+        let mut val = MaybeUninit::<T>::uninit();
+
+        // Fill memory with 0x01, as an imperfect mitigation for old code that uses this function on
+        // bool, nonnull, and noundef types. But don't do this if we actively want to detect UB.
+        if !cfg!(any(miri, sanitize = "memory")) {
+            val.as_mut_ptr().write_bytes(0x01, 1);
+        }
+
+        val.assume_init()
     }
 }
 
