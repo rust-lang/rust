@@ -2,6 +2,7 @@
 /* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
 /* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
 /* global MAIN_ID, getVar, getSettingsButton, isUsingSystemTheme, CURRENT_THEME_SETTING_VERSION */
+/* global getTheme, getPreferredDarkTheme, getPreferredLightTheme */
 
 "use strict";
 
@@ -159,19 +160,19 @@
                 "name": "Theme",
                 "js_name": "theme",
                 "js_name_version": CURRENT_THEME_SETTING_VERSION,
-                "default": "system-preference",
+                "default": getTheme(),
                 "options": themes.concat("system preference"),
             },
             {
                 "name": "Preferred light theme",
                 "js_name": "preferred-light-theme",
-                "default": "light",
+                "default": getPreferredLightTheme(),
                 "options": themes,
             },
             {
                 "name": "Preferred dark theme",
                 "js_name": "preferred-dark-theme",
-                "default": "dark",
+                "default": getPreferredDarkTheme(),
                 "options": themes,
             },
             {

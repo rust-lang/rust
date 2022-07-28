@@ -47,13 +47,32 @@ function isUsingSystemTheme() {
     return current === null || current === "system-preference";
 }
 
+function valueOr(value, or) {
+    if (value !== null) {
+        return value;
+    }
+    return or;
+}
+
 function getTheme() {
     const current = getSettingValue(`theme${CURRENT_THEME_SETTING_VERSION}`);
     if (current === null) {
         // We try to get what's being used in the previous version.
-        return getSettingValue("theme");
+        const isUsingSystemTheme = getSettingValue("use-system-theme");
+        if (isUsingSystemTheme === "true") {
+            return "system-preference";
+        }
+        return valueOr(getSettingValue("theme"), "system-preference");
     }
     return current;
+}
+
+function getPreferredDarkTheme() {
+    return valueOr(getSettingValue("preferred-dark-theme"), "dark");
+}
+
+function getPreferredLightTheme() {
+    return valueOr(getSettingValue("preferred-light-theme"), "light");
 }
 
 const savedHref = [];
@@ -194,8 +213,8 @@ const updateSystemTheme = (function() {
         };
         // maybe the user has disabled the setting in the meantime!
         if (isUsingSystemTheme()) {
-            const lightTheme = getSettingValue("preferred-light-theme") || "light";
-            const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+            const lightTheme = getPreferredLightTheme();
+            const darkTheme = getPreferredDarkTheme();
 
             if (mql.matches) {
                 use(darkTheme, false);

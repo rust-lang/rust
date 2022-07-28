@@ -29,6 +29,16 @@ wait-for-css: ("#settings", {"display": "block"})
 wait-for: "#alternative-display #search"
 assert: "#main-content.hidden"
 
+// Checking the default values of the themes:
+// * default: system
+// * default preferred dark: dark
+// * default preferred light: light
+assert-property: ("#theme-system-preference", {"checked": "true"})
+assert-property: ("#preferred-dark-theme-dark", {"checked": "true"})
+assert-property: ("#preferred-light-theme-light", {"checked": "true"})
+assert: ".setting-line:not(.hidden) #preferred-dark-theme"
+assert: ".setting-line:not(.hidden) #preferred-light-theme"
+
 // Now let's check the content of the settings menu.
 local-storage: {"rustdoc-theme2": "dark"}
 reload:
