@@ -261,7 +261,7 @@ impl IntRange {
     /// Lint on likely incorrect range patterns (#63987)
     pub(super) fn lint_overlapping_range_endpoints<'a, 'p: 'a, 'tcx: 'a>(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         pats: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
         column_count: usize,
         hir_id: HirId,
@@ -696,7 +696,7 @@ impl<'tcx> Constructor<'tcx> {
     /// `EvalResult::Deny { .. }`.
     ///
     /// This means that the variant has a stdlib unstable feature marking it.
-    pub(super) fn is_unstable_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+    pub(super) fn is_unstable_variant(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
             let variant_def_id = adt.variant(*idx).def_id;
             // Filter variants that depend on a disabled unstable feature.
@@ -710,7 +710,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
     /// attribute from a type not local to the current crate.
-    pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+    pub(super) fn is_doc_hidden_variant(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
             let variant_def_id = adt.variants()[*idx].def_id;
             return pcx.cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
@@ -731,7 +731,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
-    pub(super) fn arity(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> usize {
+    pub(super) fn arity(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> usize {
         match self {
             Single | Variant(_) => match pcx.ty.kind() {
                 ty::Tuple(fs) => fs.len(),
@@ -775,7 +775,7 @@ impl<'tcx> Constructor<'tcx> {
     /// matrix, unless all of them are.
     pub(super) fn split<'a>(
         &self,
-        pcx: PatCtxt<'_, '_, 'tcx>,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
     ) -> SmallVec<[Self; 1]>
     where
@@ -811,7 +811,7 @@ impl<'tcx> Constructor<'tcx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(super) fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
+    pub(super) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
@@ -865,7 +865,7 @@ impl<'tcx> Constructor<'tcx> {
     /// assumed to have been split from a wildcard.
     fn is_covered_by_any<'p>(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         used_ctors: &[Constructor<'tcx>],
     ) -> bool {
         if used_ctors.is_empty() {
@@ -918,7 +918,7 @@ pub(super) struct SplitWildcard<'tcx> {
 }
 
 impl<'tcx> SplitWildcard<'tcx> {
-    pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
+    pub(super) fn new<'p>(pcx: &PatCtxt<'_, 'p, 'tcx>) -> Self {
         debug!("SplitWildcard::new({:?})", pcx.ty);
         let cx = pcx.cx;
         let make_range = |start, end| {
@@ -1044,7 +1044,7 @@ impl<'tcx> SplitWildcard<'tcx> {
     /// do what you want.
     pub(super) fn split<'a>(
         &mut self,
-        pcx: PatCtxt<'_, '_, 'tcx>,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
         ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
     ) where
         'tcx: 'a,
@@ -1056,21 +1056,21 @@ impl<'tcx> SplitWildcard<'tcx> {
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.
-    fn any_missing(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+    fn any_missing(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> bool {
         self.iter_missing(pcx).next().is_some()
     }
 
     /// Iterate over the constructors for this type that are not present in the matrix.
     pub(super) fn iter_missing<'a, 'p>(
         &'a self,
-        pcx: PatCtxt<'a, 'p, 'tcx>,
+        pcx: &'a PatCtxt<'a, 'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
         self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
     }
 
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
-    fn into_ctors(self, pcx: PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+    fn into_ctors(self, pcx: &PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         if self.any_missing(pcx) {
             // Some constructors are missing, thus we can specialize with the special `Missing`
             // constructor, which stands for those constructors that are not seen in the matrix,
@@ -1285,7 +1285,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
     /// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
-    pub(super) fn wild_from_ctor(pcx: PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
+    pub(super) fn wild_from_ctor(pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: Constructor<'tcx>) -> Self {
         let fields = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
         DeconstructedPat::new(ctor, fields, pcx.ty, DUMMY_SP)
     }

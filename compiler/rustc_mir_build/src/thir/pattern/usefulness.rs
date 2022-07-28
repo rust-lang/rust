@@ -469,7 +469,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
         let mut matrix = Matrix::empty();
@@ -575,7 +575,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     /// with the results of specializing with the other constructors.
     fn apply_constructor(
         self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
         ctor: &Constructor<'tcx>,
     ) -> Self {
@@ -713,7 +713,7 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor(mut self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
+    fn apply_constructor(mut self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
         let pat = {
             let len = self.0.len();
             let arity = ctor.arity(pcx);
@@ -830,7 +830,7 @@ fn is_useful<'p, 'tcx>(
         let ty = v.head().ty();
         let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
         debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
-        let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
+        let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 
         let v_ctor = v.head().ctor();
         debug!(?v_ctor);
