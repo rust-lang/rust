@@ -427,5 +427,5 @@ fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: D
 
 /// Returns true if the named method is `ToString::to_string`.
 fn is_to_string(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
-    method_name.as_str() == "to_string" && is_diag_trait_item(cx, method_def_id, sym::ToString)
+    method_name == sym::to_string && is_diag_trait_item(cx, method_def_id, sym::ToString)
 }

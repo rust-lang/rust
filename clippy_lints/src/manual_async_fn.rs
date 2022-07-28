@@ -166,7 +166,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
     // - There's only one output lifetime bound using `+ '_`
     // - All input lifetimes are explicitly bound to the output
     input_lifetimes.is_empty()
-        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Underscore))
+        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Infer))
         || input_lifetimes
             .iter()
             .all(|in_lt| output_lifetimes.iter().any(|out_lt| in_lt == out_lt))

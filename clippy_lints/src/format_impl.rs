@@ -141,7 +141,7 @@ fn check_to_string_in_display(cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get the hir_id of the object we are calling the method on
         if let ExprKind::MethodCall(path, [ref self_arg, ..], _) = expr.kind;
         // Is the method to_string() ?
-        if path.ident.name == sym!(to_string);
+        if path.ident.name == sym::to_string;
         // Is the method a part of the ToString trait? (i.e. not to_string() implemented
         // separately)
         if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
