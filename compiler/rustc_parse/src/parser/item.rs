@@ -1677,7 +1677,6 @@ impl<'a> Parser<'a> {
     }
 
     /// Is this a possibly malformed start of a `macro_rules! foo` item definition?
-
     fn is_macro_rules_item(&mut self) -> IsMacroRulesItem {
         if self.check_keyword(kw::MacroRules) {
             let macro_rules_span = self.token.span;
