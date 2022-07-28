@@ -36,7 +36,8 @@ fn main() {
             match new_lint::create(
                 matches.get_one::<String>("pass"),
                 matches.get_one::<String>("name"),
-                matches.get_one::<String>("category"),
+                matches.get_one::<String>("category").map(String::as_str),
+                matches.get_one::<String>("type").map(String::as_str),
                 matches.contains_id("msrv"),
             ) {
                 Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
@@ -157,7 +158,8 @@ fn get_clap_config() -> ArgMatches {
                         .help("Specify whether the lint runs during the early or late pass")
                         .takes_value(true)
                         .value_parser([PossibleValue::new("early"), PossibleValue::new("late")])
-                        .required(true),
+                        .conflicts_with("type")
+                        .required_unless_present("type"),
                     Arg::new("name")
                         .short('n')
                         .long("name")
@@ -183,6 +185,11 @@ fn get_clap_config() -> ArgMatches {
                             PossibleValue::new("internal_warn"),
                         ])
                         .takes_value(true),
+                    Arg::new("type")
+                        .long("type")
+                        .help("What directory the lint belongs in")
+                        .takes_value(true)
+                        .required(false),
                     Arg::new("msrv").long("msrv").help("Add MSRV config code to the lint"),
                 ]),
             Command::new("setup")

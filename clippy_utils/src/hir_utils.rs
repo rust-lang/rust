@@ -127,9 +127,6 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     /// Checks whether two blocks are the same.
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
-        if self.cannot_be_compared_block(left) || self.cannot_be_compared_block(right) {
-            return false;
-        }
         match (left.stmts, left.expr, right.stmts, right.expr) {
             ([], None, [], None) => {
                 // For empty blocks, check to see if the tokens are equal. This will catch the case where a macro
@@ -180,36 +177,13 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    fn cannot_be_compared_block(&mut self, block: &Block<'_>) -> bool {
-        if block.stmts.last().map_or(false, |stmt| {
-            matches!(
-                stmt.kind,
-                StmtKind::Semi(semi_expr) if self.should_ignore(semi_expr)
-            )
-        }) {
-            return true;
-        }
-
-        if let Some(block_expr) = block.expr
-            && self.should_ignore(block_expr)
-        {
-            return true
-        }
-
-        false
-    }
-
     fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
-        if macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+        macro_backtrace(expr.span).last().map_or(false, |macro_call| {
             matches!(
                 &self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
                 Some(sym::todo_macro | sym::unimplemented_macro)
             )
-        }) {
-            return true;
-        }
-
-        false
+        })
     }
 
     pub fn eq_array_length(&mut self, left: ArrayLen, right: ArrayLen) -> bool {
@@ -327,7 +301,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
             _ => false,
         };
-        is_eq || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
+        (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
+            || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {

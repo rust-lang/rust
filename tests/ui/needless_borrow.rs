@@ -158,3 +158,28 @@ fn check_expect_suppression() {
     #[expect(clippy::needless_borrow)]
     let _ = x(&&a);
 }
+
+#[allow(dead_code)]
+mod issue9160 {
+    pub struct S<F> {
+        f: F,
+    }
+
+    impl<T, F> S<F>
+    where
+        F: Fn() -> T,
+    {
+        fn calls_field(&self) -> T {
+            (&self.f)()
+        }
+    }
+
+    impl<T, F> S<F>
+    where
+        F: FnMut() -> T,
+    {
+        fn calls_mut_field(&mut self) -> T {
+            (&mut self.f)()
+        }
+    }
+}
