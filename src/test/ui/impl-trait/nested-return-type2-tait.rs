@@ -1,5 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
+// check-pass
+
 trait Duh {}
 
 impl Duh for i32 {}
@@ -17,13 +19,13 @@ impl<R: Duh, F: FnMut() -> R> Trait for F {
 
 type Sendable = impl Send;
 
-// The `Sendable` here is then later compared against the inference var
-// created, causing the inference var to be set to `Sendable` instead of
+// The `Sendable` here is converted to an inference var and then later compared
+// against the inference var created, causing the inference var to be set to
+// the hidden type of `Sendable` instead of
 // the hidden type. We already have obligations registered on the inference
 // var to make it uphold the `: Duh` bound on `Trait::Assoc`. The opaque
-// type does not implement `Duh`, even if its hidden type does. So we error out.
+// type does not implement `Duh`, but if its hidden type does.
 fn foo() -> impl Trait<Assoc = Sendable> {
-    //~^ ERROR `Sendable: Duh` is not satisfied
     || 42
 }
 

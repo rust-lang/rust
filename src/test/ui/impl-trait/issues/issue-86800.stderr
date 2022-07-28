@@ -1,10 +1,19 @@
-error: unconstrained opaque type
-  --> $DIR/issue-86800.rs:25:34
-   |
-LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `TransactionFuture` must be used in combination with a concrete type within the same module
 
-error: aborting due to previous error
+stack backtrace:
 
+error: internal compiler error: unexpected panic
+
+
+
+
+
+
+
+
+
+query stack during panic:
+#0 [mir_borrowck] borrow-checking `execute_transaction_fut`
+#1 [type_of] computing type of `TransactionFuture::{opaque#0}`
+#2 [check_mod_item_types] checking item types in top-level module
+#3 [analysis] running analysis passes on this crate
+end of query stack
