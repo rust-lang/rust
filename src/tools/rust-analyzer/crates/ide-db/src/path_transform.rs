@@ -224,7 +224,8 @@ impl<'a> Ctx<'a> {
             | hir::PathResolution::SelfType(_)
             | hir::PathResolution::Def(_)
             | hir::PathResolution::BuiltinAttr(_)
-            | hir::PathResolution::ToolModule(_) => (),
+            | hir::PathResolution::ToolModule(_)
+            | hir::PathResolution::DeriveHelper(_) => (),
         }
         Some(())
     }

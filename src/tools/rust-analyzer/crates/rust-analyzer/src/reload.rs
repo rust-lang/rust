@@ -303,18 +303,55 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        if self.proc_macro_client.is_none() {
+        if self.proc_macro_clients.is_empty() {
             if let Some((path, args)) = self.config.proc_macro_srv() {
-                match ProcMacroServer::spawn(path.clone(), args) {
-                    Ok(it) => self.proc_macro_client = Some(it),
-                    Err(err) => {
-                        tracing::error!(
-                            "Failed to run proc_macro_srv from path {}, error: {:?}",
+                self.proc_macro_clients = self
+                    .workspaces
+                    .iter()
+                    .map(|ws| {
+                        let mut args = args.clone();
+                        let mut path = path.clone();
+
+                        if let ProjectWorkspace::Cargo { sysroot, .. } = ws {
+                            tracing::info!("Found a cargo workspace...");
+                            if let Some(sysroot) = sysroot.as_ref() {
+                                tracing::info!("Found a cargo workspace with a sysroot...");
+                                let server_path = sysroot
+                                    .root()
+                                    .join("libexec")
+                                    .join("rust-analyzer-proc-macro-srv");
+                                if std::fs::metadata(&server_path).is_ok() {
+                                    tracing::info!(
+                                        "And the server exists at {}",
+                                        server_path.display()
+                                    );
+                                    path = server_path;
+                                    args = vec![];
+                                } else {
+                                    tracing::info!(
+                                        "And the server does not exist at {}",
+                                        server_path.display()
+                                    );
+                                }
+                            }
+                        }
+
+                        tracing::info!(
+                            "Using proc-macro server at {} with args {:?}",
                             path.display(),
-                            err
+                            args
                         );
-                    }
-                }
+                        ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
+                            let error = format!(
+                                "Failed to run proc_macro_srv from path {}, error: {:?}",
+                                path.display(),
+                                err
+                            );
+                            tracing::error!(error);
+                            error
+                        })
+                    })
+                    .collect();
             }
         }
 
@@ -331,15 +368,7 @@ impl GlobalState {
 
         // Create crate graph from all the workspaces
         let crate_graph = {
-            let proc_macro_client = self.proc_macro_client.as_ref();
             let dummy_replacements = self.config.dummy_replacements();
-            let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
-                load_proc_macro(
-                    proc_macro_client,
-                    path,
-                    dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
-                )
-            };
 
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
@@ -359,7 +388,15 @@ impl GlobalState {
             };
 
             let mut crate_graph = CrateGraph::default();
-            for ws in self.workspaces.iter() {
+            for (idx, ws) in self.workspaces.iter().enumerate() {
+                let proc_macro_client = self.proc_macro_clients[idx].as_ref();
+                let mut load_proc_macro = move |crate_name: &str, path: &AbsPath| {
+                    load_proc_macro(
+                        proc_macro_client,
+                        path,
+                        dummy_replacements.get(crate_name).map(|v| &**v).unwrap_or_default(),
+                    )
+                };
                 crate_graph.extend(ws.to_crate_graph(&mut load_proc_macro, &mut load));
             }
             crate_graph
@@ -536,14 +573,14 @@ impl SourceRootConfig {
 /// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
 /// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
-    server: Option<&ProcMacroServer>,
+    server: Result<&ProcMacroServer, &String>,
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf())
             .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
-        let server = server.ok_or_else(|| format!("Proc-macro server not started"))?;
+        let server = server.map_err(ToOwned::to_owned)?;
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
         if vec.is_empty() {
             return Err("proc macro library returned no proc macros".to_string());

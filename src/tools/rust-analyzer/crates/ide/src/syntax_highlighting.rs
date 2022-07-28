@@ -107,6 +107,7 @@ pub struct HlRange {
 // builtinType:: Emitted for builtin types like `u32`, `str` and `f32`.
 // comment:: Emitted for comments.
 // constParameter:: Emitted for const parameters.
+// deriveHelper:: Emitted for derive helper attributes.
 // enumMember:: Emitted for enum variants.
 // generic:: Emitted for generic tokens that have no mapping.
 // keyword:: Emitted for keywords.
@@ -429,6 +430,13 @@ fn traverse(
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {
                 // do not emit unresolved references if the file is unlinked
                 // let the editor do its highlighting for these tokens instead
+                continue;
+            }
+            if highlight.tag == HlTag::UnresolvedReference
+                && matches!(attr_or_derive_item, Some(AttrOrDerive::Derive(_)) if inside_attribute)
+            {
+                // do not emit unresolved references in derive helpers if the token mapping maps to
+                // something unresolvable. FIXME: There should be a way to prevent that
                 continue;
             }
             if inside_attribute {

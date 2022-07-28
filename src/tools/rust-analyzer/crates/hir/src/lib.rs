@@ -2252,6 +2252,32 @@ impl Local {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DeriveHelper {
+    pub(crate) derive: MacroId,
+    pub(crate) idx: usize,
+}
+
+impl DeriveHelper {
+    pub fn derive(&self) -> Macro {
+        Macro { id: self.derive.into() }
+    }
+
+    pub fn name(&self, db: &dyn HirDatabase) -> Name {
+        match self.derive {
+            MacroId::Macro2Id(_) => None,
+            MacroId::MacroRulesId(_) => None,
+            MacroId::ProcMacroId(proc_macro) => db
+                .proc_macro_data(proc_macro)
+                .helpers
+                .as_ref()
+                .and_then(|it| it.get(self.idx))
+                .cloned(),
+        }
+        .unwrap_or_else(|| Name::missing())
+    }
+}
+
 // FIXME: Wrong name? This is could also be a registered attribute
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BuiltinAttr {

@@ -156,6 +156,8 @@ impl Definition {
             Definition::SelfType(_) => return None,
             Definition::BuiltinAttr(_) => return None,
             Definition::ToolModule(_) => return None,
+            // FIXME: This should be doable in theory
+            Definition::DeriveHelper(_) => return None,
         };
         return res;
 
@@ -316,14 +318,20 @@ pub fn source_edit_from_references(
     // macros can cause multiple refs to occur for the same text range, so keep track of what we have edited so far
     let mut edited_ranges = Vec::new();
     for &FileReference { range, ref name, .. } in references {
+        let name_range = name.syntax().text_range();
+        if name_range.len() != range.len() {
+            // This usage comes from a different token kind that was downmapped to a NameLike in a macro
+            // Renaming this will most likely break things syntax-wise
+            continue;
+        }
         let has_emitted_edit = match name {
             // if the ranges differ then the node is inside a macro call, we can't really attempt
             // to make special rewrites like shorthand syntax and such, so just rename the node in
             // the macro input
-            ast::NameLike::NameRef(name_ref) if name_ref.syntax().text_range() == range => {
+            ast::NameLike::NameRef(name_ref) if name_range == range => {
                 source_edit_from_name_ref(&mut edit, name_ref, new_name, def)
             }
-            ast::NameLike::Name(name) if name.syntax().text_range() == range => {
+            ast::NameLike::Name(name) if name_range == range => {
                 source_edit_from_name(&mut edit, name, new_name)
             }
             _ => false,

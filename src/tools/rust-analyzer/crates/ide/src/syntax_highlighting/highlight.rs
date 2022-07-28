@@ -472,6 +472,7 @@ fn highlight_def(
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
         Definition::BuiltinAttr(_) => Highlight::new(HlTag::Symbol(SymbolKind::BuiltinAttr)),
         Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
+        Definition::DeriveHelper(_) => Highlight::new(HlTag::Symbol(SymbolKind::DeriveHelper)),
     };
 
     let def_crate = def.krate(db);

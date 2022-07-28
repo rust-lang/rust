@@ -292,6 +292,7 @@ impl CompletionItemKind {
                 SymbolKind::Const => "ct",
                 SymbolKind::ConstParam => "cp",
                 SymbolKind::Derive => "de",
+                SymbolKind::DeriveHelper => "dh",
                 SymbolKind::Enum => "en",
                 SymbolKind::Field => "fd",
                 SymbolKind::Function => "fn",

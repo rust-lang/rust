@@ -190,7 +190,8 @@ pub(crate) fn resolve_doc_path_for_def(
         | Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
-        | Definition::Label(_) => None,
+        | Definition::Label(_)
+        | Definition::DeriveHelper(_) => None,
     }
     .map(Definition::from)
 }
@@ -515,7 +516,8 @@ fn filename_and_frag_for_def(
         | Definition::GenericParam(_)
         | Definition::Label(_)
         | Definition::BuiltinAttr(_)
-        | Definition::ToolModule(_) => return None,
+        | Definition::ToolModule(_)
+        | Definition::DeriveHelper(_) => return None,
     };
 
     Some((def, res, None))

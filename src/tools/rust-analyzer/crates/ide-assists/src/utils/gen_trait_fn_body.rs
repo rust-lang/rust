@@ -5,7 +5,7 @@ use syntax::{
     ted,
 };
 
-/// Generate custom trait bodies where possible.
+/// Generate custom trait bodies without default implementation where possible.
 ///
 /// Returns `Option` so that we can use `?` rather than `if let Some`. Returning
 /// `None` means that generating a custom trait body failed, and the body will remain
@@ -28,6 +28,7 @@ pub(crate) fn gen_trait_fn_body(
 
 /// Generate a `Clone` impl based on the fields and members of the target type.
 fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    stdx::always!(func.name().map_or(false, |name| name.text() == "clone"));
     fn gen_clone_call(target: ast::Expr) -> ast::Expr {
         let method = make::name_ref("clone");
         make::expr_method_call(target, method, make::arg_list(None))
@@ -339,6 +340,7 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `Hash` impl based on the fields and members of the target type.
 fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    stdx::always!(func.name().map_or(false, |name| name.text() == "hash"));
     fn gen_hash_call(target: ast::Expr) -> ast::Stmt {
         let method = make::name_ref("hash");
         let arg = make::expr_path(make::ext::ident_path("state"));
@@ -394,9 +396,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
 fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    if func.name().map_or(false, |name| name.text() == "ne") {
-        return None;
-    }
+    stdx::always!(func.name().map_or(false, |name| name.text() == "eq"));
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
             Some(expr) => Some(make::expr_bin_op(expr, BinaryOp::LogicOp(LogicOp::And), cmp)),
@@ -573,6 +573,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 }
 
 fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+    stdx::always!(func.name().map_or(false, |name| name.text() == "partial_cmp"));
     fn gen_partial_eq_match(match_target: ast::Expr) -> Option<ast::Stmt> {
         let mut arms = vec![];
 
@@ -643,7 +644,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 make::block_expr(stmts.into_iter(), tail).indent(ast::edit::IndentLevel(1))
             }
 
-            // No fields in the body means there's nothing to hash.
+            // No fields in the body means there's nothing to compare.
             None => {
                 let expr = make::expr_literal("true").into();
                 make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))

@@ -149,6 +149,7 @@ impl Resolver {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
     }
 
+    // FIXME: This shouldn't exist
     pub fn resolve_module_path_in_trait_assoc_items(
         &self,
         db: &dyn DefDatabase,
@@ -448,10 +449,14 @@ impl Resolver {
     }
 
     pub fn krate(&self) -> CrateId {
+        self.def_map().krate()
+    }
+
+    pub fn def_map(&self) -> &DefMap {
         self.scopes
             .get(0)
             .and_then(|scope| match scope {
-                Scope::ModuleScope(m) => Some(m.def_map.krate()),
+                Scope::ModuleScope(m) => Some(&m.def_map),
                 _ => None,
             })
             .expect("module scope invariant violated")

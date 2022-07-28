@@ -110,6 +110,7 @@ pub enum Expr {
     Call {
         callee: ExprId,
         args: Box<[ExprId]>,
+        is_assignee_expr: bool,
     },
     MethodCall {
         receiver: ExprId,
@@ -138,6 +139,8 @@ pub enum Expr {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
         spread: Option<ExprId>,
+        ellipsis: bool,
+        is_assignee_expr: bool,
     },
     Field {
         expr: ExprId,
@@ -196,6 +199,7 @@ pub enum Expr {
     },
     Tuple {
         exprs: Box<[ExprId]>,
+        is_assignee_expr: bool,
     },
     Unsafe {
         body: ExprId,
@@ -211,7 +215,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
-    ElementList(Box<[ExprId]>),
+    ElementList { elements: Box<[ExprId]>, is_assignee_expr: bool },
     Repeat { initializer: ExprId, repeat: ExprId },
 }
 
@@ -285,7 +289,7 @@ impl Expr {
                 f(*iterable);
                 f(*body);
             }
-            Expr::Call { callee, args } => {
+            Expr::Call { callee, args, .. } => {
                 f(*callee);
                 args.iter().copied().for_each(f);
             }
@@ -339,9 +343,9 @@ impl Expr {
             | Expr::Box { expr } => {
                 f(*expr);
             }
-            Expr::Tuple { exprs } => exprs.iter().copied().for_each(f),
+            Expr::Tuple { exprs, .. } => exprs.iter().copied().for_each(f),
             Expr::Array(a) => match a {
-                Array::ElementList(exprs) => exprs.iter().copied().for_each(f),
+                Array::ElementList { elements, .. } => elements.iter().copied().for_each(f),
                 Array::Repeat { initializer, repeat } => {
                     f(*initializer);
                     f(*repeat)

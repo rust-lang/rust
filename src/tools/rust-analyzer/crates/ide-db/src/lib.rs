@@ -173,6 +173,7 @@ pub enum SymbolKind {
     Const,
     ConstParam,
     Derive,
+    DeriveHelper,
     Enum,
     Field,
     Function,
