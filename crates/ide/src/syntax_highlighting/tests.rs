@@ -915,6 +915,10 @@ fn main() {
 }
 
 #[test]
+#[cfg_attr(
+    all(unix, not(target_pointer_width = "64")),
+    ignore = "depends on `DefaultHasher` outputs"
+)]
 fn test_rainbow_highlighting() {
     check_highlighting(
         r#"
