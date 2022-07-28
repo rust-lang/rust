@@ -400,6 +400,7 @@ function loadCss(cssFileName) {
 
             case "s":
             case "S":
+            case "/":
                 ev.preventDefault();
                 searchState.focus();
                 break;
