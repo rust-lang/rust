@@ -2185,6 +2185,30 @@ pub trait BufRead: Read {
     /// assert_eq!(num_bytes, 0);
     /// assert_eq!(buf, "");
     /// ```
+    ///
+    /// Errors caused by invalid UTF-8 sequences can be detected and partially
+    /// recovered from (by skipping to the next line) via introspection of the
+    /// returned `std::io::Error`:
+    ///
+    /// ```
+    /// use std::io::{BufRead, Cursor};
+    ///
+    /// let has_invalid_utf8 = b"\xc3Hello\nworld\n";
+    /// let mut cursor = Cursor::new(has_invalid_utf8);
+    /// let mut line = String::new();
+    ///
+    /// // `read_line()` reads until the \n then attempts UTF-8 conversion
+    /// let utf8_error = cursor.read_line(&mut line)
+    ///     .expect_err("Known-invalid UTF-8 sequence in the first line");
+    /// assert_eq!(utf8_error.kind(), std::io::ErrorKind::InvalidData);
+    ///
+    /// // The previous line wasn't readable, but the subsequent line can
+    /// // still be read: unlike general IO errors, the error state here
+    /// // isn't necessarily permanent.
+    /// line.clear();
+    /// cursor.read_line(&mut line).unwrap();
+    /// assert_eq!(line.as_str(), "world\n");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_line(&mut self, buf: &mut String) -> Result<usize> {
         // Note that we are not calling the `.read_until` method here, but
