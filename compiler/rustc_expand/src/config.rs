@@ -129,7 +129,7 @@ fn get_features(
                         .span_suggestion(
                             mi.span(),
                             "expected just one word",
-                            format!("{}", ident.name),
+                            ident.name,
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
