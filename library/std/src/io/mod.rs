@@ -2167,21 +2167,21 @@ pub trait BufRead: Read {
     ///
     /// // cursor is at 'f'
     /// let num_bytes = cursor.read_line(&mut buf)
-    ///     .expect("reading from cursor won't fail");
+    ///     .expect("reading ascii strings from cursor won't fail");
     /// assert_eq!(num_bytes, 4);
     /// assert_eq!(buf, "foo\n");
     /// buf.clear();
     ///
     /// // cursor is at 'b'
     /// let num_bytes = cursor.read_line(&mut buf)
-    ///     .expect("reading from cursor won't fail");
+    ///     .expect("reading ascii strings from cursor won't fail");
     /// assert_eq!(num_bytes, 3);
     /// assert_eq!(buf, "bar");
     /// buf.clear();
     ///
     /// // cursor is at EOF
     /// let num_bytes = cursor.read_line(&mut buf)
-    ///     .expect("reading from cursor won't fail");
+    ///     .expect("reading ascii strings from cursor won't fail");
     /// assert_eq!(num_bytes, 0);
     /// assert_eq!(buf, "");
     /// ```
