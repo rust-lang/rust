@@ -209,13 +209,13 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        #[cfg(all(windows, target_arch = "x86_64"))]
+        #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64"))]
         $(#[$($attr)*])*
         pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
 
-        #[cfg(all(windows, target_arch = "x86_64"))]
+        #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64"))]
         pub mod $name {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             pub extern $abi fn $name( $($argname: $ty),* )
@@ -226,7 +226,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(windows, target_arch = "x86_64")))]
+        #[cfg(not(all(any(windows, target_os = "uefi"), target_arch = "x86_64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
@@ -426,7 +426,7 @@ macro_rules! intrinsics {
 
 // Hack for LLVM expectations for ABI on windows. This is used by the
 // `#[win64_128bit_abi_hack]` attribute recognized above
-#[cfg(all(windows, target_pointer_width = "64"))]
+#[cfg(all(any(windows, target_os = "uefi"), target_pointer_width = "64"))]
 pub mod win64_128bit_abi_hack {
     #[repr(simd)]
     pub struct U64x2(u64, u64);
