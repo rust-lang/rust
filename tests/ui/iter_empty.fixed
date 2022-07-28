@@ -13,6 +13,14 @@ fn array() {
     // Don't trigger on non-iter methods
     let _: Option<String> = None.clone();
     let _: [String; 0] = [].clone();
+
+    // Don't trigger on match or if branches
+    let _ = match 123 {
+        123 => [].iter(),
+        _ => ["test"].iter(),
+    };
+
+    let _ = if false { ["test"].iter() } else { [].iter() };
 }
 
 macro_rules! in_macros {

@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_lang_ctor;
-use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet;
+use clippy_utils::{get_expr_use_or_unification_node, is_lang_ctor, is_no_std_crate};
 
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 
 use super::{ITER_EMPTY, ITER_ONCE};
@@ -55,6 +54,24 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: 
         "into_iter" => IterType::IntoIter,
         _ => return,
     };
+
+    let is_unified = match get_expr_use_or_unification_node(cx.tcx, expr) {
+        Some((Node::Expr(parent), child_id)) => match parent.kind {
+            ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id == child_id => false,
+            ExprKind::If(_, _, _)
+            | ExprKind::Match(_, _, _)
+            | ExprKind::Closure(_)
+            | ExprKind::Ret(_)
+            | ExprKind::Break(_, _) => true,
+            _ => false,
+        },
+        Some((Node::Stmt(_) | Node::Local(_), _)) => false,
+        _ => true,
+    };
+
+    if is_unified {
+        return;
+    }
 
     if let Some(i) = item {
         let sugg = format!(

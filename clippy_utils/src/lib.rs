@@ -484,7 +484,6 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     }
     fn find_primitive<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
         let single = |ty| tcx.incoherent_impls(ty).iter().copied();
-        #[allow(clippy::iter_empty)]
         let empty = || [].iter().copied();
         match name {
             "bool" => single(BoolSimplifiedType),
