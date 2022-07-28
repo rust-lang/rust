@@ -38,17 +38,13 @@ pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
 pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) {
     let (pre_byte_count, qword_count, byte_count) = rep_param(dest, count);
     // Separating the blocks gives the compiler more freedom to reorder instructions.
-    // It also allows us to trivially skip the rep movsb, which is faster when memcpying
-    // aligned data.
-    if pre_byte_count > 0 {
-        asm!(
-            "rep movsb",
-            inout("ecx") pre_byte_count => _,
-            inout("rdi") dest => dest,
-            inout("rsi") src => src,
-            options(att_syntax, nostack, preserves_flags)
-        );
-    }
+    asm!(
+        "rep movsb",
+        inout("ecx") pre_byte_count => _,
+        inout("rdi") dest => dest,
+        inout("rsi") src => src,
+        options(att_syntax, nostack, preserves_flags)
+    );
     asm!(
         "rep movsq",
         inout("rcx") qword_count => _,
@@ -56,15 +52,13 @@ pub unsafe fn copy_forward(mut dest: *mut u8, mut src: *const u8, count: usize) 
         inout("rsi") src => src,
         options(att_syntax, nostack, preserves_flags)
     );
-    if byte_count > 0 {
-        asm!(
-            "rep movsb",
-            inout("ecx") byte_count => _,
-            inout("rdi") dest => _,
-            inout("rsi") src => _,
-            options(att_syntax, nostack, preserves_flags)
-        );
-    }
+    asm!(
+        "rep movsb",
+        inout("ecx") byte_count => _,
+        inout("rdi") dest => _,
+        inout("rsi") src => _,
+        options(att_syntax, nostack, preserves_flags)
+    );
 }
 
 #[inline(always)]
@@ -73,21 +67,16 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
     // We can't separate this block due to std/cld
     asm!(
         "std",
-        "test %ecx, %ecx",
-        "jz 1f",
         "rep movsb",
-        "1:",
         "sub $7, %rsi",
         "sub $7, %rdi",
         "mov {qword_count}, %rcx",
         "rep movsq",
         "test {pre_byte_count:e}, {pre_byte_count:e}",
-        "jz 1f",
         "add $7, %rsi",
         "add $7, %rdi",
         "mov {pre_byte_count:e}, %ecx",
         "rep movsb",
-        "1:",
         "cld",
         pre_byte_count = in(reg) pre_byte_count,
         qword_count = in(reg) qword_count,
@@ -118,17 +107,13 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
     let c = c as u64 * 0x0101_0101_0101_0101;
     let (pre_byte_count, qword_count, byte_count) = rep_param(dest, count);
     // Separating the blocks gives the compiler more freedom to reorder instructions.
-    // It also allows us to trivially skip the rep stosb, which is faster when memcpying
-    // aligned data.
-    if pre_byte_count > 0 {
-        asm!(
-            "rep stosb",
-            inout("ecx") pre_byte_count => _,
-            inout("rdi") dest => dest,
-            in("rax") c,
-            options(att_syntax, nostack, preserves_flags)
-        );
-    }
+    asm!(
+        "rep stosb",
+        inout("ecx") pre_byte_count => _,
+        inout("rdi") dest => dest,
+        in("rax") c,
+        options(att_syntax, nostack, preserves_flags)
+    );
     asm!(
         "rep stosq",
         inout("rcx") qword_count => _,
@@ -136,15 +121,13 @@ pub unsafe fn set_bytes(mut dest: *mut u8, c: u8, count: usize) {
         in("rax") c,
         options(att_syntax, nostack, preserves_flags)
     );
-    if byte_count > 0 {
-        asm!(
-            "rep stosb",
-            inout("ecx") byte_count => _,
-            inout("rdi") dest => _,
-            in("rax") c,
-            options(att_syntax, nostack, preserves_flags)
-        );
-    }
+    asm!(
+        "rep stosb",
+        inout("ecx") byte_count => _,
+        inout("rdi") dest => _,
+        in("rax") c,
+        options(att_syntax, nostack, preserves_flags)
+    );
 }
 
 #[inline(always)]
