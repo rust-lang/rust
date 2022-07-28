@@ -1829,12 +1829,13 @@ pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
     }
 }
 
-impl<'tcx> Clean<'tcx, VariantStruct> for rustc_hir::VariantData<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> VariantStruct {
-        VariantStruct {
-            struct_type: CtorKind::from_hir(self),
-            fields: self.fields().iter().map(|x| clean_field(x, cx)).collect(),
-        }
+fn clean_variant_data<'tcx>(
+    variant: &hir::VariantData<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> VariantStruct {
+    VariantStruct {
+        struct_type: CtorKind::from_hir(variant),
+        fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
     }
 }
 
@@ -1866,7 +1867,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::VariantDef {
 impl<'tcx> Clean<'tcx, Variant> for hir::VariantData<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Variant {
         match self {
-            hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
+            hir::VariantData::Struct(..) => Variant::Struct(clean_variant_data(self, cx)),
             hir::VariantData::Tuple(..) => Variant::Tuple(self.clean(cx)),
             hir::VariantData::Unit(..) => Variant::CLike,
         }
