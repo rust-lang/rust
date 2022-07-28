@@ -74,7 +74,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
                 _ => unreachable!(),
             };
 
-            match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
+            match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
                 // Cranelift currently only implements icmp for 128bit vectors.
                 Some(vector_ty) if vector_ty.bits() == 128 => vector_ty,
                 _ => return None,

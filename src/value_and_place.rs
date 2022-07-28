@@ -122,7 +122,7 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty = match layout.abi {
                     Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
                     Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
-                        .by(u16::try_from(count).unwrap())
+                        .by(u32::try_from(count).unwrap())
                         .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
                 };
@@ -519,7 +519,7 @@ impl<'tcx> CPlace<'tcx> {
                 if let ty::Array(element, len) = dst_layout.ty.kind() {
                     // Can only happen for vector types
                     let len =
-                        u16::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
+                        u32::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
                     let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
 
                     let data = match from.0 {
