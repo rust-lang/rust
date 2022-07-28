@@ -999,7 +999,7 @@ impl f64 {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_gamma", issue = "none")]
+    #[unstable(feature = "float_gamma", issue = "99842")]
     #[inline]
     pub fn gamma(self) -> f64 {
         unsafe { cmath::tgamma(self) }

@@ -973,7 +973,7 @@ impl f32 {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "float_gamma", issue = "none")]
+    #[unstable(feature = "float_gamma", issue = "99842")]
     #[inline]
     pub fn gamma(self) -> f32 {
         unsafe { cmath::tgammaf(self) }
