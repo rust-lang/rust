@@ -1,99 +1,76 @@
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:21:5
    |
+LL |         pub mut(self) alpha: u8,
+   |             --------- mutability restricted here
+...
 LL |     foo.alpha = 1;
    |     ^^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:6:13
-   |
-LL |         pub mut(self) alpha: u8,
-   |             ^^^^^^^^^
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:23:24
    |
+LL |         Beta(mut(self) u8),
+   |              --------- mutability restricted here
+...
 LL |         foo::Bar::Beta(ref mut beta) => {}
    |                        ^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:10:14
-   |
-LL |         Beta(mut(self) u8),
-   |              ^^^^^^^^^
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:30:9
    |
+LL |         pub mut(self) alpha: u8,
+   |             --------- mutability restricted here
+...
 LL |         (*foo).alpha = 1;
    |         ^^^^^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:6:13
-   |
-LL |         pub mut(self) alpha: u8,
-   |             ^^^^^^^^^
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:38:5
    |
+LL |         pub mut(self) alpha: u8,
+   |             --------- mutability restricted here
+...
 LL |     foo.alpha = 1;
    |     ^^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:6:13
-   |
-LL |         pub mut(self) alpha: u8,
-   |             ^^^^^^^^^
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:40:24
    |
+LL |         Beta(mut(self) u8),
+   |              --------- mutability restricted here
+...
 LL |         foo::Bar::Beta(ref mut beta) => {}
    |                        ^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:10:14
-   |
-LL |         Beta(mut(self) u8),
-   |              ^^^^^^^^^
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:42:5
    |
+LL |         pub mut(self) alpha: u8,
+   |             --------- mutability restricted here
+...
 LL |     std::ptr::addr_of_mut!(foo.alpha);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:6:13
-   |
-LL |         pub mut(self) alpha: u8,
-   |             ^^^^^^^^^
    = note: this error originates in the macro `std::ptr::addr_of_mut` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:44:18
    |
+LL |         pub mut(self) alpha: u8,
+   |             --------- mutability restricted here
+...
 LL |     let _alpha = &mut foo.alpha;
    |                  ^^^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:6:13
-   |
-LL |         pub mut(self) alpha: u8,
-   |             ^^^^^^^^^
 
 error: mutable use of restricted field
   --> $DIR/mut-restriction.rs:47:9
    |
+LL |         pub mut(self) alpha: u8,
+   |             --------- mutability restricted here
+...
 LL |         foo.alpha = 1;
    |         ^^^^^^^^^^^^^
-   |
-note: mutability restricted here
-  --> $DIR/mut-restriction.rs:6:13
-   |
-LL |         pub mut(self) alpha: u8,
-   |             ^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

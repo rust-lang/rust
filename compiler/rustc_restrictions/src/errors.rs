@@ -6,7 +6,7 @@ use rustc_span::Span;
 pub struct ImplOfRestrictedTrait {
     #[primary_span]
     pub impl_span: Span,
-    #[note]
+    #[label]
     pub restriction_span: Span,
 }
 
@@ -15,7 +15,7 @@ pub struct ImplOfRestrictedTrait {
 pub struct MutOfRestrictedField {
     #[primary_span]
     pub mut_span: Span,
-    #[note]
+    #[label]
     pub restriction_span: Span,
 }
 
