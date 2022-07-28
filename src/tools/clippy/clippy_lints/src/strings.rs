@@ -394,7 +394,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
-            if path.ident.name == sym!(to_string);
+            if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
             if let ty::Ref(_, ty, ..) = ty.kind();
             if *ty.kind() == ty::Str;
@@ -444,7 +444,7 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
-            if path.ident.name == sym!(to_string);
+            if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
             if is_type_diagnostic_item(cx, ty, sym::String);
             then {

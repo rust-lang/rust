@@ -3,7 +3,7 @@ use clippy_utils::visitors::is_local_used;
 use if_chain::if_chain;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -35,7 +35,19 @@ declare_clippy_lint! {
     "methods that contain a `self` argument but don't use it"
 }
 
-declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
+pub struct UnusedSelf {
+    avoid_breaking_exported_api: bool,
+}
+
+impl_lint_pass!(UnusedSelf => [UNUSED_SELF]);
+
+impl UnusedSelf {
+    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'_>) {
@@ -49,6 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
             if assoc_item.fn_has_self_parameter;
             if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
+            if !cx.access_levels.is_exported(impl_item.def_id) || !self.avoid_breaking_exported_api;
             let body = cx.tcx.hir().body(*body_id);
             if let [self_param, ..] = body.params;
             if !is_local_used(cx, body, self_param.pat.hir_id);
