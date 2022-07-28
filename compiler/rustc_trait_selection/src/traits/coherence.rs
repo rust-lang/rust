@@ -746,8 +746,17 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
         result
     }
 
-    // FIXME: Constants should participate in orphan checking.
     fn visit_const(&mut self, _c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        // All possible values for a constant parameter already exist
+        // in the crate defining the trait, so they are always non-local.
+        //
+        // Because there's no way to have an impl where the first local
+        // generic argument is a constant, we also don't have to fail
+        // the orphan check when encountering a parameter or a generic constant.
+        //
+        // This means that we can completely ignore constants during the orphan check.
+        //
+        // See `src/test/ui/coherence/const-generics-orphan-check-ok.rs` for examples.
         ControlFlow::CONTINUE
     }
 }
