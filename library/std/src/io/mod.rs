@@ -2287,7 +2287,10 @@ pub trait BufRead: Read {
     ///
     /// # Errors
     ///
-    /// Each line of the iterator has the same error semantics as [`BufRead::read_line`].
+    /// Each line of the iterator has the same error semantics as [`BufRead::read_line`];
+    /// in particular, an error may represent either an underlying IO error reading from
+    /// source or a UTF-8 conversion error parsing the line, the latter of which can be
+    /// recovered from (by continuing to the next line).
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self>
     where
