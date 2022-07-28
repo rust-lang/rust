@@ -16,7 +16,7 @@
 //! The default link script is very likely wrong, so you should use
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
-use crate::spec::{cvs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{cvs, LinkerFlavor, FramePointer, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -53,6 +53,7 @@ pub fn target() -> Target {
             emit_debug_gdb_scripts: false,
             // suggested from thumb_base, with no-os gcc/clang use 8-bit enums
             c_enum_min_bits: 8,
+            frame_pointer: FramePointer::MayOmit,
 
             main_needs_argc_argv: false,
 
@@ -60,7 +61,7 @@ pub fn target() -> Target {
             atomic_cas: false,
             has_thumb_interworking: true,
 
-            ..Default::default()
+            ..super::thumb_base::opts()
         },
     }
 }
