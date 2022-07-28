@@ -51,7 +51,7 @@ enum MiriCommand {
 }
 
 /// The information to run a crate with the given environment.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct CrateRunEnv {
     /// The command-line arguments.
     args: Vec<String>,
@@ -250,27 +250,56 @@ fn xargo_check() -> Command {
     Command::new(env::var_os("XARGO_CHECK").unwrap_or_else(|| OsString::from("xargo-check")))
 }
 
-/// Execute the command. If it fails, fail this process with the same exit code.
-/// Otherwise, continue.
-fn exec(mut cmd: Command) {
-    let exit_status = cmd.status().expect("failed to run command");
-    if exit_status.success().not() {
+/// Execute the `Command`, where possible by replacing the current process with a new process
+/// described by the `Command`. Then exit this process with the exit code of the new process.
+fn exec(mut cmd: Command) -> ! {
+    // On non-Unix imitate POSIX exec as closely as we can
+    #[cfg(not(unix))]
+    {
+        let exit_status = cmd.status().expect("failed to run command");
         std::process::exit(exit_status.code().unwrap_or(-1))
+    }
+    // On Unix targets, actually exec.
+    // If exec returns, process setup has failed. This is the same error condition as the expect in
+    // the non-Unix case.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let error = cmd.exec();
+        Err(error).expect("failed to run command")
     }
 }
 
-/// Execute the command and pipe `input` into its stdin.
-/// If it fails, fail this process with the same exit code.
-/// Otherwise, continue.
-fn exec_with_pipe(mut cmd: Command, input: &[u8]) {
-    cmd.stdin(process::Stdio::piped());
-    let mut child = cmd.spawn().expect("failed to spawn process");
+/// Execute the `Command`, where possible by replacing the current process with a new process
+/// described by the `Command`. Then exit this process with the exit code of the new process.
+/// `input` is also piped to the new process's stdin, on cfg(unix) platforms by writing its
+/// contents to `path` first, then setting stdin to that file.
+fn exec_with_pipe<P>(mut cmd: Command, input: &[u8], path: P) -> !
+where
+    P: AsRef<Path>,
+{
+    #[cfg(unix)]
     {
-        let stdin = child.stdin.as_mut().expect("failed to open stdin");
-        stdin.write_all(input).expect("failed to write out test source");
+        // Write the bytes we want to send to stdin out to a file
+        std::fs::write(&path, input).unwrap();
+        // Open the file for reading, and set our new stdin to it
+        let stdin = File::open(&path).unwrap();
+        cmd.stdin(stdin);
+        // Unlink the file so that it is fully cleaned up as soon as the new process exits
+        std::fs::remove_file(&path).unwrap();
+        // Finally, we can hand off control.
+        exec(cmd)
     }
-    let exit_status = child.wait().expect("failed to run command");
-    if exit_status.success().not() {
+    #[cfg(not(unix))]
+    {
+        drop(path); // We don't need the path, we can pipe the bytes directly
+        cmd.stdin(process::Stdio::piped());
+        let mut child = cmd.spawn().expect("failed to spawn process");
+        {
+            let stdin = child.stdin.as_mut().expect("failed to open stdin");
+            stdin.write_all(input).expect("failed to write out test source");
+        }
+        let exit_status = child.wait().expect("failed to run command");
         std::process::exit(exit_status.code().unwrap_or(-1))
     }
 }
@@ -890,6 +919,8 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
         let env = CrateRunEnv::collect(args, inside_rustdoc);
 
+        store_json(CrateRunInfo::RunWith(env.clone()));
+
         // Rustdoc expects us to exit with an error code if the test is marked as `compile_fail`,
         // just creating the JSON file is not enough: we need to detect syntax errors,
         // so we need to run Miri with `MIRI_BE_RUSTC` for a check-only build.
@@ -906,7 +937,15 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                 cmd.arg("--emit=metadata");
             }
 
-            cmd.args(&env.args);
+            // Alter the `-o` parameter so that it does not overwrite the JSON file we stored above.
+            let mut args = env.args.clone();
+            for i in 0..args.len() {
+                if args[i] == "-o" {
+                    args[i + 1].push_str(".miri");
+                }
+            }
+
+            cmd.args(&args);
             cmd.env("MIRI_BE_RUSTC", "target");
 
             if verbose > 0 {
@@ -917,10 +956,8 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
                 eprintln!("[cargo-miri rustc inside rustdoc] going to run:\n{:?}", cmd);
             }
 
-            exec_with_pipe(cmd, &env.stdin);
+            exec_with_pipe(cmd, &env.stdin, format!("{}.stdin", out_filename("", "").display()));
         }
-
-        store_json(CrateRunInfo::RunWith(env));
 
         return;
     }
@@ -997,8 +1034,6 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             "[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate} info_query={info_query}"
         );
     }
-    debug_cmd("[cargo-miri rustc]", verbose, &cmd);
-    exec(cmd);
 
     // Create a stub .rlib file if "link" was requested by cargo.
     // This is necessary to prevent cargo from doing rebuilds all the time.
@@ -1013,6 +1048,9 @@ fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         File::create(out_filename("", ".dll")).expect("failed to create fake .dll file");
         File::create(out_filename("", ".lib")).expect("failed to create fake .lib file");
     }
+
+    debug_cmd("[cargo-miri rustc]", verbose, &cmd);
+    exec(cmd);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -1117,7 +1155,7 @@ fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: RunnerPhas
     // Run it.
     debug_cmd("[cargo-miri runner]", verbose, &cmd);
     match phase {
-        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin),
+        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin, format!("{}.stdin", binary)),
         RunnerPhase::Cargo => exec(cmd),
     }
 }
