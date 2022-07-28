@@ -94,10 +94,6 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         }
     }
 
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-
     fn create_dll_import_lib(
         sess: &Session,
         lib_name: &str,

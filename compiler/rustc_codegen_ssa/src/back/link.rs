@@ -346,7 +346,12 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     for (raw_dylib_name, raw_dylib_imports) in
         collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
     {
-        ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
+        let output_path =
+            B::create_dll_import_lib(sess, &raw_dylib_name, &raw_dylib_imports, tmpdir.as_ref());
+
+        ab.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
+            sess.fatal(&format!("failed to add native library {}: {}", output_path.display(), e));
+        });
     }
 
     if let Some(trailing_metadata) = trailing_metadata {

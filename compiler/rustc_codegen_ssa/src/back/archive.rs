@@ -1,4 +1,3 @@
-use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
@@ -51,8 +50,6 @@ pub trait ArchiveBuilder<'a> {
 
     fn build(self, output: &Path) -> bool;
 
-    fn sess(&self) -> &Session;
-
     /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
     /// and returns the path on disk to that import library.
     /// This functions doesn't take `self` so that it can be called from
@@ -64,24 +61,4 @@ pub trait ArchiveBuilder<'a> {
         dll_imports: &[DllImport],
         tmpdir: &Path,
     ) -> PathBuf;
-
-    /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>
-    /// and adds it to the current compilation's set of archives.
-    fn inject_dll_import_lib(
-        &mut self,
-        lib_name: &str,
-        dll_imports: &[DllImport],
-        tmpdir: &MaybeTempDir,
-    ) {
-        let output_path =
-            Self::create_dll_import_lib(self.sess(), lib_name, dll_imports, tmpdir.as_ref());
-
-        self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
-            self.sess().fatal(&format!(
-                "failed to add native library {}: {}",
-                output_path.display(),
-                e
-            ));
-        });
-    }
 }
