@@ -18,7 +18,6 @@ use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
-use std::ops::Deref;
 
 #[derive(PartialEq)]
 enum ArgumentType {
@@ -71,14 +70,10 @@ impl PositionalNamedArg {
             // In the case of a named argument whose position is implicit, there will not be a span
             // to replace. Instead, we insert the name after the `{`, which is the first character
             // of arg_span.
-            if let Some(arg_span) = cx.arg_spans.get(self.cur_piece).copied() {
-                return Some(Span::new(
-                    arg_span.lo() + BytePos(1),
-                    arg_span.lo() + BytePos(1),
-                    self.positional_named_arg_span.ctxt(),
-                    self.positional_named_arg_span.parent(),
-                ));
-            }
+            return cx
+                .arg_spans
+                .get(self.cur_piece)
+                .map(|arg_span| arg_span.with_lo(arg_span.lo() + BytePos(1)).shrink_to_lo());
         }
 
         None
@@ -92,6 +87,43 @@ struct PositionalNamedArgsLint {
 }
 
 impl PositionalNamedArgsLint {
+    /// For a given positional argument, check if the index is for a named argument.
+    ///
+    /// Since positional arguments are required to come before named arguments, if the positional
+    /// index is greater than or equal to the start of named arguments, we know it's a named
+    /// argument used positionally.
+    ///
+    /// Example:
+    /// println!("{} {} {2}", 0, a=1, b=2);
+    ///
+    /// In this case, the first piece (`{}`) would be ArgumentImplicitlyIs with an index of 0. The
+    /// total number of arguments is 3 and the number of named arguments is 2, so the start of named
+    /// arguments is index 1. Therefore, the index of 0 is okay.
+    ///
+    /// The second piece (`{}`) would be ArgumentImplicitlyIs with an index of 1, which is the start
+    /// of named arguments, and so we should add a lint to use the named argument `a`.
+    ///
+    /// The third piece (`{2}`) would be ArgumentIs with an index of 2, which is greater than the
+    /// start of named arguments, and so we should add a lint to use the named argument `b`.
+    ///
+    /// This same check also works for width and precision formatting when either or both are
+    /// CountIsParam, which contains an index into the arguments.
+    fn maybe_add_positional_named_arg(
+        &mut self,
+        current_positional_arg: usize,
+        total_args_length: usize,
+        format_argument_index: usize,
+        ty: PositionalNamedArgType,
+        cur_piece: usize,
+        inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
+        names: &FxHashMap<Symbol, (usize, Span)>,
+    ) {
+        let start_of_named_args = total_args_length - names.len();
+        if current_positional_arg >= start_of_named_args {
+            self.maybe_push(format_argument_index, ty, cur_piece, inner_span_to_replace, names)
+        }
+    }
+
     /// Try constructing a PositionalNamedArg struct and pushing it into the vec of positional
     /// named arguments. If a named arg associated with `format_argument_index` cannot be found,
     /// a new item will not be added as the lint cannot be emitted in this case.
@@ -100,30 +132,30 @@ impl PositionalNamedArgsLint {
         format_argument_index: usize,
         ty: PositionalNamedArgType,
         cur_piece: usize,
-        mut inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
+        inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
         names: &FxHashMap<Symbol, (usize, Span)>,
     ) {
         let named_arg = names
             .iter()
-            .find(|name| name.deref().1.0 == format_argument_index)
+            .find(|&(_, &(index, _))| index == format_argument_index)
             .map(|found| found.clone());
 
-        if let Some(named_arg) = named_arg {
+        if let Some((&replacement, &(_, positional_named_arg_span))) = named_arg {
             // In FormatSpec, `precision_span` starts at the leading `.`, which we want to keep in
             // the lint suggestion, so increment `start` by 1 when `PositionalArgumentType` is
             // `Precision`.
-            if ty == PositionalNamedArgType::Precision {
-                inner_span_to_replace = inner_span_to_replace.map(|mut is| {
-                    is.start += 1;
-                    is
-                });
-            }
+            let inner_span_to_replace = if ty == PositionalNamedArgType::Precision {
+                inner_span_to_replace
+                    .map(|is| rustc_parse_format::InnerSpan { start: is.start + 1, end: is.end })
+            } else {
+                inner_span_to_replace
+            };
             self.positional_named_args.push(PositionalNamedArg {
                 ty,
                 cur_piece,
                 inner_span_to_replace,
-                replacement: named_arg.0.clone(),
-                positional_named_arg_span: named_arg.1.1.clone(),
+                replacement,
+                positional_named_arg_span,
             });
         }
     }
@@ -386,30 +418,28 @@ impl<'a, 'b> Context<'a, 'b> {
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
                     parse::ArgumentIs(i, arg_end) => {
-                        let start_of_named_args = self.args.len() - self.names.len();
-                        if self.curpiece >= start_of_named_args {
-                            self.unused_names_lint.maybe_push(
-                                i,
-                                PositionalNamedArgType::Arg,
-                                self.curpiece,
-                                arg_end,
-                                &self.names,
-                            );
-                        }
+                        self.unused_names_lint.maybe_add_positional_named_arg(
+                            i,
+                            self.args.len(),
+                            i,
+                            PositionalNamedArgType::Arg,
+                            self.curpiece,
+                            arg_end,
+                            &self.names,
+                        );
 
                         Exact(i)
                     }
                     parse::ArgumentImplicitlyIs(i) => {
-                        let start_of_named_args = self.args.len() - self.names.len();
-                        if self.curpiece >= start_of_named_args {
-                            self.unused_names_lint.maybe_push(
-                                i,
-                                PositionalNamedArgType::Arg,
-                                self.curpiece,
-                                None,
-                                &self.names,
-                            );
-                        }
+                        self.unused_names_lint.maybe_add_positional_named_arg(
+                            i,
+                            self.args.len(),
+                            i,
+                            PositionalNamedArgType::Arg,
+                            self.curpiece,
+                            None,
+                            &self.names,
+                        );
                         Exact(i)
                     }
                     parse::ArgumentNamed(s, span) => {
@@ -491,16 +521,15 @@ impl<'a, 'b> Context<'a, 'b> {
         match c {
             parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
-                let start_of_named_args = self.args.len() - self.names.len();
-                if i >= start_of_named_args {
-                    self.unused_names_lint.maybe_push(
-                        i,
-                        named_arg_type,
-                        self.curpiece,
-                        inner_span.clone(),
-                        &self.names,
-                    );
-                }
+                self.unused_names_lint.maybe_add_positional_named_arg(
+                    i,
+                    self.args.len(),
+                    i,
+                    named_arg_type,
+                    self.curpiece,
+                    *inner_span,
+                    &self.names,
+                );
                 self.verify_arg_type(Exact(i), Count);
             }
             parse::CountIsName(s, span) => {
