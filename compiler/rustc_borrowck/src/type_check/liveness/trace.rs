@@ -98,7 +98,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
 
 struct DropData<'tcx> {
     dropck_result: DropckOutlivesResult<'tcx>,
-    region_constraint_data: Option<Rc<QueryRegionConstraints<'tcx>>>,
+    region_constraint_data: Option<&'tcx QueryRegionConstraints<'tcx>>,
 }
 
 struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {

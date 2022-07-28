@@ -2,6 +2,8 @@
 // First, try a search-by-name
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "Foo")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
@@ -22,6 +24,8 @@ wait-for-attribute: ("#titles > button:nth-of-type(3)", {"class": "selected"})
 // Now try search-by-return
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "-> String")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
@@ -42,6 +46,8 @@ wait-for-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
 // Try with a search-by-return with no results
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "-> Something")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
@@ -50,6 +56,8 @@ assert-text: ("#titles > button:nth-of-type(1)", "In Function Return Types", STA
 // Try with a search-by-parameter
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "usize pattern")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
@@ -58,6 +66,8 @@ assert-text: ("#titles > button:nth-of-type(1)", "In Function Parameters", START
 // Try with a search-by-parameter-and-return
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "pattern -> str")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})

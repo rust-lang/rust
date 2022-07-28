@@ -575,6 +575,19 @@ impl<'tcx> Predicate<'tcx> {
 
         Some(tcx.mk_predicate(kind))
     }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
+        if let PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) = self.kind().skip_binder()
+            && constness != BoundConstness::NotConst
+        {
+            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Trait(TraitPredicate {
+                trait_ref,
+                constness: BoundConstness::NotConst,
+                polarity,
+            })));
+        }
+        self
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
@@ -790,22 +803,15 @@ pub struct TraitPredicate<'tcx> {
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
-    pub fn remap_constness(&mut self, tcx: TyCtxt<'tcx>, param_env: &mut ParamEnv<'tcx>) {
-        if std::intrinsics::unlikely(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
-            // remap without changing constness of this predicate.
-            // this is because `T: ~const Drop` has a different meaning to `T: Drop`
-            // FIXME(fee1-dead): remove this logic after beta bump
-            param_env.remap_constness_with(self.constness)
-        } else {
-            *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
-        }
+    pub fn remap_constness(&mut self, param_env: &mut ParamEnv<'tcx>) {
+        *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
     }
 
     /// Remap the constness of this predicate before emitting it for diagnostics.
     pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
         // this is different to `remap_constness` that callees want to print this predicate
         // in case of selection errors. `T: ~const Drop` bounds cannot end up here when the
-        // param_env is not const because we it is always satisfied in non-const contexts.
+        // param_env is not const because it is always satisfied in non-const contexts.
         if let hir::Constness::NotConst = param_env.constness() {
             self.constness = ty::BoundConstness::NotConst;
         }
@@ -822,6 +828,14 @@ impl<'tcx> TraitPredicate<'tcx> {
     #[inline]
     pub fn is_const_if_const(self) -> bool {
         self.constness == BoundConstness::ConstIfConst
+    }
+
+    pub fn is_constness_satisfied_by(self, constness: hir::Constness) -> bool {
+        match (self.constness, constness) {
+            (BoundConstness::NotConst, _)
+            | (BoundConstness::ConstIfConst, hir::Constness::Const) => true,
+            (BoundConstness::ConstIfConst, hir::Constness::NotConst) => false,
+        }
     }
 }
 
@@ -1033,6 +1047,24 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
+    pub fn to_opt_poly_projection_pred(self) -> Option<PolyProjectionPredicate<'tcx>> {
+        let predicate = self.kind();
+        match predicate.skip_binder() {
+            PredicateKind::Projection(t) => Some(predicate.rebind(t)),
+            PredicateKind::Trait(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::Coerce(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::TypeOutlives(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+        }
+    }
+
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
@@ -1090,8 +1122,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, Lift)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
-    // FIXME(oli-obk): make this a LocalDefId
-    pub def_id: DefId,
+    pub def_id: LocalDefId,
     pub substs: SubstsRef<'tcx>,
 }
 
@@ -2118,7 +2149,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
             }
-            ty::InstanceDef::VtableShim(..)
+            ty::InstanceDef::VTableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)
             | ty::InstanceDef::FnPtrShim(..)

@@ -79,7 +79,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         filename: Symbol,
         line: u32,
         col: u32,
-    ) -> MPlaceTy<'tcx, M::PointerTag> {
+    ) -> MPlaceTy<'tcx, M::Provenance> {
         let loc_details = &self.tcx.sess.opts.unstable_opts.location_detail;
         let file = if loc_details.file {
             self.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
@@ -123,7 +123,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )
     }
 
-    pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::PointerTag> {
+    pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::Provenance> {
         let (file, line, column) = self.location_triple_for_span(span);
         self.alloc_caller_location(file, line, column)
     }

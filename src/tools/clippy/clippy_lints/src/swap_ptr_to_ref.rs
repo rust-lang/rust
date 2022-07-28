@@ -73,7 +73,7 @@ fn is_ptr_to_ref(cx: &LateContext<'_>, e: &Expr<'_>, ctxt: SyntaxContext) -> (bo
         && let ExprKind::Unary(UnOp::Deref, derefed_expr) = borrowed_expr.kind
         && cx.typeck_results().expr_ty(derefed_expr).is_unsafe_ptr()
     {
-        (true, (borrowed_expr.span.ctxt() == ctxt || derefed_expr.span.ctxt() == ctxt).then(|| derefed_expr.span))
+        (true, (borrowed_expr.span.ctxt() == ctxt || derefed_expr.span.ctxt() == ctxt).then_some(derefed_expr.span))
     } else {
         (false, None)
     }

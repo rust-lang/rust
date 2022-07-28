@@ -1,7 +1,7 @@
 // revisions: allowed disallowed
 //[allowed] check-pass
 
-#![feature(if_let_guard, let_chains)]
+#![feature(if_let_guard)]
 #![cfg_attr(allowed, allow(irrefutable_let_patterns))]
 #![cfg_attr(disallowed, deny(irrefutable_let_patterns))]
 

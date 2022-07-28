@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
         if_chain! {
             // Check if item is a method, called to_string and has a parameter 'self'
             if let ImplItemKind::Fn(ref signature, _) = impl_item.kind;
-            if impl_item.ident.name.as_str() == "to_string";
+            if impl_item.ident.name == sym::to_string;
             let decl = &signature.decl;
             if decl.implicit_self.has_implicit_self();
             if decl.inputs.len() == 1;

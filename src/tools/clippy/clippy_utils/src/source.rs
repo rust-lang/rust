@@ -353,7 +353,7 @@ pub fn snippet_with_context<'a>(
 /// span containing `m!(0)`.
 pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
     let outer_span = hygiene::walk_chain(span, outer);
-    (outer_span.ctxt() == outer).then(|| outer_span)
+    (outer_span.ctxt() == outer).then_some(outer_span)
 }
 
 /// Removes block comments from the given `Vec` of lines.

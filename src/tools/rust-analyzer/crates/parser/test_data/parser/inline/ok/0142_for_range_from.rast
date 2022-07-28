@@ -1,0 +1,42 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n   "
+        FOR_EXPR
+          FOR_KW "for"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          WHITESPACE " "
+          IN_KW "in"
+          WHITESPACE " "
+          RANGE_EXPR
+            LITERAL
+              INT_NUMBER "0"
+            WHITESPACE " "
+            DOT2 ".."
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n       "
+              EXPR_STMT
+                BREAK_EXPR
+                  BREAK_KW "break"
+                SEMICOLON ";"
+              WHITESPACE "\n   "
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

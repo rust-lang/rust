@@ -1766,15 +1766,24 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
-/// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T`
-/// reference) that is accessible by safe code (for example, because you returned it),
-/// then you must not access the data in any way that contradicts that reference for the
-/// remainder of `'a`. For example, this means that if you take the `*mut T` from an
-/// `UnsafeCell<T>` and cast it to an `&T`, then the data in `T` must remain immutable
-/// (modulo any `UnsafeCell` data found within `T`, of course) until that reference's
-/// lifetime expires. Similarly, if you create a `&mut T` reference that is released to
-/// safe code, then you must not access the data within the `UnsafeCell` until that
-/// reference expires.
+/// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference), then
+/// you must not access the data in any way that contradicts that reference for the remainder of
+/// `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
+/// to an `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
+/// within `T`, of course) until that reference's lifetime expires. Similarly, if you create a `&mut
+/// T` reference that is released to safe code, then you must not access the data within the
+/// `UnsafeCell` until that reference expires.
+///
+/// - For both `&T` without `UnsafeCell<_>` and `&mut T`, you must also not deallocate the data
+/// until the reference expires. As a special exception, given an `&T`, any part of it that is
+/// inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
+/// last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
+/// of what a reference points to, this means the memory an `&T` points to can be deallocted only if
+/// *every part of it* (including padding) is inside an `UnsafeCell`.
+///
+///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
+/// live memory and the compiler is allowed to insert spurious reads if it can prove that this
+/// memory has not yet been deallocated.
 ///
 /// - At all times, you must avoid data races. If multiple threads have access to
 /// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other

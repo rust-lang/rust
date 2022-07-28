@@ -67,7 +67,7 @@
 //!
 //! ## What criterion to select on?
 //!
-//! This a pretty tricky area of loading crates. Given a file, how do we know
+//! This is a pretty tricky area of loading crates. Given a file, how do we know
 //! whether it's the right crate? Currently, the rules look along these lines:
 //!
 //! 1. Does the filename match an rlib/dylib pattern? That is to say, does the

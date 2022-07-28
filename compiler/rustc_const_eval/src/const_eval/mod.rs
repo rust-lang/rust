@@ -138,7 +138,7 @@ pub(crate) fn deref_mir_constant<'tcx>(
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Some(alloc_id) = mplace.ptr.provenance {
         assert_eq!(
-            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().0.0.mutability,
+            tcx.global_alloc(alloc_id).unwrap_memory().0.0.mutability,
             Mutability::Not,
             "deref_mir_constant cannot be used with mutable allocations as \
             that could allow pattern matching to observe mutable statics",

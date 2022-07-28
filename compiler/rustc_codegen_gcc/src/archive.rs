@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_session::Session;
 
-use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_session::cstore::DllImport;
 
 struct ArchiveConfig<'a> {
@@ -177,7 +176,16 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         any_members
     }
 
-    fn inject_dll_import_lib(&mut self, _lib_name: &str, _dll_imports: &[DllImport], _tmpdir: &MaybeTempDir) {
+    fn sess(&self) -> &Session {
+        self.config.sess
+    }
+
+    fn create_dll_import_lib(
+        _sess: &Session,
+        _lib_name: &str,
+        _dll_imports: &[DllImport],
+        _tmpdir: &Path,
+    ) -> PathBuf {
         unimplemented!();
     }
 }

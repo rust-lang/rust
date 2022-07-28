@@ -4,6 +4,7 @@
     -Z                            asm-comments=val -- generate comments into the assembly (may change behavior) (default: no)
     -Z                       assert-incr-state=val -- assert that the incremental cache is in given state: either `loaded` or `not-loaded`.
     -Z                      binary-dep-depinfo=val -- include artifacts (sysroot, crate dependencies) used during compilation in dep-info (default: no)
+    -Z                             box-noalias=val -- emit noalias metadata for box (default: yes)
     -Z                       branch-protection=val -- set options for branch target identification and pointer authentication on AArch64
     -Z                           cf-protection=val -- instrument control-flow architecture protection
     -Z               cgu-partitioning-strategy=val -- the codegen unit partitioning strategy to use
@@ -35,6 +36,8 @@
     -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
     -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
     -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
+    -Z                           emit-thin-lto=val -- emit the bc module with thin LTO info (default: yes)
+    -Z               export-executable-symbols=val -- export symbols from executables, as if they were dynamic libraries
     -Z                             fewer-names=val -- reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) (default: no)
     -Z              force-unstable-if-unmarked=val -- force all crates to be `rustc_private` unstable (default: no)
     -Z                                    fuel=val -- set the optimization fuel quota for a crate

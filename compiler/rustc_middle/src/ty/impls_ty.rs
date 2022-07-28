@@ -147,15 +147,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            tcx.get_global_alloc(*self).hash_stable(hcx, hasher);
+            tcx.try_get_global_alloc(*self).hash_stable(hcx, hasher);
         });
     }
 }
 
 // `Relocations` with default type parameters is a sorted map.
-impl<'a, Tag> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Tag>
+impl<'a, Prov> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Prov>
 where
-    Tag: HashStable<StableHashingContext<'a>>,
+    Prov: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.len().hash_stable(hcx, hasher);

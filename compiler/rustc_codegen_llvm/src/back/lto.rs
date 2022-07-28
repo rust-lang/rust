@@ -199,7 +199,7 @@ pub(crate) fn run_thin(
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
     let name = module.name.clone();
-    let buffer = ThinBuffer::new(module.module_llvm.llmod());
+    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
     (name, buffer)
 }
 
@@ -324,20 +324,6 @@ fn fat_lto(
         }
         drop(linker);
         save_temp_bitcode(cgcx, &module, "lto.input");
-
-        // Fat LTO also suffers from the invalid DWARF issue similar to Thin LTO.
-        // Here we rewrite all `DICompileUnit` pointers if there is only one `DICompileUnit`.
-        // This only works around the problem when codegen-units = 1.
-        // Refer to the comments in the `optimize_thin_module` function for more details.
-        let mut cu1 = ptr::null_mut();
-        let mut cu2 = ptr::null_mut();
-        unsafe { llvm::LLVMRustLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2) };
-        if !cu2.is_null() {
-            let _timer =
-                cgcx.prof.generic_activity_with_arg("LLVM_fat_lto_patch_debuginfo", &*module.name);
-            unsafe { llvm::LLVMRustLTOPatchDICompileUnit(llmod, cu1) };
-            save_temp_bitcode(cgcx, &module, "fat-lto-after-patch");
-        }
 
         // Internalize everything below threshold to help strip out more modules and such.
         unsafe {
@@ -709,9 +695,9 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module) -> ThinBuffer {
+    pub fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m);
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
             ThinBuffer(buffer)
         }
     }
@@ -769,7 +755,7 @@ pub unsafe fn optimize_thin_module(
         // an error.
         let mut cu1 = ptr::null_mut();
         let mut cu2 = ptr::null_mut();
-        llvm::LLVMRustLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
+        llvm::LLVMRustThinLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
         if !cu2.is_null() {
             let msg = "multiple source DICompileUnits found";
             return Err(write::llvm_err(&diag_handler, msg));
@@ -858,7 +844,7 @@ pub unsafe fn optimize_thin_module(
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg("LLVM_thin_lto_patch_debuginfo", thin_module.name());
-            llvm::LLVMRustLTOPatchDICompileUnit(llmod, cu1);
+            llvm::LLVMRustThinLTOPatchDICompileUnit(llmod, cu1);
             save_temp_bitcode(cgcx, &module, "thin-lto-after-patch");
         }
 

@@ -21,7 +21,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
-use rustc_middle::ty::abstract_const::AbstractConst;
+use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
@@ -239,17 +239,36 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DefiningAnchor {
+    /// `DefId` of the item.
+    Bind(LocalDefId),
+    /// When opaque types are not resolved, we `Bubble` up, meaning
+    /// return the opaque/hidden type pair from query, for caller of query to handle it.
+    Bubble,
+    /// Used to catch type mismatch errors when handling opaque types.
+    Error,
+}
+
 pub struct InferCtxt<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
     /// The `DefId` of the item in whose context we are performing inference or typeck.
     /// It is used to check whether an opaque type use is a defining use.
     ///
-    /// If it is `None`, we can't resolve opaque types here and need to bubble up
+    /// If it is `DefiningAnchor::Bubble`, we can't resolve opaque types here and need to bubble up
     /// the obligation. This frequently happens for
     /// short lived InferCtxt within queries. The opaque type obligations are forwarded
     /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
-    pub defining_use_anchor: Option<LocalDefId>,
+    ///
+    /// It is default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
+    /// might come up during inference or typeck.
+    pub defining_use_anchor: DefiningAnchor,
+
+    /// Whether this inference context should care about region obligations in
+    /// the root universe. Most notably, this is used during hir typeck as region
+    /// solving is left to borrowck instead.
+    pub considering_regions: bool,
 
     /// During type-checking/inference of a body, `in_progress_typeck_results`
     /// contains a reference to the typeck results being built up, which are
@@ -386,15 +405,7 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplMethodObligation {
-        span: Span,
-        impl_item_def_id: LocalDefId,
-        trait_item_def_id: DefId,
-    },
-
-    /// Comparing the signature and requirements of an impl associated type
-    /// against the containing trait
-    CompareImplTypeObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
+    CompareImplItemObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
@@ -525,8 +536,9 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// without using `Rc` or something similar.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
+    defining_use_anchor: DefiningAnchor,
+    considering_regions: bool,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
-    defining_use_anchor: Option<LocalDefId>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -535,7 +547,12 @@ pub trait TyCtxtInferExt<'tcx> {
 
 impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
-        InferCtxtBuilder { tcx: self, defining_use_anchor: None, fresh_typeck_results: None }
+        InferCtxtBuilder {
+            tcx: self,
+            defining_use_anchor: DefiningAnchor::Error,
+            considering_regions: true,
+            fresh_typeck_results: None,
+        }
     }
 }
 
@@ -545,7 +562,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Will also change the scope for opaque type defining use checks to the given owner.
     pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: LocalDefId) -> Self {
         self.fresh_typeck_results = Some(RefCell::new(ty::TypeckResults::new(table_owner)));
-        self.with_opaque_type_inference(table_owner)
+        self.with_opaque_type_inference(DefiningAnchor::Bind(table_owner))
     }
 
     /// Whenever the `InferCtxt` should be able to handle defining uses of opaque types,
@@ -554,8 +571,13 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// It is only meant to be called in two places, for typeck
     /// (via `with_fresh_in_progress_typeck_results`) and for the inference context used
     /// in mir borrowck.
-    pub fn with_opaque_type_inference(mut self, defining_use_anchor: LocalDefId) -> Self {
-        self.defining_use_anchor = Some(defining_use_anchor);
+    pub fn with_opaque_type_inference(mut self, defining_use_anchor: DefiningAnchor) -> Self {
+        self.defining_use_anchor = defining_use_anchor;
+        self
+    }
+
+    pub fn ignoring_regions(mut self) -> Self {
+        self.considering_regions = false;
         self
     }
 
@@ -583,11 +605,17 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
-        let InferCtxtBuilder { tcx, defining_use_anchor, ref fresh_typeck_results } = *self;
+        let InferCtxtBuilder {
+            tcx,
+            defining_use_anchor,
+            considering_regions,
+            ref fresh_typeck_results,
+        } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
             tcx,
             defining_use_anchor,
+            considering_regions,
             in_progress_typeck_results,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
@@ -938,14 +966,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn member_constraint(
         &self,
-        opaque_type_def_id: DefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
         in_regions: &Lrc<Vec<ty::Region<'tcx>>>,
     ) {
         self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
-            opaque_type_def_id,
+            key,
             definition_span,
             hidden_ty,
             region,
@@ -1025,16 +1053,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
-    ) -> UnitResult<'tcx> {
-        self.commit_if_ok(|_snapshot| {
-            let ty::OutlivesPredicate(r_a, r_b) =
-                self.replace_bound_vars_with_placeholders(predicate);
-            let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span)
-            });
-            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
-            Ok(())
-        })
+    ) {
+        let ty::OutlivesPredicate(r_a, r_b) = self.replace_bound_vars_with_placeholders(predicate);
+        let origin =
+            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
+        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
     }
 
     /// Number of type variables created so far.
@@ -1301,7 +1324,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions_and_report_errors(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+    pub fn resolve_regions_and_report_errors(
+        &self,
+        generic_param_scope: LocalDefId,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
         let errors = self.resolve_regions(outlives_env);
 
         if !self.is_tainted_by_errors() {
@@ -1310,7 +1337,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(&errors);
+            self.report_region_errors(generic_param_scope, &errors);
         }
     }
 
@@ -1648,7 +1675,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_resolve(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
+        mut param_env: ty::ParamEnv<'tcx>,
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToValTreeResult<'tcx> {
@@ -1659,10 +1686,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // variables
         if substs.has_infer_types_or_consts() {
             let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
-            if let Ok(None) = ac {
-                substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
-            } else {
-                return Err(ErrorHandled::TooGeneric);
+            match ac {
+                Ok(None) => {
+                    substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);
+                    param_env = self.tcx.param_env(unevaluated.def.did);
+                }
+                Ok(Some(ct)) => {
+                    if ct.unify_failure_kind(self.tcx) == FailureKind::Concrete {
+                        substs = replace_param_and_infer_substs_with_placeholder(self.tcx, substs);
+                    } else {
+                        return Err(ErrorHandled::TooGeneric);
+                    }
+                }
+                Err(guar) => return Err(ErrorHandled::Reported(guar)),
             }
         }
 
@@ -1910,8 +1946,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             ReborrowUpvar(a, _) => a,
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
-            CompareImplMethodObligation { span, .. } => span,
-            CompareImplTypeObligation { span, .. } => span,
+            CompareImplItemObligation { span, .. } => span,
             CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
@@ -1925,19 +1960,11 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span)
             }
 
-            traits::ObligationCauseCode::CompareImplMethodObligation {
+            traits::ObligationCauseCode::CompareImplItemObligation {
                 impl_item_def_id,
                 trait_item_def_id,
-            } => SubregionOrigin::CompareImplMethodObligation {
-                span: cause.span,
-                impl_item_def_id,
-                trait_item_def_id,
-            },
-
-            traits::ObligationCauseCode::CompareImplTypeObligation {
-                impl_item_def_id,
-                trait_item_def_id,
-            } => SubregionOrigin::CompareImplTypeObligation {
+                kind: _,
+            } => SubregionOrigin::CompareImplItemObligation {
                 span: cause.span,
                 impl_item_def_id,
                 trait_item_def_id,
@@ -1981,4 +2008,44 @@ impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
             self.sub_region, self.sup_type
         )
     }
+}
+
+/// Replaces substs that reference param or infer variables with suitable
+/// placeholders. This function is meant to remove these param and infer
+/// substs when they're not actually needed to evaluate a constant.
+fn replace_param_and_infer_substs_with_placeholder<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    substs: SubstsRef<'tcx>,
+) -> SubstsRef<'tcx> {
+    tcx.mk_substs(substs.iter().enumerate().map(|(idx, arg)| {
+        match arg.unpack() {
+            GenericArgKind::Type(_)
+                if arg.has_param_types_or_consts() || arg.has_infer_types_or_consts() =>
+            {
+                tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                    universe: ty::UniverseIndex::ROOT,
+                    name: ty::BoundVar::from_usize(idx),
+                }))
+                .into()
+            }
+            GenericArgKind::Const(ct)
+                if ct.has_infer_types_or_consts() || ct.has_param_types_or_consts() =>
+            {
+                let ty = ct.ty();
+                // If the type references param or infer, replace that too...
+                if ty.has_param_types_or_consts() || ty.has_infer_types_or_consts() {
+                    bug!("const `{ct}`'s type should not reference params or types");
+                }
+                tcx.mk_const(ty::ConstS {
+                    ty,
+                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        name: ty::BoundConst { ty, var: ty::BoundVar::from_usize(idx) },
+                    }),
+                })
+                .into()
+            }
+            _ => arg,
+        }
+    }))
 }

@@ -271,7 +271,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def) => def.did,
-                ty::InstanceDef::VtableShim(..)
+                ty::InstanceDef::VTableShim(..)
                 | ty::InstanceDef::ReifyShim(..)
                 | ty::InstanceDef::FnPtrShim(..)
                 | ty::InstanceDef::ClosureOnceShim { .. }
@@ -425,7 +425,7 @@ fn mono_item_visibility<'tcx>(
         InstanceDef::DropGlue(def_id, Some(_)) => def_id,
 
         // These are all compiler glue and such, never exported, always hidden.
-        InstanceDef::VtableShim(..)
+        InstanceDef::VTableShim(..)
         | InstanceDef::ReifyShim(..)
         | InstanceDef::FnPtrShim(..)
         | InstanceDef::Virtual(..)

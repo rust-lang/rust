@@ -1,4 +1,4 @@
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
@@ -37,6 +37,7 @@ fluent_messages! {
     expand => "../locales/en-US/expand.ftl",
     lint => "../locales/en-US/lint.ftl",
     parser => "../locales/en-US/parser.ftl",
+    passes => "../locales/en-US/passes.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     typeck => "../locales/en-US/typeck.ftl",
 }
@@ -298,7 +299,7 @@ impl DiagnosticMessage {
     /// - If `self` is non-translatable then return `self`'s message.
     pub fn with_subdiagnostic_message(&self, sub: SubdiagnosticMessage) -> Self {
         let attr = match sub {
-            SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s.clone()),
+            SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s),
             SubdiagnosticMessage::FluentIdentifier(id) => {
                 return DiagnosticMessage::FluentIdentifier(id, None);
             }

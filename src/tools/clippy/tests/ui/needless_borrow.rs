@@ -115,6 +115,18 @@ fn main() {
         fn foo_ref(&self) {}
     }
     (&&()).foo_ref(); // Don't lint. `&()` will call `<() as FooRef>::foo_ref`
+
+    struct S;
+    impl From<S> for u32 {
+        fn from(s: S) -> Self {
+            (&s).into()
+        }
+    }
+    impl From<&S> for u32 {
+        fn from(s: &S) -> Self {
+            0
+        }
+    }
 }
 
 #[allow(clippy::needless_borrowed_reference)]

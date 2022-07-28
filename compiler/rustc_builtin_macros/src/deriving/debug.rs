@@ -45,7 +45,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
         EnumMatching(_, _, v, fields) => (v.ident, &v.data, fields),
-        EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
+        EnumTag(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
     };
@@ -95,9 +95,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 );
                 args.push(name);
             }
-            // Use double indirection to make sure this works for unsized types
+            // Use an extra indirection to make sure this works for unsized types.
             let field = cx.expr_addr_of(field.span, field.self_expr.clone());
-            let field = cx.expr_addr_of(field.span, field);
             args.push(field);
         }
         let expr = cx.expr_call_global(span, fn_path_debug, args);
@@ -115,9 +114,9 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 ));
             }
 
-            // Use double indirection to make sure this works for unsized types
-            let value_ref = cx.expr_addr_of(field.span, field.self_expr.clone());
-            value_exprs.push(cx.expr_addr_of(field.span, value_ref));
+            // Use an extra indirection to make sure this works for unsized types.
+            let field = cx.expr_addr_of(field.span, field.self_expr.clone());
+            value_exprs.push(field);
         }
 
         // `let names: &'static _ = &["field1", "field2"];`
@@ -177,6 +176,6 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             stmts.push(names_let.unwrap());
         }
         stmts.push(values_let);
-        BlockOrExpr::new_mixed(stmts, expr)
+        BlockOrExpr::new_mixed(stmts, Some(expr))
     }
 }

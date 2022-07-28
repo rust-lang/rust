@@ -163,7 +163,7 @@ impl<'a> Resolver<'a> {
 
         let container = match parent.kind {
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
-            ModuleKind::Block(..) => "block",
+            ModuleKind::Block => "block",
         };
 
         let old_noun = match old_binding.is_import() {
@@ -565,8 +565,7 @@ impl<'a> Resolver<'a> {
                     } else if let Some(sp) = sm.generate_fn_name_span(span) {
                         err.span_label(
                             sp,
-                            "try adding a local generic parameter in this method instead"
-                                .to_string(),
+                            "try adding a local generic parameter in this method instead",
                         );
                     } else {
                         err.help("try using a local generic parameter instead");
@@ -1627,7 +1626,7 @@ impl<'a> Resolver<'a> {
                     "{}{} `{}` defined here",
                     prefix,
                     suggestion.res.descr(),
-                    suggestion.candidate.as_str(),
+                    suggestion.candidate,
                 ),
             );
         }
@@ -2603,12 +2602,12 @@ fn show_candidates(
                 .skip(1)
                 .all(|(_, descr, _, _)| descr == descr_first)
             {
-                descr_first.to_string()
+                descr_first
             } else {
-                "item".to_string()
+                "item"
             };
             let plural_descr =
-                if descr.ends_with("s") { format!("{}es", descr) } else { format!("{}s", descr) };
+                if descr.ends_with('s') { format!("{}es", descr) } else { format!("{}s", descr) };
 
             let mut msg = format!("{}these {} exist but are inaccessible", prefix, plural_descr);
             let mut has_colon = false;

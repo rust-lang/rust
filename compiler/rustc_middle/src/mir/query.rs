@@ -2,7 +2,7 @@
 
 use crate::mir::{Body, ConstantKind, Promoted};
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -235,7 +235,7 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,

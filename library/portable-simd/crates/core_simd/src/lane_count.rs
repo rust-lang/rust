@@ -3,7 +3,7 @@ mod sealed {
 }
 use sealed::Sealed;
 
-/// A type representing a vector lane count.
+/// Specifies the number of lanes in a SIMD vector as a type.
 pub struct LaneCount<const LANES: usize>;
 
 impl<const LANES: usize> LaneCount<LANES> {
@@ -11,7 +11,11 @@ impl<const LANES: usize> LaneCount<LANES> {
     pub const BITMASK_LEN: usize = (LANES + 7) / 8;
 }
 
-/// Helper trait for vector lane counts.
+/// Statically guarantees that a lane count is marked as supported.
+///
+/// This trait is *sealed*: the list of implementors below is total.
+/// Users do not have the ability to mark additional `LaneCount<N>` values as supported.
+/// Only SIMD vectors with supported lane counts are constructable.
 pub trait SupportedLaneCount: Sealed {
     #[doc(hidden)]
     type BitMask: Copy + Default + AsRef<[u8]> + AsMut<[u8]>;

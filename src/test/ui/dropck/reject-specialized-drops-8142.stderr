@@ -104,7 +104,7 @@ error[E0366]: `Drop` impls cannot be specialized
 LL | impl              Drop for X<3>           { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `3_usize` is not a generic parameter
+   = note: `3` is not a generic parameter
 note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:17:1
    |

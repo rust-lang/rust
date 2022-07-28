@@ -194,8 +194,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 let snake_name = Ident::new(
                     // FIXME: should probably trim prefix, not replace all occurrences
                     &name
-                        .replace(&format!("{}-", res.ident).replace("_", "-"), "")
-                        .replace("-", "_"),
+                        .replace(&format!("{}-", res.ident).replace('_', "-"), "")
+                        .replace('-', "_"),
                     span,
                 );
                 constants.extend(quote! {
@@ -207,7 +207,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 });
 
                 for Attribute { id: Identifier { name: attr_name }, .. } in attributes {
-                    let snake_name = Ident::new(&attr_name.replace("-", "_"), span);
+                    let snake_name = Ident::new(&attr_name.replace('-', "_"), span);
                     if !previous_attrs.insert(snake_name.clone()) {
                         continue;
                     }
@@ -260,10 +260,12 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             #generated
 
             pub mod _subdiag {
-                pub const note: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("note"));
                 pub const help: crate::SubdiagnosticMessage =
                     crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("help"));
+                pub const note: crate::SubdiagnosticMessage =
+                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("note"));
+                pub const warn: crate::SubdiagnosticMessage =
+                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("warn"));
                 pub const label: crate::SubdiagnosticMessage =
                     crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("label"));
                 pub const suggestion: crate::SubdiagnosticMessage =

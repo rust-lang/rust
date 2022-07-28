@@ -40,7 +40,8 @@ pub use self::intrinsic::IntrinsicCallMethods;
 pub use self::misc::MiscMethods;
 pub use self::statics::{StaticBuilderMethods, StaticMethods};
 pub use self::type_::{
-    ArgAbiMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
+    ArgAbiMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMembershipMethods,
+    TypeMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 

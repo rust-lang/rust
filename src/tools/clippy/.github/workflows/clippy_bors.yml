@@ -144,7 +144,7 @@ jobs:
         OS: ${{ runner.os }}
 
   metadata_collection:
-    needs: base
+    needs: changelog
     runs-on: ubuntu-latest
 
     steps:
@@ -264,7 +264,7 @@ jobs:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && success()
     runs-on: ubuntu-latest
-    needs: [changelog, base, integration_build, integration]
+    needs: [changelog, base, metadata_collection, integration_build, integration]
 
     steps:
       - name: Mark the job as successful
@@ -274,7 +274,7 @@ jobs:
     name: bors test finished
     if: github.event.pusher.name == 'bors' && (failure() || cancelled())
     runs-on: ubuntu-latest
-    needs: [changelog, base, integration_build, integration]
+    needs: [changelog, base, metadata_collection, integration_build, integration]
 
     steps:
       - name: Mark the job as a failure

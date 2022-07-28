@@ -11,12 +11,10 @@ LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
 
 error[E0277]: the trait bound `B: Clone` is not satisfied
-  --> $DIR/issue-79224.rs:19:5
+  --> $DIR/issue-79224.rs:19:12
    |
-LL | /     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-LL | |         write!(f, "foo")
-LL | |     }
-   | |_____^ the trait `Clone` is not implemented for `B`
+LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+   |            ^^^^^ the trait `Clone` is not implemented for `B`
    |
    = note: required because of the requirements on the impl of `ToOwned` for `B`
 help: consider further restricting this bound

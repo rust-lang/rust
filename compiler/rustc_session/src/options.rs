@@ -102,28 +102,6 @@ macro_rules! top_level_options {
     );
 }
 
-impl Options {
-    pub fn mir_opt_level(&self) -> usize {
-        self.unstable_opts
-            .mir_opt_level
-            .unwrap_or_else(|| if self.optimize != OptLevel::No { 2 } else { 1 })
-    }
-
-    pub fn instrument_coverage(&self) -> bool {
-        self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off) != InstrumentCoverage::Off
-    }
-
-    pub fn instrument_coverage_except_unused_generics(&self) -> bool {
-        self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
-            == InstrumentCoverage::ExceptUnusedGenerics
-    }
-
-    pub fn instrument_coverage_except_unused_functions(&self) -> bool {
-        self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
-            == InstrumentCoverage::ExceptUnusedFunctions
-    }
-}
-
 top_level_options!(
     /// The top-level command-line options struct.
     ///
@@ -149,9 +127,11 @@ top_level_options!(
     /// `CodegenOptions`, think about how it influences incremental compilation. If in
     /// doubt, specify `[TRACKED]`, which is always "correct" but might lead to
     /// unnecessary re-compilation.
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_ty)]
     pub struct Options {
         /// The crate config requested for the session, which may be combined
         /// with additional crate configurations during the compile process.
+        #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::crate_types` instead of this field"))]
         crate_types: Vec<CrateType> [TRACKED],
         optimize: OptLevel [TRACKED],
         /// Include the `debug_assertions` flag in dependency tracking, since it
@@ -198,7 +178,9 @@ top_level_options!(
         /// what rustc was invoked with, but massaged a bit to agree with
         /// commands like `--emit llvm-ir` which they're often incompatible with
         /// if we otherwise use the defaults of rustc.
+        #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::codegen_units` instead of this field"))]
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
+        #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field"))]
         cli_forced_thinlto_off: bool [UNTRACKED],
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
@@ -249,11 +231,12 @@ macro_rules! options {
      ),* ,) =>
 (
     #[derive(Clone)]
-    pub struct $struct_name { $(pub $opt: $t),* }
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_ty)]
+    pub struct $struct_name { $( $( #[$attr] )* pub $opt: $t),* }
 
     impl Default for $struct_name {
         fn default() -> $struct_name {
-            $struct_name { $( $( #[$attr] )* $opt: $init),* }
+            $struct_name { $($opt: $init),* }
         }
     }
 
@@ -296,6 +279,22 @@ macro_rules! options {
     }
 
 ) }
+
+impl Options {
+    // JUSTIFICATION: defn of the suggested wrapper fn
+    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+    pub fn time_passes(&self) -> bool {
+        self.unstable_opts.time_passes || self.unstable_opts.time
+    }
+}
+
+impl CodegenOptions {
+    // JUSTIFICATION: defn of the suggested wrapper fn
+    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+    pub fn instrument_coverage(&self) -> InstrumentCoverage {
+        self.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+    }
+}
 
 // Sometimes different options need to build a common structure.
 // That structure can be kept in one of the options' fields, the others become dummy.
@@ -377,7 +376,7 @@ mod desc {
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `leak`, `memory`, `memtag`, or `thread`";
+    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -535,7 +534,7 @@ mod parse {
     ) -> bool {
         match v {
             Some(s) => {
-                for s in s.split(",") {
+                for s in s.split(',') {
                     let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
                     slot.push((pass_name.to_string(), &s[..1] == "+"));
                 }
@@ -683,6 +682,7 @@ mod parse {
                     "leak" => SanitizerSet::LEAK,
                     "memory" => SanitizerSet::MEMORY,
                     "memtag" => SanitizerSet::MEMTAG,
+                    "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
                     "thread" => SanitizerSet::THREAD,
                     "hwaddress" => SanitizerSet::HWADDRESS,
                     _ => return false,
@@ -1075,6 +1075,7 @@ options! {
 
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field"))]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
@@ -1094,12 +1095,14 @@ options! {
         "extra data to put in each output filename"),
     force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "force use of the frame pointers"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field"))]
     force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "force use of unwind tables"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field"))]
     instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
@@ -1112,6 +1115,7 @@ options! {
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::link_dead_code` instead of this field"))]
     link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
     link_self_contained: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
@@ -1126,6 +1130,7 @@ options! {
         "generate build artifacts that are compatible with linker-based LTO"),
     llvm_args: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of arguments to pass to LLVM (space separated)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field"))]
     lto: LtoCli = (LtoCli::Unspecified, parse_lto, [TRACKED],
         "perform LLVM link-time optimizations"),
     metadata: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -1142,8 +1147,10 @@ options! {
         "disable LLVM's SLP vectorization pass"),
     opt_level: String = ("0".to_string(), parse_string, [TRACKED],
         "optimization level (0-3, s, or z; default: 0)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::overflow_checks` instead of this field"))]
     overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use overflow checks for integer arithmetic"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::panic_strategy` instead of this field"))]
     panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED],
         "panic strategy to compile crate with"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
@@ -1155,6 +1162,7 @@ options! {
         "compile the program with profiling instrumentation"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field"))]
     relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
         "control generation of position-independent code (PIC) \
         (`rustc --print relocation-models` for details)"),
@@ -1166,6 +1174,7 @@ options! {
         "save all temporary output files during compilation (default: no)"),
     soft_float: bool = (false, parse_bool, [TRACKED],
         "use soft float ABI (*eabihf targets only) (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field"))]
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
@@ -1201,14 +1210,18 @@ options! {
         "encode MIR of all functions into the crate metadata (default: no)"),
     assume_incomplete_release: bool = (false, parse_bool, [TRACKED],
         "make cfg(version) treat the current version as incomplete (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::asm_comments` instead of this field"))]
     asm_comments: bool = (false, parse_bool, [TRACKED],
         "generate comments into the assembly (may change behavior) (default: no)"),
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field"))]
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
         (default: no)"),
+    box_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
@@ -1277,6 +1290,11 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
+    emit_thin_lto: bool = (true, parse_bool, [TRACKED],
+        "emit the bc module with thin LTO info (default: yes)"),
+    export_executable_symbols: bool = (false, parse_bool, [TRACKED],
+        "export symbols from executables, as if they were dynamic libraries"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::fewer_names` instead of this field"))]
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
@@ -1319,6 +1337,7 @@ options! {
         "control whether `#[inline]` functions are in all CGUs"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field"))]
     instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
@@ -1327,6 +1346,7 @@ options! {
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::instrument_mcount` instead of this field"))]
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
@@ -1349,6 +1369,7 @@ options! {
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking \
         the same values as the target option of the same name"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::meta_stats` instead of this field"))]
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics (default: no)"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
@@ -1358,6 +1379,7 @@ options! {
         "use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be \
         enabled, overriding all other checks. Passes that are not specified are enabled or \
         disabled by other flags as usual."),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field"))]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
@@ -1424,6 +1446,7 @@ options! {
         See #77382 and #74551."),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make rustc print the total optimization fuel used by a crate"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::print_llvm_passes` instead of this field"))]
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1497,7 +1520,7 @@ options! {
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
     split_bundled_libs: bool = (false, parse_bool, [TRACKED],
-        "if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries"),
+        "if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries"),        
     split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [TRACKED],
         "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
         (default: `split`)
@@ -1511,6 +1534,7 @@ options! {
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field"))]
     stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED],
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
@@ -1520,6 +1544,7 @@ options! {
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::teach` instead of this field"))]
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1535,6 +1560,7 @@ options! {
         "emit directionality isolation markers in translated diagnostics"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field"))]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
     thir_unsafeck: bool = (false, parse_bool, [TRACKED],
@@ -1543,14 +1569,19 @@ options! {
     /// a sequential compiler for now. This'll likely be adjusted
     /// in the future. Note that -Zthreads=0 is the way to get
     /// the num_cpus behavior.
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field"))]
     threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::time_passes` instead of this field"))]
     time: bool = (false, parse_bool, [UNTRACKED],
         "measure time of rustc processes (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::time_llvm_passes` instead of this field"))]
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::time_passes` instead of this field"))]
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field"))]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
@@ -1585,14 +1616,17 @@ options! {
         "enable unsound and buggy MIR optimizations (default: no)"),
     /// This name is kind of confusing: Most unstable options enable something themselves, while
     /// this just allows "normal" options to be feature-gated.
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::unstable_options` instead of this field"))]
     unstable_options: bool = (false, parse_bool, [UNTRACKED],
         "adds unstable command line options to rustc interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use legacy .ctors section for initializers rather than .init_array"),
     validate_mir: bool = (false, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::verbose` instead of this field"))]
     verbose: bool = (false, parse_bool, [UNTRACKED],
         "in general, enable more debug printouts (default: no)"),
+    #[cfg_attr(not(bootstrap), rustc_lint_opt_deny_field_access("use `Session::verify_llvm_ir` instead of this field"))]
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],
         "verify LLVM IR (default: no)"),
     virtual_function_elimination: bool = (false, parse_bool, [TRACKED],

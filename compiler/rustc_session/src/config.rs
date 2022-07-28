@@ -948,6 +948,8 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     if sess.opts.debug_assertions {
         ret.insert((sym::debug_assertions, None));
     }
+    // JUSTIFICATION: before wrapper fn is available
+    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
     if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
         ret.insert((sym::proc_macro, None));
     }
@@ -2196,6 +2198,8 @@ fn parse_remap_path_prefix(
     mapping
 }
 
+// JUSTIFICATION: before wrapper fn is available
+#[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let color = parse_color(matches);
 
@@ -2705,6 +2709,14 @@ impl PpMode {
             | ThirTree
             | Mir
             | MirCFG => true,
+        }
+    }
+    pub fn needs_hir(&self) -> bool {
+        use PpMode::*;
+        match *self {
+            Source(_) | AstTree(_) => false,
+
+            Hir(_) | HirTree | ThirTree | Mir | MirCFG => true,
         }
     }
 

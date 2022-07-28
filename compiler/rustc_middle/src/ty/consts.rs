@@ -203,7 +203,7 @@ impl<'tcx> Const<'tcx> {
     pub fn to_valtree(self) -> ty::ValTree<'tcx> {
         match self.kind() {
             ty::ConstKind::Value(valtree) => valtree,
-            _ => bug!("expected ConstKind::Value"),
+            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
         }
     }
 

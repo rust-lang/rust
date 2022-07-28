@@ -1,13 +1,15 @@
+use super::potentially_plural_count;
 use crate::check::regionck::OutlivesEnvironmentExt;
+use crate::check::wfcheck;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -16,10 +18,10 @@ use rustc_middle::ty::{self, DefIdTree};
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
+use rustc_trait_selection::traits::{
+    self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
+};
 use std::iter;
-
-use super::{potentially_plural_count, FnCtxt, Inherited};
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -88,9 +90,10 @@ fn compare_predicate_entailment<'tcx>(
     let mut cause = ObligationCause::new(
         impl_m_span,
         impl_m_hir_id,
-        ObligationCauseCode::CompareImplMethodObligation {
+        ObligationCauseCode::CompareImplItemObligation {
             impl_item_def_id: impl_m.def_id.expect_local(),
             trait_item_def_id: trait_m.def_id,
+            kind: impl_m.kind,
         },
     );
 
@@ -171,14 +174,7 @@ fn compare_predicate_entailment<'tcx>(
     let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
 
     // Check region bounds.
-    check_region_bounds_on_impl_item(
-        tcx,
-        impl_m_span,
-        impl_m,
-        trait_m,
-        &trait_m_generics,
-        &impl_m_generics,
-    )?;
+    check_region_bounds_on_impl_item(tcx, impl_m, trait_m, &trait_m_generics, &impl_m_generics)?;
 
     // Create obligations for each predicate declared by the impl
     // definition in the context of the trait's parameter
@@ -212,30 +208,29 @@ fn compare_predicate_entailment<'tcx>(
     );
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
 
-    tcx.infer_ctxt().enter(|infcx| {
-        let inh = Inherited::new(infcx, impl_m.def_id.expect_local());
-        let infcx = &inh.infcx;
+    tcx.infer_ctxt().enter(|ref infcx| {
+        let ocx = ObligationCtxt::new(infcx);
 
         debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
         let mut selcx = traits::SelectionContext::new(&infcx);
-
         let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
         for (predicate, span) in iter::zip(impl_m_own_bounds.predicates, impl_m_own_bounds.spans) {
             let normalize_cause = traits::ObligationCause::misc(span, impl_m_hir_id);
             let traits::Normalized { value: predicate, obligations } =
                 traits::normalize(&mut selcx, param_env, normalize_cause, predicate);
 
-            inh.register_predicates(obligations);
+            ocx.register_obligations(obligations);
             let cause = ObligationCause::new(
                 span,
                 impl_m_hir_id,
-                ObligationCauseCode::CompareImplMethodObligation {
+                ObligationCauseCode::CompareImplItemObligation {
                     impl_item_def_id: impl_m.def_id.expect_local(),
                     trait_item_def_id: trait_m.def_id,
+                    kind: impl_m.kind,
                 },
             );
-            inh.register_predicate(traits::Obligation::new(cause, param_env, predicate));
+            ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
         }
 
         // We now need to check that the signature of the impl method is
@@ -261,32 +256,31 @@ fn compare_predicate_entailment<'tcx>(
             infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id),
         );
-        let impl_sig =
-            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, impl_sig);
+
+        let norm_cause = ObligationCause::misc(impl_m_span, impl_m_hir_id);
+        let impl_sig = ocx.normalize(norm_cause.clone(), param_env, impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
-        let trait_sig =
-            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
+        let trait_sig = ocx.normalize(norm_cause, param_env, trait_sig);
         // Add the resulting inputs and output as well-formed.
         wf_tys.extend(trait_sig.inputs_and_output.iter());
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
-        let sub_result = infcx.at(&cause, param_env).sup(trait_fty, impl_fty).map(
-            |InferOk { obligations, .. }| {
-                // FIXME: We'd want to keep more accurate spans than "the method signature" when
-                // processing the comparison between the trait and impl fn, but we sadly lose them
-                // and point at the whole signature when a trait bound or specific input or output
-                // type would be more appropriate. In other places we have a `Vec<Span>`
-                // corresponding to their `Vec<Predicate>`, but we don't have that here.
-                // Fixing this would improve the output of test `issue-83765.rs`.
-                inh.register_predicates(obligations);
-            },
-        );
+        // FIXME: We'd want to keep more accurate spans than "the method signature" when
+        // processing the comparison between the trait and impl fn, but we sadly lose them
+        // and point at the whole signature when a trait bound or specific input or output
+        // type would be more appropriate. In other places we have a `Vec<Span>`
+        // corresponding to their `Vec<Predicate>`, but we don't have that here.
+        // Fixing this would improve the output of test `issue-83765.rs`.
+        let sub_result = infcx
+            .at(&cause, param_env)
+            .sup(trait_fty, impl_fty)
+            .map(|infer_ok| ocx.register_infer_ok_obligations(infer_ok));
 
         if let Err(terr) = sub_result {
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
@@ -298,7 +292,7 @@ fn compare_predicate_entailment<'tcx>(
 
             let mut diag = struct_span_err!(
                 tcx.sess,
-                cause.span(tcx),
+                cause.span(),
                 E0053,
                 "method `{}` has an incompatible type for trait",
                 trait_m.name
@@ -392,7 +386,7 @@ fn compare_predicate_entailment<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             let reported = infcx.report_fulfillment_errors(&errors, None, false);
             return Err(reported);
@@ -402,7 +396,10 @@ fn compare_predicate_entailment<'tcx>(
         // lifetime parameters.
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(infcx, wf_tys, impl_m_hir_id);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        infcx.check_region_obligations_and_report_errors(
+            impl_m.def_id.expect_local(),
+            &outlives_environment,
+        );
 
         Ok(())
     })
@@ -410,7 +407,6 @@ fn compare_predicate_entailment<'tcx>(
 
 fn check_region_bounds_on_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
     trait_generics: &ty::Generics,
@@ -436,21 +432,25 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
-        let item_kind = assoc_item_kind_str(impl_m);
-        let def_span = tcx.sess.source_map().guess_head_span(span);
-        let span = impl_m
-            .def_id
-            .as_local()
-            .and_then(|did| tcx.hir().get_generics(did))
-            .map_or(def_span, |g| g.span);
-        let generics_span = trait_m.def_id.as_local().map(|did| {
-            let def_sp = tcx.def_span(did);
-            tcx.hir().get_generics(did).map_or(def_sp, |g| g.span)
-        });
+        let span = tcx
+            .hir()
+            .get_generics(impl_m.def_id.expect_local())
+            .expect("expected impl item to have generics or else we can't compare them")
+            .span;
+        let generics_span = if let Some(local_def_id) = trait_m.def_id.as_local() {
+            Some(
+                tcx.hir()
+                    .get_generics(local_def_id)
+                    .expect("expected trait item to have generics or else we can't compare them")
+                    .span,
+            )
+        } else {
+            None
+        };
 
         let reported = tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
             span,
-            item_kind,
+            item_kind: assoc_item_kind_str(impl_m),
             ident: impl_m.ident(tcx),
             generics_span,
         });
@@ -490,7 +490,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
         TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        _ => (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span(), tcx.hir().span_if_local(trait_m.def_id)),
     }
 }
 
@@ -546,7 +546,7 @@ fn compare_self_type<'tcx>(
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{self_descr}`"));
             } else {
-                err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
             }
             let reported = err.emit();
             return Err(reported);
@@ -566,7 +566,7 @@ fn compare_self_type<'tcx>(
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{self_descr}` used in trait"));
             } else {
-                err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
             }
             let reported = err.emit();
             return Err(reported);
@@ -805,7 +805,7 @@ fn compare_number_of_method_arguments<'tcx>(
                 ),
             );
         } else {
-            err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
+            err.note_trait_signature(trait_m.name, trait_m.signature(tcx));
         }
         err.span_label(
             impl_span,
@@ -1062,8 +1062,7 @@ pub(crate) fn compare_const_impl<'tcx>(
 
     tcx.infer_ctxt().enter(|infcx| {
         let param_env = tcx.param_env(impl_c.def_id);
-        let inh = Inherited::new(infcx, impl_c.def_id.expect_local());
-        let infcx = &inh.infcx;
+        let ocx = ObligationCtxt::new(&infcx);
 
         // The below is for the most part highly similar to the procedure
         // for methods above. It is simpler in many respects, especially
@@ -1082,24 +1081,26 @@ pub(crate) fn compare_const_impl<'tcx>(
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
-            ObligationCauseCode::CompareImplConstObligation,
+            ObligationCauseCode::CompareImplItemObligation {
+                impl_item_def_id: impl_c.def_id.expect_local(),
+                trait_item_def_id: trait_c.def_id,
+                kind: impl_c.kind,
+            },
         );
 
         // There is no "body" here, so just pass dummy id.
-        let impl_ty =
-            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, impl_ty);
+        let impl_ty = ocx.normalize(cause.clone(), param_env, impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-        let trait_ty =
-            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, trait_ty);
+        let trait_ty = ocx.normalize(cause.clone(), param_env, trait_ty);
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
         let err = infcx
             .at(&cause, param_env)
             .sup(trait_ty, impl_ty)
-            .map(|ok| inh.register_infer_ok_obligations(ok));
+            .map(|ok| ocx.register_infer_ok_obligations(ok));
 
         if let Err(terr) = err {
             debug!(
@@ -1146,14 +1147,15 @@ pub(crate) fn compare_const_impl<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return;
         }
 
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        infcx.resolve_regions_and_report_errors(&outlives_environment);
+        infcx
+            .resolve_regions_and_report_errors(impl_c.def_id.expect_local(), &outlives_environment);
     });
 }
 
@@ -1199,7 +1201,6 @@ fn compare_type_predicate_entailment<'tcx>(
 
     check_region_bounds_on_impl_item(
         tcx,
-        impl_ty_span,
         impl_ty,
         trait_ty,
         &trait_ty_generics,
@@ -1217,15 +1218,6 @@ fn compare_type_predicate_entailment<'tcx>(
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
-    let cause = ObligationCause::new(
-        impl_ty_span,
-        impl_ty_hir_id,
-        ObligationCauseCode::CompareImplTypeObligation {
-            impl_item_def_id: impl_ty.def_id.expect_local(),
-            trait_item_def_id: trait_ty.def_id,
-        },
-    );
-
     debug!("compare_type_predicate_entailment: trait_to_impl_substs={:?}", trait_to_impl_substs);
 
     // The predicates declared by the impl definition, the trait and the
@@ -1244,26 +1236,38 @@ fn compare_type_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause.clone());
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     tcx.infer_ctxt().enter(|infcx| {
-        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
-        let infcx = &inh.infcx;
+        let ocx = ObligationCtxt::new(&infcx);
 
         debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        for predicate in impl_ty_own_bounds.predicates {
+        assert_eq!(impl_ty_own_bounds.predicates.len(), impl_ty_own_bounds.spans.len());
+        for (span, predicate) in
+            std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
+        {
+            let cause = ObligationCause::misc(span, impl_ty_hir_id);
             let traits::Normalized { value: predicate, obligations } =
-                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), predicate);
+                traits::normalize(&mut selcx, param_env, cause, predicate);
 
-            inh.register_predicates(obligations);
-            inh.register_predicate(traits::Obligation::new(cause.clone(), param_env, predicate));
+            let cause = ObligationCause::new(
+                span,
+                impl_ty_hir_id,
+                ObligationCauseCode::CompareImplItemObligation {
+                    impl_item_def_id: impl_ty.def_id.expect_local(),
+                    trait_item_def_id: trait_ty.def_id,
+                    kind: impl_ty.kind,
+                },
+            );
+            ocx.register_obligations(obligations);
+            ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
         }
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             let reported = infcx.report_fulfillment_errors(&errors, None, false);
             return Err(reported);
@@ -1272,7 +1276,10 @@ fn compare_type_predicate_entailment<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let outlives_environment = OutlivesEnvironment::new(param_env);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        infcx.check_region_obligations_and_report_errors(
+            impl_ty.def_id.expect_local(),
+            &outlives_environment,
+        );
 
         Ok(())
     })
@@ -1436,10 +1443,9 @@ pub fn check_type_bounds<'tcx>(
         impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
-        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
-        let infcx = &inh.infcx;
-        let mut selcx = traits::SelectionContext::new(&infcx);
+        let ocx = ObligationCtxt::new(&infcx);
 
+        let mut selcx = traits::SelectionContext::new(&infcx);
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = ObligationCause::new(
             impl_ty_span,
@@ -1464,6 +1470,7 @@ pub fn check_type_bounds<'tcx>(
             .map(|e| e.map_bound(|e| *e).transpose_tuple2())
             .map(|(bound, span)| {
                 debug!(?bound);
+                // this is where opaque type is found
                 let concrete_ty_bound = bound.subst(tcx, rebased_substs);
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
@@ -1482,13 +1489,12 @@ pub fn check_type_bounds<'tcx>(
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
             obligation.predicate = normalized_predicate;
 
-            inh.register_predicates(obligations);
-            inh.register_predicate(obligation);
+            ocx.register_obligations(obligations);
+            ocx.register_obligation(obligation);
         }
-
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
             let reported = infcx.report_fulfillment_errors(&errors, None, false);
             return Err(reported);
@@ -1496,16 +1502,33 @@ pub fn check_type_bounds<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        //
-        // FIXME: Remove that `FnCtxt`.
-        let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
         let implied_bounds = match impl_ty.container {
             ty::TraitContainer(_) => FxHashSet::default(),
-            ty::ImplContainer(def_id) => fcx.impl_implied_bounds(def_id, impl_ty_span),
+            ty::ImplContainer(def_id) => {
+                wfcheck::impl_implied_bounds(tcx, param_env, def_id.expect_local(), impl_ty_span)
+            }
         };
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(infcx, implied_bounds, impl_ty_hir_id);
-        infcx.check_region_obligations_and_report_errors(&outlives_environment);
+        outlives_environment.add_implied_bounds(&infcx, implied_bounds, impl_ty_hir_id);
+        infcx.check_region_obligations_and_report_errors(
+            impl_ty.def_id.expect_local(),
+            &outlives_environment,
+        );
+
+        let constraints = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        for (key, value) in constraints {
+            infcx
+                .report_mismatched_types(
+                    &ObligationCause::misc(
+                        value.hidden_type.span,
+                        tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local()),
+                    ),
+                    tcx.mk_opaque(key.def_id.to_def_id(), key.substs),
+                    value.hidden_type.ty,
+                    TypeError::Mismatch,
+                )
+                .emit();
+        }
 
         Ok(())
     })

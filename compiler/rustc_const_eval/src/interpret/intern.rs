@@ -33,7 +33,7 @@ pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
     'mir,
     'tcx,
     MemoryKind = T,
-    PointerTag = AllocId,
+    Provenance = AllocId,
     ExtraFnVal = !,
     FrameExtra = (),
     AllocExtra = (),
@@ -94,7 +94,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         // to validation to error -- it has the much better error messages, pointing out where
         // in the value the dangling reference lies.
         // The `delay_span_bug` ensures that we don't forget such a check in validation.
-        if tcx.get_global_alloc(alloc_id).is_none() {
+        if tcx.try_get_global_alloc(alloc_id).is_none() {
             tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
         }
         // treat dangling pointers like other statics
@@ -245,7 +245,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
             if let ty::Dynamic(..) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                let ptr = self.ecx.scalar_to_ptr(mplace.meta.unwrap_meta())?;
+                let ptr = mplace.meta.unwrap_meta().to_pointer(&tcx)?;
                 if let Some(alloc_id) = ptr.provenance {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
@@ -454,7 +454,7 @@ pub fn intern_const_alloc_recursive<
                 .sess
                 .span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
             return Err(reported);
-        } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
+        } else if ecx.tcx.try_get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't
             // marked as dangling by local memory.  That should be impossible.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
@@ -474,7 +474,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(
             &mut InterpCx<'mir, 'tcx, M>,
-            &PlaceTy<'tcx, M::PointerTag>,
+            &PlaceTy<'tcx, M::Provenance>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;

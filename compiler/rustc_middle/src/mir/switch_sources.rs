@@ -1,8 +1,8 @@
 //! Lazily compute the inverse of each `SwitchInt`'s switch targets. Modeled after
 //! `Predecessors`/`PredecessorCache`.
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};

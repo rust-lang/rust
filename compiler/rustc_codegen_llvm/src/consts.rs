@@ -101,7 +101,9 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
 
         let address_space = match cx.tcx.global_alloc(alloc_id) {
             GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
-            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) => AddressSpace::DATA,
+            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
+                AddressSpace::DATA
+            }
         };
 
         llvals.push(cx.scalar_to_backend(
@@ -535,10 +537,20 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
 
                 // The semantics of #[used] in Rust only require the symbol to make it into the
                 // object file. It is explicitly allowed for the linker to strip the symbol if it
-                // is dead. As such, use llvm.compiler.used instead of llvm.used.
+                // is dead, which means we are allowed use `llvm.compiler.used` instead of
+                // `llvm.used` here.
+                //
                 // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
                 // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
-                // in some versions of the gold linker.
+                // in the handling of `.init_array` (the static constructor list) in versions of
+                // the gold linker (prior to the one released with binutils 2.36).
+                //
+                // That said, we only ever emit these when compiling for ELF targets, unless
+                // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
+                // on other targets, in particular MachO targets have *their* static constructor
+                // lists broken if `llvm.compiler.used` is emitted rather than llvm.used. However,
+                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_typeck`,
+                // so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {

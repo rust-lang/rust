@@ -1,4 +1,4 @@
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 

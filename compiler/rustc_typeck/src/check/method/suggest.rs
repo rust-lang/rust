@@ -19,6 +19,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Symbol;
 use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -864,27 +865,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .join("\n");
                         let actual_prefix = actual.prefix_string(self.tcx);
                         info!("unimplemented_traits.len() == {}", unimplemented_traits.len());
-                        let (primary_message, label) = if unimplemented_traits.len() == 1
-                            && unimplemented_traits_only
-                        {
-                            unimplemented_traits
-                                .into_iter()
-                                .next()
-                                .map(|(_, (trait_ref, obligation))| {
-                                    if trait_ref.self_ty().references_error()
-                                        || actual.references_error()
-                                    {
-                                        // Avoid crashing.
-                                        return (None, None);
-                                    }
-                                    let OnUnimplementedNote { message, label, .. } =
-                                        self.infcx.on_unimplemented_note(trait_ref, &obligation);
-                                    (message, label)
-                                })
-                                .unwrap_or((None, None))
-                        } else {
-                            (None, None)
-                        };
+                        let (primary_message, label) =
+                            if unimplemented_traits.len() == 1 && unimplemented_traits_only {
+                                unimplemented_traits
+                                    .into_iter()
+                                    .next()
+                                    .map(|(_, (trait_ref, obligation))| {
+                                        if trait_ref.self_ty().references_error()
+                                            || actual.references_error()
+                                        {
+                                            // Avoid crashing.
+                                            return (None, None);
+                                        }
+                                        let OnUnimplementedNote { message, label, .. } =
+                                            self.on_unimplemented_note(trait_ref, &obligation);
+                                        (message, label)
+                                    })
+                                    .unwrap_or((None, None))
+                            } else {
+                                (None, None)
+                            };
                         let primary_message = primary_message.unwrap_or_else(|| format!(
                             "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
                         ));
@@ -1122,7 +1122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          add a `use` for {one_of_them}:",
                         an = if candidates.len() == 1 { "an" } else { "" },
                         s = pluralize!(candidates.len()),
-                        were = if candidates.len() == 1 { "was" } else { "were" },
+                        were = pluralize!("was", candidates.len()),
                         one_of_them = if candidates.len() == 1 { "it" } else { "one_of_them" },
                     );
                     self.suggest_use_candidates(&mut err, help, candidates);
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ObligationCause<'tcx>>,
         )],
     ) {
-        let mut derives = Vec::<(String, Span, String)>::new();
+        let mut derives = Vec::<(String, Span, Symbol)>::new();
         let mut traits = Vec::<Span>::new();
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() else { continue };
@@ -1581,12 +1581,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 derives.push((
                                     self_name.clone(),
                                     self_span,
-                                    parent_diagnostic_name.to_string(),
+                                    parent_diagnostic_name,
                                 ));
                             }
                         }
                     }
-                    derives.push((self_name, self_span, diagnostic_name.to_string()));
+                    derives.push((self_name, self_span, diagnostic_name));
                 } else {
                     traits.push(self.tcx.def_span(trait_pred.def_id()));
                 }
@@ -1609,7 +1609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
             }
-            derives_grouped.push((self_name, self_span, trait_name));
+            derives_grouped.push((self_name, self_span, trait_name.to_string()));
         }
 
         let len = traits.len();
@@ -1647,7 +1647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call: &hir::Expr<'_>,
         span: Span,
     ) {
-        let output_ty = match self.infcx.get_impl_future_output_ty(ty) {
+        let output_ty = match self.get_impl_future_output_ty(ty) {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty).skip_binder(),
             _ => return,
         };

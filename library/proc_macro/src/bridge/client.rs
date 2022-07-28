@@ -175,13 +175,11 @@ define_handles! {
     'owned:
     FreeFunctions,
     TokenStream,
-    Literal,
     SourceFile,
     MultiSpan,
     Diagnostic,
 
     'interned:
-    Ident,
     Span,
 }
 
@@ -194,25 +192,6 @@ define_handles! {
 impl Clone for TokenStream {
     fn clone(&self) -> Self {
         self.clone()
-    }
-}
-
-impl Clone for Literal {
-    fn clone(&self) -> Self {
-        self.clone()
-    }
-}
-
-impl fmt::Debug for Literal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Literal")
-            // format the kind without quotes, as in `kind: Float`
-            .field("kind", &format_args!("{}", &self.debug_kind()))
-            .field("symbol", &self.symbol())
-            // format `Some("...")` on one line even in {:#?} mode
-            .field("suffix", &format_args!("{:?}", &self.suffix()))
-            .field("span", &self.span())
-            .finish()
     }
 }
 
@@ -241,6 +220,8 @@ impl fmt::Debug for Span {
         f.write_str(&self.debug())
     }
 }
+
+pub(crate) use super::symbol::Symbol;
 
 macro_rules! define_client_side {
     ($($name:ident {
@@ -405,6 +386,9 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
     panic::catch_unwind(panic::AssertUnwindSafe(|| {
         maybe_install_panic_hook(force_show_panics);
 
+        // Make sure the symbol store is empty before decoding inputs.
+        Symbol::invalidate_all();
+
         let reader = &mut &buf[..];
         let (globals, input) = <(ExpnGlobals<Span>, A)>::decode(reader, &mut ());
 
@@ -438,6 +422,10 @@ fn run_client<A: for<'a, 's> DecodeMut<'a, 's, ()>, R: Encode<()>>(
         buf.clear();
         Err::<(), _>(e).encode(&mut buf, &mut ());
     });
+
+    // Now that a response has been serialized, invalidate all symbols
+    // registered with the interner.
+    Symbol::invalidate_all();
     buf
 }
 

@@ -47,7 +47,7 @@ fn compute_implied_outlives_bounds<'tcx>(
     // process it next. Because the resulting predicates aren't always
     // guaranteed to be a subset of the original type, so we need to store the
     // WF args we've computed in a set.
-    let mut checked_wf_args = rustc_data_structures::stable_set::FxHashSet::default();
+    let mut checked_wf_args = rustc_data_structures::fx::FxHashSet::default();
     let mut wf_args = vec![ty.into()];
 
     let mut implied_bounds = vec![];

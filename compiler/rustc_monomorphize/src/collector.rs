@@ -25,7 +25,7 @@
 //! codegen unit:
 //!
 //! - Constants
-//! - Vtables
+//! - VTables
 //! - Object Shims
 //!
 //!
@@ -180,7 +180,7 @@
 //! regardless of whether it is actually needed or not.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
+use rustc_data_structures::sync::{par_for_each_in, MTLock, MTRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
@@ -346,7 +346,7 @@ pub fn collect_crate_mono_items(
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
-            par_iter(roots).for_each(|root| {
+            par_for_each_in(roots, |root| {
                 let mut recursion_depths = DefIdMap::default();
                 collect_items_rec(
                     tcx,
@@ -992,7 +992,7 @@ fn visit_instance_use<'tcx>(
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_))
-        | ty::InstanceDef::VtableShim(..)
+        | ty::InstanceDef::VTableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
         | ty::InstanceDef::Item(..)
@@ -1426,6 +1426,10 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIte
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(tcx, fn_instance, DUMMY_SP));
             }
+        }
+        GlobalAlloc::VTable(ty, trait_ref) => {
+            let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+            collect_miri(tcx, alloc_id, output)
         }
     }
 }

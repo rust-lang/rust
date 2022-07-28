@@ -1,6 +1,7 @@
 use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
 
 use super::explicit_outlives_bounds;
@@ -53,7 +54,8 @@ pub struct OutlivesEnvironment<'tcx> {
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
-pub type RegionBoundPairs<'tcx> = Vec<(Region<'tcx>, GenericKind<'tcx>)>;
+pub type RegionBoundPairs<'tcx> =
+    FxIndexSet<ty::OutlivesPredicate<GenericKind<'tcx>, Region<'tcx>>>;
 
 impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
@@ -97,10 +99,12 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
                     if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {

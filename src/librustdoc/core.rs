@@ -81,6 +81,8 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) inlined: FxHashSet<ItemId>,
     /// Used by `calculate_doc_coverage`.
     pub(crate) output_format: OutputFormat,
+    /// Used by `strip_private`.
+    pub(crate) show_coverage: bool,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -381,14 +383,14 @@ pub(crate) fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         render_options,
+        show_coverage,
     };
 
     // Small hack to force the Sized trait to be present.
     //
     // Note that in case of `#![no_core]`, the trait is not available.
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
-        let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
-        sized_trait.is_auto = true;
+        let sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         ctxt.external_traits
             .borrow_mut()
             .insert(sized_trait_did, TraitWithExtraInfo { trait_: sized_trait, is_notable: false });

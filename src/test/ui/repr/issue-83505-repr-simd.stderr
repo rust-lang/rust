@@ -22,7 +22,7 @@ LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
 ...
 LL | enum Es {}
-   | ---------- zero-variant enum
+   | ------- zero-variant enum
 
 error: aborting due to 3 previous errors
 

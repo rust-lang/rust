@@ -32,7 +32,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
-        ty::InstanceDef::VtableShim(def_id) => {
+        ty::InstanceDef::VTableShim(def_id) => {
             build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id))
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
@@ -113,7 +113,7 @@ enum Adjustment {
     /// We get passed `&[mut] self` and call the target with `*self`.
     ///
     /// This either copies `self` (if `Self: Copy`, eg. for function items), or moves out of it
-    /// (for `VtableShim`, which effectively is passed `&own Self`).
+    /// (for `VTableShim`, which effectively is passed `&own Self`).
     Deref,
 
     /// We get passed `self: Self` and call the target with `&mut self`.
@@ -569,7 +569,7 @@ fn build_call_shim<'tcx>(
 
     // FIXME(eddyb) avoid having this snippet both here and in
     // `Instance::fn_sig` (introduce `InstanceDef::fn_sig`?).
-    if let ty::InstanceDef::VtableShim(..) = instance {
+    if let ty::InstanceDef::VTableShim(..) = instance {
         // Modify fn(self, ...) to fn(self: *mut Self, ...)
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];

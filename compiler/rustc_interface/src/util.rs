@@ -559,6 +559,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     // Only check command line flags if present. If no types are specified by
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
+    // JUSTIFICATION: before wrapper fn is available
+    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         base.extend(attr_types);

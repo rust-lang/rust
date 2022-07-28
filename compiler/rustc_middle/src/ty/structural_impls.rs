@@ -224,6 +224,7 @@ TrivialTypeTraversalAndLiftImpls! {
     // general `Region`.
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
+    crate::ty::AssocKind,
     crate::ty::Placeholder<crate::ty::BoundRegionKind>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
@@ -624,7 +625,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
             ty::InstanceDef::Item(def_id) => Some(ty::InstanceDef::Item(def_id)),
-            ty::InstanceDef::VtableShim(def_id) => Some(ty::InstanceDef::VtableShim(def_id)),
+            ty::InstanceDef::VTableShim(def_id) => Some(ty::InstanceDef::VTableShim(def_id)),
             ty::InstanceDef::ReifyShim(def_id) => Some(ty::InstanceDef::ReifyShim(def_id)),
             ty::InstanceDef::Intrinsic(def_id) => Some(ty::InstanceDef::Intrinsic(def_id)),
             ty::InstanceDef::FnPtrShim(def_id, ty) => {
@@ -927,7 +928,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
             substs: self.substs.try_fold_with(folder)?,
             def: match self.def {
                 Item(def) => Item(def.try_fold_with(folder)?),
-                VtableShim(did) => VtableShim(did.try_fold_with(folder)?),
+                VTableShim(did) => VTableShim(did.try_fold_with(folder)?),
                 ReifyShim(did) => ReifyShim(did.try_fold_with(folder)?),
                 Intrinsic(did) => Intrinsic(did.try_fold_with(folder)?),
                 FnPtrShim(did, ty) => {
@@ -954,7 +955,7 @@ impl<'tcx> TypeVisitable<'tcx> for ty::instance::Instance<'tcx> {
         self.substs.visit_with(visitor)?;
         match self.def {
             Item(def) => def.visit_with(visitor),
-            VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
+            VTableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
                 did.visit_with(visitor)
             }
             FnPtrShim(did, ty) | CloneShim(did, ty) => {
@@ -1122,6 +1123,7 @@ impl<'tcx> TypeVisitable<'tcx> for ty::Predicate<'tcx> {
         visitor.visit_predicate(*self)
     }
 
+    #[inline]
     fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
         self.outer_exclusive_binder() > binder
     }

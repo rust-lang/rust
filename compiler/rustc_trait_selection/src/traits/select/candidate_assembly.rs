@@ -6,11 +6,9 @@
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 use hir::LangItem;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::util::elaborate_predicates_with_span;
-use rustc_infer::traits::{AmbiguousSelection, TraitEngine};
+use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -201,48 +199,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // and report ambiguity.
                     if i > 1 {
                         debug!("multiple matches, ambig");
-
-                        // Collect a list of (probable) spans that point to a param-env candidate
-                        let tcx = self.infcx.tcx;
-                        let owner = stack.obligation.cause.body_id.owner.to_def_id();
-                        let predicates = tcx.predicates_of(owner).instantiate_identity(tcx);
-                        let param_env_spans: FxHashMap<_, _> = elaborate_predicates_with_span(
-                            tcx,
-                            std::iter::zip(predicates.predicates, predicates.spans),
-                        )
-                        .filter_map(|obligation| {
-                            let kind = obligation.predicate.kind();
-                            if let ty::PredicateKind::Trait(trait_pred) = kind.skip_binder() {
-                                if trait_pred.trait_ref
-                                    == ty::TraitRef::identity(tcx, trait_pred.def_id())
-                                        .skip_binder()
-                                {
-                                    // HACK: Remap the `Self: Trait` predicate that every trait has to a more useful span
-                                    Some((
-                                        kind.rebind(trait_pred),
-                                        tcx.def_span(trait_pred.def_id()),
-                                    ))
-                                } else {
-                                    Some((kind.rebind(trait_pred), obligation.cause.span))
-                                }
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
                         return Err(Ambiguous(
                             candidates
                                 .into_iter()
                                 .filter_map(|c| match c.candidate {
-                                    SelectionCandidate::ImplCandidate(def_id) => {
-                                        Some(AmbiguousSelection::Impl(def_id))
-                                    }
-                                    SelectionCandidate::ParamCandidate(predicate) => {
-                                        Some(AmbiguousSelection::ParamEnv(
-                                            *param_env_spans.get(&predicate)?,
-                                        ))
-                                    }
+                                    SelectionCandidate::ImplCandidate(def_id) => Some(def_id),
                                     _ => None,
                                 })
                                 .collect(),

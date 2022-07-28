@@ -62,9 +62,9 @@ impl<'a> PostExpansionVisitor<'a> {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
         if let ast::Const::Yes(_) = constness {
-            match symbol_unescaped.as_str() {
+            match symbol_unescaped {
                 // Stable
-                "Rust" | "C" => {}
+                sym::Rust | sym::C => {}
                 abi => gate_feature_post!(
                     &self,
                     const_extern_fn,
@@ -274,10 +274,12 @@ impl<'a> PostExpansionVisitor<'a> {
                 );
             }
             abi => {
-                self.sess.parse_sess.span_diagnostic.delay_span_bug(
-                    span,
-                    &format!("unrecognized ABI not caught in lowering: {}", abi),
-                );
+                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
+                    self.sess.parse_sess.span_diagnostic.delay_span_bug(
+                        span,
+                        &format!("unrecognized ABI not caught in lowering: {}", abi),
+                    );
+                }
             }
         }
     }
@@ -402,8 +404,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
 
-                if nested_meta.has_name(sym::tuple_variadic) {
-                    let msg = "`#[doc(tuple_variadic)]` is meant for internal use only";
+                if nested_meta.has_name(sym::fake_variadic) {
+                    let msg = "`#[doc(fake_variadic)]` is meant for internal use only";
                     gate_feature_post!(self, rustdoc_internals, attr.span, msg);
                 }
             }
@@ -738,7 +740,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         "`if let` guards are experimental",
         "you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`"
     );
-    gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
         async_closure,
         "async closures are unstable",

@@ -618,6 +618,7 @@ bitflags::bitflags! {
         const HWADDRESS = 1 << 4;
         const CFI     = 1 << 5;
         const MEMTAG  = 1 << 6;
+        const SHADOWCALLSTACK = 1 << 7;
     }
 }
 
@@ -632,6 +633,7 @@ impl SanitizerSet {
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::MEMTAG => "memtag",
+            SanitizerSet::SHADOWCALLSTACK => "shadow-call-stack",
             SanitizerSet::THREAD => "thread",
             SanitizerSet::HWADDRESS => "hwaddress",
             _ => return None,
@@ -666,6 +668,7 @@ impl IntoIterator for SanitizerSet {
             SanitizerSet::LEAK,
             SanitizerSet::MEMORY,
             SanitizerSet::MEMTAG,
+            SanitizerSet::SHADOWCALLSTACK,
             SanitizerSet::THREAD,
             SanitizerSet::HWADDRESS,
         ]
@@ -1034,6 +1037,8 @@ supported_targets! {
     ("bpfel-unknown-none", bpfel_unknown_none),
 
     ("armv6k-nintendo-3ds", armv6k_nintendo_3ds),
+
+    ("aarch64-nintendo-switch-freestanding", aarch64_nintendo_switch_freestanding),
 
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
@@ -1958,6 +1963,7 @@ impl Target {
                                 Some("leak") => SanitizerSet::LEAK,
                                 Some("memory") => SanitizerSet::MEMORY,
                                 Some("memtag") => SanitizerSet::MEMTAG,
+                                Some("shadow-call-stack") => SanitizerSet::SHADOWCALLSTACK,
                                 Some("thread") => SanitizerSet::THREAD,
                                 Some("hwaddress") => SanitizerSet::HWADDRESS,
                                 Some(s) => return Err(format!("unknown sanitizer {}", s)),

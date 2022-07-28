@@ -63,6 +63,7 @@ use crate::mem;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -2290,6 +2291,16 @@ extern "rust-intrinsic" {
     /// [`std::hint::black_box`]: crate::hint::black_box
     #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
     pub fn black_box<T>(dummy: T) -> T;
+
+    /// `ptr` must point to a vtable.
+    /// The intrinsic will return the size stored in that vtable.
+    #[cfg(not(bootstrap))]
+    pub fn vtable_size(ptr: *const ()) -> usize;
+
+    /// `ptr` must point to a vtable.
+    /// The intrinsic will return the alignment stored in that vtable.
+    #[cfg(not(bootstrap))]
+    pub fn vtable_align(ptr: *const ()) -> usize;
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2435,8 +2446,10 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -2520,8 +2533,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
@@ -2551,13 +2566,22 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 ///
 /// * `dst` must be properly aligned.
 ///
-/// Additionally, the caller must ensure that writing `count *
-/// size_of::<T>()` bytes to the given region of memory results in a valid
-/// value of `T`. Using a region of memory typed as a `T` that contains an
-/// invalid value of `T` is undefined behavior.
-///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
 /// `0`, the pointer must be non-null and properly aligned.
+///
+/// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
+/// later if the written bytes are not a valid representation of some `T`. For instance, the
+/// following is an **incorrect** use of this function:
+///
+/// ```rust,no_run
+/// unsafe {
+///     let mut value: u8 = 0;
+///     let ptr: *mut bool = &mut value as *mut u8 as *mut bool;
+///     let _bool = ptr.read(); // This is fine, `ptr` points to a valid `bool`.
+///     ptr.write_bytes(42u8, 1); // This function itself does not cause UB...
+///     let _bool = ptr.read(); // ...but it makes this operation UB! ⚠️
+/// }
+/// ```
 ///
 /// [valid]: crate::ptr#safety
 ///
@@ -2575,42 +2599,12 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// }
 /// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
 /// ```
-///
-/// Creating an invalid value:
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut v = Box::new(0i32);
-///
-/// unsafe {
-///     // Leaks the previously held value by overwriting the `Box<T>` with
-///     // a null pointer.
-///     ptr::write_bytes(&mut v as *mut Box<i32>, 0, 1);
-/// }
-///
-/// // At this point, using or dropping `v` results in undefined behavior.
-/// // drop(v); // ERROR
-///
-/// // Even leaking `v` "uses" it, and hence is undefined behavior.
-/// // mem::forget(v); // ERROR
-///
-/// // In fact, `v` is invalid according to basic type layout invariants, so *any*
-/// // operation touching it is undefined behavior.
-/// // let v2 = v; // ERROR
-///
-/// unsafe {
-///     // Let us instead put in a valid value
-///     ptr::write(&mut v as *mut Box<i32>, Box::new(42i32));
-/// }
-///
-/// // Now the box is fine
-/// assert_eq!(*v, 42);
-/// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
         #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]

@@ -532,6 +532,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     rustc_attr!(rustc_allocator_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_reallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_deallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     gated!(
         alloc_error_handler, Normal, template!(Word), WarnFollowing,
         experimental!(alloc_error_handler)
@@ -616,6 +619,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Used by the `rustc::untranslatable_diagnostic` and `rustc::diagnostic_outside_of_impl` lints
     // to assist in changes to diagnostic APIs.
     rustc_attr!(rustc_lint_diagnostics, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
+    // types (as well as any others in future).
+    rustc_attr!(rustc_lint_opt_ty, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `rustc::bad_opt_access` lint on fields
+    // types (as well as any others in future).
+    rustc_attr!(rustc_lint_opt_deny_field_access, Normal, template!(List: "message"), WarnFollowing, INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Const related:

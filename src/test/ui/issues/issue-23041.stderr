@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 LL |     b.downcast_ref::<fn(_)->_>();
    |       ^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `downcast_ref`
    |
-help: consider specifying the generic arguments
+help: consider specifying the generic argument
    |
 LL |     b.downcast_ref::<fn(_) -> _>();
    |                   ~~~~~~~~~~~~~~

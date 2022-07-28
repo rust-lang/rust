@@ -25,7 +25,7 @@ error: non-defining opaque type use in defining scope
 LL |     7u32
    |     ^^^^
    |
-note: used non-generic constant `123_usize` for generic parameter
+note: used non-generic constant `123` for generic parameter
   --> $DIR/generic_nondefining_use.rs:11:15
    |
 LL | type OneConst<const X: usize> = impl Debug;

@@ -2,6 +2,8 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 size: (900, 1000)
 write: (".search-input", "test")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 wait-for: "#search-settings"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
@@ -16,7 +18,7 @@ assert-css: (".search-results div.desc", {"width": "570px"})
 size: (900, 900)
 
 // First we check the current width and position.
-assert-css: ("#crate-search", {"width": "222px"})
+assert-css: ("#crate-search", {"width": "218px"})
 compare-elements-position-near: (
     "#crate-search",
     "#search-settings .search-results-title",

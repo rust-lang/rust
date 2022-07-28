@@ -9,7 +9,7 @@
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
 #![feature(drain_filter)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(test)]
 #![feature(never_type)]
@@ -788,7 +788,7 @@ fn main_options(options: config::Options) -> MainResult {
         if sess.opts.describe_lints {
             let mut lint_store = rustc_lint::new_lint_store(
                 sess.opts.unstable_opts.no_interleave_lints,
-                sess.unstable_options(),
+                sess.enable_internal_lints(),
             );
             let registered_lints = if let Some(register_lints) = compiler.register_lints() {
                 register_lints(sess, &mut lint_store);

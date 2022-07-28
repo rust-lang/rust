@@ -171,7 +171,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 );
                 let new_vptr = bx.load(ptr_ty, gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
-                // Vtable loads are invariant.
+                // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
                 new_vptr
             } else {

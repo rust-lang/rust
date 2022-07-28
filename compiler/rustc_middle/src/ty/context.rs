@@ -542,7 +542,7 @@ pub struct TypeckResults<'tcx> {
     /// even if they are only set in dead code (which doesn't show up in MIR).
     /// For type-alias-impl-trait, this map is only used to prevent query cycles,
     /// so the hidden types are all `None`.
-    pub concrete_opaque_types: VecMap<DefId, Option<Ty<'tcx>>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, Option<Ty<'tcx>>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.

@@ -4,7 +4,8 @@
 
 use crate::check::FnCtxt;
 
-use rustc_data_structures::stable_map::FxHashMap;
+use hir::def_id::LocalDefId;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -509,13 +510,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
                     let ty = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
                     struct RecursionChecker {
-                        def_id: DefId,
+                        def_id: LocalDefId,
                     }
                     impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
                         type BreakTy = ();
                         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                             if let ty::Opaque(def_id, _) = *t.kind() {
-                                if def_id == self.def_id {
+                                if def_id == self.def_id.to_def_id() {
                                     return ControlFlow::Break(());
                                 }
                             }
@@ -747,7 +748,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 // (e.g. keep `for<'a>` named `for<'a>`).
                 // This allows NLL to generate error messages that
                 // refer to the higher-ranked lifetime names written by the user.
-                EraseEarlyRegions { tcx: self.infcx.tcx }.fold_ty(t)
+                EraseEarlyRegions { tcx: self.tcx }.fold_ty(t)
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
@@ -765,7 +766,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match self.infcx.fully_resolve(ct) {
-            Ok(ct) => self.infcx.tcx.erase_regions(ct),
+            Ok(ct) => self.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 self.report_const_error(ct);

@@ -105,6 +105,16 @@ impl AssocKind {
     }
 }
 
+impl std::fmt::Display for AssocKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AssocKind::Fn => write!(f, "method"),
+            AssocKind::Const => write!(f, "associated const"),
+            AssocKind::Type => write!(f, "associated type"),
+        }
+    }
+}
+
 /// A list of `ty::AssocItem`s in definition order that allows for efficient lookup by name.
 ///
 /// When doing lookup by name, we try to postpone hygienic comparison for as long as possible since

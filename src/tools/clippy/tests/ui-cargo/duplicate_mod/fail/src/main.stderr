@@ -24,6 +24,17 @@ LL | | mod c3;
    |
    = help: replace all but one `mod` item with `use` items
 
+error: file is loaded as a module multiple times: `$DIR/d.rs`
+  --> $DIR/main.rs:18:1
+   |
+LL |   mod d;
+   |   ^^^^^^ first loaded here
+LL | / #[path = "d.rs"]
+LL | | mod d2;
+   | |_______^ loaded again here
+   |
+   = help: replace all but one `mod` item with `use` items
+
 error: file is loaded as a module multiple times: `$DIR/from_other_module.rs`
   --> $DIR/main.rs:15:1
    |
@@ -35,17 +46,6 @@ LL |   mod from_other_module;
 LL | / #[path = "../from_other_module.rs"]
 LL | | mod m;
    | |______^ loaded again here
-   |
-   = help: replace all but one `mod` item with `use` items
-
-error: file is loaded as a module multiple times: `$DIR/b.rs`
-  --> $DIR/main.rs:18:1
-   |
-LL |   mod d;
-   |   ^^^^^^ first loaded here
-LL | / #[path = "d.rs"]
-LL | | mod d2;
-   | |_______^ loaded again here
    |
    = help: replace all but one `mod` item with `use` items
 

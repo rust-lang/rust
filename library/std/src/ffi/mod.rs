@@ -146,24 +146,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-/// See [alloc::ffi::FromVecWithNulError].
-#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
-pub type FromVecWithNulError = alloc::ffi::FromVecWithNulError;
-/// See [alloc::ffi::CString].
-#[stable(feature = "rust1", since = "1.0.0")]
-pub type CString = alloc::ffi::CString;
-/// See [alloc::ffi::IntoStringError].
-#[stable(feature = "rust1", since = "1.0.0")]
-pub type IntoStringError = alloc::ffi::IntoStringError;
-/// See [alloc::ffi::NulError].
-#[stable(feature = "rust1", since = "1.0.0")]
-pub type NulError = alloc::ffi::NulError;
-/// See [core::ffi::CStr].
-#[stable(feature = "rust1", since = "1.0.0")]
-pub type CStr = core::ffi::CStr;
-/// See [core::ffi::FromBytesWithNulError].
-#[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-pub type FromBytesWithNulError = core::ffi::FromBytesWithNulError;
+#[stable(feature = "alloc_c_string", since = "1.64.0")]
+pub use alloc::ffi::{CString, FromVecWithNulError, IntoStringError, NulError};
+#[stable(feature = "core_c_str", since = "1.64.0")]
+pub use core::ffi::{CStr, FromBytesWithNulError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::os_str::{OsStr, OsString};

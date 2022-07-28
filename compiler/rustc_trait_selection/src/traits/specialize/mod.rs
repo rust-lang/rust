@@ -207,18 +207,7 @@ fn fulfill_implication<'a, 'tcx>(
     // (which are packed up in penv)
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        // If we came from `translate_substs`, we already know that the
-        // predicates for our impl hold (after all, we know that a more
-        // specialized impl holds, so our impl must hold too), and
-        // we only want to process the projections to determine the
-        // the types in our substs using RFC 447, so we can safely
-        // ignore region obligations, which allows us to avoid threading
-        // a node-id to assign them with.
-        //
-        // If we came from specialization graph construction, then
-        // we already make a mockery out of the region system, so
-        // why not ignore them a bit earlier?
-        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
+        let mut fulfill_cx = FulfillmentContext::new();
         for oblig in obligations.chain(more_obligations) {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }

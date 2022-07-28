@@ -10,3 +10,12 @@ privacy-unnamed-item-is-private = {$kind} is private
 privacy-in-public-interface = {$vis_descr} {$kind} `{$descr}` in public interface
     .label = can't leak {$vis_descr} {$kind}
     .visibility-label = `{$descr}` declared as {$vis_descr}
+
+privacy-from-private-dep-in-public-interface =
+    {$kind} `{$descr}` from private dependency '{$krate}' in public interface
+
+private-in-public-lint =
+    {$vis_descr} {$kind} `{$descr}` in public interface (error {$kind ->
+        [trait] E0445
+        *[other] E0446
+    })

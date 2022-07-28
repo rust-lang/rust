@@ -10,7 +10,8 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(iter_intersperse)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
@@ -436,7 +437,7 @@ enum ModuleKind {
     ///     f(); // Resolves to (1)
     /// }
     /// ```
-    Block(NodeId),
+    Block,
     /// Any module with a name.
     ///
     /// This could be:
@@ -453,7 +454,7 @@ impl ModuleKind {
     /// Get name of the module.
     pub fn name(&self) -> Option<Symbol> {
         match self {
-            ModuleKind::Block(..) => None,
+            ModuleKind::Block => None,
             ModuleKind::Def(.., name) => Some(*name),
         }
     }
@@ -529,7 +530,7 @@ impl<'a> ModuleData<'a> {
     ) -> Self {
         let is_foreign = match kind {
             ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
-            ModuleKind::Block(_) => false,
+            ModuleKind::Block => false,
         };
         ModuleData {
             parent,

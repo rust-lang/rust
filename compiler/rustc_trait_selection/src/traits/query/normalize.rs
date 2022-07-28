@@ -254,7 +254,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    return Err(NoSolution);
+                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(
@@ -293,7 +293,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    return Err(NoSolution);
+                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(

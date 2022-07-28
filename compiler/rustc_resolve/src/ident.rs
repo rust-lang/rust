@@ -218,7 +218,7 @@ impl<'a> Resolver<'a> {
             return Some((self.expn_def_scope(ctxt.remove_mark()), None));
         }
 
-        if let ModuleKind::Block(..) = module.kind {
+        if let ModuleKind::Block = module.kind {
             return Some((module.parent.unwrap().nearest_item_scope(), None));
         }
 
@@ -333,7 +333,7 @@ impl<'a> Resolver<'a> {
             };
 
             match module.kind {
-                ModuleKind::Block(..) => {} // We can see through blocks
+                ModuleKind::Block => {} // We can see through blocks
                 _ => break,
             }
 

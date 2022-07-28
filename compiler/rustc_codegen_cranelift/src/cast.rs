@@ -149,17 +149,8 @@ pub(crate) fn clif_int_or_float_cast(
         }
 
         let is_not_nan = fx.bcx.ins().fcmp(FloatCC::Equal, from, from);
-        if to_ty == types::I128 {
-            // FIXME(bytecodealliance/wasmtime#3963): select.i128 on fcmp eq miscompiles
-            let (lsb, msb) = fx.bcx.ins().isplit(val);
-            let zero = fx.bcx.ins().iconst(types::I64, 0);
-            let lsb = fx.bcx.ins().select(is_not_nan, lsb, zero);
-            let msb = fx.bcx.ins().select(is_not_nan, msb, zero);
-            fx.bcx.ins().iconcat(lsb, msb)
-        } else {
-            let zero = fx.bcx.ins().iconst(to_ty, 0);
-            fx.bcx.ins().select(is_not_nan, val, zero)
-        }
+        let zero = fx.bcx.ins().iconst(to_ty, 0);
+        fx.bcx.ins().select(is_not_nan, val, zero)
     } else if from_ty.is_float() && to_ty.is_float() {
         // float -> float
         match (from_ty, to_ty) {

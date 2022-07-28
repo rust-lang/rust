@@ -11,14 +11,12 @@ use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_infer::infer::{self, TyCtxtInferExt};
-use rustc_infer::traits;
+use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, IsSuggestable, Subst, ToPredicate, Ty};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-
-use std::iter;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
@@ -183,59 +181,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if let (ty::FnDef(def_id, ..), true) =
             (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
         {
-            if def_id.is_local() {
-                err.span_label(self.tcx.def_span(def_id), &format!("{} defined here", found));
+            if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
+                err.span_label(sp, format!("{found} defined here"));
             }
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
-            let is_struct_pat_shorthand_field =
-                self.maybe_get_struct_pattern_shorthand_field(expr).is_some();
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if !methods.is_empty() {
-                if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                    let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
-                        .filter_map(|(receiver, method)| {
-                            let method_call = format!(".{}()", method.name);
-                            if receiver.ends_with(&method_call) {
-                                None // do not suggest code that is already there (#53348)
-                            } else {
-                                let method_call_list = [".to_vec()", ".to_string()"];
-                                let mut sugg = if receiver.ends_with(".clone()")
-                                    && method_call_list.contains(&method_call.as_str())
-                                {
-                                    let max_len = receiver.rfind('.').unwrap();
-                                    vec![(
-                                        expr.span,
-                                        format!("{}{}", &receiver[..max_len], method_call),
-                                    )]
-                                } else {
-                                    if expr.precedence().order()
-                                        < ExprPrecedence::MethodCall.order()
-                                    {
-                                        vec![
-                                            (expr.span.shrink_to_lo(), "(".to_string()),
-                                            (expr.span.shrink_to_hi(), format!("){}", method_call)),
-                                        ]
-                                    } else {
-                                        vec![(expr.span.shrink_to_hi(), method_call)]
-                                    }
-                                };
-                                if is_struct_pat_shorthand_field {
-                                    sugg.insert(
-                                        0,
-                                        (expr.span.shrink_to_lo(), format!("{}: ", receiver)),
-                                    );
-                                }
-                                Some(sugg)
-                            }
-                        })
-                        .peekable();
-                    if suggestions.peek().is_some() {
-                        err.multipart_suggestions(
-                            "try using a conversion method",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                let mut suggestions = methods.iter()
+                    .filter_map(|conversion_method| {
+                        let receiver_method_ident = expr.method_ident();
+                        if let Some(method_ident) = receiver_method_ident
+                            && method_ident.name == conversion_method.name
+                        {
+                            return None // do not suggest code that is already there (#53348)
+                        }
+
+                        let method_call_list = [sym::to_vec, sym::to_string];
+                        let mut sugg = if let ExprKind::MethodCall(receiver_method, ..) = expr.kind
+                            && receiver_method.ident.name == sym::clone
+                            && method_call_list.contains(&conversion_method.name)
+                            // If receiver is `.clone()` and found type has one of those methods,
+                            // we guess that the user wants to convert from a slice type (`&[]` or `&str`)
+                            // to an owned type (`Vec` or `String`).  These conversions clone internally,
+                            // so we remove the user's `clone` call.
+                        {
+                            vec![(
+                                receiver_method.ident.span,
+                                conversion_method.name.to_string()
+                            )]
+                        } else if expr.precedence().order()
+                            < ExprPrecedence::MethodCall.order()
+                        {
+                            vec![
+                                (expr.span.shrink_to_lo(), "(".to_string()),
+                                (expr.span.shrink_to_hi(), format!(").{}()", conversion_method.name)),
+                            ]
+                        } else {
+                            vec![(expr.span.shrink_to_hi(), format!(".{}()", conversion_method.name))]
+                        };
+                        let struct_pat_shorthand_field = self.maybe_get_struct_pattern_shorthand_field(expr);
+                        if let Some(name) = struct_pat_shorthand_field {
+                            sugg.insert(
+                                0,
+                                (expr.span.shrink_to_lo(), format!("{}: ", name)),
+                            );
+                        }
+                        Some(sugg)
+                    })
+                    .peekable();
+                if suggestions.peek().is_some() {
+                    err.multipart_suggestions(
+                        "try using a conversion method",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             } else if let ty::Adt(found_adt, found_substs) = found.kind()
                 && self.tcx.is_diagnostic_item(sym::Option, found_adt.did())
@@ -507,7 +506,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(self.tcx), can_suggest, expected.is_unit()) {
+        match (
+            &fn_decl.output,
+            found.is_suggestable(self.tcx, false),
+            can_suggest,
+            expected.is_unit(),
+        ) {
             (&hir::FnRetTy::DefaultReturn(span), true, true, true) => {
                 err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found });
                 true
@@ -863,6 +867,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
+        }
+    }
+
+    /// A common error is to add an extra semicolon:
+    ///
+    /// ```compile_fail,E0308
+    /// fn foo() -> usize {
+    ///     22;
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the final statement in a block is an
+    /// expression with an explicit semicolon whose type is compatible
+    /// with `expected_ty`. If so, it suggests removing the semicolon.
+    pub(crate) fn consider_removing_semicolon(
+        &self,
+        blk: &'tcx hir::Block<'tcx>,
+        expected_ty: Ty<'tcx>,
+        err: &mut Diagnostic,
+    ) -> bool {
+        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+            if let StatementAsExpression::NeedsBoxing = boxed {
+                err.span_suggestion_verbose(
+                    span_semi,
+                    "consider removing this semicolon and boxing the expression",
+                    "",
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                err.span_suggestion_short(
+                    span_semi,
+                    "remove this semicolon",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            }
+            true
+        } else {
+            false
         }
     }
 }

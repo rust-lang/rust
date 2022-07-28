@@ -1,0 +1,1 @@
+trait T: Hash + Clone {}

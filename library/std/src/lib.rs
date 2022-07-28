@@ -243,7 +243,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(label_break_value)]
 #![feature(lang_items)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(linkage)]
 #![feature(min_specialization)]
@@ -264,7 +264,6 @@
 #![feature(atomic_mut_ptr)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
-#![feature(core_c_str)]
 #![feature(core_intrinsics)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]
@@ -277,6 +276,7 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
+#![feature(is_some_with)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(mixed_integer_ops)]
@@ -297,8 +297,6 @@
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
-#![feature(alloc_c_string)]
-#![feature(alloc_ffi)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]

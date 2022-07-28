@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVtable};
+use crate::query::config::{QueryDescription, QueryVTable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -331,7 +331,7 @@ fn try_execute_query<CTX, C>(
     span: Span,
     key: C::Key,
     dep_node: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
+    query: &QueryVTable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
 where
     C: QueryCache,
@@ -368,7 +368,7 @@ fn execute_job<CTX, K, V>(
     tcx: CTX,
     key: K,
     mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
     job_id: QueryJobId,
 ) -> (V, DepNodeIndex)
 where
@@ -437,7 +437,7 @@ fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
     key: &K,
     dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) -> Option<(V, DepNodeIndex)>
 where
     K: Clone,
@@ -530,7 +530,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
     dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) where
     CTX: QueryContext,
 {
@@ -642,7 +642,7 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
 fn ensure_must_run<CTX, K, V>(
     tcx: CTX,
     key: &K,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) -> (bool, Option<DepNode<CTX::DepKind>>)
 where
     K: crate::dep_graph::DepNodeParams<CTX::DepContext>,

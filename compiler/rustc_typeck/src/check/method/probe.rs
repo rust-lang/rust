@@ -343,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'a, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
-        let param_env_and_self_ty = self.infcx.canonicalize_query(
+        let param_env_and_self_ty = self.canonicalize_query(
             ParamEnvAnd { param_env: self.param_env, value: self_ty },
             &mut orig_values,
         );
@@ -351,7 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let steps = if mode == Mode::MethodCall {
             self.tcx.method_autoderef_steps(param_env_and_self_ty)
         } else {
-            self.infcx.probe(|_| {
+            self.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
                 // our CanonicalQuery into a "trivial" QueryResponse. This
                 // is a bit inefficient, but I don't think that writing

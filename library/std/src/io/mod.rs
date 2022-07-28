@@ -898,7 +898,7 @@ pub trait Read {
     /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut f = File::open("foo.txt")?;
+    ///     let f = File::open("foo.txt")?;
     ///
     ///     for byte in f.bytes() {
     ///         println!("{}", byte.unwrap());
@@ -932,8 +932,8 @@ pub trait Read {
     /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut f1 = File::open("foo.txt")?;
-    ///     let mut f2 = File::open("bar.txt")?;
+    ///     let f1 = File::open("foo.txt")?;
+    ///     let f2 = File::open("bar.txt")?;
     ///
     ///     let mut handle = f1.chain(f2);
     ///     let mut buffer = String::new();
@@ -973,7 +973,7 @@ pub trait Read {
     /// use std::fs::File;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut f = File::open("foo.txt")?;
+    ///     let f = File::open("foo.txt")?;
     ///     let mut buffer = [0; 5];
     ///
     ///     // read at most five bytes
@@ -2577,6 +2577,7 @@ impl<T: Read> Read for Take<T> {
 
         let max = cmp::min(buf.len() as u64, self.limit) as usize;
         let n = self.inner.read(&mut buf[..max])?;
+        assert!(n as u64 <= self.limit, "number of read bytes exceeds limit");
         self.limit -= n as u64;
         Ok(n)
     }

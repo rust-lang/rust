@@ -1,11 +1,12 @@
-error: `impl` associated type signature for `Assoc` doesn't match `trait` associated type signature
-  --> $DIR/missing-where-clause-on-trait.rs:9:5
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/missing-where-clause-on-trait.rs:9:39
    |
 LL |     type Assoc<'a, 'b>;
-   |     ------------------ expected
+   |     ------------------ definition of `Assoc` from trait
 ...
 LL |     type Assoc<'a, 'b> = () where 'a: 'b;
-   |     ^^^^^^^^^^^^^^^^^^ found
+   |                                       ^^ impl has extra requirement `'a: 'b`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0276`.

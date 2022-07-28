@@ -47,7 +47,7 @@ pub use self::SelectionError::*;
 
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
-pub use self::engine::TraitEngineExt;
+pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
@@ -60,8 +60,9 @@ pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
-pub use self::structural_match::search_for_structural_match_violation;
-pub use self::structural_match::{NonStructuralMatchTy, NonStructuralMatchTyKind};
+pub use self::structural_match::{
+    search_for_adt_const_param_violation, search_for_structural_match_violation,
+};
 pub use self::util::{
     elaborate_obligations, elaborate_predicates, elaborate_predicates_with_span,
     elaborate_trait_ref, elaborate_trait_refs,
@@ -163,7 +164,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
+        let mut fulfill_cx = FulfillmentContext::new();
 
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
@@ -207,21 +208,21 @@ fn do_normalize_predicates<'tcx>(
     predicates: Vec<ty::Predicate<'tcx>>,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
     let span = cause.span;
-    tcx.infer_ctxt().enter(|infcx| {
-        // FIXME. We should really... do something with these region
-        // obligations. But this call just continues the older
-        // behavior (i.e., doesn't cause any new bugs), and it would
-        // take some further refactoring to actually solve them. In
-        // particular, we would have to handle implied bounds
-        // properly, and that code is currently largely confined to
-        // regionck (though I made some efforts to extract it
-        // out). -nmatsakis
-        //
-        // @arielby: In any case, these obligations are checked
-        // by wfcheck anyway, so I'm not sure we have to check
-        // them here too, and we will remove this function when
-        // we move over to lazy normalization *anyway*.
-        let fulfill_cx = FulfillmentContext::new_ignoring_regions();
+    // FIXME. We should really... do something with these region
+    // obligations. But this call just continues the older
+    // behavior (i.e., doesn't cause any new bugs), and it would
+    // take some further refactoring to actually solve them. In
+    // particular, we would have to handle implied bounds
+    // properly, and that code is currently largely confined to
+    // regionck (though I made some efforts to extract it
+    // out). -nmatsakis
+    //
+    // @arielby: In any case, these obligations are checked
+    // by wfcheck anyway, so I'm not sure we have to check
+    // them here too, and we will remove this function when
+    // we move over to lazy normalization *anyway*.
+    tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
+        let fulfill_cx = FulfillmentContext::new();
         let predicates =
             match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
                 Ok(predicates) => predicates,
@@ -237,29 +238,37 @@ fn do_normalize_predicates<'tcx>(
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        infcx.resolve_regions_and_report_errors(&outlives_env);
+        // FIXME: It's very weird that we ignore region obligations but apparently
+        // still need to use `resolve_regions` as we need the resolved regions in
+        // the normalized predicates.
+        let errors = infcx.resolve_regions(&outlives_env);
+        if !errors.is_empty() {
+            tcx.sess.delay_span_bug(
+                span,
+                format!(
+                    "failed region resolution while normalizing {elaborated_env:?}: {errors:?}"
+                ),
+            );
+        }
 
-        let predicates = match infcx.fully_resolve(predicates) {
-            Ok(predicates) => predicates,
+        match infcx.fully_resolve(predicates) {
+            Ok(predicates) => Ok(predicates),
             Err(fixup_err) => {
                 // If we encounter a fixup error, it means that some type
                 // variable wound up unconstrained. I actually don't know
                 // if this can happen, and I certainly don't expect it to
                 // happen often, but if it did happen it probably
                 // represents a legitimate failure due to some kind of
-                // unconstrained variable, and it seems better not to ICE,
-                // all things considered.
-                let reported = tcx.sess.span_err(span, &fixup_err.to_string());
-                return Err(reported);
+                // unconstrained variable.
+                //
+                // @lcnr: Let's still ICE here for now. I want a test case
+                // for that.
+                span_bug!(
+                    span,
+                    "inference variables in normalized parameter environment: {}",
+                    fixup_err
+                );
             }
-        };
-        if predicates.needs_infer() {
-            let reported = tcx
-                .sess
-                .delay_span_bug(span, "encountered inference variables after `fully_resolve`");
-            Err(reported)
-        } else {
-            Ok(predicates)
         }
     })
 }

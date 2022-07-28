@@ -3,12 +3,16 @@ use super::place::PlaceRef;
 use super::FunctionCx;
 use crate::common::{span_invalid_monomorphization_error, IntPredicate};
 use crate::glue;
+use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::{sym, Span};
-use rustc_target::abi::call::{FnAbi, PassMode};
+use rustc_target::abi::{
+    call::{FnAbi, PassMode},
+    WrappingRange,
+};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -101,6 +105,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
+            }
+            sym::vtable_size | sym::vtable_align => {
+                let vtable = args[0].immediate();
+                let idx = match name {
+                    sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
+                    sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
+                    _ => bug!(),
+                };
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
+                if name == sym::vtable_align {
+                    // Alignment is always nonzero.
+                    bx.range_metadata(value, WrappingRange { start: 1, end: !0 });
+                };
+                value
             }
             sym::pref_align_of
             | sym::needs_drop

@@ -496,8 +496,7 @@ impl Item {
         // Primitives and Keywords are written in the source code as private modules.
         // The modules need to be private so that nobody actually uses them, but the
         // keywords and primitives that they are documenting are public.
-        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
-        {
+        let visibility = if matches!(&kind, ItemKind::KeywordItem | ItemKind::PrimitiveItem(..)) {
             Visibility::Public
         } else {
             cx.tcx.visibility(def_id).clean(cx)
@@ -769,7 +768,7 @@ pub(crate) enum ItemKind {
     AssocTypeItem(Typedef, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem(Symbol),
+    KeywordItem,
 }
 
 impl ItemKind {
@@ -808,7 +807,7 @@ impl ItemKind {
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
-            | KeywordItem(_) => [].iter(),
+            | KeywordItem => [].iter(),
         }
     }
 }
@@ -1514,11 +1513,19 @@ impl FnRetTy {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Trait {
-    pub(crate) unsafety: hir::Unsafety,
+    pub(crate) def_id: DefId,
     pub(crate) items: Vec<Item>,
     pub(crate) generics: Generics,
     pub(crate) bounds: Vec<GenericBound>,
-    pub(crate) is_auto: bool,
+}
+
+impl Trait {
+    pub(crate) fn is_auto(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.trait_is_auto(self.def_id)
+    }
+    pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
+        tcx.trait_def(self.def_id).unsafety
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1841,7 +1848,7 @@ impl PrimitiveType {
                 Reference => [RefSimplifiedType(Mutability::Not), RefSimplifiedType(Mutability::Mut)].into_iter().collect(),
                 // FIXME: This will be wrong if we ever add inherent impls
                 // for function pointers.
-                Fn => ArrayVec::new(),
+                Fn => single(FunctionSimplifiedType(1)),
                 Never => single(NeverSimplifiedType),
             }
         })
@@ -2168,8 +2175,8 @@ impl Path {
     pub(crate) fn whole_name(&self) -> String {
         self.segments
             .iter()
-            .map(|s| if s.name == kw::PathRoot { String::new() } else { s.name.to_string() })
-            .intersperse("::".into())
+            .map(|s| if s.name == kw::PathRoot { "" } else { s.name.as_str() })
+            .intersperse("::")
             .collect()
     }
 
@@ -2394,7 +2401,7 @@ impl Impl {
 pub(crate) enum ImplKind {
     Normal,
     Auto,
-    TupleVaradic,
+    FakeVaradic,
     Blanket(Box<Type>),
 }
 
@@ -2407,8 +2414,8 @@ impl ImplKind {
         matches!(self, ImplKind::Blanket(_))
     }
 
-    pub(crate) fn is_tuple_variadic(&self) -> bool {
-        matches!(self, ImplKind::TupleVaradic)
+    pub(crate) fn is_fake_variadic(&self) -> bool {
+        matches!(self, ImplKind::FakeVaradic)
     }
 
     pub(crate) fn as_blanket_ty(&self) -> Option<&Type> {
