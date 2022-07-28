@@ -1,0 +1,15 @@
+error[E0700]: hidden type for `impl Debug` captures lifetime that does not appear in bounds
+  --> $DIR/impl-fn-predefined-lifetimes.rs:4:35
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |                                   ^^^^^^^^^^^^^^^
+   |
+note: hidden type `&'<empty> u8` captures lifetime smaller than the function body
+  --> $DIR/impl-fn-predefined-lifetimes.rs:4:35
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |                                   ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0700`.

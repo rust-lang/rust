@@ -1,3 +1,4 @@
+#![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 
 fn fine(x: impl Into<u32>) -> impl Into<u32> { x }

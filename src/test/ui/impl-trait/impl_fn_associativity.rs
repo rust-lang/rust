@@ -1,4 +1,5 @@
 // run-pass
+#![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 
 fn f_debug() -> impl Fn() -> impl Debug {

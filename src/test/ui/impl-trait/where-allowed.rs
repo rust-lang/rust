@@ -1,5 +1,6 @@
 //! A simple test for testing many permutations of allowedness of
 //! impl Trait
+#![feature(impl_trait_in_fn_trait_return)]
 use std::fmt::Debug;
 
 // Allowed
