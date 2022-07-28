@@ -1,3 +1,4 @@
+use crate::move_paths::builder::MoveDat;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
@@ -386,10 +387,7 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> Result<
-        (FxHashMap<rustc_middle::mir::Local, rustc_middle::mir::Place<'tcx>>, MoveData<'tcx>),
-        (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
-    > {
+    ) -> Result<MoveDat<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         builder::gather_moves(body, tcx, param_env)
     }
 

@@ -207,13 +207,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
+pub type MoveDat<'tcx> = (FxHashMap<Local, Place<'tcx>>, MoveData<'tcx>);
+
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn finalize(
         self,
-    ) -> Result<
-        (FxHashMap<rustc_middle::mir::Local, rustc_middle::mir::Place<'tcx>>, MoveData<'tcx>),
-        (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
-    > {
+    ) -> Result<MoveDat<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -226,10 +225,10 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             "done dumping moves"
         });
 
-        if !self.errors.is_empty() {
-            Err((self.data, self.errors))
-        } else {
+        if self.errors.is_empty() {
             Ok((self.un_derefer.derefer_sidetable, self.data))
+        } else {
+            Err((self.data, self.errors))
         }
     }
 }
@@ -238,10 +237,7 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<
-    (FxHashMap<rustc_middle::mir::Local, rustc_middle::mir::Place<'tcx>>, MoveData<'tcx>),
-    (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
-> {
+) -> Result<MoveDat<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
     let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();
