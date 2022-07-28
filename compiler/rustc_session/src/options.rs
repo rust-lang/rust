@@ -1520,7 +1520,7 @@ options! {
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
     split_bundled_libs: bool = (false, parse_bool, [TRACKED],
-        "if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries"),        
+        "if libfoo.rlib is the rlib, then libfoo.rlib.bundle.* are the corresponding bundled static libraries"),
     split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [TRACKED],
         "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
         (default: `split`)
