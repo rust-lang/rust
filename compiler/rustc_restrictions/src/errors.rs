@@ -18,3 +18,15 @@ pub struct MutOfRestrictedField {
     #[note]
     pub restriction_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(restrictions_construction_of_ty_with_mut_restricted_field)]
+pub struct ConstructionOfTyWithMutRestrictedField {
+    #[primary_span]
+    pub construction_span: Span,
+    #[label]
+    pub restriction_span: Span,
+    #[note]
+    pub note: (),
+    pub ty: &'static str,
+}

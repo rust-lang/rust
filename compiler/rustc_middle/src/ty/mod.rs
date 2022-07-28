@@ -319,6 +319,37 @@ impl<Id: Into<DefId>> Restriction<Id> {
             Restriction::Restricted(_, span) => *span,
         }
     }
+    /// Obtain the stricter of the two restrictions. If the two restrictions are the same, returns
+    /// `left`. Panics if the restrictions do not reference the same crate.
+    pub fn stricter_of(left: Self, right: Self, tcx: TyCtxt<'_>) -> Self
+    where
+        Id: Copy,
+    {
+        match (left, right) {
+            (Restriction::Unrestricted, Restriction::Unrestricted) => Restriction::Unrestricted,
+            (Restriction::Unrestricted, Restriction::Restricted(..)) => right,
+            (Restriction::Restricted(..), Restriction::Unrestricted) => left,
+            (Restriction::Restricted(left_did, _), Restriction::Restricted(right_did, _)) => {
+                let left_did = left_did.into();
+                let right_did = right_did.into();
+
+                if left_did.krate != right_did.krate {
+                    bug!("stricter_of: left and right restriction do not reference the same crate");
+                }
+
+                if tcx.is_descendant_of(left_did, right_did) { left } else { right }
+            }
+        }
+    }
+
+    /// Obtain the strictest of the provided restrictions. If multiple restrictions are the same,
+    /// the first is returned. Panics if all restrictions do not reference the same crate.
+    pub fn strictest_of(iter: impl Iterator<Item = Self>, tcx: TyCtxt<'_>) -> Self
+    where
+        Id: Copy,
+    {
+        iter.fold(Restriction::Unrestricted, |left, right| Self::stricter_of(left, right, tcx))
+    }
 
     pub fn map_id<OutId>(self, f: impl FnOnce(Id) -> OutId) -> Restriction<OutId> {
         match self {

@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![feature(box_patterns)]
 
 mod errors;
 mod impl_restriction;
