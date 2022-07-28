@@ -136,8 +136,10 @@ fn local_decls_for_sig<'tcx>(
     sig: &ty::FnSig<'tcx>,
     span: Span,
 ) -> IndexVec<Local, LocalDecl<'tcx>> {
-    iter::once(LocalDecl::new(sig.output(), span))
-        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(*ity, span).immutable()))
+    iter::once(LocalDecl::new(sig.output(), span, AlwaysLive::Yes))
+        .chain(
+            sig.inputs().iter().map(|ity| LocalDecl::new(*ity, span, AlwaysLive::Yes).immutable()),
+        )
         .collect()
 }
 
@@ -406,7 +408,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
         let span = self.span;
-        let mut local = LocalDecl::new(ty, span);
+        let mut local = LocalDecl::new(ty, span, AlwaysLive::Yes);
         if mutability == Mutability::Not {
             local = local.immutable();
         }
@@ -603,6 +605,7 @@ fn build_call_shim<'tcx>(
                         ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
                     ),
                     span,
+                    AlwaysLive::Yes,
                 )
                 .immutable(),
             );

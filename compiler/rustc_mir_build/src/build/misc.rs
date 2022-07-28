@@ -17,7 +17,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         // Mark this local as internal to avoid temporaries with types not present in the
         // user's code resulting in ICEs from the generator transform.
-        let temp = self.local_decls.push(LocalDecl::new(ty, span).internal());
+        let temp = self.local_decls.push(LocalDecl::new(ty, span, AlwaysLive::Yes).internal());
         let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}", place, self.local_decls[temp].ty);
         place

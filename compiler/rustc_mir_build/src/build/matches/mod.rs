@@ -1758,8 +1758,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
-                let fake_borrow_temp =
-                    self.local_decls.push(LocalDecl::new(fake_borrow_ty, temp_span));
+                let fake_borrow_temp = self.local_decls.push(LocalDecl::new(
+                    fake_borrow_ty,
+                    temp_span,
+                    AlwaysLive::Yes,
+                ));
 
                 (matched_place, fake_borrow_temp)
             })
@@ -2228,6 +2231,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
             source_info,
             internal: false,
+            always_live: false,
             is_block_tail: None,
             local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                 VarBindingForm {
@@ -2257,6 +2261,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 user_ty: None,
                 source_info,
                 internal: false,
+                always_live: false,
                 is_block_tail: None,
                 local_info: Some(Box::new(LocalInfo::User(ClearCrossCrate::Set(
                     BindingForm::RefForGuard,

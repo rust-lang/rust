@@ -108,7 +108,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
 
             // Introduce a temporary for the discriminant value.
             let source_info = bbs[bb_idx].terminator().source_info;
-            let discr_local = body.local_decls.push(LocalDecl::new(switch_ty, source_info.span));
+            let discr_local =
+                body.local_decls.push(LocalDecl::new(switch_ty, source_info.span, AlwaysLive::No));
 
             // We already checked that first and second are different blocks,
             // and bb_idx has a different terminator from both of them.

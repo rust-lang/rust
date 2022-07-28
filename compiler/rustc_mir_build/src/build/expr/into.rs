@@ -515,7 +515,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // value is Sized. Usually, this is caught in type checking, but
                 // in the case of box expr there is no such check.
                 if !destination.projection.is_empty() {
-                    this.local_decls.push(LocalDecl::new(expr.ty, expr.span));
+                    this.local_decls.push(LocalDecl::new(expr.ty, expr.span, AlwaysLive::No));
                 }
 
                 let place = unpack!(block = this.as_place(block, expr));

@@ -1036,7 +1036,7 @@ where
     }
 
     fn new_temp(&mut self, ty: Ty<'tcx>) -> Local {
-        self.elaborator.patch().new_temp(ty, self.source_info.span)
+        self.elaborator.patch().new_temp(ty, self.source_info.span, AlwaysLive::Yes)
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {

@@ -731,7 +731,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
     // statement.
     fn add_dummy_assignment(&mut self, span: Span, block: BasicBlock, source_info: SourceInfo) {
-        let local_decl = LocalDecl::new(self.tcx.mk_unit(), span).internal();
+        let local_decl = LocalDecl::new(self.tcx.mk_unit(), span, AlwaysLive::Yes).internal();
         let temp_place = Place::from(self.local_decls.push(local_decl));
         self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }

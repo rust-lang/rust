@@ -42,6 +42,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefChecker<'tcx> {
                     let temp = self.patcher.new_local_with_info(
                         ty,
                         self.local_decls[p_ref.local].source_info.span,
+                        AlwaysLive::No,
                         Some(Box::new(LocalInfo::DerefTemp)),
                     );
 

@@ -198,6 +198,12 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 
         debug!("replacements {:?}", replacements.map);
 
+        for (local, local_decl) in body.local_decls.iter_enumerated_mut() {
+            if replacements.kill.contains(local) {
+                local_decl.always_live = true;
+            }
+        }
+
         Replacer { tcx, replacements, place_elem_cache: Vec::new() }.visit_body(body);
 
         // FIXME fix debug info

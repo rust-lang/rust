@@ -727,6 +727,8 @@ pub struct LocalDecl<'tcx> {
     /// generator.
     pub internal: bool,
 
+    pub always_live: bool,
+
     /// If this local is a temporary and `is_block_tail` is `Some`,
     /// then it is a temporary created for evaluation of some
     /// subexpression of some block's tail expression (with no
@@ -824,6 +826,12 @@ pub struct LocalDecl<'tcx> {
     ///  │ │← `drop(x)` // This accesses `x: u32`.
     /// ```
     pub source_info: SourceInfo,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum AlwaysLive {
+    No,
+    Yes,
 }
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -943,17 +951,25 @@ impl<'tcx> LocalDecl<'tcx> {
 
     /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
     #[inline]
-    pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::with_source_info(ty, SourceInfo::outermost(span))
+    pub fn new(ty: Ty<'tcx>, span: Span, always_live: AlwaysLive) -> Self {
+        Self::with_source_info(ty, SourceInfo::outermost(span), always_live)
     }
 
     /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `Span`.
     #[inline]
-    pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
+    pub fn with_source_info(
+        ty: Ty<'tcx>,
+        source_info: SourceInfo,
+        always_live: AlwaysLive,
+    ) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
             local_info: None,
             internal: false,
+            always_live: match always_live {
+                AlwaysLive::No => false,
+                AlwaysLive::Yes => true,
+            },
             is_block_tail: None,
             ty,
             user_ty: None,

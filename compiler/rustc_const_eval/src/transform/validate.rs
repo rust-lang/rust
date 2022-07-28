@@ -690,10 +690,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
             }
-            StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
-            | StatementKind::Coverage(_)
-            | StatementKind::Nop => {}
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                if self.body.local_decls[*local].always_live {
+                    self.fail(location, "storage statement not allowed for always live locals");
+                }
+            }
+            StatementKind::Coverage(_) | StatementKind::Nop => {}
         }
 
         self.super_statement(statement, location);

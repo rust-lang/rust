@@ -17,6 +17,11 @@ impl<'tcx> MirPass<'tcx> for RemoveStorageMarkers {
         }
 
         trace!("Running RemoveStorageMarkers on {:?}", body.source);
+
+        for local_decl in body.local_decls.iter_mut() {
+            local_decl.always_live = true;
+        }
+
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             data.statements.retain(|statement| match statement.kind {
                 StatementKind::StorageLive(..)

@@ -69,8 +69,8 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
             let (unique_ty, nonnull_ty, ptr_ty) =
                 build_ptr_tys(tcx, base_ty.boxed_ty(), self.unique_did, self.nonnull_did);
 
-            let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
-            self.local_decls.push(LocalDecl::new(ptr_ty, source_info.span));
+            let ptr_local = self.patch.new_temp(ptr_ty, source_info.span, AlwaysLive::No);
+            self.local_decls.push(LocalDecl::new(ptr_ty, source_info.span, AlwaysLive::No));
 
             self.patch.add_statement(location, StatementKind::StorageLive(ptr_local));
 

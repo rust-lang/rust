@@ -601,7 +601,6 @@ impl<'tcx> Inliner<'tcx> {
                     in_cleanup_block: false,
                     tcx: self.tcx,
                     expn_data,
-                    always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
                 };
 
                 // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -611,7 +610,7 @@ impl<'tcx> Inliner<'tcx> {
                 // If there are any locals without storage markers, give them storage only for the
                 // duration of the call.
                 for local in callee_body.vars_and_temps_iter() {
-                    if integrator.always_live_locals.contains(local) {
+                    if callee_body.local_decls[local].always_live {
                         let new_local = integrator.map_local(local);
                         caller_body[callsite.block].statements.push(Statement {
                             source_info: callsite.source_info,
@@ -624,7 +623,7 @@ impl<'tcx> Inliner<'tcx> {
                     // the slice once.
                     let mut n = 0;
                     for local in callee_body.vars_and_temps_iter().rev() {
-                        if integrator.always_live_locals.contains(local) {
+                        if callee_body.local_decls[local].always_live {
                             let new_local = integrator.map_local(local);
                             caller_body[block].statements.push(Statement {
                                 source_info: callsite.source_info,
@@ -634,6 +633,10 @@ impl<'tcx> Inliner<'tcx> {
                         }
                     }
                     caller_body[block].statements.rotate_right(n);
+                }
+
+                for local_decl in callee_body.local_decls.iter_mut() {
+                    local_decl.always_live = false;
                 }
 
                 // Insert all of the (mapped) parts of the callee body into the caller.
@@ -761,7 +764,11 @@ impl<'tcx> Inliner<'tcx> {
         callsite: &CallSite<'tcx>,
         ty: Ty<'tcx>,
     ) -> Local {
-        let local = caller_body.local_decls.push(LocalDecl::new(ty, callsite.source_info.span));
+        let local = caller_body.local_decls.push(LocalDecl::new(
+            ty,
+            callsite.source_info.span,
+            AlwaysLive::No,
+        ));
 
         caller_body[callsite.block].statements.push(Statement {
             source_info: callsite.source_info,
@@ -809,7 +816,6 @@ struct Integrator<'a, 'tcx> {
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
     expn_data: LocalExpnId,
-    always_live_locals: BitSet<Local>,
 }
 
 impl Integrator<'_, '_> {
@@ -916,15 +922,6 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
         if *kind == RetagKind::FnEntry {
             *kind = RetagKind::Default;
         }
-    }
-
-    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::StorageLive(local) | StatementKind::StorageDead(local) =
-            statement.kind
-        {
-            self.always_live_locals.remove(local);
-        }
-        self.super_statement(statement, location);
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, loc: Location) {

@@ -82,24 +82,25 @@ impl<'tcx> MirPatch<'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         span: Span,
+        always_live: AlwaysLive,
         local_info: Option<Box<LocalInfo<'tcx>>>,
     ) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        let mut new_decl = LocalDecl::new(ty, span);
+        let mut new_decl = LocalDecl::new(ty, span, always_live);
         new_decl.local_info = local_info;
         self.new_locals.push(new_decl);
         Local::new(index as usize)
     }
 
-    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
-        self.new_local_with_info(ty, span, None)
+    pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span, always_live: AlwaysLive) -> Local {
+        self.new_local_with_info(ty, span, always_live, None)
     }
 
     pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        self.new_locals.push(LocalDecl::new(ty, span).internal());
+        self.new_locals.push(LocalDecl::new(ty, span, AlwaysLive::Yes).internal());
         Local::new(index as usize)
     }
 

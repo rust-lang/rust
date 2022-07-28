@@ -139,7 +139,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
             // create temp to store second discriminant in, `_s` in example above
             let second_discriminant_temp =
-                patch.new_temp(opt_data.child_ty, opt_data.child_source.span);
+                patch.new_temp(opt_data.child_ty, opt_data.child_source.span, AlwaysLive::No);
 
             patch.add_statement(parent_end, StatementKind::StorageLive(second_discriminant_temp));
 
@@ -154,7 +154,8 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             // example above
             let nequal = BinOp::Ne;
             let comp_res_type = nequal.ty(tcx, *parent_ty, opt_data.child_ty);
-            let comp_temp = patch.new_temp(comp_res_type, opt_data.child_source.span);
+            let comp_temp =
+                patch.new_temp(comp_res_type, opt_data.child_source.span, AlwaysLive::No);
             patch.add_statement(parent_end, StatementKind::StorageLive(comp_temp));
 
             // create inequality comparison between the two discriminants

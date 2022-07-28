@@ -114,7 +114,11 @@ impl<'tcx> Patcher<'_, 'tcx> {
                         Operand::Copy(place) | Operand::Move(place) => {
                             // create new local
                             let ty = operand.ty(self.local_decls, self.tcx);
-                            let local_decl = LocalDecl::with_source_info(ty, statement.source_info);
+                            let local_decl = LocalDecl::with_source_info(
+                                ty,
+                                statement.source_info,
+                                AlwaysLive::No,
+                            );
                             let local = self.local_decls.push(local_decl);
                             // make it live
                             let mut make_live_statement = statement.clone();

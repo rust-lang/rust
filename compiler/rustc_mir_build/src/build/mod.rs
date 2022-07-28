@@ -765,7 +765,7 @@ fn construct_error<'a, 'tcx>(
     };
     let mut cfg = CFG { basic_blocks: IndexVec::new() };
     let mut source_scopes = IndexVec::new();
-    let mut local_decls = IndexVec::from_elem_n(LocalDecl::new(ty, span), 1);
+    let mut local_decls = IndexVec::from_elem_n(LocalDecl::new(ty, span, AlwaysLive::Yes), 1);
 
     cfg.start_new_block();
     source_scopes.push(SourceScopeData {
@@ -783,7 +783,7 @@ fn construct_error<'a, 'tcx>(
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
     for _ in 0..num_params {
-        local_decls.push(LocalDecl::with_source_info(ty, source_info));
+        local_decls.push(LocalDecl::with_source_info(ty, source_info, AlwaysLive::Yes));
     }
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
@@ -853,7 +853,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_scope: OUTERMOST_SOURCE_SCOPE,
             guard_context: vec![],
             in_scope_unsafe: safety,
-            local_decls: IndexVec::from_elem_n(LocalDecl::new(return_ty, return_span), 1),
+            local_decls: IndexVec::from_elem_n(
+                LocalDecl::new(return_ty, return_span, AlwaysLive::Yes),
+                1,
+            ),
             canonical_user_type_annotations: IndexVec::new(),
             upvar_mutbls: vec![],
             var_indices: Default::default(),
@@ -904,7 +907,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
             let source_info =
                 SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
-            let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
+            let arg_local = self.local_decls.push(LocalDecl::with_source_info(
+                ty,
+                source_info,
+                AlwaysLive::Yes,
+            ));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
             if let Some(arg) = arg_opt && let Some(ident) = arg.pat.simple_ident() {

@@ -745,6 +745,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let new_temp = self.promoted.local_decls.push(LocalDecl::new(
             self.source.local_decls[temp].ty,
             self.source.local_decls[temp].source_info.span,
+            AlwaysLive::Yes,
         ));
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})", temp, loc, num_stmts, self.keep_original);
@@ -838,7 +839,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let tcx = self.tcx;
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
+                promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span, AlwaysLive::Yes);
                 let _const = tcx.mk_const(ty::ConstS {
                     ty,
                     kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
@@ -887,7 +888,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     // Create a temp to hold the promoted reference.
                     // This is because `*r` requires `r` to be a local,
                     // otherwise we would use the `promoted` directly.
-                    let mut promoted_ref = LocalDecl::new(ref_ty, span);
+                    let mut promoted_ref = LocalDecl::new(ref_ty, span, AlwaysLive::Yes);
                     promoted_ref.source_info = statement.source_info;
                     let promoted_ref = local_decls.push(promoted_ref);
                     assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
@@ -964,7 +965,8 @@ pub fn promote_candidates<'tcx>(
         }
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
-        let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
+        let initial_locals =
+            iter::once(LocalDecl::new(tcx.types.never, body.span, AlwaysLive::Yes)).collect();
 
         let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
         scope.parent_scope = None;

@@ -288,7 +288,7 @@ impl<'tcx> TransformVisitor<'tcx> {
 
     // Create a statement which reads the discriminant into a temporary
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
-        let temp_decl = LocalDecl::new(self.discr_ty, body.span).internal();
+        let temp_decl = LocalDecl::new(self.discr_ty, body.span, AlwaysLive::Yes).internal();
         let local_decls_len = body.local_decls.push(temp_decl);
         let temp = Place::from(local_decls_len);
 
@@ -423,7 +423,7 @@ fn replace_local<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
-    let new_decl = LocalDecl::new(ty, body.span);
+    let new_decl = LocalDecl::new(ty, body.span, AlwaysLive::Yes);
     let new_local = body.local_decls.push(new_decl);
     body.local_decls.swap(local, new_local);
 
@@ -948,7 +948,8 @@ fn create_generator_drop_shim<'tcx>(
     }
 
     // Replace the return variable
-    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.mk_unit(), source_info);
+    body.local_decls[RETURN_PLACE] =
+        LocalDecl::with_source_info(tcx.mk_unit(), source_info, AlwaysLive::Yes);
 
     make_generator_state_argument_indirect(tcx, &mut body);
 
@@ -956,6 +957,7 @@ fn create_generator_drop_shim<'tcx>(
     body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
         tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
+        AlwaysLive::Yes,
     );
     if tcx.sess.opts.unstable_opts.mir_emit_retag {
         // Alias tracking must know we changed the type
@@ -1253,7 +1255,11 @@ fn create_cases<'tcx>(
                                 nonnull_did,
                             );
 
-                        let ptr_local = body.local_decls.push(LocalDecl::new(ptr_ty, body.span));
+                        let ptr_local = body.local_decls.push(LocalDecl::new(
+                            ptr_ty,
+                            body.span,
+                            AlwaysLive::No,
+                        ));
 
                         statements.push(Statement {
                             source_info,
@@ -1379,7 +1385,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
-        let always_live_locals = always_storage_live_locals(&body);
+        let always_live_locals = always_storage_live_locals(body);
 
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);

@@ -72,6 +72,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
         ret_decl.clone_from(renamed_decl);
 
         // The return place is always mutable.
+        ret_decl.always_live = true;
         ret_decl.mutability = Mutability::Mut;
     }
 }

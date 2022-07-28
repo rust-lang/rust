@@ -763,8 +763,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .ty;
                         let fake_borrow_ty =
                             tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
-                        let fake_borrow_temp =
-                            self.local_decls.push(LocalDecl::new(fake_borrow_ty, expr_span));
+                        let fake_borrow_temp = self.local_decls.push(LocalDecl::new(
+                            fake_borrow_ty,
+                            expr_span,
+                            AlwaysLive::Yes,
+                        ));
                         let projection = tcx.intern_place_elems(&base_place.projection[..idx]);
                         self.cfg.push_assign(
                             block,
