@@ -4240,7 +4240,21 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
             llvm::errs() << *T << " - " << call << "\n";
             llvm_unreachable("Unknown type for libm");
           }
-
+        } else if (auto AT = dyn_cast<ArrayType>(T)) {
+          assert(AT->getNumElements() >= 1);
+          if (AT->getElementType()->isFloatingPointTy())
+            updateAnalysis(
+                call.getArgOperand(i),
+                TypeTree(ConcreteType(AT->getElementType()->getScalarType()))
+                    .Only(-1),
+                &call);
+          else if (AT->getElementType()->isIntegerTy()) {
+            updateAnalysis(call.getArgOperand(i),
+                           TypeTree(BaseType::Integer).Only(-1), &call);
+          } else {
+            llvm::errs() << *T << " - " << call << "\n";
+            llvm_unreachable("Unknown type for libm");
+          }
         } else {
           llvm::errs() << *T << " - " << call << "\n";
           llvm_unreachable("Unknown type for libm");

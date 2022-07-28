@@ -9945,11 +9945,18 @@ public:
             Value *d = Builder2.CreateCall(called, args);
 
             if (args.size() == 2) {
-              Value *op0 = diffe(orig->getArgOperand(0), Builder2);
+              Value *op0 = gutils->isConstantValue(orig->getArgOperand(0))
+                               ? nullptr
+                               : diffe(orig->getArgOperand(0), Builder2);
+              Value *op1 = gutils->isConstantValue(orig->getArgOperand(1))
+                               ? nullptr
+                               : diffe(orig->getArgOperand(1), Builder2);
 
-              Value *op1 = diffe(orig->getArgOperand(1), Builder2);
+              auto rule1 = [&](Value *op) {
+                return Builder2.CreateFMul(args[0], Builder2.CreateFDiv(op, d));
+              };
 
-              auto rule = [&](Value *op0, Value *op1) {
+              auto rule2 = [&](Value *op0, Value *op1) {
                 Value *dif1 =
                     Builder2.CreateFMul(args[0], Builder2.CreateFDiv(op0, d));
                 Value *dif2 =
@@ -9957,14 +9964,46 @@ public:
                 return Builder2.CreateFAdd(dif1, dif2);
               };
 
-              Value *dif =
-                  applyChainRule(call.getType(), Builder2, rule, op0, op1);
+              Value *dif;
+              if (op0 && op1)
+                dif = applyChainRule(call.getType(), Builder2, rule2, op0, op1);
+              else if (op0)
+                dif = applyChainRule(call.getType(), Builder2, rule1, op0);
+              else if (op1)
+                dif = applyChainRule(call.getType(), Builder2, rule1, op1);
+              else
+                llvm_unreachable(
+                    "trying to differentiate a constant instruction");
+
               setDiffe(orig, dif, Builder2);
               return;
-            } else {
-              llvm::errs() << *orig << "\n";
-              llvm_unreachable("unknown calling convention found for cabs");
+            } else if (args.size() == 1) {
+              if (auto AT = dyn_cast<ArrayType>(args[0]->getType())) {
+                if (AT->getNumElements() == 2) {
+                  Value *op = diffe(orig->getArgOperand(0), Builder2);
+                  Value *args0 = Builder2.CreateExtractValue(args[0], 0);
+                  Value *args1 = Builder2.CreateExtractValue(args[0], 1);
+
+                  auto rule = [&](Value *op) {
+                    Value *op0 = Builder2.CreateExtractValue(op, 0);
+                    Value *op1 = Builder2.CreateExtractValue(op, 1);
+
+                    Value *dif1 =
+                        Builder2.CreateFMul(args0, Builder2.CreateFDiv(op0, d));
+                    Value *dif2 =
+                        Builder2.CreateFMul(args1, Builder2.CreateFDiv(op1, d));
+                    return Builder2.CreateFAdd(dif1, dif2);
+                  };
+
+                  Value *dif =
+                      applyChainRule(call.getType(), Builder2, rule, op);
+                  setDiffe(orig, dif, Builder2);
+                  return;
+                }
+              }
             }
+            llvm::errs() << *orig << "\n";
+            llvm_unreachable("unknown calling convention found for cabs");
           }
           case DerivativeMode::ReverseModeGradient:
           case DerivativeMode::ReverseModeCombined: {
@@ -9998,10 +10037,31 @@ public:
                              Builder2.CreateFMul(args[i], div), Builder2,
                              orig->getType());
               return;
-            } else {
-              llvm::errs() << *orig << "\n";
-              llvm_unreachable("unknown calling convention found for cabs");
+            } else if (args.size() == 1) {
+              if (auto AT = dyn_cast<ArrayType>(args[0]->getType())) {
+                if (AT->getNumElements() == 2) {
+                  if (!gutils->isConstantValue(orig->getArgOperand(0))) {
+                    Value *agg = UndefValue::get(args[0]->getType());
+                    agg = Builder2.CreateInsertValue(
+                        agg,
+                        Builder2.CreateFMul(
+                            Builder2.CreateExtractValue(args[0], 0), div),
+                        0);
+                    agg = Builder2.CreateInsertValue(
+                        agg,
+                        Builder2.CreateFMul(
+                            Builder2.CreateExtractValue(args[0], 1), div),
+                        1);
+
+                    addToDiffe(orig->getArgOperand(0), agg, Builder2,
+                               orig->getType());
+                    return;
+                  }
+                }
+              }
             }
+            llvm::errs() << *orig << "\n";
+            llvm_unreachable("unknown calling convention found for cabs");
           }
           case DerivativeMode::ReverseModePrimal: {
             return;
