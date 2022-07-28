@@ -37,7 +37,7 @@ use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
-use crate::clean::Clean;
+use crate::clean::{clean_visibility, Clean};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -499,7 +499,7 @@ impl Item {
         let visibility = if matches!(&kind, ItemKind::KeywordItem | ItemKind::PrimitiveItem(..)) {
             Visibility::Public
         } else {
-            cx.tcx.visibility(def_id).clean(cx)
+            clean_visibility(cx.tcx.visibility(def_id))
         };
 
         Item { item_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
