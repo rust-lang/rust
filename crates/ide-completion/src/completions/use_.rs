@@ -115,6 +115,6 @@ pub(crate) fn complete_use_path(
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer | Qualified::With { resolution: None, .. } => {}
+        Qualified::TypeAnchor { .. } | Qualified::With { resolution: None, .. } => {}
     }
 }
