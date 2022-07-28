@@ -675,7 +675,7 @@ pub fn visit_attr_annotated_tt<T: MutVisitor>(tt: &mut AttrAnnotatedTokenTree, v
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
-        TokenTree::Token(token) => {
+        TokenTree::Token(token, _) => {
             visit_token(token, vis);
         }
         TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
@@ -690,7 +690,7 @@ pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
     if T::VISIT_TOKENS && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
-        visit_vec(tts, |(tree, _is_joint)| visit_tt(tree, vis));
+        visit_vec(tts, |tree| visit_tt(tree, vis));
     }
 }
 

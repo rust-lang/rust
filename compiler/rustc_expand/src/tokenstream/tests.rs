@@ -1,7 +1,7 @@
 use crate::tests::string_to_stream;
 
 use rustc_ast::token;
-use rustc_ast::tokenstream::{Spacing, TokenStream, TokenStreamBuilder, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenStreamBuilder};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::{BytePos, Span, Symbol};
 
@@ -11,10 +11,6 @@ fn string_to_ts(string: &str) -> TokenStream {
 
 fn sp(a: u32, b: u32) -> Span {
     Span::with_root_ctxt(BytePos(a), BytePos(b))
-}
-
-fn joint(tree: TokenTree) -> TokenStream {
-    TokenStream::new(vec![(tree, Spacing::Joint)])
 }
 
 #[test]
@@ -90,9 +86,8 @@ fn test_diseq_1() {
 #[test]
 fn test_is_empty() {
     create_default_session_globals_then(|| {
-        let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
-        let test1: TokenStream =
-            TokenTree::token(token::Ident(Symbol::intern("a"), false), sp(0, 1)).into();
+        let test0 = TokenStream::default();
+        let test1 = TokenStream::token_alone(token::Ident(Symbol::intern("a"), false), sp(0, 1));
         let test2 = string_to_ts("foo(bar::baz)");
 
         assert_eq!(test0.is_empty(), true);
@@ -105,9 +100,9 @@ fn test_is_empty() {
 fn test_dotdotdot() {
     create_default_session_globals_then(|| {
         let mut builder = TokenStreamBuilder::new();
-        builder.push(joint(TokenTree::token(token::Dot, sp(0, 1))));
-        builder.push(joint(TokenTree::token(token::Dot, sp(1, 2))));
-        builder.push(TokenTree::token(token::Dot, sp(2, 3)));
+        builder.push(TokenStream::token_joint(token::Dot, sp(0, 1)));
+        builder.push(TokenStream::token_joint(token::Dot, sp(1, 2)));
+        builder.push(TokenStream::token_alone(token::Dot, sp(2, 3)));
         let stream = builder.build();
         assert!(stream.eq_unspanned(&string_to_ts("...")));
         assert_eq!(stream.trees().count(), 1);
