@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{self, Read, Seek};
 use std::path::{Path, PathBuf};
 
-use rustc_codegen_ssa::back::archive::ArchiveBuilder;
+use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use rustc_session::Session;
 
 use object::read::archive::ArchiveFile;
@@ -15,6 +15,32 @@ use object::{Object, ObjectSymbol, ReadCache};
 enum ArchiveEntry {
     FromArchive { archive_index: usize, file_range: (u64, u64) },
     File(PathBuf),
+}
+
+pub(crate) struct ArArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for ArArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+        Box::new(ArArchiveBuilder {
+            sess,
+            use_gnu_style_archive: sess.target.archive_format == "gnu",
+            // FIXME fix builtin ranlib on macOS
+            no_builtin_ranlib: sess.target.is_like_osx,
+
+            src_archives: vec![],
+            entries: vec![],
+        })
+    }
+
+    fn create_dll_import_lib(
+        &self,
+        _sess: &Session,
+        _lib_name: &str,
+        _dll_imports: &[rustc_session::cstore::DllImport],
+        _tmpdir: &Path,
+    ) -> PathBuf {
+        bug!("creating dll imports is not supported");
+    }
 }
 
 pub(crate) struct ArArchiveBuilder<'a> {
@@ -29,18 +55,6 @@ pub(crate) struct ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
-    fn new(sess: &'a Session) -> Self {
-        ArArchiveBuilder {
-            sess,
-            use_gnu_style_archive: sess.target.archive_format == "gnu",
-            // FIXME fix builtin ranlib on macOS
-            no_builtin_ranlib: sess.target.is_like_osx,
-
-            src_archives: vec![],
-            entries: vec![],
-        }
-    }
-
     fn add_file(&mut self, file: &Path) {
         self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string().into_bytes(),
@@ -48,10 +62,11 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ));
     }
 
-    fn add_archive<F>(&mut self, archive_path: &Path, mut skip: F) -> std::io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static,
-    {
+    fn add_archive(
+        &mut self,
+        archive_path: &Path,
+        mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> std::io::Result<()> {
         let read_cache = ReadCache::new(std::fs::File::open(&archive_path)?);
         let archive = ArchiveFile::parse(&read_cache).unwrap();
         let archive_index = self.src_archives.len();
@@ -72,7 +87,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn build(mut self, output: &Path) -> bool {
+    fn build(mut self: Box<Self>, output: &Path) -> bool {
         enum BuilderKind {
             Bsd(ar::Builder<File>),
             Gnu(ar::GnuBuilder<File>),
@@ -217,14 +232,5 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         }
 
         any_members
-    }
-
-    fn create_dll_import_lib(
-        _sess: &Session,
-        _lib_name: &str,
-        _dll_imports: &[rustc_session::cstore::DllImport],
-        _tmpdir: &Path,
-    ) -> PathBuf {
-        bug!("creating dll imports is not supported");
     }
 }
