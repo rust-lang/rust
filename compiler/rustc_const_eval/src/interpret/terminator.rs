@@ -534,7 +534,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             let mut non_zst_field = None;
                             for i in 0..receiver.layout.fields.count() {
                                 let field = self.operand_field(&receiver, i)?;
-                                if !field.layout.is_zst() {
+                                let zst =
+                                    field.layout.is_zst() && field.layout.align.abi.bytes() == 1;
+                                if !zst {
                                     assert!(
                                         non_zst_field.is_none(),
                                         "multiple non-ZST fields in dyn receiver type {}",
