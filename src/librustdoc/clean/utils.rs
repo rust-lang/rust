@@ -236,7 +236,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             assert_eq!(promoted, ());
-            let mut s = if let Some(def) = def.as_local() {
+            let s = if let Some(def) = def.as_local() {
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
                 inline::print_inlined_const(cx.tcx, def.did)

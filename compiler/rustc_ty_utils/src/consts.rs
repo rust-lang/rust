@@ -222,17 +222,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         debug!("AbstractConstBuilder::build: body={:?}", &*self.body);
         self.recurse_build(self.body_id)?;
 
-        for n in self.nodes.iter() {
-            if let Node::Leaf(ct) = n {
-                if let ty::ConstKind::Unevaluated(ct) = ct.kind() {
-                    // `AbstractConst`s should not contain any promoteds as they require references which
-                    // are not allowed.
-                    assert_eq!(ct.promoted, None);
-                    assert_eq!(ct, self.tcx.erase_regions(ct));
-                }
-            }
-        }
-
         Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter()))
     }
 

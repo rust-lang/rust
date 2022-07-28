@@ -583,7 +583,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn uneval_to_op(
         &self,
         uneval: &ty::Unevaluated<'tcx>,
-    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let instance = self.resolve(uneval.def, uneval.substs)?;
         Ok(self.eval_to_allocation(GlobalId { instance, promoted: uneval.promoted })?.into())
     }

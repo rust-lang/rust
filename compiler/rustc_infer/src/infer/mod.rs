@@ -1717,7 +1717,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
-            let ac = AbstractConst::new(self.tcx, unevaluated.shrink());
+            let ac = AbstractConst::new(self.tcx, unevaluated);
             match ac {
                 Ok(None) => {
                     substs = InternalSubsts::identity_for_item(self.tcx, unevaluated.def.did);

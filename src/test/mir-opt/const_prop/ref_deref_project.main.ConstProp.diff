@@ -11,7 +11,7 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/ref_deref_project.rs:+1:5: +1:17
           StorageLive(_2);                 // scope 0 at $DIR/ref_deref_project.rs:+1:6: +1:17
-          _4 = const main::promoted[0];    // scope 0 at $DIR/ref_deref_project.rs:+1:6: +1:17
+          _4 = const _;                    // scope 0 at $DIR/ref_deref_project.rs:+1:6: +1:17
                                            // mir::Constant
                                            // + span: $DIR/ref_deref_project.rs:6:6: 6:17
                                            // + literal: Const { ty: &(i32, i32), val: Unevaluated(main, [], Some(promoted[0])) }

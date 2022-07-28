@@ -44,7 +44,7 @@
           StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:5: +2:45
           StorageLive(_6);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
           StorageLive(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
-          _19 = const discriminant::<T>::promoted[2]; // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
+          _19 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:+2:42: +2:44
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:50:42: 50:44
                                            // + literal: Const { ty: &i32, val: Unevaluated(discriminant, [T], Some(promoted[2])) }
@@ -59,23 +59,13 @@
       }
   
       bb2: {
-<<<<<<< HEAD
           StorageDead(_6);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:44: +2:45
           StorageDead(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:45: +2:46
           StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+2:45: +2:46
           StorageLive(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:46
           StorageLive(_10);                // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
           StorageLive(_11);                // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
-          _18 = const discriminant::<T>::promoted[1]; // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
-=======
-          StorageDead(_6);                 // scope 0 at $DIR/lower_intrinsics.rs:75:44: 75:45
-          StorageDead(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:75:45: 75:46
-          StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:75:45: 75:46
-          StorageLive(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:76:5: 76:46
-          StorageLive(_10);                // scope 0 at $DIR/lower_intrinsics.rs:76:42: 76:45
-          StorageLive(_11);                // scope 0 at $DIR/lower_intrinsics.rs:76:42: 76:45
-          _18 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:76:42: 76:45
->>>>>>> 631a70cb406 (bless tests)
+          _18 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:+3:42: +3:45
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:51:42: 51:45
                                            // + literal: Const { ty: &(), val: Unevaluated(discriminant, [T], Some(promoted[1])) }
@@ -90,23 +80,13 @@
       }
   
       bb3: {
-<<<<<<< HEAD
           StorageDead(_10);                // scope 0 at $DIR/lower_intrinsics.rs:+3:45: +3:46
           StorageDead(_11);                // scope 0 at $DIR/lower_intrinsics.rs:+3:46: +3:47
           StorageDead(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:+3:46: +3:47
           StorageLive(_13);                // scope 0 at $DIR/lower_intrinsics.rs:+4:5: +4:48
           StorageLive(_14);                // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
           StorageLive(_15);                // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
-          _17 = const discriminant::<T>::promoted[0]; // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
-=======
-          StorageDead(_10);                // scope 0 at $DIR/lower_intrinsics.rs:76:45: 76:46
-          StorageDead(_11);                // scope 0 at $DIR/lower_intrinsics.rs:76:46: 76:47
-          StorageDead(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:76:46: 76:47
-          StorageLive(_13);                // scope 0 at $DIR/lower_intrinsics.rs:77:5: 77:48
-          StorageLive(_14);                // scope 0 at $DIR/lower_intrinsics.rs:77:42: 77:47
-          StorageLive(_15);                // scope 0 at $DIR/lower_intrinsics.rs:77:42: 77:47
-          _17 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:77:42: 77:47
->>>>>>> 631a70cb406 (bless tests)
+          _17 = const _;                   // scope 0 at $DIR/lower_intrinsics.rs:+4:42: +4:47
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:52:42: 52:47
                                            // + literal: Const { ty: &E, val: Unevaluated(discriminant, [T], Some(promoted[0])) }

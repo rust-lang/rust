@@ -18,8 +18,8 @@
           StorageLive(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
           _3 = const FOO;                  // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
                                            // mir::Constant
-                                           // + span: $DIR/const_prop_fails_gracefully.rs:8:13: 8:16
-                                           // + literal: Const { ty: &i32, val: Unevaluated(FOO, [], None) }
+                                           // + span: $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
+                                           // + literal: Const { ty: &i32, val: Unevaluated(FOO, [], ()) }
           _2 = &raw const (*_3);           // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:16
           _1 = move _2 as usize (PointerExposeAddress); // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:13: +2:39
           StorageDead(_2);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:+2:38: +2:39

@@ -17,7 +17,7 @@
 -         StorageLive(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:32: +0:34
 -         StorageLive(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:+0:33: +0:34
 -         _5 = const {alloc1: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:+0:33: +0:34
-+         _6 = const BAR::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:+0:31: +0:44
++         _6 = const _;                    // scope 0 at $DIR/const-promotion-extern-static.rs:+0:31: +0:44
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
