@@ -1,7 +1,7 @@
 use super::{nfa, Byte, Nfa, Ref};
 use crate::Map;
 use std::fmt;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 #[derive(PartialEq, Clone, Debug)]
 pub(crate) struct Dfa<R>
@@ -49,7 +49,7 @@ where
 
 /// The states in a `Nfa` represent byte offsets.
 #[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
-pub(crate) struct State(u64);
+pub(crate) struct State(u32);
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
 pub(crate) enum Transition<R>
@@ -166,7 +166,7 @@ where
 
 impl State {
     pub(crate) fn new() -> Self {
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
         Self(COUNTER.fetch_add(1, Ordering::SeqCst))
     }
 }

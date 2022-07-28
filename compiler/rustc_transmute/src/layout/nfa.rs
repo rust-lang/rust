@@ -1,7 +1,7 @@
 use super::{Byte, Ref, Tree, Uninhabited};
 use crate::{Map, Set};
 use std::fmt;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// A non-deterministic finite automaton (NFA) that represents the layout of a type.
 /// The transmutability of two given types is computed by comparing their `Nfa`s.
@@ -17,7 +17,7 @@ where
 
 /// The states in a `Nfa` represent byte offsets.
 #[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
-pub(crate) struct State(u64);
+pub(crate) struct State(u32);
 
 /// The transitions between states in a `Nfa` reflect bit validity.
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
@@ -173,7 +173,7 @@ where
 
 impl State {
     pub(crate) fn new() -> Self {
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        static COUNTER: AtomicU32 = AtomicU32::new(0);
         Self(COUNTER.fetch_add(1, Ordering::SeqCst))
     }
 }
