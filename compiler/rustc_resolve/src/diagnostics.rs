@@ -2023,7 +2023,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
@@ -2058,12 +2058,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
@@ -2077,7 +2077,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
@@ -2085,12 +2085,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                vec![
+                Some(
                     "`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>"
                         .to_string(),
-                ],
+                ),
             ))
         } else {
             None
@@ -2108,12 +2108,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
     /// Suggests a missing external crate name if that resolves to an correct module.
@@ -2130,7 +2130,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         if path[1].ident.span.rust_2015() {
             return None;
         }
@@ -2151,7 +2151,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 name, path, result
             );
             if let PathResult::Module(..) = result {
-                return Some((path, Vec::new()));
+                return Some((path, None));
             }
         }
 
@@ -2175,7 +2175,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         import: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
-    ) -> Option<(Option<Suggestion>, Vec<String>)> {
+    ) -> Option<(Option<Suggestion>, Option<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
             return None;
         };
@@ -2287,12 +2287,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 String::from("a macro with this name exists at the root of the crate"),
                 Applicability::MaybeIncorrect,
             ));
-            let note = vec![
-                "this could be because a macro annotated with `#[macro_export]` will be exported \
-                 at the root of the crate instead of the module where it is defined"
-                    .to_string(),
-            ];
-            Some((suggestion, note))
+            Some((suggestion, Some("this could be because a macro annotated with `#[macro_export]` will be exported \
+            at the root of the crate instead of the module where it is defined"
+               .to_string())))
         } else {
             None
         }
