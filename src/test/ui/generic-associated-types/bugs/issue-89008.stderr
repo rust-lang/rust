@@ -1,10 +1,10 @@
 error[E0271]: type mismatch resolving `<Empty<_> as Stream>::Item == Repr`
-  --> $DIR/issue-89008.rs:40:9
+  --> $DIR/issue-89008.rs:39:43
    |
 LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {
-   |                        ---- this type parameter
-LL |         async {empty()}
-   |         ^^^^^^^^^^^^^^^ type mismatch resolving `<Empty<_> as Stream>::Item == Repr`
+   |                        ----               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Empty<_> as Stream>::Item == Repr`
+   |                        |
+   |                        this type parameter
    |
 note: expected this to be `()`
   --> $DIR/issue-89008.rs:18:17

@@ -1,8 +1,11 @@
-error[E0381]: use of possibly-uninitialized variable: `bar`
+error[E0381]: used binding `bar` isn't initialized
   --> $DIR/borrowck-uninit-after-item.rs:4:9
    |
+LL |     let bar;
+   |         --- binding declared here but left uninitialized
+LL |     fn baz(_x: isize) { }
 LL |     baz(bar);
-   |         ^^^ use of possibly-uninitialized `bar`
+   |         ^^^ `bar` used here but it isn't initialized
 
 error: aborting due to previous error
 

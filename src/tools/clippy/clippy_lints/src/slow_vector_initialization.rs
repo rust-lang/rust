@@ -26,6 +26,9 @@ declare_clippy_lint! {
     /// let mut vec1 = Vec::with_capacity(len);
     /// vec1.resize(len, 0);
     ///
+    /// let mut vec1 = Vec::with_capacity(len);
+    /// vec1.resize(vec1.capacity(), 0);
+    ///
     /// let mut vec2 = Vec::with_capacity(len);
     /// vec2.extend(repeat(0).take(len));
     /// ```
@@ -211,23 +214,20 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 
     /// Checks if the given expression is resizing a vector with 0
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if self.initialization_found;
-            if let ExprKind::MethodCall(path, [self_arg, len_arg, fill_arg], _) = expr.kind;
-            if path_to_local_id(self_arg, self.vec_alloc.local_id);
-            if path.ident.name == sym!(resize);
-
+        if self.initialization_found
+            && let ExprKind::MethodCall(path, [self_arg, len_arg, fill_arg], _) = expr.kind
+            && path_to_local_id(self_arg, self.vec_alloc.local_id)
+            && path.ident.name == sym!(resize)
             // Check that is filled with 0
-            if let ExprKind::Lit(ref lit) = fill_arg.kind;
-            if let LitKind::Int(0, _) = lit.node;
-
-            // Check that len expression is equals to `with_capacity` expression
-            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
-
-            then {
-                self.slow_expression = Some(InitializationType::Resize(expr));
+            && let ExprKind::Lit(ref lit) = fill_arg.kind
+            && let LitKind::Int(0, _) = lit.node {
+                // Check that len expression is equals to `with_capacity` expression
+                if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
+                    self.slow_expression = Some(InitializationType::Resize(expr));
+                } else if let ExprKind::MethodCall(path, _, _) = len_arg.kind && path.ident.as_str() == "capacity" {
+                    self.slow_expression = Some(InitializationType::Resize(expr));
+                }
             }
-        }
     }
 
     /// Returns `true` if give expression is `repeat(0).take(...)`
@@ -240,12 +240,15 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             if let Some(repeat_expr) = take_args.get(0);
             if self.is_repeat_zero(repeat_expr);
 
-            // Check that len expression is equals to `with_capacity` expression
             if let Some(len_arg) = take_args.get(1);
-            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
 
             then {
-                return true;
+                // Check that len expression is equals to `with_capacity` expression
+                if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {
+                    return true;
+                } else if let ExprKind::MethodCall(path, _, _) = len_arg.kind && path.ident.as_str() == "capacity" {
+                    return true;
+                }
             }
         }
 

@@ -2,10 +2,11 @@
 
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
@@ -23,7 +24,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef, VarDebugInfoContents,
@@ -75,6 +76,7 @@ mod places_conflict;
 mod prefixes;
 mod region_infer;
 mod renumber;
+mod session_diagnostics;
 mod type_check;
 mod universal_regions;
 mod used_muts;
@@ -128,11 +130,14 @@ fn mir_borrowck<'tcx>(
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
     let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
 
-    let opt_closure_req = tcx.infer_ctxt().with_opaque_type_inference(hir_owner).enter(|infcx| {
-        let input_body: &Body<'_> = &input_body.borrow();
-        let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, false).0
-    });
+    let opt_closure_req = tcx
+        .infer_ctxt()
+        .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner))
+        .enter(|infcx| {
+            let input_body: &Body<'_> = &input_body.borrow();
+            let promoted: &IndexVec<_, _> = &promoted.borrow();
+            do_mir_borrowck(&infcx, input_body, promoted, false).0
+        });
     debug!("mir_borrowck done");
 
     tcx.arena.alloc(opt_closure_req)
@@ -210,7 +215,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let (move_data, move_errors): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
         match MoveData::gather_moves(&body, tcx, param_env) {
-            Ok(move_data) => (move_data, Vec::new()),
+            Ok((_, move_data)) => (move_data, Vec::new()),
             Err((move_data, move_errors)) => (move_data, move_errors),
         };
     let promoted_errors = promoted
@@ -229,7 +234,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
-    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.debugging_opts.polonius;
+    let use_polonius = return_body_with_facts || infcx.tcx.sess.opts.unstable_opts.polonius;
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -332,7 +337,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         };
     }
 
-    let dominators = body.dominators();
+    let dominators = body.basic_blocks.dominators();
 
     let mut mbcx = MirBorrowckCtxt {
         infcx,
@@ -905,6 +910,16 @@ impl InitializationRequiringAction {
             InitializationRequiringAction::PartialAssignment => "partially assigned",
         }
     }
+
+    fn as_general_verb_in_past_tense(self) -> &'static str {
+        match self {
+            InitializationRequiringAction::Borrow
+            | InitializationRequiringAction::MatchOn
+            | InitializationRequiringAction::Use => "used",
+            InitializationRequiringAction::Assignment => "assigned",
+            InitializationRequiringAction::PartialAssignment => "partially assigned",
+        }
+    }
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
@@ -1223,6 +1238,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/)
             | Rvalue::ShallowInitBox(ref operand, _ /*ty*/) => {
                 self.consume_operand(location, (operand, span), flow_state)
+            }
+            Rvalue::CopyForDeref(place) => {
+                self.access_place(
+                    location,
+                    (place, span),
+                    (Deep, Read(ReadKind::Copy)),
+                    LocalMutationIsAllowed::No,
+                    flow_state,
+                );
+
+                // Finally, check if path was already moved.
+                self.check_if_path_or_subpath_is_moved(
+                    location,
+                    InitializationRequiringAction::Use,
+                    (place.as_ref(), span),
+                    flow_state,
+                );
             }
 
             Rvalue::Len(place) | Rvalue::Discriminant(place) => {

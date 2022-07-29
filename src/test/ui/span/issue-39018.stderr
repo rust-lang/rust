@@ -29,14 +29,8 @@ LL | enum World {
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-LL | / pub trait Add<Rhs = Self> {
-LL | |     /// The resulting type after applying the `+` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn add(self, rhs: Rhs) -> Self::Output;
-LL | | }
-   | |_^
+LL | pub trait Add<Rhs = Self> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot add `String` to `&str`
   --> $DIR/issue-39018.rs:11:22

@@ -2,7 +2,7 @@ error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/mixed_cases.rs:10:3
    |
 LL |   two_args(1, "", X {});
-   |   ^^^^^^^^    --  ---- argument unexpected
+   |   ^^^^^^^^    --  ---- argument of type `X` unexpected
    |               |
    |               expected `f32`, found `&str`
    |
@@ -20,9 +20,9 @@ error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/mixed_cases.rs:11:3
    |
 LL |   three_args(1, "", X {}, "");
-   |   ^^^^^^^^^^    --  ----  -- argument unexpected
+   |   ^^^^^^^^^^    --  ----  -- argument of type `&'static str` unexpected
    |                 |   |
-   |                 |   argument of type `&str` unexpected
+   |                 |   argument of type `X` unexpected
    |                 an argument of type `f32` is missing
    |
 note: function defined here
@@ -58,7 +58,7 @@ error[E0308]: arguments to this function are incorrect
   --> $DIR/mixed_cases.rs:17:3
    |
 LL |   three_args(1, "", X {});
-   |   ^^^^^^^^^^    --  ---- argument of type `&str` unexpected
+   |   ^^^^^^^^^^    --  ---- argument of type `X` unexpected
    |                 |
    |                 an argument of type `f32` is missing
    |

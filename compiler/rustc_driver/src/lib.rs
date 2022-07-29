@@ -29,7 +29,7 @@ use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_session::config::{nightly_options, CG_OPTIONS, DB_OPTIONS};
+use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts;
@@ -123,8 +123,7 @@ impl Callbacks for TimePassesCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // If a --prints=... option has been given, we don't print the "total"
         // time because it will mess up the --prints output. See #64339.
-        self.time_passes = config.opts.prints.is_empty()
-            && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
+        self.time_passes = config.opts.prints.is_empty() && config.opts.time_passes();
         config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
@@ -248,8 +247,8 @@ fn run_compiler(
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
                         let mut lint_store = rustc_lint::new_lint_store(
-                            sopts.debugging_opts.no_interleave_lints,
-                            compiler.session().unstable_options(),
+                            sopts.unstable_opts.no_interleave_lints,
+                            compiler.session().enable_internal_lints(),
                         );
                         let registered_lints =
                             if let Some(register_lints) = compiler.register_lints() {
@@ -342,7 +341,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.parse_only || sess.opts.debugging_opts.show_span.is_some() {
+            if sess.opts.unstable_opts.parse_only || sess.opts.unstable_opts.show_span.is_some() {
                 return early_exit();
             }
 
@@ -371,13 +370,13 @@ fn run_compiler(
 
             queries.global_ctxt()?;
 
-            if sess.opts.debugging_opts.no_analysis {
+            if sess.opts.unstable_opts.no_analysis {
                 return early_exit();
             }
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
                 let result = tcx.analysis(());
-                if sess.opts.debugging_opts.save_analysis {
+                if sess.opts.unstable_opts.save_analysis {
                     let crate_name = queries.crate_name()?.peek().clone();
                     sess.time("save_analysis", || {
                         save::process_crate(
@@ -401,7 +400,7 @@ fn run_compiler(
 
             queries.ongoing_codegen()?;
 
-            if sess.opts.debugging_opts.print_type_sizes {
+            if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
             }
 
@@ -414,14 +413,14 @@ fn run_compiler(
             linker.link()?
         }
 
-        if sess.opts.debugging_opts.perf_stats {
+        if sess.opts.unstable_opts.perf_stats {
             sess.print_perf_stats();
         }
 
-        if sess.opts.debugging_opts.print_fuel.is_some() {
+        if sess.opts.unstable_opts.print_fuel.is_some() {
             eprintln!(
                 "Fuel used by {}: {}",
-                sess.opts.debugging_opts.print_fuel.as_ref().unwrap(),
+                sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
                 sess.print_fuel.load(SeqCst)
             );
         }
@@ -576,7 +575,7 @@ fn show_content_with_pager(content: &str) {
 }
 
 pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
-    if sess.opts.debugging_opts.link_only {
+    if sess.opts.unstable_opts.link_only {
         if let Input::File(file) = compiler.input() {
             // FIXME: #![crate_type] and #![crate_name] support not implemented yet
             sess.init_crate_types(collect_crate_types(sess, &[]));
@@ -606,7 +605,7 @@ pub fn list_metadata(
     metadata_loader: &dyn MetadataLoader,
     input: &Input,
 ) -> Compilation {
-    if sess.opts.debugging_opts.ls {
+    if sess.opts.unstable_opts.ls {
         match *input {
             Input::File(ref ifile) => {
                 let path = &(*ifile);
@@ -849,10 +848,10 @@ Available lint options:
     };
 
     println!("Lint checks provided by rustc:\n");
-    println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
-    println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |lints: Vec<&Lint>| {
+        println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
+        println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
         for lint in lints {
             let name = lint.name_lower().replace('_', "-");
             println!(
@@ -884,11 +883,15 @@ Available lint options:
     };
 
     println!("Lint groups provided by rustc:\n");
-    println!("    {}  sub-lints", padded("name"));
-    println!("    {}  ---------", padded("----"));
-    println!("    {}  all lints that are set to issue warnings", padded("warnings"));
 
-    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>| {
+    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>, all_warnings| {
+        println!("    {}  sub-lints", padded("name"));
+        println!("    {}  ---------", padded("----"));
+
+        if all_warnings {
+            println!("    {}  all lints that are set to issue warnings", padded("warnings"));
+        }
+
         for (name, to) in lints {
             let name = name.to_lowercase().replace('_', "-");
             let desc = to
@@ -901,7 +904,7 @@ Available lint options:
         println!("\n");
     };
 
-    print_lint_groups(builtin_groups);
+    print_lint_groups(builtin_groups, true);
 
     match (loaded_plugins, plugin.len(), plugin_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
@@ -916,7 +919,7 @@ Available lint options:
             }
             if g > 0 {
                 println!("Lint groups provided by plugins loaded by this crate:\n");
-                print_lint_groups(plugin_groups);
+                print_lint_groups(plugin_groups, false);
             }
         }
     }
@@ -924,7 +927,7 @@ Available lint options:
 
 fn describe_debug_flags() {
     println!("\nAvailable options:\n");
-    print_flag_list("-Z", config::DB_OPTIONS);
+    print_flag_list("-Z", config::Z_OPTIONS);
 }
 
 fn describe_codegen_flags() {
@@ -932,7 +935,7 @@ fn describe_codegen_flags() {
     print_flag_list("-C", config::CG_OPTIONS);
 }
 
-fn print_flag_list<T>(
+pub fn print_flag_list<T>(
     cmdline_opt: &str,
     flag_list: &[(&'static str, T, &'static str, &'static str)],
 ) {
@@ -996,7 +999,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
             getopts::Fail::UnrecognizedOption(ref opt) => CG_OPTIONS
                 .iter()
                 .map(|&(name, ..)| ('C', name))
-                .chain(DB_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
+                .chain(Z_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
                 .find(|&(_, name)| *opt == name.replace('_', "-"))
                 .map(|(flag, _)| format!("{}. Did you mean `-{} {}`?", e, flag, opt)),
             _ => None,

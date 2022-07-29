@@ -225,12 +225,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         debug!("{:?} normalized to {:?}", t, norm_ty);
 
-        for data in constraints.into_iter().collect::<Vec<_>>() {
+        for data in constraints {
             ConstraintConversion::new(
                 self.infcx,
                 &self.borrowck_context.universal_regions,
                 &self.region_bound_pairs,
-                Some(self.implicit_region_bound),
+                self.implicit_region_bound,
                 self.param_env,
                 Locations::All(DUMMY_SP),
                 DUMMY_SP,

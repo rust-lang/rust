@@ -389,7 +389,7 @@
 //! [`Option`] of a collection of each contained value of the original
 //! [`Option`] values, or [`None`] if any of the elements was [`None`].
 //!
-//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CA%3E%3E
+//! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CA%3E%3E-for-Option%3CV%3E
 //!
 //! ```
 //! let v = [Some(2), Some(4), None, Some(8)];
@@ -405,8 +405,8 @@
 //! to provide the [`product`][Iterator::product] and
 //! [`sum`][Iterator::sum] methods.
 //!
-//! [impl-Product]: Option#impl-Product%3COption%3CU%3E%3E
-//! [impl-Sum]: Option#impl-Sum%3COption%3CU%3E%3E
+//! [impl-Product]: Option#impl-Product%3COption%3CU%3E%3E-for-Option%3CT%3E
+//! [impl-Sum]: Option#impl-Sum%3COption%3CU%3E%3E-for-Option%3CT%3E
 //!
 //! ```
 //! let v = [None, Some(1), Some(2), Some(3)];

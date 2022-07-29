@@ -9,11 +9,8 @@ error: vtable entries for `<S as C>`: [
        ]
   --> $DIR/vtable-multiple.rs:16:1
    |
-LL | / trait C: A + B {
-LL | |
-LL | |     fn foo_c(&self) {}
-LL | | }
-   | |_^
+LL | trait C: A + B {
+   | ^^^^^^^^^^^^^^
 
 error: vtable entries for `<S as B>`: [
            MetadataDropInPlace,
@@ -23,11 +20,8 @@ error: vtable entries for `<S as B>`: [
        ]
   --> $DIR/vtable-multiple.rs:10:1
    |
-LL | / trait B {
-LL | |
-LL | |     fn foo_b(&self) {}
-LL | | }
-   | |_^
+LL | trait B {
+   | ^^^^^^^
 
 error: aborting due to 2 previous errors
 

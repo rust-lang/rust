@@ -44,6 +44,12 @@ fn in_struct_field() {
     s._underscore_field += 1;
 }
 
+/// Tests that we do not lint if the struct field is used in code created with derive.
+#[derive(Clone, Debug)]
+pub struct UnderscoreInStruct {
+    _foo: u32,
+}
+
 /// Tests that we do not lint if the underscore is not a prefix
 fn non_prefix_underscore(some_foo: u32) -> u32 {
     some_foo + 1

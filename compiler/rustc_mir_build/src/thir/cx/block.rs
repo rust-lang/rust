@@ -74,6 +74,8 @@ impl<'tcx> Cx<'tcx> {
                             )),
                         };
 
+                        let else_block = local.els.map(|els| self.mirror_block(els));
+
                         let mut pattern = self.pattern_from_hir(local.pat);
                         debug!(?pattern);
 
@@ -110,6 +112,7 @@ impl<'tcx> Cx<'tcx> {
                                 },
                                 pattern,
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
+                                else_block,
                                 lint_level: LintLevel::Explicit(local.hir_id),
                             },
                             opt_destruction_scope: opt_dxn_ext,

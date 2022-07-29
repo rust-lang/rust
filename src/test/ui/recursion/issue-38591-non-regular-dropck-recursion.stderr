@@ -1,15 +1,10 @@
-error: reached the recursion limit while instantiating `std::ptr::drop_in_place::<S<fn(f...)))))))))))))))))))))))))))))>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+error[E0320]: overflow while adding drop-check rules for S<u32>
+  --> $DIR/issue-38591-non-regular-dropck-recursion.rs:11:6
    |
-LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn f(x: S<u32>) {}
+   |      ^
    |
-note: `std::ptr::drop_in_place` defined here
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-38591-non-regular-dropck-recursion/issue-38591-non-regular-dropck-recursion.long-type.txt'
+   = note: overflowed on S<fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(fn(u32)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))>
 
 error: aborting due to previous error
 

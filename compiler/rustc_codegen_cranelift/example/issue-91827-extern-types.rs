@@ -6,7 +6,6 @@
 // Regression test for issue #91827.
 
 #![feature(const_ptr_offset_from)]
-#![feature(const_slice_from_raw_parts)]
 #![feature(extern_types)]
 
 use std::ptr::addr_of;

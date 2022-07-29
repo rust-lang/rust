@@ -2,14 +2,8 @@
 #![feature(core_intrinsics)]
 #![allow(const_err)]
 
-// During CTFE, we prevent pointer comparison and pointer-to-int casts.
-
-static CMP: () = {
-    let x = &0 as *const _;
-    let _v = x == x;
-    //~^ ERROR could not evaluate static initializer
-    //~| "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
-};
+// During CTFE, we prevent pointer-to-int casts.
+// Pointer comparisons are prevented in the trait system.
 
 static PTR_INT_CAST: () = {
     let x = &0 as *const _ as usize;

@@ -31,7 +31,7 @@ pub fn renumber_regions<'tcx, T>(infcx: &InferCtxt<'_, 'tcx>, value: T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
-    infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
+    infcx.tcx.fold_regions(value, |_region, _depth| {
         let origin = NllRegionVariableOrigin::Existential { from_forall: false };
         infcx.next_nll_region_var(origin)
     })

@@ -60,6 +60,7 @@ fn test_arg_value() {
     assert_eq!(arg_value(args, "--bar", |p| p == "foo"), None);
     assert_eq!(arg_value(args, "--foobar", |p| p == "foo"), None);
     assert_eq!(arg_value(args, "--foobar", |p| p == "123"), Some("123"));
+    assert_eq!(arg_value(args, "--foobar", |p| p.contains("12")), Some("123"));
     assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
@@ -93,6 +94,8 @@ struct ClippyCallbacks {
 }
 
 impl rustc_driver::Callbacks for ClippyCallbacks {
+    // JUSTIFICATION: necessary in clippy driver to set `mir_opt_level`
+    #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
@@ -116,7 +119,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         // run on the unoptimized MIR. On the other hand this results in some false negatives. If
         // MIR passes can be enabled / disabled separately, we should figure out, what passes to
         // use for Clippy.
-        config.opts.debugging_opts.mir_opt_level = Some(0);
+        config.opts.unstable_opts.mir_opt_level = Some(0);
     }
 }
 
@@ -152,7 +155,8 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-static ICE_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> = LazyLock::new(|| {
+type PanicCallback = dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static;
+static ICE_HOOK: LazyLock<Box<PanicCallback>> = LazyLock::new(|| {
     let hook = panic::take_hook();
     panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
     hook
@@ -334,15 +338,13 @@ pub fn main() {
         // - IF Clippy is run on the main crate, not on deps (`!cap_lints_allow`) THEN
         //    - IF `--no-deps` is not set (`!no_deps`) OR
         //    - IF `--no-deps` is set and Clippy is run on the specified primary package
-        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some();
+        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
+            && arg_value(&orig_args, "--force-warn", |val| val.contains("clippy::")).is_none();
         let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
         let clippy_enabled = !cap_lints_allow && (!no_deps || in_primary_package);
         if clippy_enabled {
             args.extend(clippy_args);
-        }
-
-        if clippy_enabled {
             rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run()
         } else {
             rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run()

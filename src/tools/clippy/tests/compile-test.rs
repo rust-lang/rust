@@ -23,6 +23,7 @@ const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[
+    "clippy_lints",
     "clippy_utils",
     "derive_new",
     "futures",
@@ -40,6 +41,8 @@ static TEST_DEPENDENCIES: &[&str] = &[
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
 // in the depinfo file (otherwise cargo thinks they are unused)
+#[allow(unused_extern_crates)]
+extern crate clippy_lints;
 #[allow(unused_extern_crates)]
 extern crate clippy_utils;
 #[allow(unused_extern_crates)]
@@ -124,7 +127,7 @@ fn base_config(test_dir: &str) -> compiletest::Config {
     let mut config = compiletest::Config {
         edition: Some("2021".into()),
         mode: TestMode::Ui,
-        ..compiletest::Config::default()
+        ..Default::default()
     };
 
     if let Ok(filters) = env::var("TESTNAME") {
@@ -280,6 +283,24 @@ fn run_ui_cargo() {
                 }
 
                 env::set_current_dir(&src_path)?;
+
+                let cargo_toml_path = case.path().join("Cargo.toml");
+                let cargo_content = fs::read(&cargo_toml_path)?;
+                let cargo_parsed: toml::Value = toml::from_str(
+                    std::str::from_utf8(&cargo_content).expect("`Cargo.toml` is not a valid utf-8 file!"),
+                )
+                .expect("Can't parse `Cargo.toml`");
+
+                let _g = VarGuard::set("CARGO_MANIFEST_DIR", case.path());
+                let _h = VarGuard::set(
+                    "CARGO_PKG_RUST_VERSION",
+                    cargo_parsed
+                        .get("package")
+                        .and_then(|p| p.get("rust-version"))
+                        .and_then(toml::Value::as_str)
+                        .unwrap_or(""),
+                );
+
                 for file in fs::read_dir(&src_path)? {
                     let file = file?;
                     if file.file_type()?.is_dir() {
@@ -373,6 +394,7 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
     "single_component_path_imports_nested_first.rs",
     "string_add.rs",
     "toplevel_ref_arg_non_rustfix.rs",
+    "trait_duplication_in_bounds.rs",
     "unit_arg.rs",
     "unnecessary_clone.rs",
     "unnecessary_lazy_eval_unfixable.rs",
@@ -411,7 +433,7 @@ fn rustfix_coverage_known_exceptions_accuracy() {
         let rs_path = Path::new("tests/ui").join(filename);
         assert!(
             rs_path.exists(),
-            "`{}` does not exists",
+            "`{}` does not exist",
             rs_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
         );
         let fixed_path = rs_path.with_extension("fixed");
@@ -419,6 +441,45 @@ fn rustfix_coverage_known_exceptions_accuracy() {
             !fixed_path.exists(),
             "`{}` exists",
             fixed_path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display()
+        );
+    }
+}
+
+#[test]
+fn ui_cargo_toml_metadata() {
+    let ui_cargo_path = Path::new("tests/ui-cargo");
+    let cargo_common_metadata_path = ui_cargo_path.join("cargo_common_metadata");
+    let publish_exceptions =
+        ["fail_publish", "fail_publish_true", "pass_publish_empty"].map(|path| cargo_common_metadata_path.join(path));
+
+    for entry in walkdir::WalkDir::new(ui_cargo_path) {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.file_name() != Some(OsStr::new("Cargo.toml")) {
+            continue;
+        }
+
+        let toml = fs::read_to_string(path).unwrap().parse::<toml::Value>().unwrap();
+
+        let package = toml.as_table().unwrap().get("package").unwrap().as_table().unwrap();
+
+        let name = package.get("name").unwrap().as_str().unwrap().replace('-', "_");
+        assert!(
+            path.parent()
+                .unwrap()
+                .components()
+                .map(|component| component.as_os_str().to_string_lossy().replace('-', "_"))
+                .any(|s| *s == name)
+                || path.starts_with(&cargo_common_metadata_path),
+            "{:?} has incorrect package name",
+            path
+        );
+
+        let publish = package.get("publish").and_then(toml::Value::as_bool).unwrap_or(true);
+        assert!(
+            !publish || publish_exceptions.contains(&path.parent().unwrap().to_path_buf()),
+            "{:?} lacks `publish = false`",
+            path
         );
     }
 }

@@ -33,7 +33,7 @@ where
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
         if unlikely(self.n > 0) {
-            self.iter.nth(crate::mem::take(&mut self.n) - 1);
+            self.iter.nth(crate::mem::take(&mut self.n) - 1)?;
         }
         self.iter.next()
     }

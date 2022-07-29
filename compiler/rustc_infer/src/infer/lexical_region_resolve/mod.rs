@@ -47,7 +47,6 @@ pub(crate) fn resolve<'tcx>(
 #[derive(Clone)]
 pub struct LexicalRegionResolutions<'tcx> {
     pub(crate) values: IndexVec<RegionVid, VarValue<'tcx>>,
-    pub(crate) error_region: ty::Region<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -120,13 +119,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ) -> LexicalRegionResolutions<'tcx> {
         let mut var_data = self.construct_var_data(self.tcx());
 
-        // Dorky hack to cause `dump_constraints` to only get called
-        // if debug mode is enabled:
-        debug!(
-            "----() End constraint listing (context={:?}) {:?}---",
-            self.region_rels.context,
-            self.dump_constraints(self.region_rels)
-        );
+        if cfg!(debug_assertions) {
+            self.dump_constraints();
+        }
 
         let graph = self.construct_graph();
         self.expand_givens(&graph);
@@ -144,7 +139,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// empty region. The `expansion` phase will grow this larger.
     fn construct_var_data(&self, tcx: TyCtxt<'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
-            error_region: tcx.lifetimes.re_static,
             values: IndexVec::from_fn_n(
                 |vid| {
                     let vid_universe = self.var_infos[vid].universe;
@@ -156,8 +150,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
     }
 
-    fn dump_constraints(&self, free_regions: &RegionRelations<'_, 'tcx>) {
-        debug!("----() Start constraint listing (context={:?}) ()----", free_regions.context);
+    #[instrument(level = "debug", skip(self))]
+    fn dump_constraints(&self) {
         for (idx, (constraint, _)) in self.data.constraints.iter().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
         }
@@ -314,7 +308,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Check for the case where we know that `'b: 'static` -- in that case,
         // `a <= b` for all `a`.
-        let b_free_or_static = self.region_rels.free_regions.is_free_or_static(b);
+        let b_free_or_static = b.is_free_or_static();
         if b_free_or_static && sub_free_regions(tcx.lifetimes.re_static, b) {
             return true;
         }
@@ -324,7 +318,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // `lub` relationship defined below, since sometimes the "lub"
         // is actually the `postdom_upper_bound` (see
         // `TransitiveRelation` for more details).
-        let a_free_or_static = self.region_rels.free_regions.is_free_or_static(a);
+        let a_free_or_static = a.is_free_or_static();
         if a_free_or_static && b_free_or_static {
             return sub_free_regions(a, b);
         }
@@ -868,10 +862,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(value, &mut false, |r, _db| match *r {
-            ty::ReVar(rid) => self.resolve_var(rid),
-            _ => r,
-        })
+        tcx.fold_regions(value, |r, _db| self.resolve_region(tcx, r))
     }
 
     fn value(&self, rid: RegionVid) -> &VarValue<'tcx> {
@@ -882,12 +873,19 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
         &mut self.values[rid]
     }
 
-    pub fn resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
-        let result = match self.values[rid] {
-            VarValue::Value(r) => r,
-            VarValue::ErrorValue => self.error_region,
+    pub(crate) fn resolve_region(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        let result = match *r {
+            ty::ReVar(rid) => match self.values[rid] {
+                VarValue::Value(r) => r,
+                VarValue::ErrorValue => tcx.lifetimes.re_static,
+            },
+            _ => r,
         };
-        debug!("resolve_var({:?}) = {:?}", rid, result);
+        debug!("resolve_region({:?}) = {:?}", r, result);
         result
     }
 }

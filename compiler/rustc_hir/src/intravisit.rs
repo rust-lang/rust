@@ -19,7 +19,7 @@
 //!    - Example: Examine each expression to look for its type and do some check or other.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
 //!      `nested_filter::OnlyBodies` (and implement `nested_visit_map`), and use
-//!      `tcx.hir().deep_visit_all_item_likes(&mut visitor)`. Within your
+//!      `tcx.hir().visit_all_item_likes_in_crate(&mut visitor)`. Within your
 //!      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
 //!      `intravisit::walk_expr()` to keep walking the subparts).
 //!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
@@ -65,7 +65,6 @@
 //! example generator inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
-use crate::itemlikevisit::ParItemLikeVisitor;
 use rustc_ast::walk_list;
 use rustc_ast::{Attribute, Label};
 use rustc_span::symbol::{Ident, Symbol};
@@ -74,29 +73,6 @@ use rustc_span::Span;
 pub trait IntoVisitor<'hir> {
     type Visitor: Visitor<'hir>;
     fn into_visitor(&self) -> Self::Visitor;
-}
-
-pub struct ParDeepVisitor<V>(pub V);
-
-impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
-where
-    V: IntoVisitor<'hir>,
-{
-    fn visit_item(&self, item: &'hir Item<'hir>) {
-        self.0.into_visitor().visit_item(item);
-    }
-
-    fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>) {
-        self.0.into_visitor().visit_trait_item(trait_item);
-    }
-
-    fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>) {
-        self.0.into_visitor().visit_impl_item(impl_item);
-    }
-
-    fn visit_foreign_item(&self, foreign_item: &'hir ForeignItem<'hir>) {
-        self.0.into_visitor().visit_foreign_item(foreign_item);
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -214,7 +190,7 @@ use nested_filter::NestedFilter;
 /// (this is why the module is called `intravisit`, to distinguish it
 /// from the AST's `visit` module, which acts differently). If you
 /// simply want to visit all items in the crate in some order, you
-/// should call `Crate::visit_all_items`. Otherwise, see the comment
+/// should call `tcx.hir().visit_all_item_likes_in_crate`. Otherwise, see the comment
 /// on `visit_nested_item` for details on how to visit nested items.
 ///
 /// If you want to ensure that your code handles every variant
@@ -496,6 +472,9 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
     walk_list!(visitor, visit_expr, &local.init);
     visitor.visit_id(local.hir_id);
     visitor.visit_pat(&local.pat);
+    if let Some(els) = local.els {
+        visitor.visit_block(els);
+    }
     walk_list!(visitor, visit_ty, &local.ty);
 }
 
@@ -517,9 +496,8 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
         | LifetimeName::Param(_, ParamName::Error)
         | LifetimeName::Static
         | LifetimeName::Error
-        | LifetimeName::Implicit
         | LifetimeName::ImplicitObjectLifetimeDefault
-        | LifetimeName::Underscore => {}
+        | LifetimeName::Infer => {}
     }
 }
 
@@ -949,7 +927,7 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
         FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(..) | FnKind::Closure => {}
+        FnKind::Closure | FnKind::Method(..) => {}
     }
 }
 
@@ -1168,14 +1146,15 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure {
+        ExprKind::Closure(&Closure {
+            binder: _,
             bound_generic_params,
-            ref fn_decl,
+            fn_decl,
             body,
             capture_clause: _,
             fn_decl_span: _,
             movability: _,
-        } => {
+        }) => {
             walk_list!(visitor, visit_generic_param, bound_generic_params);
             visitor.visit_fn(FnKind::Closure, fn_decl, body, expression.span, expression.hir_id)
         }

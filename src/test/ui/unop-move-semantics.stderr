@@ -46,13 +46,25 @@ error[E0507]: cannot move out of `*m` which is behind a mutable reference
   --> $DIR/unop-move-semantics.rs:24:6
    |
 LL |     !*m;
-   |      ^^ move occurs because `*m` has type `T`, which does not implement the `Copy` trait
+   |     -^^
+   |     ||
+   |     |move occurs because `*m` has type `T`, which does not implement the `Copy` trait
+   |     `*m` moved due to usage in operator
+   |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+   |
+LL |     fn not(self) -> Self::Output;
+   |            ^^^^
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/unop-move-semantics.rs:26:6
    |
 LL |     !*n;
-   |      ^^ move occurs because `*n` has type `T`, which does not implement the `Copy` trait
+   |     -^^
+   |     ||
+   |     |move occurs because `*n` has type `T`, which does not implement the `Copy` trait
+   |     `*n` moved due to usage in operator
 
 error: aborting due to 5 previous errors
 

@@ -17,7 +17,7 @@ use if_chain::if_chain;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
-    self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
+    self as hir, def::DefKind, intravisit, intravisit::Visitor, Closure, ExprKind, Item, ItemKind, Mutability, QPath,
 };
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::nested_filter;
@@ -104,7 +104,7 @@ macro_rules! RENAME_VALUE_TEMPLATE {
     };
 }
 
-const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
+const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
     &["clippy_utils", "diagnostics", "span_lint_and_note"],
@@ -112,7 +112,6 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 8] = [
     &["clippy_utils", "diagnostics", "span_lint_and_sugg"],
     &["clippy_utils", "diagnostics", "span_lint_and_then"],
     &["clippy_utils", "diagnostics", "span_lint_hir_and_then"],
-    &["clippy_utils", "diagnostics", "span_lint_and_sugg_for_edges"],
 ];
 const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
     ("span_suggestion", false),
@@ -191,7 +190,12 @@ impl MetadataCollector {
             lints: BinaryHeap::<LintMetadata>::default(),
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
             config: collect_configs(),
-            clippy_project_root: clippy_dev::clippy_project_root(),
+            clippy_project_root: std::env::current_dir()
+                .expect("failed to get current dir")
+                .ancestors()
+                .nth(1)
+                .expect("failed to get project root")
+                .to_path_buf(),
         }
     }
 
@@ -839,10 +843,10 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
 fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
     DEFAULT_LINT_LEVELS
         .iter()
-        .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
+        .find_map(|(group_name, group_level)| (*group_name == lint_group).then_some(*group_level))
 }
 
-fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+pub(super) fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let hir::TyKind::Path(ref path) = ty.kind {
         if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
             return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
@@ -954,7 +958,7 @@ fn resolve_applicability<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hi
 }
 
 fn check_is_multi_part<'hir>(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hir>) -> bool {
-    if let ExprKind::Closure { body, .. } = closure_expr.kind {
+    if let ExprKind::Closure(&Closure { body, .. }) = closure_expr.kind {
         let mut scanner = IsMultiSpanScanner::new(cx);
         intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body));
         return scanner.is_multi_part();
@@ -1014,7 +1018,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
 /// This visitor finds the highest applicability value in the visited expressions
 struct ApplicabilityResolver<'a, 'hir> {
     cx: &'a LateContext<'hir>,
-    /// This is the index of hightest `Applicability` for `paths::APPLICABILITY_VALUES`
+    /// This is the index of highest `Applicability` for `paths::APPLICABILITY_VALUES`
     applicability_index: Option<usize>,
 }
 

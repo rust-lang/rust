@@ -14,6 +14,7 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 
 use std::ops::ControlFlow;
@@ -108,7 +109,7 @@ struct MaxEscapingBoundVarVisitor {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -253,7 +254,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    return Err(NoSolution);
+                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(
@@ -292,7 +293,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 let result = tcx.normalize_projection_ty(c_data)?;
                 // We don't expect ambiguity.
                 if result.is_ambiguous() {
-                    return Err(NoSolution);
+                    bug!("unexpected ambiguity: {:?} {:?}", c_data, result);
                 }
                 let InferOk { value: result, obligations } =
                     self.infcx.instantiate_query_response_and_region_obligations(

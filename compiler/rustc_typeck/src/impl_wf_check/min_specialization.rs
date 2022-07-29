@@ -65,6 +65,8 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
+use crate::check::regionck::OutlivesEnvironmentExt;
+use crate::check::wfcheck::impl_implied_bounds;
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
 
@@ -75,23 +77,23 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, translate_substs, wf};
 
-pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: DefId, span: Span) {
+pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
         tcx.infer_ctxt().enter(|infcx| {
-            check_always_applicable(&infcx, impl_def_id, node, span);
+            check_always_applicable(&infcx, impl_def_id, node);
         });
     }
 }
 
-fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: DefId) -> Option<Node> {
+fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Option<Node> {
     let trait_ref = tcx.impl_trait_ref(impl1_def_id)?;
     let trait_def = tcx.trait_def(trait_ref.def_id);
 
-    let impl2_node = trait_def.ancestors(tcx, impl1_def_id).ok()?.nth(1)?;
+    let impl2_node = trait_def.ancestors(tcx, impl1_def_id.to_def_id()).ok()?.nth(1)?;
 
     let always_applicable_trait =
         matches!(trait_def.specialization_kind, TraitSpecializationKind::AlwaysApplicable);
@@ -103,15 +105,8 @@ fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: DefId) -> Option<No
 }
 
 /// Check that `impl1` is a sound specialization
-fn check_always_applicable(
-    infcx: &InferCtxt<'_, '_>,
-    impl1_def_id: DefId,
-    impl2_node: Node,
-    span: Span,
-) {
-    if let Some((impl1_substs, impl2_substs)) =
-        get_impl_substs(infcx, impl1_def_id, impl2_node, span)
-    {
+fn check_always_applicable(infcx: &InferCtxt<'_, '_>, impl1_def_id: LocalDefId, impl2_node: Node) {
+    if let Some((impl1_substs, impl2_substs)) = get_impl_substs(infcx, impl1_def_id, impl2_node) {
         let impl2_def_id = impl2_node.def_id();
         debug!(
             "check_always_applicable(\nimpl1_def_id={:?},\nimpl2_def_id={:?},\nimpl2_substs={:?}\n)",
@@ -126,17 +121,10 @@ fn check_always_applicable(
             unconstrained_parent_impl_substs(tcx, impl2_def_id, impl2_substs)
         };
 
+        let span = tcx.def_span(impl1_def_id);
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
-
-        check_predicates(
-            infcx,
-            impl1_def_id.expect_local(),
-            impl1_substs,
-            impl2_node,
-            impl2_substs,
-            span,
-        );
+        check_predicates(infcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
     }
 }
 
@@ -152,20 +140,28 @@ fn check_always_applicable(
 /// Would return `S1 = [C]` and `S2 = [Vec<C>, C]`.
 fn get_impl_substs<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    impl1_def_id: DefId,
+    impl1_def_id: LocalDefId,
     impl2_node: Node,
-    span: Span,
 ) -> Option<(SubstsRef<'tcx>, SubstsRef<'tcx>)> {
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(impl1_def_id);
 
-    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id);
-    let impl2_substs = translate_substs(infcx, param_env, impl1_def_id, impl1_substs, impl2_node);
+    let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+    let impl2_substs =
+        translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
 
-    // Conservatively use an empty `ParamEnv`.
-    let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty());
+    let mut outlives_env = OutlivesEnvironment::new(param_env);
+    let implied_bounds =
+        impl_implied_bounds(infcx.tcx, param_env, impl1_def_id, tcx.def_span(impl1_def_id));
+    outlives_env.add_implied_bounds(
+        infcx,
+        implied_bounds,
+        tcx.hir().local_def_id_to_hir_id(impl1_def_id),
+    );
+    infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
     infcx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
+        let span = tcx.def_span(impl1_def_id);
         tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
         return None;
     };
@@ -292,11 +288,16 @@ fn check_predicates<'tcx>(
     span: Span,
 ) {
     let tcx = infcx.tcx;
-    let impl1_predicates: Vec<_> = traits::elaborate_predicates(
+    let instantiated = tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs);
+    let impl1_predicates: Vec<_> = traits::elaborate_predicates_with_span(
         tcx,
-        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_substs).predicates.into_iter(),
+        std::iter::zip(
+            instantiated.predicates,
+            // Don't drop predicates (unsound!) because `spans` is too short
+            instantiated.spans.into_iter().chain(std::iter::repeat(span)),
+        ),
     )
-    .map(|obligation| obligation.predicate)
+    .map(|obligation| (obligation.predicate, obligation.cause.span))
     .collect();
 
     let mut impl2_predicates = if impl2_node.is_from_trait() {
@@ -334,7 +335,7 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&predicate| {
+    let always_applicable_traits = impl1_predicates.iter().copied().filter(|&(predicate, _)| {
         matches!(
             trait_predicate_kind(tcx, predicate),
             Some(TraitSpecializationKind::AlwaysApplicable)
@@ -358,11 +359,11 @@ fn check_predicates<'tcx>(
         }
     }
     impl2_predicates.extend(
-        traits::elaborate_predicates(tcx, always_applicable_traits)
+        traits::elaborate_predicates_with_span(tcx, always_applicable_traits)
             .map(|obligation| obligation.predicate),
     );
 
-    for predicate in impl1_predicates {
+    for (predicate, span) in impl1_predicates {
         if !impl2_predicates.contains(&predicate) {
             check_specialization_on(tcx, predicate, span)
         }
@@ -397,9 +398,17 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                     .emit();
             }
         }
+        ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
+            tcx.sess
+                .struct_span_err(
+                    span,
+                    &format!("cannot specialize on associated type `{projection_ty} == {term}`",),
+                )
+                .emit();
+        }
         _ => {
             tcx.sess
-                .struct_span_err(span, &format!("cannot specialize on `{:?}`", predicate))
+                .struct_span_err(span, &format!("cannot specialize on predicate `{}`", predicate))
                 .emit();
         }
     }

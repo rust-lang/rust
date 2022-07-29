@@ -27,6 +27,10 @@ impl Bar {
     // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAR"]' \
     //      'const BAR: usize'
     pub const BAR: usize = 3;
+
+    // @has - '//*[@id="associatedconstant.BAR_ESCAPED"]' \
+    //      "const BAR_ESCAPED: &'static str = \"<em>markup</em>\""
+    pub const BAR_ESCAPED: &'static str = "<em>markup</em>";
 }
 
 pub struct Baz<'a, U: 'a, T>(T, &'a [U]);

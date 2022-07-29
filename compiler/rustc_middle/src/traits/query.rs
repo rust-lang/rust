@@ -24,7 +24,8 @@ pub mod type_op {
     use rustc_hir::def_id::DefId;
     use std::fmt;
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
         pub mir_ty: Ty<'tcx>,
         pub def_id: DefId,
@@ -37,19 +38,22 @@ pub mod type_op {
         }
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct Eq<'tcx> {
         pub a: Ty<'tcx>,
         pub b: Ty<'tcx>,
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct Subtype<'tcx> {
         pub sub: Ty<'tcx>,
         pub sup: Ty<'tcx>,
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct ProvePredicate<'tcx> {
         pub predicate: Predicate<'tcx>,
     }
@@ -60,7 +64,8 @@ pub mod type_op {
         }
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct Normalize<T> {
         pub value: T,
     }
@@ -107,7 +112,7 @@ impl<'tcx> From<TypeError<'tcx>> for NoSolution {
     }
 }
 
-#[derive(Clone, Debug, Default, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
@@ -208,7 +213,7 @@ pub struct MethodAutoderefBadTy<'tcx> {
 }
 
 /// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct NormalizationResult<'tcx> {
     /// Result of normalization.
     pub normalized_ty: Ty<'tcx>,
@@ -221,7 +226,7 @@ pub struct NormalizationResult<'tcx> {
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),

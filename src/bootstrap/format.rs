@@ -32,7 +32,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
                         code, run `./x.py fmt` instead.",
                 cmd_debug,
             );
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
     }
 }
@@ -72,7 +72,9 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         Err(_) => false,
     };
     if git_available {
-        let in_working_tree = match Command::new("git")
+        let in_working_tree = match build
+            .config
+            .git()
             .arg("rev-parse")
             .arg("--is-inside-work-tree")
             .stdout(Stdio::null())
@@ -84,10 +86,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         };
         if in_working_tree {
             let untracked_paths_output = output(
-                Command::new("git")
-                    .arg("status")
-                    .arg("--porcelain")
-                    .arg("--untracked-files=normal"),
+                build.config.git().arg("status").arg("--porcelain").arg("--untracked-files=normal"),
             );
             let untracked_paths = untracked_paths_output
                 .lines()
@@ -114,7 +113,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {
         eprintln!("./x.py fmt is not supported on this channel");
-        std::process::exit(1);
+        crate::detail_exit(1);
     });
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();

@@ -20,11 +20,10 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
         let param_env = tcx.param_env_reveal_all_normalized(did);
         let mut should_simplify = false;
 
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        for block in basic_blocks {
+        for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator_mut();
             if let TerminatorKind::Drop { place, target, .. } = terminator.kind {
-                let ty = place.ty(local_decls, tcx);
+                let ty = place.ty(&body.local_decls, tcx);
                 if ty.ty.needs_drop(tcx, param_env) {
                     continue;
                 }

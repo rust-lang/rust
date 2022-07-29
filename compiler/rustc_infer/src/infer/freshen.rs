@@ -34,7 +34,7 @@ use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::infer::unify_key::ToType;
 use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable};
 use std::collections::hash_map::Entry;
 
 pub struct TypeFreshener<'a, 'tcx> {

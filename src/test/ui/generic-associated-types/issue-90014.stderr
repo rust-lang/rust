@@ -2,7 +2,7 @@ error[E0477]: the type `&mut ()` does not fulfill the required lifetime
   --> $DIR/issue-90014.rs:14:20
    |
 LL |     type Fut<'a> where Self: 'a;
-   |     ---------------------------- definition of `Fut` from trait
+   |     ------------ definition of `Fut` from trait
 ...
 LL |     type Fut<'a> = impl Future<Output = ()>;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^- help: try copying this clause from the trait: `where Self: 'a`

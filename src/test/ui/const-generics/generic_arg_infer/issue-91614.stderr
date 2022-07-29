@@ -2,7 +2,7 @@ error[E0283]: type annotations needed for `Mask<_, LANES>`
   --> $DIR/issue-91614.rs:6:9
    |
 LL |     let y = Mask::<_, _>::splat(false);
-   |         ^
+   |         ^   ------------------- type must be known at this point
    |
    = note: cannot satisfy `_: MaskElement`
 note: required by a bound in `Mask::<T, LANES>::splat`

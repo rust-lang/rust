@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=3
+// compile-flags: -C opt-level=3 -Zmerge-functions=disabled
 
 #![crate_type = "lib"]
 

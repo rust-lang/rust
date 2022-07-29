@@ -246,7 +246,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     has_global_allocator => { cdata.root.has_global_allocator }
     has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
-    panic_strategy => { cdata.root.panic_strategy }
+    required_panic_strategy => { cdata.root.required_panic_strategy }
     panic_in_drop_strategy => { cdata.root.panic_in_drop_strategy }
     extern_crate => {
         let r = *cdata.extern_crate.lock();
@@ -291,6 +291,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
+    stability_implications => {
+        cdata.get_stability_implications(tcx).iter().copied().collect()
+    }
     is_intrinsic => { cdata.get_is_intrinsic(def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
     diagnostic_items => { cdata.get_diagnostic_items() }
@@ -372,9 +375,13 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             use std::collections::vec_deque::VecDeque;
 
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
-            // This is a secondary visible_parent_map, storing the DefId of parents that re-export
-            // the child as `_`. Since we prefer parents that don't do this, merge this map at the
-            // end, only if we're missing any keys from the former.
+            // This is a secondary visible_parent_map, storing the DefId of
+            // parents that re-export the child as `_` or module parents
+            // which are `#[doc(hidden)]`. Since we prefer paths that don't
+            // do this, merge this map at the end, only if we're missing
+            // keys from the former.
+            // This is a rudimentary check that does not catch all cases,
+            // just the easiest.
             let mut fallback_map: DefIdMap<DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
@@ -409,6 +416,11 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         return;
                     }
 
+                    if ty::util::is_doc_hidden(tcx, parent) {
+                        fallback_map.insert(def_id, parent);
+                        return;
+                    }
+
                     match visible_parent_map.entry(def_id) {
                         Entry::Occupied(mut entry) => {
                             // If `child` is defined in crate `cnum`, ensure
@@ -436,8 +448,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 }
             }
 
-            // Fill in any missing entries with the (less preferable) path ending in `::_`.
-            // We still use this path in a diagnostic that suggests importing `::*`.
+            // Fill in any missing entries with the less preferable path.
+            // If this path re-exports the child as `_`, we still use this
+            // path in a diagnostic that suggests importing `::*`.
             for (child, parent) in fallback_map {
                 visible_parent_map.entry(child).or_insert(parent);
             }

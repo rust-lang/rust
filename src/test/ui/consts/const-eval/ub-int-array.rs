@@ -13,7 +13,7 @@ union MaybeUninit<T: Copy> {
 
 const UNINIT_INT_0: [u32; 3] = unsafe {
 //~^ ERROR it is undefined behavior to use this value
-//~| type validation failed at [0]: encountered uninitialized bytes
+//~| constructing invalid value at [0]: encountered uninitialized bytes
     [
         MaybeUninit { uninit: () }.init,
         1,
@@ -22,7 +22,7 @@ const UNINIT_INT_0: [u32; 3] = unsafe {
 };
 const UNINIT_INT_1: [u32; 3] = unsafe {
 //~^ ERROR it is undefined behavior to use this value
-//~| type validation failed at [1]: encountered uninitialized bytes
+//~| constructing invalid value at [1]: encountered uninitialized bytes
     mem::transmute(
         [
             0u8,
@@ -42,7 +42,7 @@ const UNINIT_INT_1: [u32; 3] = unsafe {
 };
 const UNINIT_INT_2: [u32; 3] = unsafe {
 //~^ ERROR it is undefined behavior to use this value
-//~| type validation failed at [2]: encountered uninitialized bytes
+//~| constructing invalid value at [2]: encountered uninitialized bytes
     mem::transmute(
         [
             0u8,

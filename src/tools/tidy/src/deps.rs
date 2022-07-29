@@ -20,6 +20,7 @@ const LICENSES: &[&str] = &[
     "Unlicense OR MIT",
     "0BSD OR MIT OR Apache-2.0", // adler license
     "Zlib OR Apache-2.0 OR MIT", // tinyvec
+    "MIT OR Zlib OR Apache-2.0", // miniz_oxide
 ];
 
 /// These are exceptions to Rust's permissive licensing policy, and
@@ -54,12 +55,13 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-jit", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
     ("mach", "BSD-2-Clause"),
-    ("regalloc", "Apache-2.0 WITH LLVM-exception"),
+    ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
 ];
 
@@ -257,10 +259,12 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
 ];
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
+    "ahash",
     "anyhow",
     "ar",
     "autocfg",
     "bitflags",
+    "byteorder",
     "cfg-if",
     "cranelift-bforest",
     "cranelift-codegen",
@@ -268,11 +272,14 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-codegen-shared",
     "cranelift-entity",
     "cranelift-frontend",
+    "cranelift-isle",
     "cranelift-jit",
     "cranelift-module",
     "cranelift-native",
     "cranelift-object",
     "crc32fast",
+    "fxhash",
+    "getrandom",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -283,11 +290,13 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "memchr",
     "object",
     "once_cell",
-    "regalloc",
+    "regalloc2",
     "region",
-    "rustc-hash",
+    "slice-group-by",
     "smallvec",
     "target-lexicon",
+    "version_check",
+    "wasi",
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",

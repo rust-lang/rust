@@ -13,7 +13,6 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::compile;
 use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
 use crate::doc;
@@ -26,6 +25,7 @@ use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{check, Config};
+use crate::{compile, Crate};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -304,9 +304,7 @@ impl StepDescription {
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
-                    for pathset in &should_run.paths {
-                        desc.maybe_run(builder, vec![pathset.clone()]);
-                    }
+                    desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
                 }
             }
         }
@@ -348,11 +346,7 @@ impl StepDescription {
             eprintln!(
                 "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
             );
-            #[cfg(not(test))]
-            std::process::exit(1);
-            #[cfg(test)]
-            // so we can use #[should_panic]
-            panic!()
+            crate::detail_exit(1);
         }
     }
 }
@@ -424,8 +418,16 @@ impl<'a> ShouldRun<'a> {
     /// any of its (local) dependencies.
     ///
     /// `make_run` will be called a single time with all matching command-line paths.
-    pub fn krate(mut self, name: &str) -> Self {
-        for krate in self.builder.in_tree_crates(name, None) {
+    pub fn crate_or_deps(self, name: &str) -> Self {
+        let crates = self.builder.in_tree_crates(name, None);
+        self.crates(crates)
+    }
+
+    /// Indicates it should run if the command-line selects any of the given crates.
+    ///
+    /// `make_run` will be called a single time with all matching command-line paths.
+    pub(crate) fn crates(mut self, crates: Vec<&Crate>) -> Self {
+        for krate in crates {
             let path = krate.local_path(self.builder);
             self.paths.insert(PathSet::one(path, self.kind));
         }
@@ -581,6 +583,7 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
+                compile::Rustc,
                 compile::Assemble,
                 compile::CodegenBackend,
                 compile::StartupObjects,
@@ -598,6 +601,7 @@ impl<'a> Builder<'a> {
                 tool::Cargo,
                 tool::Rls,
                 tool::RustAnalyzer,
+                tool::RustAnalyzerProcMacroSrv,
                 tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
@@ -618,6 +622,7 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::Rls,
+                check::RustAnalyzer,
                 check::Rustfmt,
                 check::Bootstrap
             ),
@@ -645,6 +650,7 @@ impl<'a> Builder<'a> {
                 test::Cargotest,
                 test::Cargo,
                 test::Rls,
+                test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
                 test::RunMakeFullDeps,
@@ -694,6 +700,8 @@ impl<'a> Builder<'a> {
                 doc::RustcBook,
                 doc::CargoBook,
                 doc::Clippy,
+                doc::ClippyBook,
+                doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,
             ),
@@ -945,6 +953,7 @@ impl<'a> Builder<'a> {
     }
 
     pub(crate) fn download_component(&self, url: &str, dest_path: &Path, help_on_error: &str) {
+        self.verbose(&format!("download {url}"));
         // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
         let tempfile = self.tempdir().join(dest_path.file_name().unwrap());
         // While bootstrap itself only supports http and https downloads, downstream forks might
@@ -1000,7 +1009,7 @@ impl<'a> Builder<'a> {
             if !help_on_error.is_empty() {
                 eprintln!("{}", help_on_error);
             }
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
     }
 
@@ -1429,7 +1438,7 @@ impl<'a> Builder<'a> {
                         "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
                     );
                     eprintln!("help: try `rustup component add clippy`");
-                    std::process::exit(1);
+                    crate::detail_exit(1);
                 });
                 if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
                     rustflags.arg("--cfg=bootstrap");
@@ -1462,45 +1471,39 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // FIXME(Urgau): This a hack as it shouldn't be gated on stage 0 but until `rustc_llvm`
-        // is made to work with `--check-cfg` which is currently not easly possible until cargo
-        // get some support for setting `--check-cfg` within build script, it's the least invasive
-        // hack that still let's us have cfg checking for the vast majority of the codebase.
-        if stage != 0 {
-            // Enable cfg checking of cargo features for everything but std and also enable cfg
-            // checking of names and values.
-            //
-            // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
-            // backtrace, core_simd, std_float, ...), those dependencies have their own
-            // features but cargo isn't involved in the #[path] process and so cannot pass the
-            // complete list of features, so for that reason we don't enable checking of
-            // features for std crates.
-            cargo.arg(if mode != Mode::Std {
-                "-Zcheck-cfg=names,values,features"
-            } else {
-                "-Zcheck-cfg=names,values"
-            });
+        // Enable cfg checking of cargo features for everything but std and also enable cfg
+        // checking of names and values.
+        //
+        // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
+        // backtrace, core_simd, std_float, ...), those dependencies have their own
+        // features but cargo isn't involved in the #[path] process and so cannot pass the
+        // complete list of features, so for that reason we don't enable checking of
+        // features for std crates.
+        cargo.arg(if mode != Mode::Std {
+            "-Zcheck-cfg=names,values,output,features"
+        } else {
+            "-Zcheck-cfg=names,values,output"
+        });
 
-            // Add extra cfg not defined in/by rustc
-            //
-            // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
-            // cargo would implicitly add it, it was discover that sometimes bootstrap only use
-            // `rustflags` without `cargo` making it required.
-            rustflags.arg("-Zunstable-options");
-            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
-                if *restricted_mode == None || *restricted_mode == Some(mode) {
-                    // Creating a string of the values by concatenating each value:
-                    // ',"tvos","watchos"' or '' (nothing) when there are no values
-                    let values = match values {
-                        Some(values) => values
-                            .iter()
-                            .map(|val| [",", "\"", val, "\""])
-                            .flatten()
-                            .collect::<String>(),
-                        None => String::new(),
-                    };
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
-                }
+        // Add extra cfg not defined in/by rustc
+        //
+        // Note: Altrough it would seems that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
+        // `rustflags` without `cargo` making it required.
+        rustflags.arg("-Zunstable-options");
+        for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+            if *restricted_mode == None || *restricted_mode == Some(mode) {
+                // Creating a string of the values by concatenating each value:
+                // ',"tvos","watchos"' or '' (nothing) when there are no values
+                let values = match values {
+                    Some(values) => values
+                        .iter()
+                        .map(|val| [",", "\"", val, "\""])
+                        .flatten()
+                        .collect::<String>(),
+                    None => String::new(),
+                };
+                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
             }
         }
 
@@ -1551,7 +1554,7 @@ impl<'a> Builder<'a> {
             Mode::ToolStd => {
                 // Right now this is just compiletest and a few other tools that build on stable.
                 // Allow them to use `feature(test)`, but nothing else.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace");
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace,proc_macro_internals,proc_macro_diagnostic,proc_macro_span");
             }
             Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
         }
@@ -1758,9 +1761,11 @@ impl<'a> Builder<'a> {
 
         if !target.contains("windows") {
             let needs_unstable_opts = target.contains("linux")
+                || target.contains("solaris")
                 || target.contains("windows")
                 || target.contains("bsd")
-                || target.contains("dragonfly");
+                || target.contains("dragonfly")
+                || target.contains("illumos");
 
             if needs_unstable_opts {
                 rustflags.arg("-Zunstable-options");

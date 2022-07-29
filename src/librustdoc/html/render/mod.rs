@@ -70,7 +70,7 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
     href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
-    print_default_space, print_generic_bounds, print_where_clause, Buffer, HrefError,
+    print_default_space, print_generic_bounds, print_where_clause, Buffer, Ending, HrefError,
     PrintWithSpace,
 };
 use crate::html::highlight;
@@ -110,15 +110,44 @@ pub(crate) struct IndexItem {
 /// A type used for the search index.
 #[derive(Debug)]
 pub(crate) struct RenderType {
-    name: Option<String>,
-    generics: Option<Vec<TypeWithKind>>,
+    id: Option<RenderTypeId>,
+    generics: Option<Vec<RenderType>>,
+}
+
+impl Serialize for RenderType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let id = match &self.id {
+            // 0 is a sentinel, everything else is one-indexed
+            None => 0,
+            Some(RenderTypeId::Index(idx)) => idx + 1,
+            _ => panic!("must convert render types to indexes before serializing"),
+        };
+        if let Some(generics) = &self.generics {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&id)?;
+            seq.serialize_element(generics)?;
+            seq.end()
+        } else {
+            id.serialize(serializer)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum RenderTypeId {
+    DefId(DefId),
+    Primitive(clean::PrimitiveType),
+    Index(usize),
 }
 
 /// Full type of functions/methods in the search index.
 #[derive(Debug)]
 pub(crate) struct IndexItemFunctionType {
-    inputs: Vec<TypeWithKind>,
-    output: Vec<TypeWithKind>,
+    inputs: Vec<RenderType>,
+    output: Vec<RenderType>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -126,47 +155,27 @@ impl Serialize for IndexItemFunctionType {
     where
         S: Serializer,
     {
-        // If we couldn't figure out a type, just write `null`.
-        let has_missing = self.inputs.iter().chain(self.output.iter()).any(|i| i.ty.name.is_none());
+        // If we couldn't figure out a type, just write `0`.
+        let has_missing = self
+            .inputs
+            .iter()
+            .chain(self.output.iter())
+            .any(|i| i.id.is_none() && i.generics.is_none());
         if has_missing {
-            serializer.serialize_none()
+            0.serialize(serializer)
         } else {
             let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&self.inputs)?;
-            match self.output.as_slice() {
+            match &self.inputs[..] {
+                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                _ => seq.serialize_element(&self.inputs)?,
+            }
+            match &self.output[..] {
                 [] => {}
-                [one] => seq.serialize_element(one)?,
-                all => seq.serialize_element(all)?,
+                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                _ => seq.serialize_element(&self.output)?,
             }
             seq.end()
         }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct TypeWithKind {
-    ty: RenderType,
-    kind: ItemType,
-}
-
-impl From<(RenderType, ItemType)> for TypeWithKind {
-    fn from(x: (RenderType, ItemType)) -> TypeWithKind {
-        TypeWithKind { ty: x.0, kind: x.1 }
-    }
-}
-
-impl Serialize for TypeWithKind {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut seq = serializer.serialize_seq(None)?;
-        seq.serialize_element(&self.ty.name)?;
-        seq.serialize_element(&self.kind)?;
-        if let Some(generics) = &self.ty.generics {
-            seq.serialize_element(generics)?;
-        }
-        seq.end()
     }
 }
 
@@ -625,7 +634,6 @@ fn render_impls(
                 &[],
                 ImplRenderingParameters {
                     show_def_docs: true,
-                    is_on_foreign_type: false,
                     show_default_items: true,
                     show_non_assoc_items: true,
                     toggle_open_by_default,
@@ -707,12 +715,14 @@ fn assoc_const(
         ty = ty.print(cx),
     );
     if let Some(default) = default {
+        write!(w, " = ");
+
         // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
         //        hood which adds noisy underscores and a type suffix to number literals.
         //        This hurts readability in this context especially when more complex expressions
         //        are involved and it doesn't add much of value.
         //        Find a way to print constants here without all that jazz.
-        write!(w, " = {}", default.value(cx.tcx()).unwrap_or_else(|| default.expr(cx.tcx())));
+        write!(w, "{}", Escape(&default.value(cx.tcx()).unwrap_or_else(|| default.expr(cx.tcx()))));
     }
 }
 
@@ -737,7 +747,7 @@ fn assoc_type(
     if !bounds.is_empty() {
         write!(w, ": {}", print_generic_bounds(bounds, cx))
     }
-    write!(w, "{}", print_where_clause(generics, cx, indent, false));
+    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
     }
@@ -786,10 +796,10 @@ fn assoc_method(
         header_len += 4;
         let indent_str = "    ";
         render_attributes_in_pre(w, meth, indent_str);
-        (4, indent_str, false)
+        (4, indent_str, Ending::NoNewline)
     } else {
         render_attributes_in_code(w, meth);
-        (0, "", true)
+        (0, "", Ending::Newline)
     };
     w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
     write!(
@@ -844,7 +854,7 @@ fn render_stability_since_raw(
     }
 
     let const_title_and_stability = match const_stability {
-        Some(ConstStability { level: StabilityLevel::Stable { since }, .. })
+        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
             if Some(since) != containing_const_ver =>
         {
             Some((format!("const since {}", since), format!("const: {}", since)))
@@ -1060,7 +1070,6 @@ fn render_assoc_items_inner(
                 &[],
                 ImplRenderingParameters {
                     show_def_docs: true,
-                    is_on_foreign_type: false,
                     show_default_items: true,
                     show_non_assoc_items: true,
                     toggle_open_by_default: true,
@@ -1276,7 +1285,6 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
 #[derive(Clone, Copy, Debug)]
 struct ImplRenderingParameters {
     show_def_docs: bool,
-    is_on_foreign_type: bool,
     show_default_items: bool,
     /// Whether or not to show methods.
     show_non_assoc_items: bool,
@@ -1404,7 +1412,10 @@ fn render_impl(
                         id, item_type, in_trait_class,
                     );
                     render_rightside(w, cx, item, containing_item, render_mode);
-                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    if trait_.is_some() {
+                        // Anchors are only used on trait impls.
+                        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                    }
                     w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
                         w,
@@ -1427,7 +1438,10 @@ fn render_impl(
                     id, item_type, in_trait_class
                 );
                 render_rightside(w, cx, item, containing_item, render_mode);
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
                     w,
@@ -1449,7 +1463,10 @@ fn render_impl(
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
@@ -1472,7 +1489,10 @@ fn render_impl(
                     "<section id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
-                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                if trait_.is_some() {
+                    // Anchors are only used on trait impls.
+                    write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                }
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
                     w,
@@ -1592,7 +1612,6 @@ fn render_impl(
             parent,
             rendering_params.show_def_docs,
             use_absolute,
-            rendering_params.is_on_foreign_type,
             aliases,
         );
         if toggled {
@@ -1677,21 +1696,12 @@ pub(crate) fn render_impl_summary(
     containing_item: &clean::Item,
     show_def_docs: bool,
     use_absolute: Option<bool>,
-    is_on_foreign_type: bool,
     // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let id = cx.derive_id(match i.inner_impl().trait_ {
-        Some(ref t) => {
-            if is_on_foreign_type {
-                get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
-            } else {
-                format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
-            }
-        }
-        None => "impl".to_string(),
-    });
+    let id =
+        cx.derive_id(get_id_for_impl(&i.inner_impl().for_, i.inner_impl().trait_.as_ref(), cx));
     let aliases = if aliases.is_empty() {
         String::new()
     } else {
@@ -1975,21 +1985,18 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 let mut ret = impls
                     .iter()
                     .filter_map(|it| {
-                        if let Some(ref i) = it.inner_impl().trait_ {
-                            let i_display = format!("{:#}", i.print(cx));
-                            let out = Escape(&i_display);
-                            let encoded =
-                                id_map.derive(small_url_encode(format!("impl-{:#}", i.print(cx))));
-                            let prefix = match it.inner_impl().polarity {
-                                ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
-                                ty::ImplPolarity::Negative => "!",
-                            };
-                            let generated =
-                                format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
-                            if links.insert(generated.clone()) { Some(generated) } else { None }
-                        } else {
-                            None
-                        }
+                        let trait_ = it.inner_impl().trait_.as_ref()?;
+                        let encoded =
+                            id_map.derive(get_id_for_impl(&it.inner_impl().for_, Some(trait_), cx));
+
+                        let i_display = format!("{:#}", trait_.print(cx));
+                        let out = Escape(&i_display);
+                        let prefix = match it.inner_impl().polarity {
+                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                            ty::ImplPolarity::Negative => "!",
+                        };
+                        let generated = format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
+                        if links.insert(generated.clone()) { Some(generated) } else { None }
                     })
                     .collect::<Vec<String>>();
                 ret.sort();
@@ -2136,12 +2143,11 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     }
 }
 
-fn get_id_for_impl_on_foreign_type(
-    for_: &clean::Type,
-    trait_: &clean::Path,
-    cx: &Context<'_>,
-) -> String {
-    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx)))
+fn get_id_for_impl(for_: &clean::Type, trait_: Option<&clean::Path>, cx: &Context<'_>) -> String {
+    match trait_ {
+        Some(t) => small_url_encode(format!("impl-{:#}-for-{:#}", t.print(cx), for_.print(cx))),
+        None => small_url_encode(format!("impl-{:#}", for_.print(cx))),
+    }
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
@@ -2150,10 +2156,7 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
             i.trait_.as_ref().map(|trait_| {
                 // Alternative format produces no URLs,
                 // so this parameter does nothing.
-                (
-                    format!("{:#}", i.for_.print(cx)),
-                    get_id_for_impl_on_foreign_type(&i.for_, trait_, cx),
-                )
+                (format!("{:#}", i.for_.print(cx)), get_id_for_impl(&i.for_, Some(trait_), cx))
             })
         }
         _ => None,
@@ -2292,7 +2295,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
     sidebar_assoc_items(cx, buf, it);
 
     print_sidebar_title(buf, "implementors", "Implementors");
-    if t.is_auto {
+    if t.is_auto(cx.tcx()) {
         print_sidebar_title(buf, "synthetic-implementors", "Auto Implementors");
     }
 
@@ -2517,7 +2520,6 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ProcAttribute => ItemSection::AttributeMacros,
         ItemType::ProcDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
-        ItemType::Generic => unreachable!(),
     }
 }
 

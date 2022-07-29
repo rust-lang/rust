@@ -1,30 +1,24 @@
 error: rustc_outlives
   --> $DIR/enum.rs:7:1
    |
-LL | / enum Foo<'a, T> {
-LL | |     One(Bar<'a, T>)
-LL | | }
-   | |_^
+LL | enum Foo<'a, T> {
+   | ^^^^^^^^^^^^^^^
    |
    = note: T: 'a
 
 error: rustc_outlives
   --> $DIR/enum.rs:13:1
    |
-LL | / struct Bar<'b, U> {
-LL | |     field2: &'b U
-LL | | }
-   | |_^
+LL | struct Bar<'b, U> {
+   | ^^^^^^^^^^^^^^^^^
    |
    = note: U: 'b
 
 error: rustc_outlives
   --> $DIR/enum.rs:19:1
    |
-LL | / enum Ying<'c, K> {
-LL | |     One(&'c Yang<K>)
-LL | | }
-   | |_^
+LL | enum Ying<'c, K> {
+   | ^^^^^^^^^^^^^^^^
    |
    = note: K: 'c
 

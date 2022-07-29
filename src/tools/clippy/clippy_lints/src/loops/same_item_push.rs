@@ -63,7 +63,7 @@ pub(super) fn check<'tcx>(
                         Res::Local(hir_id) => {
                             let node = cx.tcx.hir().get(hir_id);
                             if_chain! {
-                                if let Node::Binding(pat) = node;
+                                if let Node::Pat(pat) = node;
                                 if let PatKind::Binding(bind_ann, ..) = pat.kind;
                                 if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
                                 let parent_node = cx.tcx.hir().get_parent_node(hir_id);

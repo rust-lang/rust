@@ -36,16 +36,17 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.struct_span_lint_hir(UNALIGNED_REFERENCES, lint_hir_id, tcx.def_span(def_id), |lint| {
         // FIXME: when we make this a hard error, this should have its
         // own error code.
-        let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
-            "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
-             type or const parameters (error E0133)"
-                .to_string()
+        let extra = if tcx.generics_of(def_id).own_requires_monomorphization() {
+            "with type or const parameters"
         } else {
-            "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
-             does not derive Copy (error E0133)"
-                .to_string()
+            "that does not derive `Copy`"
         };
-        lint.build(&message).emit();
+        let message = format!(
+            "`{}` can't be derived on this `#[repr(packed)]` struct {}",
+            tcx.item_name(tcx.trait_id_of_impl(def_id.to_def_id()).expect("derived trait name")),
+            extra
+        );
+        lint.build(message).emit();
     });
 }
 

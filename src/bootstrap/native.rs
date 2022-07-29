@@ -18,6 +18,7 @@ use std::process::Command;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
+use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, program_out_of_date, t, up_to_date};
 use crate::{CLang, GitRepo};
 
@@ -118,7 +119,7 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     if !config.llvm_from_ci {
         return;
     }
-    let mut rev_list = Command::new("git");
+    let mut rev_list = config.git();
     rev_list.args(&[
         PathBuf::from("rev-list"),
         format!("--author={}", builder.config.stage0_metadata.config.git_merge_commit_email).into(),
@@ -147,8 +148,8 @@ pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
     let key = format!("{}{}", llvm_sha, config.llvm_assertions);
     if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
         download_ci_llvm(builder, &llvm_sha);
-        for binary in ["llvm-config", "FileCheck"] {
-            builder.fix_bin_or_dylib(&llvm_root.join("bin").join(binary));
+        for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
+            builder.fix_bin_or_dylib(&t!(entry).path());
         }
 
         // Update the timestamp of llvm-config to force rustc_llvm to be
@@ -251,9 +252,7 @@ impl Step for Llvm {
             };
 
         builder.update_submodule(&Path::new("src").join("llvm-project"));
-        if builder.llvm_link_shared()
-            && (target.contains("windows") || target.contains("apple-darwin"))
-        {
+        if builder.llvm_link_shared() && target.contains("windows") {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -359,7 +358,9 @@ impl Step for Llvm {
         //
         // If we're not linking rustc to a dynamic LLVM, though, then don't link
         // tools to it.
-        if builder.llvm_link_tools_dynamically(target) && builder.llvm_link_shared() {
+        let llvm_link_shared =
+            builder.llvm_link_tools_dynamically(target) && builder.llvm_link_shared();
+        if llvm_link_shared {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
@@ -429,27 +430,35 @@ impl Step for Llvm {
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
             let host_bin = builder.llvm_out(builder.config.build).join("bin");
-            cfg.define("CMAKE_CROSSCOMPILING", "True");
             cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
+            // LLVM_NM is required for cross compiling using MSVC
             cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             cfg.define(
                 "LLVM_CONFIG_PATH",
                 host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
             );
+            if builder.config.llvm_clang {
+                let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
+                let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
+                if !builder.config.dry_run && !clang_tblgen.exists() {
+                    panic!("unable to find {}", clang_tblgen.display());
+                }
+                cfg.define("CLANG_TABLEGEN", clang_tblgen);
+            }
         }
 
-        if let Some(ref suffix) = builder.config.llvm_version_suffix {
+        let llvm_version_suffix = if let Some(ref suffix) = builder.config.llvm_version_suffix {
             // Allow version-suffix="" to not define a version suffix at all.
-            if !suffix.is_empty() {
-                cfg.define("LLVM_VERSION_SUFFIX", suffix);
-            }
+            if !suffix.is_empty() { Some(suffix.to_string()) } else { None }
         } else if builder.config.channel == "dev" {
             // Changes to a version suffix require a complete rebuild of the LLVM.
             // To avoid rebuilds during a time of version bump, don't include rustc
             // release number on the dev channel.
-            cfg.define("LLVM_VERSION_SUFFIX", "-rust-dev");
+            Some("-rust-dev".to_string())
         } else {
-            let suffix = format!("-rust-{}-{}", builder.version, builder.config.channel);
+            Some(format!("-rust-{}-{}", builder.version, builder.config.channel))
+        };
+        if let Some(ref suffix) = llvm_version_suffix {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
@@ -477,6 +486,25 @@ impl Step for Llvm {
         }
 
         cfg.build();
+
+        // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
+        // libLLVM.dylib will be built. However, llvm-config will still look
+        // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
+        // link to make llvm-config happy.
+        if llvm_link_shared && target.contains("apple-darwin") {
+            let mut cmd = Command::new(&build_llvm_config);
+            let version = output(cmd.arg("--version"));
+            let major = version.split('.').next().unwrap();
+            let lib_name = match llvm_version_suffix {
+                Some(s) => format!("libLLVM-{}{}.dylib", major, s),
+                None => format!("libLLVM-{}.dylib", major),
+            };
+
+            let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
+            if !lib_llvm.exists() {
+                t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
+            }
+        }
 
         t!(stamp.write());
 
@@ -526,6 +554,8 @@ fn configure_cmake(
     cfg.target(&target.triple).host(&builder.config.build.triple);
 
     if target != builder.config.build {
+        cfg.define("CMAKE_CROSSCOMPILING", "True");
+
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
         } else if target.contains("freebsd") {
@@ -543,6 +573,17 @@ fn configure_cmake(
         // Since, the LLVM itself makes rather limited use of version checks in
         // CMakeFiles (and then only in tests), and so far no issues have been
         // reported, the system version is currently left unset.
+
+        if target.contains("darwin") {
+            // Make sure that CMake does not build universal binaries on macOS.
+            // Explicitly specifiy the one single target architecture.
+            if target.starts_with("aarch64") {
+                // macOS uses a different name for building arm64
+                cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");
+            } else {
+                cfg.define("CMAKE_OSX_ARCHITECTURES", target.triple.split('-').next().unwrap());
+            }
+        }
     }
 
     let sanitize_cc = |cc: &Path| {
@@ -736,7 +777,22 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
-        configure_cmake(builder, target, &mut cfg, true, LdFlags::default());
+        let mut ldflags = LdFlags::default();
+
+        // When building LLD as part of a build with instrumentation on windows, for example
+        // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
+        // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
+        // linking errors, much like LLVM's cmake setup does in that situation.
+        if builder.config.llvm_profile_generate && target.contains("msvc") {
+            if let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref() {
+                // Find clang's runtime library directory and push that as a search path to the
+                // cmake linker flags.
+                let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
+                ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
+            }
+        }
+
+        configure_cmake(builder, target, &mut cfg, true, ldflags);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of

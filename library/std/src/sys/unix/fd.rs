@@ -47,6 +47,7 @@ const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "watchos",
 ))]
 const fn max_iov() -> usize {
     libc::IOV_MAX as usize
@@ -67,7 +68,8 @@ const fn max_iov() -> usize {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
-    target_os = "horizon"
+    target_os = "horizon",
+    target_os = "watchos",
 )))]
 const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.

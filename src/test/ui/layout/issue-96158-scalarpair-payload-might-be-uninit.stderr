@@ -105,11 +105,8 @@ error: layout_of(MissingPayloadField) = Layout {
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:16:1
    |
-LL | / pub enum MissingPayloadField {
-LL | |     Some(u8),
-LL | |     None
-LL | | }
-   | |_^
+LL | pub enum MissingPayloadField {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(CommonPayloadField) = Layout {
            fields: Arbitrary {
@@ -237,11 +234,8 @@ error: layout_of(CommonPayloadField) = Layout {
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:25:1
    |
-LL | / pub enum CommonPayloadField {
-LL | |     A(u8),
-LL | |     B(u8),
-LL | | }
-   | |_^
+LL | pub enum CommonPayloadField {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            fields: Arbitrary {
@@ -366,11 +360,8 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:33:1
    |
-LL | / pub enum CommonPayloadFieldIsMaybeUninit {
-LL | |     A(u8),
-LL | |     B(MaybeUninit<u8>),
-LL | | }
-   | |_^
+LL | pub enum CommonPayloadFieldIsMaybeUninit {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(NicheFirst) = Layout {
            fields: Arbitrary {
@@ -513,12 +504,8 @@ error: layout_of(NicheFirst) = Layout {
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:41:1
    |
-LL | / pub enum NicheFirst {
-LL | |     A(HasNiche, u8),
-LL | |     B,
-LL | |     C
-LL | | }
-   | |_^
+LL | pub enum NicheFirst {
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: layout_of(NicheSecond) = Layout {
            fields: Arbitrary {
@@ -661,12 +648,8 @@ error: layout_of(NicheSecond) = Layout {
        }
   --> $DIR/issue-96158-scalarpair-payload-might-be-uninit.rs:50:1
    |
-LL | / pub enum NicheSecond {
-LL | |     A(u8, HasNiche),
-LL | |     B,
-LL | |     C,
-LL | | }
-   | |_^
+LL | pub enum NicheSecond {
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

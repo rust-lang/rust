@@ -25,7 +25,7 @@ note: the tuple struct constructor `TupleStruct` is defined here
   --> $DIR/auxiliary/structs.rs:12:1
    |
 LL | pub struct TupleStruct(pub u16, pub u16);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: unit struct `UnitStruct` is private
   --> $DIR/struct.rs:32:32
@@ -37,7 +37,7 @@ note: the unit struct `UnitStruct` is defined here
   --> $DIR/auxiliary/structs.rs:9:1
    |
 LL | pub struct UnitStruct;
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0639]: cannot create non-exhaustive struct using struct expression
   --> $DIR/struct.rs:7:14

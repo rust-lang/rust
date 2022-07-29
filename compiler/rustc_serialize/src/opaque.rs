@@ -297,6 +297,10 @@ impl FileEncoder {
         }
     }
 
+    pub fn file(&self) -> &File {
+        &self.file
+    }
+
     #[inline]
     fn capacity(&self) -> usize {
         self.buf.len()

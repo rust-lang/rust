@@ -22,6 +22,7 @@ fn foo<T>() {
     //~| ERROR `T` does not live long enough
     //~| ERROR `T` does not live long enough
     //~| ERROR `T` does not live long enough
+    //~| ERROR `T` may not live long enough
     //
     // FIXME: This error is bogus, but it arises because we try to validate
     // that `<() as Foo<T>>::Type<'a>` is valid, which requires proving

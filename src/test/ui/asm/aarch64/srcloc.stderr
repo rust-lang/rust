@@ -274,5 +274,17 @@ note: instantiated into assembly here
 LL | invalid_instruction4
    | ^
 
-error: aborting due to 23 previous errors
+error: unrecognized instruction mnemonic
+  --> $DIR/srcloc.rs:125:14
+   |
+LL |             "invalid_instruction"
+   |              ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:4:1
+   |
+LL | invalid_instruction
+   | ^
+
+error: aborting due to 24 previous errors
 

@@ -1,4 +1,4 @@
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::source_map::DUMMY_SP;
@@ -16,7 +16,9 @@ fn evaluate_obligation<'tcx>(
     canonical_goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {
     debug!("evaluate_obligation(canonical_goal={:#?})", canonical_goal);
-    tcx.infer_ctxt().enter_with_canonical(
+    // HACK This bubble is required for this tests to pass:
+    // impl-trait/issue99642.rs
+    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_with_canonical(
         DUMMY_SP,
         &canonical_goal,
         |ref infcx, goal, _canonical_inference_vars| {

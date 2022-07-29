@@ -13,7 +13,7 @@ use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
 pub struct ExpectedFound<T> {
     pub expected: T,
     pub found: T,
@@ -30,7 +30,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
@@ -660,12 +660,8 @@ impl<T> Trait<T> for X {
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )
         );
-        let impl_comparison = matches!(
-            cause_code,
-            ObligationCauseCode::CompareImplMethodObligation { .. }
-                | ObligationCauseCode::CompareImplTypeObligation { .. }
-                | ObligationCauseCode::CompareImplConstObligation
-        );
+        let impl_comparison =
+            matches!(cause_code, ObligationCauseCode::CompareImplItemObligation { .. });
         let assoc = self.associated_item(proj_ty.item_def_id);
         if !callable_scope || impl_comparison {
             // We do not want to suggest calling functions when the reason of the
@@ -795,7 +791,7 @@ fn foo(&self) -> Self::T { String::new() }
                         if item_def_id == proj_ty_item_def_id =>
                     {
                         Some((
-                            self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
+                            self.def_span(item.def_id),
                             format!("consider calling `{}`", self.def_path_str(item.def_id)),
                         ))
                     }

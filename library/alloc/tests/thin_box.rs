@@ -26,6 +26,13 @@ fn want_thin() {
     assert!(is_thin::<i32>());
 }
 
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn thin_box<'new>(b: ThinBox<[&'static str]>) -> ThinBox<[&'new str]> {
+        b
+    }
+}
+
 #[track_caller]
 fn verify_aligned<T>(ptr: *const T) {
     // Use `black_box` to attempt to obscure the fact that we're calling this

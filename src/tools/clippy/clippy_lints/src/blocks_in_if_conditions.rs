@@ -6,7 +6,7 @@ use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BlockCheckMode, Expr, ExprKind};
+use rustc_hir::{BlockCheckMode, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -51,7 +51,7 @@ struct ExVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::Closure { body, .. } = expr.kind {
+        if let ExprKind::Closure(&Closure { body, .. }) = expr.kind {
             // do not lint if the closure is called using an iterator (see #1141)
             if_chain! {
                 if let Some(parent) = get_parent_expr(self.cx, expr);

@@ -18,7 +18,6 @@ pub fn target() -> Target {
             vendor: "sony".into(),
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             cpu: "mips2".into(),
-            executables: true,
             linker: Some("rust-lld".into()),
             relocation_model: RelocModel::Static,
 

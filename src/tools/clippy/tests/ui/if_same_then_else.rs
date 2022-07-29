@@ -6,7 +6,9 @@
     clippy::no_effect,
     clippy::unused_unit,
     clippy::zero_divided_by_zero,
-    clippy::branches_sharing_code
+    clippy::branches_sharing_code,
+    dead_code,
+    unreachable_code
 )]
 
 struct Foo {
@@ -151,6 +153,63 @@ mod issue_5698 {
             y * x
         } else {
             0
+        }
+    }
+}
+
+mod issue_8836 {
+    fn do_not_lint() {
+        if true {
+            todo!()
+        } else {
+            todo!()
+        }
+        if true {
+            todo!();
+        } else {
+            todo!();
+        }
+        if true {
+            unimplemented!()
+        } else {
+            unimplemented!()
+        }
+        if true {
+            unimplemented!();
+        } else {
+            unimplemented!();
+        }
+
+        if true {
+            println!("FOO");
+            todo!();
+        } else {
+            println!("FOO");
+            todo!();
+        }
+
+        if true {
+            println!("FOO");
+            unimplemented!();
+        } else {
+            println!("FOO");
+            unimplemented!();
+        }
+
+        if true {
+            println!("FOO");
+            todo!()
+        } else {
+            println!("FOO");
+            todo!()
+        }
+
+        if true {
+            println!("FOO");
+            unimplemented!()
+        } else {
+            println!("FOO");
+            unimplemented!()
         }
     }
 }

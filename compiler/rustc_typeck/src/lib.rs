@@ -65,13 +65,14 @@ This API is completely unstable and subject to change.
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(label_break_value)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
+#![feature(is_some_with)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -223,15 +224,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { span: item_span, .. })) => {
-                Some(tcx.sess.source_map().guess_head_span(*item_span))
-            }
-            _ => {
-                span_bug!(tcx.def_span(def_id), "main has a non-function type");
-            }
-        }
+        Some(tcx.def_span(def_id))
     }
 
     fn main_fn_return_type_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
@@ -260,7 +253,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let mut diag =
             struct_span_err!(tcx.sess, generics_param_span.unwrap_or(main_span), E0131, "{}", msg);
         if let Some(generics_param_span) = generics_param_span {
-            let label = "`main` cannot have generic parameters".to_string();
+            let label = "`main` cannot have generic parameters";
             diag.span_label(generics_param_span, label);
         }
         diag.emit();
@@ -315,8 +308,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         if !return_ty.bound_vars().is_empty() {
             let msg = "`main` function return type is not allowed to have generic \
-                    parameters"
-                .to_owned();
+                    parameters";
             struct_span_err!(tcx.sess, return_ty_span, E0131, "{}", msg).emit();
             error = true;
         }
@@ -416,7 +408,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
-                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        let span = tcx.def_span(it.def_id);
                         struct_span_err!(
                             tcx.sess,
                             span,
@@ -509,7 +501,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl_wf_inference", || impl_wf_check::impl_wf_check(tcx));
+        tcx.sess.time("impl_wf_inference", || {
+            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
+        });
     })?;
 
     tcx.sess.track_errors(|| {
@@ -531,7 +525,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
+        tcx.sess.time("wf_checking", || {
+            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+        });
     })?;
 
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.

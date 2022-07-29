@@ -10,6 +10,28 @@ LL | struct Foo<T: 'static> {
    |             +++++++++
 
 error[E0309]: the parameter type `K` may not live long enough
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:41:33
+   |
+LL |     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
+   |                                 ^^^^^^^^^^^^^^^^ ...so that the reference type `&'a Nested<K>` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | impl<K: 'a> Nested<K> {
+   |       ++++
+
+error[E0309]: the parameter type `M` may not live long enough
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:44:36
+   |
+LL |     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
+   |                                    ^^^^^^^^^^^^^^^^ ...so that the reference type `&'a Nested<M>` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b + 'a>() {
+   |                                                            ++++
+
+error[E0309]: the parameter type `K` may not live long enough
   --> $DIR/lifetime-doesnt-live-long-enough.rs:24:19
    |
 LL |     fn foo<'a, L: X<&'a Nested<K>>>();
@@ -39,28 +61,6 @@ help: consider adding an explicit lifetime bound...
    |
 LL |     fn baz<'a, L: 'a, M: X<&'a Nested<L>>>() {
    |                 ++++
-
-error[E0309]: the parameter type `K` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:41:33
-   |
-LL |     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
-   |                                 ^^^^^^^^^^^^^^^^ ...so that the reference type `&'a Nested<K>` does not outlive the data it points at
-   |
-help: consider adding an explicit lifetime bound...
-   |
-LL | impl<K: 'a> Nested<K> {
-   |       ++++
-
-error[E0309]: the parameter type `M` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:44:36
-   |
-LL |     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
-   |                                    ^^^^^^^^^^^^^^^^ ...so that the reference type `&'a Nested<M>` does not outlive the data it points at
-   |
-help: consider adding an explicit lifetime bound...
-   |
-LL |     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b + 'a>() {
-   |                                                            ++++
 
 error: aborting due to 6 previous errors
 

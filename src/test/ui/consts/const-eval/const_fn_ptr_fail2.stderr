@@ -33,7 +33,7 @@ LL |     x(y)
    |     inside `Y` at $DIR/const_fn_ptr_fail2.rs:15:18
 ...
 LL | const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
-   | ---------------------------
+   | --------------
    |
 note: the lint level is defined here
   --> $DIR/const_fn_ptr_fail2.rs:4:10
@@ -55,7 +55,7 @@ LL |     x(y)
    |     inside `Z` at $DIR/const_fn_ptr_fail2.rs:16:18
 ...
 LL | const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
-   | --------------------------------
+   | --------------
    |
 note: the lint level is defined here
   --> $DIR/const_fn_ptr_fail2.rs:4:10

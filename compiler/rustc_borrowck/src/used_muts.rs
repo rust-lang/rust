@@ -91,8 +91,8 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
         self.super_statement(statement, location);
     }
 
-    fn visit_local(&mut self, local: &Local, place_context: PlaceContext, location: Location) {
-        if place_context.is_place_assignment() && self.temporary_used_locals.contains(local) {
+    fn visit_local(&mut self, local: Local, place_context: PlaceContext, location: Location) {
+        if place_context.is_place_assignment() && self.temporary_used_locals.contains(&local) {
             // Propagate the Local assigned at this Location as a used mutable local variable
             for moi in &self.mbcx.move_data.loc_map[location] {
                 let mpi = &self.mbcx.move_data.moves[*moi].path;

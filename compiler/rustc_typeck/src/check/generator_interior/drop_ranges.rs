@@ -17,8 +17,7 @@ use self::record_consumed_borrow::find_consumed_and_borrowed;
 use crate::check::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -38,7 +37,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> DropRanges {
-    if fcx.sess().opts.debugging_opts.drop_tracking {
+    if fcx.sess().opts.unstable_opts.drop_tracking {
         let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
         let typeck_results = &fcx.typeck_results.borrow();
@@ -109,7 +108,7 @@ rustc_index::newtype_index! {
 }
 
 /// Identifies a value whose drop state we need to track.
-#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 enum TrackedValue {
     /// Represents a named variable, such as a let binding, parameter, or upvar.
     ///
@@ -119,6 +118,21 @@ enum TrackedValue {
     ///
     /// The HirId points to the expression that returns this value.
     Temporary(HirId),
+}
+
+impl Debug for TrackedValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        ty::tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                write!(f, "{}", tcx.hir().node_to_string(self.hir_id()))
+            } else {
+                match self {
+                    Self::Variable(hir_id) => write!(f, "Variable({:?})", hir_id),
+                    Self::Temporary(hir_id) => write!(f, "Temporary({:?})", hir_id),
+                }
+            }
+        })
+    }
 }
 
 impl TrackedValue {
@@ -148,7 +162,7 @@ enum TrackedValueConversionError {
     /// Place projects are not currently supported.
     ///
     /// The reasoning around these is kind of subtle, so we choose to be more
-    /// conservative around these for now. There is not reason in theory we
+    /// conservative around these for now. There is no reason in theory we
     /// cannot support these, we just have not implemented it yet.
     PlaceProjectionsNotSupported,
 }

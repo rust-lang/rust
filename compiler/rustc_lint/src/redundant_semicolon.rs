@@ -1,6 +1,6 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast::{Block, StmtKind};
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, Applicability};
 use rustc_span::Span;
 
 declare_lint! {
@@ -49,12 +49,10 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
         }
 
         cx.struct_span_lint(REDUNDANT_SEMICOLONS, span, |lint| {
-            let (msg, rem) = if multiple {
-                ("unnecessary trailing semicolons", "remove these semicolons")
-            } else {
-                ("unnecessary trailing semicolon", "remove this semicolon")
-            };
-            lint.build(msg).span_suggestion(span, rem, "", Applicability::MaybeIncorrect).emit();
+            lint.build(fluent::lint::redundant_semicolons)
+                .set_arg("multiple", multiple)
+                .span_suggestion(span, fluent::lint::suggestion, "", Applicability::MaybeIncorrect)
+                .emit();
         });
     }
 }

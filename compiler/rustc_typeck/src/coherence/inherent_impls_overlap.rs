@@ -76,17 +76,17 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 let name = item1.ident(self.tcx).normalize_to_macros_2_0();
                 let mut err = struct_span_err!(
                     self.tcx.sess,
-                    self.tcx.span_of_impl(item1.def_id).unwrap(),
+                    self.tcx.def_span(item1.def_id),
                     E0592,
                     "duplicate definitions with name `{}`",
                     name
                 );
                 err.span_label(
-                    self.tcx.span_of_impl(item1.def_id).unwrap(),
+                    self.tcx.def_span(item1.def_id),
                     format!("duplicate definitions for `{}`", name),
                 );
                 err.span_label(
-                    self.tcx.span_of_impl(item2.def_id).unwrap(),
+                    self.tcx.def_span(item2.def_id),
                     format!("other definition for `{}`", name),
                 );
 

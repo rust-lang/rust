@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::path::PathBuf;
+use std::process::Command;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::channel::GitInfo;
@@ -51,10 +51,10 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std { compiler, target: compiler.host });
-                builder.ensure(compile::Rustc { compiler, target });
+                builder.ensure(compile::Std::new(compiler, compiler.host));
+                builder.ensure(compile::Rustc::new(compiler, target));
             }
-            Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
+            Mode::ToolStd => builder.ensure(compile::Std::new(compiler, target)),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
@@ -204,7 +204,7 @@ impl Step for ToolBuild {
 
         if !is_expected {
             if !is_optional_tool {
-                exit(1);
+                crate::detail_exit(1);
             } else {
                 None
             }
@@ -367,7 +367,7 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
+    RustInstaller, "src/tools/rust-installer", "rust-installer", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
@@ -512,8 +512,8 @@ impl Step for Rustdoc {
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
         // it.
-        builder.ensure(compile::Std { compiler: build_compiler, target: target_compiler.host });
-        builder.ensure(compile::Rustc { compiler: build_compiler, target: target_compiler.host });
+        builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
+        builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
         // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
         // compiler, since you do just as much work.
         if !builder.config.dry_run && builder.download_rustc() && build_compiler.stage == 0 {
@@ -683,6 +683,94 @@ impl Step for LldWrapper {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustAnalyzer {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/rust-analyzer").default_condition(
+            builder.config.extended
+                && builder
+                    .config
+                    .tools
+                    .as_ref()
+                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
+        )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzer {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer",
+            mode: Mode::ToolStd,
+            path: "src/tools/rust-analyzer",
+            extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustAnalyzerProcMacroSrv {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzerProcMacroSrv {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
+        run.path("src/tools/rust-analyzer").default_condition(
+            builder.config.extended
+                && builder
+                    .config
+                    .tools
+                    .as_ref()
+                    .map_or(true, |tools| tools.iter().any(|tool| tool == "rust-analyzer")),
+        )
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzerProcMacroSrv {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer-proc-macro-srv",
+            mode: Mode::ToolStd,
+            path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
+            extra_features: vec!["proc-macro-srv/sysroot-abi".to_owned()],
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
+        })
+    }
+}
+
 macro_rules! tool_extended {
     (($sel:ident, $builder:ident),
        $($name:ident,
@@ -780,7 +868,6 @@ tool_extended!((self, builder),
     // and this is close enough for now.
     RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, tool_std=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
-    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, submodule="rust-analyzer", {};
 );
 
 impl<'a> Builder<'a> {

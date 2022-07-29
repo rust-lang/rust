@@ -56,7 +56,7 @@ For more information on configuring lint levels, see the [rustc documentation].
 Clippy has lint groups which are allow-by-default. This means, that you will
 have to enable the lints in those groups manually.
 
-For a full list of all lints with their description and examples, please refere
+For a full list of all lints with their description and examples, please refer
 to [Clippy's lint list]. The two most important allow-by-default groups are
 described below:
 
@@ -148,4 +148,4 @@ clippy-driver --edition 2018 -Cpanic=abort foo.rs
 > that are not optimized as expected, for example.
 
 [Installation]: installation.md
-[CI]: continuous_integration
+[CI]: continuous_integration/index.md

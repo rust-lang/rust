@@ -2,7 +2,7 @@
 /* global sourcesIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, browserSupportsHistoryApi */
+/* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage */
 
 "use strict";
@@ -10,35 +10,36 @@
 (function() {
 
 const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
+let oldScrollPosition = 0;
+
+function closeSidebarIfMobile() {
+    if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+        updateLocalStorage("source-sidebar-show", "false");
+    }
+}
 
 function createDirEntry(elem, parent, fullPath, hasFoundFile) {
-    const name = document.createElement("div");
-    name.className = "name";
+    const dirEntry = document.createElement("details");
+    const summary = document.createElement("summary");
+
+    dirEntry.className = "dir-entry";
 
     fullPath += elem["name"] + "/";
 
-    name.onclick = ev => {
-        if (hasClass(ev.target, "expand")) {
-            removeClass(ev.target, "expand");
-        } else {
-            addClass(ev.target, "expand");
-        }
-    };
-    name.innerText = elem["name"];
+    summary.innerText = elem["name"];
+    dirEntry.appendChild(summary);
 
-    const children = document.createElement("div");
-    children.className = "children";
     const folders = document.createElement("div");
     folders.className = "folders";
     if (elem.dirs) {
         for (const dir of elem.dirs) {
-            if (createDirEntry(dir, folders, fullPath, hasFoundFile)) {
-                addClass(name, "expand");
+            if (createDirEntry(dir, folders, fullPath, false)) {
+                dirEntry.open = true;
                 hasFoundFile = true;
             }
         }
     }
-    children.appendChild(folders);
+    dirEntry.appendChild(folders);
 
     const files = document.createElement("div");
     files.className = "files";
@@ -47,28 +48,42 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
             const file = document.createElement("a");
             file.innerText = file_text;
             file.href = rootPath + "src/" + fullPath + file_text + ".html";
+            file.addEventListener("click", closeSidebarIfMobile);
             const w = window.location.href.split("#")[0];
             if (!hasFoundFile && w === file.href) {
                 file.className = "selected";
-                addClass(name, "expand");
+                dirEntry.open = true;
                 hasFoundFile = true;
             }
             files.appendChild(file);
         }
     }
-    children.appendChild(files);
-    parent.appendChild(name);
-    parent.appendChild(children);
+    dirEntry.appendChild(files);
+    parent.appendChild(dirEntry);
     return hasFoundFile;
 }
 
 function toggleSidebar() {
-    const child = this.children[0];
+    const child = this.parentNode.children[0];
     if (child.innerText === ">") {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+            // This is to keep the scroll position on mobile.
+            oldScrollPosition = window.scrollY;
+            document.body.style.position = "fixed";
+            document.body.style.top = `-${oldScrollPosition}px`;
+        }
         addClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = "<";
         updateLocalStorage("source-sidebar-show", "true");
     } else {
+        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+            // This is to keep the scroll position on mobile.
+            document.body.style.position = "";
+            document.body.style.top = "";
+            // The scroll position is lost when resetting the style, hence why we store it in
+            // `oldScroll`.
+            window.scrollTo(0, oldScrollPosition);
+        }
         removeClass(document.documentElement, "source-sidebar-expanded");
         child.innerText = ">";
         updateLocalStorage("source-sidebar-show", "false");
@@ -78,15 +93,15 @@ function toggleSidebar() {
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
     sidebarToggle.id = "sidebar-toggle";
-    sidebarToggle.onclick = toggleSidebar;
 
-    const inner = document.createElement("div");
+    const inner = document.createElement("button");
 
     if (getCurrentValue("source-sidebar-show") === "true") {
         inner.innerText = "<";
     } else {
         inner.innerText = ">";
     }
+    inner.onclick = toggleSidebar;
 
     sidebarToggle.appendChild(inner);
     return sidebarToggle;

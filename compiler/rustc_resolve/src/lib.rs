@@ -10,10 +10,10 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
+#![feature(iter_intersperse)]
 #![feature(let_else)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(nll))]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 #![allow(rustc::potential_query_instability)]
@@ -62,7 +62,7 @@ use tracing::debug;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
-use late::{HasGenericParams, PathSource};
+use late::{HasGenericParams, PathSource, PatternSource};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
 use crate::access_levels::AccessLevelsVisitor;
@@ -231,11 +231,11 @@ enum ResolutionError<'a> {
     ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {
-        shadowing_binding_descr: &'static str,
+        shadowing_binding: PatternSource,
         name: Symbol,
         participle: &'static str,
         article: &'static str,
-        shadowed_binding_descr: &'static str,
+        shadowed_binding: Res,
         shadowed_binding_span: Span,
     },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
@@ -437,7 +437,7 @@ enum ModuleKind {
     ///     f(); // Resolves to (1)
     /// }
     /// ```
-    Block(NodeId),
+    Block,
     /// Any module with a name.
     ///
     /// This could be:
@@ -454,7 +454,7 @@ impl ModuleKind {
     /// Get name of the module.
     pub fn name(&self) -> Option<Symbol> {
         match self {
-            ModuleKind::Block(..) => None,
+            ModuleKind::Block => None,
             ModuleKind::Def(.., name) => Some(*name),
         }
     }
@@ -530,7 +530,7 @@ impl<'a> ModuleData<'a> {
     ) -> Self {
         let is_foreign = match kind {
             ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
-            ModuleKind::Block(_) => false,
+            ModuleKind::Block => false,
         };
         ModuleData {
             parent,

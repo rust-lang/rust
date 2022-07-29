@@ -7,7 +7,7 @@ LL |     let _ = Struct::<A>::new().clone();
   ::: $DIR/auxiliary/issue-69725.rs:2:1
    |
 LL | pub struct Struct<A>(A);
-   | ------------------------ doesn't satisfy `Struct<A>: Clone`
+   | -------------------- doesn't satisfy `Struct<A>: Clone`
    |
    = note: the following trait bounds were not satisfied:
            `A: Clone`

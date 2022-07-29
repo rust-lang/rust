@@ -25,7 +25,7 @@ can be broken down into several distinct phases:
 
 - regionck: after main is complete, the regionck pass goes over all
   types looking for regions and making sure that they did not escape
-  into places they are not in scope.  This may also influence the
+  into places where they are not in scope.  This may also influence the
   final assignments of the various region variables if there is some
   flexibility.
 
@@ -87,17 +87,13 @@ mod op;
 mod pat;
 mod place_op;
 mod region;
-mod regionck;
+pub mod regionck;
 pub mod rvalue_scopes;
 mod upvar;
-mod wfcheck;
+pub mod wfcheck;
 pub mod writeback;
 
-use check::{
-    check_abi, check_fn, check_impl_item_well_formed, check_item_well_formed, check_mod_item_types,
-    check_trait_item_well_formed,
-};
-pub use check::{check_item_type, check_wf_new};
+use check::{check_abi, check_fn, check_mod_item_types};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
@@ -132,8 +128,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
-
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
@@ -245,6 +240,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
+    wfcheck::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
         typeck_const_arg,
@@ -253,9 +249,6 @@ pub fn provide(providers: &mut Providers) {
         has_typeck_results,
         adt_destructor,
         used_trait_imports,
-        check_item_well_formed,
-        check_trait_item_well_formed,
-        check_impl_item_well_formed,
         check_mod_item_types,
         region_scope_tree,
         ..*providers
@@ -374,7 +367,7 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let (fcx, wf_tys) = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
+        let fcx = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
@@ -384,13 +377,7 @@ fn typeck_with_fallback<'tcx>(
 
             check_abi(tcx, id, span, fn_sig.abi());
 
-            // When normalizing the function signature, we assume all types are
-            // well-formed. So, we don't need to worry about the obligations
-            // from normalization. We could just discard these, but to align with
-            // compare_method and elsewhere, we just add implied bounds for
-            // these types.
-            let mut wf_tys = FxHashSet::default();
-            // Compute the fty from point of view of inside the fn.
+            // Compute the function signature from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
@@ -398,10 +385,7 @@ fn typeck_with_fallback<'tcx>(
                 param_env,
                 fn_sig,
             );
-            wf_tys.extend(fn_sig.inputs_and_output.iter());
-
-            let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0;
-            (fcx, wf_tys)
+            check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
@@ -464,7 +448,7 @@ fn typeck_with_fallback<'tcx>(
 
             fcx.write_ty(id, expected_type);
 
-            (fcx, FxHashSet::default())
+            fcx
         };
 
         let fallback_has_occurred = fcx.type_inference_fallback();
@@ -496,11 +480,7 @@ fn typeck_with_fallback<'tcx>(
 
         fcx.check_asms();
 
-        if fn_sig.is_some() {
-            fcx.regionck_fn(id, body, span, wf_tys);
-        } else {
-            fcx.regionck_expr(body);
-        }
+        fcx.infcx.skip_region_resolution();
 
         fcx.resolve_type_vars_in_body(body)
     });
@@ -553,7 +533,7 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: Span) {
+fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
@@ -579,7 +559,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-        tcx.sess.span_err(span, msg);
+        tcx.sess.span_err(tcx.def_span(id), msg);
     }
 }
 
@@ -640,9 +620,8 @@ fn missing_items_err(
     // adding the associated item at the end of its body.
     let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
     // Obtain the level of indentation ending in `sugg_sp`.
-    let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
-    // Make the whitespace that will make the suggestion have the right indentation.
-    let padding: String = " ".repeat(indentation);
+    let padding =
+        tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
 
     for trait_item in missing_items {
         let snippet = suggestion_signature(trait_item, tcx);
@@ -883,17 +862,14 @@ fn bad_non_zero_sized_fields<'tcx>(
     err.emit();
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
+fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'_>, span: Span) {
     struct_span_err!(
         tcx.sess,
         span,
         E0533,
-        "expected unit struct, unit variant or constant, found {}{}",
+        "expected unit struct, unit variant or constant, found {} `{}`",
         res.descr(),
-        tcx.sess
-            .source_map()
-            .span_to_snippet(span)
-            .map_or_else(|_| String::new(), |s| format!(" `{s}`",)),
+        rustc_hir_pretty::qpath_to_string(qpath),
     )
     .emit();
 }
@@ -921,32 +897,6 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
 enum TupleArgumentsFlag {
     DontTupleArguments,
     TupleArguments,
-}
-
-/// A wrapper for `InferCtxt`'s `in_progress_typeck_results` field.
-#[derive(Copy, Clone)]
-struct MaybeInProgressTables<'a, 'tcx> {
-    maybe_typeck_results: Option<&'a RefCell<ty::TypeckResults<'tcx>>>,
-}
-
-impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
-    fn borrow(self) -> Ref<'a, ty::TypeckResults<'tcx>> {
-        match self.maybe_typeck_results {
-            Some(typeck_results) => typeck_results.borrow(),
-            None => bug!(
-                "MaybeInProgressTables: inh/fcx.typeck_results.borrow() with no typeck results"
-            ),
-        }
-    }
-
-    fn borrow_mut(self) -> RefMut<'a, ty::TypeckResults<'tcx>> {
-        match self.maybe_typeck_results {
-            Some(typeck_results) => typeck_results.borrow_mut(),
-            None => bug!(
-                "MaybeInProgressTables: inh/fcx.typeck_results.borrow_mut() with no typeck results"
-            ),
-        }
-    }
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {

@@ -28,7 +28,7 @@ move-cursor-to: "h2#implementations"
 assert-css: ("h2#implementations a.anchor", {"color": "rgb(0, 0, 0)"})
 
 // Same thing with the impl block title.
-move-cursor-to: "#impl"
-assert-css: ("#impl a.anchor", {"color": "rgb(0, 0, 0)"})
+move-cursor-to: "#impl-HeavilyDocumentedStruct"
+assert-css: ("#impl-HeavilyDocumentedStruct a.anchor", {"color": "rgb(0, 0, 0)"})
 
 assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})

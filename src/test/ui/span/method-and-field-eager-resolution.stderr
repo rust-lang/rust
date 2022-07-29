@@ -3,8 +3,10 @@ error[E0282]: type annotations needed
    |
 LL |     let mut x = Default::default();
    |         ^^^^^
+LL |
+LL |     x.0;
+   |     - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving `x` an explicit type
    |
 LL |     let mut x: _ = Default::default();
@@ -15,8 +17,10 @@ error[E0282]: type annotations needed
    |
 LL |     let mut x = Default::default();
    |         ^^^^^
+LL |
+LL |     x[0];
+   |     - type must be known at this point
    |
-   = note: type must be known at this point
 help: consider giving `x` an explicit type
    |
 LL |     let mut x: _ = Default::default();

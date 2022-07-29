@@ -98,6 +98,7 @@ mod merging;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::DefIdSet;
+use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -141,7 +142,7 @@ trait Partitioner<'tcx> {
 }
 
 fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
-    let strategy = match &tcx.sess.opts.debugging_opts.cgu_partitioning_strategy {
+    let strategy = match &tcx.sess.opts.unstable_opts.cgu_partitioning_strategy {
         None => "default",
         Some(s) => &s[..],
     };
@@ -345,7 +346,7 @@ fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
 ) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-    let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
+    let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
@@ -413,7 +414,7 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
-    if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
+    if tcx.sess.opts.unstable_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
         for cgu in codegen_units {
@@ -479,9 +480,14 @@ fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSe
                 if !visited.insert(did) {
                     continue;
                 }
-                for scope in &tcx.instance_mir(instance.def).source_scopes {
-                    if let Some((ref inlined, _)) = scope.inlined {
-                        result.insert(inlined.def_id());
+                let body = tcx.instance_mir(instance.def);
+                for block in body.basic_blocks() {
+                    for statement in &block.statements {
+                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
+                        let scope = statement.source_info.scope;
+                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
+                            result.insert(inlined.def_id());
+                        }
                     }
                 }
             }

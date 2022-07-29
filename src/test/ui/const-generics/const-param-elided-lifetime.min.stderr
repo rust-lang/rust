@@ -47,15 +47,6 @@ LL | impl<const N: &u8> A<N> {
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
 error: `&'static u8` is forbidden as the type of a const generic parameter
-  --> $DIR/const-param-elided-lifetime.rs:17:21
-   |
-LL |     fn foo<const M: &u8>(&self) {}
-   |                     ^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#![feature(adt_const_params)]`
-
-error: `&'static u8` is forbidden as the type of a const generic parameter
   --> $DIR/const-param-elided-lifetime.rs:22:15
    |
 LL | impl<const N: &u8> B for A<N> {}
@@ -69,6 +60,15 @@ error: `&'static u8` is forbidden as the type of a const generic parameter
    |
 LL | fn bar<const N: &u8>() {}
    |                 ^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(adt_const_params)]`
+
+error: `&'static u8` is forbidden as the type of a const generic parameter
+  --> $DIR/const-param-elided-lifetime.rs:17:21
+   |
+LL |     fn foo<const M: &u8>(&self) {}
+   |                     ^^^
    |
    = note: the only supported types are integers, `bool` and `char`
    = help: more complex types are supported with `#![feature(adt_const_params)]`

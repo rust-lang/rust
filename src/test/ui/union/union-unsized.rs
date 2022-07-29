@@ -1,8 +1,6 @@
 // revisions: mirunsafeck thirunsafeck
 // [thirunsafeck]compile-flags: -Z thir-unsafeck
 
-#![feature(untagged_unions)]
-
 union U {
     a: str,
     //~^ ERROR the size for values of type

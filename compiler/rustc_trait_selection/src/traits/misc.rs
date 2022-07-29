@@ -5,7 +5,7 @@ use crate::traits::{self, ObligationCause};
 
 use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 
 use crate::traits::error_reporting::InferCtxtExt;
 

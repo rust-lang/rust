@@ -32,7 +32,7 @@ LL |     let _ = box { |x| (x as u8) }: Box<dyn Fn(i32) -> _>;
    |             ^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn Fn`, found closure
    |
    = note: expected struct `Box<dyn Fn(i32) -> u8>`
-              found struct `Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:13:19: 13:32]>`
+              found struct `Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:13:19: 13:22]>`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:14:13
@@ -86,7 +86,7 @@ LL |     let _ = &{ |x| (x as u8) }: &dyn Fn(i32) -> _;
    |             ^^^^^^^^^^^^^^^^^^ expected trait object `dyn Fn`, found closure
    |
    = note: expected reference `&dyn Fn(i32) -> u8`
-              found reference `&[closure@$DIR/coerce-expect-unsized-ascribed.rs:21:16: 21:29]`
+              found reference `&[closure@$DIR/coerce-expect-unsized-ascribed.rs:21:16: 21:19]`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-expect-unsized-ascribed.rs:22:13
@@ -122,7 +122,7 @@ LL |     let _ = Box::new(|x| (x as u8)): Box<dyn Fn(i32) -> _>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn Fn`, found closure
    |
    = note: expected struct `Box<dyn Fn(i32) -> u8>`
-              found struct `Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:26:22: 26:35]>`
+              found struct `Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:26:22: 26:25]>`
 
 error: aborting due to 14 previous errors
 

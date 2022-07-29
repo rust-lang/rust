@@ -17,7 +17,7 @@ note: deref defined here
   --> $SRC_DIR/alloc/src/sync.rs:LL:COL
    |
 LL |     type Target = T;
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 

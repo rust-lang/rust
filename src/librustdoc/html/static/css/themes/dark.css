@@ -1,25 +1,14 @@
-body, .popover, .popover::before {
-	background-color: #353535;
-	color: #ddd;
-}
-
-.setting-line .radio-line input {
-	border-color: #ddd;
-}
-.setting-line .radio-line input:checked {
-	box-shadow: inset 0 0 0 3px #353535;
-	background-color: #2196f3;
-}
-.setting-line .radio-line input:focus {
-	box-shadow: 0 0 1px 1px #2196f3;
-}
-/* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
-	box-shadow: inset 0 0 0 3px #353535,
-		0 0 2px 2px #2196f3;
-}
-.setting-line .radio-line input:hover {
-	border-color: #2196f3 !important;
+:root {
+	--main-background-color: #353535;
+	--main-color: #ddd;
+	--settings-input-color: #2196f3;
+	--sidebar-background-color: #505050;
+	--sidebar-background-color-hover: #676767;
+	--code-block-background-color: #2A2A2A;
+	--scrollbar-track-background-color: #717171;
+	--scrollbar-thumb-background-color: rgba(32, 34, 37, .6);
+	--scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
+	--headings-border-bottom-color: #d2d2d2;
 }
 
 .slider {
@@ -28,40 +17,12 @@ body, .popover, .popover::before {
 .slider:before {
 	background-color: white;
 }
-input:checked + .slider {
-	background-color: #2196F3;
-}
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
-h1, h2, h3, h4 {
-	color: #ddd;
-}
-h1.fqn {
-	border-bottom-color: #d2d2d2;
-}
-h2, h3, h4 {
-	border-bottom-color: #d2d2d2;
-}
-
 .in-band {
 	background-color: #353535;
-}
-
-.invisible {
-	background: rgba(0, 0, 0, 0);
-}
-
-.docblock code, .docblock-short code {
-	background-color: #2A2A2A;
-}
-pre, .rustdoc.source .example-wrap {
-	background-color: #2A2A2A;
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: #505050;
 }
 
 .rust-logo {
@@ -71,35 +32,9 @@ pre, .rustdoc.source .example-wrap {
 		drop-shadow(0 -1px 0 #fff)
 }
 
-/* Improve the scrollbar display on firefox */
-* {
-	scrollbar-color: rgb(64, 65, 67) #717171;
-}
-.sidebar {
-	scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
-}
-
-/* Improve the scrollbar display on webkit-based browsers */
-::-webkit-scrollbar-track {
-	background-color: #717171;
-}
-::-webkit-scrollbar-thumb {
-	background-color: rgba(32, 34, 37, .6);
-}
-.sidebar::-webkit-scrollbar-track {
-	background-color: #717171;
-}
-.sidebar::-webkit-scrollbar-thumb {
-	background-color: rgba(32, 34, 37, .6);
-}
-
 .sidebar .current,
 .sidebar a:hover {
 	background: #444;
-}
-
-.source .sidebar {
-	background-color: #565656;
 }
 
 .line-numbers span { color: #3B91E2; }
@@ -107,18 +42,8 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #0a042f !important;
 }
 
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: #DDD;
-}
-
 .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.content .method .where,
-.content .fn .where,
-.content .where.fmt-newline {
-	color: #ddd;
 }
 
 .search-results a:hover {
@@ -214,42 +139,29 @@ a {
 	color: #D2991D;
 }
 
-a#toggle-all-docs,
-a.anchor,
-.small-section-header a,
-#source-sidebar a,
-pre.rust a,
-.sidebar h2 a,
-.sidebar h3 a,
-.mobile-topbar h2 a,
-.in-band a {
-	color: #ddd;
-}
-.search-results a {
-	color: #ddd;
-}
-a.test-arrow {
-	color: #dedede;
-}
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
 
 details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
 #crate-search, .search-input {
 	color: #111;
 	background-color: #f0f0f0;
-	/* Without the `!important`, the border-color is ignored for `<select>`... */
+	border-color: #f0f0f0;
+}
+
+#crate-search {
+	/* Without the `!important`, the border-color is ignored for `<select>`...
+	   It cannot be in the group above because `.search-input` has a different border color on
+	   hover. */
 	border-color: #f0f0f0 !important;
 }
 
@@ -261,38 +173,16 @@ details.undocumented > summary::before {
 	border-color: #008dfd;
 }
 
-.module-item .stab,
-.import-item .stab {
-	color: #ddd;
-}
-
 .stab.empty-impl { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
+.stab.must_implement { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability > code { background: none; }
-
-#help > div {
-	background: #4d4d4d;
-	border-color: #bfbfbf;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #bfbfbf;
-}
-
-#help dt {
-	border-color: #bfbfbf;
-	background: rgba(0,0,0,0);
-}
 
 .rightside,
 .out-of-band {
 	color: grey;
-}
-
-.result-name .primitive > i, .result-name .keyword > i {
-	color: #ddd;
 }
 
 .line-numbers :target { background-color: transparent; }
@@ -314,6 +204,7 @@ pre.rust .question-mark {
 }
 
 a.test-arrow {
+	color: #dedede;
 	background-color: rgba(78, 139, 202, 0.2);
 }
 
@@ -417,20 +308,8 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 @media (max-width: 700px) {
-	.sidebar-menu {
-		background-color: #505050;
-		border-bottom-color: #e0e0e0;
-		border-right-color: #e0e0e0;
-	}
-
 	.sidebar-elems {
-		background-color: #505050;
 		border-right-color: #000;
-	}
-
-	#sidebar-filler {
-		background-color: #505050;
-		border-bottom-color: #e0e0e0;
 	}
 }
 
@@ -488,22 +367,14 @@ kbd {
 	color: #ccc;
 }
 
-#sidebar-toggle {
-	background-color: #565656;
-}
-#sidebar-toggle:hover {
-	background-color: #676767;
-}
-#source-sidebar {
-	background-color: #565656;
-}
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
-#source-sidebar div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: #444;
 }
-#source-sidebar div.files > .selected {
+#source-sidebar div.files > a.selected {
 	background-color: #333;
 }
 

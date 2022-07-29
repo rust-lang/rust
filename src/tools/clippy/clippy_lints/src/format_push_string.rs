@@ -14,6 +14,12 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Introduces an extra, avoidable heap allocation.
     ///
+    /// ### Known problems
+    /// `format!` returns a `String` but `write!` returns a `Result`.
+    /// Thus you are forced to ignore the `Err` variant to achieve the same API.
+    ///
+    /// While using `write!` in the suggested way should never fail, this isn't necessarily clear to the programmer.
+    ///
     /// ### Example
     /// ```rust
     /// let mut s = String::new();
@@ -27,9 +33,9 @@ declare_clippy_lint! {
     /// let mut s = String::new();
     /// let _ = write!(s, "0x{:X}", 1024);
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub FORMAT_PUSH_STRING,
-    perf,
+    restriction,
     "`format!(..)` appended to existing `String`"
 }
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);

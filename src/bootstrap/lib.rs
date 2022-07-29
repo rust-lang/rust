@@ -107,14 +107,10 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::process::Command;
 use std::str;
-
-#[cfg(unix)]
-use std::os::unix::fs::symlink as symlink_file;
-#[cfg(windows)]
-use std::os::windows::fs::symlink_file;
 
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
@@ -122,8 +118,7 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    check_run, exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed,
-    CiEnv,
+    check_run, exe, libdir, mtime, output, run, run_suppressed, try_run, try_run_suppressed, CiEnv,
 };
 
 mod builder;
@@ -648,7 +643,8 @@ impl Build {
             return;
         }
         let output = output(
-            Command::new("git")
+            self.config
+                .git()
                 .args(&["config", "--file"])
                 .arg(&self.config.src.join(".gitmodules"))
                 .args(&["--get-regexp", "path"]),
@@ -716,7 +712,7 @@ impl Build {
             for failure in failures.iter() {
                 eprintln!("  - {}\n", failure);
             }
-            process::exit(1);
+            detail_exit(1);
         }
 
         #[cfg(feature = "build-metrics")]
@@ -1284,14 +1280,11 @@ impl Build {
         // Figure out how many merge commits happened since we branched off master.
         // That's our beta number!
         // (Note that we use a `..` range, not the `...` symmetric difference.)
-        let count = output(
-            Command::new("git")
-                .arg("rev-list")
-                .arg("--count")
-                .arg("--merges")
-                .arg("refs/remotes/origin/master..HEAD")
-                .current_dir(&self.src),
-        );
+        let count =
+            output(self.config.git().arg("rev-list").arg("--count").arg("--merges").arg(format!(
+                "refs/remotes/origin/{}..HEAD",
+                self.config.stage0_metadata.config.nightly_branch
+            )));
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
         n
@@ -1460,7 +1453,7 @@ impl Build {
                 src = t!(fs::canonicalize(src));
             } else {
                 let link = t!(fs::read_link(src));
-                t!(symlink_file(link, dst));
+                t!(self.symlink_file(link, dst));
                 return;
             }
         }
@@ -1585,6 +1578,14 @@ impl Build {
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
 
+    fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, link: Q) -> io::Result<()> {
+        #[cfg(unix)]
+        use std::os::unix::fs::symlink as symlink_file;
+        #[cfg(windows)]
+        use std::os::windows::fs::symlink_file;
+        if !self.config.dry_run { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
+    }
+
     fn remove(&self, f: &Path) {
         if self.config.dry_run {
             return;
@@ -1614,7 +1615,7 @@ Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "
                 );
-                std::process::exit(1);
+                detail_exit(1);
             }
         }
 
@@ -1642,6 +1643,20 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
+
+/// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
+/// If the test is running and code is an error code, it will cause a panic.
+fn detail_exit(code: i32) -> ! {
+    // Successful exit
+    if code == 0 {
+        std::process::exit(0);
+    }
+    if cfg!(test) {
+        panic!("status code: {}", code);
+    } else {
+        std::panic::resume_unwind(Box::new(code));
+    }
+}
 
 impl Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {

@@ -891,22 +891,19 @@ impl<'a> Parser<'a> {
         let mut first_note = MultiSpan::from(vec![initial_semicolon]);
         first_note.push_span_label(
             initial_semicolon,
-            "this `;` turns the preceding closure into a statement".to_string(),
+            "this `;` turns the preceding closure into a statement",
         );
         first_note.push_span_label(
             closure_spans.body,
-            "this expression is a statement because of the trailing semicolon".to_string(),
+            "this expression is a statement because of the trailing semicolon",
         );
         expect_err.span_note(first_note, "statement found outside of a block");
 
         let mut second_note = MultiSpan::from(vec![closure_spans.whole_closure]);
-        second_note.push_span_label(
-            closure_spans.whole_closure,
-            "this is the parsed closure...".to_string(),
-        );
+        second_note.push_span_label(closure_spans.whole_closure, "this is the parsed closure...");
         second_note.push_span_label(
             following_token_span,
-            "...but likely you meant the closure to end here".to_string(),
+            "...but likely you meant the closure to end here",
         );
         expect_err.span_note(second_note, "the closure body may be incorrectly delimited");
 
@@ -1356,7 +1353,16 @@ impl<'a> Parser<'a> {
 
     /// Parses `extern string_literal?`.
     fn parse_extern(&mut self) -> Extern {
-        if self.eat_keyword(kw::Extern) { Extern::from_abi(self.parse_abi()) } else { Extern::None }
+        if self.eat_keyword(kw::Extern) {
+            let mut extern_span = self.prev_token.span;
+            let abi = self.parse_abi();
+            if let Some(abi) = abi {
+                extern_span = extern_span.to(abi.span);
+            }
+            Extern::from_abi(abi, extern_span)
+        } else {
+            Extern::None
+        }
     }
 
     /// Parses a string literal as an ABI spec.

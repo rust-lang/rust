@@ -396,38 +396,99 @@ fn slice_write_vectored(
     Ok(nwritten)
 }
 
-// Resizing write implementation
-fn vec_write<A>(pos_mut: &mut u64, vec: &mut Vec<u8, A>, buf: &[u8]) -> io::Result<usize>
-where
-    A: Allocator,
-{
+/// Reserves the required space, and pads the vec with 0s if necessary.
+fn reserve_and_pad<A: Allocator>(
+    pos_mut: &mut u64,
+    vec: &mut Vec<u8, A>,
+    buf_len: usize,
+) -> io::Result<usize> {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
         io::const_io_error!(
             ErrorKind::InvalidInput,
             "cursor position exceeds maximum possible vector length",
         )
     })?;
-    // Make sure the internal buffer is as least as big as where we
-    // currently are
-    let len = vec.len();
-    if len < pos {
-        // use `resize` so that the zero filling is as efficient as possible
-        vec.resize(pos, 0);
+
+    // For safety reasons, we don't want these numbers to overflow
+    // otherwise our allocation won't be enough
+    let desired_cap = pos.saturating_add(buf_len);
+    if desired_cap > vec.capacity() {
+        // We want our vec's total capacity
+        // to have room for (pos+buf_len) bytes. Reserve allocates
+        // based on additional elements from the length, so we need to
+        // reserve the difference
+        vec.reserve(desired_cap - vec.len());
     }
-    // Figure out what bytes will be used to overwrite what's currently
-    // there (left), and what will be appended on the end (right)
-    {
-        let space = vec.len() - pos;
-        let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-        vec[pos..pos + left.len()].copy_from_slice(left);
-        vec.extend_from_slice(right);
+    // Pad if pos is above the current len.
+    if pos > vec.len() {
+        let diff = pos - vec.len();
+        // Unfortunately, `resize()` would suffice but the optimiser does not
+        // realise the `reserve` it does can be eliminated. So we do it manually
+        // to eliminate that extra branch
+        let spare = vec.spare_capacity_mut();
+        debug_assert!(spare.len() >= diff);
+        // Safety: we have allocated enough capacity for this.
+        // And we are only writing, not reading
+        unsafe {
+            spare.get_unchecked_mut(..diff).fill(core::mem::MaybeUninit::new(0));
+            vec.set_len(pos);
+        }
     }
 
-    // Bump us forward
-    *pos_mut = (pos + buf.len()) as u64;
-    Ok(buf.len())
+    Ok(pos)
 }
 
+/// Writes the slice to the vec without allocating
+/// # Safety: vec must have buf.len() spare capacity
+unsafe fn vec_write_unchecked<A>(pos: usize, vec: &mut Vec<u8, A>, buf: &[u8]) -> usize
+where
+    A: Allocator,
+{
+    debug_assert!(vec.capacity() >= pos + buf.len());
+    vec.as_mut_ptr().add(pos).copy_from(buf.as_ptr(), buf.len());
+    pos + buf.len()
+}
+
+/// Resizing write implementation for [`Cursor`]
+///
+/// Cursor is allowed to have a pre-allocated and initialised
+/// vector body, but with a position of 0. This means the [`Write`]
+/// will overwrite the contents of the vec.
+///
+/// This also allows for the vec body to be empty, but with a position of N.
+/// This means that [`Write`] will pad the vec with 0 initially,
+/// before writing anything from that point
+fn vec_write<A>(pos_mut: &mut u64, vec: &mut Vec<u8, A>, buf: &[u8]) -> io::Result<usize>
+where
+    A: Allocator,
+{
+    let buf_len = buf.len();
+    let mut pos = reserve_and_pad(pos_mut, vec, buf_len)?;
+
+    // Write the buf then progress the vec forward if necessary
+    // Safety: we have ensured that the capacity is available
+    // and that all bytes get written up to pos
+    unsafe {
+        pos = vec_write_unchecked(pos, vec, buf);
+        if pos > vec.len() {
+            vec.set_len(pos);
+        }
+    };
+
+    // Bump us forward
+    *pos_mut += buf_len as u64;
+    Ok(buf_len)
+}
+
+/// Resizing write_vectored implementation for [`Cursor`]
+///
+/// Cursor is allowed to have a pre-allocated and initialised
+/// vector body, but with a position of 0. This means the [`Write`]
+/// will overwrite the contents of the vec.
+///
+/// This also allows for the vec body to be empty, but with a position of N.
+/// This means that [`Write`] will pad the vec with 0 initially,
+/// before writing anything from that point
 fn vec_write_vectored<A>(
     pos_mut: &mut u64,
     vec: &mut Vec<u8, A>,
@@ -436,11 +497,26 @@ fn vec_write_vectored<A>(
 where
     A: Allocator,
 {
-    let mut nwritten = 0;
-    for buf in bufs {
-        nwritten += vec_write(pos_mut, vec, buf)?;
+    // For safety reasons, we don't want this sum to overflow ever.
+    // If this saturates, the reserve should panic to avoid any unsound writing.
+    let buf_len = bufs.iter().fold(0usize, |a, b| a.saturating_add(b.len()));
+    let mut pos = reserve_and_pad(pos_mut, vec, buf_len)?;
+
+    // Write the buf then progress the vec forward if necessary
+    // Safety: we have ensured that the capacity is available
+    // and that all bytes get written up to the last pos
+    unsafe {
+        for buf in bufs {
+            pos = vec_write_unchecked(pos, vec, buf);
+        }
+        if pos > vec.len() {
+            vec.set_len(pos);
+        }
     }
-    Ok(nwritten)
+
+    // Bump us forward
+    *pos_mut += buf_len as u64;
+    Ok(buf_len)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

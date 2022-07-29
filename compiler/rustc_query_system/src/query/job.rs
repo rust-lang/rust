@@ -84,6 +84,7 @@ pub struct QueryJob {
 
 impl QueryJob {
     /// Creates a new query job.
+    #[inline]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob {
             id,
@@ -106,6 +107,7 @@ impl QueryJob {
     ///
     /// This does nothing for single threaded rustc,
     /// as there are no concurrent jobs which could be waiting on us
+    #[inline]
     pub fn signal_complete(self) {
         #[cfg(parallel_compiler)]
         {
@@ -492,14 +494,13 @@ fn remove_cycle(
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-pub fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
+pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();
     });
 
     let mut wakelist = Vec::new();
-    let query_map = tcx.try_collect_active_jobs().unwrap();
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
     let mut found_cycle = false;

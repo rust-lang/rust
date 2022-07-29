@@ -15,7 +15,6 @@ pub fn target() -> Target {
             max_atomic_width: Some(0),
             atomic_cas: false,
             features: "+m,+c".into(),
-            executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,

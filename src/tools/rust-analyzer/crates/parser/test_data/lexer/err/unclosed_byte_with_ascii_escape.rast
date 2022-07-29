@@ -1,0 +1,1 @@
+BYTE "b'\\x7f" error: Missing trailing `'` symbol to terminate the byte literal

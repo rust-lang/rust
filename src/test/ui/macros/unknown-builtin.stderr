@@ -7,12 +7,8 @@ LL | macro_rules! unknown { () => () }
 error[E0773]: attempted to define built-in macro more than once
   --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
-LL | /     macro_rules! line {
-LL | |         () => {
-LL | |             /* compiler built-in */
-LL | |         };
-LL | |     }
-   | |_____^
+LL |     macro_rules! line {
+   |     ^^^^^^^^^^^^^^^^^
    |
 note: previously defined here
   --> $DIR/unknown-builtin.rs:9:1

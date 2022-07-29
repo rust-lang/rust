@@ -8,12 +8,8 @@ LL | #[derive(Hash)]
 note: `PartialEq` implemented here
   --> $DIR/derive_hash_xor_eq.rs:15:1
    |
-LL | / impl PartialEq for Bar {
-LL | |     fn eq(&self, _: &Bar) -> bool {
-LL | |         true
-LL | |     }
-LL | | }
-   | |_^
+LL | impl PartialEq for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Hash` but have implemented `PartialEq` explicitly
@@ -25,12 +21,8 @@ LL | #[derive(Hash)]
 note: `PartialEq` implemented here
   --> $DIR/derive_hash_xor_eq.rs:24:1
    |
-LL | / impl PartialEq<Baz> for Baz {
-LL | |     fn eq(&self, _: &Baz) -> bool {
-LL | |         true
-LL | |     }
-LL | | }
-   | |_^
+LL | impl PartialEq<Baz> for Baz {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Hash` explicitly but have derived `PartialEq`

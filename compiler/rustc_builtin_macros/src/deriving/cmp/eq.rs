@@ -2,10 +2,10 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, MetaItem};
+use rustc_ast::{self as ast, MetaItem};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 pub fn expand_deriving_eq(
@@ -27,16 +27,14 @@ pub fn expand_deriving_eq(
         path: path_std!(cmp::Eq),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,
             generics: Bounds::empty(),
-            explicit_self: borrowed_explicit_self(),
-            args: vec![],
-            ret_ty: nil_ty(),
+            explicit_self: true,
+            nonself_args: vec![],
+            ret_ty: Unit,
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: true,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 cs_total_eq_assert(a, b, c)
@@ -54,47 +52,39 @@ fn cs_total_eq_assert(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-) -> P<Expr> {
-    fn assert_ty_bounds(
-        cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
-        ty: P<ast::Ty>,
-        span: Span,
-        helper_name: &str,
-    ) {
-        // Generate statement `let _: helper_name<ty>;`,
-        // set the expn ID so we can use the unstable struct.
-        let span = cx.with_def_site_ctxt(span);
-        let assert_path = cx.path_all(
-            span,
-            true,
-            cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
-            vec![GenericArg::Type(ty)],
-        );
-        stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
-    }
-    fn process_variant(
-        cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
-        variant: &ast::VariantData,
-    ) {
-        for field in variant.fields() {
-            // let _: AssertParamIsEq<FieldTy>;
-            assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsEq");
-        }
-    }
-
+) -> BlockOrExpr {
     let mut stmts = Vec::new();
+    let mut seen_type_names = FxHashSet::default();
+    let mut process_variant = |variant: &ast::VariantData| {
+        for field in variant.fields() {
+            // This basic redundancy checking only prevents duplication of
+            // assertions like `AssertParamIsEq<Foo>` where the type is a
+            // simple name. That's enough to get a lot of cases, though.
+            if let Some(name) = field.ty.kind.is_simple_path() && !seen_type_names.insert(name) {
+                // Already produced an assertion for this type.
+            } else {
+                // let _: AssertParamIsEq<FieldTy>;
+                super::assert_ty_bounds(
+                    cx,
+                    &mut stmts,
+                    field.ty.clone(),
+                    field.span,
+                    &[sym::cmp, sym::AssertParamIsEq],
+                );
+            }
+        }
+    };
+
     match *substr.fields {
         StaticStruct(vdata, ..) => {
-            process_variant(cx, &mut stmts, vdata);
+            process_variant(vdata);
         }
         StaticEnum(enum_def, ..) => {
             for variant in &enum_def.variants {
-                process_variant(cx, &mut stmts, &variant.data);
+                process_variant(&variant.data);
             }
         }
         _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),
     }
-    cx.expr_block(cx.block(trait_span, stmts))
+    BlockOrExpr::new_stmts(stmts)
 }

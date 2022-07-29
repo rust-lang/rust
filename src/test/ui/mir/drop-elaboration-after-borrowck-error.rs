@@ -6,7 +6,7 @@ static A: () = {
     //~^ ERROR destructors cannot be evaluated at compile-time
     a[0] = String::new();
     //~^ ERROR destructors cannot be evaluated at compile-time
-    //~| ERROR use of possibly-uninitialized variable
+    //~| ERROR binding `a` isn't initialized
 };
 
 struct B<T>([T; 1]);

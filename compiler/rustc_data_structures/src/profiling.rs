@@ -826,6 +826,24 @@ cfg_if! {
                 }
             }
         }
+    } else if #[cfg(target_os = "macos")] {
+        pub fn get_resident_set_size() -> Option<usize> {
+            use libc::{c_int, c_void, getpid, proc_pidinfo, proc_taskinfo, PROC_PIDTASKINFO};
+            use std::mem;
+            const PROC_TASKINFO_SIZE: c_int = mem::size_of::<proc_taskinfo>() as c_int;
+
+            unsafe {
+                let mut info: proc_taskinfo = mem::zeroed();
+                let info_ptr = &mut info as *mut proc_taskinfo as *mut c_void;
+                let pid = getpid() as c_int;
+                let ret = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, info_ptr, PROC_TASKINFO_SIZE);
+                if ret == PROC_TASKINFO_SIZE {
+                    Some(info.pti_resident_size as usize)
+                } else {
+                    None
+                }
+            }
+        }
     } else if #[cfg(unix)] {
         pub fn get_resident_set_size() -> Option<usize> {
             let field = 1;

@@ -1,8 +1,8 @@
-error[E0283]: type annotations needed
+error[E0283]: type annotations needed: cannot satisfy `T0: Trait0<'l0>`
   --> $DIR/issue-24424.rs:4:57
    |
 LL | impl <'l0, 'l1, T0> Trait1<'l0, T0> for bool where T0 : Trait0<'l0>, T0 : Trait0<'l1> {}
-   |                                                         ^^^^^^^^^^^ cannot infer type for type parameter `T0`
+   |                                                         ^^^^^^^^^^^
    |
    = note: cannot satisfy `T0: Trait0<'l0>`
 

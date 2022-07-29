@@ -157,7 +157,7 @@ impl LocalUseMapBuild<'_> {
 }
 
 impl Visitor<'_> for LocalUseMapBuild<'_> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         if self.locals_with_use_data[local] {
             match def_use::categorize(context) {
                 Some(DefUse::Def) => self.insert_def(local, location),

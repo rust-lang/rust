@@ -1,6 +1,7 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::fluent;
 use rustc_span::symbol::Symbol;
 
 declare_lint! {
@@ -180,13 +181,13 @@ impl EarlyLintPass for NonAsciiIdents {
             }
             has_non_ascii_idents = true;
             cx.struct_span_lint(NON_ASCII_IDENTS, sp, |lint| {
-                lint.build("identifier contains non-ASCII characters").emit();
+                lint.build(fluent::lint::identifier_non_ascii_char).emit();
             });
             if check_uncommon_codepoints
                 && !symbol_str.chars().all(GeneralSecurityProfile::identifier_allowed)
             {
                 cx.struct_span_lint(UNCOMMON_CODEPOINTS, sp, |lint| {
-                    lint.build("identifier contains uncommon Unicode codepoints").emit();
+                    lint.build(fluent::lint::identifier_uncommon_codepoints).emit();
                 })
             }
         }
@@ -216,15 +217,11 @@ impl EarlyLintPass for NonAsciiIdents {
                     .and_modify(|(existing_symbol, existing_span, existing_is_ascii)| {
                         if !*existing_is_ascii || !is_ascii {
                             cx.struct_span_lint(CONFUSABLE_IDENTS, sp, |lint| {
-                                lint.build(&format!(
-                                    "identifier pair considered confusable between `{}` and `{}`",
-                                    existing_symbol, symbol
-                                ))
-                                .span_label(
-                                    *existing_span,
-                                    "this is where the previous identifier occurred",
-                                )
-                                .emit();
+                                lint.build(fluent::lint::confusable_identifier_pair)
+                                    .set_arg("existing_sym", *existing_symbol)
+                                    .set_arg("sym", symbol)
+                                    .span_label(*existing_span, fluent::lint::label)
+                                    .emit();
                             });
                         }
                         if *existing_is_ascii && !is_ascii {
@@ -326,18 +323,20 @@ impl EarlyLintPass for NonAsciiIdents {
 
                 for ((sp, ch_list), script_set) in lint_reports {
                     cx.struct_span_lint(MIXED_SCRIPT_CONFUSABLES, sp, |lint| {
-                        let message = format!(
-                            "the usage of Script Group `{}` in this crate consists solely of mixed script confusables",
-                            script_set);
-                        let mut note = "the usage includes ".to_string();
+                        let mut includes = String::new();
                         for (idx, ch) in ch_list.into_iter().enumerate() {
                             if idx != 0 {
-                                note += ", ";
+                                includes += ", ";
                             }
                             let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
-                            note += &char_info;
+                            includes += &char_info;
                         }
-                        lint.build(&message).note(&note).note("please recheck to make sure their usages are indeed what you want").emit();
+                        lint.build(fluent::lint::mixed_script_confusables)
+                            .set_arg("set", script_set.to_string())
+                            .set_arg("includes", includes)
+                            .note(fluent::lint::includes_note)
+                            .note(fluent::lint::note)
+                            .emit();
                     });
                 }
             }

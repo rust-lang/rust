@@ -1,6 +1,7 @@
 use crate::LateContext;
 use crate::LateLintPass;
 use crate::LintContext;
+use rustc_errors::fluent;
 use rustc_hir as hir;
 use rustc_span::symbol::sym;
 
@@ -103,13 +104,10 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                     let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
                         return
                     };
-                    let msg = format!(
-                        "bounds on `{}` are most likely incorrect, consider instead \
-                         using `{}` to detect whether a type can be trivially dropped",
-                        predicate,
-                        cx.tcx.def_path_str(needs_drop)
-                    );
-                    lint.build(&msg).emit();
+                    lint.build(fluent::lint::drop_trait_constraints)
+                        .set_arg("predicate", predicate)
+                        .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
+                        .emit();
                 });
             }
         }
@@ -126,12 +124,9 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                     let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
                         return
                     };
-                    let msg = format!(
-                        "types that do not implement `Drop` can still have drop glue, consider \
-                        instead using `{}` to detect whether a type is trivially dropped",
-                        cx.tcx.def_path_str(needs_drop)
-                    );
-                    lint.build(&msg).emit();
+                    lint.build(fluent::lint::drop_glue)
+                        .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
+                        .emit();
                 });
             }
         }

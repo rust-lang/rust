@@ -121,28 +121,31 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
         traits::search_for_structural_match_violation(self.span, self.tcx(), ty).map(|non_sm_ty| {
-            with_no_trimmed_paths!(match non_sm_ty.kind {
-                traits::NonStructuralMatchTyKind::Adt(adt) => self.adt_derive_msg(adt),
-                traits::NonStructuralMatchTyKind::Dynamic => {
+            with_no_trimmed_paths!(match non_sm_ty.kind() {
+                ty::Adt(adt, _) => self.adt_derive_msg(*adt),
+                ty::Dynamic(..) => {
                     "trait objects cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::Opaque => {
+                ty::Opaque(..) => {
                     "opaque types cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::Closure => {
+                ty::Closure(..) => {
                     "closures cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::Generator => {
+                ty::Generator(..) | ty::GeneratorWitness(..) => {
                     "generators cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::Param => {
-                    bug!("use of a constant whose type is a parameter inside a pattern")
+                ty::Float(..) => {
+                    "floating-point numbers cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::Projection => {
-                    bug!("use of a constant whose type is a projection inside a pattern")
+                ty::FnPtr(..) => {
+                    "function pointers cannot be used in patterns".to_string()
                 }
-                traits::NonStructuralMatchTyKind::Foreign => {
-                    bug!("use of a value of a foreign type inside a pattern")
+                ty::RawPtr(..) => {
+                    "raw pointers cannot be used in patterns".to_string()
+                }
+                _ => {
+                    bug!("use of a value of `{non_sm_ty}` inside a pattern")
                 }
             })
         })
@@ -550,7 +553,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         id,
                         span,
                         |lint| {
-                            lint.build(&msg).emit();
+                            lint.build(msg).emit();
                         },
                     );
                 }

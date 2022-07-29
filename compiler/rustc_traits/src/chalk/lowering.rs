@@ -35,7 +35,8 @@ use rustc_ast::ast;
 use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
+    self, Binder, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::def_id::DefId;
 
@@ -106,8 +107,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 ty::PredicateKind::Projection(predicate) => chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
                 ),
-                ty::PredicateKind::WellFormed(..)
-                | ty::PredicateKind::ObjectSafe(..)
+                ty::PredicateKind::WellFormed(arg) => match arg.unpack() {
+                    ty::GenericArgKind::Type(ty) => chalk_ir::DomainGoal::WellFormed(
+                        chalk_ir::WellFormed::Ty(ty.lower_into(interner)),
+                    ),
+                    // FIXME(chalk): we need to change `WellFormed` in Chalk to take a `GenericArg`
+                    _ => chalk_ir::DomainGoal::WellFormed(chalk_ir::WellFormed::Ty(
+                        interner.tcx.types.unit.lower_into(interner),
+                    )),
+                },
+                ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
@@ -888,7 +897,7 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {

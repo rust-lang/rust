@@ -4,12 +4,12 @@ error[E0478]: lifetime bound not satisfied
 LL |     fn do_sth(_: u32) {}
    |     ^^^^^^^^^^^^^^^^^
    |
-note: lifetime parameter instantiated with the anonymous lifetime #2 defined here
+note: lifetime parameter instantiated with the anonymous lifetime as defined here
   --> $DIR/issue-87748.rs:18:5
    |
 LL |     fn do_sth(_: u32) {}
    |     ^^^^^^^^^^^^^^^^^
-note: but lifetime parameter must outlive the anonymous lifetime #1 defined here
+note: but lifetime parameter must outlive the anonymous lifetime as defined here
   --> $DIR/issue-87748.rs:18:5
    |
 LL |     fn do_sth(_: u32) {}

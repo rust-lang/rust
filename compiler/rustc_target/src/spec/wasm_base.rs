@@ -62,9 +62,6 @@ pub fn options() -> TargetOptions {
         dynamic_linking: true,
         only_cdylib: true,
 
-        // This means we'll just embed a `#[start]` function in the wasm module
-        executables: true,
-
         // relatively self-explanatory!
         exe_suffix: ".wasm".into(),
         dll_prefix: "".into(),

@@ -795,6 +795,68 @@ impl Error {
         }
     }
 
+    /// Attempt to downgrade the inner error to `E` if any.
+    ///
+    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// attempt to perform downgrade on it, otherwise it will return [`Err`].
+    ///
+    /// If downgrade succeeds, it will return [`Ok`], otherwise it will also
+    /// return [`Err`].
+    ///
+    /// [`new`]: Error::new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_error_downcast)]
+    ///
+    /// use std::fmt;
+    /// use std::io;
+    /// use std::error::Error;
+    ///
+    /// #[derive(Debug)]
+    /// enum E {
+    ///     Io(io::Error),
+    ///     SomeOtherVariant,
+    /// }
+    ///
+    /// impl fmt::Display for E {
+    ///    // ...
+    /// #    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #        todo!()
+    /// #    }
+    /// }
+    /// impl Error for E {}
+    ///
+    /// impl From<io::Error> for E {
+    ///     fn from(err: io::Error) -> E {
+    ///         err.downcast::<E>()
+    ///             .map(|b| *b)
+    ///             .unwrap_or_else(E::Io)
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "io_error_downcast", issue = "99262")]
+    pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
+    where
+        E: error::Error + Send + Sync + 'static,
+    {
+        match self.repr.into_data() {
+            ErrorData::Custom(b) if b.error.is::<E>() => {
+                let res = (*b).error.downcast::<E>();
+
+                // downcast is a really trivial and is marked as inline, so
+                // it's likely be inlined here.
+                //
+                // And the compiler should be able to eliminate the branch
+                // that produces `Err` here since b.error.is::<E>()
+                // returns true.
+                Ok(res.unwrap())
+            }
+            repr_data => Err(Self { repr: Repr::new(repr_data) }),
+        }
+    }
+
     /// Returns the corresponding [`ErrorKind`] for this error.
     ///
     /// # Examples

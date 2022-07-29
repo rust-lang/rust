@@ -49,8 +49,7 @@ use rustc_span::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
-use rustc_data_structures::stable_map::FxHashMap;
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use rustc_target::abi::VariantIdx;
 
@@ -142,7 +141,7 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
-            hir::ExprKind::Closure { capture_clause, body: body_id, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
                 let body = self.fcx.tcx.hir().body(body_id);
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
@@ -315,7 +314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
-        if self.tcx.sess.opts.debugging_opts.profile_closures {
+        if self.tcx.sess.opts.unstable_opts.profile_closures {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {
@@ -747,14 +746,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (migration_string, migrated_variables_concat) =
                 migration_suggestion_for_2229(self.tcx, &need_migrations);
 
-            let local_def_id = closure_def_id.expect_local();
-            let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
-            let closure_span = self.tcx.hir().span(closure_hir_id);
-            let closure_head_span = self.tcx.sess.source_map().guess_head_span(closure_span);
+            let closure_hir_id =
+                self.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+            let closure_head_span = self.tcx.def_span(closure_def_id);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
-                 closure_head_span,
+                closure_head_span,
                 |lint| {
                     let mut diagnostics_builder = lint.build(
                         &reasons.migration_message(),
@@ -827,12 +825,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         migrated_variables_concat
                     );
 
+                    let closure_span = self.tcx.hir().span_with_body(closure_hir_id);
                     let mut closure_body_span = {
                         // If the body was entirely expanded from a macro
                         // invocation, i.e. the body is not contained inside the
                         // closure span, then we walk up the expansion until we
                         // find the span before the expansion.
-                        let s = self.tcx.hir().span(body_id.hir_id);
+                        let s = self.tcx.hir().span_with_body(body_id.hir_id);
                         s.find_ancestor_inside(closure_span).unwrap_or(s)
                     };
 
@@ -949,7 +948,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let root_var_min_capture_list = min_captures.and_then(|m| m.get(&var_hir_id))?;
 
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
             hir::CaptureBy::Value => ty, // For move closure the capture kind should be by value
@@ -1065,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
     ) -> Option<FxHashSet<UpvarMigrationInfo>> {
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+        let ty = self.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
         if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
             debug!("does not have significant drop");
@@ -1707,12 +1706,14 @@ fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Span {
         hir::Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(_, _, owner_id) => tcx.hir().span(owner_id.hir_id),
             _ => {
-                bug!("Drop location span error: need to handle more ItemKind {:?}", item.kind);
+                bug!("Drop location span error: need to handle more ItemKind '{:?}'", item.kind);
             }
         },
         hir::Node::Block(block) => tcx.hir().span(block.hir_id),
+        hir::Node::TraitItem(item) => tcx.hir().span(item.hir_id()),
+        hir::Node::ImplItem(item) => tcx.hir().span(item.hir_id()),
         _ => {
-            bug!("Drop location span error: need to handle more Node {:?}", owner_node);
+            bug!("Drop location span error: need to handle more Node '{:?}'", owner_node);
         }
     };
     tcx.sess.source_map().end_point(owner_span)

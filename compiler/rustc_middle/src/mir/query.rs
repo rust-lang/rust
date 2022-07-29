@@ -2,7 +2,7 @@
 
 use crate::mir::{Body, ConstantKind, Promoted};
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -35,7 +35,6 @@ pub enum UnsafetyViolationDetails {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -77,11 +76,6 @@ impl UnsafetyViolationDetails {
                 "dereference of raw pointer",
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
-            ),
-            AssignToDroppingUnionField => (
-                "assignment to union field that might need dropping",
-                "the previous content of the field will be dropped, which causes undefined \
-                 behavior if the field was not properly initialized",
             ),
             AccessToUnionField => (
                 "access to union field",
@@ -161,7 +155,7 @@ rustc_index::newtype_index! {
 }
 
 /// The layout of generator state.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
     pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
@@ -241,7 +235,7 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: VecMap<DefId, OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,

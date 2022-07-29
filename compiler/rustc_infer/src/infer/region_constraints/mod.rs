@@ -12,7 +12,6 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
-use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
 use rustc_middle::ty::ReStatic;
@@ -165,7 +164,7 @@ pub struct Verify<'tcx> {
     pub bound: VerifyBound<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Projection(ty::ProjectionTy<'tcx>),
@@ -272,7 +271,7 @@ pub enum VerifyBound<'tcx> {
 ///     }
 /// }
 /// ```
-#[derive(Debug, Copy, Clone, TypeFoldable)]
+#[derive(Debug, Copy, Clone, TypeFoldable, TypeVisitable)]
 pub struct VerifyIfEq<'tcx> {
     /// Type which must match the generic `G`
     pub ty: Ty<'tcx>,
@@ -533,7 +532,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn member_constraint(
         &mut self,
-        opaque_type_def_id: DefId,
+        key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
         hidden_ty: Ty<'tcx>,
         member_region: ty::Region<'tcx>,
@@ -546,7 +545,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
 
         self.data.member_constraints.push(MemberConstraint {
-            opaque_type_def_id,
+            key,
             definition_span,
             hidden_ty,
             member_region,

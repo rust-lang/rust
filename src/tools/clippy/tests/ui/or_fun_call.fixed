@@ -210,7 +210,8 @@ mod issue8239 {
                 let _ = "";
                 acc.push_str(&f);
                 acc
-            }).unwrap_or_default();
+            })
+            .unwrap_or_default();
     }
 
     fn less_than_max_suggestion_highest_lines() {
@@ -220,7 +221,8 @@ mod issue8239 {
         map.reduce(|mut acc, f| {
             acc.push_str(&f);
             acc
-        }).unwrap_or_default();
+        })
+        .unwrap_or_default();
     }
 }
 

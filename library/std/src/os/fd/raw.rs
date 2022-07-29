@@ -14,6 +14,7 @@ use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
 
 /// Raw file descriptors.
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type RawFd = raw::c_int;
 
@@ -22,6 +23,7 @@ pub type RawFd = raw::c_int;
 /// This is only available on unix and WASI platforms and must be imported in
 /// order to call the method. Windows platforms have a corresponding
 /// `AsRawHandle` and `AsRawSocket` set of traits.
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
@@ -57,6 +59,7 @@ pub trait AsRawFd {
 
 /// A trait to express the ability to construct an object from a raw file
 /// descriptor.
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
@@ -73,7 +76,7 @@ pub trait FromRawFd {
     ///
     /// # Safety
     ///
-    /// The `fd` passed in must be a valid an open file descriptor.
+    /// The `fd` passed in must be a valid and open file descriptor.
     ///
     /// # Example
     ///
@@ -100,6 +103,7 @@ pub trait FromRawFd {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw file descriptor.
+#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
@@ -220,5 +224,36 @@ impl<'a> AsRawFd for io::StderrLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDERR_FILENO
+    }
+}
+
+/// This impl allows implementing traits that require `AsRawFd` on Arc.
+/// ```
+/// # #[cfg(any(unix, target_os = "wasi"))] mod group_cfg {
+/// # #[cfg(target_os = "wasi")]
+/// # use std::os::wasi::io::AsRawFd;
+/// # #[cfg(unix)]
+/// # use std::os::unix::io::AsRawFd;
+/// use std::net::UdpSocket;
+/// use std::sync::Arc;
+/// trait MyTrait: AsRawFd {
+/// }
+/// impl MyTrait for Arc<UdpSocket> {}
+/// impl MyTrait for Box<UdpSocket> {}
+/// # }
+/// ```
+#[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
+impl<T: AsRawFd> AsRawFd for crate::sync::Arc<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
+#[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
+impl<T: AsRawFd> AsRawFd for Box<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
     }
 }

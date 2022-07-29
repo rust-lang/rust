@@ -2,7 +2,7 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
+    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking,
     ScalarMaybeUninit, StackPopCleanup,
 };
 
@@ -19,11 +19,9 @@ use rustc_target::abi::{self, Abi};
 use std::borrow::Cow;
 use std::convert::TryInto;
 
-pub fn note_on_undefined_behavior_error() -> &'static str {
-    "The rules on what exactly is undefined behavior aren't clear, \
+const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is undefined behavior aren't clear, \
      so this check might be overzealous. Please open an issue on the rustc \
-     repository if you believe it should not be considered undefined behavior."
-}
+     repository if you believe it should not be considered undefined behavior.";
 
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
@@ -159,7 +157,7 @@ pub(super) fn op_to_const<'tcx>(
                     "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
                 );
-                ConstValue::Scalar(Scalar::ZST)
+                ConstValue::ZeroSized
             }
         }
     };
@@ -167,6 +165,7 @@ pub(super) fn op_to_const<'tcx>(
         Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
+            _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
                 ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
@@ -174,23 +173,23 @@ pub(super) fn op_to_const<'tcx>(
             Immediate::ScalarPair(a, b) => {
                 debug!("ScalarPair(a: {:?}, b: {:?})", a, b);
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (data, start) =
-                    match ecx.scalar_to_ptr(a.check_init().unwrap()).unwrap().into_parts() {
-                        (Some(alloc_id), offset) => {
-                            (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
-                        }
-                        (None, _offset) => (
-                            ecx.tcx.intern_const_alloc(
-                                Allocation::from_bytes_byte_aligned_immutable(b"" as &[u8]),
-                            ),
-                            0,
-                        ),
-                    };
+                let (data, start) = match a.to_pointer(ecx).unwrap().into_parts() {
+                    (Some(alloc_id), offset) => {
+                        (ecx.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
+                    }
+                    (None, _offset) => (
+                        ecx.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
+                            b"" as &[u8],
+                        )),
+                        0,
+                    ),
+                };
                 let len = b.to_machine_usize(ecx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
             }
+            Immediate::Uninit => to_const_value(&op.assert_mem_place()),
         },
     }
 }
@@ -337,7 +336,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     }
                 };
 
-                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), &msg))
+                Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
             } else {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
                 Err(err.report_as_lint(
@@ -375,7 +374,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
                     |diag| {
-                        diag.note(note_on_undefined_behavior_error());
+                        diag.note(NOTE_ON_UNDEFINED_BEHAVIOR_ERROR);
                         diag.note(&format!(
                             "the raw bytes of the constant ({}",
                             display_allocation(

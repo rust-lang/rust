@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, Binder, Instance, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+    self, Binder, Instance, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::{sym, DUMMY_SP};
 use rustc_trait_selection::traits;
@@ -56,7 +56,7 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     type BreakTy = ();
 
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -280,6 +280,11 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
+            // If the item does not have a value, then we cannot return an instance.
+            if !leaf_def.item.defaultness.has_value() {
+                return Ok(None);
+            }
+
             let substs = tcx.erase_regions(substs);
 
             // Check if we just resolved an associated `const` declaration from
@@ -332,12 +337,12 @@ fn resolve_associated_item<'tcx>(
         }),
         traits::ImplSource::Closure(closure_data) => {
             let trait_closure_kind = tcx.fn_trait_kind_from_lang_item(trait_id).unwrap();
-            Some(Instance::resolve_closure(
+            Instance::resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
                 closure_data.substs,
                 trait_closure_kind,
-            ))
+            )
         }
         traits::ImplSource::FnPointer(ref data) => match data.fn_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {

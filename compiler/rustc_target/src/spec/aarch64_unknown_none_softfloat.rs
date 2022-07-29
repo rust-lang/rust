@@ -14,7 +14,6 @@ pub fn target() -> Target {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".into()),
         features: "+strict-align,-neon,-fp-armv8".into(),
-        executables: true,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),

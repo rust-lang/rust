@@ -6,6 +6,7 @@ store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
     LintId::of(utils::internal_lints::CLIPPY_LINTS_INTERNAL),
     LintId::of(utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS),
     LintId::of(utils::internal_lints::COMPILER_LINT_FUNCTIONS),
+    LintId::of(utils::internal_lints::DEFAULT_DEPRECATION_REASON),
     LintId::of(utils::internal_lints::DEFAULT_LINT),
     LintId::of(utils::internal_lints::IF_CHAIN_STYLE),
     LintId::of(utils::internal_lints::INTERNING_DEFINED_SYMBOL),

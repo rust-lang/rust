@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
-use crate::query::config::{QueryDescription, QueryVtable};
+use crate::query::config::{QueryDescription, QueryVTable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -331,7 +331,7 @@ fn try_execute_query<CTX, C>(
     span: Span,
     key: C::Key,
     dep_node: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
+    query: &QueryVTable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
 where
     C: QueryCache,
@@ -368,7 +368,7 @@ fn execute_job<CTX, K, V>(
     tcx: CTX,
     key: K,
     mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
     job_id: QueryJobId,
 ) -> (V, DepNodeIndex)
 where
@@ -437,7 +437,7 @@ fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
     key: &K,
     dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) -> Option<(V, DepNodeIndex)>
 where
     K: Clone,
@@ -467,7 +467,7 @@ where
 
         if let Some(result) = result {
             if std::intrinsics::unlikely(
-                tcx.dep_context().sess().opts.debugging_opts.query_dep_graph,
+                tcx.dep_context().sess().opts.unstable_opts.query_dep_graph,
             ) {
                 dep_graph.mark_debug_loaded_from_disk(*dep_node)
             }
@@ -486,7 +486,7 @@ where
             // give us some coverage of potential bugs though.
             let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
             if std::intrinsics::unlikely(
-                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich,
+                try_verify || tcx.dep_context().sess().opts.unstable_opts.incremental_verify_ich,
             ) {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }
@@ -530,7 +530,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
     dep_node: &DepNode<CTX::DepKind>,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) where
     CTX: QueryContext,
 {
@@ -542,8 +542,7 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 
     debug!("BEGIN verify_ich({:?})", dep_node);
     let new_hash = query.hash_result.map_or(Fingerprint::ZERO, |f| {
-        let mut hcx = tcx.create_stable_hashing_context();
-        f(&mut hcx, result)
+        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
     });
     let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
     debug!("END verify_ich({:?})", dep_node);
@@ -643,7 +642,7 @@ fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: D
 fn ensure_must_run<CTX, K, V>(
     tcx: CTX,
     key: &K,
-    query: &QueryVtable<CTX, K, V>,
+    query: &QueryVTable<CTX, K, V>,
 ) -> (bool, Option<DepNode<CTX::DepKind>>)
 where
     K: crate::dep_graph::DepNodeParams<CTX::DepContext>,

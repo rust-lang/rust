@@ -44,14 +44,8 @@ LL | enum Question {
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
    |
-LL | / pub trait Not {
-LL | |     /// The resulting type after applying the `!` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn not(self) -> Self::Output;
-LL | | }
-   | |_^
+LL | pub trait Not {
+   | ^^^^^^^^^^^^^
 
 error[E0604]: only `u8` can be cast as `char`, not `u32`
   --> $DIR/error-festival.rs:25:5

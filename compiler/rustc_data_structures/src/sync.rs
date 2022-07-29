@@ -21,6 +21,7 @@ use crate::owning_ref::{Erased, OwningRef};
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
+use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 pub use std::sync::atomic::Ordering;
 pub use std::sync::atomic::Ordering::SeqCst;
@@ -41,7 +42,6 @@ cfg_if! {
         }
 
         use std::ops::Add;
-        use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
         /// It has explicit ordering arguments and is only intended for use with
@@ -146,7 +146,7 @@ cfg_if! {
             t.into_iter()
         }
 
-        pub fn par_for_each_in<T: IntoIterator>(t: T, for_each: impl Fn(T::Item) + Sync + Send) {
+        pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
             let mut panic = None;
@@ -339,7 +339,10 @@ cfg_if! {
             t: T,
             for_each: impl Fn(T::Item) + Sync + Send,
         ) {
-            t.into_par_iter().for_each(for_each)
+            let ps: Vec<_> = t.into_par_iter().map(|i| catch_unwind(AssertUnwindSafe(|| for_each(i)))).collect();
+            ps.into_iter().for_each(|p| if let Err(panic) = p {
+                resume_unwind(panic)
+            });
         }
 
         pub type MetadataRef = OwningRef<Box<dyn Erased + Send + Sync>, [u8]>;
@@ -535,6 +538,33 @@ impl<T> RwLock<T> {
     #[inline(always)]
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
+    }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
+        ReadGuard::clone(rg)
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
+        ReadGuard::rwlock(&rg).read()
+    }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        ReadGuard::leak(self.read())
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        let guard = self.read();
+        let ret = unsafe { &*(&*guard as *const T) };
+        std::mem::forget(guard);
+        ret
     }
 }
 

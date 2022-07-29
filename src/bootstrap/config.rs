@@ -11,7 +11,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{exit, Command};
+use std::process::Command;
 use std::str::FromStr;
 
 use crate::builder::{Builder, TaskPath};
@@ -226,6 +226,7 @@ pub struct Stage0Config {
     pub artifacts_server: String,
     pub artifacts_with_llvm_assertions_server: String,
     pub git_merge_commit_email: String,
+    pub nightly_branch: String,
 }
 #[derive(Default, Deserialize)]
 #[cfg_attr(test, derive(Clone))]
@@ -410,7 +411,11 @@ pub struct Target {
 impl Target {
     pub fn from_triple(triple: &str) -> Self {
         let mut target: Self = Default::default();
-        if triple.contains("-none") || triple.contains("nvptx") {
+        if triple.contains("-none")
+            || triple.contains("nvptx")
+            || triple.contains("switch")
+            || triple.contains("-uefi")
+        {
             target.no_std = true;
         }
         target
@@ -805,8 +810,6 @@ impl Config {
         let get_toml = |_| TomlConfig::default();
         #[cfg(not(test))]
         let get_toml = |file: &Path| {
-            use std::process;
-
             let contents =
                 t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
             // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
@@ -817,7 +820,7 @@ impl Config {
                 Ok(table) => table,
                 Err(err) => {
                     eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    process::exit(2);
+                    crate::detail_exit(2);
                 }
             }
         };
@@ -857,7 +860,7 @@ impl Config {
         let build = toml.build.unwrap_or_default();
 
         set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
-        set(&mut config.out, build.build_dir.map(PathBuf::from));
+        set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
         if !config.out.is_absolute() {
@@ -1128,11 +1131,7 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc_commit = download_ci_rustc_commit(
-                &config.stage0_metadata,
-                rust.download_rustc,
-                config.verbose > 0,
-            );
+            config.download_rustc_commit = download_ci_rustc_commit(&config, rust.download_rustc);
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
@@ -1304,6 +1303,15 @@ impl Config {
         config
     }
 
+    /// A git invocation which runs inside the source directory.
+    ///
+    /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.
+    pub(crate) fn git(&self) -> Command {
+        let mut git = Command::new("git");
+        git.current_dir(&self.src);
+        git
+    }
+
     /// Try to find the relative path of `bindir`, otherwise return it in full.
     pub fn bindir_relative(&self) -> &Path {
         let bindir = &self.bindir;
@@ -1453,9 +1461,8 @@ fn threads_from_config(v: u32) -> u32 {
 
 /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
 fn download_ci_rustc_commit(
-    stage0_metadata: &Stage0Metadata,
+    config: &Config,
     download_rustc: Option<StringOrBool>,
-    verbose: bool,
 ) -> Option<String> {
     // If `download-rustc` is not set, default to rebuilding.
     let if_unchanged = match download_rustc {
@@ -1468,7 +1475,7 @@ fn download_ci_rustc_commit(
     };
 
     // Handle running from a directory other than the top level
-    let top_level = output(Command::new("git").args(&["rev-parse", "--show-toplevel"]));
+    let top_level = output(config.git().args(&["rev-parse", "--show-toplevel"]));
     let top_level = top_level.trim_end();
     let compiler = format!("{top_level}/compiler/");
     let library = format!("{top_level}/library/");
@@ -1476,9 +1483,10 @@ fn download_ci_rustc_commit(
     // Look for a version to compare to based on the current commit.
     // Only commits merged by bors will have CI artifacts.
     let merge_base = output(
-        Command::new("git")
+        config
+            .git()
             .arg("rev-list")
-            .arg(format!("--author={}", stage0_metadata.config.git_merge_commit_email))
+            .arg(format!("--author={}", config.stage0_metadata.config.git_merge_commit_email))
             .args(&["-n1", "--first-parent", "HEAD"]),
     );
     let commit = merge_base.trim_end();
@@ -1487,17 +1495,18 @@ fn download_ci_rustc_commit(
         println!("help: maybe your repository history is too shallow?");
         println!("help: consider disabling `download-rustc`");
         println!("help: or fetch enough history to include one upstream commit");
-        exit(1);
+        crate::detail_exit(1);
     }
 
     // Warn if there were changes to the compiler or standard library since the ancestor commit.
-    let has_changes = !t!(Command::new("git")
+    let has_changes = !t!(config
+        .git()
         .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
         .status())
     .success();
     if has_changes {
         if if_unchanged {
-            if verbose {
+            if config.verbose > 0 {
                 println!(
                     "warning: saw changes to compiler/ or library/ since {commit}; \
                           ignoring `download-rustc`"
@@ -1560,7 +1569,7 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
         let lib_dir = bin_root.join("lib");
-        for lib in t!(fs::read_dir(lib_dir)) {
+        for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if lib.path().extension() == Some(OsStr::new("so")) {
                 builder.fix_bin_or_dylib(&lib.path());
@@ -1636,6 +1645,7 @@ fn download_component(
         }
         Some(sha256)
     } else if tarball.exists() {
+        builder.unpack(&tarball, &bin_root, prefix);
         return;
     } else {
         None

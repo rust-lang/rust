@@ -135,7 +135,7 @@ LL |     hint_unreachable()
    |     inside `<i32 as Const>::CONSTANT` at $DIR/uninhabited-const-issue-61744.rs:13:36
 ...
 LL |     const CONSTANT: i32 = unsafe { fake_type() };
-   |     ---------------------------------------------
+   |     -------------------
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -288,7 +288,7 @@ LL |     hint_unreachable()
    |     inside `<i32 as Const>::CONSTANT` at $DIR/uninhabited-const-issue-61744.rs:13:36
 ...
 LL |     const CONSTANT: i32 = unsafe { fake_type() };
-   |     ---------------------------------------------
+   |     -------------------
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

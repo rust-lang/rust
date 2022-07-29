@@ -51,12 +51,11 @@ Future incompatibility report: Future breakage diagnostic:
 warning: any use of this value will cause an error
   --> $DIR/const_refers_to_static.rs:13:5
    |
-LL | / const MUTATE_INTERIOR_MUT: usize = {
-LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
-LL | |     FOO.fetch_add(1, Ordering::Relaxed)
-   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `AtomicUsize::fetch_add`
-LL | | };
-   | |__-
+LL | const MUTATE_INTERIOR_MUT: usize = {
+   | --------------------------------
+LL |     static FOO: AtomicUsize = AtomicUsize::new(0);
+LL |     FOO.fetch_add(1, Ordering::Relaxed)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `AtomicUsize::fetch_add`
    |
 note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:3:10
@@ -70,12 +69,11 @@ Future breakage diagnostic:
 warning: any use of this value will cause an error
   --> $DIR/const_refers_to_static.rs:18:14
    |
-LL | / const READ_INTERIOR_MUT: usize = {
-LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
-LL | |     unsafe { *(&FOO as *const _ as *const usize) }
-   | |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
-LL | | };
-   | |__-
+LL | const READ_INTERIOR_MUT: usize = {
+   | ------------------------------
+LL |     static FOO: AtomicUsize = AtomicUsize::new(0);
+LL |     unsafe { *(&FOO as *const _ as *const usize) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
    |
 note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:3:10
@@ -90,9 +88,7 @@ warning: any use of this value will cause an error
   --> $DIR/const_refers_to_static.rs:22:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
-   | -------------------------------^^^^^^^---
-   |                                |
-   |                                constant accesses static
+   | -------------------            ^^^^^^^ constant accesses static
    |
 note: the lint level is defined here
   --> $DIR/const_refers_to_static.rs:3:10

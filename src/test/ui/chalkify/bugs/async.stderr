@@ -29,13 +29,10 @@ LL |     T: Generator<ResumeTy, Yield = ()>,
    |                            ^^^^^^^^^^ required by this bound in `std::future::from_generator`
 
 error[E0280]: the requirement `<impl Future<Output = u32> as Future>::Output == u32` is not satisfied
-  --> $DIR/async.rs:7:29
+  --> $DIR/async.rs:7:25
    |
-LL |   async fn foo(x: u32) -> u32 {
-   |  _____________________________^
-LL | |     x
-LL | | }
-   | |_^
+LL | async fn foo(x: u32) -> u32 {
+   |                         ^^^
 
 error: aborting due to 3 previous errors
 

@@ -14,7 +14,7 @@ use super::INEFFICIENT_TO_STRING;
 /// Checks for the `INEFFICIENT_TO_STRING` lint
 pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
     if_chain! {
-        if args.len() == 1 && method_name == sym!(to_string);
+        if args.len() == 1 && method_name == sym::to_string;
         if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);
         if let Some(substs) = cx.typeck_results().node_substs_opt(expr.hir_id);

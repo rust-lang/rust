@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{
     self,
     error::TypeError,

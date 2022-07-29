@@ -1,15 +1,14 @@
 use crate::check::coercion::{AsCoercionSite, CoerceMany};
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    StatementAsExpression,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -75,8 +74,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut other_arms = vec![]; // Used only for diagnostics.
-        let mut prior_arm_ty = None;
-        for (i, arm) in arms.iter().enumerate() {
+        let mut prior_arm = None;
+        for arm in arms {
             if let Some(g) = &arm.guard {
                 self.diverges.set(Diverges::Maybe);
                 match g {
@@ -96,21 +95,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let opt_suggest_box_span = self.opt_suggest_box_span(arm_ty, orig_expected);
 
-            let (arm_span, semi_span) =
-                self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
-            let (span, code) = match i {
+            let (arm_block_id, arm_span) = if let hir::ExprKind::Block(blk, _) = arm.body.kind {
+                (Some(blk.hir_id), self.find_block_span(blk))
+            } else {
+                (None, arm.body.span)
+            };
+
+            let (span, code) = match prior_arm {
                 // The reason for the first arm to fail is not that the match arms diverge,
                 // but rather that there's a prior obligation that doesn't hold.
-                0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
-                _ => (
+                None => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
+                Some((prior_arm_block_id, prior_arm_ty, prior_arm_span)) => (
                     expr.span,
                     ObligationCauseCode::MatchExpressionArm(Box::new(MatchExpressionArmCause {
+                        arm_block_id,
                         arm_span,
+                        arm_ty,
+                        prior_arm_block_id,
+                        prior_arm_ty,
+                        prior_arm_span,
                         scrut_span: scrut.span,
-                        semi_span,
                         source: match_src,
                         prior_arms: other_arms.clone(),
-                        last_ty: prior_arm_ty.unwrap(),
                         scrut_hir_id: scrut.hir_id,
                         opt_suggest_box_span,
                     })),
@@ -127,7 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &cause,
                 Some(&arm.body),
                 arm_ty,
-                Some(&mut |err: &mut Diagnostic| {
+                Some(&mut |err| {
                     let Some(ret) = self.ret_type_span else {
                         return;
                     };
@@ -139,7 +145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let ret_ty = ret_coercion.borrow().expected_ty();
                             let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
                             self.can_coerce(arm_ty, ret_ty)
-                                && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
+                                && prior_arm.map_or(true, |(_, t, _)| self.can_coerce(t, ret_ty))
                                 // The match arms need to unify for the case of `impl Trait`.
                                 && !matches!(ret_ty.kind(), ty::Opaque(..))
                         }
@@ -154,18 +160,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ret_span.push_span_label(
                         expr.span,
                         "this could be implicitly returned but it is a statement, not a \
-                            tail expression"
-                            .to_owned(),
+                            tail expression",
                     );
-                    ret_span.push_span_label(
-                        ret,
-                        "the `match` arms can conform to this return type".to_owned(),
-                    );
+                    ret_span
+                        .push_span_label(ret, "the `match` arms can conform to this return type");
                     ret_span.push_span_label(
                         semi_span,
                         "the `match` is a statement because of this semicolon, consider \
-                            removing it"
-                            .to_owned(),
+                            removing it",
                     );
                     err.span_note(
                         ret_span,
@@ -185,7 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if other_arms.len() > 5 {
                 other_arms.remove(0);
             }
-            prior_arm_ty = Some(arm_ty);
+
+            prior_arm = Some((arm_block_id, arm_ty, arm_span));
         }
 
         // If all of the arms in the `match` diverge,
@@ -209,28 +212,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let match_ty = coercion.complete(self);
         debug!(?match_ty);
         match_ty
-    }
-
-    fn get_appropriate_arm_semicolon_removal_span(
-        &self,
-        arms: &'tcx [hir::Arm<'tcx>],
-        i: usize,
-        prior_arm_ty: Option<Ty<'tcx>>,
-        arm_ty: Ty<'tcx>,
-    ) -> (Span, Option<(Span, StatementAsExpression)>) {
-        let arm = &arms[i];
-        let (arm_span, mut semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
-            self.find_block_span(blk, prior_arm_ty)
-        } else {
-            (arm.body.span, None)
-        };
-        if semi_span.is_none() && i > 0 {
-            if let hir::ExprKind::Block(blk, _) = &arms[i - 1].body.kind {
-                let (_, semi_span_prev) = self.find_block_span(blk, Some(arm_ty));
-                semi_span = semi_span_prev;
-            }
-        }
-        (arm_span, semi_span)
     }
 
     /// When the previously checked expression (the scrutinee) diverges,
@@ -263,11 +244,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &cause,
             &mut |err| {
                 if let Some((span, msg)) = &ret_reason {
-                    err.span_label(*span, msg.as_str());
+                    err.span_label(*span, msg);
                 } else if let ExprKind::Block(block, _) = &then_expr.kind
                     && let Some(expr) = &block.expr
                 {
-                    err.span_label(expr.span, "found here".to_string());
+                    err.span_label(expr.span, "found here");
                 }
                 err.note("`if` expressions without `else` evaluate to `()`");
                 err.help("consider adding an `else` block that evaluates to the expected type");
@@ -317,7 +298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else_ty: Ty<'tcx>,
         opt_suggest_box_span: Option<Span>,
     ) -> ObligationCause<'tcx> {
-        let mut outer_sp = if self.tcx.sess.source_map().is_multiline(span) {
+        let mut outer_span = if self.tcx.sess.source_map().is_multiline(span) {
             // The `if`/`else` isn't in one line in the output, include some context to make it
             // clear it is an if/else expression:
             // ```
@@ -343,69 +324,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        let mut remove_semicolon = None;
-        let error_sp = if let ExprKind::Block(block, _) = &else_expr.kind {
-            let (error_sp, semi_sp) = self.find_block_span(block, Some(then_ty));
-            remove_semicolon = semi_sp;
-            if block.expr.is_none() && block.stmts.is_empty() {
-                // Avoid overlapping spans that aren't as readable:
-                // ```
-                // 2 |        let x = if true {
-                //   |   _____________-
-                // 3 |  |         3
-                //   |  |         - expected because of this
-                // 4 |  |     } else {
-                //   |  |____________^
-                // 5 | ||
-                // 6 | ||     };
-                //   | ||     ^
-                //   | ||_____|
-                //   | |______if and else have incompatible types
-                //   |        expected integer, found `()`
-                // ```
-                // by not pointing at the entire expression:
-                // ```
-                // 2 |       let x = if true {
-                //   |               ------- `if` and `else` have incompatible types
-                // 3 |           3
-                //   |           - expected because of this
-                // 4 |       } else {
-                //   |  ____________^
-                // 5 | |
-                // 6 | |     };
-                //   | |_____^ expected integer, found `()`
-                // ```
-                if outer_sp.is_some() {
-                    outer_sp = Some(self.tcx.sess.source_map().guess_head_span(span));
-                }
+        let (error_sp, else_id) = if let ExprKind::Block(block, _) = &else_expr.kind {
+            let block = block.innermost_block();
+
+            // Avoid overlapping spans that aren't as readable:
+            // ```
+            // 2 |        let x = if true {
+            //   |   _____________-
+            // 3 |  |         3
+            //   |  |         - expected because of this
+            // 4 |  |     } else {
+            //   |  |____________^
+            // 5 | ||
+            // 6 | ||     };
+            //   | ||     ^
+            //   | ||_____|
+            //   | |______if and else have incompatible types
+            //   |        expected integer, found `()`
+            // ```
+            // by not pointing at the entire expression:
+            // ```
+            // 2 |       let x = if true {
+            //   |               ------- `if` and `else` have incompatible types
+            // 3 |           3
+            //   |           - expected because of this
+            // 4 |       } else {
+            //   |  ____________^
+            // 5 | |
+            // 6 | |     };
+            //   | |_____^ expected integer, found `()`
+            // ```
+            if block.expr.is_none() && block.stmts.is_empty()
+                && let Some(outer_span) = &mut outer_span
+            {
+                *outer_span = self.tcx.sess.source_map().guess_head_span(*outer_span);
             }
-            error_sp
+
+            (self.find_block_span(block), block.hir_id)
         } else {
-            // shouldn't happen unless the parser has done something weird
-            else_expr.span
+            (else_expr.span, else_expr.hir_id)
         };
 
-        // Compute `Span` of `then` part of `if`-expression.
-        let then_sp = if let ExprKind::Block(block, _) = &then_expr.kind {
-            let (then_sp, semi_sp) = self.find_block_span(block, Some(else_ty));
-            remove_semicolon = remove_semicolon.or(semi_sp);
+        let then_id = if let ExprKind::Block(block, _) = &then_expr.kind {
+            let block = block.innermost_block();
+            // Exclude overlapping spans
             if block.expr.is_none() && block.stmts.is_empty() {
-                outer_sp = None; // same as in `error_sp`; cleanup output
+                outer_span = None;
             }
-            then_sp
+            block.hir_id
         } else {
-            // shouldn't happen unless the parser has done something weird
-            then_expr.span
+            then_expr.hir_id
         };
 
         // Finally construct the cause:
         self.cause(
             error_sp,
             ObligationCauseCode::IfExpression(Box::new(IfExpressionCause {
-                then: then_sp,
-                else_sp: error_sp,
-                outer: outer_sp,
-                semicolon: remove_semicolon,
+                else_id,
+                then_id,
+                then_ty,
+                else_ty,
+                outer_span,
                 opt_suggest_box_span,
             })),
         )
@@ -486,22 +465,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn find_block_span(
-        &self,
-        block: &'tcx hir::Block<'tcx>,
-        expected_ty: Option<Ty<'tcx>>,
-    ) -> (Span, Option<(Span, StatementAsExpression)>) {
-        if let Some(expr) = &block.expr {
-            (expr.span, None)
-        } else if let Some(stmt) = block.stmts.last() {
-            // possibly incorrect trailing `;` in the else arm
-            (stmt.span, expected_ty.and_then(|ty| self.could_remove_semicolon(block, ty)))
-        } else {
-            // empty block; point at its entirety
-            (block.span, None)
-        }
-    }
-
     // When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
     // we check if the different arms would work with boxed trait objects instead and
     // provide a structured suggestion in that case.
@@ -525,7 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
                                         def_id: t.def_id(),
-                                        substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
+                                        substs: self.tcx.mk_substs_trait(outer_ty, &[]),
                                     },
                                     constness: t.constness,
                                     polarity: t.polarity,
@@ -533,9 +496,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let obl = Obligation::new(
                                 o.cause.clone(),
                                 self.param_env,
-                                pred.to_predicate(self.infcx.tcx),
+                                pred.to_predicate(self.tcx),
                             );
-                            suggest_box &= self.infcx.predicate_must_hold_modulo_regions(&obl);
+                            suggest_box &= self.predicate_must_hold_modulo_regions(&obl);
                             if !suggest_box {
                                 // We've encountered some obligation that didn't hold, so the
                                 // return expression can't just be boxed. We don't need to

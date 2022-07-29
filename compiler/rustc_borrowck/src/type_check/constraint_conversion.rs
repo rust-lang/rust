@@ -6,7 +6,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -22,8 +22,18 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
+    /// Each RBP `GK: 'a` is assumed to be true. These encode
+    /// relationships like `T: 'a` that are added via implicit bounds
+    /// or the `param_env`.
+    ///
+    /// Each region here is guaranteed to be a key in the `indices`
+    /// map. We use the "original" regions (i.e., the keys from the
+    /// map, and not the values) because the code in
+    /// `process_registered_region_obligations` has some special-cased
+    /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
+    /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    implicit_region_bound: Option<ty::Region<'tcx>>,
+    implicit_region_bound: ty::Region<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
     span: Span,
@@ -36,7 +46,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         infcx: &'a InferCtxt<'a, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
+        implicit_region_bound: ty::Region<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         span: Span,
@@ -108,7 +118,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 // create new region variables, which can't be done later when
                 // verifying these bounds.
                 if t1.has_placeholders() {
-                    t1 = tcx.fold_regions(t1, &mut false, |r, _| match *r {
+                    t1 = tcx.fold_regions(t1, |r, _| match *r {
                         ty::RePlaceholder(placeholder) => {
                             self.constraints.placeholder_region(self.infcx, placeholder)
                         }
@@ -120,7 +130,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     &mut *self,
                     tcx,
                     region_bound_pairs,
-                    implicit_region_bound,
+                    Some(implicit_region_bound),
                     param_env,
                 )
                 .type_must_outlive(origin, t1, r2);

@@ -4,7 +4,6 @@ use std::fmt::Debug;
 
 type Foo = impl Debug;
 //~^ ERROR cycle detected
-//~| ERROR cycle detected
 
 fn is_send<T: Send>() { }
 

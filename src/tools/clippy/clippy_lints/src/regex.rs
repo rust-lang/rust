@@ -19,7 +19,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// Regex::new("|")
+    /// Regex::new("(")
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub INVALID_REGEX,

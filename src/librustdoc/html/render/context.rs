@@ -22,7 +22,7 @@ use super::{
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
-use crate::config::RenderOptions;
+use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -95,7 +95,7 @@ pub(crate) struct SharedContext<'tcx> {
     created_dirs: RefCell<FxHashSet<PathBuf>>,
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
-    pub(super) sort_modules_alphabetically: bool,
+    pub(super) module_sorting: ModuleSorting,
     /// Additional CSS files to be added to the generated docs.
     pub(crate) style_files: Vec<StylePath>,
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
@@ -280,10 +280,13 @@ impl<'tcx> Context<'tcx> {
             }
         }
 
-        if self.shared.sort_modules_alphabetically {
-            for items in map.values_mut() {
-                items.sort();
+        match self.shared.module_sorting {
+            ModuleSorting::Alphabetical => {
+                for items in map.values_mut() {
+                    items.sort();
+                }
             }
+            ModuleSorting::DeclarationOrder => {}
         }
         map
     }
@@ -394,7 +397,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             external_html,
             id_map,
             playground_url,
-            sort_modules_alphabetically,
+            module_sorting,
             themes: style_files,
             default_settings,
             extension_css,
@@ -476,7 +479,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             issue_tracker_base_url,
             layout,
             created_dirs: Default::default(),
-            sort_modules_alphabetically,
+            module_sorting,
             style_files,
             resource_suffix,
             static_root_path,

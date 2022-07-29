@@ -3,7 +3,6 @@
 
 //! Test the part of RFC 2514 that is about not applying `DerefMut` coercions
 //! of union fields.
-#![feature(untagged_unions)]
 
 use std::mem::ManuallyDrop;
 

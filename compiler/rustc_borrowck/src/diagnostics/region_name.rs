@@ -34,13 +34,13 @@ pub(crate) enum RegionNameSource {
     /// The `'static` region.
     Static,
     /// The free region corresponding to the environment of a closure.
-    SynthesizedFreeEnvRegion(Span, String),
+    SynthesizedFreeEnvRegion(Span, &'static str),
     /// The region corresponding to an argument.
     AnonRegionFromArgument(RegionNameHighlight),
     /// The region corresponding to a closure upvar.
-    AnonRegionFromUpvar(Span, String),
+    AnonRegionFromUpvar(Span, Symbol),
     /// The region corresponding to the return type of a closure.
-    AnonRegionFromOutput(RegionNameHighlight, String),
+    AnonRegionFromOutput(RegionNameHighlight, &'static str),
     /// The region from a type yielded by a generator.
     AnonRegionFromYieldTy(Span, String),
     /// An anonymous region from an async fn.
@@ -110,7 +110,7 @@ impl RegionName {
             }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
                 diag.span_label(*span, format!("lifetime `{self}` represents this closure's body"));
-                diag.note(note);
+                diag.note(*note);
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
@@ -325,7 +325,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
                     };
-                    let hir::ExprKind::Closure { fn_decl_span, .. }
+                    let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. })
                         = tcx.hir().expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
@@ -350,10 +350,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
                     Some(RegionName {
                         name: region_name,
-                        source: RegionNameSource::SynthesizedFreeEnvRegion(
-                            fn_decl_span,
-                            note.to_string(),
-                        ),
+                        source: RegionNameSource::SynthesizedFreeEnvRegion(fn_decl_span, note),
                     })
                 }
 
@@ -592,8 +589,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
             hir::LifetimeName::Param(_, hir::ParamName::Fresh)
             | hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Implicit
-            | hir::LifetimeName::Underscore => {
+            | hir::LifetimeName::Infer => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //
@@ -678,7 +674,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: region_name,
-            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name.to_string()),
+            source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
         })
     }
 
@@ -701,16 +697,16 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let (return_span, mir_description, hir_ty) = match hir.get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl, body, fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, body, fn_decl_span, .. }),
                 ..
             }) => {
                 let (mut span, mut hir_ty) = match fn_decl.output {
                     hir::FnRetTy::DefaultReturn(_) => {
-                        (tcx.sess.source_map().end_point(*fn_decl_span), None)
+                        (tcx.sess.source_map().end_point(fn_decl_span), None)
                     }
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
-                let mir_description = match hir.body(*body).generator_kind {
+                let mir_description = match hir.body(body).generator_kind {
                     Some(hir::GeneratorKind::Async(gen)) => match gen {
                         hir::AsyncGeneratorKind::Block => " of async block",
                         hir::AsyncGeneratorKind::Closure => " of async closure",
@@ -756,7 +752,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: self.synthesize_region_name(),
-            source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description.to_string()),
+            source: RegionNameSource::AnonRegionFromOutput(highlight, mir_description),
         })
     }
 
@@ -841,9 +837,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let yield_span = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure { fn_decl_span, .. },
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
-            }) => (tcx.sess.source_map().end_point(*fn_decl_span)),
+            }) => (tcx.sess.source_map().end_point(fn_decl_span)),
             _ => self.body.span,
         };
 
@@ -879,7 +875,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
 
         let mut found = false;
-        tcx.fold_regions(tcx.type_of(body_parent_did), &mut true, |r: ty::Region<'tcx>, _| {
+        tcx.fold_regions(tcx.type_of(body_parent_did), |r: ty::Region<'tcx>, _| {
             if *r == ty::ReEarlyBound(region) {
                 found = true;
             }

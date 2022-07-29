@@ -73,7 +73,18 @@ mod inner {
     fn f() {}
 }
 
+fn anon_const() -> [(); {
+    fn blah() {} //~ ERROR: function `blah` is never used
+    1
+}] {
+    [(); {
+        fn blah() {} //~ ERROR: function `blah` is never used
+        1
+    }]
+}
+
 pub fn foo() {
     let a: &dyn inner::Trait = &1_isize;
     a.f();
+    anon_const();
 }

@@ -32,6 +32,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
@@ -46,7 +47,7 @@ pub use self::SelectionError::*;
 
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
-pub use self::engine::TraitEngineExt;
+pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::is_vtable_safe_method;
@@ -59,8 +60,9 @@ pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
-pub use self::structural_match::search_for_structural_match_violation;
-pub use self::structural_match::{NonStructuralMatchTy, NonStructuralMatchTyKind};
+pub use self::structural_match::{
+    search_for_adt_const_param_violation, search_for_structural_match_violation,
+};
 pub use self::util::{
     elaborate_obligations, elaborate_predicates, elaborate_predicates_with_span,
     elaborate_trait_ref, elaborate_trait_refs,
@@ -162,7 +164,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
+        let mut fulfill_cx = FulfillmentContext::new();
 
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
@@ -198,33 +200,29 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(tcx, elaborated_env))]
 fn do_normalize_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    region_context: DefId,
     cause: ObligationCause<'tcx>,
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
-    debug!(
-        "do_normalize_predicates(predicates={:?}, region_context={:?}, cause={:?})",
-        predicates, region_context, cause,
-    );
     let span = cause.span;
-    tcx.infer_ctxt().enter(|infcx| {
-        // FIXME. We should really... do something with these region
-        // obligations. But this call just continues the older
-        // behavior (i.e., doesn't cause any new bugs), and it would
-        // take some further refactoring to actually solve them. In
-        // particular, we would have to handle implied bounds
-        // properly, and that code is currently largely confined to
-        // regionck (though I made some efforts to extract it
-        // out). -nmatsakis
-        //
-        // @arielby: In any case, these obligations are checked
-        // by wfcheck anyway, so I'm not sure we have to check
-        // them here too, and we will remove this function when
-        // we move over to lazy normalization *anyway*.
-        let fulfill_cx = FulfillmentContext::new_ignoring_regions();
+    // FIXME. We should really... do something with these region
+    // obligations. But this call just continues the older
+    // behavior (i.e., doesn't cause any new bugs), and it would
+    // take some further refactoring to actually solve them. In
+    // particular, we would have to handle implied bounds
+    // properly, and that code is currently largely confined to
+    // regionck (though I made some efforts to extract it
+    // out). -nmatsakis
+    //
+    // @arielby: In any case, these obligations are checked
+    // by wfcheck anyway, so I'm not sure we have to check
+    // them here too, and we will remove this function when
+    // we move over to lazy normalization *anyway*.
+    tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
+        let fulfill_cx = FulfillmentContext::new();
         let predicates =
             match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
                 Ok(predicates) => predicates,
@@ -240,38 +238,46 @@ fn do_normalize_predicates<'tcx>(
         // cares about declarations like `'a: 'b`.
         let outlives_env = OutlivesEnvironment::new(elaborated_env);
 
-        infcx.resolve_regions_and_report_errors(region_context, &outlives_env);
+        // FIXME: It's very weird that we ignore region obligations but apparently
+        // still need to use `resolve_regions` as we need the resolved regions in
+        // the normalized predicates.
+        let errors = infcx.resolve_regions(&outlives_env);
+        if !errors.is_empty() {
+            tcx.sess.delay_span_bug(
+                span,
+                format!(
+                    "failed region resolution while normalizing {elaborated_env:?}: {errors:?}"
+                ),
+            );
+        }
 
-        let predicates = match infcx.fully_resolve(predicates) {
-            Ok(predicates) => predicates,
+        match infcx.fully_resolve(predicates) {
+            Ok(predicates) => Ok(predicates),
             Err(fixup_err) => {
                 // If we encounter a fixup error, it means that some type
                 // variable wound up unconstrained. I actually don't know
                 // if this can happen, and I certainly don't expect it to
                 // happen often, but if it did happen it probably
                 // represents a legitimate failure due to some kind of
-                // unconstrained variable, and it seems better not to ICE,
-                // all things considered.
-                let reported = tcx.sess.span_err(span, &fixup_err.to_string());
-                return Err(reported);
+                // unconstrained variable.
+                //
+                // @lcnr: Let's still ICE here for now. I want a test case
+                // for that.
+                span_bug!(
+                    span,
+                    "inference variables in normalized parameter environment: {}",
+                    fixup_err
+                );
             }
-        };
-        if predicates.needs_infer() {
-            let reported = tcx
-                .sess
-                .delay_span_bug(span, "encountered inference variables after `fully_resolve`");
-            Err(reported)
-        } else {
-            Ok(predicates)
         }
     })
 }
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
+#[instrument(level = "debug", skip(tcx))]
 pub fn normalize_param_env_or_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    region_context: DefId,
     unnormalized_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
@@ -289,12 +295,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-
-    debug!(
-        "normalize_param_env_or_error(region_context={:?}, unnormalized_env={:?}, cause={:?})",
-        region_context, unnormalized_env, cause
-    );
-
     let mut predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
             .map(|obligation| obligation.predicate)
@@ -338,7 +338,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
     let Ok(non_outlives_predicates) = do_normalize_predicates(
         tcx,
-        region_context,
         cause.clone(),
         elaborated_env,
         predicates,
@@ -362,7 +361,6 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
     let Ok(outlives_predicates) = do_normalize_predicates(
         tcx,
-        region_context,
         cause,
         outlives_env,
         outlives_predicates,
@@ -856,20 +854,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
-        thir_abstract_const: |tcx, def_id| {
-            let def_id = def_id.expect_local();
-            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
-                tcx.thir_abstract_const_of_const_arg(def)
-            } else {
-                const_evaluatable::thir_abstract_const(tcx, ty::WithOptConstParam::unknown(def_id))
-            }
-        },
-        thir_abstract_const_of_const_arg: |tcx, (did, param_did)| {
-            const_evaluatable::thir_abstract_const(
-                tcx,
-                ty::WithOptConstParam { did, const_param_did: Some(param_did) },
-            )
-        },
         try_unify_abstract_consts: |tcx, param_env_and| {
             let (param_env, (a, b)) = param_env_and.into_parts();
             const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)

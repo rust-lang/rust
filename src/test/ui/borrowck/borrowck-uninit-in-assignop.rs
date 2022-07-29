@@ -3,32 +3,32 @@
 
 pub fn main() {
     let x: isize;
-    x += 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x += 1; //~ ERROR E0381
 
     let x: isize;
-    x -= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x -= 1; //~ ERROR E0381
 
     let x: isize;
-    x *= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x *= 1; //~ ERROR E0381
 
     let x: isize;
-    x /= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x /= 1; //~ ERROR E0381
 
     let x: isize;
-    x %= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x %= 1; //~ ERROR E0381
 
     let x: isize;
-    x ^= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x ^= 1; //~ ERROR E0381
 
     let x: isize;
-    x &= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x &= 1; //~ ERROR E0381
 
     let x: isize;
-    x |= 1; //~ ERROR use of possibly-uninitialized variable: `x`
+    x |= 1; //~ ERROR E0381
 
     let x: isize;
-    x <<= 1;    //~ ERROR use of possibly-uninitialized variable: `x`
+    x <<= 1; //~ ERROR E0381
 
     let x: isize;
-    x >>= 1;    //~ ERROR use of possibly-uninitialized variable: `x`
+    x >>= 1; //~ ERROR E0381
 }

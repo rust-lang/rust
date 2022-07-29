@@ -1,19 +1,19 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 
-#![feature(untagged_unions)]
-
 union Foo {
     bar: i8,
     zst: (),
     pizza: Pizza,
 }
 
+#[derive(Clone, Copy)]
 struct Pizza {
     topping: Option<PizzaTopping>
 }
 
 #[allow(dead_code)]
+#[derive(Clone, Copy)]
 enum PizzaTopping {
     Cheese,
     Pineapple,

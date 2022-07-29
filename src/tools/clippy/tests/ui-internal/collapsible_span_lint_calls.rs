@@ -55,7 +55,12 @@ impl EarlyLintPass for Pass {
             if predicate {
                 db.note(note_msg);
             }
-        })
+        });
+
+        // Issue #8798
+        span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            db.help(help_msg).help(help_msg);
+        });
     }
 }
 

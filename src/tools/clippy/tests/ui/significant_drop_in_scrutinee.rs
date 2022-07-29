@@ -64,6 +64,19 @@ fn should_trigger_lint_with_mutex_guard_in_match_scrutinee() {
     };
 }
 
+fn should_not_trigger_lint_with_mutex_guard_in_match_scrutinee_when_lint_allowed() {
+    let mutex = Mutex::new(State {});
+
+    // Lint should not be triggered because it is "allowed" below.
+    #[allow(clippy::significant_drop_in_scrutinee)]
+    match mutex.lock().unwrap().foo() {
+        true => {
+            mutex.lock().unwrap().bar();
+        },
+        false => {},
+    };
+}
+
 fn should_not_trigger_lint_for_insignificant_drop() {
     // Should not trigger lint because there are no temporaries whose drops have a significant
     // side effect.
@@ -588,6 +601,29 @@ fn should_trigger_lint_for_read_write_lock_for_loop() {
     let rwlock = RwLock::<Vec<String>>::new(vec!["1".to_string()]);
     for s in rwlock.read().unwrap().iter() {
         println!("{}", s);
+    }
+}
+
+fn do_bar(mutex: &Mutex<State>) {
+    mutex.lock().unwrap().bar();
+}
+
+fn should_trigger_lint_without_significant_drop_in_arm() {
+    let mutex = Mutex::new(State {});
+
+    // Should trigger lint because the lifetime of the temporary MutexGuard is surprising because it
+    // is preserved until the end of the match, but there is no clear indication that this is the
+    // case.
+    match mutex.lock().unwrap().foo() {
+        true => do_bar(&mutex),
+        false => {},
+    };
+}
+
+fn should_not_trigger_on_significant_iterator_drop() {
+    let lines = std::io::stdin().lines();
+    for line in lines {
+        println!("foo: {}", line.unwrap());
     }
 }
 

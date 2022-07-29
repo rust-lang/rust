@@ -133,7 +133,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // We should've returned in the for loop above.
 
-        self.sess.diagnostic().span_bug(
+        self.diagnostic().span_bug(
             p.span,
             &format!(
                 "lower_qpath: no final extension segment in {}..{}",
@@ -193,7 +193,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
                     ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
                     ParenthesizedGenericArgs::Err => {
-                        let mut err = struct_span_err!(self.sess, data.span, E0214, "{}", msg);
+                        let mut err = struct_span_err!(self.tcx.sess, data.span, E0214, "{}", msg);
                         err.span_label(data.span, "only `Fn` traits may use parentheses");
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
                         if !data.inputs.is_empty() {

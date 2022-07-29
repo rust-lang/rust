@@ -45,7 +45,7 @@ note: ...does not necessarily outlive the static lifetime introduced by the comp
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:21:1
    |
 LL | impl C for Box<dyn A + 'static> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: incompatible lifetime on type
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:37:18

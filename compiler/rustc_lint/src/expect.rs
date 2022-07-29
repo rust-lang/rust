@@ -1,4 +1,5 @@
 use crate::builtin;
+use rustc_errors::fluent;
 use rustc_hir::HirId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
@@ -43,13 +44,13 @@ fn emit_unfulfilled_expectation_lint(
         hir_id,
         expectation.emission_span,
         |diag| {
-            let mut diag = diag.build("this lint expectation is unfulfilled");
+            let mut diag = diag.build(fluent::lint::expectation);
             if let Some(rationale) = expectation.reason {
                 diag.note(rationale.as_str());
             }
 
             if expectation.is_unfulfilled_lint_expectations {
-                diag.note("the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message");
+                diag.note(fluent::lint::note);
             }
 
             diag.emit();

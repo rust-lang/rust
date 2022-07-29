@@ -6,14 +6,14 @@
 -include ../../run-make-fulldeps/tools.mk
 
 all:
+	$(RUSTC) --crate-type lib --crate-name raw_dylib_alt_calling_convention_test lib.rs
+	$(RUSTC) --crate-type bin driver.rs -L "$(TMPDIR)"
 	$(call COMPILE_OBJ,"$(TMPDIR)"/extern.obj,extern.c)
 ifdef IS_MSVC
-	$(CC) "$(TMPDIR)"/extern.obj -link -dll -out:"$(TMPDIR)"/extern.dll
+	$(CC) "$(TMPDIR)"/extern.obj -link -dll -out:"$(TMPDIR)"/extern.dll -noimplib
 else
 	$(CC) "$(TMPDIR)"/extern.obj -shared -o "$(TMPDIR)"/extern.dll
 endif
-	$(RUSTC) --crate-type lib --crate-name raw_dylib_alt_calling_convention_test lib.rs
-	$(RUSTC) --crate-type bin driver.rs -L "$(TMPDIR)"
 	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt
 
 ifdef RUSTC_BLESS_TEST

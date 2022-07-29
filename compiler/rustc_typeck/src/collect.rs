@@ -59,7 +59,7 @@ struct OnlySelfBounds(bool);
 // Main entry point
 
 fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut CollectItemTypesVisitor { tcx });
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CollectItemTypesVisitor { tcx });
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -393,7 +393,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
-        let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match *r {
+        let ty = self.tcx.fold_regions(ty, |r, _| match *r {
             ty::ReErased => self.tcx.lifetimes.re_static,
             _ => r,
         });
@@ -1346,16 +1346,8 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
             match self.tcx.named_region(lt.hir_id) {
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
-                Some(
-                    rl::Region::LateBound(debruijn, _, _)
-                    | rl::Region::LateBoundAnon(debruijn, _, _),
-                ) if debruijn < self.outer_index => {}
-                Some(
-                    rl::Region::LateBound(..)
-                    | rl::Region::LateBoundAnon(..)
-                    | rl::Region::Free(..),
-                )
-                | None => {
+                Some(rl::Region::LateBound(debruijn, _, _)) if debruijn < self.outer_index => {}
+                Some(rl::Region::LateBound(..) | rl::Region::Free(..)) | None => {
                     self.has_late_bound_regions = Some(lt.span);
                 }
             }
@@ -1717,8 +1709,10 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { movability: gen, .. }, .. }) =
-        node
+    if let Node::Expr(&hir::Expr {
+        kind: hir::ExprKind::Closure(hir::Closure { movability: gen, .. }),
+        ..
+    }) = node
     {
         let dummy_args = if gen.is_some() {
             &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
@@ -1917,7 +1911,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
         Some(ty) => {
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.
-            let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match *r {
+            let fn_sig = tcx.fold_regions(fn_sig, |r, _| match *r {
                 ty::ReErased => tcx.lifetimes.re_static,
                 _ => r,
             });
@@ -1927,7 +1921,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.skip_binder().output();
-            if ret_ty.is_suggestable(tcx) {
+            if ret_ty.is_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
@@ -1936,7 +1930,12 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 );
             } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
                 let fn_sig = ret_ty.fn_sig(tcx);
-                if fn_sig.skip_binder().inputs_and_output.iter().all(|t| t.is_suggestable(tcx)) {
+                if fn_sig
+                    .skip_binder()
+                    .inputs_and_output
+                    .iter()
+                    .all(|t| t.is_suggestable(tcx, false))
+                {
                     diag.span_suggestion(
                         ty.span,
                         "replace with the correct return type",
@@ -2083,10 +2082,17 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
         // from the trait itself that *shouldn't* be shown as the source of
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
+
+        let constness = if tcx.has_attr(def_id, sym::const_trait) {
+            ty::BoundConstness::ConstIfConst
+        } else {
+            ty::BoundConstness::NotConst
+        };
+
         let span = rustc_span::DUMMY_SP;
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(tcx),
+                ty::TraitRef::identity(tcx, def_id).with_constness(constness).to_predicate(tcx),
                 span,
             ))));
     }
@@ -2264,12 +2270,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         // compiler/tooling bugs from not handling WF predicates.
                     } else {
                         let span = bound_pred.bounded_ty.span;
-                        let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::Binder::bind_with_vars(
-                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                ty,
-                                re_root_empty,
-                            )),
+                            ty::PredicateKind::WellFormed(ty.into()),
                             bound_vars,
                         );
                         predicates.insert((predicate.to_predicate(tcx), span));
@@ -2568,7 +2570,7 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Expr(&rustc_hir::Expr {
-            kind: rustc_hir::ExprKind::Closure { body, .. },
+            kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
             ..
         })) => tcx.hir().body(body).generator_kind(),
         Some(_) => None,
@@ -2772,6 +2774,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
         } else if attr.has_name(sym::rustc_allocator_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
+        } else if attr.has_name(sym::rustc_reallocator) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
+        } else if attr.has_name(sym::rustc_deallocator) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR;
+        } else if attr.has_name(sym::rustc_allocator_zeroed) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED;
         } else if attr.has_name(sym::naked) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
         } else if attr.has_name(sym::no_mangle) {
@@ -2815,7 +2823,37 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         )
                         .emit();
                 }
-                None => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED,
+                None => {
+                    // Unfortunately, unconditionally using `llvm.used` causes
+                    // issues in handling `.init_array` with the gold linker,
+                    // but using `llvm.compiler.used` caused a nontrival amount
+                    // of unintentional ecosystem breakage -- particularly on
+                    // Mach-O targets.
+                    //
+                    // As a result, we emit `llvm.compiler.used` only on ELF
+                    // targets. This is somewhat ad-hoc, but actually follows
+                    // our pre-LLVM 13 behavior (prior to the ecosystem
+                    // breakage), and seems to match `clang`'s behavior as well
+                    // (both before and after LLVM 13), possibly because they
+                    // have similar compatibility concerns to us. See
+                    // https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146
+                    // and following comments for some discussion of this, as
+                    // well as the comments in `rustc_codegen_llvm` where these
+                    // flags are handled.
+                    //
+                    // Anyway, to be clear: this is still up in the air
+                    // somewhat, and is subject to change in the future (which
+                    // is a good thing, because this would ideally be a bit
+                    // more firmed up).
+                    let is_like_elf = !(tcx.sess.target.is_like_osx
+                        || tcx.sess.target.is_like_windows
+                        || tcx.sess.target.is_like_wasm);
+                    codegen_fn_attrs.flags |= if is_like_elf {
+                        CodegenFnAttrFlags::USED
+                    } else {
+                        CodegenFnAttrFlags::USED_LINKER
+                    };
+                }
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
             if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
@@ -2941,6 +2979,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
                     } else if item.has_name(sym::memtag) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
+                    } else if item.has_name(sym::shadow_call_stack) {
+                        codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
                     } else if item.has_name(sym::thread) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
                     } else if item.has_name(sym::hwaddress) {
@@ -2948,7 +2988,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     } else {
                         tcx.sess
                             .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                            .note("expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, or `thread`")
+                            .note("expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
                             .emit();
                     }
                 }
@@ -3200,7 +3240,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
 fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
-    let mut target_features = tcx.sess.target_features.clone();
+    let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
         target_features.extend(&attrs.target_features);

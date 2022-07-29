@@ -336,7 +336,7 @@ impl<'a> Resolver<'a> {
 struct UnresolvedImportError {
     span: Span,
     label: Option<String>,
-    note: Vec<String>,
+    note: Option<String>,
     suggestion: Option<Suggestion>,
 }
 
@@ -427,7 +427,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let err = UnresolvedImportError {
                     span: import.span,
                     label: None,
-                    note: Vec::new(),
+                    note: None,
                     suggestion: None,
                 };
                 if path.contains("::") {
@@ -463,10 +463,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
 
-        if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
-            for message in note {
-                diag.note(message);
-            }
+        if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
+            diag.note(note);
         }
 
         for (_, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
@@ -644,7 +642,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
-                            note: Vec::new(),
+                            note: None,
                             suggestion,
                         },
                     };
@@ -686,7 +684,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         return Some(UnresolvedImportError {
                             span: import.span,
                             label: Some(String::from("cannot glob-import a module into itself")),
-                            note: Vec::new(),
+                            note: None,
                             suggestion: None,
                         });
                     }
@@ -830,7 +828,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let (suggestion, note) =
                     match self.check_for_module_export_macro(import, module, ident) {
                         Some((suggestion, note)) => (suggestion.or(lev_suggestion), note),
-                        _ => (lev_suggestion, Vec::new()),
+                        _ => (lev_suggestion, None),
                     };
 
                 let label = match module {
@@ -1090,31 +1088,31 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
 
-        let mut reexports = Vec::new();
+        if let Some(def_id) = module.opt_def_id() {
+            let mut reexports = Vec::new();
 
-        module.for_each_child(self.r, |_, ident, _, binding| {
-            // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
-            // into the crate root to actual `NameBindingKind::Import`.
-            if binding.is_import()
-                || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
-            {
-                let res = binding.res().expect_non_local();
-                // Ambiguous imports are treated as errors at this point and are
-                // not exposed to other crates (see #36837 for more details).
-                if res != def::Res::Err && !binding.is_ambiguity() {
-                    reexports.push(ModChild {
-                        ident,
-                        res,
-                        vis: binding.vis,
-                        span: binding.span,
-                        macro_rules: false,
-                    });
+            module.for_each_child(self.r, |_, ident, _, binding| {
+                // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
+                // into the crate root to actual `NameBindingKind::Import`.
+                if binding.is_import()
+                    || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
+                {
+                    let res = binding.res().expect_non_local();
+                    // Ambiguous imports are treated as errors at this point and are
+                    // not exposed to other crates (see #36837 for more details).
+                    if res != def::Res::Err && !binding.is_ambiguity() {
+                        reexports.push(ModChild {
+                            ident,
+                            res,
+                            vis: binding.vis,
+                            span: binding.span,
+                            macro_rules: false,
+                        });
+                    }
                 }
-            }
-        });
+            });
 
-        if !reexports.is_empty() {
-            if let Some(def_id) = module.opt_def_id() {
+            if !reexports.is_empty() {
                 // Call to `expect_local` should be fine because current
                 // code is only called for local modules.
                 self.r.reexport_map.insert(def_id.expect_local(), reexports);

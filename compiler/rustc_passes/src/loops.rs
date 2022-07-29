@@ -31,7 +31,7 @@ struct CheckLoopVisitor<'a, 'hir> {
 }
 
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().deep_visit_item_likes_in_module(
+    tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckLoopVisitor { sess: &tcx.sess, hir_map: tcx.hir(), cx: Normal },
     );
@@ -57,7 +57,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Loop(ref b, _, source, _) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure { ref fn_decl, body, fn_decl_span, movability, .. } => {
+            hir::ExprKind::Closure(&hir::Closure {
+                ref fn_decl,
+                body,
+                fn_decl_span,
+                movability,
+                ..
+            }) => {
                 let cx = if let Some(Movability::Static) = movability {
                     AsyncClosure(fn_decl_span)
                 } else {

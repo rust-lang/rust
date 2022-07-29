@@ -13,6 +13,7 @@ pub enum Exception {
 // CHECK-LABEL: @access
 #[no_mangle]
 pub fn access(array: &[usize; 12], exc: Exception) -> usize {
-    // CHECK-NOT: panic_bounds_check
+    // FIXME: panic check can be removed by adding the assumes back after https://github.com/rust-lang/rust/pull/98332
+    // CHECK: panic_bounds_check
     array[(exc as u8 - 4) as usize]
 }

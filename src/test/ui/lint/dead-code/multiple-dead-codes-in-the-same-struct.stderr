@@ -5,12 +5,12 @@ LL | struct Bar {
    |        --- fields in this struct
 ...
 LL |     d: usize,
-   |     ^^^^^^^^
+   |     ^
 ...
 LL |     f: usize,
-   |     ^^^^^^^^
+   |     ^
 LL |     g: usize,
-   |     ^^^^^^^^
+   |     ^
    |
 note: the lint level is defined here
   --> $DIR/multiple-dead-codes-in-the-same-struct.rs:1:9
@@ -25,10 +25,10 @@ LL | struct Bar {
    |        --- fields in this struct
 ...
 LL |     c: usize,
-   |     ^^^^^^^^
+   |     ^
 ...
 LL |     e: usize,
-   |     ^^^^^^^^
+   |     ^
    |
 note: the lint level is defined here
   --> $DIR/multiple-dead-codes-in-the-same-struct.rs:8:12
@@ -43,7 +43,7 @@ LL | struct Bar {
    |        --- field in this struct
 ...
 LL |     b: usize,
-   |     ^^^^^^^^
+   |     ^
    |
 note: the lint level is defined here
   --> $DIR/multiple-dead-codes-in-the-same-struct.rs:6:14

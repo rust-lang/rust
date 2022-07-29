@@ -1,3 +1,5 @@
+// aux-build:proc_macro_derive.rs
+
 #![allow(
     unused,
     dead_code,
@@ -6,6 +8,9 @@
     clippy::needless_arbitrary_self_type
 )]
 #![warn(clippy::extra_unused_lifetimes)]
+
+#[macro_use]
+extern crate proc_macro_derive;
 
 fn empty() {}
 
@@ -112,6 +117,13 @@ mod second_case {
     impl<'a, T: Source + ?Sized + 'a> Source for Box<T> {
         fn hey() {}
     }
+}
+
+// Should not lint
+#[derive(ExtraLifetimeDerive)]
+struct Human<'a> {
+    pub bones: i32,
+    pub name: &'a str,
 }
 
 fn main() {}

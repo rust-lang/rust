@@ -34,7 +34,7 @@ note: the struct `Crate` is defined here
   --> $DIR/auxiliary/pub_restricted.rs:1:1
    |
 LL | pub(crate) struct Crate;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0603]: function `f` is private
   --> $DIR/test.rs:30:19

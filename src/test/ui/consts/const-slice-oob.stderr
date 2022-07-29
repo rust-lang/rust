@@ -2,9 +2,7 @@ error: any use of this value will cause an error
   --> $DIR/const-slice-oob.rs:4:18
    |
 LL | const BAR: u32 = FOO[5];
-   | -----------------^^^^^^-
-   |                  |
-   |                  index out of bounds: the length is 3 but the index is 5
+   | --------------   ^^^^^^ index out of bounds: the length is 3 but the index is 5
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -17,9 +15,7 @@ error: any use of this value will cause an error
   --> $DIR/const-slice-oob.rs:4:18
    |
 LL | const BAR: u32 = FOO[5];
-   | -----------------^^^^^^-
-   |                  |
-   |                  index out of bounds: the length is 3 but the index is 5
+   | --------------   ^^^^^^ index out of bounds: the length is 3 but the index is 5
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

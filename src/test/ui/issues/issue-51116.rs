@@ -5,7 +5,6 @@ fn main() {
             *tile = 0;
             //~^ ERROR type annotations needed
             //~| NOTE cannot infer type
-            //~| NOTE type must be known at this point
         }
     }
 

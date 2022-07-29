@@ -42,9 +42,8 @@ error[E0072]: recursive type `T4` has infinite size
   --> $DIR/type-recursive.rs:16:1
    |
 LL | struct T4(Option<T4>);
-   | ^^^^^^^^^^----------^^
-   | |         |
-   | |         recursive without indirection
+   | ^^^^^^^^^ ---------- recursive without indirection
+   | |
    | recursive type has infinite size
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T4` representable

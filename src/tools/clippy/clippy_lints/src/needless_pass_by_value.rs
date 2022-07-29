@@ -13,7 +13,7 @@ use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, TypeFoldable};
+use rustc_middle::ty::{self, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::kw;
 use rustc_span::{sym, Span};

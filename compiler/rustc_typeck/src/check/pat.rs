@@ -13,7 +13,7 @@ use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitable};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -183,7 +183,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, def_bm, ti)
             }
-            PatKind::Path(_) => self.check_pat_path(pat, path_res.unwrap(), expected, ti),
+            PatKind::Path(ref qpath) => {
+                self.check_pat_path(pat, qpath, path_res.unwrap(), expected, ti)
+            }
             PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                 self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, def_bm, ti)
             }
@@ -800,6 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_path<'b>(
         &self,
         pat: &Pat<'_>,
+        qpath: &hir::QPath<'_>,
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
         expected: Ty<'tcx>,
         ti: TopInfo<'tcx>,
@@ -814,7 +817,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return tcx.ty_error();
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
-                report_unexpected_variant_res(tcx, res, pat.span);
+                report_unexpected_variant_res(tcx, res, qpath, pat.span);
                 return tcx.ty_error();
             }
             Res::SelfCtor(..)

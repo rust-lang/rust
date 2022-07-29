@@ -114,6 +114,9 @@ body {
 	-webkit-font-feature-settings: "kern", "liga";
 	-moz-font-feature-settings: "kern", "liga";
 	font-feature-settings: "kern", "liga";
+
+	background-color: var(--main-background-color);
+	color: var(--main-color);
 }
 
 h1 {
@@ -138,6 +141,10 @@ h1, h2, h3, h4 {
 h1.fqn {
 	margin: 0;
 	padding: 0;
+	border-bottom-color: var(--headings-border-bottom-color);
+}
+h2, h3, h4 {
+	border-bottom-color: var(--headings-border-bottom-color);
 }
 .main-heading {
 	display: flex;
@@ -158,9 +165,9 @@ h1.fqn {
 	Underlines elsewhere in the documentation break up visual flow and tend to invert
 	section hierarchies. */
 h2,
-.top-doc h3,
-.top-doc h4 {
-	border-bottom: 1px solid;
+.top-doc .docblock > h3,
+.top-doc .docblock > h4 {
+	border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 h3.code-header {
 	font-size: 1.125rem; /* 18px */
@@ -209,9 +216,38 @@ details.rustdoc-toggle > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate,
 a.srclink,
+#main-content > .since,
+#help-button > button,
+details.rustdoc-toggle.top-doc > summary,
+details.rustdoc-toggle.top-doc > summary::before,
+details.rustdoc-toggle.non-exhaustive > summary,
+details.rustdoc-toggle.non-exhaustive > summary::before,
+.scraped-example-title,
+.more-examples-toggle summary, .more-examples-toggle .hide-more,
+.example-links a,
 /* This selector is for the items listed in the "all items" page. */
 #main-content > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
+}
+
+h1, h2, h3, h4,
+a#toggle-all-docs,
+a.anchor,
+.small-section-header a,
+#source-sidebar a,
+pre.rust a,
+.sidebar h2 a,
+.sidebar h3 a,
+.mobile-topbar h2 a,
+.in-band a,
+.search-results a,
+.module-item .stab,
+.import-item .stab,
+.result-name .primitive > i, .result-name .keyword > i,
+.content .method .where,
+.content .fn .where,
+.content .where.fmt-newline {
+	color: var(--main-color);
 }
 
 ol, ul {
@@ -354,6 +390,10 @@ nav.sub {
 	object-fit: contain;
 }
 
+.sidebar, .mobile-topbar, .sidebar-menu-toggle {
+	background-color: var(--sidebar-background-color);
+}
+
 .sidebar {
 	font-size: 0.875rem;
 	width: 250px;
@@ -391,6 +431,14 @@ nav.sub {
 	display: none;
 }
 
+.source .sidebar, #sidebar-toggle, #source-sidebar {
+	background-color: var(--sidebar-background-color);
+}
+
+#sidebar-toggle > button:hover, #sidebar-toggle > button:focus {
+	background-color: var(--sidebar-background-color-hover);
+}
+
 .source .sidebar > *:not(#sidebar-toggle) {
 	opacity: 0;
 	visibility: hidden;
@@ -412,9 +460,11 @@ nav.sub {
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-width: initial;
+	scrollbar-color: var(--scrollbar-color);
 }
 .sidebar {
 	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-color);
 }
 
 /* Improve the scrollbar display on webkit-based browsers */
@@ -426,6 +476,13 @@ nav.sub {
 }
 ::-webkit-scrollbar-track {
 	-webkit-box-shadow: inset 0;
+	background-color: var(--scrollbar-track-background-color);
+}
+.sidebar::-webkit-scrollbar-track {
+	background-color: var(--scrollbar-track-background-color);
+}
+::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-thumb-background-color);
 }
 
 /* Everything else */
@@ -595,7 +652,7 @@ h2.location a {
 }
 
 .top-doc .docblock h2 { font-size: 1.375rem; }
-.top-doc .docblock h3 { font-size: 1.25; }
+.top-doc .docblock h3 { font-size: 1.25rem; }
 .top-doc .docblock h4,
 .top-doc .docblock h5 {
 	font-size: 1.125rem;
@@ -606,6 +663,9 @@ h2.location a {
 
 .docblock h5 { font-size: 1rem; }
 .docblock h6 { font-size: 0.875rem; }
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
+	border-bottom-color: var(--headings-border-bottom-color);
+}
 
 .docblock {
 	margin-left: 24px;
@@ -629,11 +689,6 @@ h2.location a {
 	display: block;
 }
 
-.invisible {
-	width: 100%;
-	display: inline-block;
-}
-
 .content .in-band {
 	flex-grow: 1;
 	margin: 0px;
@@ -646,12 +701,16 @@ h2.location a {
 	display: inline-block;
 }
 
+.docblock code, .docblock-short code,
+pre, .rustdoc.source .example-wrap {
+	background-color: var(--code-block-background-color);
+}
+
 #main-content {
 	position: relative;
 }
 #main-content > .since {
 	top: inherit;
-	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -898,8 +957,7 @@ table,
 #crate-search {
 	min-width: 115px;
 	margin-top: 5px;
-	margin-left: 0.25em;
-	padding-left: 0.3125em;
+	padding-left: 0.15em;
 	padding-right: 23px;
 	border: 1px solid;
 	border-radius: 4px;
@@ -908,13 +966,13 @@ table,
 	-moz-appearance: none;
 	-webkit-appearance: none;
 	/* Removes default arrow from firefox */
-	text-indent: 0.01px;
-	text-overflow: "";
 	background-repeat: no-repeat;
 	background-color: transparent;
 	background-size: 20px;
 	background-position: calc(100% - 1px) 56%;
 	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
+	max-width: 100%;
+	text-overflow: ellipsis;
 }
 .search-container {
 	margin-top: 4px;
@@ -934,7 +992,6 @@ table,
 	border-radius: 2px;
 	padding: 8px;
 	font-size: 1rem;
-	transition: border-color 300ms ease;
 	width: 100%;
 }
 
@@ -1006,6 +1063,11 @@ table,
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
+}
+
+.popover, .popover::before {
+	background-color: var(--main-background-color);
+	color: var(--main-color);
 }
 
 #help-button .popover {
@@ -1370,7 +1432,6 @@ pre.rust {
 	position: sticky;
 	top: 0;
 	left: 0;
-	cursor: pointer;
 	font-weight: bold;
 	font-size: 1.25rem;
 	border-bottom: 1px solid;
@@ -1391,7 +1452,24 @@ pre.rust {
 	border-bottom: 1px solid;
 	margin-bottom: 6px;
 }
-
+#sidebar-toggle > button {
+	background: none;
+	color: inherit;
+	cursor: pointer;
+	text-align: center;
+	border: none;
+	outline: none;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	/* work around button layout strangeness: https://stackoverflow.com/q/7271561 */
+	width: 100%;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
+}
 #settings-menu, #help-button {
 	margin-left: 4px;
 	outline: none;
@@ -1428,8 +1506,26 @@ pre.rust {
 	animation: rotating 2s linear infinite;
 }
 
+.setting-line .radio-line input:checked {
+	box-shadow: inset 0 0 0 3px var(--main-background-color);
+	background-color: var(--settings-input-color);
+}
+.setting-line .radio-line input:focus {
+	box-shadow: 0 0 1px 1px var(--settings-input-color);
+}
+/* In here we combine both `:focus` and `:checked` properties. */
+.setting-line .radio-line input:checked:focus {
+	box-shadow: inset 0 0 0 3px var(--main-background-color),
+		0 0 2px 2px var(--settings-input-color);
+}
+.setting-line .radio-line input:hover {
+	border-color: var(--settings-input-color) !important;
+}
+input:checked + .slider {
+	background-color: var(--settings-input-color);
+}
+
 #help-button > button {
-	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */
@@ -1528,37 +1624,22 @@ kbd {
 	margin-bottom: 1em;
 }
 
-div.children {
-	padding-left: 27px;
-	display: none;
-}
-div.name {
-	cursor: pointer;
-	position: relative;
-	margin-left: 16px;
-}
-div.files > a {
-	display: block;
-	padding: 0 3px;
-}
-div.files > a:hover, div.name:hover {
-	background-color: #a14b4b;
-}
-div.name.expand + .children {
-	display: block;
-}
-div.name::before {
-	content: "\25B6";
+details.dir-entry {
 	padding-left: 4px;
-	font-size: 0.625rem;
-	position: absolute;
-	left: -16px;
-	top: 4px;
 }
-div.name.expand::before {
-	transform: rotate(90deg);
-	left: -15px;
-	top: 2px;
+
+details.dir-entry > summary {
+	margin: 0 0 0 13px;
+	list-style-position: outside;
+	cursor: pointer;
+}
+
+details.dir-entry div.folders, details.dir-entry div.files {
+	padding-left: 23px;
+}
+
+details.dir-entry a {
+	display: block;
 }
 
 /* The hideme class is used on summary tags that contain a span with
@@ -1616,7 +1697,6 @@ details.rustdoc-toggle.top-doc > summary,
 details.rustdoc-toggle.top-doc > summary::before,
 details.rustdoc-toggle.non-exhaustive > summary,
 details.rustdoc-toggle.non-exhaustive > summary::before {
-	font-family: 'Fira Sans';
 	font-size: 1rem;
 }
 
@@ -1656,13 +1736,12 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.undocumented[open] > summary::before,
 details.rustdoc-toggle[open] > summary::before,
 details.rustdoc-toggle[open] > summary.hideme::before {
 	background-image: /* AUTOREPLACE: */url("toggle-minus.svg");
 }
 
-details.undocumented > summary::before, details.rustdoc-toggle > summary::before {
+details.rustdoc-toggle > summary::before {
 	background-image: /* AUTOREPLACE: */url("toggle-plus.svg");
 }
 
@@ -1681,8 +1760,18 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	content: "Collapse";
 }
 
+/* This is needed in docblocks to have the "▶" element to be on the same line. */
+.docblock summary > * {
+	display: inline-block;
+}
+
 /* Media Queries */
 
+/*
+WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY;
+If you update this line, then you also need to update the line with the same warning
+in storage.js plus the media query with (max-width: 700px)
+*/
 @media (min-width: 701px) {
 	/* In case there is no documentation before a code block, we need to add some margin at the top
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
@@ -1703,6 +1792,11 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 }
 
+/*
+WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+If you update this line, then you also need to update the line with the same warning
+in storage.js plus the media query with (min-width: 701px)
+*/
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
 	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
@@ -1761,7 +1855,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		   the sidebar stays visible for screen readers, which is useful for navigation. */
 		left: -1000px;
 		margin-left: 0;
-		background-color: rgba(0,0,0,0);
 		margin: 0;
 		padding: 0;
 		z-index: 11;
@@ -1772,9 +1865,11 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
 	   so don't bump down the main content or the sidebar. */
 	.source main,
-	.source .sidebar {
+	.rustdoc.source .sidebar {
 		top: 0;
 		padding: 0;
+		height: 100vh;
+		border: 0;
 	}
 
 	.sidebar.shown,
@@ -1843,6 +1938,10 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		   as an icon, it's okay to specify its sizes in pixels. */
 		font-size: 32px;
 		border: none;
+	}
+
+	.sidebar-elems {
+		background-color: var(--sidebar-background-color);
 	}
 
 	.source nav:not(.sidebar).sub {
@@ -1924,6 +2023,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: unset;
 		border-top-right-radius: unset;
 		border-bottom-right-radius: unset;
+		position: sticky;
+		border: 0;
+		border-bottom: 1px solid;
 	}
 
 	#source-sidebar {
@@ -1985,8 +2087,18 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 }
 
 @media print {
-	nav.sub, .content .out-of-band {
+	nav.sidebar, nav.sub, .content .out-of-band, a.srclink, #copy-path,
+	details.rustdoc-toggle[open] > summary::before, details.rustdoc-toggle > summary::before,
+	details.rustdoc-toggle.top-doc > summary {
 		display: none;
+	}
+
+	.docblock {
+		margin-left: 0;
+	}
+
+	main {
+		padding: 10px;
 	}
 }
 
@@ -2067,10 +2179,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	border-width: 1px;
 	border-style: solid;
 	border-radius: 50px;
-}
-
-.scraped-example-title {
-	font-family: 'Fira Sans';
 }
 
 .scraped-example .code-wrapper {
@@ -2176,10 +2284,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	cursor: pointer;
 }
 
-.more-examples-toggle summary, .more-examples-toggle .hide-more {
-	font-family: 'Fira Sans';
-}
-
 .more-scraped-examples {
 	margin-left: 5px;
 	display: flex;
@@ -2214,7 +2318,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 .example-links a {
 	margin-top: 20px;
-	font-family: 'Fira Sans';
 }
 
 .example-links ul {

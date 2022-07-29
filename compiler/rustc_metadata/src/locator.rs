@@ -67,7 +67,7 @@
 //!
 //! ## What criterion to select on?
 //!
-//! This a pretty tricky area of loading crates. Given a file, how do we know
+//! This is a pretty tricky area of loading crates. Given a file, how do we know
 //! whether it's the right crate? Currently, the rules look along these lines:
 //!
 //! 1. Does the filename match an rlib/dylib pattern? That is to say, does the
@@ -1179,7 +1179,7 @@ impl CrateError {
                             err.help("consider building the standard library from source with `cargo build -Zbuild-std`");
                         }
                     } else if crate_name
-                        == Symbol::intern(&sess.opts.debugging_opts.profiler_runtime)
+                        == Symbol::intern(&sess.opts.unstable_opts.profiler_runtime)
                     {
                         err.note("the compiler may have been built without the profiler runtime");
                     } else if crate_name.as_str().starts_with("rustc_") {

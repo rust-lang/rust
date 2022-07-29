@@ -597,16 +597,16 @@ impl UseSpans<'_> {
     }
 
     /// Describe the span associated with a use of a place.
-    pub(super) fn describe(&self) -> String {
+    pub(super) fn describe(&self) -> &str {
         match *self {
             UseSpans::ClosureUse { generator_kind, .. } => {
                 if generator_kind.is_some() {
-                    " in generator".to_string()
+                    " in generator"
                 } else {
-                    " in closure".to_string()
+                    " in closure"
                 }
             }
-            _ => String::new(),
+            _ => "",
         }
     }
 
@@ -812,12 +812,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return FnSelfUse {
                 var_span: stmt.source_info.span,
                 fn_call_span: *fn_span,
-                fn_span: self
-                    .infcx
-                    .tcx
-                    .sess
-                    .source_map()
-                    .guess_head_span(self.infcx.tcx.def_span(method_did)),
+                fn_span: self.infcx.tcx.def_span(method_did),
                 kind,
             };
         }
@@ -896,7 +891,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(local_did);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure { body, fn_decl_span, .. } = expr {
+        if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
             for (captured_place, place) in self
                 .infcx
                 .tcx
@@ -909,11 +904,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if target_place == place.as_ref() =>
                     {
                         debug!("closure_span: found captured local {:?}", place);
-                        let body = self.infcx.tcx.hir().body(*body);
+                        let body = self.infcx.tcx.hir().body(body);
                         let generator_kind = body.generator_kind();
 
                         return Some((
-                            *fn_decl_span,
+                            fn_decl_span,
                             generator_kind,
                             captured_place.get_capture_kind_span(self.infcx.tcx),
                             captured_place.get_path_span(self.infcx.tcx),
@@ -980,14 +975,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if self.fn_self_span_reported.insert(fn_span) {
                         err.span_note(
                             // Check whether the source is accessible
-                            if self
-                                .infcx
-                                .tcx
-                                .sess
-                                .source_map()
-                                .span_to_snippet(self_arg.span)
-                                .is_ok()
-                            {
+                            if self.infcx.tcx.sess.source_map().is_span_accessible(self_arg.span) {
                                 self_arg.span
                             } else {
                                 fn_call_span

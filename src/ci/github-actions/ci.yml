@@ -625,7 +625,7 @@ jobs:
                 --target=x86_64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
-              SCRIPT: python x.py dist
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 

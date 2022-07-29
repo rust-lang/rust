@@ -7,7 +7,6 @@ pub fn opts(endian: Endian) -> TargetOptions {
         endian,
         linker_flavor: LinkerFlavor::BpfLinker,
         atomic_cas: false,
-        executables: true,
         dynamic_linking: true,
         no_builtins: true,
         panic_strategy: PanicStrategy::Abort,

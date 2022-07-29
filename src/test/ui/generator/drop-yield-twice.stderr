@@ -4,7 +4,7 @@ error: generator cannot be sent between threads safely
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ generator is not `Send`
    |
-   = help: within `[generator@$DIR/drop-yield-twice.rs:7:17: 12:6]`, the trait `Send` is not implemented for `Foo`
+   = help: within `[generator@$DIR/drop-yield-twice.rs:7:17: 7:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
   --> $DIR/drop-yield-twice.rs:9:9
    |

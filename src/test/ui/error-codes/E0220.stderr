@@ -8,7 +8,7 @@ error[E0191]: the value of the associated type `Bar` (from trait `Trait`) must b
   --> $DIR/E0220.rs:5:16
    |
 LL |     type Bar;
-   |     --------- `Bar` defined here
+   |     -------- `Bar` defined here
 ...
 LL | type Foo = dyn Trait<F=i32>;
    |                ^^^^^^^^^^^^ help: specify the associated type: `Trait<F=i32, Bar = Type>`

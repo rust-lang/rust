@@ -106,5 +106,11 @@ error: this argument (N byte) is passed by reference, but would be more efficien
 LL |     fn foo(x: &i32) {
    |               ^^^^ help: consider passing by value instead: `i32`
 
-error: aborting due to 17 previous errors
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:138:37
+   |
+LL | fn _unrelated_lifetimes<'a, 'b>(_x: &'a u32, y: &'b u32) -> &'b u32 {
+   |                                     ^^^^^^^ help: consider passing by value instead: `u32`
+
+error: aborting due to 18 previous errors
 

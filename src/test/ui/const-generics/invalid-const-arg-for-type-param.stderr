@@ -16,7 +16,7 @@ error[E0599]: no method named `f` found for struct `S` in the current scope
   --> $DIR/invalid-const-arg-for-type-param.rs:9:7
    |
 LL | struct S;
-   |        - method `f` not found for this struct
+   | -------- method `f` not found for this struct
 ...
 LL |     S.f::<0>();
    |       ^ method not found in `S`

@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'unicode_internals'
+  --> $DIR/accidental-stable-in-unstable.rs:6:5
+   |
+LL | use core::unicode::UNICODE_VERSION;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unicode_internals)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

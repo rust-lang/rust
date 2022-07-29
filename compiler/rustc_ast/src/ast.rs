@@ -1390,7 +1390,7 @@ pub enum ExprKind {
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     ///
     /// The final span is the span of the argument block `|...|`.
-    Closure(CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(ClosureBinder, CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).
@@ -1516,6 +1516,31 @@ pub enum Movability {
     Static,
     /// Must not contain self-references, `Unpin`.
     Movable,
+}
+
+/// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum ClosureBinder {
+    /// The binder is not present, all closure lifetimes are inferred.
+    NotPresent,
+    /// The binder is present.
+    For {
+        /// Span of the whole `for<>` clause
+        ///
+        /// ```text
+        /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
+        /// ^^^^^^^^^^^ -- this
+        /// ```
+        span: Span,
+
+        /// Lifetimes in the `for<>` closure
+        ///
+        /// ```text
+        /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
+        ///     ^^^^^^ -- this
+        /// ```
+        generic_params: P<[GenericParam]>,
+    },
 }
 
 /// Represents a macro invocation. The `path` indicates which macro
@@ -2035,6 +2060,14 @@ impl TyKind {
 
     pub fn is_unit(&self) -> bool {
         matches!(self, TyKind::Tup(tys) if tys.is_empty())
+    }
+
+    pub fn is_simple_path(&self) -> Option<Symbol> {
+        if let TyKind::Path(None, Path { segments, .. }) = &self && segments.len() == 1 {
+            Some(segments[0].ident.name)
+        } else {
+            None
+        }
     }
 }
 
@@ -2667,13 +2700,16 @@ impl Item {
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub enum Extern {
     None,
-    Implicit,
-    Explicit(StrLit),
+    Implicit(Span),
+    Explicit(StrLit, Span),
 }
 
 impl Extern {
-    pub fn from_abi(abi: Option<StrLit>) -> Extern {
-        abi.map_or(Extern::Implicit, Extern::Explicit)
+    pub fn from_abi(abi: Option<StrLit>, span: Span) -> Extern {
+        match abi {
+            Some(name) => Extern::Explicit(name, span),
+            None => Extern::Implicit(span),
+        }
     }
 }
 

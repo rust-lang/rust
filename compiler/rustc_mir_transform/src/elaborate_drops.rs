@@ -1,3 +1,4 @@
+use crate::deref_separator::deref_finder;
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
@@ -9,6 +10,7 @@ use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyl
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::on_lookup_result_bits;
+use rustc_mir_dataflow::un_derefer::UnDerefer;
 use rustc_mir_dataflow::MoveDataParamEnv;
 use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -28,20 +30,21 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
         let def_id = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        let move_data = match MoveData::gather_moves(body, tcx, param_env) {
+        let (side_table, move_data) = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {
                 tcx.sess.delay_span_bug(
                     body.span,
                     "No `move_errors` should be allowed in MIR borrowck",
                 );
-                move_data
+                (Default::default(), move_data)
             }
         };
+        let un_derefer = UnDerefer { tcx: tcx, derefer_sidetable: side_table };
         let elaborate_patch = {
             let body = &*body;
             let env = MoveDataParamEnv { move_data, param_env };
-            let dead_unwinds = find_dead_unwinds(tcx, body, &env);
+            let dead_unwinds = find_dead_unwinds(tcx, body, &env, &un_derefer);
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
                 .into_engine(tcx, body)
@@ -65,10 +68,12 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 init_data: InitializationData { inits, uninits },
                 drop_flags: Default::default(),
                 patch: MirPatch::new(body),
+                un_derefer: un_derefer,
             }
             .elaborate()
         };
         elaborate_patch.apply(body);
+        deref_finder(tcx, body);
     }
 }
 
@@ -79,6 +84,7 @@ fn find_dead_unwinds<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     env: &MoveDataParamEnv<'tcx>,
+    und: &UnDerefer<'tcx>,
 ) -> BitSet<BasicBlock> {
     debug!("find_dead_unwinds({:?})", body.span);
     // We only need to do this pass once, because unwind edges can only
@@ -92,7 +98,9 @@ fn find_dead_unwinds<'tcx>(
     for (bb, bb_data) in body.basic_blocks().iter_enumerated() {
         let place = match bb_data.terminator().kind {
             TerminatorKind::Drop { ref place, unwind: Some(_), .. }
-            | TerminatorKind::DropAndReplace { ref place, unwind: Some(_), .. } => place,
+            | TerminatorKind::DropAndReplace { ref place, unwind: Some(_), .. } => {
+                und.derefer(place.as_ref(), body).unwrap_or(*place)
+            }
             _ => continue,
         };
 
@@ -256,6 +264,7 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     init_data: InitializationData<'a, 'tcx>,
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
+    un_derefer: UnDerefer<'tcx>,
 }
 
 impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
@@ -298,7 +307,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             let terminator = data.terminator();
             let place = match terminator.kind {
                 TerminatorKind::Drop { ref place, .. }
-                | TerminatorKind::DropAndReplace { ref place, .. } => place,
+                | TerminatorKind::DropAndReplace { ref place, .. } => {
+                    self.un_derefer.derefer(place.as_ref(), self.body).unwrap_or(*place)
+                }
                 _ => continue,
             };
 
@@ -312,12 +323,17 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 LookupResult::Parent(None) => continue,
                 LookupResult::Parent(Some(parent)) => {
                     let (_maybe_live, maybe_dead) = self.init_data.maybe_live_dead(parent);
+
+                    if self.body.local_decls[place.local].is_deref_temp() {
+                        continue;
+                    }
+
                     if maybe_dead {
                         self.tcx.sess.delay_span_bug(
                             terminator.source_info.span,
                             &format!(
                                 "drop of untracked, uninitialized value {:?}, place {:?} ({:?})",
-                                bb, place, path,
+                                bb, place, path
                             ),
                         );
                     }
@@ -348,7 +364,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
             let resume_block = self.patch.resume_block();
             match terminator.kind {
-                TerminatorKind::Drop { place, target, unwind } => {
+                TerminatorKind::Drop { mut place, target, unwind } => {
+                    if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
+                        place = new_place;
+                    }
+
                     self.init_data.seek_before(loc);
                     match self.move_data().rev_lookup.find(place.as_ref()) {
                         LookupResult::Exact(path) => elaborate_drop(
@@ -372,9 +392,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                TerminatorKind::DropAndReplace { place, ref value, target, unwind } => {
+                TerminatorKind::DropAndReplace { mut place, ref value, target, unwind } => {
                     assert!(!data.is_cleanup);
 
+                    if let Some(new_place) = self.un_derefer.derefer(place.as_ref(), self.body) {
+                        place = new_place;
+                    }
                     self.elaborate_replace(loc, place, value, target, unwind);
                 }
                 _ => continue,

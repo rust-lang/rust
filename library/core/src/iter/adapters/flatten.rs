@@ -290,20 +290,11 @@ where
     #[inline]
     fn next(&mut self) -> Option<U::Item> {
         loop {
-            if let Some(ref mut inner) = self.frontiter {
-                match inner.next() {
-                    None => self.frontiter = None,
-                    elt @ Some(_) => return elt,
-                }
+            if let elt @ Some(_) = and_then_or_clear(&mut self.frontiter, Iterator::next) {
+                return elt;
             }
             match self.iter.next() {
-                None => match self.backiter.as_mut()?.next() {
-                    None => {
-                        self.backiter = None;
-                        return None;
-                    }
-                    elt @ Some(_) => return elt,
-                },
+                None => return and_then_or_clear(&mut self.backiter, Iterator::next),
                 Some(inner) => self.frontiter = Some(inner.into_iter()),
             }
         }
@@ -436,21 +427,12 @@ where
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
-            if let Some(ref mut inner) = self.backiter {
-                match inner.next_back() {
-                    None => self.backiter = None,
-                    elt @ Some(_) => return elt,
-                }
+            if let elt @ Some(_) = and_then_or_clear(&mut self.backiter, |b| b.next_back()) {
+                return elt;
             }
             match self.iter.next_back() {
-                None => match self.frontiter.as_mut()?.next_back() {
-                    None => {
-                        self.frontiter = None;
-                        return None;
-                    }
-                    elt @ Some(_) => return elt,
-                },
-                next => self.backiter = next.map(IntoIterator::into_iter),
+                None => return and_then_or_clear(&mut self.frontiter, |f| f.next_back()),
+                Some(inner) => self.backiter = Some(inner.into_iter()),
             }
         }
     }
@@ -606,3 +588,12 @@ unsafe impl<T, const N: usize> TrustedConstSize for [T; N] {}
 unsafe impl<T, const N: usize> TrustedConstSize for &'_ [T; N] {}
 #[unstable(feature = "std_internals", issue = "none")]
 unsafe impl<T, const N: usize> TrustedConstSize for &'_ mut [T; N] {}
+
+#[inline]
+fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {
+    let x = f(opt.as_mut()?);
+    if x.is_none() {
+        *opt = None;
+    }
+    x
+}

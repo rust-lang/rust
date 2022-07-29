@@ -138,8 +138,8 @@ pub(crate) fn format_extern(
 ) -> Cow<'static, str> {
     let abi = match ext {
         ast::Extern::None => "Rust".to_owned(),
-        ast::Extern::Implicit => "C".to_owned(),
-        ast::Extern::Explicit(abi) => abi.symbol_unescaped.to_string(),
+        ast::Extern::Implicit(_) => "C".to_owned(),
+        ast::Extern::Explicit(abi, _) => abi.symbol_unescaped.to_string(),
     };
 
     if abi == "Rust" && !is_mod {
@@ -479,7 +479,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Binary(_, _, ref expr)
         | ast::ExprKind::Index(_, ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
+        | ast::ExprKind::Closure(_, _, _, _, _, ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
         // This can only be a string lit

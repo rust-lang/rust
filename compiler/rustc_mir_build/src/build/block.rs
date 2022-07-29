@@ -99,6 +99,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     ref pattern,
                     initializer,
                     lint_level,
+                    else_block,
                 } => {
                     let ignores_expr_result = matches!(*pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
@@ -124,18 +125,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 |this| {
                                     let scope = (*init_scope, source_info);
                                     this.in_scope(scope, *lint_level, |this| {
-                                        this.declare_bindings(
-                                            visibility_scope,
-                                            remainder_span,
-                                            pattern,
-                                            ArmHasGuard(false),
-                                            Some((None, initializer_span)),
-                                        );
-                                        this.expr_into_pattern(block, pattern.clone(), init)
+                                        if let Some(else_block) = else_block {
+                                            this.ast_let_else(
+                                                block,
+                                                init,
+                                                initializer_span,
+                                                else_block,
+                                                visibility_scope,
+                                                remainder_span,
+                                                pattern,
+                                            )
+                                        } else {
+                                            this.declare_bindings(
+                                                visibility_scope,
+                                                remainder_span,
+                                                pattern,
+                                                ArmHasGuard(false),
+                                                Some((None, initializer_span)),
+                                            );
+                                            this.expr_into_pattern(block, pattern.clone(), init) // irrefutable pattern
+                                        }
                                     })
-                                }
+                                },
                             )
-                        );
+                        )
                     } else {
                         let scope = (*init_scope, source_info);
                         unpack!(this.in_scope(scope, *lint_level, |this| {

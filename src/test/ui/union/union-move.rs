@@ -3,20 +3,20 @@
 
 //! Test the behavior of moving out of non-`Copy` union fields.
 //! Avoid types that `Drop`, we want to focus on moving.
-#![feature(untagged_unions)]
 
 use std::cell::RefCell;
+use std::mem::ManuallyDrop;
 
 fn move_out<T>(x: T) {}
 
 union U1 {
-    f1_nocopy: RefCell<i32>,
-    f2_nocopy: RefCell<i32>,
+    f1_nocopy: ManuallyDrop<RefCell<i32>>,
+    f2_nocopy: ManuallyDrop<RefCell<i32>>,
     f3_copy: i32,
 }
 
 union U2 {
-    f1_nocopy: RefCell<i32>,
+    f1_nocopy: ManuallyDrop<RefCell<i32>>,
 }
 impl Drop for U2 {
     fn drop(&mut self) {}

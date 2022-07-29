@@ -244,7 +244,7 @@ pub struct UnconstrainedOpaqueType {
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
-    pub missing_type_params: Vec<String>,
+    pub missing_type_params: Vec<Symbol>,
     pub empty_generic_args: bool,
 }
 
@@ -285,7 +285,15 @@ impl<'a> SessionDiagnostic<'a> for MissingTypeParams {
                 err.span_suggestion(
                     self.span,
                     rustc_errors::fluent::typeck::suggestion,
-                    format!("{}<{}>", snippet, self.missing_type_params.join(", ")),
+                    format!(
+                        "{}<{}>",
+                        snippet,
+                        self.missing_type_params
+                            .iter()
+                            .map(|n| n.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
                     Applicability::HasPlaceholders,
                 );
                 suggested = true;

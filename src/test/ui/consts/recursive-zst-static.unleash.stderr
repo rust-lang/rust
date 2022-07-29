@@ -2,7 +2,7 @@ error[E0391]: cycle detected when const-evaluating + checking `FOO`
   --> $DIR/recursive-zst-static.rs:10:1
    |
 LL | static FOO: () = FOO;
-   | ^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `FOO`...
   --> $DIR/recursive-zst-static.rs:10:18

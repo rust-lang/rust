@@ -10,6 +10,7 @@ use crate::ty::query::Providers;
 use crate::ty::{DefIdTree, ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
@@ -43,6 +44,7 @@ pub struct ModuleItems {
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
     foreign_items: Box<[ForeignItemId]>,
+    body_owners: Box<[LocalDefId]>,
 }
 
 impl ModuleItems {
@@ -60,6 +62,31 @@ impl ModuleItems {
 
     pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> + '_ {
         self.foreign_items.iter().copied()
+    }
+
+    pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.items
+            .iter()
+            .map(|id| id.def_id)
+            .chain(self.trait_items.iter().map(|id| id.def_id))
+            .chain(self.impl_items.iter().map(|id| id.def_id))
+            .chain(self.foreign_items.iter().map(|id| id.def_id))
+    }
+
+    pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
+        par_for_each_in(&self.items[..], |&id| f(id))
+    }
+
+    pub fn par_trait_items(&self, f: impl Fn(TraitItemId) + Send + Sync) {
+        par_for_each_in(&self.trait_items[..], |&id| f(id))
+    }
+
+    pub fn par_impl_items(&self, f: impl Fn(ImplItemId) + Send + Sync) {
+        par_for_each_in(&self.impl_items[..], |&id| f(id))
+    }
+
+    pub fn par_foreign_items(&self, f: impl Fn(ForeignItemId) + Send + Sync) {
+        par_for_each_in(&self.foreign_items[..], |&id| f(id))
     }
 }
 
@@ -85,7 +112,6 @@ pub fn provide(providers: &mut Providers) {
         let hir = tcx.hir();
         hir.get_module_parent_node(hir.local_def_id_to_hir_id(id))
     };
-    providers.hir_crate = |tcx, ()| tcx.untracked_crate;
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;

@@ -72,7 +72,7 @@ fn diagnostic_hir_wf_check<'tcx>(
                 let cause = traits::ObligationCause::new(
                     ty.span,
                     self.hir_id,
-                    traits::ObligationCauseCode::MiscObligation,
+                    traits::ObligationCauseCode::WellFormed(None),
                 );
                 fulfill.register_predicate_obligation(
                     &infcx,
@@ -86,7 +86,7 @@ fn diagnostic_hir_wf_check<'tcx>(
 
                 let errors = fulfill.select_all_or_error(&infcx);
                 if !errors.is_empty() {
-                    tracing::debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
+                    debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
                     for error in errors {
                         if error.obligation.predicate == self.predicate {
                             // Save the cause from the greatest depth - this corresponds

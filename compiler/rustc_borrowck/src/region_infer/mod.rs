@@ -19,7 +19,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitable,
+};
 use rustc_span::Span;
 
 use crate::{
@@ -493,8 +495,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                 }
 
-                NllRegionVariableOrigin::RootEmptyRegion
-                | NllRegionVariableOrigin::Existential { .. } => {
+                NllRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
             }
@@ -588,7 +589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
         // constraints were too strong, and if so, emit or propagate those errors.
-        if infcx.tcx.sess.opts.debugging_opts.polonius {
+        if infcx.tcx.sess.opts.unstable_opts.polonius {
             self.check_polonius_subset_errors(
                 body,
                 outlives_requirements.as_mut(),
@@ -916,6 +917,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The idea then is to lower the `T: 'X` constraint into multiple
     /// bounds -- e.g., if `'X` is the union of two free lifetimes,
     /// `'1` and `'2`, then we would create `T: '1` and `T: '2`.
+    #[instrument(level = "debug", skip(self, infcx, propagated_outlives_requirements))]
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -933,11 +935,41 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return false;
         };
 
+        debug!("subject = {:?}", subject);
+
+        let r_scc = self.constraint_sccs.scc(*lower_bound);
+
+        debug!(
+            "lower_bound = {:?} r_scc={:?} universe={:?}",
+            lower_bound, r_scc, self.scc_universes[r_scc]
+        );
+
+        // If the type test requires that `T: 'a` where `'a` is a
+        // placeholder from another universe, that effectively requires
+        // `T: 'static`, so we have to propagate that requirement.
+        //
+        // It doesn't matter *what* universe because the promoted `T` will
+        // always be in the root universe.
+        if let Some(p) = self.scc_values.placeholders_contained_in(r_scc).next() {
+            debug!("encountered placeholder in higher universe: {:?}, requiring 'static", p);
+            let static_r = self.universal_regions.fr_static;
+            propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+                subject,
+                outlived_free_region: static_r,
+                blame_span: locations.span(body),
+                category: ConstraintCategory::Boring,
+            });
+
+            // we can return here -- the code below might push add'l constraints
+            // but they would all be weaker than this one.
+            return true;
+        }
+
         // For each region outlived by lower_bound find a non-local,
         // universal region (it may be the same region) and add it to
         // `ClosureOutlivesRequirement`.
-        let r_scc = self.constraint_sccs.scc(*lower_bound);
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            debug!("universal_region_outlived_by ur={:?}", ur);
             // Check whether we can already prove that the "subject" outlives `ur`.
             // If so, we don't have to propagate this requirement to our caller.
             //
@@ -961,8 +993,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             ) {
                 continue;
             }
-
-            debug!("try_promote_type_test: ur={:?}", ur);
 
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
             debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
@@ -1000,6 +1030,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// will use it's *external name*, which will be a `RegionKind`
     /// variant that can be used in query responses such as
     /// `ReEarlyBound`.
+    #[instrument(level = "debug", skip(self, infcx))]
     fn try_promote_type_test_subject(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -1007,9 +1038,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<ClosureOutlivesSubject<'tcx>> {
         let tcx = infcx.tcx;
 
-        debug!("try_promote_type_test_subject(ty = {:?})", ty);
-
-        let ty = tcx.fold_regions(ty, &mut false, |r, _depth| {
+        let ty = tcx.fold_regions(ty, |r, _depth| {
             let region_vid = self.to_region_vid(r);
 
             // The challenge if this. We have some region variable `r`
@@ -1289,7 +1318,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(value, &mut false, |r, _db| {
+        tcx.fold_regions(value, |r, _db| {
             let vid = self.to_region_vid(r);
             let scc = self.constraint_sccs.scc(vid);
             let repr = self.scc_representatives[scc];
@@ -1408,8 +1437,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
-                NllRegionVariableOrigin::RootEmptyRegion
-                | NllRegionVariableOrigin::Existential { .. } => {
+                NllRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1511,8 +1539,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
-                NllRegionVariableOrigin::RootEmptyRegion
-                | NllRegionVariableOrigin::Existential { .. } => {
+                NllRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1736,6 +1763,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
                 span: m_c.definition_span,
                 hidden_ty: m_c.hidden_ty,
+                key: m_c.key,
                 member_region,
             });
         }
@@ -1786,9 +1814,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universe1.cannot_name(placeholder.universe)
             }
 
-            NllRegionVariableOrigin::RootEmptyRegion
-            | NllRegionVariableOrigin::FreeRegion
-            | NllRegionVariableOrigin::Existential { .. } => false,
+            NllRegionVariableOrigin::FreeRegion | NllRegionVariableOrigin::Existential { .. } => {
+                false
+            }
         }
     }
 
@@ -2150,8 +2178,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let blame_source = match from_region_origin {
             NllRegionVariableOrigin::FreeRegion
             | NllRegionVariableOrigin::Existential { from_forall: false } => true,
-            NllRegionVariableOrigin::RootEmptyRegion
-            | NllRegionVariableOrigin::Placeholder(_)
+            NllRegionVariableOrigin::Placeholder(_)
             | NllRegionVariableOrigin::Existential { from_forall: true } => false,
         };
 

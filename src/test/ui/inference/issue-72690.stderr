@@ -55,7 +55,7 @@ error[E0283]: type annotations needed for `&T`
   --> $DIR/issue-72690.rs:17:9
    |
 LL |     let _ = "x".as_ref();
-   |         ^
+   |         ^       ------ type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;

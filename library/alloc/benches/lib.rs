@@ -2,6 +2,7 @@
 // See https://github.com/rust-lang/rust/issues/73535#event-3477699747
 #![cfg(not(target_os = "android"))]
 #![feature(btree_drain_filter)]
+#![feature(iter_next_chunk)]
 #![feature(map_first_last)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]

@@ -5,6 +5,9 @@ fn main() {
     let target_env = env::var("CARGO_CFG_TARGET_ENV");
     if Ok("windows") == target_os.as_deref() && Ok("msvc") == target_env.as_deref() {
         set_windows_exe_options();
+    } else {
+        // Avoid rerunning the build script every time.
+        println!("cargo:rerun-if-changed=build.rs");
     }
 }
 

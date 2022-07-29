@@ -20,6 +20,11 @@ declare_clippy_lint! {
     /// ```rust
     /// vec!(1, 2, 3, 4, 5).resize(0, 5)
     /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// vec!(1, 2, 3, 4, 5).clear()
+    /// ```
     #[clippy::version = "1.46.0"]
     pub VEC_RESIZE_TO_ZERO,
     correctness,

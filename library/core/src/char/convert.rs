@@ -93,7 +93,7 @@ impl const From<char> for u128 {
 /// Map `char` with code point in U+0000..=U+00FF to byte in 0x00..=0xFF with same value, failing
 /// if the code point is greater than U+00FF.
 ///
-/// See [`impl From<u8> for char`](char#impl-From<u8>) for details on the encoding.
+/// See [`impl From<u8> for char`](char#impl-From<u8>-for-char) for details on the encoding.
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl TryFrom<char> for u8 {
     type Error = TryFromCharError;
@@ -229,7 +229,7 @@ impl TryFrom<u32> for char {
 
 /// The error type returned when a conversion from [`prim@u32`] to [`prim@char`] fails.
 ///
-/// This `struct` is created by the [`char::try_from<u32>`](char#impl-TryFrom<u32>) method.
+/// This `struct` is created by the [`char::try_from<u32>`](char#impl-TryFrom<u32>-for-char) method.
 /// See its documentation for more.
 #[stable(feature = "try_from", since = "1.34.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

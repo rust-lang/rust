@@ -15,7 +15,7 @@ error[E0277]: the trait bound `Foo: Bar` is not satisfied
 LL |     let f3: &Fat<dyn Bar> = f2;
    |                             ^^ the trait `Bar` is not implemented for `Foo`
    |
-   = note: required for the cast to the object type `dyn Bar`
+   = note: required for the cast from `Foo` to the object type `dyn Bar`
 
 error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce1.rs:28:27
@@ -34,7 +34,7 @@ error[E0277]: the trait bound `Foo: Bar` is not satisfied
 LL |     let f3: &(dyn Bar,) = f2;
    |                           ^^ the trait `Bar` is not implemented for `Foo`
    |
-   = note: required for the cast to the object type `dyn Bar`
+   = note: required for the cast from `Foo` to the object type `dyn Bar`
 
 error: aborting due to 4 previous errors
 

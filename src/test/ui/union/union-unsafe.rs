@@ -1,7 +1,6 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 
-#![feature(untagged_unions)]
 use std::mem::ManuallyDrop;
 use std::cell::RefCell;
 
@@ -26,7 +25,7 @@ union URef {
 }
 
 union URefCell { // field that does not drop but is not `Copy`, either
-    a: (RefCell<i32>, i32),
+    a: (ManuallyDrop<RefCell<i32>>, i32),
 }
 
 fn deref_union_field(mut u: URef) {
@@ -36,8 +35,8 @@ fn deref_union_field(mut u: URef) {
 
 fn assign_noncopy_union_field(mut u: URefCell) {
     // FIXME(thir-unsafeck)
-    u.a = (RefCell::new(0), 1); //~ ERROR assignment to union field that might need dropping
-    u.a.0 = RefCell::new(0); //~ ERROR assignment to union field that might need dropping
+    u.a = (ManuallyDrop::new(RefCell::new(0)), 1); // OK (assignment does not drop)
+    u.a.0 = ManuallyDrop::new(RefCell::new(0)); // OK (assignment does not drop)
     u.a.1 = 1; // OK
 }
 

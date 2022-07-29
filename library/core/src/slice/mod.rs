@@ -1340,7 +1340,7 @@ impl<T> [T] {
     /// from the `remainder` function of the iterator.
     ///
     /// Due to each chunk having exactly `chunk_size` elements, the compiler can often optimize the
-    /// resulting code better than in the case of [`chunks`].
+    /// resulting code better than in the case of [`rchunks`].
     ///
     /// See [`rchunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the
@@ -3569,6 +3569,7 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(portable_simd)]
+    /// use core::simd::SimdFloat;
     ///
     /// let short = &[1, 2, 3];
     /// let (prefix, middle, suffix) = short.as_simd::<4>();
@@ -4097,6 +4098,66 @@ impl<T, const N: usize> [[T; N]] {
         };
         // SAFETY: `[T]` is layout-identical to `[T; N]`
         unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), len) }
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[cfg(not(test))]
+impl [f32] {
+    /// Sorts the slice of floats.
+    ///
+    /// This sort is in-place (i.e. does not allocate), *O*(*n* \* log(*n*)) worst-case, and uses
+    /// the ordering defined by [`f32::total_cmp`].
+    ///
+    /// # Current implementation
+    ///
+    /// This uses the same sorting algorithm as [`sort_unstable_by`](slice::sort_unstable_by).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_floats)]
+    /// let mut v = [2.6, -5e-8, f32::NAN, 8.29, f32::INFINITY, -1.0, 0.0, -f32::INFINITY, -0.0];
+    ///
+    /// v.sort_floats();
+    /// let sorted = [-f32::INFINITY, -1.0, -5e-8, -0.0, 0.0, 2.6, 8.29, f32::INFINITY, f32::NAN];
+    /// assert_eq!(&v[..8], &sorted[..8]);
+    /// assert!(v[8].is_nan());
+    /// ```
+    #[unstable(feature = "sort_floats", issue = "93396")]
+    #[inline]
+    pub fn sort_floats(&mut self) {
+        self.sort_unstable_by(f32::total_cmp);
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[cfg(not(test))]
+impl [f64] {
+    /// Sorts the slice of floats.
+    ///
+    /// This sort is in-place (i.e. does not allocate), *O*(*n* \* log(*n*)) worst-case, and uses
+    /// the ordering defined by [`f64::total_cmp`].
+    ///
+    /// # Current implementation
+    ///
+    /// This uses the same sorting algorithm as [`sort_unstable_by`](slice::sort_unstable_by).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_floats)]
+    /// let mut v = [2.6, -5e-8, f64::NAN, 8.29, f64::INFINITY, -1.0, 0.0, -f64::INFINITY, -0.0];
+    ///
+    /// v.sort_floats();
+    /// let sorted = [-f64::INFINITY, -1.0, -5e-8, -0.0, 0.0, 2.6, 8.29, f64::INFINITY, f64::NAN];
+    /// assert_eq!(&v[..8], &sorted[..8]);
+    /// assert!(v[8].is_nan());
+    /// ```
+    #[unstable(feature = "sort_floats", issue = "93396")]
+    #[inline]
+    pub fn sort_floats(&mut self) {
+        self.sort_unstable_by(f64::total_cmp);
     }
 }
 

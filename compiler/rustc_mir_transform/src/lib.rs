@@ -1,6 +1,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -28,7 +28,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
 
 #[macro_use]
@@ -59,6 +59,7 @@ pub mod dump_mir;
 mod early_otherwise_branch;
 mod elaborate_box_derefs;
 mod elaborate_drops;
+mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
 mod inline;
@@ -98,6 +99,7 @@ pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
     check_packed_ref::provide(providers);
     coverage::query::provide(providers);
+    ffi_unwind_calls::provide(providers);
     shim::provide(providers);
     *providers = Providers {
         mir_keys,
@@ -171,7 +173,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
             intravisit::walk_struct_def(self, v)
         }
     }
-    tcx.hir().deep_visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set });
+    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { tcx, set: &mut set });
 
     set
 }
@@ -215,13 +217,16 @@ fn mir_const<'tcx>(
     }
 
     // Unsafety check uses the raw mir, so make sure it is run.
-    if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+    if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         if let Some(param_did) = def.const_param_did {
             tcx.ensure().unsafety_check_result_for_const_arg((def.did, param_did));
         } else {
             tcx.ensure().unsafety_check_result(def.did);
         }
     }
+
+    // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.
+    tcx.ensure().has_ffi_unwind_calls(def.did);
 
     let mut body = tcx.mir_built(def).steal();
 
@@ -415,6 +420,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
         &simplify::SimplifyCfg::new("early-opt"),
+        &deref_separator::Derefer,
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
@@ -427,7 +433,6 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
-        &deref_separator::Derefer,
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &add_retag::AddRetag,
         &lower_intrinsics::LowerIntrinsics,

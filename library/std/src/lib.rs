@@ -210,9 +210,11 @@
 #![allow(unused_lifetimes)]
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
+// Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
+#![cfg_attr(not(bootstrap), deny(ffi_unwind_calls))]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
-#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count))]
+#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
@@ -241,7 +243,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(label_break_value)]
 #![feature(lang_items)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(linkage)]
 #![feature(min_specialization)]
@@ -249,7 +251,6 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(nll))]
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
@@ -263,18 +264,19 @@
 #![feature(atomic_mut_ptr)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
-#![feature(core_c_str)]
 #![feature(core_intrinsics)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
+#![feature(exclusive_wrapper)]
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
+#![feature(is_some_with)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(mixed_integer_ops)]
@@ -284,6 +286,7 @@
 #![feature(panic_internals)]
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
+#![feature(provide_any)]
 #![feature(ptr_as_uninit)]
 #![feature(raw_os_nonzero)]
 #![feature(slice_internals)]
@@ -294,7 +297,6 @@
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
-#![feature(alloc_c_string)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
@@ -315,7 +317,6 @@
 #![feature(cfg_eval)]
 #![feature(concat_bytes)]
 #![feature(const_format_args)]
-#![feature(core_ffi_c)]
 #![feature(core_panic)]
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
@@ -335,7 +336,6 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
-#![feature(const_option)]
 #![feature(const_socketaddr)]
 #![feature(thread_local_internals)]
 //
@@ -585,7 +585,7 @@ mod backtrace_rs;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, todo, r#try,
     unimplemented, unreachable, write, writeln,
 };
 

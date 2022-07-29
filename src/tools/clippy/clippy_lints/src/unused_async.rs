@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnHeader, HirId, IsAsync, YieldSource};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, IsAsync, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -68,20 +68,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         span: Span,
         hir_id: HirId,
     ) {
-        if let FnKind::ItemFn(_, _, FnHeader { asyncness, .. }) = &fn_kind {
-            if matches!(asyncness, IsAsync::Async) {
-                let mut visitor = AsyncFnVisitor { cx, found_await: false };
-                walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), span, hir_id);
-                if !visitor.found_await {
-                    span_lint_and_help(
-                        cx,
-                        UNUSED_ASYNC,
-                        span,
-                        "unused `async` for function with no await statements",
-                        None,
-                        "consider removing the `async` from this function",
-                    );
-                }
+        if !span.from_expansion() && fn_kind.asyncness() == IsAsync::Async {
+            let mut visitor = AsyncFnVisitor { cx, found_await: false };
+            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), span, hir_id);
+            if !visitor.found_await {
+                span_lint_and_help(
+                    cx,
+                    UNUSED_ASYNC,
+                    span,
+                    "unused `async` for function with no await statements",
+                    None,
+                    "consider removing the `async` from this function",
+                );
             }
         }
     }

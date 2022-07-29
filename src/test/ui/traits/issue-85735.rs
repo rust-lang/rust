@@ -5,7 +5,7 @@ trait Foo {}
 impl<'a, 'b, T> Foo for T
 where
     T: FnMut(&'a ()),
-    //~^ ERROR: type annotations needed [E0283]
+    //~^ ERROR: type annotations needed
     T: FnMut(&'b ()),
 {
 }

@@ -12,7 +12,7 @@ pub use self::caches::{
 };
 
 mod config;
-pub use self::config::{QueryConfig, QueryDescription, QueryVtable};
+pub use self::config::{QueryConfig, QueryDescription, QueryVTable};
 
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 
@@ -81,6 +81,7 @@ pub struct QuerySideEffects {
 }
 
 impl QuerySideEffects {
+    #[inline]
     pub fn is_empty(&self) -> bool {
         let QuerySideEffects { diagnostics } = self;
         diagnostics.is_empty()

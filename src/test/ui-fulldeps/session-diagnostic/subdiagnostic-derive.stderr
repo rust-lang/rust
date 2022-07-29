@@ -120,7 +120,7 @@ error: subdiagnostic kind not specified
 LL |     B {
    |     ^
 
-error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
+error: the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
   --> $DIR/subdiagnostic-derive.rs:246:5
    |
 LL |     #[primary_span]

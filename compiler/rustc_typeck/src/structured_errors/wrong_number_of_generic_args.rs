@@ -126,8 +126,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn kind(&self) -> String {
-        if self.missing_lifetimes() { "lifetime".to_string() } else { "generic".to_string() }
+    fn kind(&self) -> &str {
+        if self.missing_lifetimes() { "lifetime" } else { "generic" }
     }
 
     fn num_provided_args(&self) -> usize {
@@ -420,12 +420,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let provided_lt_args = self.num_provided_lifetime_args();
         let provided_type_or_const_args = self.num_provided_type_or_const_args();
 
-        let get_verb = |num_args| if num_args == 1 { "was" } else { "were" };
-
         let (provided_args_str, verb) = match self.gen_args_info {
             MissingLifetimes { .. } | ExcessLifetimes { .. } => (
                 format!("{} lifetime argument{}", provided_lt_args, pluralize!(provided_lt_args)),
-                get_verb(provided_lt_args),
+                pluralize!("was", provided_lt_args),
             ),
             MissingTypesOrConsts { .. } | ExcessTypesOrConsts { .. } => (
                 format!(
@@ -433,7 +431,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     provided_type_or_const_args,
                     pluralize!(provided_type_or_const_args)
                 ),
-                get_verb(provided_type_or_const_args),
+                pluralize!("was", provided_type_or_const_args),
             ),
         };
 
@@ -812,7 +810,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// Builds the `type defined here` message.
     fn show_definition(&self, err: &mut Diagnostic) {
         let mut spans: MultiSpan = if let Some(def_span) = self.tcx.def_ident_span(self.def_id) {
-            if self.tcx.sess.source_map().span_to_snippet(def_span).is_ok() {
+            if self.tcx.sess.source_map().is_span_accessible(def_span) {
                 def_span.into()
             } else {
                 return;
@@ -836,7 +834,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     .take(bound)
                     .map(|param| {
                         let span = self.tcx.def_span(param.def_id);
-                        spans.push_span_label(span, String::new());
+                        spans.push_span_label(span, "");
                         param
                     })
                     .map(|param| format!("`{}`", param.name))

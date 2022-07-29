@@ -15,7 +15,7 @@ note: the type is defined here
   --> $DIR/lint-ctypes.rs:26:1
    |
 LL | pub struct Foo;
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^
 
 error: `extern` block uses type `Foo`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:49:28
@@ -29,7 +29,7 @@ note: the type is defined here
   --> $DIR/lint-ctypes.rs:26:1
    |
 LL | pub struct Foo;
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^
 
 error: `extern` block uses type `((),)`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:51:25
@@ -139,7 +139,7 @@ note: the type is defined here
   --> $DIR/lint-ctypes.rs:22:1
    |
 LL | pub struct ZeroSize;
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `ZeroSizeWithPhantomData`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:64:33
@@ -152,7 +152,7 @@ note: the type is defined here
   --> $DIR/lint-ctypes.rs:45:1
    |
 LL | pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `PhantomData<bool>`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:67:12

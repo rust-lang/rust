@@ -142,7 +142,7 @@ impl Provider for SomeConcreteType {
         demand
             .provide_ref::<String>(&self.some_string)
             .provide_ref::<str>(&self.some_string)
-            .provide_value::<String, _>(|| "bye".to_owned());
+            .provide_value::<String>(|| "bye".to_owned());
     }
 }
 
@@ -151,9 +151,9 @@ impl Provider for SomeConcreteType {
 fn test_provider() {
     let obj: &dyn Provider = &SomeConcreteType { some_string: "hello".to_owned() };
 
-    assert_eq!(&**request_ref::<String, _>(obj).unwrap(), "hello");
-    assert_eq!(&*request_value::<String, _>(obj).unwrap(), "bye");
-    assert_eq!(request_value::<u8, _>(obj), None);
+    assert_eq!(&**request_ref::<String>(obj).unwrap(), "hello");
+    assert_eq!(&*request_value::<String>(obj).unwrap(), "bye");
+    assert_eq!(request_value::<u8>(obj), None);
 }
 
 // Test the provide and request mechanisms with a boxed trait object.
@@ -161,9 +161,9 @@ fn test_provider() {
 fn test_provider_boxed() {
     let obj: Box<dyn Provider> = Box::new(SomeConcreteType { some_string: "hello".to_owned() });
 
-    assert_eq!(&**request_ref::<String, _>(&*obj).unwrap(), "hello");
-    assert_eq!(&*request_value::<String, _>(&*obj).unwrap(), "bye");
-    assert_eq!(request_value::<u8, _>(&*obj), None);
+    assert_eq!(&**request_ref::<String>(&*obj).unwrap(), "hello");
+    assert_eq!(&*request_value::<String>(&*obj).unwrap(), "bye");
+    assert_eq!(request_value::<u8>(&*obj), None);
 }
 
 // Test the provide and request mechanisms with a concrete object.
@@ -171,9 +171,9 @@ fn test_provider_boxed() {
 fn test_provider_concrete() {
     let obj = SomeConcreteType { some_string: "hello".to_owned() };
 
-    assert_eq!(&**request_ref::<String, _>(&obj).unwrap(), "hello");
-    assert_eq!(&*request_value::<String, _>(&obj).unwrap(), "bye");
-    assert_eq!(request_value::<u8, _>(&obj), None);
+    assert_eq!(&**request_ref::<String>(&obj).unwrap(), "hello");
+    assert_eq!(&*request_value::<String>(&obj).unwrap(), "bye");
+    assert_eq!(request_value::<u8>(&obj), None);
 }
 
 trait OtherTrait: Provider {}
@@ -182,7 +182,7 @@ impl OtherTrait for SomeConcreteType {}
 
 impl dyn OtherTrait {
     fn get_ref<T: 'static + ?Sized>(&self) -> Option<&T> {
-        request_ref::<T, _>(self)
+        request_ref::<T>(self)
     }
 }
 

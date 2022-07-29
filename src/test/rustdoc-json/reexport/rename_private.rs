@@ -2,13 +2,13 @@
 
 #![no_core]
 #![feature(no_core)]
-// @!has rename_private.json "$.index[*][?(@.name=='inner')]"
+
+// @is rename_private.json "$.index[*][?(@.name=='inner')].kind" \"module\"
+// @is rename_private.json "$.index[*][?(@.name=='inner')].inner.is_stripped" "true"
 mod inner {
-    // @!has - "$.index[*][?(@.name=='Public')]"
+    // @has - "$.index[*][?(@.name=='Public')]"
     pub struct Public;
 }
 
-// @set newname_id = - "$.index[*][?(@.name=='NewName')].id"
-// @is - "$.index[*][?(@.name=='NewName')].kind" \"struct\"
-// @has - "$.index[*][?(@.name=='rename_private')].inner.items[*]" $newname_id
+// @is - "$.index[*][?(@.kind=='import')].inner.name" \"NewName\"
 pub use inner::Public as NewName;

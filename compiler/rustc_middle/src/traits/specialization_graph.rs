@@ -1,5 +1,5 @@
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::fold::TypeFoldable;
+use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;

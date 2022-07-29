@@ -1,6 +1,6 @@
 use crate::structured_errors::StructuredDiagnostic;
 use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
-use rustc_middle::ty::{Ty, TypeFoldable};
+use rustc_middle::ty::{Ty, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
 

@@ -112,6 +112,26 @@ impl<'tcx> TyCtxt<'tcx> {
         self.normalize_erasing_regions(param_env, value)
     }
 
+    /// If you have a `Binder<'tcx, T>`, you can do this to strip out the
+    /// late-bound regions and then normalize the result, yielding up
+    /// a `T` (with regions erased). This is appropriate when the
+    /// binder is being instantiated at the call site.
+    ///
+    /// N.B., currently, higher-ranked type bounds inhibit
+    /// normalization. Therefore, each time we erase them in
+    /// codegen, we need to normalize the contents.
+    pub fn try_normalize_erasing_late_bound_regions<T>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        value: ty::Binder<'tcx, T>,
+    ) -> Result<T, NormalizationError<'tcx>>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        let value = self.erase_late_bound_regions(value);
+        self.try_normalize_erasing_regions(param_env, value)
+    }
+
     /// Monomorphizes a type from the AST by first applying the
     /// in-scope substitutions and then normalizing any associated
     /// types.

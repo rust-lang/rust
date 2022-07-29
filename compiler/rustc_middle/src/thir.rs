@@ -30,7 +30,6 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
 
-pub mod abstract_const;
 pub mod visit;
 
 newtype_index! {
@@ -182,6 +181,9 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
 
+        /// `let pat: ty = <INIT> else { <ELSE> }
+        else_block: Option<Block>,
+
         /// The lint level for this `let` statement.
         lint_level: LintLevel,
     },
@@ -191,18 +193,8 @@ pub enum StmtKind<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
-#[derive(
-    Clone,
-    Debug,
-    Copy,
-    PartialEq,
-    Eq,
-    Hash,
-    HashStable,
-    TyEncodable,
-    TyDecodable,
-    TypeFoldable
-)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct LocalVarId(pub hir::HirId);
 
 /// A THIR expression.
@@ -429,6 +421,10 @@ pub enum ExprKind<'tcx> {
         lit: ty::ScalarInt,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
+    /// A literal of a ZST type.
+    ZstLiteral {
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
@@ -462,12 +458,6 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
-}
-
-impl<'tcx> ExprKind<'tcx> {
-    pub fn zero_sized_literal(user_ty: Option<Canonical<'tcx, UserType<'tcx>>>) -> Self {
-        ExprKind::NonHirLiteral { lit: ty::ScalarInt::ZST, user_ty }
-    }
 }
 
 /// Represents the association of a field identifier and an expression.

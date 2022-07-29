@@ -503,7 +503,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let root_empty = self
             .infcx
-            .next_nll_region_var(NllRegionVariableOrigin::RootEmptyRegion)
+            .next_nll_region_var(NllRegionVariableOrigin::Existential { from_forall: true })
             .to_region_vid();
 
         UniversalRegions {
@@ -725,7 +725,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.tcx.fold_regions(value, &mut false, |_region, _depth| self.next_nll_region_var(origin))
+        self.tcx.fold_regions(value, |_region, _depth| self.next_nll_region_var(origin))
     }
 
     #[instrument(level = "debug", skip(self, indices))]
@@ -817,9 +817,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(value, &mut false, |region, _| {
-            tcx.mk_region(ty::ReVar(self.to_region_vid(region)))
-        })
+        tcx.fold_regions(value, |region, _| tcx.mk_region(ty::ReVar(self.to_region_vid(region))))
     }
 }
 

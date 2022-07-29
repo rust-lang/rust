@@ -1,6 +1,5 @@
 struct X<const N: usize = {
-    let s: &'static str; s.len()
-    //~^ ERROR borrow of possibly-uninitialized variable
+    let s: &'static str; s.len() //~ ERROR E0381
 }>;
 
 fn main() {}

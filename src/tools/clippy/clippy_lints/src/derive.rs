@@ -189,7 +189,7 @@ declare_clippy_lint! {
     ///     i_am_eq_too: Vec<String>,
     /// }
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
     style,
     "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"

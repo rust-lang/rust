@@ -1,27 +1,14 @@
-/* General structure and fonts */
-
-body, .popover, .popover::before {
-	background-color: white;
-	color: black;
-}
-
-.setting-line .radio-line input {
-	border-color: black;
-}
-.setting-line .radio-line input:checked {
-	box-shadow: inset 0 0 0 3px white;
-	background-color: #2196f3;
-}
-.setting-line .radio-line input:focus {
-	box-shadow: 0 0 1px 1px #2196f3;
-}
-/* In here we combine both `:focus` and `:checked` properties. */
-.setting-line .radio-line input:checked:focus {
-	box-shadow: inset 0 0 0 3px white,
-		0 0 2px 2px #2196f3;
-}
-.setting-line .radio-line input:hover {
-	border-color: #2196f3 !important;
+:root {
+	--main-background-color: white;
+	--main-color: black;
+	--settings-input-color: #2196f3;
+	--sidebar-background-color: #F5F5F5;
+	--sidebar-background-color-hover: #E0E0E0;
+	--code-block-background-color: #F5F5F5;
+	--scrollbar-track-background-color: #dcdcdc;
+	--scrollbar-thumb-background-color: rgba(36, 37, 39, 0.6);
+	--scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
+	--headings-border-bottom-color: #ddd;
 }
 
 .slider {
@@ -30,49 +17,12 @@ body, .popover, .popover::before {
 .slider:before {
 	background-color: white;
 }
-input:checked + .slider {
-	background-color: #2196F3;
-}
 input:focus + .slider {
 	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
-h1, h2, h3, h4 {
-	color: black;
-}
-h1.fqn {
-	border-bottom-color: #DDDDDD;
-}
-h2, h3, h4 {
-	border-bottom-color: #DDDDDD;
-}
-
 .in-band {
 	background-color: white;
-}
-
-.invisible {
-	background: rgba(0, 0, 0, 0);
-}
-
-.docblock code, .docblock-short code {
-	background-color: #F5F5F5;
-}
-pre, .rustdoc.source .example-wrap {
-	background-color: #F5F5F5;
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: #F5F5F5;
-}
-
-/* Improve the scrollbar display on firefox */
-* {
-	scrollbar-color: rgba(36, 37, 39, 0.6) #e6e6e6;
-}
-
-.sidebar {
-	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 }
 
 .rust-logo {
@@ -81,27 +31,9 @@ pre, .rustdoc.source .example-wrap {
 	 */
 }
 
-/* Improve the scrollbar display on webkit-based browsers */
-::-webkit-scrollbar-track {
-	background-color: #ecebeb;
-}
-::-webkit-scrollbar-thumb {
-	background-color: rgba(36, 37, 39, 0.6);
-}
-.sidebar::-webkit-scrollbar-track {
-	background-color: #dcdcdc;
-}
-.sidebar::-webkit-scrollbar-thumb {
-	background-color: rgba(36, 37, 39, 0.6);
-}
-
 .sidebar .current,
 .sidebar a:hover {
 	background-color: #fff;
-}
-
-.source .sidebar {
-	background-color: #f1f1f1;
 }
 
 .line-numbers span { color: #c67e2d; }
@@ -109,18 +41,8 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #FDFFD3 !important;
 }
 
-.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
-	border-bottom-color: #ddd;
-}
-
 .docblock table td, .docblock table th {
 	border-color: #ddd;
-}
-
-.content .method .where,
-.content .fn .where,
-.content .where.fmt-newline {
-	color: #4E4C4C;
 }
 
 .search-results a:hover {
@@ -213,36 +135,24 @@ a {
 	color: #3873AD;
 }
 
-a#toggle-all-docs,
-a.anchor,
-.small-section-header a,
-#source-sidebar a,
-pre.rust a,
-.sidebar h2 a,
-.sidebar h3 a,
-.mobile-topbar h2 a,
-.in-band a {
-	color: #000;
-}
-.search-results a {
-	color: initial;
-}
-a.test-arrow {
-	color: #f5f5f5;
-}
 body.source .example-wrap pre.rust a {
 	background: #eee;
 }
 
 details.rustdoc-toggle > summary.hideme > span,
-details.rustdoc-toggle > summary::before,
-details.undocumented > summary::before {
+details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
 #crate-search, .search-input {
 	background-color: white;
-	/* Without the `!important`, the border-color is ignored for `<select>`... */
+	border-color: #e0e0e0;
+}
+
+#crate-search {
+	/* Without the `!important`, the border-color is ignored for `<select>`...
+	   It cannot be in the group above because `.search-input` has a different border color on
+	   hover. */
 	border-color: #e0e0e0 !important;
 }
 
@@ -250,33 +160,16 @@ details.undocumented > summary::before {
 	border-color: #66afe9;
 }
 
-.module-item .stab,
-.import-item .stab {
-	color: #000;
-}
-
 .stab.empty-impl { background: #FFF5D6; border-color: #FFC600; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
+.stab.must_implement { background: #F3DFFF; border-color: #b07bdb; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; }
 .stab.portability > code { background: none; }
-
-#help > div {
-	background: #e9e9e9;
-	border-color: #bfbfbf;
-}
-
-#help span.bottom, #help span.top {
-	border-color: #bfbfbf;
-}
 
 .rightside,
 .out-of-band {
 	color: grey;
-}
-
-.result-name .primitive > i, .result-name .keyword > i {
-	color: black;
 }
 
 .line-numbers :target { background-color: transparent; }
@@ -300,7 +193,8 @@ pre.rust .question-mark {
 }
 
 a.test-arrow {
-	background-color: rgb(78, 139, 202, 0.2);
+	color: #f5f5f5;
+	background-color: rgba(78, 139, 202, 0.2);
 }
 
 a.test-arrow:hover{
@@ -402,20 +296,8 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 @media (max-width: 700px) {
-	.sidebar-menu {
-		background-color: #F5F5F5;
-		border-bottom-color: #e0e0e0;
-		border-right-color: #e0e0e0;
-	}
-
 	.sidebar-elems {
-		background-color: #F5F5F5;
 		border-right-color: #000;
-	}
-
-	#sidebar-filler {
-		background-color: #F5F5F5;
-		border-bottom-color: #e0e0e0;
 	}
 }
 
@@ -472,25 +354,16 @@ kbd {
 	color: #999;
 }
 
-#sidebar-toggle {
-	background-color: #F5F5F5;
-}
-#sidebar-toggle:hover {
-	background-color: #E0E0E0;
-}
-#source-sidebar {
-	background-color: #F5F5F5;
-}
 #source-sidebar > .title {
 	border-bottom-color: #ccc;
 }
-#source-sidebar div.files > a:hover, div.name:hover {
+#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
+#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: #E0E0E0;
 }
-#source-sidebar div.files > .selected {
+#source-sidebar div.files > a.selected {
 	background-color: #fff;
 }
-
 .scraped-example-list .scrape-help {
 	border-color: #555;
 	color: #333;

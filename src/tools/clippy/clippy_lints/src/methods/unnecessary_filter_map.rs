@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         return;
     }
 
-    if let hir::ExprKind::Closure { body, .. } = arg.kind {
+    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
         let body = cx.tcx.hir().body(body);
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg =

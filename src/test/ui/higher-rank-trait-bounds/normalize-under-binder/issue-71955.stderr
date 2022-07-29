@@ -10,7 +10,7 @@ note: this closure does not fulfill the lifetime requirements
   --> $DIR/issue-71955.rs:45:24
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
-   |                        ^^^^^^^^^^^^^^^^
+   |                        ^^^
 note: the lifetime requirement is introduced here
   --> $DIR/issue-71955.rs:25:9
    |
@@ -29,7 +29,7 @@ note: this closure does not fulfill the lifetime requirements
   --> $DIR/issue-71955.rs:45:24
    |
 LL |     foo(bar, "string", |s| s.len() == 5);
-   |                        ^^^^^^^^^^^^^^^^
+   |                        ^^^
 note: the lifetime requirement is introduced here
   --> $DIR/issue-71955.rs:25:44
    |
@@ -48,7 +48,7 @@ note: this closure does not fulfill the lifetime requirements
   --> $DIR/issue-71955.rs:48:24
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
-   |                        ^^^^^^^^^^^^^^^^^^
+   |                        ^^^
 note: the lifetime requirement is introduced here
   --> $DIR/issue-71955.rs:25:9
    |
@@ -67,7 +67,7 @@ note: this closure does not fulfill the lifetime requirements
   --> $DIR/issue-71955.rs:48:24
    |
 LL |     foo(baz, "string", |s| s.0.len() == 5);
-   |                        ^^^^^^^^^^^^^^^^^^
+   |                        ^^^
 note: the lifetime requirement is introduced here
   --> $DIR/issue-71955.rs:25:44
    |

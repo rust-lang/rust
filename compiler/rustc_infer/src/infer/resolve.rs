@@ -1,8 +1,9 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::mir;
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable, TypeVisitor};
-use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 
 use std::ops::ControlFlow;
 
@@ -205,13 +206,13 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
 
     fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match *r {
-            ty::ReVar(rid) => Ok(self
+            ty::ReVar(_) => Ok(self
                 .infcx
                 .lexical_region_resolutions
                 .borrow()
                 .as_ref()
                 .expect("region resolution not performed")
-                .resolve_var(rid)),
+                .resolve_region(self.infcx.tcx, r)),
             _ => Ok(r),
         }
     }

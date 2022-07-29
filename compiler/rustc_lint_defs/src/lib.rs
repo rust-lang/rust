@@ -232,6 +232,13 @@ impl Level {
             Level::Deny | Level::Forbid => true,
         }
     }
+
+    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
+        match self {
+            Level::Expect(id) | Level::ForceWarn(Some(id)) => Some(*id),
+            _ => None,
+        }
+    }
 }
 
 /// Specification of a single lint.
@@ -460,6 +467,7 @@ pub enum BuiltinLintDiagnostics {
         /// If true, the lifetime will be fully elided.
         use_span: Option<(Span, bool)>,
     },
+    NamedArgumentUsedPositionally(Option<Span>, Span, String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

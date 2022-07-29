@@ -10,10 +10,13 @@ because that's clearly a non-descriptive name.
 - [Adding a new lint](#adding-a-new-lint)
   - [Setup](#setup)
   - [Getting Started](#getting-started)
+    - [Defining Our Lint](#defining-our-lint)
+      - [Standalone](#standalone)
+      - [Specific Type](#specific-type)
+      - [Tests Location](#tests-location)
   - [Testing](#testing)
     - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
-  - [Edition 2018 tests](#edition-2018-tests)
   - [Testing manually](#testing-manually)
   - [Lint declaration](#lint-declaration)
   - [Lint registration](#lint-registration)
@@ -37,17 +40,38 @@ See the [Basics](basics.md#get-the-code) documentation.
 ## Getting Started
 
 There is a bit of boilerplate code that needs to be set up when creating a new
-lint. Fortunately, you can use the clippy dev tools to handle this for you. We
+lint. Fortunately, you can use the Clippy dev tools to handle this for you. We
 are naming our new lint `foo_functions` (lints are generally written in snake
-case), and we don't need type information so it will have an early pass type
-(more on this later on). If you're not sure if the name you chose fits the lint,
-take a look at our [lint naming guidelines][lint_naming]. To get started on this
-lint you can run `cargo dev new_lint --name=foo_functions --pass=early
---category=pedantic` (category will default to nursery if not provided). This
-command will create two files: `tests/ui/foo_functions.rs` and
-`clippy_lints/src/foo_functions.rs`, as well as [registering the
-lint](#lint-registration). For cargo lints, two project hierarchies (fail/pass)
-will be created by default under `tests/ui-cargo`.
+case), and we don't need type information, so it will have an early pass type
+(more on this later). If you're unsure if the name you chose fits the lint,
+take a look at our [lint naming guidelines][lint_naming].
+
+## Defining Our Lint
+To get started, there are two ways to define our lint.
+
+### Standalone
+Command: `cargo dev new_lint --name=foo_functions --pass=early --category=pedantic`
+(category will default to nursery if not provided)
+
+This command will create a new file: `clippy_lints/src/foo_functions.rs`, as well
+as [register the lint](#lint-registration).
+
+### Specific Type
+Command: `cargo dev new_lint --name=foo_functions --type=functions --category=pedantic`
+
+This command will create a new file: `clippy_lints/src/{type}/foo_functions.rs`.
+
+Notice how this command has a `--type` flag instead of `--pass`. Unlike a standalone
+definition, this lint won't be registered in the traditional sense. Instead, you will
+call your lint from within the type's lint pass, found in `clippy_lints/src/{type}/mod.rs`.
+
+A "type" is just the name of a directory in `clippy_lints/src`, like `functions` in
+the example command. These are groupings of lints with common behaviors, so if your
+lint falls into one, it would be best to add it to that type.
+
+### Tests Location
+Both commands will create a file: `tests/ui/foo_functions.rs`. For cargo lints,
+two project hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 
@@ -402,9 +426,8 @@ need to ensure that the MSRV configured for the project is >= the MSRV of the
 required Rust feature. If multiple features are required, just use the one with
 a lower MSRV.
 
-First, add an MSRV alias for the required feature in
-[`clippy_utils::msrvs`](/clippy_utils/src/msrvs.rs). This can be accessed later
-as `msrvs::STR_STRIP_PREFIX`, for example.
+First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`].
+This can be accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
 msrv_aliases! {
@@ -467,6 +490,8 @@ define_Conf! {
     ...
 }
 ```
+
+[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/msrvs/index.html
 
 ## Author lint
 
@@ -583,8 +608,7 @@ the workspace directory. Adding a configuration to a lint can be useful for
 thresholds or to constrain some behavior that can be seen as a false positive
 for some users. Adding a configuration is done in the following steps:
 
-1. Adding a new configuration entry to
-   [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs) like this:
+1. Adding a new configuration entry to [`clippy_lints::utils::conf`] like this:
 
    ```rust
    /// Lint: LINT_NAME.
@@ -635,9 +659,9 @@ for some users. Adding a configuration is done in the following steps:
        ```
 3. Passing the configuration value to the lint impl struct:
 
-   First find the struct construction in the [clippy_lints lib
-   file](/clippy_lints/src/lib.rs). The configuration value is now cloned or
-   copied into a local value that is then passed to the impl struct like this:
+   First find the struct construction in the [`clippy_lints` lib file]. The
+   configuration value is now cloned or copied into a local value that is then
+   passed to the impl struct like this:
 
    ```rust
    // Default generated registration:
@@ -653,12 +677,16 @@ for some users. Adding a configuration is done in the following steps:
 
 4. Adding tests:
     1. The default configured value can be tested like any normal lint in
-       [`tests/ui`](/tests/ui).
-    2. The configuration itself will be tested separately in
-       [`tests/ui-toml`](/tests/ui-toml). Simply add a new subfolder with a
-       fitting name. This folder contains a `clippy.toml` file with the
-       configuration value and a rust file that should be linted by Clippy. The
-       test can otherwise be written as usual.
+       [`tests/ui`].
+    2. The configuration itself will be tested separately in [`tests/ui-toml`].
+       Simply add a new subfolder with a fitting name. This folder contains a
+       `clippy.toml` file with the configuration value and a rust file that
+       should be linted by Clippy. The test can otherwise be written as usual.
+
+[`clippy_lints::utils::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/conf.rs
+[`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
+[`tests/ui`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui
+[`tests/ui-toml`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui-toml
 
 ## Cheat Sheet
 

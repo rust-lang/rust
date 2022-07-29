@@ -512,7 +512,18 @@ fn out_of_bounds_err<'a>(
     span: Span,
     ty: &str,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-    cx.struct_span_err(span, &format!("{ty} depth must be less than {max}"))
+    let msg = if max == 0 {
+        format!(
+            "meta-variable expression `{ty}` with depth parameter \
+             must be called inside of a macro repetition"
+        )
+    } else {
+        format!(
+            "depth parameter on meta-variable expression `{ty}` \
+             must be less than {max}"
+        )
+    };
+    cx.struct_span_err(span, &msg)
 }
 
 fn transcribe_metavar_expr<'a>(

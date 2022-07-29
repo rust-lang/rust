@@ -9,15 +9,11 @@ LL |     let Ok(_x) = foo();
 note: `Result<u32, !>` defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
-LL | / pub enum Result<T, E> {
-LL | |     /// Contains the success value
-LL | |     #[lang = "Ok"]
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-...  |
-LL | |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
-   | |     ^^^ not covered
-LL | | }
-   | |_-
+LL | pub enum Result<T, E> {
+   | ---------------------
+...
+LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   |     ^^^ not covered
    = note: the matched value is of type `Result<u32, !>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |

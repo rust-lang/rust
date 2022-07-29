@@ -2,6 +2,7 @@ mod sip;
 
 use std::default::Default;
 use std::hash::{BuildHasher, Hash, Hasher};
+use std::ptr;
 use std::rc::Rc;
 
 struct MyHasher {
@@ -69,10 +70,10 @@ fn test_writer_hasher() {
     let cs: Rc<[u8]> = Rc::new([1, 2, 3]);
     assert_eq!(hash(&cs), 9);
 
-    let ptr = 5_usize as *const i32;
+    let ptr = ptr::invalid::<i32>(5_usize);
     assert_eq!(hash(&ptr), 5);
 
-    let ptr = 5_usize as *mut i32;
+    let ptr = ptr::invalid_mut::<i32>(5_usize);
     assert_eq!(hash(&ptr), 5);
 
     if cfg!(miri) {

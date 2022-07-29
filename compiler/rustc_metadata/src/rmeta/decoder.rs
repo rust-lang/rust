@@ -21,7 +21,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::GeneratorDiagnosticData;
@@ -638,7 +637,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
     }
@@ -950,6 +949,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     /// Iterates over all the stability attributes in the given crate.
     fn get_lib_features(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
         tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
+    }
+
+    /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute
+    /// has an `implied_by` meta item, then the mapping from the implied feature to the actual
+    /// feature is a stability implication).
+    fn get_stability_implications(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Symbol)] {
+        tcx.arena.alloc_from_iter(self.root.stability_implications.decode(self))
     }
 
     /// Iterates over the language items in the given crate.
@@ -1468,25 +1474,31 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
     fn imported_source_files(self, sess: &Session) -> &'a [ImportedSourceFile] {
-        // Translate the virtual `/rustc/$hash` prefix back to a real directory
-        // that should hold actual sources, where possible.
-        //
-        // NOTE: if you update this, you might need to also update bootstrap's code for generating
-        // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-        let virtual_rust_source_base_dir = option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
-            .map(Path::new)
-            .filter(|_| {
+        fn filter<'a>(sess: &Session, path: Option<&'a Path>) -> Option<&'a Path> {
+            path.filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
                 sess.opts.real_rust_source_base_dir.is_some()
-                    // Some tests need the translation to be always skipped.
-                    && sess.opts.debugging_opts.translate_remapped_path_to_local_path
+                // Some tests need the translation to be always skipped.
+                && sess.opts.unstable_opts.translate_remapped_path_to_local_path
             })
             .filter(|virtual_dir| {
                 // Don't translate away `/rustc/$hash` if we're still remapping to it,
                 // since that means we're still building `std`/`rustc` that need it,
                 // and we don't want the real path to leak into codegen/debuginfo.
                 !sess.opts.remap_path_prefix.iter().any(|(_from, to)| to == virtual_dir)
-            });
+            })
+        }
+
+        // Translate the virtual `/rustc/$hash` prefix back to a real directory
+        // that should hold actual sources, where possible.
+        //
+        // NOTE: if you update this, you might need to also update bootstrap's code for generating
+        // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
+        let virtual_rust_source_base_dir = [
+            filter(sess, option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(Path::new)),
+            filter(sess, sess.opts.unstable_opts.simulate_remapped_rust_src_base.as_deref()),
+        ];
+
         let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
             debug!(
                 "try_to_translate_virtual_to_real(name={:?}): \
@@ -1494,7 +1506,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 name, virtual_rust_source_base_dir, sess.opts.real_rust_source_base_dir,
             );
 
-            if let Some(virtual_dir) = virtual_rust_source_base_dir {
+            for virtual_dir in virtual_rust_source_base_dir.iter().flatten() {
                 if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
                     if let rustc_span::FileName::Real(old_name) = name {
                         if let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
@@ -1578,7 +1590,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // `try_to_translate_virtual_to_real` don't have to worry about how the
                     // compiler is bootstrapped.
                     if let Some(virtual_dir) =
-                        &sess.opts.debugging_opts.simulate_remapped_rust_src_base
+                        &sess.opts.unstable_opts.simulate_remapped_rust_src_base
                     {
                         if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
                             if let rustc_span::FileName::Real(ref mut old_name) = name {
@@ -1752,8 +1764,8 @@ impl CrateMetadata {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 
-    pub(crate) fn panic_strategy(&self) -> PanicStrategy {
-        self.root.panic_strategy
+    pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
+        self.root.required_panic_strategy
     }
 
     pub(crate) fn needs_panic_runtime(&self) -> bool {

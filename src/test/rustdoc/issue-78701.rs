@@ -5,8 +5,8 @@
 // the ID is correctly derived.
 
 // @has 'foo/struct.AnotherStruct.html'
-// @count - '//*[@class="sidebar"]//a[@href="#impl-AnAmazingTrait"]' 1
-// @count - '//*[@class="sidebar"]//a[@href="#impl-AnAmazingTrait-1"]' 1
+// @count - '//*[@class="sidebar"]//a[@href="#impl-AnAmazingTrait-for-AnotherStruct%3C()%3E"]' 1
+// @count - '//*[@class="sidebar"]//a[@href="#impl-AnAmazingTrait-for-AnotherStruct%3CT%3E"]' 1
 
 pub trait Something {}
 

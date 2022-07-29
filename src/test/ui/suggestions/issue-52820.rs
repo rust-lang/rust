@@ -1,3 +1,6 @@
+// run-rustfix
+#![allow(dead_code)]
+
 struct Bravery {
     guts: String,
     brains: String,

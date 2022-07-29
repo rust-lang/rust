@@ -37,7 +37,7 @@ fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
     // LLVM prior to version 12 had known miscompiles in the presence of
     // noalias attributes (see #54878), but we don't support earlier
     // versions at all anymore. We now enable mutable noalias by default.
-    cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(true)
+    cx.tcx.sess.opts.unstable_opts.mutable_noalias.unwrap_or(true)
 }
 
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
@@ -567,6 +567,22 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 callsite,
                 llvm::AttributePlace::Function,
                 &[cmse_nonsecure_call],
+            );
+        }
+
+        // Some intrinsics require that an elementtype attribute (with the pointee type of a
+        // pointer argument) is added to the callsite.
+        let element_type_index = unsafe { llvm::LLVMRustGetElementTypeArgIndex(callsite) };
+        if element_type_index >= 0 {
+            let arg_ty = self.args[element_type_index as usize].layout.ty;
+            let pointee_ty = arg_ty.builtin_deref(true).expect("Must be pointer argument").ty;
+            let element_type_attr = unsafe {
+                llvm::LLVMRustCreateElementTypeAttr(bx.llcx, bx.layout_of(pointee_ty).llvm_type(bx))
+            };
+            attributes::apply_to_callsite(
+                callsite,
+                llvm::AttributePlace::Argument(element_type_index as u32),
+                &[element_type_attr],
             );
         }
     }

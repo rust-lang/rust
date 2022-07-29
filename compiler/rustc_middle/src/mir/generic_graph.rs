@@ -8,7 +8,7 @@ pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Grap
     let def_id = body.source.def_id();
     let def_name = graphviz_safe_def_name(def_id);
     let graph_name = format!("Mir_{}", def_name);
-    let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
+    let dark_mode = tcx.sess.opts.unstable_opts.graphviz_dark_mode;
 
     // Nodes
     let nodes: Vec<Node> = body
