@@ -460,6 +460,7 @@ mod c {
                 ("__fe_getround", "fp_mode.c"),
                 ("__divtf3", "divtf3.c"),
                 ("__trunctfdf2", "trunctfdf2.c"),
+                ("__trunctfsf2", "trunctfsf2.c"),
             ]);
         }
 
