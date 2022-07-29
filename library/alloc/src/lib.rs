@@ -111,6 +111,7 @@
 #![feature(const_pin)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
+#![cfg_attr(not(bootstrap), feature(error_in_core))]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(fmt_internals)]
@@ -178,6 +179,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
+#![feature(with_negative_coherence)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]

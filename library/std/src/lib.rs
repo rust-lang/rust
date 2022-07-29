@@ -269,6 +269,8 @@
 #![feature(cstr_internals)]
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]
+#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
+#![cfg_attr(not(bootstrap), feature(error_in_core))]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
