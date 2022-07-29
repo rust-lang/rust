@@ -38,8 +38,9 @@ use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
 
 use errors::{
-    FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
-    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, UnnamedItemIsPrivate,
+    FieldIsPrivate, FieldIsPrivateLabel, FromDisplay, FromPrivateDependencyInPublicInterface,
+    InPublicInterface, InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint,
+    UnnamedItemIsPrivate,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1082,7 +1083,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
             self.tcx.sess.emit_err(ItemIsPrivate {
                 span: self.span,
                 kind,
-                descr: descr.to_string(),
+                descr: FromDisplay(descr),
             });
         }
         is_error
@@ -1255,7 +1256,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 };
                 let kind = kind.descr(def_id);
                 let _ = match name {
-                    Some(name) => sess.emit_err(ItemIsPrivate { span, kind, descr: name }),
+                    Some(name) => {
+                        sess.emit_err(ItemIsPrivate { span, kind, descr: FromDisplay(&name) })
+                    }
                     None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
@@ -1723,7 +1726,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 self.tcx.def_span(self.item_def_id.to_def_id()),
                 FromPrivateDependencyInPublicInterface {
                     kind,
-                    descr: descr.to_string(),
+                    descr: FromDisplay(descr),
                     krate: self.tcx.crate_name(def_id.krate),
                 },
             );
@@ -1750,7 +1753,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
-            let descr = descr.to_string();
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
@@ -1761,7 +1763,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         span,
                         vis_descr,
                         kind,
-                        descr,
+                        descr: FromDisplay(descr),
                         vis_span,
                     });
                 } else {
@@ -1769,7 +1771,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         span,
                         vis_descr,
                         kind,
-                        descr,
+                        descr: FromDisplay(descr),
                         vis_span,
                     });
                 }
@@ -1778,7 +1780,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    PrivateInPublicLint { vis_descr, kind, descr },
+                    PrivateInPublicLint { vis_descr, kind, descr: FromDisplay(descr) },
                 );
             }
         }
