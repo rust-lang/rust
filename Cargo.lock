@@ -5042,6 +5042,7 @@ version = "0.0.0"
 dependencies = [
  "addr2line 0.16.0",
  "alloc",
+ "cc",
  "cfg-if 0.1.10",
  "compiler_builtins",
  "core",
