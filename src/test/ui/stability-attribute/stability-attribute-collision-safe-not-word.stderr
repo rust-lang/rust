@@ -1,0 +1,14 @@
+error: `collision_safe` should not have any arguments
+  --> $DIR/stability-attribute-collision-safe-not-word.rs:9:57
+   |
+LL |     #[unstable(feature = "new_feature", issue = "none", collision_safe = "foo")]
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `collision_safe` should not have any arguments
+  --> $DIR/stability-attribute-collision-safe-not-word.rs:15:57
+   |
+LL |     #[unstable(feature = "new_feature", issue = "none", collision_safe("foo"))]
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

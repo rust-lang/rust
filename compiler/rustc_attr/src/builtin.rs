@@ -180,6 +180,50 @@ pub enum StabilityLevel {
         /// fn foobar() {}
         /// ```
         implied_by: Option<Symbol>,
+        /// When an unstable method exists on a type and the user is invoking a method that would
+        /// no longer have priority when the unstable method is stabilized, an "unstable name
+        /// collision" lint is emitted. In the vast majority of circumstances, this is desirable.
+        ///
+        /// However, when adding a new inherent method to the standard library, which deliberately
+        /// shadows the name of a method in the `Deref` target, then this lint can be triggered,
+        /// affecting users on stable who don't even know about the new unstable inherent method.
+        /// As the new method is being added to the standard library, by the library team, it can
+        /// be known that the lint isn't necessary, as the library team can ensure that the new
+        /// inherent method has the same behaviour and won't cause any problems for users when it
+        /// is stabilized.
+        ///
+        /// ```pseudo-Rust
+        /// pub struct Foo;
+        /// pub struct Bar;
+        ///
+        /// impl std::ops::Deref for Foo {
+        ///     type Target = Bar;
+        ///     fn deref(&self) -> &Self::Target { &Bar }
+        /// }
+        ///
+        /// impl Foo {
+        ///     #[unstable(feature = "new_feature", issue = "none", collision_safe)]
+        ///     pub fn example(&self) -> u32 { 4 }
+        /// }
+        ///
+        /// impl Bar {
+        ///     #[stable(feature = "old_feature", since = "1.0.0")]
+        ///     pub fn example(&self) -> u32 { 3 }
+        /// }
+        ///
+        /// // ..in another crate..
+        /// fn main() {
+        ///     let foo = Foo;
+        ///     assert_eq!(foo.example(), 3);
+        ///     // still invokes `Bar`'s `example`, as the `new_feature` isn't enabled, but doesn't
+        ///     // trigger a name collision lint (in practice, both `example` functions should
+        ///     // have identical behaviour)
+        /// }
+        /// ```
+        ///
+        /// Without this addition, the new inherent method would need to be insta-stable in order
+        /// to avoid breaking stable users.
+        collision_safe: bool,
     },
     /// `#[stable]`
     Stable {
@@ -328,6 +372,7 @@ where
                     let mut issue = None;
                     let mut issue_num = None;
                     let mut is_soft = false;
+                    let mut collision_safe = false;
                     let mut implied_by = None;
                     for meta in metas {
                         let Some(mi) = meta.meta_item() else {
@@ -383,6 +428,14 @@ where
                                 }
                                 is_soft = true;
                             }
+                            sym::collision_safe => {
+                                if !mi.is_word() {
+                                    sess.emit_err(session_diagnostics::CollisionSafeNoArgs {
+                                        span: mi.span,
+                                    });
+                                }
+                                collision_safe = true;
+                            }
                             sym::implied_by => {
                                 if !get(mi, &mut implied_by) {
                                     continue 'outer;
@@ -417,6 +470,7 @@ where
                                 issue: issue_num,
                                 is_soft,
                                 implied_by,
+                                collision_safe,
                             };
                             if sym::unstable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));

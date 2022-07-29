@@ -1,0 +1,18 @@
+error: an associated function with this name may be added to the standard library in the future
+  --> $DIR/stability-attribute-collision-safe-without-feature.rs:11:18
+   |
+LL |     assert_eq!(f.example(), 3);
+   |                  ^^^^^^^
+   |
+   = warning: once this associated item is added to the standard library, the ambiguity may cause an error or change in behavior!
+   = note: for more information, see issue #48919 <https://github.com/rust-lang/rust/issues/48919>
+   = help: call with fully qualified syntax `Bar::example(...)` to keep using the current method
+   = help: add `#![feature(new_feature)]` to the crate attributes to enable `Foo::example`
+note: the lint level is defined here
+  --> $DIR/stability-attribute-collision-safe-without-feature.rs:2:9
+   |
+LL | #![deny(unstable_name_collisions)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

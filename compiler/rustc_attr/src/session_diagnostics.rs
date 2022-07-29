@@ -386,6 +386,13 @@ pub(crate) struct SoftNoArgs {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_collision_safe_no_args)]
+pub(crate) struct CollisionSafeNoArgs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_unknown_version_literal)]
 pub(crate) struct UnknownVersionLiteral {
     #[primary_span]

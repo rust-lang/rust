@@ -482,6 +482,7 @@ symbols! {
         coerce_unsized,
         cold,
         collapse_debuginfo,
+        collision_safe,
         column,
         compare_exchange,
         compare_exchange_weak,

@@ -440,7 +440,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft, implied_by },
+                level: attr::Unstable { reason, issue, is_soft, implied_by, .. },
                 feature,
                 ..
             }) => {

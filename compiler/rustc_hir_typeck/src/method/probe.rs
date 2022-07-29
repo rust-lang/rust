@@ -5,6 +5,8 @@ use super::NoMatchData;
 
 use crate::errors::MethodCallOnUnknownType;
 use crate::FnCtxt;
+
+use rustc_attr::{Stability, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -1368,6 +1370,21 @@ impl<'tcx> Pick<'tcx> {
         if self.unstable_candidates.is_empty() {
             return;
         }
+
+        if self.unstable_candidates.iter().all(|(candidate, _)| {
+            let stab = tcx.lookup_stability(candidate.item.def_id);
+            debug!(?candidate, ?stab);
+            matches!(
+                stab,
+                Some(Stability {
+                    level: StabilityLevel::Unstable { collision_safe: true, .. },
+                    ..
+                })
+            )
+        }) {
+            return;
+        }
+
         let def_kind = self.item.kind.as_def_kind();
         tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,

@@ -103,5 +103,8 @@ attr_expects_features =
 attr_soft_no_args =
     `soft` should not have any arguments
 
+attr_collision_safe_no_args =
+    `collision_safe` should not have any arguments
+
 attr_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
