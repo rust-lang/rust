@@ -452,7 +452,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
                     // debruijn index. Then we adjust it to the
                     // correct depth.
                     assert_eq!(debruijn1, ty::INNERMOST);
-                    self.tcx.mk_region(ty::ReLateBound(debruijn, br))
+                    self.tcx.reuse_or_mk_region(region, ty::ReLateBound(debruijn, br))
                 } else {
                     region
                 }
