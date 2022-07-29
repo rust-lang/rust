@@ -434,7 +434,7 @@ where
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
                                             pprust::path_to_string(&mi.path),
-                                            &["feature", "since"],
+                                            &["since", "note"],
                                         ),
                                     );
                                     continue 'outer;
