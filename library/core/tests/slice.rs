@@ -2575,11 +2575,17 @@ fn test_flatten_mut_size_overflow() {
     let x = &mut [[(); usize::MAX]; 2][..];
     let _ = x.flatten_mut();
 }
-
 #[test]
 fn test_escape_ascii() {
     assert_eq!([].escape_ascii().len(), 0);
     assert_eq!([b'X'].escape_ascii().len(), 1);
     assert_eq!([b'\t'].escape_ascii().to_string(), "\\t");
     assert_eq!([b'\t'].escape_ascii().size_hint(), (2, Some(2)));
+
+    let mut esc = [b'A', b'B', b'C', b'D'].escape_ascii();
+    assert_eq!(esc.len(), 4);
+    assert_eq!(esc.next(), Some(b'A'));
+    assert_eq!(esc.len(), 3);
+    assert_eq!(esc.next_back(), Some(b'D'));
+    assert_eq!(esc.len(), 2);
 }
