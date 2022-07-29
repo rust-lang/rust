@@ -939,10 +939,12 @@ impl<'a> CompletionContext<'a> {
                             ast::Meta(meta) => make_path_kind_attr(meta)?,
                             ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
                             ast::UseTree(_) => PathKind::Use,
+                            ast::RecordExpr(it) => make_path_kind_expr(it.into()),
                             _ => return None,
                         }
                     }
                 },
+                ast::RecordExpr(it) => make_path_kind_expr(it.into()),
                 _ => return None,
             }
         };
