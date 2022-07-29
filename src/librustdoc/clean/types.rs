@@ -430,8 +430,8 @@ impl Item {
         };
         match kind {
             ItemKind::ModuleItem(Module { span, .. }) => *span,
-            ItemKind::ImplItem(Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
-            ItemKind::ImplItem(Impl { kind: ImplKind::Blanket(_), .. }) => {
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
                     rustc_span(impl_id, tcx)
                 } else {
@@ -502,7 +502,7 @@ impl Item {
             clean_visibility(cx.tcx.visibility(def_id))
         };
 
-        Item { item_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
+        Item { item_id: def_id.into(), kind: Box::new(kind), name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -730,25 +730,25 @@ pub(crate) enum ItemKind {
     StructItem(Struct),
     UnionItem(Union),
     EnumItem(Enum),
-    FunctionItem(Function),
+    FunctionItem(Box<Function>),
     ModuleItem(Module),
-    TypedefItem(Typedef),
+    TypedefItem(Box<Typedef>),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
     TraitAliasItem(TraitAlias),
-    ImplItem(Impl),
+    ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
-    TyMethodItem(Function),
+    TyMethodItem(Box<Function>),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
     /// Compared to [TyMethodItem], it also contains a method body.
-    MethodItem(Function, Option<hir::Defaultness>),
+    MethodItem(Box<Function>, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Function),
+    ForeignFunctionItem(Box<Function>),
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     /// `type`s from an extern block
@@ -765,11 +765,15 @@ pub(crate) enum ItemKind {
     /// The bounds may be non-empty if there is a `where` clause.
     TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Typedef, Vec<GenericBound>),
+    AssocTypeItem(Box<Typedef>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem,
 }
+
+// `ItemKind` is an enum and large variants can bloat up memory usage even for smaller ones
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ItemKind, 112);
 
 impl ItemKind {
     /// Some items contain others such as structs (for their fields) and Enums

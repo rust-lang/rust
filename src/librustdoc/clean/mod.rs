@@ -908,7 +908,7 @@ fn clean_function<'tcx>(
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     body_id: hir::BodyId,
-) -> Function {
+) -> Box<Function> {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
         let generics = generics.clean(cx);
@@ -916,7 +916,7 @@ fn clean_function<'tcx>(
         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
         (generics, decl)
     });
-    Function { decl, generics }
+    Box::new(Function { decl, generics })
 }
 
 fn clean_args_from_types_and_names<'tcx>(
@@ -1061,18 +1061,18 @@ impl<'tcx> Clean<'tcx, Item> for hir::TraitItem<'tcx> {
                         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
                         (generics, decl)
                     });
-                    TyMethodItem(Function { decl, generics })
+                    TyMethodItem(Box::new(Function { decl, generics }))
                 }
                 hir::TraitItemKind::Type(bounds, Some(default)) => {
                     let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
                     let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
                     let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, default), cx, None);
                     AssocTypeItem(
-                        Typedef {
+                        Box::new(Typedef {
                             type_: clean_ty(default, cx),
                             generics,
                             item_type: Some(item_type),
-                        },
+                        }),
                         bounds,
                     )
                 }
@@ -1109,7 +1109,7 @@ impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
                     let generics = self.generics.clean(cx);
                     let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
                     AssocTypeItem(
-                        Typedef { type_, generics, item_type: Some(item_type) },
+                        Box::new(Typedef { type_, generics, item_type: Some(item_type) }),
                         Vec::new(),
                     )
                 }
@@ -1186,9 +1186,9 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    MethodItem(Function { generics, decl }, defaultness)
+                    MethodItem(Box::new(Function { generics, decl }), defaultness)
                 } else {
-                    TyMethodItem(Function { generics, decl })
+                    TyMethodItem(Box::new(Function { generics, decl }))
                 }
             }
             ty::AssocKind::Type => {
@@ -1282,7 +1282,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
 
                     if self.defaultness.has_value() {
                         AssocTypeItem(
-                            Typedef {
+                            Box::new(Typedef {
                                 type_: clean_middle_ty(
                                     tcx.type_of(self.def_id),
                                     cx,
@@ -1291,7 +1291,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                                 generics,
                                 // FIXME: should we obtain the Type from HIR and pass it on here?
                                 item_type: None,
-                            },
+                            }),
                             bounds,
                         )
                     } else {
@@ -1300,11 +1300,11 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                 } else {
                     // FIXME: when could this happen? Associated items in inherent impls?
                     AssocTypeItem(
-                        Typedef {
+                        Box::new(Typedef {
                             type_: clean_middle_ty(tcx.type_of(self.def_id), cx, Some(self.def_id)),
                             generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
                             item_type: None,
-                        },
+                        }),
                         Vec::new(),
                     )
                 }
@@ -1949,11 +1949,11 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::TyAlias(hir_ty, generics) => {
                 let rustdoc_ty = clean_ty(hir_ty, cx);
                 let ty = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
-                TypedefItem(Typedef {
+                TypedefItem(Box::new(Typedef {
                     type_: rustdoc_ty,
                     generics: generics.clean(cx),
                     item_type: Some(ty),
-                })
+                }))
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
@@ -2041,7 +2041,7 @@ fn clean_impl<'tcx>(
         _ => None,
     });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
-        let kind = ImplItem(Impl {
+        let kind = ImplItem(Box::new(Impl {
             unsafety: impl_.unsafety,
             generics: impl_.generics.clean(cx),
             trait_,
@@ -2053,7 +2053,7 @@ fn clean_impl<'tcx>(
             } else {
                 ImplKind::Normal
             },
-        });
+        }));
         Item::from_hir_id_and_parts(hir_id, None, kind, cx)
     };
     if let Some(type_alias) = type_alias {
@@ -2108,7 +2108,7 @@ fn clean_extern_crate<'tcx>(
         attrs: Box::new(attrs.clean(cx)),
         item_id: crate_def_id.into(),
         visibility: clean_visibility(ty_vis),
-        kind: box ExternCrateItem { src: orig_name },
+        kind: Box::new(ExternCrateItem { src: orig_name }),
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
     }]
 }
@@ -2243,7 +2243,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                     let decl = clean_fn_decl_with_args(cx, decl, args);
                     (generics, decl)
                 });
-                ForeignFunctionItem(Function { decl, generics })
+                ForeignFunctionItem(Box::new(Function { decl, generics }))
             }
             hir::ForeignItemKind::Static(ty, mutability) => {
                 ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })
