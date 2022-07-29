@@ -362,6 +362,13 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, K: 'a, V: 'a> Default for Iter<'a, K, V> {
+    fn default() -> Self {
+        Iter { range: Default::default(), length: 0 }
+    }
+}
+
 /// A mutable iterator over the entries of a `BTreeMap`.
 ///
 /// This `struct` is created by the [`iter_mut`] method on [`BTreeMap`]. See its
@@ -383,6 +390,13 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let range = Iter { range: self.range.reborrow(), length: self.length };
         f.debug_list().entries(range).finish()
+    }
+}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
+    fn default() -> Self {
+        IterMut { range: Default::default(), length: 0, _marker: PhantomData {} }
     }
 }
 
@@ -418,6 +432,13 @@ impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
 impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for IntoIter<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
+    }
+}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IntoIter<K, V> {
+    fn default() -> Self {
+        IntoIter { range: Default::default(), length: 0, alloc: Global }
     }
 }
 
@@ -1768,6 +1789,13 @@ impl<K, V> Clone for Keys<'_, K, V> {
     }
 }
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for Keys<'_, K, V> {
+    fn default() -> Self {
+        Keys { inner: Default::default() }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
@@ -1806,6 +1834,13 @@ impl<K, V> FusedIterator for Values<'_, K, V> {}
 impl<K, V> Clone for Values<'_, K, V> {
     fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
+    }
+}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for Values<'_, K, V> {
+    fn default() -> Self {
+        Values { inner: Default::default() }
     }
 }
 
@@ -1945,6 +1980,13 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     }
 }
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for Range<'_, K, V> {
+    fn default() -> Self {
+        Range { inner: Default::default() }
+    }
+}
+
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
     type Item = &'a mut V;
@@ -2021,6 +2063,13 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoKeys<K, V, A> {
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IntoKeys<K, V> {
+    fn default() -> Self {
+        IntoKeys { inner: Default::default() }
+    }
+}
+
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> Iterator for IntoValues<K, V, A> {
     type Item = V;
@@ -2054,6 +2103,13 @@ impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoValues<K, V, A> {
 
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
 impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<K, V> Default for IntoValues<K, V> {
+    fn default() -> Self {
+        IntoValues { inner: Default::default() }
+    }
+}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {

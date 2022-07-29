@@ -135,3 +135,13 @@ impl<I> FusedIterator for Rev<I> where I: FusedIterator + DoubleEndedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I> Default for Rev<I>
+where
+    I: Default + Iterator,
+{
+    fn default() -> Self {
+        Rev::new(Default::default())
+    }
+}

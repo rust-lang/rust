@@ -1,8 +1,10 @@
 use core::cell::Cell;
 use core::cmp::Ordering;
+use core::iter::ExactSizeIterator;
 use core::mem::MaybeUninit;
 use core::result::Result::{Err, Ok};
-use core::slice;
+use core::slice::Iter;
+use core::{assert_eq, slice};
 
 #[test]
 fn test_position() {
@@ -222,6 +224,12 @@ fn test_iterator_count() {
     iter2.next();
     iter2.next();
     assert_eq!(iter2.count(), 3);
+}
+
+#[test]
+fn test_iterator_default() {
+    let iter: Iter<'_, u8> = Iter::default();
+    assert_eq!(iter.len(), 0);
 }
 
 #[test]

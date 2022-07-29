@@ -302,6 +302,17 @@ where
 {
 }
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I> Default for Flatten<I>
+where
+    I: Iterator + Default,
+    <I as Iterator>::Item: IntoIterator,
+{
+    fn default() -> Self {
+        Flatten::new(Default::default())
+    }
+}
+
 /// Real logic of both `Flatten` and `FlatMap` which simply delegate to
 /// this type.
 #[derive(Clone, Debug)]

@@ -282,6 +282,17 @@ where
 {
 }
 
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> Default for Chain<A, B>
+where
+    A: Iterator + Default,
+    B: Iterator + Default,
+{
+    fn default() -> Self {
+        Chain::new(Default::default(), Default::default())
+    }
+}
+
 #[inline]
 fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option<U>) -> Option<U> {
     let x = f(opt.as_mut()?);

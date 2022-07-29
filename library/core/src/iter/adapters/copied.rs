@@ -240,3 +240,14 @@ where
         }
     }
 }
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, T: 'a> Default for Copied<I>
+where
+    I: Default + Iterator<Item = &'a T>,
+    T: Copy,
+{
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}

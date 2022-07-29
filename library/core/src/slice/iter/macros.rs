@@ -393,6 +393,13 @@ macro_rules! iterator {
                 }
             }
         }
+
+        #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+        impl<T> Default for $name<'_, T> {
+            fn default() -> Self {
+                (& $( $mut_ )? []).into_iter()
+            }
+        }
     }
 }
 

@@ -173,6 +173,12 @@ fn test_iterator() {
 }
 
 #[test]
+fn test_default() {
+    let iter: IntoIter<u8> = Default::default();
+    assert_eq!(iter.len(), 0);
+}
+
+#[test]
 fn test_iterator_clone() {
     let mut n = LinkedList::new();
     n.push_back(2);

@@ -264,3 +264,13 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {}
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<I> Default for Enumerate<I>
+where
+    I: Iterator + Default,
+{
+    fn default() -> Self {
+        Enumerate::new(Default::default())
+    }
+}

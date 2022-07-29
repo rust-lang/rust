@@ -563,6 +563,22 @@ fn test_iter_min_max() {
     a.check();
 }
 
+#[test]
+fn test_iters_default() {
+    let iter: Keys<'_, u8, u8> = Keys::default();
+    assert_eq!(iter.len(), 0);
+    let iter: Values<'_, u8, u8> = Values::default();
+    assert_eq!(iter.len(), 0);
+    let iter: Range<'_, u8, u8> = Range::default();
+    assert_eq!(iter.count(), 0);
+    let iter: IntoIter<u8, u8> = IntoIter::default();
+    assert_eq!(iter.len(), 0);
+    let iter: IntoKeys<u8, u8> = IntoKeys::default();
+    assert_eq!(iter.len(), 0);
+    let iter: IntoValues<u8, u8> = IntoValues::default();
+    assert_eq!(iter.len(), 0);
+}
+
 fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {
     Vec::from_iter(map.range(range).map(|(&k, &v)| {
         assert_eq!(k, v);

@@ -153,3 +153,14 @@ where
         item.clone()
     }
 }
+
+#[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, I, T: 'a> Default for Cloned<I>
+where
+    I: Default + Iterator<Item = &'a T>,
+    T: Clone,
+{
+    fn default() -> Self {
+        Self::new(Default::default())
+    }
+}
