@@ -5,6 +5,7 @@ pub use r_efi::efi::{BootServices, RuntimeServices, SystemTable};
 use crate::alloc::{Allocator, Global, Layout};
 use crate::io;
 use crate::ptr::NonNull;
+use crate::sys_common::AsInner;
 
 // A type to make working with Variable Sized Types easier
 pub(crate) struct VariableSizeType<T> {
@@ -40,6 +41,12 @@ impl<T> VariableSizeType<T> {
 
     pub(crate) fn size(&self) -> usize {
         self.layout.size()
+    }
+}
+
+impl<T> AsInner<NonNull<T>> for VariableSizeType<T> {
+    fn as_inner(&self) -> &NonNull<T> {
+        &self.inner
     }
 }
 

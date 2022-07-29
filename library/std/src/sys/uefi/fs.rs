@@ -12,9 +12,10 @@ use r_efi::protocols::file;
 // FIXME: Do not store FileProtocol Instead store Handle
 pub struct File {
     ptr: uefi_fs::FileProtocol,
+    path: PathBuf,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct FileAttr {
     size: u64,
     perm: FilePermissions,
@@ -26,11 +27,13 @@ pub struct FileAttr {
 
 pub struct ReadDir {
     inner: uefi_fs::FileProtocol,
+    path: PathBuf,
 }
 
 pub struct DirEntry {
     pub(crate) attr: FileAttr,
     pub(crate) name: OsString,
+    path: PathBuf,
 }
 
 #[derive(Clone, Debug)]
@@ -39,6 +42,7 @@ pub struct OpenOptions {
     attr: u64,
     append: bool,
     truncate: bool,
+    create_new: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -127,8 +131,8 @@ impl FileType {
 }
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.path, f)
     }
 }
 
@@ -136,7 +140,7 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        let dir_entry = self.inner.read_dir_entry();
+        let dir_entry = self.inner.read_dir_entry(self.path.as_path());
         if let Some(Ok(ref x)) = dir_entry {
             if x.file_name().as_os_str() == OsStr::new(".")
                 || x.file_name().as_os_str() == OsStr::new("..")
@@ -153,7 +157,7 @@ impl Iterator for ReadDir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        todo!()
+        self.path.clone()
     }
 
     pub fn file_name(&self) -> OsString {
@@ -172,7 +176,13 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         // These options open file in readonly mode
-        OpenOptions { open_mode: file::MODE_READ, attr: 0, append: false, truncate: false }
+        OpenOptions {
+            open_mode: file::MODE_READ,
+            attr: 0,
+            append: false,
+            truncate: false,
+            create_new: false,
+        }
     }
 
     pub fn read(&mut self, read: bool) {
@@ -208,18 +218,27 @@ impl OpenOptions {
         }
     }
 
-    // FIXME: Should be possible to implement
-    pub fn create_new(&mut self, _create_new: bool) {}
+    // FIXME: Should be atomic, so not sure if this is correct
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
+        self.create(true);
+        self.write(true);
+    }
 }
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+        let full_path = super::path::absolute(path)?;
         let file_opened = uefi_fs::FileProtocol::from_path(path, opts.open_mode, opts.attr)?;
-        if opts.truncate {
-            file_opened.set_file_info(0)?;
-        }
-        let file = File { ptr: file_opened };
-        if opts.append {
+        let file = File { ptr: file_opened, path: full_path };
+        if opts.create_new {
+            if file.file_attr()?.size != 0 {
+                return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File already exists"));
+            }
+        } else if opts.truncate {
+            file.truncate(0)?;
+        } else if opts.append {
+            // If you truncate a file, no need to seek to end
             file.seek(SeekFrom::End(0))?;
         }
         Ok(file)
@@ -238,8 +257,8 @@ impl File {
         self.fsync()
     }
 
-    pub fn truncate(&self, _size: u64) -> io::Result<()> {
-        unimplemented!()
+    pub fn truncate(&self, size: u64) -> io::Result<()> {
+        self.ptr.set_file_size(size)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -296,11 +315,11 @@ impl File {
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        unimplemented!()
+        unsupported()
     }
 
-    pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
-        unimplemented!()
+    pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
+        self.ptr.set_file_attr(perm.attr)
     }
 }
 
@@ -319,16 +338,19 @@ impl DirBuilder {
 }
 
 impl fmt::Debug for File {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut b = f.debug_struct("File");
+        b.field("Path", &self.path);
+        b.finish()
     }
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+    let abs_path = super::path::absolute(p)?;
     let open_mode = file::MODE_READ;
     let attr = file::DIRECTORY;
     let inner = uefi_fs::FileProtocol::from_path(p, open_mode, attr)?;
-    Ok(ReadDir { inner })
+    Ok(ReadDir { inner, path: abs_path })
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
@@ -338,12 +360,22 @@ pub fn unlink(p: &Path) -> io::Result<()> {
     file.delete()
 }
 
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
+    let open_mode = file::MODE_READ | file::MODE_WRITE;
+    let file = uefi_fs::FileProtocol::from_path(old, open_mode, 0)?;
+
+    // Delete if new already exists
+    if let Ok(f) = uefi_fs::FileProtocol::from_path(new, open_mode, 0) {
+        f.delete()?;
+    }
+
+    file.set_file_name(new.as_os_str())
 }
 
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
-    todo!()
+pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+    let open_mode = file::MODE_READ | file::MODE_WRITE;
+    let file = uefi_fs::FileProtocol::from_path(p, open_mode, 0)?;
+    file.set_file_attr(perm.attr)
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
@@ -353,18 +385,21 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     file.delete()
 }
 
-// FIXME: Implement similar to how EFI Shell does it.
-// Can be found at: ShellPkg/Library/UefiShellLevel2CommandsLib/Rm.c
-// Leaving this unimplemented for now since it will need a lot of other fs stuff to be implemented
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     let open_mode = file::MODE_READ | file::MODE_WRITE;
     let attr = file::DIRECTORY;
     let file = uefi_fs::FileProtocol::from_path(path, open_mode, attr)?;
-    cascade_delete(file)
+    cascade_delete(file, path)
 }
 
-pub fn try_exists(_path: &Path) -> io::Result<bool> {
-    unsupported()
+pub fn try_exists(path: &Path) -> io::Result<bool> {
+    match uefi_fs::FileProtocol::from_path(path, file::MODE_READ, 0) {
+        Ok(_) => Ok(true),
+        Err(e) => match e.kind() {
+            io::ErrorKind::NotFound => Ok(false),
+            _ => Err(e),
+        },
+    }
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
@@ -380,7 +415,13 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let opts = OpenOptions { open_mode: file::MODE_READ, attr: 0, append: false, truncate: false };
+    let opts = OpenOptions {
+        open_mode: file::MODE_READ,
+        attr: 0,
+        append: false,
+        truncate: false,
+        create_new: false,
+    };
     File::open(p, &opts)?.file_attr()
 }
 
@@ -389,22 +430,25 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     stat(p)
 }
 
+// Not sure how to implement. Tryied doing a round conversion from EFI_DEVICE_PATH protocol but
+// that doesn't work either.
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
+// FIXME: Find an efficient implementation
 pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
     unsupported()
 }
 
 // Liberal Cascade Delete
 // The file should not point to root
-fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
+fn cascade_delete(file: uefi_fs::FileProtocol, path: &Path) -> io::Result<()> {
     // Skip "." and ".."
-    let _ = file.read_dir_entry();
-    let _ = file.read_dir_entry();
+    let _ = file.read_dir_entry(path);
+    let _ = file.read_dir_entry(path);
 
-    while let Some(dir_entry) = file.read_dir_entry() {
+    while let Some(dir_entry) = file.read_dir_entry(path) {
         if let Ok(dir_entry) = dir_entry {
             if let Ok(t) = dir_entry.file_type() {
                 if t.is_dir() {
@@ -415,7 +459,7 @@ fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
                             Ok(x) => x,
                             Err(_) => continue,
                         };
-                    let _ = cascade_delete(new_file);
+                    let _ = cascade_delete(new_file, &dir_entry.path);
                 } else {
                     let open_mode = file::MODE_READ | file::MODE_WRITE;
                     let attr = 0;
@@ -436,6 +480,7 @@ fn cascade_delete(file: uefi_fs::FileProtocol) -> io::Result<()> {
 mod uefi_fs {
     use super::super::common::status_to_io_error;
     use super::{DirEntry, FileAttr};
+    use crate::default::Default;
     use crate::ffi::OsStr;
     use crate::ffi::OsString;
     use crate::io;
@@ -597,7 +642,7 @@ mod uefi_fs {
             unsafe { Self::flush_raw(self.inner.as_ptr()) }
         }
 
-        pub fn read_dir_entry(&self) -> Option<io::Result<DirEntry>> {
+        pub fn read_dir_entry(&self, base_path: &Path) -> Option<io::Result<DirEntry>> {
             let mut buf_size = 0usize;
             if let Err(e) = unsafe {
                 Self::read_raw(self.inner.as_ptr(), &mut buf_size, crate::ptr::null_mut())
@@ -627,7 +672,8 @@ mod uefi_fs {
                 unsafe { OsString::from_ffi((*buf.as_ptr()).file_name.as_mut_ptr(), name_len) };
             let attr = FileAttr::from(buf.as_ref());
 
-            Some(Ok(DirEntry { attr, name }))
+            let path = base_path.join(&name);
+            Some(Ok(DirEntry { attr, name, path }))
         }
 
         pub fn get_file_info(&self) -> io::Result<uefi::raw::VariableSizeType<file::Info>> {
@@ -661,11 +707,17 @@ mod uefi_fs {
             }
         }
 
-        pub fn set_file_info(&self, file_size: u64) -> io::Result<()> {
+        pub fn set_file_size(&self, file_size: u64) -> io::Result<()> {
+            use r_efi::efi::Time;
+
             let old_info = self.get_file_info()?;
             // Update fields with new values
             unsafe {
                 (*old_info.as_ptr()).file_size = file_size;
+                // Pass 0 for time values. That means the time stuff will not be updated.
+                (*old_info.as_ptr()).create_time = Time::default();
+                (*old_info.as_ptr()).modification_time = Time::default();
+                (*old_info.as_ptr()).last_access_time = Time::default()
             }
             unsafe {
                 Self::set_info_raw(
@@ -673,6 +725,60 @@ mod uefi_fs {
                     file::INFO_ID,
                     old_info.size(),
                     old_info.as_ptr().cast(),
+                )
+            }
+        }
+
+        pub fn set_file_attr(&self, attribute: u64) -> io::Result<()> {
+            use r_efi::efi::Time;
+
+            let old_info = self.get_file_info()?;
+            // Update fields with new values
+            unsafe {
+                (*old_info.as_ptr()).attribute = attribute;
+                // Pass 0 for time values. That means the time stuff will not be updated.
+                (*old_info.as_ptr()).create_time = Time::default();
+                (*old_info.as_ptr()).modification_time = Time::default();
+                (*old_info.as_ptr()).last_access_time = Time::default()
+            }
+            unsafe {
+                Self::set_info_raw(
+                    self.inner.as_ptr(),
+                    file::INFO_ID,
+                    old_info.size(),
+                    old_info.as_ptr().cast(),
+                )
+            }
+        }
+
+        pub fn set_file_name(&self, file_name: &OsStr) -> io::Result<()> {
+            use r_efi::efi::Time;
+
+            let file_name = file_name.to_ffi_string();
+            let old_info = self.get_file_info()?;
+            let new_size =
+                crate::mem::size_of::<file::Info>() + crate::mem::size_of_val(&file_name);
+            let new_info: VariableSizeType<file::Info> = VariableSizeType::from_size(new_size)?;
+            unsafe {
+                (*new_info.as_ptr()).size = new_size as u64;
+                (*new_info.as_ptr()).file_size = old_info.as_ref().file_size;
+                (*new_info.as_ptr()).physical_size = old_info.as_ref().physical_size;
+                (*new_info.as_ptr()).create_time = Time::default();
+                (*new_info.as_ptr()).modification_time = Time::default();
+                (*new_info.as_ptr()).last_access_time = Time::default();
+                (*new_info.as_ptr()).attribute = old_info.as_ref().attribute;
+                crate::ptr::copy(
+                    file_name.as_ptr(),
+                    (*new_info.as_ptr()).file_name.as_mut_ptr(),
+                    file_name.len(),
+                );
+            }
+            unsafe {
+                Self::set_info_raw(
+                    self.inner.as_ptr(),
+                    file::INFO_ID,
+                    new_info.size(),
+                    new_info.as_ptr().cast(),
                 )
             }
         }

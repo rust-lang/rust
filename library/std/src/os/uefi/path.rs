@@ -4,8 +4,17 @@ use crate::ffi::OsStr;
 use crate::io;
 use crate::path::{Path, PathBuf};
 use crate::ptr::NonNull;
-use crate::sys_common::ucs2;
+use crate::sys_common::{ucs2, AsInner};
 use r_efi::protocols::{device_path, device_path_from_text, device_path_to_text};
+
+#[unstable(feature = "uefi_std", issue = "none")]
+impl TryFrom<&DevicePath> for PathBuf {
+    type Error = crate::io::Error;
+
+    fn try_from(value: &DevicePath) -> Result<Self, Self::Error> {
+        PathBuf::try_from(*value.as_inner())
+    }
+}
 
 #[unstable(feature = "uefi_std", issue = "none")]
 impl TryFrom<NonNull<device_path::Protocol>> for PathBuf {
