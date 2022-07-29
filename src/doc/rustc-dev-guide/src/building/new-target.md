@@ -76,6 +76,22 @@ will then add a corresponding file for your new target containing a
 
 Look for existing targets to use as examples.
 
+After adding your target to the `rustc_target` crate you may want to add
+`core`, `std`, ... with support for your new target. In that case you will
+probably need access to some `target_*` cfg. Unfortunately when building with
+stage0 (the beta compiler), you'll get an error that the target cfg is
+unexpected because stage0 doesn't know about the new target specification and
+we pass `--check-cfg` in order to tell it to check.
+
+To fix the errors you will need to manually add the unexpected value to the
+`EXTRA_CHECK_CFGS` list in `src/bootstrap/lib.rs`. Here is an example for
+adding `NEW_TARGET_OS` as `target_os`:
+```diff
+- (Some(Mode::Std), "target_os", Some(&["watchos"])),
++ // #[cfg(bootstrap)] NEW_TARGET_OS
++ (Some(Mode::Std), "target_os", Some(&["watchos", "NEW_TARGET_OS"])),
+```
+
 ## Patching crates
 
 You may need to make changes to crates that the compiler depends on,
