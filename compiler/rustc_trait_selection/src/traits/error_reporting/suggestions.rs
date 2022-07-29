@@ -2943,14 +2943,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) {
         if let ObligationCauseCode::ImplDerivedObligation(_) = obligation.cause.code()
             && self.tcx.is_diagnostic_item(sym::SliceIndex, trait_pred.skip_binder().trait_ref.def_id)
+            && let ty::Slice(_) = trait_pred.skip_binder().trait_ref.substs.type_at(1).kind()
             && let ty::Ref(_, inner_ty, _) = trait_pred.skip_binder().self_ty().kind()
             && let ty::Uint(ty::UintTy::Usize) = inner_ty.kind()
         {
             err.span_suggestion_verbose(
                 obligation.cause.span.shrink_to_lo(),
-            "consider dereferencing here",
+            "dereference this index",
             '*',
-                Applicability::MaybeIncorrect,
+                Applicability::MachineApplicable,
             );
         }
     }
