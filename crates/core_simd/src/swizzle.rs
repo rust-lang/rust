@@ -325,7 +325,11 @@ where
             const INDEX: [Which; LANES] = hi::<LANES>();
         }
 
-        (Lo::swizzle2(self, other), Hi::swizzle2(self, other))
+        if LANES == 1 {
+            (self, other)
+        } else {
+            (Lo::swizzle2(self, other), Hi::swizzle2(self, other))
+        }
     }
 
     /// Deinterleave two vectors.
@@ -380,6 +384,10 @@ where
             const INDEX: [Which; LANES] = odd::<LANES>();
         }
 
-        (Even::swizzle2(self, other), Odd::swizzle2(self, other))
+        if LANES == 1 {
+            (self, other)
+        } else {
+            (Even::swizzle2(self, other), Odd::swizzle2(self, other))
+        }
     }
 }
