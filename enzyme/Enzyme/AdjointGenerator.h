@@ -10298,56 +10298,60 @@ public:
                 cast<CallInst>(anti)->setTailCallKind(orig->getTailCallKind());
                 cast<CallInst>(anti)->setDebugLoc(dbgLoc);
 
+                if (anti->getType()->isPointerTy()) {
 #if LLVM_VERSION_MAJOR >= 14
-                cast<CallInst>(anti)->addAttributeAtIndex(
-                    AttributeList::ReturnIndex, Attribute::NoAlias);
-                cast<CallInst>(anti)->addAttributeAtIndex(
-                    AttributeList::ReturnIndex, Attribute::NonNull);
+                  cast<CallInst>(anti)->addAttributeAtIndex(
+                      AttributeList::ReturnIndex, Attribute::NoAlias);
+                  cast<CallInst>(anti)->addAttributeAtIndex(
+                      AttributeList::ReturnIndex, Attribute::NonNull);
 #else
-                cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
-                                                   Attribute::NoAlias);
-                cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
-                                                   Attribute::NonNull);
+                  cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
+                                                     Attribute::NoAlias);
+                  cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
+                                                     Attribute::NonNull);
 #endif
 
-                if (called->getName() == "malloc" ||
-                    called->getName() == "_Znwm") {
-                  if (auto ci = dyn_cast<ConstantInt>(args[0])) {
-                    unsigned derefBytes = ci->getLimitedValue();
-                    CallInst *cal =
-                        cast<CallInst>(gutils->getNewFromOriginal(orig));
+                  if (called->getName() == "malloc" ||
+                      called->getName() == "_Znwm") {
+                    if (auto ci = dyn_cast<ConstantInt>(args[0])) {
+                      unsigned derefBytes = ci->getLimitedValue();
+                      CallInst *cal =
+                          cast<CallInst>(gutils->getNewFromOriginal(orig));
 #if LLVM_VERSION_MAJOR >= 14
-                    cast<CallInst>(anti)->addDereferenceableRetAttr(derefBytes);
-                    cal->addDereferenceableRetAttr(derefBytes);
+                      cast<CallInst>(anti)->addDereferenceableRetAttr(
+                          derefBytes);
+                      cal->addDereferenceableRetAttr(derefBytes);
 #if !defined(FLANG) && !defined(ROCM)
-                    AttrBuilder B(called->getContext());
+                      AttrBuilder B(called->getContext());
 #else
-                    AttrBuilder B;
+                      AttrBuilder B;
 #endif
-                    B.addDereferenceableOrNullAttr(derefBytes);
-                    cast<CallInst>(anti)->setAttributes(
-                        cast<CallInst>(anti)->getAttributes().addRetAttributes(
-                            orig->getContext(), B));
-                    cal->setAttributes(cal->getAttributes().addRetAttributes(
-                        orig->getContext(), B));
-                    cal->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                             Attribute::NoAlias);
-                    cal->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                             Attribute::NonNull);
+                      B.addDereferenceableOrNullAttr(derefBytes);
+                      cast<CallInst>(anti)->setAttributes(
+                          cast<CallInst>(anti)
+                              ->getAttributes()
+                              .addRetAttributes(orig->getContext(), B));
+                      cal->setAttributes(cal->getAttributes().addRetAttributes(
+                          orig->getContext(), B));
+                      cal->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                               Attribute::NoAlias);
+                      cal->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                               Attribute::NonNull);
 #else
-                    cast<CallInst>(anti)->addDereferenceableAttr(
-                        llvm::AttributeList::ReturnIndex, derefBytes);
-                    cal->addDereferenceableAttr(
-                        llvm::AttributeList::ReturnIndex, derefBytes);
-                    cast<CallInst>(anti)->addDereferenceableOrNullAttr(
-                        llvm::AttributeList::ReturnIndex, derefBytes);
-                    cal->addDereferenceableOrNullAttr(
-                        llvm::AttributeList::ReturnIndex, derefBytes);
-                    cal->addAttribute(AttributeList::ReturnIndex,
-                                      Attribute::NoAlias);
-                    cal->addAttribute(AttributeList::ReturnIndex,
-                                      Attribute::NonNull);
+                      cast<CallInst>(anti)->addDereferenceableAttr(
+                          llvm::AttributeList::ReturnIndex, derefBytes);
+                      cal->addDereferenceableAttr(
+                          llvm::AttributeList::ReturnIndex, derefBytes);
+                      cast<CallInst>(anti)->addDereferenceableOrNullAttr(
+                          llvm::AttributeList::ReturnIndex, derefBytes);
+                      cal->addDereferenceableOrNullAttr(
+                          llvm::AttributeList::ReturnIndex, derefBytes);
+                      cal->addAttribute(AttributeList::ReturnIndex,
+                                        Attribute::NoAlias);
+                      cal->addAttribute(AttributeList::ReturnIndex,
+                                        Attribute::NonNull);
 #endif
+                    }
                   }
                 }
                 return anti;
@@ -10425,10 +10429,6 @@ public:
             Value *tofree = lookup(anti, Builder2);
             assert(tofree);
             assert(tofree->getType());
-            assert(Type::getInt8Ty(tofree->getContext()));
-            assert(
-                PointerType::getUnqual(Type::getInt8Ty(tofree->getContext())));
-            assert(Type::getInt8PtrTy(tofree->getContext()));
             auto rule = [&](Value *tofree) {
               auto CI = freeKnownAllocation(Builder2, tofree, *called, dbgLoc,
                                             gutils->TLI);

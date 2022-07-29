@@ -42,7 +42,7 @@ extern std::map<std::string,
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isAllocationFunction(const llvm::Function &F,
                                         const llvm::TargetLibraryInfo &TLI) {
-  if (F.getName() == "calloc")
+  if (F.getName() == "calloc" || F.getName() == "malloc")
     return true;
   if (F.getName() == "swift_allocObject")
     return true;
@@ -220,9 +220,14 @@ static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
   }
   Value *dst_arg = toZero;
 
-  dst_arg = bb.CreateBitCast(
-      dst_arg, Type::getInt8PtrTy(toZero->getContext(),
-                                  toZero->getType()->getPointerAddressSpace()));
+  if (dst_arg->getType()->isIntegerTy())
+    dst_arg =
+        bb.CreateIntToPtr(dst_arg, Type::getInt8PtrTy(toZero->getContext()));
+  else
+    dst_arg = bb.CreateBitCast(
+        dst_arg,
+        Type::getInt8PtrTy(toZero->getContext(),
+                           toZero->getType()->getPointerAddressSpace()));
 
   auto val_arg = ConstantInt::get(Type::getInt8Ty(toZero->getContext()), 0);
   auto len_arg =
@@ -330,8 +335,13 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
                                                        &allocationfn);
   }
 
+  if (tofree->getType()->isIntegerTy())
+    tofree = builder.CreateIntToPtr(tofree,
+                                    Type::getInt8PtrTy(tofree->getContext()));
+
   llvm::LibFunc libfunc;
-  if (allocationfn.getName() == "calloc") {
+  if (allocationfn.getName() == "calloc" ||
+      allocationfn.getName() == "malloc") {
     libfunc = LibFunc_malloc;
   } else {
     bool res = TLI.getLibFunc(allocationfn, libfunc);
