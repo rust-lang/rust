@@ -1,6 +1,6 @@
 use super::potentially_plural_count;
-use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
+use crate::outlives::outlives_bounds::InferCtxtExt as _;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -401,9 +401,11 @@ fn compare_predicate_entailment<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let mut outlives_environment = OutlivesEnvironment::builder(param_env);
-        outlives_environment.add_implied_bounds(infcx, wf_tys, impl_m_hir_id);
-        let outlives_environment = outlives_environment.build();
+        let outlives_environment = OutlivesEnvironment::with_bounds(
+            param_env,
+            Some(infcx),
+            infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
+        );
         infcx.check_region_obligations_and_report_errors(
             impl_m.def_id.expect_local(),
             &outlives_environment,
@@ -1517,6 +1519,7 @@ pub fn check_type_bounds<'tcx>(
         let mut outlives_environment = OutlivesEnvironment::builder(param_env);
         outlives_environment.add_implied_bounds(&infcx, assumed_wf_types, impl_ty_hir_id);
         let outlives_environment = outlives_environment.build();
+
         infcx.check_region_obligations_and_report_errors(
             impl_ty.def_id.expect_local(),
             &outlives_environment,

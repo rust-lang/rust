@@ -87,7 +87,6 @@ mod op;
 mod pat;
 mod place_op;
 mod region;
-pub mod regionck;
 pub mod rvalue_scopes;
 mod upvar;
 pub mod wfcheck;

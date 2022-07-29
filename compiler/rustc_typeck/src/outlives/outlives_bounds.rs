@@ -1,5 +1,6 @@
 use rustc_hir as hir;
-use rustc_middle::ty::{self, Ty};
+use rustc_hir::HirId;
+use rustc_middle::ty::{self, ParamEnv, Ty};
 use rustc_trait_selection::infer::InferCtxt;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::query::NoSolution;
@@ -7,16 +8,23 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
-pub trait InferCtxtExt<'tcx> {
+pub trait InferCtxtExt<'a, 'tcx> {
     fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
         ty: Ty<'tcx>,
     ) -> Vec<OutlivesBound<'tcx>>;
+
+    fn implied_bounds_tys(
+        &'a self,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: hir::HirId,
+        tys: impl IntoIterator<Item = Ty<'tcx>> + 'a,
+    ) -> Box<dyn Iterator<Item = OutlivesBound<'tcx>> + 'a>;
 }
 
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
     /// Implied bounds are region relationships that we deduce
     /// automatically. The idea is that (e.g.) a caller must check that a
     /// function's argument types are well-formed immediately before
@@ -86,5 +94,21 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         };
 
         output
+    }
+
+    fn implied_bounds_tys(
+        &'a self,
+        param_env: ParamEnv<'tcx>,
+        body_id: HirId,
+        tys: impl IntoIterator<Item = Ty<'tcx>> + 'a,
+    ) -> Box<dyn Iterator<Item = OutlivesBound<'tcx>> + 'a> {
+        Box::new(
+            tys.into_iter()
+                .map(move |ty| {
+                    let ty = self.resolve_vars_if_possible(ty);
+                    self.implied_outlives_bounds(param_env, body_id, ty)
+                })
+                .flatten(),
+        )
     }
 }

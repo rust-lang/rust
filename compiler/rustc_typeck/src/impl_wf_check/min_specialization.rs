@@ -65,9 +65,9 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::constrained_generic_params as cgp;
 use crate::errors::SubstsOnOverriddenImpl;
+use crate::outlives::outlives_bounds::InferCtxtExt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -147,9 +147,16 @@ fn get_impl_substs<'tcx>(
         let assumed_wf_types =
             ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
-        let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
+      let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
         let impl2_substs =
             translate_substs(infcx, param_env, impl1_def_id.to_def_id(), impl1_substs, impl2_node);
+
+
+
+
+
+
+
 
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {

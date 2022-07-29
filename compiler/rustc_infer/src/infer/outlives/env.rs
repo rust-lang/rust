@@ -52,12 +52,10 @@ pub struct OutlivesEnvironment<'tcx> {
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
-/// Builder of OutlivesEnvironment. Use this structure if you need to add more outlives
-/// bounds than `explicit_outlives_bounds(param_env)`.
-pub struct OutlivesEnvironmentBuilder<'tcx> {
-    pub param_env: ty::ParamEnv<'tcx>,
+/// Builder of OutlivesEnvironment.
+struct OutlivesEnvironmentBuilder<'tcx> {
+    param_env: ty::ParamEnv<'tcx>,
     region_relation: TransitiveRelationBuilder<Region<'tcx>>,
-
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
@@ -69,7 +67,7 @@ pub type RegionBoundPairs<'tcx> =
 
 impl<'tcx> OutlivesEnvironment<'tcx> {
     /// Create a builder using `ParamEnv` and add explicit outlives bounds into it.
-    pub fn builder(param_env: ty::ParamEnv<'tcx>) -> OutlivesEnvironmentBuilder<'tcx> {
+    fn builder(param_env: ty::ParamEnv<'tcx>) -> OutlivesEnvironmentBuilder<'tcx> {
         let mut builder = OutlivesEnvironmentBuilder {
             param_env,
             region_relation: Default::default(),
@@ -85,6 +83,17 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
     /// Create a new `OutlivesEnvironment` without extra outlives bounds.
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
         Self::builder(param_env).build()
+    }
+
+    /// Create a new `OutlivesEnvironment` with extra outlives bounds.
+    pub fn with_bounds<'a>(
+        param_env: ty::ParamEnv<'tcx>,
+        infcx: Option<&InferCtxt<'a, 'tcx>>,
+        extra_bounds: impl IntoIterator<Item = OutlivesBound<'tcx>>,
+    ) -> Self {
+        let mut builder = Self::builder(param_env);
+        builder.add_outlives_bounds(infcx, extra_bounds);
+        builder.build()
     }
 
     /// Borrows current value of the `free_region_map`.
@@ -108,26 +117,14 @@ impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
         }
     }
 
-    // Record that `'sup:'sub`. Or, put another way, `'sub <= 'sup`.
-    // (with the exception that `'static: 'x` is not notable)
-    fn relate_regions(&mut self, sub: Region<'tcx>, sup: Region<'tcx>) {
-        debug!("relate_regions(sub={:?}, sup={:?})", sub, sup);
-        if sub.is_free_or_static() && sup.is_free() {
-            self.region_relation.add(sub, sup)
-        }
-    }
-
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
     ///
     /// The `infcx` parameter is optional; if the implied bounds may
     /// contain inference variables, it must be supplied, in which
     /// case we will register "givens" on the inference context. (See
     /// `RegionConstraintData`.)
-    pub fn add_outlives_bounds<I>(
-        &mut self,
-        infcx: Option<&InferCtxt<'a, 'tcx>>,
-        outlives_bounds: I,
-    ) where
+    fn add_outlives_bounds<I>(&mut self, infcx: Option<&InferCtxt<'a, 'tcx>>, outlives_bounds: I)
+    where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         // Record relationships such as `T:'x` that don't go into the
@@ -159,7 +156,9 @@ impl<'a, 'tcx> OutlivesEnvironmentBuilder<'tcx> {
                         // system to be more general and to make use
                         // of *every* relationship that arises here,
                         // but presently we do not.)
-                        self.relate_regions(r_a, r_b);
+                        if r_a.is_free_or_static() && r_b.is_free() {
+                            self.region_relation.add(r_a, r_b)
+                        }
                     }
                 }
             }
