@@ -1180,8 +1180,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     prev_graph.fingerprint_by_index(prev_index),
                     prev_graph
                         .edge_targets_from(prev_index)
-                        .iter()
-                        .map(|i| prev_index_to_index[*i].unwrap())
+                        .map(|i| prev_index_to_index[i].unwrap())
                         .collect(),
                 );
                 prev_index_to_index[prev_index] = Some(dep_node_index);

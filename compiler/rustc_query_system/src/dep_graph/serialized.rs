@@ -23,7 +23,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encodable};
 use smallvec::SmallVec;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
@@ -128,14 +128,20 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     #[inline]
-    pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> Vec<SerializedDepNodeIndex> {
+    pub fn edge_targets_from(
+        &self,
+        source: SerializedDepNodeIndex,
+    ) -> impl Iterator<Item = SerializedDepNodeIndex> + '_ {
         // The encoder has checked that there is no padding there.
-        if let Some(ref mut decoder) = self.decoder_at(source) {
+        if let Some(mut decoder) = self.decoder_at(source) {
             decoder.set_position(std::mem::size_of::<Fingerprint>());
-            Decodable::decode(decoder)
+            let len = decoder.read_usize();
+            Some((0..len).map(move |_| SerializedDepNodeIndex::decode(&mut decoder)))
         } else {
-            Vec::new()
+            None
         }
+        .into_iter()
+        .flatten()
     }
 
     pub fn node_count(&self) -> usize {
