@@ -38,7 +38,7 @@ fn sinpi(mut x: f64) -> f64 {
 
     /* reduce x into [-.25,.25] */
     n = (4.0 * x) as isize;
-    n = (n + 1) / 2;
+    n = div!(n + 1, 2);
     x -= (n as f64) * 0.5;
 
     x *= PI;
@@ -118,18 +118,19 @@ fn s(x: f64) -> f64 {
     /* to avoid overflow handle large x differently */
     if x < 8.0 {
         for i in (0..=N).rev() {
-            num = num * x + SNUM[i];
-            den = den * x + SDEN[i];
+            num = num * x + i!(SNUM, i);
+            den = den * x + i!(SDEN, i);
         }
     } else {
         for i in 0..=N {
-            num = num / x + SNUM[i];
-            den = den / x + SDEN[i];
+            num = num / x + i!(SNUM, i);
+            den = den / x + i!(SDEN, i);
         }
     }
     return num / den;
 }
 
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn tgamma(mut x: f64) -> f64 {
     let u: u64 = x.to_bits();
     let absx: f64;
@@ -157,7 +158,7 @@ pub fn tgamma(mut x: f64) -> f64 {
             return 0.0 / 0.0;
         }
         if x <= FACT.len() as f64 {
-            return FACT[(x as usize) - 1];
+            return i!(FACT, (x as usize) - 1);
         }
     }
 
