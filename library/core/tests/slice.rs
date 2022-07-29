@@ -2245,6 +2245,7 @@ fn test_copy_within_panics_src_inverted() {
     // 2 is greater than 1, so this range is invalid.
     bytes.copy_within(2..1, 0);
 }
+
 #[test]
 #[should_panic(expected = "attempted to index slice up to maximum usize")]
 fn test_copy_within_panics_src_out_of_bounds() {
@@ -2573,4 +2574,12 @@ fn test_flatten_size_overflow() {
 fn test_flatten_mut_size_overflow() {
     let x = &mut [[(); usize::MAX]; 2][..];
     let _ = x.flatten_mut();
+}
+
+#[test]
+fn test_escape_ascii() {
+    assert_eq!([].escape_ascii().len(), 0);
+    assert_eq!([b'X'].escape_ascii().len(), 1);
+    assert_eq!([b'\t'].escape_ascii().to_string(), "\\t");
+    assert_eq!([b'\t'].escape_ascii().size_hint(), (2, Some(2)));
 }

@@ -67,7 +67,6 @@ impl [u8] {
     /// # Examples
     ///
     /// ```
-    ///
     /// let s = b"0\t\r\n'\"\\\x9d";
     /// let escaped = s.escape_ascii().to_string();
     /// assert_eq!(escaped, "0\\t\\r\\n\\'\\\"\\\\\\x9d");
@@ -76,7 +75,10 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
-        EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
+        EscapeAscii {
+            inner: self.iter().flat_map(EscapeByte),
+            len: self.iter().map(|c| EscapeByte(c).len()).sum()
+        }
     }
 
     /// Returns a byte slice with leading ASCII whitespace bytes removed.
@@ -174,6 +176,9 @@ impl_fn_for_zst! {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct EscapeAscii<'a> {
     inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
+
+    /// Cached length of the iterator to implement `ExactSizeIterator`.
+    len: usize,
 }
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
@@ -185,7 +190,7 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+        (self.len, Some(self.len))
     }
     #[inline]
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
