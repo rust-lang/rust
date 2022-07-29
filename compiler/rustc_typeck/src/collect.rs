@@ -3165,9 +3165,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
     // #73631: closures inherit `#[target_feature]` annotations
     if tcx.features().target_feature_11 && tcx.is_closure(did.to_def_id()) {
         let owner_id = tcx.parent(did.to_def_id());
-        codegen_fn_attrs
-            .target_features
-            .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied())
+        if tcx.def_kind(owner_id).has_codegen_attrs() {
+            codegen_fn_attrs
+                .target_features
+                .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+        }
     }
 
     // If a function uses #[target_feature] it can't be inlined into general
