@@ -142,26 +142,6 @@ pub enum StabilityLevel {
         /// Relevant `rust-lang/rust` issue.
         issue: Option<NonZeroU32>,
         is_soft: bool,
-        /// If part of a feature is stabilized and a new feature is added for the remaining parts,
-        /// then the `implied_by` attribute is used to indicate which now-stable feature previously
-        /// contained a item.
-        ///
-        /// ```pseudo-Rust
-        /// #[unstable(feature = "foo", issue = "...")]
-        /// fn foo() {}
-        /// #[unstable(feature = "foo", issue = "...")]
-        /// fn foobar() {}
-        /// ```
-        ///
-        /// ...becomes...
-        ///
-        /// ```pseudo-Rust
-        /// #[stable(feature = "foo", since = "1.XX.X")]
-        /// fn foo() {}
-        /// #[unstable(feature = "foobar", issue = "...", implied_by = "foo")]
-        /// fn foobar() {}
-        /// ```
-        implied_by: Option<Symbol>,
     },
     /// `#[stable]`
     Stable {
@@ -302,7 +282,6 @@ where
                     let mut issue = None;
                     let mut issue_num = None;
                     let mut is_soft = false;
-                    let mut implied_by = None;
                     for meta in metas {
                         let Some(mi) = meta.meta_item() else {
                             handle_errors(
@@ -368,11 +347,6 @@ where
                                 }
                                 is_soft = true;
                             }
-                            sym::implied_by => {
-                                if !get(mi, &mut implied_by) {
-                                    continue 'outer;
-                                }
-                            }
                             _ => {
                                 handle_errors(
                                     &sess.parse_sess,
@@ -401,7 +375,6 @@ where
                                 reason: UnstableReason::from_opt_reason(reason),
                                 issue: issue_num,
                                 is_soft,
-                                implied_by,
                             };
                             if sym::unstable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
