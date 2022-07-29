@@ -62,19 +62,6 @@ pub struct Index {
     pub stab_map: FxHashMap<LocalDefId, Stability>,
     pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
-    /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
-    /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
-    /// exists, then this map will have a `impliee -> implier` entry.
-    ///
-    /// This mapping is necessary unless both the `#[stable]` and `#[unstable]` attributes should
-    /// specify their implications (both `implies` and `implied_by`). If only one of the two
-    /// attributes do (as in the current implementation, `implied_by` in `#[unstable]`), then this
-    /// mapping is necessary for diagnostics. When a "unnecessary feature attribute" error is
-    /// reported, only the `#[stable]` attribute information is available, so the map is necessary
-    /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
-    /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
-    /// unstable feature" error for a feature that was implied.
-    pub implications: FxHashMap<Symbol, Symbol>,
 }
 
 impl Index {
