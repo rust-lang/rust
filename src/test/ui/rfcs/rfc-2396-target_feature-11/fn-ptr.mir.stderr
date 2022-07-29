@@ -10,7 +10,7 @@ LL |     let foo: fn() = foo;
    |              expected due to this
    |
    = note: expected fn pointer `fn()`
-                 found fn item `fn() {foo}`
+                 found fn item `[fn item {foo}: fn()]`
    = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
 
 error: aborting due to previous error

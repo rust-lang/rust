@@ -1,16 +1,16 @@
-error[E0599]: no method named `x` found for fn item `fn() -> Ret {Obj::func}` in the current scope
+error[E0599]: no method named `x` found for fn item `[fn item {Obj::func}: fn() -> Ret]` in the current scope
   --> $DIR/issue-29124.rs:15:15
    |
 LL |     Obj::func.x();
-   |     --------- ^ method not found in `fn() -> Ret {Obj::func}`
+   |     --------- ^ method not found in `[fn item {Obj::func}: fn() -> Ret]`
    |     |
    |     this is a function, perhaps you wish to call it
 
-error[E0599]: no method named `x` found for fn item `fn() -> Ret {func}` in the current scope
+error[E0599]: no method named `x` found for fn item `[fn item {func}: fn() -> Ret]` in the current scope
   --> $DIR/issue-29124.rs:17:10
    |
 LL |     func.x();
-   |     ---- ^ method not found in `fn() -> Ret {func}`
+   |     ---- ^ method not found in `[fn item {func}: fn() -> Ret]`
    |     |
    |     this is a function, perhaps you wish to call it
 

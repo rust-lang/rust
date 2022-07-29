@@ -2,7 +2,7 @@ error[E0369]: binary operation `==` cannot be applied to type `A`
   --> $DIR/issue-62375.rs:7:7
    |
 LL |     a == A::Value;
-   |     - ^^ -------- fn(()) -> A {A::Value}
+   |     - ^^ -------- [fn item {A::Value}: fn(()) -> A]
    |     |
    |     A
    |

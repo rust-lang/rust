@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<fn() -> impl Sized {hi} as FnOnce<()>>::Output == Box<u8>`
+error[E0271]: type mismatch resolving `<[fn item {hi}: fn() -> impl Sized] as FnOnce<()>>::Output == Box<u8>`
   --> $DIR/issue-98608.rs:4:39
    |
 LL | fn hi() -> impl Sized { std::ptr::null::<u8>() }
@@ -9,7 +9,7 @@ LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
    |
    = note:   expected struct `Box<u8>`
            found opaque type `impl Sized`
-   = note: required for the cast from `fn() -> impl Sized {hi}` to the object type `dyn Fn() -> Box<u8>`
+   = note: required for the cast from `[fn item {hi}: fn() -> impl Sized]` to the object type `dyn Fn() -> Box<u8>`
 
 error: aborting due to previous error
 

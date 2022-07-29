@@ -13,12 +13,12 @@ LL |         unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f
   ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-   |     ------------------------------------------------------------------ inside `<fn(f32) -> u32 {core::f32::<impl f32>::to_bits::ct_f32_to_u32} as FnOnce<(f32,)>>::call_once - shim(fn(f32) -> u32 {core::f32::<impl f32>::to_bits::ct_f32_to_u32})` at $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |     ------------------------------------------------------------------ inside `<[fn item {core::f32::<impl f32>::to_bits::ct_f32_to_u32}: fn(f32) -> u32] as FnOnce<(f32,)>>::call_once - shim([fn item {core::f32::<impl f32>::to_bits::ct_f32_to_u32}: fn(f32) -> u32])` at $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
 LL |     called_in_const.call_once(arg)
-   |     ------------------------------ inside `const_eval_select::<(f32,), fn(f32) -> u32 {core::f32::<impl f32>::to_bits::ct_f32_to_u32}, [closure@core::f32::<impl f32>::to_bits::{closure#0}], u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |     ------------------------------ inside `const_eval_select::<(f32,), [fn item {core::f32::<impl f32>::to_bits::ct_f32_to_u32}: fn(f32) -> u32], [closure@core::f32::<impl f32>::to_bits::{closure#0}], u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
   ::: $DIR/const-float-bits-reject-conv.rs:27:30
    |
@@ -42,12 +42,12 @@ LL |         unsafe { intrinsics::const_eval_select((self,), ct_f32_to_u32, rt_f
   ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-   |     ------------------------------------------------------------------ inside `<fn(f32) -> u32 {core::f32::<impl f32>::to_bits::ct_f32_to_u32} as FnOnce<(f32,)>>::call_once - shim(fn(f32) -> u32 {core::f32::<impl f32>::to_bits::ct_f32_to_u32})` at $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |     ------------------------------------------------------------------ inside `<[fn item {core::f32::<impl f32>::to_bits::ct_f32_to_u32}: fn(f32) -> u32] as FnOnce<(f32,)>>::call_once - shim([fn item {core::f32::<impl f32>::to_bits::ct_f32_to_u32}: fn(f32) -> u32])` at $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
 LL |     called_in_const.call_once(arg)
-   |     ------------------------------ inside `const_eval_select::<(f32,), fn(f32) -> u32 {core::f32::<impl f32>::to_bits::ct_f32_to_u32}, [closure@core::f32::<impl f32>::to_bits::{closure#0}], u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |     ------------------------------ inside `const_eval_select::<(f32,), [fn item {core::f32::<impl f32>::to_bits::ct_f32_to_u32}: fn(f32) -> u32], [closure@core::f32::<impl f32>::to_bits::{closure#0}], u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
   ::: $DIR/const-float-bits-reject-conv.rs:28:30
    |
@@ -120,12 +120,12 @@ LL |         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f
   ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-   |     ------------------------------------------------------------------ inside `<fn(f64) -> u64 {core::f64::<impl f64>::to_bits::ct_f64_to_u64} as FnOnce<(f64,)>>::call_once - shim(fn(f64) -> u64 {core::f64::<impl f64>::to_bits::ct_f64_to_u64})` at $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |     ------------------------------------------------------------------ inside `<[fn item {core::f64::<impl f64>::to_bits::ct_f64_to_u64}: fn(f64) -> u64] as FnOnce<(f64,)>>::call_once - shim([fn item {core::f64::<impl f64>::to_bits::ct_f64_to_u64}: fn(f64) -> u64])` at $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
 LL |     called_in_const.call_once(arg)
-   |     ------------------------------ inside `const_eval_select::<(f64,), fn(f64) -> u64 {core::f64::<impl f64>::to_bits::ct_f64_to_u64}, [closure@core::f64::<impl f64>::to_bits::{closure#0}], u64>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |     ------------------------------ inside `const_eval_select::<(f64,), [fn item {core::f64::<impl f64>::to_bits::ct_f64_to_u64}: fn(f64) -> u64], [closure@core::f64::<impl f64>::to_bits::{closure#0}], u64>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
   ::: $DIR/const-float-bits-reject-conv.rs:54:30
    |
@@ -149,12 +149,12 @@ LL |         unsafe { intrinsics::const_eval_select((self,), ct_f64_to_u64, rt_f
   ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
 LL |     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-   |     ------------------------------------------------------------------ inside `<fn(f64) -> u64 {core::f64::<impl f64>::to_bits::ct_f64_to_u64} as FnOnce<(f64,)>>::call_once - shim(fn(f64) -> u64 {core::f64::<impl f64>::to_bits::ct_f64_to_u64})` at $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |     ------------------------------------------------------------------ inside `<[fn item {core::f64::<impl f64>::to_bits::ct_f64_to_u64}: fn(f64) -> u64] as FnOnce<(f64,)>>::call_once - shim([fn item {core::f64::<impl f64>::to_bits::ct_f64_to_u64}: fn(f64) -> u64])` at $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
   ::: $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
 LL |     called_in_const.call_once(arg)
-   |     ------------------------------ inside `const_eval_select::<(f64,), fn(f64) -> u64 {core::f64::<impl f64>::to_bits::ct_f64_to_u64}, [closure@core::f64::<impl f64>::to_bits::{closure#0}], u64>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
+   |     ------------------------------ inside `const_eval_select::<(f64,), [fn item {core::f64::<impl f64>::to_bits::ct_f64_to_u64}: fn(f64) -> u64], [closure@core::f64::<impl f64>::to_bits::{closure#0}], u64>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
   ::: $DIR/const-float-bits-reject-conv.rs:55:30
    |

@@ -1,4 +1,4 @@
-error[E0617]: can't pass `fn(*const u8) {bar}` to variadic function
+error[E0617]: can't pass `[fn item {bar}: fn(*const u8)]` to variadic function
   --> $DIR/issue-32201.rs:9:16
    |
 LL |         foo(0, bar);

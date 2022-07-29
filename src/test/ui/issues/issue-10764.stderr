@@ -7,7 +7,7 @@ LL | fn main() { f(bar) }
    |             arguments to this function are incorrect
    |
    = note: expected fn pointer `fn()`
-                 found fn item `extern "C" fn() {bar}`
+                 found fn item `[fn item {bar}: extern "C" fn()]`
 note: function defined here
   --> $DIR/issue-10764.rs:1:4
    |

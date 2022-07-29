@@ -1,10 +1,10 @@
-error[E0369]: binary operation `==` cannot be applied to type `for<'r> fn(&'r i32) -> &'r i32 {foo}`
+error[E0369]: binary operation `==` cannot be applied to type `[fn item {foo}: for<'r> fn(&'r i32) -> &'r i32]`
   --> $DIR/issue-77910-2.rs:7:12
    |
 LL |     if foo == y {}
    |        --- ^^ - _
    |        |
-   |        for<'r> fn(&'r i32) -> &'r i32 {foo}
+   |        [fn item {foo}: for<'r> fn(&'r i32) -> &'r i32]
 
 error: aborting due to previous error
 

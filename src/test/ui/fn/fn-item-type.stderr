@@ -6,8 +6,8 @@ LL |     eq(foo::<u8>, bar::<u8>);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
-              found fn item `fn(_) -> _ {bar::<u8>}`
+   = note: expected fn item `[fn item {foo::<u8>}: fn(_) -> _]`
+              found fn item `[fn item {bar::<u8>}: fn(_) -> _]`
    = note: different `fn` items always have unique types, even if their signatures are the same
    = help: change the expected type to be function pointer `fn(isize) -> isize`
    = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `foo::<u8> as fn(isize) -> isize`
@@ -25,8 +25,8 @@ LL |     eq(foo::<u8>, foo::<i8>);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
-              found fn item `fn(_) -> _ {foo::<i8>}`
+   = note: expected fn item `[fn item {foo::<u8>}: fn(_) -> _]`
+              found fn item `[fn item {foo::<i8>}: fn(_) -> _]`
    = note: different `fn` items always have unique types, even if their signatures are the same
    = help: change the expected type to be function pointer `fn(isize) -> isize`
    = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `foo::<u8> as fn(isize) -> isize`
@@ -44,8 +44,8 @@ LL |     eq(bar::<String>, bar::<Vec<u8>>);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected fn item `fn(_) -> _ {bar::<String>}`
-              found fn item `fn(_) -> _ {bar::<Vec<u8>>}`
+   = note: expected fn item `[fn item {bar::<String>}: fn(_) -> _]`
+              found fn item `[fn item {bar::<Vec<u8>>}: fn(_) -> _]`
    = note: different `fn` items always have unique types, even if their signatures are the same
    = help: change the expected type to be function pointer `fn(isize) -> isize`
    = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `bar::<String> as fn(isize) -> isize`
@@ -63,8 +63,8 @@ LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected fn item `fn() {<u8 as Foo>::foo}`
-              found fn item `fn() {<u16 as Foo>::foo}`
+   = note: expected fn item `[fn item {<u8 as Foo>::foo}: fn()]`
+              found fn item `[fn item {<u16 as Foo>::foo}: fn()]`
    = note: different `fn` items always have unique types, even if their signatures are the same
    = help: change the expected type to be function pointer `fn()`
    = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `<u8 as Foo>::foo as fn()`
@@ -82,7 +82,7 @@ LL |     eq(foo::<u8>, bar::<u8> as fn(isize) -> isize);
    |     |
    |     arguments to this function are incorrect
    |
-   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
+   = note: expected fn item `[fn item {foo::<u8>}: fn(_) -> _]`
            found fn pointer `fn(_) -> _`
    = help: change the expected type to be function pointer `fn(isize) -> isize`
    = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `foo::<u8> as fn(isize) -> isize`

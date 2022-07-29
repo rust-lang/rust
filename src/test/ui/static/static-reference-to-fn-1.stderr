@@ -5,7 +5,7 @@ LL |         func: &foo,
    |               ^^^^ expected fn pointer, found fn item
    |
    = note: expected reference `&fn() -> Option<isize>`
-              found reference `&fn() -> Option<isize> {foo}`
+              found reference `&[fn item {foo}: fn() -> Option<isize>]`
 
 error: aborting due to previous error
 

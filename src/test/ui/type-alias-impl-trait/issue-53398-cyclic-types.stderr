@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `fn() -> Foo {foo}: Sized`
+error[E0275]: overflow evaluating the requirement `[fn item {foo}: fn() -> Foo]: Sized`
   --> $DIR/issue-53398-cyclic-types.rs:5:13
    |
 LL | fn foo() -> Foo {

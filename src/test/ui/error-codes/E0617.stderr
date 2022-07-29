@@ -28,7 +28,7 @@ error[E0617]: can't pass `u16` to variadic function
 LL |         printf(::std::ptr::null(), 0u16);
    |                                    ^^^^ help: cast the value to `c_uint`: `0u16 as c_uint`
 
-error[E0617]: can't pass `unsafe extern "C" fn(*const i8, ...) {printf}` to variadic function
+error[E0617]: can't pass `[fn item {printf}: unsafe extern "C" fn(*const i8, ...)]` to variadic function
   --> $DIR/E0617.rs:22:36
    |
 LL |         printf(::std::ptr::null(), printf);

@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<fn() -> impl Future<Output = ()> {test} as FnOnce<()>>::Output == Pin<Box<(dyn Future<Output = ()> + 'static)>>`
+error[E0271]: type mismatch resolving `<[fn item {test}: fn() -> impl Future<Output = ()>] as FnOnce<()>>::Output == Pin<Box<(dyn Future<Output = ()> + 'static)>>`
   --> $DIR/issue-98604.rs:11:5
    |
 LL |     Box::new(test) as AsyncFnPtr;
@@ -11,7 +11,7 @@ LL | async fn test() {}
    |                 ^ checked the `Output` of this `async fn`, found opaque type
    = note:   expected struct `Pin<Box<(dyn Future<Output = ()> + 'static)>>`
            found opaque type `impl Future<Output = ()>`
-   = note: required for the cast from `fn() -> impl Future<Output = ()> {test}` to the object type `dyn Fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>>`
+   = note: required for the cast from `[fn item {test}: fn() -> impl Future<Output = ()>]` to the object type `dyn Fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>>`
 
 error: aborting due to previous error
 

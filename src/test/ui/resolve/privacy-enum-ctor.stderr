@@ -318,7 +318,7 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:27:20
    |
 LL |             Fn(u8),
-   |             -- fn(u8) -> Z {Z::Fn} defined here
+   |             -- [fn item {Z::Fn}: fn(u8) -> Z] defined here
 ...
 LL |         let _: Z = Z::Fn;
    |                -   ^^^^^ expected enum `Z`, found fn item
@@ -326,7 +326,7 @@ LL |         let _: Z = Z::Fn;
    |                expected due to this
    |
    = note: expected enum `Z`
-           found fn item `fn(u8) -> Z {Z::Fn}`
+           found fn item `[fn item {Z::Fn}: fn(u8) -> Z]`
 help: use parentheses to instantiate this tuple variant
    |
 LL |         let _: Z = Z::Fn(_);
@@ -353,7 +353,7 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:43:16
    |
 LL |         Fn(u8),
-   |         -- fn(u8) -> E {E::Fn} defined here
+   |         -- [fn item {E::Fn}: fn(u8) -> E] defined here
 ...
 LL |     let _: E = m::E::Fn;
    |            -   ^^^^^^^^ expected enum `E`, found fn item
@@ -361,7 +361,7 @@ LL |     let _: E = m::E::Fn;
    |            expected due to this
    |
    = note: expected enum `E`
-           found fn item `fn(u8) -> E {E::Fn}`
+           found fn item `[fn item {E::Fn}: fn(u8) -> E]`
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = m::E::Fn(_);
@@ -388,7 +388,7 @@ error[E0308]: mismatched types
   --> $DIR/privacy-enum-ctor.rs:51:16
    |
 LL |         Fn(u8),
-   |         -- fn(u8) -> E {E::Fn} defined here
+   |         -- [fn item {E::Fn}: fn(u8) -> E] defined here
 ...
 LL |     let _: E = E::Fn;
    |            -   ^^^^^ expected enum `E`, found fn item
@@ -396,7 +396,7 @@ LL |     let _: E = E::Fn;
    |            expected due to this
    |
    = note: expected enum `E`
-           found fn item `fn(u8) -> E {E::Fn}`
+           found fn item `[fn item {E::Fn}: fn(u8) -> E]`
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = E::Fn(_);
