@@ -24,4 +24,8 @@ fn main() {
         //~^ ERROR: expected an array or slice
         _ => {}
     }
+
+    let [..] = vec![1, 2, 3];
+    //~^ ERROR: expected an array or slice
+    //~| HELP: consider slicing here
 }

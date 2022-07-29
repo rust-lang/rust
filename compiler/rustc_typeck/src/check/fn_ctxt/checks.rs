@@ -1234,7 +1234,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Does the expected pattern type originate from an expression and what is the span?
         let (origin_expr, ty_span) = match (decl.ty, decl.init) {
             (Some(ty), _) => (false, Some(ty.span)), // Bias towards the explicit user type.
-            (_, Some(init)) => (true, Some(init.span)), // No explicit type; so use the scrutinee.
+            (_, Some(init)) => {
+                (true, Some(init.span.find_ancestor_inside(decl.span).unwrap_or(init.span)))
+            } // No explicit type; so use the scrutinee.
             _ => (false, None), // We have `let $pat;`, so the expected type is unconstrained.
         };
 
