@@ -30,7 +30,7 @@ const DEFAULT_DOC_VALID_IDENTS: &[&str] = &[
     "MinGW",
     "CamelCase",
 ];
-const DEFAULT_BLACKLISTED_NAMES: &[&str] = &["foo", "baz", "quux"];
+const DEFAULT_DISALLOWED_NAMES: &[&str] = &["foo", "baz", "quux"];
 
 /// Holds information used by `MISSING_ENFORCED_IMPORT_RENAMES` lint.
 #[derive(Clone, Debug, Deserialize)]
@@ -159,7 +159,7 @@ macro_rules! define_Conf {
                                                 "duplicate field `", stringify!($new_conf),
                                                 "` (provided as `", stringify!($name), "`)"
                                             ))),
-                                            None => $new_conf = Some(value),
+                                            None => $new_conf = $name.clone(),
                                         })?
                                     },
                                 }
@@ -217,12 +217,11 @@ define_Conf! {
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
-    /// Lint: BLACKLISTED_NAME.
+    /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
-    /// The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses. The value
-    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
-    /// default configuration of Clippy. By default any configuraction will replace the default value.
-    (blacklisted_names: Vec<String> = super::DEFAULT_BLACKLISTED_NAMES.iter().map(ToString::to_string).collect()),
+    /// Use the Disallowed Names lint instead
+    #[conf_deprecated("Please use `disallowed-names` instead", disallowed_names)]
+    (blacklisted_names: Vec<String> = Vec::new()),
     /// Lint: COGNITIVE_COMPLEXITY.
     ///
     /// The maximum cognitive complexity a function can have
@@ -232,6 +231,12 @@ define_Conf! {
     /// Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead", cognitive_complexity_threshold)]
     (cyclomatic_complexity_threshold: u64 = 25),
+    /// Lint: DISALLOWED_NAMES.
+    ///
+    /// The list of disallowed names to lint about. NB: `bar` is not here since it has legitimate uses. The value
+    /// `".."` can be used as part of the list to indicate, that the configured values should be appended to the
+    /// default configuration of Clippy. By default any configuration will replace the default value.
+    (disallowed_names: Vec<String> = super::DEFAULT_DISALLOWED_NAMES.iter().map(ToString::to_string).collect()),
     /// Lint: DOC_MARKDOWN.
     ///
     /// The list of words this lint should not consider as identifiers needing ticks. The value
@@ -434,7 +439,7 @@ pub fn read(path: &Path) -> TryConf {
     match toml::from_str::<TryConf>(&content) {
         Ok(mut conf) => {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
-            extend_vec_if_indicator_present(&mut conf.conf.blacklisted_names, DEFAULT_BLACKLISTED_NAMES);
+            extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
 
             conf
         },

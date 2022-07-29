@@ -6,7 +6,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of blacklisted names for variables, such
+    /// Checks for usage of disallowed names for variables, such
     /// as `foo`.
     ///
     /// ### Why is this bad?
@@ -18,21 +18,21 @@ declare_clippy_lint! {
     /// let foo = 3.14;
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub BLACKLISTED_NAME,
+    pub DISALLOWED_NAMES,
     style,
-    "usage of a blacklisted/placeholder name"
+    "usage of a disallowed/placeholder name"
 }
 
 #[derive(Clone, Debug)]
-pub struct BlacklistedName {
-    blacklist: FxHashSet<String>,
+pub struct DisallowedNames {
+    disallow: FxHashSet<String>,
     test_modules_deep: u32,
 }
 
-impl BlacklistedName {
-    pub fn new(blacklist: FxHashSet<String>) -> Self {
+impl DisallowedNames {
+    pub fn new(disallow: FxHashSet<String>) -> Self {
         Self {
-            blacklist,
+            disallow,
             test_modules_deep: 0,
         }
     }
@@ -42,9 +42,9 @@ impl BlacklistedName {
     }
 }
 
-impl_lint_pass!(BlacklistedName => [BLACKLISTED_NAME]);
+impl_lint_pass!(DisallowedNames => [DISALLOWED_NAMES]);
 
-impl<'tcx> LateLintPass<'tcx> for BlacklistedName {
+impl<'tcx> LateLintPass<'tcx> for DisallowedNames {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
@@ -58,12 +58,12 @@ impl<'tcx> LateLintPass<'tcx> for BlacklistedName {
         }
 
         if let PatKind::Binding(.., ident, _) = pat.kind {
-            if self.blacklist.contains(&ident.name.to_string()) {
+            if self.disallow.contains(&ident.name.to_string()) {
                 span_lint(
                     cx,
-                    BLACKLISTED_NAME,
+                    DISALLOWED_NAMES,
                     ident.span,
-                    &format!("use of a blacklisted/placeholder name `{}`", ident.name),
+                    &format!("use of a disallowed/placeholder name `{}`", ident.name),
                 );
             }
         }

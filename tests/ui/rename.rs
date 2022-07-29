@@ -6,6 +6,7 @@
 
 #![allow(clippy::blocks_in_if_conditions)]
 #![allow(clippy::box_collection)]
+#![allow(clippy::disallowed_names)]
 #![allow(clippy::redundant_static_lifetimes)]
 #![allow(clippy::cognitive_complexity)]
 #![allow(clippy::disallowed_methods)]
@@ -36,6 +37,7 @@
 #![warn(clippy::block_in_if_condition_expr)]
 #![warn(clippy::block_in_if_condition_stmt)]
 #![warn(clippy::box_vec)]
+#![warn(clippy::blacklisted_name)]
 #![warn(clippy::const_static_lifetime)]
 #![warn(clippy::cyclomatic_complexity)]
 #![warn(clippy::disallowed_method)]

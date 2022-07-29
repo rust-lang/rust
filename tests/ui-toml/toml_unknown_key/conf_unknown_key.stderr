@@ -12,6 +12,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
            disallowed-methods
+           disallowed-names
            disallowed-types
            doc-valid-idents
            enable-raw-pointer-heuristic-for-send

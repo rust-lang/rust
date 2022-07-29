@@ -965,7 +965,7 @@ Released 2021-09-09
   [#7407](https://github.com/rust-lang/rust-clippy/pull/7407)
 * [`redundant_allocation`]: Now additionally supports the `Arc<>` type
   [#7308](https://github.com/rust-lang/rust-clippy/pull/7308)
-* [`blacklisted_name`]: Now allows blacklisted names in test code
+* [`disallowed_names`]: Now allows disallowed names in test code
   [#7379](https://github.com/rust-lang/rust-clippy/pull/7379)
 * [`redundant_closure`]: Suggests `&mut` for `FnMut`
   [#7437](https://github.com/rust-lang/rust-clippy/pull/7437)
@@ -2066,7 +2066,7 @@ Released 2020-08-27
   [#5692](https://github.com/rust-lang/rust-clippy/pull/5692)
 * [`if_same_then_else`]: Don't assume multiplication is always commutative
   [#5702](https://github.com/rust-lang/rust-clippy/pull/5702)
-* [`blacklisted_name`]: Remove `bar` from the default configuration
+* [`disallowed_names`]: Remove `bar` from the default configuration
   [#5712](https://github.com/rust-lang/rust-clippy/pull/5712)
 * [`redundant_pattern_matching`]: Avoid suggesting non-`const fn` calls in const contexts
   [#5724](https://github.com/rust-lang/rust-clippy/pull/5724)
@@ -3522,6 +3522,7 @@ Released 2018-09-13
 [`derive_partial_eq_without_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#derive_partial_eq_without_eq
 [`disallowed_method`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_method
 [`disallowed_methods`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
+[`disallowed_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names
 [`disallowed_script_idents`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_script_idents
 [`disallowed_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_type
 [`disallowed_types`]: https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
