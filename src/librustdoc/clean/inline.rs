@@ -17,7 +17,8 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
     self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty, clean_ty,
-    clean_ty_generics, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
+    clean_ty_generics, clean_visibility, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId,
+    Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -134,7 +135,7 @@ pub(crate) fn try_inline(
     );
     if let Some(import_def_id) = import_def_id {
         // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-        item.visibility = cx.tcx.visibility(import_def_id).clean(cx);
+        item.visibility = clean_visibility(cx.tcx.visibility(import_def_id));
     }
     ret.push(item);
     Some(ret)
@@ -599,7 +600,7 @@ fn build_macro(
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.sess()) {
         LoadedMacro::MacroDef(item_def, _) => {
             if let ast::ItemKind::MacroDef(ref def) = item_def.kind {
-                let vis = cx.tcx.visibility(import_def_id.unwrap_or(def_id)).clean(cx);
+                let vis = clean_visibility(cx.tcx.visibility(import_def_id.unwrap_or(def_id)));
                 clean::MacroItem(clean::Macro {
                     source: utils::display_macro_source(cx, name, def, def_id, vis),
                 })
