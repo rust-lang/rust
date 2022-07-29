@@ -23,24 +23,20 @@ pub trait SupportedLaneCount: Sealed {
 
 impl<const LANES: usize> Sealed for LaneCount<LANES> {}
 
-impl SupportedLaneCount for LaneCount<1> {
-    type BitMask = [u8; 1];
+macro_rules! supported_lane_count {
+    ($($lanes:literal),+) => {
+        $(
+            impl SupportedLaneCount for LaneCount<$lanes> {
+                type BitMask = [u8; ($lanes + 7) / 8];
+            }
+        )+
+    };
 }
-impl SupportedLaneCount for LaneCount<2> {
-    type BitMask = [u8; 1];
-}
-impl SupportedLaneCount for LaneCount<4> {
-    type BitMask = [u8; 1];
-}
-impl SupportedLaneCount for LaneCount<8> {
-    type BitMask = [u8; 1];
-}
-impl SupportedLaneCount for LaneCount<16> {
-    type BitMask = [u8; 2];
-}
-impl SupportedLaneCount for LaneCount<32> {
-    type BitMask = [u8; 4];
-}
-impl SupportedLaneCount for LaneCount<64> {
-    type BitMask = [u8; 8];
-}
+
+supported_lane_count!(1, 2, 4, 8, 16, 32, 64);
+#[cfg(feature = "all_lane_counts")]
+supported_lane_count!(
+    3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+    31, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
+    56, 57, 58, 59, 60, 61, 62, 63
+);
