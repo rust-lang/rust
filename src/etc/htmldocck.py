@@ -440,6 +440,7 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
 
         if bless:
             with open(snapshot_path, 'w') as snapshot_file:
+                actual_str = actual_str.replace(channel, "{{channel}}")
                 snapshot_file.write(actual_str)
         else:
             print('--- expected ---\n')
