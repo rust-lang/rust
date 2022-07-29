@@ -131,34 +131,49 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
         if is_diag_trait_item(cx, method_def_id, sym::ToString);
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
         if let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display);
+        let (n_needed_derefs, target) =
+            count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter());
+        if implements_trait(cx, target, display_trait_id, &[]);
+        if let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait();
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            let (n_needed_derefs, target) = count_needed_derefs(
-                receiver_ty,
-                cx.typeck_results().expr_adjustments(receiver).iter(),
-            );
-            if implements_trait(cx, target, display_trait_id, &[]) {
-                if n_needed_derefs == 0 {
-                    span_lint_and_sugg(
-                        cx,
-                        TO_STRING_IN_FORMAT_ARGS,
-                        value.span.with_lo(receiver.span.hi()),
-                        &format!("`to_string` applied to a type that implements `Display` in `{}!` args", name),
-                        "remove this",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    span_lint_and_sugg(
-                        cx,
-                        TO_STRING_IN_FORMAT_ARGS,
-                        value.span,
-                        &format!("`to_string` applied to a type that implements `Display` in `{}!` args", name),
-                        "use this",
-                        format!("{:*>width$}{}", "", receiver_snippet, width = n_needed_derefs),
-                        Applicability::MachineApplicable,
-                    );
-                }
+            let needed_ref = if implements_trait(cx, receiver_ty, sized_trait_id, &[]) {
+                ""
+            } else {
+                "&"
+            };
+            if n_needed_derefs == 0 && needed_ref.is_empty() {
+                span_lint_and_sugg(
+                    cx,
+                    TO_STRING_IN_FORMAT_ARGS,
+                    value.span.with_lo(receiver.span.hi()),
+                    &format!(
+                        "`to_string` applied to a type that implements `Display` in `{}!` args",
+                        name
+                    ),
+                    "remove this",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                span_lint_and_sugg(
+                    cx,
+                    TO_STRING_IN_FORMAT_ARGS,
+                    value.span,
+                    &format!(
+                        "`to_string` applied to a type that implements `Display` in `{}!` args",
+                        name
+                    ),
+                    "use this",
+                    format!(
+                        "{}{:*>width$}{}",
+                        needed_ref,
+                        "",
+                        receiver_snippet,
+                        width = n_needed_derefs
+                    ),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }

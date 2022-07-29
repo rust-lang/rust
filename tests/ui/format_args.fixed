@@ -146,3 +146,17 @@ mod issue_8855 {
         dbg!(x);
     }
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/9256
+mod issue_9256 {
+    #![allow(dead_code)]
+
+    fn print_substring(original: &str) {
+        assert!(original.len() > 10);
+        println!("{}", &original[..10]);
+    }
+
+    fn main() {
+        print_substring("Hello, world!");
+    }
+}
