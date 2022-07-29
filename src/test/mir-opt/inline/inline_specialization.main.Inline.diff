@@ -19,7 +19,7 @@
 -     }
 - 
 -     bb1: {
-+         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:+10:31: +10:34
++         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:14:31: 14:34
           _0 = const ();                   // scope 0 at $DIR/inline-specialization.rs:+0:11: +2:2
           StorageDead(_1);                 // scope 0 at $DIR/inline-specialization.rs:+2:1: +2:2
           return;                          // scope 0 at $DIR/inline-specialization.rs:+2:2: +2:2
