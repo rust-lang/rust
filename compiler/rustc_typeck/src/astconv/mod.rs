@@ -1234,7 +1234,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         match binding.kind {
-            ConvertedBindingKind::Equality(term) => {
+            ConvertedBindingKind::Equality(mut term) => {
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
                 // the "projection predicate" for:
                 //
@@ -1245,18 +1245,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (hir::def::DefKind::AssocTy, ty::Term::Ty(_))
                     | (hir::def::DefKind::AssocConst, ty::Term::Const(_)) => (),
                     (_, _) => {
-                        let got = if let ty::Term::Ty(_) = term { "type" } else { "const" };
+                        let got = if let ty::Term::Ty(_) = term { "type" } else { "constant" };
                         let expected = def_kind.descr(assoc_item_def_id);
                         tcx.sess
                             .struct_span_err(
                                 binding.span,
-                                &format!("mismatch in bind of {expected}, got {got}"),
+                                &format!("expected {expected} bound, found {got}"),
                             )
                             .span_note(
                                 tcx.def_span(assoc_item_def_id),
-                                &format!("{expected} defined here does not match {got}"),
+                                &format!("{expected} defined here"),
                             )
                             .emit();
+                        term = match def_kind {
+                            hir::def::DefKind::AssocTy => tcx.ty_error().into(),
+                            hir::def::DefKind::AssocConst => tcx
+                                .const_error(
+                                    tcx.bound_type_of(assoc_item_def_id)
+                                        .subst(tcx, projection_ty.skip_binder().substs),
+                                )
+                                .into(),
+                            _ => unreachable!(),
+                        };
                     }
                 }
                 bounds.projection_bounds.push((
