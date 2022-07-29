@@ -1763,7 +1763,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
                 span: m_c.definition_span,
                 hidden_ty: m_c.hidden_ty,
-                key: m_c.key,
                 member_region,
             });
         }

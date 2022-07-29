@@ -146,7 +146,7 @@ impl<'ll> DINodeCreationResult<'ll> {
 pub enum Stub<'ll> {
     Struct,
     Union,
-    VTableTy { vtable_holder: &'ll DIType },
+    VtableTy { vtable_holder: &'ll DIType },
 }
 
 pub struct StubInfo<'ll, 'tcx> {
@@ -180,9 +180,9 @@ pub(super) fn stub<'ll, 'tcx>(
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let metadata = match kind {
-        Stub::Struct | Stub::VTableTy { .. } => {
+        Stub::Struct | Stub::VtableTy { .. } => {
             let vtable_holder = match kind {
-                Stub::VTableTy { vtable_holder } => Some(vtable_holder),
+                Stub::VtableTy { vtable_holder } => Some(vtable_holder),
                 _ => None,
             };
             unsafe {

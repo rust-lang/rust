@@ -336,7 +336,7 @@ impl<'a> Resolver<'a> {
 struct UnresolvedImportError {
     span: Span,
     label: Option<String>,
-    note: Option<String>,
+    note: Vec<String>,
     suggestion: Option<Suggestion>,
 }
 
@@ -427,7 +427,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let err = UnresolvedImportError {
                     span: import.span,
                     label: None,
-                    note: None,
+                    note: Vec::new(),
                     suggestion: None,
                 };
                 if path.contains("::") {
@@ -463,8 +463,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
 
-        if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
-            diag.note(note);
+        if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
+            for message in note {
+                diag.note(message);
+            }
         }
 
         for (_, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
@@ -642,7 +644,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
-                            note: None,
+                            note: Vec::new(),
                             suggestion,
                         },
                     };
@@ -684,7 +686,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         return Some(UnresolvedImportError {
                             span: import.span,
                             label: Some(String::from("cannot glob-import a module into itself")),
-                            note: None,
+                            note: Vec::new(),
                             suggestion: None,
                         });
                     }
@@ -828,7 +830,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let (suggestion, note) =
                     match self.check_for_module_export_macro(import, module, ident) {
                         Some((suggestion, note)) => (suggestion.or(lev_suggestion), note),
-                        _ => (lev_suggestion, None),
+                        _ => (lev_suggestion, Vec::new()),
                     };
 
                 let label = match module {

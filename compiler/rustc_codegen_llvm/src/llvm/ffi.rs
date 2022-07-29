@@ -192,10 +192,6 @@ pub enum AttributeKind {
     NoUndef = 33,
     SanitizeMemTag = 34,
     NoCfCheck = 35,
-    ShadowCallStack = 36,
-    AllocSize = 37,
-    AllocatedPointer = 38,
-    AllocAlign = 39,
 }
 
 /// LLVMIntPredicate
@@ -572,6 +568,16 @@ pub enum ArchiveKind {
     K_COFF,
 }
 
+/// LLVMRustPassKind
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[repr(C)]
+#[allow(dead_code)] // Variants constructed by C++.
+pub enum PassKind {
+    Other,
+    Function,
+    Module,
+}
+
 // LLVMRustThinLTOData
 extern "C" {
     pub type ThinLTOData;
@@ -581,6 +587,10 @@ extern "C" {
 extern "C" {
     pub type ThinLTOBuffer;
 }
+
+// LLVMRustModuleNameCallback
+pub type ThinLTOModuleNameCallback =
+    unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
 
 /// LLVMRustThinLTOModule
 #[repr(C)]
@@ -647,6 +657,9 @@ extern "C" {
 }
 #[repr(C)]
 pub struct Builder<'a>(InvariantOpaque<'a>);
+extern "C" {
+    pub type MemoryBuffer;
+}
 #[repr(C)]
 pub struct PassManager<'a>(InvariantOpaque<'a>);
 extern "C" {
@@ -972,22 +985,6 @@ pub mod debuginfo {
     }
 }
 
-use bitflags::bitflags;
-// These values **must** match with LLVMRustAllocKindFlags
-bitflags! {
-    #[repr(transparent)]
-    #[derive(Default)]
-    pub struct AllocKindFlags : u64 {
-        const Unknown = 0;
-        const Alloc = 1;
-        const Realloc = 1 << 1;
-        const Free = 1 << 2;
-        const Uninitialized = 1 << 3;
-        const Zeroed = 1 << 4;
-        const Aligned = 1 << 5;
-    }
-}
-
 extern "C" {
     pub type ModuleBuffer;
 }
@@ -1015,6 +1012,7 @@ extern "C" {
     pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::setModuleInlineAsm.
+    pub fn LLVMSetModuleInlineAsm2(M: &Module, Asm: *const c_char, AsmLen: size_t);
     pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char, AsmLen: size_t);
 
     /// See llvm::LLVMTypeKind::getTypeID.
@@ -1168,6 +1166,7 @@ extern "C" {
     pub fn LLVMGetInitializer(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMSetInitializer<'a>(GlobalVar: &'a Value, ConstantVal: &'a Value);
     pub fn LLVMIsThreadLocal(GlobalVar: &Value) -> Bool;
+    pub fn LLVMSetThreadLocal(GlobalVar: &Value, IsThreadLocal: Bool);
     pub fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
@@ -1192,10 +1191,7 @@ extern "C" {
     pub fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
     pub fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
-    pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
-    pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(
@@ -2249,6 +2245,7 @@ extern "C" {
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&ConstantInt>;
 
+    pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
     pub fn LLVMRustCreateAddressSanitizerFunctionPass(Recover: bool) -> &'static mut Pass;
     pub fn LLVMRustCreateModuleAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
@@ -2365,6 +2362,7 @@ extern "C" {
     ) -> LLVMRustResult;
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
+    pub fn LLVMRustGetInstructionCount(M: &Module) -> u32;
     pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: &PassManagerBuilder, AddLifetimes: bool);
     pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
@@ -2462,6 +2460,7 @@ extern "C" {
     pub fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
 
     pub fn LLVMRustSetComdat<'a>(M: &'a Module, V: &'a Value, Name: *const c_char, NameLen: size_t);
+    pub fn LLVMRustUnsetComdat(V: &Value);
     pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
     pub fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);
@@ -2471,7 +2470,7 @@ extern "C" {
     pub fn LLVMRustModuleBufferFree(p: &'static mut ModuleBuffer);
     pub fn LLVMRustModuleCost(M: &Module) -> u64;
 
-    pub fn LLVMRustThinLTOBufferCreate(M: &Module, is_thin: bool) -> &'static mut ThinLTOBuffer;
+    pub fn LLVMRustThinLTOBufferCreate(M: &Module) -> &'static mut ThinLTOBuffer;
     pub fn LLVMRustThinLTOBufferFree(M: &'static mut ThinLTOBuffer);
     pub fn LLVMRustThinLTOBufferPtr(M: &ThinLTOBuffer) -> *const c_char;
     pub fn LLVMRustThinLTOBufferLen(M: &ThinLTOBuffer) -> size_t;
@@ -2493,6 +2492,11 @@ extern "C" {
         Module: &Module,
         Target: &TargetMachine,
     ) -> bool;
+    pub fn LLVMRustGetThinLTOModuleImports(
+        Data: *const ThinLTOData,
+        ModuleNameCallback: ThinLTOModuleNameCallback,
+        CallbackPayload: *mut c_void,
+    );
     pub fn LLVMRustFreeThinLTOData(Data: &'static mut ThinLTOData);
     pub fn LLVMRustParseBitcodeForLTO(
         Context: &Context,
@@ -2542,6 +2546,4 @@ extern "C" {
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
-
-    pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
 }

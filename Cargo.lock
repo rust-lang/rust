@@ -202,9 +202,9 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "1.3.2"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
+checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
 name = "bitmaps"
@@ -319,9 +319,9 @@ checksum = "81a18687293a1546b67c246452202bbbf143d239cb43494cc163da14979082da"
 
 [[package]]
 name = "camino"
-version = "1.0.9"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "869119e97797867fd90f5e22af7d0bd274bd4635ebb9eb68c04f3f513ae6c412"
+checksum = "52d74260d9bf6944e2208aa46841b4b8f0d7ffc0849a06837b2f510337f86b2b"
 dependencies = [
  "serde",
 ]
@@ -507,19 +507,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo_metadata"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3abb7553d5b9b8421c6de7cb02606ff15e0c6eea7d8eadd75ef013fd636bec36"
-dependencies = [
- "camino",
- "cargo-platform 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "semver",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "cargotest2"
 version = "0.1.0"
 
@@ -689,7 +676,6 @@ dependencies = [
  "tester",
  "tokio",
  "toml",
- "walkdir",
 ]
 
 [[package]]
@@ -710,7 +696,7 @@ dependencies = [
 name = "clippy_lints"
 version = "0.1.64"
 dependencies = [
- "cargo_metadata 0.14.0",
+ "cargo_metadata",
  "clippy_utils",
  "if_chain",
  "itertools",
@@ -1727,9 +1713,18 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.12.3"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+dependencies = [
+ "ahash",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
 dependencies = [
  "ahash",
  "compiler_builtins",
@@ -1888,12 +1883,12 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
-version = "1.9.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
+checksum = "e6012d540c5baa3589337a98ce73408de9b5a25ec9fc2c6fd6be8f0d39e0ca5a"
 dependencies = [
  "autocfg",
- "hashbrown",
+ "hashbrown 0.11.2",
  "rustc-rayon",
  "serde",
 ]
@@ -1964,9 +1959,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.2"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "112c678d4050afce233f4f2852bb2eb519230b3cf12f33585275537d7e41578d"
+checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
 
 [[package]]
 name = "jemalloc-sys"
@@ -2353,9 +2348,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.21"
+version = "0.4.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23f3e133c6d515528745ffd3b9f0c7d975ae039f0b6abb099f2168daa2afb4f9"
+checksum = "13cdad8057b09a519c6c63e6d7c93ea854f5d7fbfe284df864d5e1140d215a2d"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -2381,9 +2376,9 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "10.1.0"
+version = "10.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbdc226fa10994e8f66a4d2f6f000148bc563a1c671b6dcd2135737018033d8a"
+checksum = "bd460fad6e55ca82fa0cd9dab0d315294188fd9ec6efbf4105e5635d4872ef9c"
 dependencies = [
  "log",
  "memmap2",
@@ -2395,9 +2390,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.5.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
+checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
@@ -2570,13 +2565,25 @@ dependencies = [
 
 [[package]]
 name = "object"
+version = "0.28.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e42c982f2d955fac81dd7e1d0e1426a7d702acd9c98d19ab01083a6a0328c424"
+dependencies = [
+ "crc32fast",
+ "flate2",
+ "hashbrown 0.11.2",
+ "indexmap",
+ "memchr",
+]
+
+[[package]]
+name = "object"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21158b2c33aa6d4561f1c0a6ea283ca92bc54802a93b263e910746d679a7eb53"
 dependencies = [
  "crc32fast",
- "flate2",
- "hashbrown",
+ "hashbrown 0.12.0",
  "indexmap",
  "memchr",
 ]
@@ -3045,9 +3052,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.9.2"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d9cc634bc78768157b5cbfe988ffcd1dcba95cd2b2f03a88316c08c6d00ed63"
+checksum = "34f197a544b0c9ab3ae46c359a7ec9cbbb5c7bf97054266fecb7ead794a181d6"
 dependencies = [
  "bitflags",
  "memchr",
@@ -3309,7 +3316,7 @@ dependencies = [
  "anyhow",
  "cargo",
  "cargo-util",
- "cargo_metadata 0.14.0",
+ "cargo_metadata",
  "clippy_lints",
  "crossbeam-channel",
  "difference",
@@ -4499,7 +4506,6 @@ dependencies = [
 name = "rustc_symbol_mangling"
 version = "0.0.0"
 dependencies = [
- "bitflags",
  "punycode",
  "rustc-demangle",
  "rustc_data_structures",
@@ -4717,7 +4723,7 @@ dependencies = [
  "annotate-snippets 0.9.1",
  "anyhow",
  "bytecount",
- "cargo_metadata 0.14.0",
+ "cargo_metadata",
  "clap",
  "derive-new",
  "diff",
@@ -4815,27 +4821,27 @@ checksum = "1ef965a420fe14fdac7dd018862966a4c14094f900e1650bbc71ddd7d580c8af"
 
 [[package]]
 name = "semver"
-version = "1.0.12"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2333e6df6d6598f2b1974829f853c2b4c5f4a6e503c10af918081aa6f8564e1"
+checksum = "5f3aac57ee7f3272d8395c6e4f502f434f0e289fcd62876f70daa008c20dcabe"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "serde"
-version = "1.0.140"
+version = "1.0.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc855a42c7967b7c369eb5860f7164ef1f6f81c20c7cc1141f2a604e18723b03"
+checksum = "558dc50e1a5a5fa7112ca2ce4effcb321b0300c0d4ccf0776a9f60cd89031171"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.140"
+version = "1.0.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f2122636b9fe3b81f1cb25099fcf2d3f542cdb1d45940d56c713158884a05da"
+checksum = "b093b7a2bb58203b5da3056c05b4ec1fed827dcfdb37347a8841695263b3d06d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4853,9 +4859,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.82"
+version = "1.0.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c2c1fdcd807d1098552c5b9a36e425e42e9fbd7c6a37a8425f390f781f7fa7"
+checksum = "dcac07dbffa1c65e7f816ab9eba78eb142c6d44410f4eeba1e26e4f5dfa56b95"
 dependencies = [
  "indexmap",
  "itoa",
@@ -5048,7 +5054,7 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
- "hashbrown",
+ "hashbrown 0.12.0",
  "hermit-abi 0.2.0",
  "libc",
  "miniz_oxide 0.4.0",
@@ -5259,13 +5265,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.3.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6cb0c7868d7f90407531108ab03263d9452a8811b7cdd87675343a40d4aa254"
+checksum = "dd95b4559c196987c8451b4e14d08a4c796c2844f9adf4d2a2dbc9b3142843be"
 dependencies = [
  "gimli 0.26.1",
- "hashbrown",
- "object 0.29.0",
+ "hashbrown 0.11.2",
+ "object 0.28.4",
  "tracing",
 ]
 
@@ -5282,7 +5288,7 @@ dependencies = [
 name = "tidy"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.14.0",
+ "cargo_metadata",
  "crossbeam-utils",
  "lazy_static",
  "regex",
@@ -5512,7 +5518,6 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 name = "ui_test"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.15.0",
  "color-eyre",
  "colored",
  "crossbeam",

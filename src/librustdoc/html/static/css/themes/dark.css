@@ -42,6 +42,10 @@ input:focus + .slider {
 	background-color: #0a042f !important;
 }
 
+.docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5, .docblock h6 {
+	border-bottom-color: #DDD;
+}
+
 .docblock table td, .docblock table th {
 	border-color: #ddd;
 }
@@ -155,13 +159,7 @@ details.rustdoc-toggle > summary::before {
 #crate-search, .search-input {
 	color: #111;
 	background-color: #f0f0f0;
-	border-color: #f0f0f0;
-}
-
-#crate-search {
-	/* Without the `!important`, the border-color is ignored for `<select>`...
-	   It cannot be in the group above because `.search-input` has a different border color on
-	   hover. */
+	/* Without the `!important`, the border-color is ignored for `<select>`... */
 	border-color: #f0f0f0 !important;
 }
 
@@ -176,7 +174,6 @@ details.rustdoc-toggle > summary::before {
 .stab.empty-impl { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
-.stab.must_implement { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability > code { background: none; }
 

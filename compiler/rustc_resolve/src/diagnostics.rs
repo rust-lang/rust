@@ -163,7 +163,7 @@ impl<'a> Resolver<'a> {
 
         let container = match parent.kind {
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
-            ModuleKind::Block => "block",
+            ModuleKind::Block(..) => "block",
         };
 
         let old_noun = match old_binding.is_import() {
@@ -565,7 +565,8 @@ impl<'a> Resolver<'a> {
                     } else if let Some(sp) = sm.generate_fn_name_span(span) {
                         err.span_label(
                             sp,
-                            "try adding a local generic parameter in this method instead",
+                            "try adding a local generic parameter in this method instead"
+                                .to_string(),
                         );
                     } else {
                         err.help("try using a local generic parameter instead");
@@ -2023,7 +2024,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
@@ -2058,12 +2059,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
+        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
     }
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
@@ -2077,7 +2078,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
@@ -2085,12 +2086,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                Some(
+                vec![
                     "`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>"
                         .to_string(),
-                ),
+                ],
             ))
         } else {
             None
@@ -2108,12 +2109,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
+        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
     }
 
     /// Suggests a missing external crate name if that resolves to an correct module.
@@ -2130,7 +2131,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         if path[1].ident.span.rust_2015() {
             return None;
         }
@@ -2151,7 +2152,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 name, path, result
             );
             if let PathResult::Module(..) = result {
-                return Some((path, None));
+                return Some((path, Vec::new()));
             }
         }
 
@@ -2175,7 +2176,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         import: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
-    ) -> Option<(Option<Suggestion>, Option<String>)> {
+    ) -> Option<(Option<Suggestion>, Vec<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
             return None;
         };
@@ -2287,9 +2288,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 String::from("a macro with this name exists at the root of the crate"),
                 Applicability::MaybeIncorrect,
             ));
-            Some((suggestion, Some("this could be because a macro annotated with `#[macro_export]` will be exported \
-            at the root of the crate instead of the module where it is defined"
-               .to_string())))
+            let note = vec![
+                "this could be because a macro annotated with `#[macro_export]` will be exported \
+                 at the root of the crate instead of the module where it is defined"
+                    .to_string(),
+            ];
+            Some((suggestion, note))
         } else {
             None
         }
@@ -2599,12 +2603,12 @@ fn show_candidates(
                 .skip(1)
                 .all(|(_, descr, _, _)| descr == descr_first)
             {
-                descr_first
+                descr_first.to_string()
             } else {
-                "item"
+                "item".to_string()
             };
             let plural_descr =
-                if descr.ends_with('s') { format!("{}es", descr) } else { format!("{}s", descr) };
+                if descr.ends_with("s") { format!("{}es", descr) } else { format!("{}s", descr) };
 
             let mut msg = format!("{}these {} exist but are inaccessible", prefix, plural_descr);
             let mut has_colon = false;

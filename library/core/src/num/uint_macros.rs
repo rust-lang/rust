@@ -459,7 +459,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
@@ -529,7 +528,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
@@ -576,7 +574,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_mul`.
@@ -936,7 +933,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shl`.
@@ -983,7 +979,6 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shr`.

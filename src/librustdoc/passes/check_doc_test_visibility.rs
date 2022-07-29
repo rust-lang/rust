@@ -69,7 +69,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
-                | clean::KeywordItem
+                | clean::KeywordItem(_)
                 // check for trait impl
                 | clean::ImplItem(clean::Impl { trait_: Some(_), .. })
         )

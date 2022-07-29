@@ -146,13 +146,7 @@ details.rustdoc-toggle > summary::before {
 
 #crate-search, .search-input {
 	background-color: white;
-	border-color: #e0e0e0;
-}
-
-#crate-search {
-	/* Without the `!important`, the border-color is ignored for `<select>`...
-	   It cannot be in the group above because `.search-input` has a different border color on
-	   hover. */
+	/* Without the `!important`, the border-color is ignored for `<select>`... */
 	border-color: #e0e0e0 !important;
 }
 
@@ -163,7 +157,6 @@ details.rustdoc-toggle > summary::before {
 .stab.empty-impl { background: #FFF5D6; border-color: #FFC600; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 .stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
-.stab.must_implement { background: #F3DFFF; border-color: #b07bdb; }
 .stab.portability { background: #F3DFFF; border-color: #b07bdb; }
 .stab.portability > code { background: none; }
 

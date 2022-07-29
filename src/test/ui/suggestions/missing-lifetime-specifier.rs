@@ -21,18 +21,22 @@ thread_local! {
 }
 thread_local! {
     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap::new());
-      //~^ ERROR missing lifetime specifiers
-      //~| ERROR missing lifetime specifiers
+      //~^ ERROR missing lifetime specifier
+      //~| ERROR missing lifetime specifier
+      //~| ERROR missing lifetime specifier
+      //~| ERROR missing lifetime specifier
 }
 thread_local! {
     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(HashMap::new());
-    //~^ ERROR missing lifetime specifiers
-    //~| ERROR missing lifetime specifiers
+    //~^ ERROR missing lifetime
+    //~| ERROR missing lifetime
 }
 thread_local! {
     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(HashMap::new());
-    //~^ ERROR missing lifetime specifiers
-    //~| ERROR missing lifetime specifiers
+    //~^ ERROR missing lifetime
+    //~| ERROR missing lifetime
+    //~| ERROR missing lifetime
+    //~| ERROR missing lifetime
 }
 
 thread_local! {

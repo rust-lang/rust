@@ -109,8 +109,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx.mk_substs([GenericArg::from(main_ret_ty)].iter()),
                 )
                 .unwrap()
-                .unwrap()
-                .polymorphize(tcx);
+                .unwrap();
 
                 let report_name = tcx.symbol_name(report).name;
                 let report_sig = get_function_sig(tcx, m.isa().triple(), report);

@@ -1,3 +1,4 @@
+#![allow(rustc::potential_query_instability)]
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]

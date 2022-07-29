@@ -16,8 +16,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty, clean_ty,
-    clean_ty_generics, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
+    self, clean_fn_decl_from_did_and_sig, clean_ty_generics, utils, Attributes, AttributesExt,
+    Clean, ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -214,7 +214,14 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
-    clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
+    let is_auto = cx.tcx.trait_is_auto(did);
+    clean::Trait {
+        unsafety: cx.tcx.trait_def(did).unsafety,
+        generics,
+        items: trait_items,
+        bounds: supertrait_bounds,
+        is_auto,
+    }
 }
 
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> clean::Function {
@@ -246,7 +253,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     clean::Struct {
         struct_type: variant.ctor_kind,
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
-        fields: variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect(),
+        fields: variant.fields.iter().map(|x| x.clean(cx)).collect(),
     }
 }
 
@@ -255,13 +262,13 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
-    let fields = variant.fields.iter().map(|x| clean_middle_field(x, cx)).collect();
+    let fields = variant.fields.iter().map(|x| x.clean(cx)).collect();
     clean::Union { generics, fields }
 }
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
     let predicates = cx.tcx.explicit_predicates_of(did);
-    let type_ = clean_middle_ty(cx.tcx.type_of(did), cx, Some(did));
+    let type_ = cx.tcx.type_of(did).clean(cx);
 
     clean::Typedef {
         type_,
@@ -357,8 +364,8 @@ pub(crate) fn build_impl(
     };
 
     let for_ = match &impl_item {
-        Some(impl_) => clean_ty(impl_.self_ty, cx),
-        None => clean_middle_ty(tcx.type_of(did), cx, Some(did)),
+        Some(impl_) => impl_.self_ty.clean(cx),
+        None => tcx.type_of(did).clean(cx),
     };
 
     // Only inline impl if the implementing type is
@@ -577,14 +584,14 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
-        type_: clean_middle_ty(cx.tcx.type_of(def_id), cx, Some(def_id)),
+        type_: cx.tcx.type_of(def_id).clean(cx),
         kind: clean::ConstantKind::Extern { def_id },
     }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
-        type_: clean_middle_ty(cx.tcx.type_of(did), cx, Some(did)),
+        type_: cx.tcx.type_of(did).clean(cx),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,
     }

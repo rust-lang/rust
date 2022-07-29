@@ -87,10 +87,10 @@ mod op;
 mod pat;
 mod place_op;
 mod region;
-pub mod regionck;
+mod regionck;
 pub mod rvalue_scopes;
 mod upvar;
-pub mod wfcheck;
+mod wfcheck;
 pub mod writeback;
 
 use check::{check_abi, check_fn, check_mod_item_types};
@@ -128,7 +128,8 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
-use std::cell::RefCell;
+
+use std::cell::{Ref, RefCell, RefMut};
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
@@ -897,6 +898,32 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, qpath: &hir::QPath<'
 enum TupleArgumentsFlag {
     DontTupleArguments,
     TupleArguments,
+}
+
+/// A wrapper for `InferCtxt`'s `in_progress_typeck_results` field.
+#[derive(Copy, Clone)]
+struct MaybeInProgressTables<'a, 'tcx> {
+    maybe_typeck_results: Option<&'a RefCell<ty::TypeckResults<'tcx>>>,
+}
+
+impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
+    fn borrow(self) -> Ref<'a, ty::TypeckResults<'tcx>> {
+        match self.maybe_typeck_results {
+            Some(typeck_results) => typeck_results.borrow(),
+            None => bug!(
+                "MaybeInProgressTables: inh/fcx.typeck_results.borrow() with no typeck results"
+            ),
+        }
+    }
+
+    fn borrow_mut(self) -> RefMut<'a, ty::TypeckResults<'tcx>> {
+        match self.maybe_typeck_results {
+            Some(typeck_results) => typeck_results.borrow_mut(),
+            None => bug!(
+                "MaybeInProgressTables: inh/fcx.typeck_results.borrow_mut() with no typeck results"
+            ),
+        }
+    }
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {

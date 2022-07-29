@@ -1,2 +1,0 @@
-use foo;
-use ::bar;

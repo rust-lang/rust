@@ -11,7 +11,7 @@ use crate::path::{self, PathBuf};
 use crate::sys_common::rwlock::StaticRwLock;
 use crate::vec;
 
-use super::{error, itron, memchr};
+use super::{abi, error, itron, memchr};
 
 // `solid` directly maps `errno`s to μITRON error codes.
 impl itron::error::ItronError {
@@ -184,8 +184,11 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(code: i32) -> ! {
-    rtabort!("exit({}) called", code);
+pub fn exit(_code: i32) -> ! {
+    let tid = itron::task::try_current_task_id().unwrap_or(0);
+    loop {
+        abi::breakpoint_program_exited(tid as usize);
+    }
 }
 
 pub fn getpid() -> u32 {

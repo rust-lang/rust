@@ -1,5 +1,6 @@
 fn main() {
     [1; <Multiply<Five, Five>>::VAL];
+    //~^ ERROR: constant expression depends on a generic parameter
 }
 trait TypeVal<T> {
     const VAL: T;

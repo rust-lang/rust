@@ -81,7 +81,7 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
+pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
 
     /// The location where the result of the current stack frame should be written to,
     /// and its layout in the caller.
-    pub return_place: PlaceTy<'tcx, Prov>,
+    pub return_place: PlaceTy<'tcx, Tag>,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[return_ptr, arguments..., variables..., temporaries...]`.
@@ -111,7 +111,7 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
     /// Do *not* access this directly; always go through the machine hook!
-    pub locals: IndexVec<mir::Local, LocalState<'tcx, Prov>>,
+    pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -166,15 +166,15 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone, Debug)]
-pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
-    pub value: LocalValue<Prov>,
+pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
+    pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
 #[derive(Copy, Clone, Debug)] // Miri debug-prints these
-pub enum LocalValue<Prov: Provenance = AllocId> {
+pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// A normal, live local.
@@ -182,16 +182,16 @@ pub enum LocalValue<Prov: Provenance = AllocId> {
     /// This is an optimization over just always having a pointer here;
     /// we can thus avoid doing an allocation when the local just stores
     /// immediate values *and* never has its address taken.
-    Live(Operand<Prov>),
+    Live(Operand<Tag>),
 }
 
-impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
+impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     /// Read the local's value or error if the local is not yet live or not live anymore.
     ///
     /// Note: This may only be invoked from the `Machine::access_local` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
     #[inline]
-    pub fn access(&self) -> InterpResult<'tcx, &Operand<Prov>> {
+    pub fn access(&self) -> InterpResult<'tcx, &Operand<Tag>> {
         match &self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -204,7 +204,7 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
     /// anywhere else. You may be invalidating machine invariants if you do!
     #[inline]
-    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Prov>> {
+    pub fn access_mut(&mut self) -> InterpResult<'tcx, &mut Operand<Tag>> {
         match &mut self.value {
             LocalValue::Dead => throw_ub!(DeadLocal), // could even be "invalid program"?
             LocalValue::Live(val) => Ok(val),
@@ -212,8 +212,8 @@ impl<'tcx, Prov: Provenance + 'static> LocalState<'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
-    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Prov, Extra> {
+impl<'mir, 'tcx, Tag: Provenance> Frame<'mir, 'tcx, Tag> {
+    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Tag, Extra> {
         Frame {
             body: self.body,
             instance: self.instance,
@@ -227,7 +227,7 @@ impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
     }
 }
 
-impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
+impl<'mir, 'tcx, Tag: Provenance, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Get the current location within the Frame.
     ///
     /// If this is `Err`, we are not currently executing any particular statement in
@@ -422,14 +422,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>] {
+    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
         M::stack(self)
     }
 
     #[inline(always)]
     pub(crate) fn stack_mut(
         &mut self,
-    ) -> &mut Vec<Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>> {
+    ) -> &mut Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>> {
         M::stack_mut(self)
     }
 
@@ -441,12 +441,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
+    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
         self.stack().last().expect("no call frames exist")
     }
 
     #[inline(always)]
-    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::Provenance, M::FrameExtra> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
         self.stack_mut().last_mut().expect("no call frames exist")
     }
 
@@ -503,7 +503,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// stack frame), to bring it into the proper environment for this interpreter.
     pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
+        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         value: T,
     ) -> Result<T, InterpError<'tcx>> {
         frame
@@ -540,7 +540,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn layout_of_local(
         &self,
-        frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
+        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -569,7 +569,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: &MemPlaceMeta<M::Provenance>,
+        metadata: &MemPlaceMeta<M::PointerTag>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
@@ -629,9 +629,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
-                let vtable = metadata.unwrap_meta().to_pointer(self)?;
+                let vtable = self.scalar_to_ptr(metadata.unwrap_meta())?;
                 // Read size and align from vtable (already checks size).
-                Ok(Some(self.get_vtable_size_and_align(vtable)?))
+                Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
@@ -655,7 +655,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: &MPlaceTy<'tcx, M::Provenance>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
@@ -665,7 +665,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: &PlaceTy<'tcx, M::Provenance>,
+        return_place: &PlaceTy<'tcx, M::PointerTag>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
@@ -891,7 +891,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn deallocate_local(&mut self, local: LocalValue<M::Provenance>) -> InterpResult<'tcx> {
+    fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type. Hence we can `unwrap`.
@@ -909,7 +909,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
         // `self.param_env`, that would mean we invoke the query to evaluate the static
@@ -927,7 +927,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn dump_place(&self, place: Place<M::Provenance>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
+    pub fn dump_place(&self, place: Place<M::PointerTag>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
         PlacePrinter { ecx: self, place }
     }
 
@@ -956,7 +956,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 /// Helper struct for the `dump_place` function.
 pub struct PlacePrinter<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     ecx: &'a InterpCx<'mir, 'tcx, M>,
-    place: Place<M::Provenance>,
+    place: Place<M::PointerTag>,
 }
 
 impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug

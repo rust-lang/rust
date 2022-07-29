@@ -1,5 +1,9 @@
 use clean::AttributesExt;
 
+use std::cmp::Ordering;
+use std::fmt;
+use std::rc::Rc;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -11,9 +15,6 @@ use rustc_middle::ty::{Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
-use std::cmp::Ordering;
-use std::fmt;
-use std::rc::Rc;
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
@@ -36,7 +37,6 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
 use askama::Template;
-use itertools::Itertools;
 
 const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
 const ITEM_TABLE_CLOSE: &str = "</div>";
@@ -104,7 +104,7 @@ pub(super) fn print_item(
         clean::StaticItem(..) | clean::ForeignStaticItem(..) => "Static ",
         clean::ConstantItem(..) => "Constant ",
         clean::ForeignTypeItem => "Foreign Type ",
-        clean::KeywordItem => "Keyword ",
+        clean::KeywordItem(..) => "Keyword ",
         clean::OpaqueTyItem(..) => "Opaque Type ",
         clean::TraitAliasItem(..) => "Trait Alias ",
         _ => {
@@ -175,7 +175,7 @@ pub(super) fn print_item(
         clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) => item_static(buf, cx, item, i),
         clean::ConstantItem(ref c) => item_constant(buf, cx, item, c),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
-        clean::KeywordItem => item_keyword(buf, cx, item),
+        clean::KeywordItem(_) => item_keyword(buf, cx, item),
         clean::OpaqueTyItem(ref e) => item_opaque_ty(buf, cx, item, e),
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta),
         _ => {
@@ -539,8 +539,6 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     let count_types = required_types.len() + provided_types.len();
     let count_consts = required_consts.len() + provided_consts.len();
     let count_methods = required_methods.len() + provided_methods.len();
-    let must_implement_one_of_functions =
-        cx.tcx().trait_def(t.def_id).must_implement_one_of.clone();
 
     // Output the trait definition
     wrap_into_docblock(w, |w| {
@@ -550,8 +548,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                 w,
                 "{}{}{}trait {}{}{}",
                 it.visibility.print_with_space(it.item_id, cx),
-                t.unsafety(cx.tcx()).print_with_space(),
-                if t.is_auto(cx.tcx()) { "auto " } else { "" },
+                t.unsafety.print_with_space(),
+                if t.is_auto { "auto " } else { "" },
                 it.name.unwrap(),
                 t.generics.print(cx),
                 bounds
@@ -786,22 +784,13 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     }
 
     // Output the documentation for each function individually
-    if !required_methods.is_empty() || must_implement_one_of_functions.is_some() {
+    if !required_methods.is_empty() {
         write_small_section_header(
             w,
             "required-methods",
             "Required Methods",
             "<div class=\"methods\">",
         );
-
-        if let Some(list) = must_implement_one_of_functions.as_deref() {
-            write!(
-                w,
-                "<div class=\"stab must_implement\">At least one of the `{}` methods is required.</div>",
-                list.iter().join("`, `")
-            );
-        }
-
         for m in required_methods {
             trait_item(w, cx, m, it);
         }
@@ -894,7 +883,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
         w.write_str("</div>");
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -923,7 +912,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "<div class=\"item-list\" id=\"implementors-list\"></div>",
         );
 
-        if t.is_auto(cx.tcx()) {
+        if t.is_auto {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -1880,11 +1869,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         return;
     }
 
-    writeln!(
-        w,
-        "<h2 id=\"layout\" class=\"small-section-header\"> \
-        Layout<a href=\"#layout\" class=\"anchor\"></a></h2>"
-    );
+    writeln!(w, "<h2 class=\"small-section-header\">Layout</h2>");
     writeln!(w, "<div class=\"docblock\">");
 
     let tcx = cx.tcx();

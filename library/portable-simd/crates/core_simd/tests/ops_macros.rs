@@ -172,7 +172,6 @@ macro_rules! impl_common_integer_tests {
 macro_rules! impl_signed_tests {
     { $scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdInt;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -223,37 +222,34 @@ macro_rules! impl_signed_tests {
                     assert_eq!(a % b, Vector::<LANES>::splat(0));
                 }
 
-                fn simd_min<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                fn min<const LANES: usize>() {
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(0);
-                    assert_eq!(a.simd_min(b), a);
+                    assert_eq!(a.min(b), a);
                     let a = Vector::<LANES>::splat(Scalar::MAX);
                     let b = Vector::<LANES>::splat(0);
-                    assert_eq!(a.simd_min(b), b);
+                    assert_eq!(a.min(b), b);
                 }
 
-                fn simd_max<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                fn max<const LANES: usize>() {
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(0);
-                    assert_eq!(a.simd_max(b), b);
+                    assert_eq!(a.max(b), b);
                     let a = Vector::<LANES>::splat(Scalar::MAX);
                     let b = Vector::<LANES>::splat(0);
-                    assert_eq!(a.simd_max(b), a);
+                    assert_eq!(a.max(b), a);
                 }
 
-                fn simd_clamp<const LANES: usize>() {
-                    use core_simd::simd::SimdOrd;
+                fn clamp<const LANES: usize>() {
                     let min = Vector::<LANES>::splat(Scalar::MIN);
                     let max = Vector::<LANES>::splat(Scalar::MAX);
                     let zero = Vector::<LANES>::splat(0);
                     let one = Vector::<LANES>::splat(1);
                     let negone = Vector::<LANES>::splat(-1);
-                    assert_eq!(zero.simd_clamp(min, max), zero);
-                    assert_eq!(zero.simd_clamp(min, one), zero);
-                    assert_eq!(zero.simd_clamp(one, max), one);
-                    assert_eq!(zero.simd_clamp(min, negone), negone);
+                    assert_eq!(zero.clamp(min, max), zero);
+                    assert_eq!(zero.clamp(min, one), zero);
+                    assert_eq!(zero.clamp(one, max), one);
+                    assert_eq!(zero.clamp(min, negone), negone);
                 }
             }
 
@@ -313,7 +309,6 @@ macro_rules! impl_signed_tests {
 macro_rules! impl_unsigned_tests {
     { $scalar:tt } => {
         mod $scalar {
-            use core_simd::simd::SimdUint;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -348,7 +343,6 @@ macro_rules! impl_unsigned_tests {
 macro_rules! impl_float_tests {
     { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
-            use core_simd::SimdFloat;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -464,10 +458,10 @@ macro_rules! impl_float_tests {
                     )
                 }
 
-                fn simd_min<const LANES: usize>() {
+                fn min<const LANES: usize>() {
                     // Regular conditions (both values aren't zero)
                     test_helpers::test_binary_elementwise(
-                        &Vector::<LANES>::simd_min,
+                        &Vector::<LANES>::min,
                         &Scalar::min,
                         // Reject the case where both values are zero with different signs
                         &|a, b| {
@@ -483,14 +477,14 @@ macro_rules! impl_float_tests {
                     // Special case where both values are zero
                     let p_zero = Vector::<LANES>::splat(0.);
                     let n_zero = Vector::<LANES>::splat(-0.);
-                    assert!(p_zero.simd_min(n_zero).to_array().iter().all(|x| *x == 0.));
-                    assert!(n_zero.simd_min(p_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(p_zero.min(n_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(n_zero.min(p_zero).to_array().iter().all(|x| *x == 0.));
                 }
 
-                fn simd_max<const LANES: usize>() {
+                fn max<const LANES: usize>() {
                     // Regular conditions (both values aren't zero)
                     test_helpers::test_binary_elementwise(
-                        &Vector::<LANES>::simd_max,
+                        &Vector::<LANES>::max,
                         &Scalar::max,
                         // Reject the case where both values are zero with different signs
                         &|a, b| {
@@ -506,11 +500,11 @@ macro_rules! impl_float_tests {
                     // Special case where both values are zero
                     let p_zero = Vector::<LANES>::splat(0.);
                     let n_zero = Vector::<LANES>::splat(-0.);
-                    assert!(p_zero.simd_max(n_zero).to_array().iter().all(|x| *x == 0.));
-                    assert!(n_zero.simd_max(p_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(p_zero.max(n_zero).to_array().iter().all(|x| *x == 0.));
+                    assert!(n_zero.max(p_zero).to_array().iter().all(|x| *x == 0.));
                 }
 
-                fn simd_clamp<const LANES: usize>() {
+                fn clamp<const LANES: usize>() {
                     test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
                         for (min, max) in min.iter_mut().zip(max.iter_mut()) {
                             if max < min {
@@ -528,7 +522,7 @@ macro_rules! impl_float_tests {
                         for i in 0..LANES {
                             result_scalar[i] = value[i].clamp(min[i], max[i]);
                         }
-                        let result_vector = Vector::from_array(value).simd_clamp(min.into(), max.into()).to_array();
+                        let result_vector = Vector::from_array(value).clamp(min.into(), max.into()).to_array();
                         test_helpers::prop_assert_biteq!(result_scalar, result_vector);
                         Ok(())
                     })

@@ -1,6 +1,6 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -78,8 +78,6 @@ pub(crate) enum RegionErrorKind<'tcx> {
         span: Span,
         /// The hidden type.
         hidden_ty: Ty<'tcx>,
-        /// The opaque type.
-        key: ty::OpaqueTypeKey<'tcx>,
         /// The unexpected region.
         member_region: ty::Region<'tcx>,
     },
@@ -207,16 +205,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, key, member_region } => {
+                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
-                    let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     self.buffer_error(unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
                         named_region,
-                        named_key,
                     ));
                 }
 
@@ -854,11 +850,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span
-                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
+                multi_span.push_span_label(
+                    *span,
+                    "this has an implicit `'static` lifetime requirement".to_string(),
+                );
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement",
+                    "calling this method introduces the `impl`'s 'static` requirement".to_string(),
                 );
                 err.span_note(multi_span, "the used `impl` has a `'static` requirement");
                 err.span_suggestion_verbose(

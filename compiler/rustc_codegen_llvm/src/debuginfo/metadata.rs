@@ -1420,7 +1420,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
         cx,
         type_map::stub(
             cx,
-            Stub::VTableTy { vtable_holder },
+            Stub::VtableTy { vtable_holder },
             unique_type_id,
             &vtable_type_name,
             (size, pointer_align),

@@ -1,1 +1,0 @@
-impl !Send for S {}

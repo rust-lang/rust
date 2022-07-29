@@ -449,7 +449,6 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn load(&self, order: Ordering) -> bool {
         // SAFETY: any data races are prevented by atomic intrinsics and the raw
         // pointer passed in is valid because we got it from a reference.
@@ -477,7 +476,6 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn store(&self, val: bool, order: Ordering) {
         // SAFETY: any data races are prevented by atomic intrinsics and the raw
         // pointer passed in is valid because we got it from a reference.
@@ -509,7 +507,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn swap(&self, val: bool, order: Ordering) -> bool {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_swap(self.v.get(), val as u8, order) != 0 }
@@ -566,7 +563,6 @@ impl AtomicBool {
         note = "Use `compare_exchange` or `compare_exchange_weak` instead"
     )]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
             Ok(x) => x,
@@ -614,7 +610,6 @@ impl AtomicBool {
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[doc(alias = "compare_and_swap")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_exchange(
         &self,
         current: bool,
@@ -669,7 +664,6 @@ impl AtomicBool {
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[doc(alias = "compare_and_swap")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_exchange_weak(
         &self,
         current: bool,
@@ -721,7 +715,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: bool, order: Ordering) -> bool {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_and(self.v.get(), val as u8, order) != 0 }
@@ -763,7 +756,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_nand(&self, val: bool, order: Ordering) -> bool {
         // We can't use atomic_nand here because it can result in a bool with
         // an invalid value. This happens because the atomic operation is done
@@ -815,7 +807,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: bool, order: Ordering) -> bool {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_or(self.v.get(), val as u8, order) != 0 }
@@ -856,7 +847,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: bool, order: Ordering) -> bool {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_xor(self.v.get(), val as u8, order) != 0 }
@@ -894,7 +884,6 @@ impl AtomicBool {
     #[inline]
     #[unstable(feature = "atomic_bool_fetch_not", issue = "98485")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_not(&self, order: Ordering) -> bool {
         self.fetch_xor(true, order)
     }
@@ -969,7 +958,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
     #[cfg(target_has_atomic = "8")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_update<F>(
         &self,
         set_order: Ordering,
@@ -1177,7 +1165,6 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn load(&self, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_load(self.p.get(), order) }
@@ -1206,7 +1193,6 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn store(&self, ptr: *mut T, order: Ordering) {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe {
@@ -1239,7 +1225,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe { atomic_swap(self.p.get(), ptr, order) }
@@ -1295,7 +1280,6 @@ impl<T> AtomicPtr<T> {
         note = "Use `compare_exchange` or `compare_exchange_weak` instead"
     )]
     #[cfg(target_has_atomic = "ptr")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
             Ok(x) => x,
@@ -1335,7 +1319,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_exchange(
         &self,
         current: *mut T,
@@ -1384,7 +1367,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
     #[cfg(target_has_atomic = "ptr")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn compare_exchange_weak(
         &self,
         current: *mut T,
@@ -1445,7 +1427,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
     #[cfg(target_has_atomic = "ptr")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_update<F>(
         &self,
         set_order: Ordering,
@@ -1501,7 +1482,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
@@ -1546,7 +1526,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
         self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
     }
@@ -1582,7 +1561,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1626,7 +1604,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1685,7 +1662,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1743,7 +1719,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -1799,7 +1774,6 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[cfg(target_has_atomic = "ptr")]
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
         #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
@@ -2111,7 +2085,6 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn load(&self, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_load(self.v.get(), order) }
@@ -2138,7 +2111,6 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn store(&self, val: $int_type, order: Ordering) {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_store(self.v.get(), val, order); }
@@ -2166,7 +2138,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn swap(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_swap(self.v.get(), val, order) }
@@ -2224,7 +2195,6 @@ macro_rules! atomic_int {
                 note = "Use `compare_exchange` or `compare_exchange_weak` instead")
             ]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn compare_and_swap(&self,
                                     current: $int_type,
                                     new: $int_type,
@@ -2278,7 +2248,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable_cxchg]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn compare_exchange(&self,
                                     current: $int_type,
                                     new: $int_type,
@@ -2327,7 +2296,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable_cxchg]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn compare_exchange_weak(&self,
                                          current: $int_type,
                                          new: $int_type,
@@ -2363,7 +2331,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_add(self.v.get(), val, order) }
@@ -2393,7 +2360,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_sub(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_sub(self.v.get(), val, order) }
@@ -2426,7 +2392,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_and(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_and(self.v.get(), val, order) }
@@ -2459,7 +2424,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable_nand]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_nand(self.v.get(), val, order) }
@@ -2492,7 +2456,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_or(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_or(self.v.get(), val, order) }
@@ -2525,7 +2488,6 @@ macro_rules! atomic_int {
             #[inline]
             #[$stable]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_xor(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { atomic_xor(self.v.get(), val, order) }
@@ -2566,7 +2528,6 @@ macro_rules! atomic_int {
             #[inline]
             #[stable(feature = "no_more_cas", since = "1.45.0")]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_update<F>(&self,
                                    set_order: Ordering,
                                    fetch_order: Ordering,
@@ -2620,7 +2581,6 @@ macro_rules! atomic_int {
             #[inline]
             #[stable(feature = "atomic_min_max", since = "1.45.0")]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { $max_fn(self.v.get(), val, order) }
@@ -2666,7 +2626,6 @@ macro_rules! atomic_int {
             #[inline]
             #[stable(feature = "atomic_min_max", since = "1.45.0")]
             #[$cfg_cas]
-            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
             pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
                 // SAFETY: data races are prevented by atomic intrinsics.
                 unsafe { $min_fn(self.v.get(), val, order) }
@@ -2980,7 +2939,6 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
 }
 
 #[inline]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_store<T: Copy>(dst: *mut T, val: T, order: Ordering) {
     // SAFETY: the caller must uphold the safety contract for `atomic_store`.
     unsafe {
@@ -2995,7 +2953,6 @@ unsafe fn atomic_store<T: Copy>(dst: *mut T, val: T, order: Ordering) {
 }
 
 #[inline]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_load<T: Copy>(dst: *const T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_load`.
     unsafe {
@@ -3011,7 +2968,6 @@ unsafe fn atomic_load<T: Copy>(dst: *const T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_swap`.
     unsafe {
@@ -3028,7 +2984,6 @@ unsafe fn atomic_swap<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// Returns the previous value (like __sync_fetch_and_add).
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_add`.
     unsafe {
@@ -3045,7 +3000,6 @@ unsafe fn atomic_add<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// Returns the previous value (like __sync_fetch_and_sub).
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_sub`.
     unsafe {
@@ -3061,7 +3015,6 @@ unsafe fn atomic_sub<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_compare_exchange<T: Copy>(
     dst: *mut T,
     old: T,
@@ -3104,7 +3057,6 @@ unsafe fn atomic_compare_exchange<T: Copy>(
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_compare_exchange_weak<T: Copy>(
     dst: *mut T,
     old: T,
@@ -3147,7 +3099,6 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_and`
     unsafe {
@@ -3163,7 +3114,6 @@ unsafe fn atomic_and<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_nand`
     unsafe {
@@ -3179,7 +3129,6 @@ unsafe fn atomic_nand<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_or`
     unsafe {
@@ -3195,7 +3144,6 @@ unsafe fn atomic_or<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_xor`
     unsafe {
@@ -3212,7 +3160,6 @@ unsafe fn atomic_xor<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the max value (signed comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_max<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_max`
     unsafe {
@@ -3229,7 +3176,6 @@ unsafe fn atomic_max<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the min value (signed comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_min<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_min`
     unsafe {
@@ -3246,7 +3192,6 @@ unsafe fn atomic_min<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the max value (unsigned comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_umax<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_umax`
     unsafe {
@@ -3263,7 +3208,6 @@ unsafe fn atomic_umax<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// returns the min value (unsigned comparison)
 #[inline]
 #[cfg(target_has_atomic = "8")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
     // SAFETY: the caller must uphold the safety contract for `atomic_umin`
     unsafe {
@@ -3354,7 +3298,6 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "fence"]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
     unsafe {
@@ -3437,7 +3380,6 @@ pub fn fence(order: Ordering) {
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
 #[rustc_diagnostic_item = "compiler_fence"]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn compiler_fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
     unsafe {

@@ -1461,14 +1461,6 @@ impl<'tcx> Place<'tcx> {
         self.projection.iter().any(|elem| elem.is_indirect())
     }
 
-    /// If MirPhase >= Derefered and if projection contains Deref,
-    /// It's guaranteed to be in the first place
-    pub fn has_deref(&self) -> bool {
-        // To make sure this is not accidently used in wrong mir phase
-        debug_assert!(!self.projection[1..].contains(&PlaceElem::Deref));
-        self.projection.first() == Some(&PlaceElem::Deref)
-    }
-
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
     #[inline(always)]
@@ -1539,12 +1531,6 @@ impl<'tcx> PlaceRef<'tcx> {
             | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
             _ => None,
         }
-    }
-
-    /// If MirPhase >= Derefered and if projection contains Deref,
-    /// It's guaranteed to be in the first place
-    pub fn has_deref(&self) -> bool {
-        self.projection.first() == Some(&PlaceElem::Deref)
     }
 
     /// If this place represents a local variable like `_X` with no
@@ -1674,22 +1660,6 @@ impl SourceScope {
         match &data.local_data {
             ClearCrossCrate::Set(data) => Some(data.lint_root),
             ClearCrossCrate::Clear => None,
-        }
-    }
-
-    /// The instance this source scope was inlined from, if any.
-    #[inline]
-    pub fn inlined_instance<'tcx>(
-        self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
-    ) -> Option<ty::Instance<'tcx>> {
-        let scope_data = &source_scopes[self];
-        if let Some((inlined_instance, _)) = scope_data.inlined {
-            Some(inlined_instance)
-        } else if let Some(inlined_scope) = scope_data.inlined_parent_scope {
-            Some(source_scopes[inlined_scope].inlined.unwrap().0)
-        } else {
-            None
         }
     }
 }

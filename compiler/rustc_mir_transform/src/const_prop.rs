@@ -155,18 +155,18 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     }
 }
 
-pub struct ConstPropMachine<'mir, 'tcx> {
+struct ConstPropMachine<'mir, 'tcx> {
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx>>,
     /// `OnlyInsideOwnBlock` locals that were written in the current block get erased at the end.
-    pub written_only_inside_own_block_locals: FxHashSet<Local>,
+    written_only_inside_own_block_locals: FxHashSet<Local>,
     /// Locals that need to be cleared after every block terminates.
-    pub only_propagate_inside_block_locals: BitSet<Local>,
-    pub can_const_prop: IndexVec<Local, ConstPropMode>,
+    only_propagate_inside_block_locals: BitSet<Local>,
+    can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
 impl ConstPropMachine<'_, '_> {
-    pub fn new(
+    fn new(
         only_propagate_inside_block_locals: BitSet<Local>,
         can_const_prop: IndexVec<Local, ConstPropMode>,
     ) -> Self {
@@ -234,9 +234,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     fn access_local<'a>(
-        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        frame: &'a Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         local: Local,
-    ) -> InterpResult<'tcx, &'a interpret::Operand<Self::Provenance>> {
+    ) -> InterpResult<'tcx, &'a interpret::Operand<Self::PointerTag>> {
         let l = &frame.locals[local];
 
         if matches!(
@@ -255,7 +255,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: Local,
-    ) -> InterpResult<'tcx, &'a mut interpret::Operand<Self::Provenance>> {
+    ) -> InterpResult<'tcx, &'a mut interpret::Operand<Self::PointerTag>> {
         if ecx.machine.can_const_prop[local] == ConstPropMode::NoPropagation {
             throw_machine_stop_str!("tried to write to a local that is marked as not propagatable")
         }
@@ -274,7 +274,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
-        alloc: ConstAllocation<'tcx, Self::Provenance, Self::AllocExtra>,
+        alloc: ConstAllocation<'tcx, Self::PointerTag, Self::AllocExtra>,
         _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
@@ -309,14 +309,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     #[inline(always)]
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
         &mut ecx.machine.stack
     }
 }
@@ -816,7 +816,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 /// The mode that `ConstProp` is allowed to run in for a given `Local`.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ConstPropMode {
+enum ConstPropMode {
     /// The `Local` can be propagated into and reads of this `Local` can also be propagated.
     FullConstProp,
     /// The `Local` can only be propagated into and from its own block.
@@ -828,7 +828,7 @@ pub enum ConstPropMode {
     NoPropagation,
 }
 
-pub struct CanConstProp {
+struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
     found_assignment: BitSet<Local>,
@@ -838,7 +838,7 @@ pub struct CanConstProp {
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
-    pub fn check<'tcx>(
+    fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,

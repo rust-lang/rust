@@ -1,5 +1,5 @@
 [package]
-name = "cargo_common_metadata_fail_publish"
+name = "cargo_common_metadata"
 version = "0.1.0"
 publish = ["some-registry-name"]
 

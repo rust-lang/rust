@@ -335,11 +335,37 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.mk_adt(def, substs)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
-                    find_opaque_ty_constraints_for_tait(tcx, def_id)
+                    find_opaque_ty_constraints(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
-                    find_opaque_ty_constraints_for_rpit(tcx, def_id, owner)
+                    let concrete_ty = tcx
+                        .mir_borrowck(owner)
+                        .concrete_opaque_types
+                        .get(&def_id)
+                        .copied()
+                        .map(|concrete| concrete.ty)
+                        .unwrap_or_else(|| {
+                            let table = tcx.typeck(owner);
+                            if let Some(_) = table.tainted_by_errors {
+                                // Some error in the
+                                // owner fn prevented us from populating
+                                // the `concrete_opaque_types` table.
+                                tcx.ty_error()
+                            } else {
+                                table.concrete_opaque_types.get(&def_id).copied().unwrap_or_else(|| {
+                                    // We failed to resolve the opaque type or it
+                                    // resolves to itself. We interpret this as the
+                                    // no values of the hidden type ever being constructed,
+                                    // so we can just make the hidden type be `!`.
+                                    // For backwards compatibility reasons, we fall back to
+                                    // `()` until we the diverging default is changed.
+                                    Some(tcx.mk_diverging_default())
+                                }).expect("RPIT always have a hidden type from typeck")
+                            }
+                        });
+                    debug!("concrete_ty = {:?}", concrete_ty);
+                    concrete_ty
                 }
                 ItemKind::Trait(..)
                 | ItemKind::TraitAlias(..)
@@ -493,7 +519,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 /// fn b<T>() -> Foo<T, u32> { .. }
 /// ```
 ///
-fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
+fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     use rustc_hir::{Expr, ImplItem, Item, TraitItem};
 
     struct ConstraintLocator<'tcx> {
@@ -512,9 +538,9 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
 
     impl ConstraintLocator<'_> {
         #[instrument(skip(self), level = "debug")]
-        fn check(&mut self, item_def_id: LocalDefId) {
+        fn check(&mut self, def_id: LocalDefId) {
             // Don't try to check items that cannot possibly constrain the type.
-            if !self.tcx.has_typeck_results(item_def_id) {
+            if !self.tcx.has_typeck_results(def_id) {
                 debug!("no constraint: no typeck results");
                 return;
             }
@@ -529,20 +555,26 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             // // because we again need to reveal `Foo` so we can check whether the
             // // constant does not contain interior mutability.
             // ```
-            let tables = self.tcx.typeck(item_def_id);
+            let tables = self.tcx.typeck(def_id);
             if let Some(_) = tables.tainted_by_errors {
                 self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error() });
                 return;
             }
-            if !tables.concrete_opaque_types.contains_key(&self.def_id) {
+            if tables.concrete_opaque_types.get(&self.def_id).is_none() {
                 debug!("no constraints in typeck results");
                 return;
             }
             // Use borrowck to get the type with unerased regions.
-            let concrete_opaque_types = &self.tcx.mir_borrowck(item_def_id).concrete_opaque_types;
+            let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
-            if let Some(&concrete_type) = concrete_opaque_types.get(&self.def_id) {
+            for &(def_id, concrete_type) in concrete_opaque_types {
+                if def_id != self.def_id {
+                    // Ignore constraints for other opaque types.
+                    continue;
+                }
+
                 debug!(?concrete_type, "found constraint");
+
                 if let Some(prev) = self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev).references_error() {
                         prev.report_mismatch(&concrete_type, self.tcx);
@@ -632,122 +664,6 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             tcx.ty_error()
         }
     }
-}
-
-fn find_opaque_ty_constraints_for_rpit(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    owner_def_id: LocalDefId,
-) -> Ty<'_> {
-    use rustc_hir::{Expr, ImplItem, Item, TraitItem};
-
-    struct ConstraintChecker<'tcx> {
-        tcx: TyCtxt<'tcx>,
-
-        /// def_id of the opaque type whose defining uses are being checked
-        def_id: LocalDefId,
-
-        found: ty::OpaqueHiddenType<'tcx>,
-    }
-
-    impl ConstraintChecker<'_> {
-        #[instrument(skip(self), level = "debug")]
-        fn check(&self, def_id: LocalDefId) {
-            // Use borrowck to get the type with unerased regions.
-            let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
-            debug!(?concrete_opaque_types);
-            for &(def_id, concrete_type) in concrete_opaque_types {
-                if def_id != self.def_id {
-                    // Ignore constraints for other opaque types.
-                    continue;
-                }
-
-                debug!(?concrete_type, "found constraint");
-
-                if concrete_type.ty != self.found.ty
-                    && !(concrete_type, self.found).references_error()
-                {
-                    self.found.report_mismatch(&concrete_type, self.tcx);
-                }
-            }
-        }
-    }
-
-    impl<'tcx> intravisit::Visitor<'tcx> for ConstraintChecker<'tcx> {
-        type NestedFilter = nested_filter::OnlyBodies;
-
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
-        }
-        fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure { .. } = ex.kind {
-                let def_id = self.tcx.hir().local_def_id(ex.hir_id);
-                self.check(def_id);
-            }
-            intravisit::walk_expr(self, ex);
-        }
-        fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-            trace!(?it.def_id);
-            // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id != self.def_id {
-                self.check(it.def_id);
-                intravisit::walk_item(self, it);
-            }
-        }
-        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-            trace!(?it.def_id);
-            // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id != self.def_id {
-                self.check(it.def_id);
-                intravisit::walk_impl_item(self, it);
-            }
-        }
-        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-            trace!(?it.def_id);
-            self.check(it.def_id);
-            intravisit::walk_trait_item(self, it);
-        }
-    }
-
-    let concrete = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
-
-    if let Some(concrete) = concrete {
-        let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
-        debug!(?scope);
-        let mut locator = ConstraintChecker { def_id: def_id, tcx, found: concrete };
-
-        match tcx.hir().get(scope) {
-            Node::Item(it) => intravisit::walk_item(&mut locator, it),
-            Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
-            Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),
-            other => bug!("{:?} is not a valid scope for an opaque type item", other),
-        }
-    }
-
-    concrete.map(|concrete| concrete.ty).unwrap_or_else(|| {
-        let table = tcx.typeck(owner_def_id);
-        if let Some(_) = table.tainted_by_errors {
-            // Some error in the
-            // owner fn prevented us from populating
-            // the `concrete_opaque_types` table.
-            tcx.ty_error()
-        } else {
-            table
-                .concrete_opaque_types
-                .get(&def_id)
-                .copied()
-                .unwrap_or_else(|| {
-                    // We failed to resolve the opaque type or it
-                    // resolves to itself. We interpret this as the
-                    // no values of the hidden type ever being constructed,
-                    // so we can just make the hidden type be `!`.
-                    // For backwards compatibility reasons, we fall back to
-                    // `()` until we the diverging default is changed.
-                    Some(tcx.mk_diverging_default())
-                })
-                .expect("RPIT always have a hidden type from typeck")
-        }
-    })
 }
 
 fn infer_placeholder_type<'a>(

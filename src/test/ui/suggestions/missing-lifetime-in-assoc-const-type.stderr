@@ -4,6 +4,10 @@ error[E0106]: missing lifetime specifier
 LL |     const A: &str = "";
    |              ^ expected named lifetime parameter
    |
+help: consider using the `'static` lifetime
+   |
+LL |     const A: &'static str = "";
+   |               +++++++
 help: consider introducing a named lifetime parameter
    |
 LL ~ trait ZstAssert<'a>: Sized {
@@ -16,6 +20,10 @@ error[E0106]: missing lifetime specifier
 LL |     const B: S = S { s: &() };
    |              ^ expected named lifetime parameter
    |
+help: consider using the `'static` lifetime
+   |
+LL |     const B: S<'static> = S { s: &() };
+   |               +++++++++
 help: consider introducing a named lifetime parameter
    |
 LL ~ trait ZstAssert<'a>: Sized {
@@ -29,6 +37,10 @@ error[E0106]: missing lifetime specifier
 LL |     const C: &'_ str = "";
    |               ^^ expected named lifetime parameter
    |
+help: consider using the `'static` lifetime
+   |
+LL |     const C: &'static str = "";
+   |               ~~~~~~~
 help: consider introducing a named lifetime parameter
    |
 LL ~ trait ZstAssert<'a>: Sized {
@@ -43,6 +55,10 @@ error[E0106]: missing lifetime specifiers
 LL |     const D: T = T { a: &(), b: &() };
    |              ^ expected 2 lifetime parameters
    |
+help: consider using the `'static` lifetime
+   |
+LL |     const D: T<'static, 'static> = T { a: &(), b: &() };
+   |               ++++++++++++++++++
 help: consider introducing a named lifetime parameter
    |
 LL ~ trait ZstAssert<'a>: Sized {

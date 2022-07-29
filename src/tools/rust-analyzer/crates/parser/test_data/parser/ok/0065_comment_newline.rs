@@ -1,3 +1,0 @@
-/// Example
-
-fn test() {}

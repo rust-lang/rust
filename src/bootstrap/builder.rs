@@ -601,7 +601,6 @@ impl<'a> Builder<'a> {
                 tool::Cargo,
                 tool::Rls,
                 tool::RustAnalyzer,
-                tool::RustAnalyzerProcMacroSrv,
                 tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
@@ -622,7 +621,6 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::Rls,
-                check::RustAnalyzer,
                 check::Rustfmt,
                 check::Bootstrap
             ),
@@ -650,7 +648,6 @@ impl<'a> Builder<'a> {
                 test::Cargotest,
                 test::Cargo,
                 test::Rls,
-                test::RustAnalyzer,
                 test::ErrorIndex,
                 test::Distcheck,
                 test::RunMakeFullDeps,
@@ -1554,7 +1551,7 @@ impl<'a> Builder<'a> {
             Mode::ToolStd => {
                 // Right now this is just compiletest and a few other tools that build on stable.
                 // Allow them to use `feature(test)`, but nothing else.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace,proc_macro_internals,proc_macro_diagnostic,proc_macro_span");
+                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,backtrace");
             }
             Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
         }

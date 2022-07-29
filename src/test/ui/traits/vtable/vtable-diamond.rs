@@ -34,11 +34,6 @@ fn foo(d: &dyn D) {
     d.foo_d();
 }
 
-fn bar(d: &dyn C) {
-    d.foo_c();
-}
-
 fn main() {
     foo(&S);
-    bar(&S);
 }

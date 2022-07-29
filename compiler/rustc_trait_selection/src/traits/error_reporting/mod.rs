@@ -22,6 +22,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
+use rustc_infer::infer::error_reporting::same_type_modulo_infer;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -301,10 +302,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span = obligation.cause.span;
                     }
                 }
-                if let ObligationCauseCode::CompareImplItemObligation {
+                if let ObligationCauseCode::CompareImplMethodObligation {
                     impl_item_def_id,
                     trait_item_def_id,
-                    kind: _,
+                }
+                | ObligationCauseCode::CompareImplTypeObligation {
+                    impl_item_def_id,
+                    trait_item_def_id,
                 } = *obligation.cause.code()
                 {
                     self.report_extra_impl_obligation(
@@ -631,12 +635,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         &format!(
                                             "expected a closure taking {} argument{}, but one taking {} argument{} was given",
                                             given.len(),
-                                            pluralize!(given.len()),
+                                            if given.len() == 1 { "" } else { "s" },
                                             expected.len(),
-                                            pluralize!(expected.len()),
+                                            if expected.len() == 1 { "" } else { "s" },
                                         )
                                     );
-                                } else if !self.same_type_modulo_infer(given_ty, expected_ty) {
+                                } else if !same_type_modulo_infer(given_ty, expected_ty) {
                                     // Print type mismatch
                                     let (expected_args, given_args) =
                                         self.cmp(given_ty, expected_ty);
@@ -666,7 +670,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             );
                         } else if !suggested {
                             // Can't show anything else useful, try to find similar impls.
-                            let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
+                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
@@ -701,7 +705,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 {
                                     let trait_ref = trait_pred.to_poly_trait_ref();
                                     let impl_candidates =
-                                        self.find_similar_impl_candidates(trait_pred);
+                                        self.find_similar_impl_candidates(trait_ref);
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
@@ -785,9 +789,24 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
                     }
 
-                    ty::PredicateKind::RegionOutlives(..)
-                    | ty::PredicateKind::Projection(..)
-                    | ty::PredicateKind::TypeOutlives(..) => {
+                    ty::PredicateKind::RegionOutlives(predicate) => {
+                        let predicate = bound_predicate.rebind(predicate);
+                        let predicate = self.resolve_vars_if_possible(predicate);
+                        let err = self
+                            .region_outlives_predicate(&obligation.cause, predicate)
+                            .err()
+                            .unwrap();
+                        struct_span_err!(
+                            self.tcx.sess,
+                            span,
+                            E0279,
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate,
+                            err,
+                        )
+                    }
+
+                    ty::PredicateKind::Projection(..) | ty::PredicateKind::TypeOutlives(..) => {
                         let predicate = self.resolve_vars_if_possible(obligation.predicate);
                         struct_span_err!(
                             self.tcx.sess,
@@ -1325,7 +1344,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
 
     fn find_similar_impl_candidates(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>>;
 
     fn report_similar_impl_candidates(
@@ -1694,22 +1713,18 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
     fn find_similar_impl_candidates(
         &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
         self.tcx
-            .all_impls(trait_pred.def_id())
+            .all_impls(trait_ref.def_id())
             .filter_map(|def_id| {
-                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative
-                    || !trait_pred
-                        .skip_binder()
-                        .is_constness_satisfied_by(self.tcx.constness(def_id))
-                {
+                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
                     return None;
                 }
 
                 let imp = self.tcx.impl_trait_ref(def_id).unwrap();
 
-                self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false)
+                self.fuzzy_match_tys(trait_ref.skip_binder().self_ty(), imp.self_ty(), false)
                     .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
             })
             .collect()

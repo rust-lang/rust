@@ -85,11 +85,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type MemoryKind: Debug + std::fmt::Display + MayLeak + Eq + 'static;
 
     /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
-    type Provenance: Provenance + Eq + Hash + 'static;
+    type PointerTag: Provenance + Eq + Hash + 'static;
 
-    /// When getting the AllocId of a pointer, some extra data is also obtained from the provenance
+    /// When getting the AllocId of a pointer, some extra data is also obtained from the tag
     /// that is passed to memory access hooks so they can do things with it.
-    type ProvenanceExtra: Copy + 'static;
+    type TagExtra: Copy + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
     /// For example, Miri uses this to return a function pointer from `dlsym`
@@ -105,7 +105,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Memory's allocation map
     type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKind>, Allocation<Self::Provenance, Self::AllocExtra>),
+            (MemoryKind<Self::MemoryKind>, Allocation<Self::PointerTag, Self::AllocExtra>),
         > + Default
         + Clone;
 
@@ -113,7 +113,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// or None if such memory should not be mutated and thus any such attempt will cause
     /// a `ModifiedStatic` error to be raised.
     /// Statics are copied under two circumstances: When they are mutated, and when
-    /// `adjust_allocation` (see below) returns an owned allocation
+    /// `tag_allocation` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.
     const GLOBAL_KIND: Option<Self::MemoryKind>;
 
@@ -126,7 +126,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether, when checking alignment, we should `force_int` and thus support
     /// custom alignment logic based on whatever the integer address happens to be.
     ///
-    /// Requires Provenance::OFFSET_IS_ADDR to be true.
+    /// Requires PointerTag::OFFSET_IS_ADDR to be true.
     fn force_int_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether to enforce the validity invariant
@@ -134,6 +134,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Whether to enforce integers and floats being initialized.
     fn enforce_number_init(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
+    /// Whether to enforce integers and floats not having provenance.
+    fn enforce_number_no_provenance(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Whether function calls should be [ABI](CallAbi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
@@ -167,8 +170,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         abi: CallAbi,
-        args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        destination: &PlaceTy<'tcx, Self::PointerTag>,
         target: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
@@ -179,8 +182,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         abi: CallAbi,
-        args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        destination: &PlaceTy<'tcx, Self::PointerTag>,
         target: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
@@ -190,8 +193,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
+        args: &[OpTy<'tcx, Self::PointerTag>],
+        destination: &PlaceTy<'tcx, Self::PointerTag>,
         target: Option<mir::BasicBlock>,
         unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
@@ -214,18 +217,18 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn binary_ptr_op(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: &ImmTy<'tcx, Self::Provenance>,
-        right: &ImmTy<'tcx, Self::Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<Self::Provenance>, bool, Ty<'tcx>)>;
+        left: &ImmTy<'tcx, Self::PointerTag>,
+        right: &ImmTy<'tcx, Self::PointerTag>,
+    ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool, Ty<'tcx>)>;
 
     /// Called to read the specified `local` from the `frame`.
     /// Since reading a ZST is not actually accessing memory or locals, this is never invoked
     /// for ZST reads.
     #[inline]
     fn access_local<'a>(
-        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        frame: &'a Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         local: mir::Local,
-    ) -> InterpResult<'tcx, &'a Operand<Self::Provenance>>
+    ) -> InterpResult<'tcx, &'a Operand<Self::PointerTag>>
     where
         'tcx: 'mir,
     {
@@ -240,7 +243,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: mir::Local,
-    ) -> InterpResult<'tcx, &'a mut Operand<Self::Provenance>>
+    ) -> InterpResult<'tcx, &'a mut Operand<Self::PointerTag>>
     where
         'tcx: 'mir,
     {
@@ -272,7 +275,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn thread_local_static_base_pointer(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Self::Provenance>> {
+    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         throw_unsup!(ThreadLocalStatic(def_id))
     }
 
@@ -280,28 +283,35 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn extern_static_base_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
-    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
+    ) -> InterpResult<'tcx, Pointer<Self::PointerTag>>;
 
     /// Return a "base" pointer for the given allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation, or the one returned from the heap allocator.
     ///
     /// Not called on `extern` or thread-local statics (those use the methods above).
-    fn adjust_alloc_base_pointer(
+    fn tag_alloc_base_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer,
-    ) -> Pointer<Self::Provenance>;
+    ) -> Pointer<Self::PointerTag>;
 
     /// "Int-to-pointer cast"
     fn ptr_from_addr_cast(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         addr: u64,
-    ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>>;
+    ) -> InterpResult<'tcx, Pointer<Option<Self::PointerTag>>>;
+
+    /// Hook for returning a pointer from a transmute-like operation on an addr.
+    /// This is only needed to support Miri's (unsound) "allow-ptr-int-transmute" flag.
+    fn ptr_from_addr_transmute(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        addr: u64,
+    ) -> Pointer<Option<Self::PointerTag>>;
 
     /// Marks a pointer as exposed, allowing it's provenance
     /// to be recovered. "Pointer-to-int cast"
     fn expose_ptr(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        ptr: Pointer<Self::Provenance>,
+        ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx>;
 
     /// Convert a pointer with provenance into an allocation-offset pair
@@ -312,30 +322,30 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// When this fails, that means the pointer does not point to a live allocation.
     fn ptr_get_alloc(
         ecx: &InterpCx<'mir, 'tcx, Self>,
-        ptr: Pointer<Self::Provenance>,
-    ) -> Option<(AllocId, Size, Self::ProvenanceExtra)>;
+        ptr: Pointer<Self::PointerTag>,
+    ) -> Option<(AllocId, Size, Self::TagExtra)>;
 
-    /// Called to adjust allocations to the Provenance and AllocExtra of this machine.
+    /// Called to initialize the "extra" state of an allocation and make the pointers
+    /// it contains (in relocations) tagged.  The way we construct allocations is
+    /// to always first construct it without extra and then add the extra.
+    /// This keeps uniform code paths for handling both allocations created by CTFE
+    /// for globals, and allocations created by Miri during evaluation.
     ///
-    /// The way we construct allocations is to always first construct it without extra and then add
-    /// the extra. This keeps uniform code paths for handling both allocations created by CTFE for
-    /// globals, and allocations created by Miri during evaluation.
-    ///
-    /// `kind` is the kind of the allocation being adjusted; it can be `None` when
+    /// `kind` is the kind of the allocation being tagged; it can be `None` when
     /// it's a global and `GLOBAL_KIND` is `None`.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
-    /// allocation (because a copy had to be done to adjust things), machine memory will
+    /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     ///
     /// This must only fail if `alloc` contains relocations.
-    fn adjust_allocation<'b>(
+    fn init_allocation_extra<'b>(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra>>>;
+    ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Hook for performing extra checks on a memory read access.
     ///
@@ -347,7 +357,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
-        _prov: (AllocId, Self::ProvenanceExtra),
+        _tag: (AllocId, Self::TagExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -359,7 +369,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
-        _prov: (AllocId, Self::ProvenanceExtra),
+        _tag: (AllocId, Self::TagExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -371,7 +381,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
-        _prov: (AllocId, Self::ProvenanceExtra),
+        _tag: (AllocId, Self::TagExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
         Ok(())
@@ -382,7 +392,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn retag(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
-        _place: &PlaceTy<'tcx, Self::Provenance>,
+        _place: &PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
@@ -390,18 +400,18 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Called immediately before a new stack frame gets pushed.
     fn init_frame_extra(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx, Self::Provenance>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+        frame: Frame<'mir, 'tcx, Self::PointerTag>,
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>>;
 
     /// Borrow the current thread's stack.
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>];
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>];
 
     /// Mutably borrow the current thread's stack.
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>>;
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>>;
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
@@ -412,7 +422,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// The `locals` have already been destroyed!
     fn after_stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _frame: Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+        _frame: Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         // By default, we do not support unwinding from panics
@@ -424,8 +434,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
 // A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
 // (CTFE and ConstProp) use the same instance.  Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
-    type Provenance = AllocId;
-    type ProvenanceExtra = ();
+    type PointerTag = AllocId;
+    type TagExtra = ();
 
     type ExtraFnVal = !;
 
@@ -460,6 +470,11 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
+    fn enforce_number_no_provenance(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        true
+    }
+
+    #[inline(always)]
     fn checked_binop_checks_overflow(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         true
     }
@@ -470,7 +485,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         fn_val: !,
         _abi: CallAbi,
         _args: &[OpTy<$tcx>],
-        _destination: &PlaceTy<$tcx, Self::Provenance>,
+        _destination: &PlaceTy<$tcx, Self::PointerTag>,
         _target: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<$tcx> {
@@ -478,12 +493,13 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn adjust_allocation<'b>(
+    fn init_allocation_extra<'b>(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<Self::MemoryKind>>,
-    ) -> InterpResult<$tcx, Cow<'b, Allocation<Self::Provenance>>> {
+    ) -> InterpResult<$tcx, Cow<'b, Allocation<Self::PointerTag>>> {
+        // We do not use a tag so we can just cheaply forward the allocation
         Ok(alloc)
     }
 
@@ -496,11 +512,19 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     }
 
     #[inline(always)]
-    fn adjust_alloc_base_pointer(
+    fn tag_alloc_base_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         ptr: Pointer<AllocId>,
     ) -> Pointer<AllocId> {
         ptr
+    }
+
+    #[inline(always)]
+    fn ptr_from_addr_transmute(
+        _ecx: &InterpCx<$mir, $tcx, Self>,
+        addr: u64,
+    ) -> Pointer<Option<AllocId>> {
+        Pointer::from_addr(addr)
     }
 
     #[inline(always)]
@@ -517,7 +541,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn ptr_get_alloc(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         ptr: Pointer<AllocId>,
-    ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
+    ) -> Option<(AllocId, Size, Self::TagExtra)> {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
         let (alloc_id, offset) = ptr.into_parts();
         Some((alloc_id, offset, ()))

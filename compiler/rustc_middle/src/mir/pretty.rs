@@ -360,7 +360,7 @@ where
             "{:A$} // {}{}",
             indented_body,
             if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-            comment(tcx, statement.source_info, body.span),
+            comment(tcx, statement.source_info),
             A = ALIGN,
         )?;
 
@@ -381,7 +381,7 @@ where
         "{:A$} // {}{}",
         indented_terminator,
         if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-        comment(tcx, data.terminator().source_info, body.span),
+        comment(tcx, data.terminator().source_info),
         A = ALIGN,
     )?;
 
@@ -518,14 +518,8 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     }
 }
 
-fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo, function_span: Span) -> String {
-    let location = if tcx.sess.opts.unstable_opts.mir_pretty_relative_line_numbers {
-        tcx.sess.source_map().span_to_relative_line_string(span, function_span)
-    } else {
-        tcx.sess.source_map().span_to_embeddable_string(span)
-    };
-
-    format!("scope {} at {}", scope.index(), location,)
+fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
+    format!("scope {} at {}", scope.index(), tcx.sess.source_map().span_to_embeddable_string(span))
 }
 
 /// Prints local variables in a scope tree.
@@ -556,7 +550,7 @@ fn write_scope_tree(
             "{0:1$} // in {2}",
             indented_debug_info,
             ALIGN,
-            comment(tcx, var_debug_info.source_info, body.span),
+            comment(tcx, var_debug_info.source_info),
         )?;
     }
 
@@ -591,7 +585,7 @@ fn write_scope_tree(
             indented_decl,
             ALIGN,
             local_name,
-            comment(tcx, local_decl.source_info, body.span),
+            comment(tcx, local_decl.source_info),
         )?;
     }
 
@@ -726,17 +720,11 @@ pub fn write_allocations<'tcx>(
                 write!(w, "{}", display_allocation(tcx, alloc.inner()))
             };
         write!(w, "\n{id:?}")?;
-        match tcx.try_get_global_alloc(id) {
+        match tcx.get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
             Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {inst})")?,
-            Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
-                write!(w, " (vtable: impl {trait_ref} for {ty})")?
-            }
-            Some(GlobalAlloc::VTable(ty, None)) => {
-                write!(w, " (vtable: impl <auto trait> for {ty})")?
-            }
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 match tcx.eval_static_initializer(did) {
                     Ok(alloc) => {
@@ -779,21 +767,21 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints relocations adequately.
-pub fn display_allocation<'a, 'tcx, Prov, Extra>(
+pub fn display_allocation<'a, 'tcx, Tag, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Prov, Extra>,
-) -> RenderAllocation<'a, 'tcx, Prov, Extra> {
+    alloc: &'a Allocation<Tag, Extra>,
+) -> RenderAllocation<'a, 'tcx, Tag, Extra> {
     RenderAllocation { tcx, alloc }
 }
 
 #[doc(hidden)]
-pub struct RenderAllocation<'a, 'tcx, Prov, Extra> {
+pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Prov, Extra>,
+    alloc: &'a Allocation<Tag, Extra>,
 }
 
-impl<'a, 'tcx, Prov: Provenance, Extra> std::fmt::Display
-    for RenderAllocation<'a, 'tcx, Prov, Extra>
+impl<'a, 'tcx, Tag: Provenance, Extra> std::fmt::Display
+    for RenderAllocation<'a, 'tcx, Tag, Extra>
 {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
@@ -837,9 +825,9 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
+fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &Allocation<Prov, Extra>,
+    alloc: &Allocation<Tag, Extra>,
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {
@@ -873,7 +861,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&prov) = alloc.relocations().get(&i) {
+        if let Some(&tag) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
@@ -882,7 +870,7 @@ fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
-            let ptr = Pointer::new(prov, offset);
+            let ptr = Pointer::new(tag, offset);
             let mut target = format!("{:?}", ptr);
             if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.

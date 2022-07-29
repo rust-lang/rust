@@ -309,7 +309,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &PlaceTy<'tcx, Self::Provenance>,
+        dest: &PlaceTy<'tcx, Self::PointerTag>,
         target: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -369,7 +369,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // we don't deallocate it.
                 let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr)?;
                 let is_allocated_in_another_const = matches!(
-                    ecx.tcx.try_get_global_alloc(alloc_id),
+                    ecx.tcx.get_global_alloc(alloc_id),
                     Some(interpret::GlobalAlloc::Memory(_))
                 );
 
@@ -470,14 +470,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     #[inline(always)]
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
         &mut ecx.machine.stack
     }
 

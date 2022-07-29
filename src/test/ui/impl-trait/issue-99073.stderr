@@ -1,14 +1,14 @@
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-99073.rs:6:11
+error[E0308]: mismatched types
+  --> $DIR/issue-99073.rs:6:13
    |
-LL |   move || f(fix(&f))
-   |           ^^^^^^^^^^ expected `[closure@$DIR/issue-99073.rs:6:3: 6:10]`, got `G`
+LL | fn fix<F: Fn(G), G: Fn()>(f: F) -> impl Fn() {
+   |                                    --------- the expected opaque type
+LL |     move || f(fix(&f))
+   |             ^^^^^^^^^^ types differ
    |
-note: previous use here
-  --> $DIR/issue-99073.rs:6:3
-   |
-LL |   move || f(fix(&f))
-   |   ^^^^^^^^^^^^^^^^^^
+   = note: expected opaque type `impl Fn()`
+           found type parameter `G`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

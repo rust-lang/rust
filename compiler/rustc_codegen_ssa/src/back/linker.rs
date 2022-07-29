@@ -566,7 +566,9 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn no_gc_sections(&mut self) {
-        if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
+        if self.sess.target.is_like_osx {
+            self.linker_arg("-no_dead_strip");
+        } else if self.sess.target.linker_is_gnu || self.sess.target.is_like_wasm {
             self.linker_arg("--no-gc-sections");
         }
     }
@@ -638,14 +640,9 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility in object files typically takes care of this.
-        if crate_type == CrateType::Executable {
-            let should_export_executable_symbols =
-                self.sess.opts.unstable_opts.export_executable_symbols;
-            if self.sess.target.override_export_symbols.is_none()
-                && !should_export_executable_symbols
-            {
-                return;
-            }
+        if crate_type == CrateType::Executable && self.sess.target.override_export_symbols.is_none()
+        {
+            return;
         }
 
         // We manually create a list of exported symbols to ensure we don't expose any more.
@@ -972,11 +969,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType, symbols: &[String]) {
         // Symbol visibility takes care of this typically
         if crate_type == CrateType::Executable {
-            let should_export_executable_symbols =
-                self.sess.opts.unstable_opts.export_executable_symbols;
-            if !should_export_executable_symbols {
-                return;
-            }
+            return;
         }
 
         let path = tmpdir.join("lib.def");

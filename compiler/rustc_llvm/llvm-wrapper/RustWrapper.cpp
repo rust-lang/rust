@@ -6,7 +6,6 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
-#include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
@@ -87,6 +86,10 @@ extern "C" char *LLVMRustGetLastError(void) {
   char *Ret = LastError;
   LastError = nullptr;
   return Ret;
+}
+
+extern "C" unsigned int LLVMRustGetInstructionCount(LLVMModuleRef M) {
+  return unwrap(M)->getInstructionCount();
 }
 
 extern "C" void LLVMRustSetLastError(const char *Err) {
@@ -229,16 +232,6 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::NoUndef;
   case SanitizeMemTag:
     return Attribute::SanitizeMemTag;
-  case ShadowCallStack:
-    return Attribute::ShadowCallStack;
-  case AllocSize:
-    return Attribute::AllocSize;
-#if LLVM_VERSION_GE(15, 0)
-  case AllocatedPointer:
-    return Attribute::AllocatedPointer;
-  case AllocAlign:
-    return Attribute::AllocAlign;
-#endif
   }
   report_fatal_error("bad AttributeKind");
 }
@@ -301,81 +294,12 @@ extern "C" LLVMAttributeRef LLVMRustCreateStructRetAttr(LLVMContextRef C, LLVMTy
   return wrap(Attribute::getWithStructRetType(*unwrap(C), unwrap(Ty)));
 }
 
-extern "C" LLVMAttributeRef LLVMRustCreateElementTypeAttr(LLVMContextRef C, LLVMTypeRef Ty) {
-#if LLVM_VERSION_GE(15, 0)
-  return wrap(Attribute::get(*unwrap(C), Attribute::ElementType, unwrap(Ty)));
-#else
-  report_fatal_error("Should not be needed on LLVM < 15");
-#endif
-}
-
 extern "C" LLVMAttributeRef LLVMRustCreateUWTableAttr(LLVMContextRef C, bool Async) {
 #if LLVM_VERSION_LT(15, 0)
   return wrap(Attribute::get(*unwrap(C), Attribute::UWTable));
 #else
   return wrap(Attribute::getWithUWTableKind(
       *unwrap(C), Async ? UWTableKind::Async : UWTableKind::Sync));
-#endif
-}
-
-extern "C" LLVMAttributeRef LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32_t ElementSizeArg) {
-  return wrap(Attribute::getWithAllocSizeArgs(*unwrap(C), ElementSizeArg, None));
-}
-
-#if LLVM_VERSION_GE(15, 0)
-
-// These values **must** match ffi::AllocKindFlags.
-// It _happens_ to match the LLVM values of llvm::AllocFnKind,
-// but that's happenstance and we do explicit conversions before
-// passing them to LLVM.
-enum class LLVMRustAllocKindFlags : uint64_t {
-  Unknown = 0,
-  Alloc = 1,
-  Realloc = 1 << 1,
-  Free = 1 << 2,
-  Uninitialized = 1 << 3,
-  Zeroed = 1 << 4,
-  Aligned = 1 << 5,
-};
-
-static LLVMRustAllocKindFlags operator&(LLVMRustAllocKindFlags A, LLVMRustAllocKindFlags B) {
-  return static_cast<LLVMRustAllocKindFlags>(static_cast<uint64_t>(A) &
-                                      static_cast<uint64_t>(B));
-}
-
-static bool isSet(LLVMRustAllocKindFlags F) { return F != LLVMRustAllocKindFlags::Unknown; }
-
-static llvm::AllocFnKind allocKindFromRust(LLVMRustAllocKindFlags F) {
-  llvm::AllocFnKind AFK = llvm::AllocFnKind::Unknown;
-  if (isSet(F & LLVMRustAllocKindFlags::Alloc)) {
-    AFK |= llvm::AllocFnKind::Alloc;
-  }
-  if (isSet(F & LLVMRustAllocKindFlags::Realloc)) {
-    AFK |= llvm::AllocFnKind::Realloc;
-  }
-  if (isSet(F & LLVMRustAllocKindFlags::Free)) {
-    AFK |= llvm::AllocFnKind::Free;
-  }
-  if (isSet(F & LLVMRustAllocKindFlags::Uninitialized)) {
-    AFK |= llvm::AllocFnKind::Uninitialized;
-  }
-  if (isSet(F & LLVMRustAllocKindFlags::Zeroed)) {
-    AFK |= llvm::AllocFnKind::Zeroed;
-  }
-  if (isSet(F & LLVMRustAllocKindFlags::Aligned)) {
-    AFK |= llvm::AllocFnKind::Aligned;
-  }
-  return AFK;
-}
-#endif
-
-extern "C" LLVMAttributeRef LLVMRustCreateAllocKindAttr(LLVMContextRef C, uint64_t AllocKindArg) {
-#if LLVM_VERSION_GE(15, 0)
-  return wrap(Attribute::get(*unwrap(C), Attribute::AllocKind,
-      static_cast<uint64_t>(allocKindFromRust(static_cast<LLVMRustAllocKindFlags>(AllocKindArg)))));
-#else
-  report_fatal_error(
-      "allockind attributes are new in LLVM 15 and should not be used on older LLVMs");
 #endif
 }
 
@@ -1534,6 +1458,11 @@ extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
   }
 }
 
+extern "C" void LLVMRustUnsetComdat(LLVMValueRef V) {
+  GlobalObject *GV = unwrap<GlobalObject>(V);
+  GV->setComdat(nullptr);
+}
+
 enum class LLVMRustLinkage {
   ExternalLinkage = 0,
   AvailableExternallyLinkage = 1,
@@ -1952,16 +1881,3 @@ extern "C" LLVMValueRef LLVMGetAggregateElement(LLVMValueRef C, unsigned Idx) {
     return wrap(unwrap<Constant>(C)->getAggregateElement(Idx));
 }
 #endif
-
-extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
-#if LLVM_VERSION_GE(15, 0)
-    auto *CB = unwrap<CallBase>(CallSite);
-    switch (CB->getIntrinsicID()) {
-        case Intrinsic::arm_ldrex:
-            return 0;
-        case Intrinsic::arm_strex:
-            return 1;
-    }
-#endif
-    return -1;
-}

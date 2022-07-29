@@ -36,8 +36,6 @@
     -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
     -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
     -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
-    -Z                           emit-thin-lto=val -- emit the bc module with thin LTO info (default: yes)
-    -Z               export-executable-symbols=val -- export symbols from executables, as if they were dynamic libraries
     -Z                             fewer-names=val -- reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) (default: no)
     -Z              force-unstable-if-unmarked=val -- force all crates to be `rustc_private` unstable (default: no)
     -Z                                    fuel=val -- set the optimization fuel quota for a crate
@@ -76,7 +74,6 @@
     -Z                              meta-stats=val -- gather metadata statistics (default: no)
     -Z                          mir-emit-retag=val -- emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 (default: no)
     -Z                       mir-enable-passes=val -- use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be enabled, overriding all other checks. Passes that are not specified are enabled or disabled by other flags as usual.
-    -Z        mir-pretty-relative-line-numbers=val -- use line numbers relative to the function in mir pretty printing
     -Z                           mir-opt-level=val -- MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)
     -Z                         move-size-limit=val -- the size at which the `large_assignments` lint starts to be emitted
     -Z                         mutable-noalias=val -- emit noalias metadata for mutable references (default: yes)

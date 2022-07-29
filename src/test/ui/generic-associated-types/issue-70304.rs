@@ -2,7 +2,6 @@
 
 trait Document {
     type Cursor<'a>: DocCursor<'a>;
-    //~^ ERROR: missing required bound on `Cursor`
 
     fn cursor(&self) -> Self::Cursor<'_>;
 }

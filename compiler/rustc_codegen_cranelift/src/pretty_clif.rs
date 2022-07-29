@@ -66,7 +66,7 @@ use rustc_session::config::OutputType;
 
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct CommentWriter {
     enabled: bool,
     global_comments: Vec<String>,
@@ -237,7 +237,6 @@ pub(crate) fn write_clif_file<'tcx>(
     func: &cranelift_codegen::ir::Function,
     mut clif_comments: &CommentWriter,
 ) {
-    // FIXME work around filename too long errors
     write_ir_file(
         tcx,
         || format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),

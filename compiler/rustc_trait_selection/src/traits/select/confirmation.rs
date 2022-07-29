@@ -42,96 +42,115 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
-        let mut impl_src = match candidate {
+        let mut obligation = obligation;
+        let new_obligation;
+
+        // HACK(const_trait_impl): the surrounding environment is remapped to a non-const context
+        // because nested obligations might be actually `~const` then (incorrectly) requiring
+        // const impls. for example:
+        // ```
+        // pub trait Super {}
+        // pub trait Sub: Super {}
+        //
+        // impl<A> const Super for &A where A: ~const Super {}
+        // impl<A> const Sub for &A where A: ~const Sub {}
+        // ```
+        //
+        // The procedure to check the code above without the remapping code is as follows:
+        // ```
+        // CheckWf(impl const Sub for &A where A: ~const Sub) // <- const env
+        // CheckPredicate(&A: Super)
+        // CheckPredicate(A: ~const Super) // <- still const env, failure
+        // ```
+        if obligation.param_env.is_const() && !obligation.predicate.is_const_if_const() {
+            new_obligation = TraitObligation {
+                cause: obligation.cause.clone(),
+                param_env: obligation.param_env.without_const(),
+                ..*obligation
+            };
+            obligation = &new_obligation;
+        }
+
+        match candidate {
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
-                ImplSource::Builtin(data)
+                Ok(ImplSource::Builtin(data))
             }
 
             ParamCandidate(param) => {
                 let obligations =
                     self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
-                ImplSource::Param(obligations, param.skip_binder().constness)
+                Ok(ImplSource::Param(obligations, param.skip_binder().constness))
             }
 
             ImplCandidate(impl_def_id) => {
-                ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id))
+                Ok(ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
             AutoImplCandidate(trait_def_id) => {
                 let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
-                ImplSource::AutoImpl(data)
+                Ok(ImplSource::AutoImpl(data))
             }
 
             ProjectionCandidate(idx) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 // FIXME(jschievink): constness
-                ImplSource::Param(obligations, ty::BoundConstness::NotConst)
+                Ok(ImplSource::Param(obligations, ty::BoundConstness::NotConst))
             }
 
             ObjectCandidate(idx) => {
                 let data = self.confirm_object_candidate(obligation, idx)?;
-                ImplSource::Object(data)
+                Ok(ImplSource::Object(data))
             }
 
             ClosureCandidate => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
-                ImplSource::Closure(vtable_closure)
+                Ok(ImplSource::Closure(vtable_closure))
             }
 
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                ImplSource::Generator(vtable_generator)
+                Ok(ImplSource::Generator(vtable_generator))
             }
 
             FnPointerCandidate { .. } => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
-                ImplSource::FnPointer(data)
+                Ok(ImplSource::FnPointer(data))
             }
 
             DiscriminantKindCandidate => {
-                ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+                Ok(ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData))
             }
 
-            PointeeCandidate => ImplSource::Pointee(ImplSourcePointeeData),
+            PointeeCandidate => Ok(ImplSource::Pointee(ImplSourcePointeeData)),
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
-                ImplSource::TraitAlias(data)
+                Ok(ImplSource::TraitAlias(data))
             }
 
             BuiltinObjectCandidate => {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst)
+                Ok(ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst))
             }
 
             BuiltinUnsizeCandidate => {
                 let data = self.confirm_builtin_unsize_candidate(obligation)?;
-                ImplSource::Builtin(data)
+                Ok(ImplSource::Builtin(data))
             }
 
             TraitUpcastingUnsizeCandidate(idx) => {
                 let data = self.confirm_trait_upcasting_unsize_candidate(obligation, idx)?;
-                ImplSource::TraitUpcasting(data)
+                Ok(ImplSource::TraitUpcasting(data))
             }
 
             ConstDestructCandidate(def_id) => {
                 let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
-                ImplSource::ConstDestruct(data)
+                Ok(ImplSource::ConstDestruct(data))
             }
-        };
-
-        if !obligation.predicate.is_const_if_const() {
-            // normalize nested predicates according to parent predicate's constness.
-            impl_src = impl_src.map(|mut o| {
-                o.predicate = o.predicate.without_const(self.tcx());
-                o
-            });
         }
-
-        Ok(impl_src)
     }
 
     fn confirm_projection_candidate(

@@ -9,8 +9,6 @@ fn std_instead_of_core() {
     use std::hash::Hasher;
     // Absolute path
     use ::std::hash::Hash;
-    // Don't lint on `env` macro
-    use std::env;
 
     // Multiple imports
     use std::fmt::{Debug, Result};
@@ -22,14 +20,10 @@ fn std_instead_of_core() {
     // Types
     let cell = std::cell::Cell::new(8u32);
     let cell_absolute = ::std::cell::Cell::new(8u32);
-
-    let _ = std::env!("PATH");
 }
 
 #[warn(clippy::std_instead_of_alloc)]
 fn std_instead_of_alloc() {
-    // Only lint once.
-    use std::vec;
     use std::vec::Vec;
 }
 

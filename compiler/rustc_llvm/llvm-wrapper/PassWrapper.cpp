@@ -34,7 +34,6 @@
 #include "llvm/Transforms/Utils/AddDiscriminators.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
-#include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
 #include "llvm/Transforms/Instrumentation.h"
@@ -88,6 +87,23 @@ extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
 
   timeTraceProfilerWrite(OS);
   timeTraceProfilerCleanup();
+}
+
+enum class LLVMRustPassKind {
+  Other,
+  Function,
+  Module,
+};
+
+static LLVMRustPassKind toRust(PassKind Kind) {
+  switch (Kind) {
+  case PT_Function:
+    return LLVMRustPassKind::Function;
+  case PT_Module:
+    return LLVMRustPassKind::Module;
+  default:
+    return LLVMRustPassKind::Other;
+  }
 }
 
 extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
@@ -153,6 +169,12 @@ extern "C" LLVMPassRef LLVMRustCreateHWAddressSanitizerPass(bool Recover) {
 #else
   report_fatal_error("Legacy PM not supported with LLVM 15");
 #endif
+}
+
+extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
+  assert(RustPass);
+  Pass *Pass = unwrap(RustPass);
+  return toRust(Pass->getPassKind());
 }
 
 extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
@@ -1581,6 +1603,28 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
   return true;
 }
 
+extern "C" typedef void (*LLVMRustModuleNameCallback)(void*, // payload
+                                                      const char*, // importing module name
+                                                      const char*); // imported module name
+
+// Calls `module_name_callback` for each module import done by ThinLTO.
+// The callback is provided with regular null-terminated C strings.
+extern "C" void
+LLVMRustGetThinLTOModules(const LLVMRustThinLTOData *data,
+                                LLVMRustModuleNameCallback module_name_callback,
+                                void* callback_payload) {
+  for (const auto& importing_module : data->ImportLists) {
+    const std::string importing_module_id = importing_module.getKey().str();
+    const auto& imports = importing_module.getValue();
+    for (const auto& imported_module : imports) {
+      const std::string imported_module_id = imported_module.getKey().str();
+      module_name_callback(callback_payload,
+                           importing_module_id.c_str(),
+                           imported_module_id.c_str());
+    }
+  }
+}
+
 // This struct and various functions are sort of a hack right now, but the
 // problem is that we've got in-memory LLVM modules after we generate and
 // optimize all codegen-units for one compilation in rustc. To be compatible
@@ -1594,17 +1638,13 @@ struct LLVMRustThinLTOBuffer {
 };
 
 extern "C" LLVMRustThinLTOBuffer*
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin) {
+LLVMRustThinLTOBufferCreate(LLVMModuleRef M) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     raw_string_ostream OS(Ret->data);
     {
       legacy::PassManager PM;
-      if (is_thin) {
-        PM.add(createWriteThinLTOBitcodePass(OS));
-      } else {
-        PM.add(createBitcodeWriterPass(OS));
-      }
+      PM.add(createWriteThinLTOBitcodePass(OS));
       PM.run(*unwrap(M));
     }
   }

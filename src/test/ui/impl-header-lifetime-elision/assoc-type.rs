@@ -9,12 +9,12 @@ trait MyTrait {
 
 impl MyTrait for &i32 {
     type Output = &i32;
-    //~^ ERROR `&` without an explicit lifetime name cannot be used here
+    //~^ ERROR missing lifetime specifier
 }
 
 impl MyTrait for &u32 {
     type Output = &'_ i32;
-    //~^ ERROR `'_` cannot be used here
+    //~^ ERROR missing lifetime specifier
 }
 
 // This is what you have to do:

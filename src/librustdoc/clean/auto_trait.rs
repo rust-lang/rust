@@ -121,7 +121,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
                 trait_: Some(trait_ref.clean(self.cx)),
-                for_: clean_middle_ty(ty, self.cx, None),
+                for_: ty.clean(self.cx),
                 items: Vec::new(),
                 polarity,
                 kind: ImplKind::Auto,

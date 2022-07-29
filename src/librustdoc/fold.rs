@@ -69,7 +69,7 @@ pub(crate) trait DocFolder: Sized {
             | AssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
-            | KeywordItem => kind,
+            | KeywordItem(_) => kind,
         }
     }
 

@@ -80,25 +80,33 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     /// Get the values inside the ValTree as a slice of bytes. This only works for
-    /// constants with types &str, &[u8], or [u8; _].
+    /// constants with types &str and &[u8].
     pub fn try_to_raw_bytes(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx [u8]> {
         match ty.kind() {
             ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
-                // `&str` can be interpreted as raw bytes
-                ty::Str => {}
-                // `&[u8]` can be interpreted as raw bytes
-                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
-                // other `&_` can't be interpreted as raw bytes
-                _ => return None,
+                ty::Str => {
+                    let leafs = self
+                        .unwrap_branch()
+                        .into_iter()
+                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
+                        .collect::<Vec<_>>();
+
+                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
+                }
+                ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {
+                    let leafs = self
+                        .unwrap_branch()
+                        .into_iter()
+                        .map(|v| v.unwrap_leaf().try_to_u8().unwrap())
+                        .collect::<Vec<_>>();
+
+                    return Some(tcx.arena.alloc_from_iter(leafs.into_iter()));
+                }
+                _ => {}
             },
-            // `[u8; N]` can be interpreted as raw bytes
-            ty::Array(array_ty, _) if *array_ty == tcx.types.u8 => {}
-            // Otherwise, type cannot be interpreted as raw bytes
-            _ => return None,
+            _ => {}
         }
 
-        Some(tcx.arena.alloc_from_iter(
-            self.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().try_to_u8().unwrap()),
-        ))
+        None
     }
 }

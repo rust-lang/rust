@@ -351,7 +351,7 @@ impl fmt::Display for RefPrefix {
                 name.fmt(f)?;
                 f.write_char(' ')?;
             },
-            LifetimeName::Infer => f.write_str("'_ ")?,
+            LifetimeName::Underscore => f.write_str("'_ ")?,
             LifetimeName::Static => f.write_str("'static ")?,
             _ => (),
         }

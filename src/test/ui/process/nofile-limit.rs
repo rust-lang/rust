@@ -6,7 +6,7 @@
 // dont-check-compiler-stderr
 // only-linux
 // no-prefer-dynamic
-// compile-flags: -Ctarget-feature=+crt-static -Crpath=no -Crelocation-model=static
+// compile-flags: -Ctarget-feature=+crt-static -Crpath=no
 #![feature(exit_status_error)]
 #![feature(rustc_private)]
 extern crate libc;

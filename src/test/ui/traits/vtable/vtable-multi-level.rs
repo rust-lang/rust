@@ -12,7 +12,6 @@
 
 #[rustc_dump_vtable]
 trait A {
-    //~^ error vtable
     fn foo_a(&self) {}
 }
 
@@ -24,7 +23,6 @@ trait B {
 
 #[rustc_dump_vtable]
 trait C: A + B {
-    //~^ error vtable
     fn foo_c(&self) {}
 }
 
@@ -117,27 +115,8 @@ impl M for S {}
 impl N for S {}
 impl O for S {}
 
-macro_rules! monomorphize_vtable {
-    ($trait:ident) => {{
-        fn foo(_ : &dyn $trait) {}
-        foo(&S);
-    }}
-}
+fn foo(_: &dyn O) {}
 
 fn main() {
-    monomorphize_vtable!(O);
-
-    monomorphize_vtable!(A);
-    monomorphize_vtable!(B);
-    monomorphize_vtable!(C);
-    monomorphize_vtable!(D);
-    monomorphize_vtable!(E);
-    monomorphize_vtable!(F);
-    monomorphize_vtable!(H);
-    monomorphize_vtable!(I);
-    monomorphize_vtable!(J);
-    monomorphize_vtable!(K);
-    monomorphize_vtable!(L);
-    monomorphize_vtable!(M);
-    monomorphize_vtable!(N);
+    foo(&S);
 }

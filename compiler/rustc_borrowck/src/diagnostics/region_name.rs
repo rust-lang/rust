@@ -589,7 +589,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
             hir::LifetimeName::Param(_, hir::ParamName::Fresh)
             | hir::LifetimeName::ImplicitObjectLifetimeDefault
-            | hir::LifetimeName::Infer => {
+            | hir::LifetimeName::Implicit
+            | hir::LifetimeName::Underscore => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //

@@ -1485,7 +1485,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("synthetic-implementations-list".into(), 1);
     map.insert("blanket-implementations-list".into(), 1);
     map.insert("deref-methods".into(), 1);
-    map.insert("layout".into(), 1);
     map
 }
 

@@ -221,6 +221,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
+            Some(rl::Region::LateBoundAnon(debruijn, index, anon_index)) => {
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_u32(index),
+                    kind: ty::BrAnon(anon_index),
+                };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
+            }
+
             Some(rl::Region::EarlyBound(index, id)) => {
                 let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
@@ -374,7 +382,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id: DefId,
             generic_args: &'a GenericArgs<'a>,
             span: Span,
-            missing_type_params: Vec<Symbol>,
+            missing_type_params: Vec<String>,
             inferred_params: Vec<Span>,
             infer_args: bool,
             is_object: bool,
@@ -506,7 +514,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // defaults. This will lead to an ICE if we are not
                             // careful!
                             if self.default_needs_object_self(param) {
-                                self.missing_type_params.push(param.name);
+                                self.missing_type_params.push(param.name.to_string());
                                 tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
@@ -1142,12 +1150,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .expect("missing associated type");
 
         if !assoc_item.vis.is_accessible_from(def_scope, tcx) {
+            let kind = match assoc_item.kind {
+                ty::AssocKind::Type => "type",
+                ty::AssocKind::Const => "const",
+                _ => unreachable!(),
+            };
             tcx.sess
                 .struct_span_err(
                     binding.span,
-                    &format!("{} `{}` is private", assoc_item.kind, binding.item_name),
+                    &format!("associated {kind} `{}` is private", binding.item_name),
                 )
-                .span_label(binding.span, &format!("private {}", assoc_item.kind))
+                .span_label(binding.span, &format!("private associated {kind}"))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
@@ -2663,7 +2676,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     span,
                     ty,
                     opt_sugg: Some((span, Applicability::MachineApplicable))
-                        .filter(|_| ty.is_suggestable(tcx, false)),
+                        .filter(|_| ty.is_suggestable(tcx)),
                 });
 
                 ty

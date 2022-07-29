@@ -14,7 +14,6 @@ macro_rules! neg {
             #[inline]
             #[must_use = "operator returns a new vector without mutating the input"]
             fn neg(self) -> Self::Output {
-                // Safety: `self` is a signed vector
                 unsafe { intrinsics::simd_neg(self) }
             }
         })*

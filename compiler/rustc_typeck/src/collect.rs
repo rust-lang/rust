@@ -1346,8 +1346,16 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
             match self.tcx.named_region(lt.hir_id) {
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
-                Some(rl::Region::LateBound(debruijn, _, _)) if debruijn < self.outer_index => {}
-                Some(rl::Region::LateBound(..) | rl::Region::Free(..)) | None => {
+                Some(
+                    rl::Region::LateBound(debruijn, _, _)
+                    | rl::Region::LateBoundAnon(debruijn, _, _),
+                ) if debruijn < self.outer_index => {}
+                Some(
+                    rl::Region::LateBound(..)
+                    | rl::Region::LateBoundAnon(..)
+                    | rl::Region::Free(..),
+                )
+                | None => {
                     self.has_late_bound_regions = Some(lt.span);
                 }
             }
@@ -1921,7 +1929,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
             let ret_ty = fn_sig.skip_binder().output();
-            if ret_ty.is_suggestable(tcx, false) {
+            if ret_ty.is_suggestable(tcx) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
@@ -1930,12 +1938,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 );
             } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
                 let fn_sig = ret_ty.fn_sig(tcx);
-                if fn_sig
-                    .skip_binder()
-                    .inputs_and_output
-                    .iter()
-                    .all(|t| t.is_suggestable(tcx, false))
-                {
+                if fn_sig.skip_binder().inputs_and_output.iter().all(|t| t.is_suggestable(tcx)) {
                     diag.span_suggestion(
                         ty.span,
                         "replace with the correct return type",
@@ -2082,17 +2085,10 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
         // from the trait itself that *shouldn't* be shown as the source of
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
-
-        let constness = if tcx.has_attr(def_id, sym::const_trait) {
-            ty::BoundConstness::ConstIfConst
-        } else {
-            ty::BoundConstness::NotConst
-        };
-
         let span = rustc_span::DUMMY_SP;
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
-                ty::TraitRef::identity(tcx, def_id).with_constness(constness).to_predicate(tcx),
+                ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(tcx),
                 span,
             ))));
     }
@@ -2774,12 +2770,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             }
         } else if attr.has_name(sym::rustc_allocator_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        } else if attr.has_name(sym::rustc_reallocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
-        } else if attr.has_name(sym::rustc_deallocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR;
-        } else if attr.has_name(sym::rustc_allocator_zeroed) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED;
         } else if attr.has_name(sym::naked) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
         } else if attr.has_name(sym::no_mangle) {
@@ -2823,37 +2813,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         )
                         .emit();
                 }
-                None => {
-                    // Unfortunately, unconditionally using `llvm.used` causes
-                    // issues in handling `.init_array` with the gold linker,
-                    // but using `llvm.compiler.used` caused a nontrival amount
-                    // of unintentional ecosystem breakage -- particularly on
-                    // Mach-O targets.
-                    //
-                    // As a result, we emit `llvm.compiler.used` only on ELF
-                    // targets. This is somewhat ad-hoc, but actually follows
-                    // our pre-LLVM 13 behavior (prior to the ecosystem
-                    // breakage), and seems to match `clang`'s behavior as well
-                    // (both before and after LLVM 13), possibly because they
-                    // have similar compatibility concerns to us. See
-                    // https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146
-                    // and following comments for some discussion of this, as
-                    // well as the comments in `rustc_codegen_llvm` where these
-                    // flags are handled.
-                    //
-                    // Anyway, to be clear: this is still up in the air
-                    // somewhat, and is subject to change in the future (which
-                    // is a good thing, because this would ideally be a bit
-                    // more firmed up).
-                    let is_like_elf = !(tcx.sess.target.is_like_osx
-                        || tcx.sess.target.is_like_windows
-                        || tcx.sess.target.is_like_wasm);
-                    codegen_fn_attrs.flags |= if is_like_elf {
-                        CodegenFnAttrFlags::USED
-                    } else {
-                        CodegenFnAttrFlags::USED_LINKER
-                    };
-                }
+                None => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED,
             }
         } else if attr.has_name(sym::cmse_nonsecure_entry) {
             if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
@@ -2979,8 +2939,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
                     } else if item.has_name(sym::memtag) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
-                    } else if item.has_name(sym::shadow_call_stack) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
                     } else if item.has_name(sym::thread) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
                     } else if item.has_name(sym::hwaddress) {
@@ -2988,7 +2946,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
                     } else {
                         tcx.sess
                             .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                            .note("expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
+                            .note("expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, or `thread`")
                             .emit();
                     }
                 }

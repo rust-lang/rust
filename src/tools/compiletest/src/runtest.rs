@@ -648,6 +648,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_cdb_test(&self) {
+        assert!(self.revision.is_none(), "revisions not relevant here");
+
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
@@ -693,12 +695,7 @@ impl<'test> TestCx<'test> {
 
         // Parse debugger commands etc from test files
         let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            match DebuggerCommands::parse_from(
-                &self.testpaths.file,
-                self.config,
-                prefixes,
-                self.revision,
-            ) {
+            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
                 Ok(cmds) => cmds,
                 Err(e) => self.fatal(&e),
             };
@@ -759,6 +756,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
+        assert!(self.revision.is_none(), "revisions not relevant here");
+
         let config = Config {
             target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
             host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
@@ -784,12 +783,7 @@ impl<'test> TestCx<'test> {
         };
 
         let DebuggerCommands { commands, check_lines, breakpoint_lines } =
-            match DebuggerCommands::parse_from(
-                &self.testpaths.file,
-                self.config,
-                prefixes,
-                self.revision,
-            ) {
+            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
                 Ok(cmds) => cmds,
                 Err(e) => self.fatal(&e),
             };
@@ -1011,6 +1005,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_lldb_test(&self) {
+        assert!(self.revision.is_none(), "revisions not relevant here");
+
         if self.config.lldb_python_dir.is_none() {
             self.fatal("Can't run LLDB test because LLDB's python path is not set.");
         }
@@ -1063,12 +1059,7 @@ impl<'test> TestCx<'test> {
 
         // Parse debugger commands etc from test files
         let DebuggerCommands { commands, check_lines, breakpoint_lines, .. } =
-            match DebuggerCommands::parse_from(
-                &self.testpaths.file,
-                self.config,
-                prefixes,
-                self.revision,
-            ) {
+            match DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes) {
                 Ok(cmds) => cmds,
                 Err(e) => self.fatal(&e),
             };
@@ -1960,7 +1951,6 @@ impl<'test> TestCx<'test> {
                     "-Zdump-mir=all",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
-                    "-Zmir-pretty-relative-line-numbers=yes",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
                     rustc.args(&["-Zmir-opt-level=0", &format!("-Zmir-enable-passes=+{}", pass)]);

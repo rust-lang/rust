@@ -1,5 +1,5 @@
 #![warn(clippy::match_same_arms)]
-#![allow(clippy::blacklisted_name, clippy::diverging_sub_expression)]
+#![allow(clippy::blacklisted_name)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool {
@@ -226,13 +226,5 @@ fn main() {
         None => 50,
         Some(Bar { y: 0, x: 5, .. }) => 1,
         _ => 200,
-    };
-
-    let _ = match 0 {
-        0 => todo!(),
-        1 => todo!(),
-        2 => core::convert::identity::<u32>(todo!()),
-        3 => core::convert::identity::<u32>(todo!()),
-        _ => 5,
     };
 }

@@ -1,5 +1,5 @@
 macro_rules! borrow {
-    ($x:expr) => { &$x }
+    ($x:expr) => { &$x } //~ ERROR mismatched types
 }
 
 fn foo(_: String) {}
@@ -32,7 +32,6 @@ fn main() {
     foo(&mut "aaa".to_owned());
     //~^ ERROR mismatched types
     foo3(borrow!(0));
-    //~^ ERROR mismatched types
     foo4(&0);
     assert_eq!(3i32, &3i32);
     //~^ ERROR mismatched types

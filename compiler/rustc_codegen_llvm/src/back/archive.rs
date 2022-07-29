@@ -11,6 +11,7 @@ use std::str;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
+use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
 
@@ -95,23 +96,19 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         }
     }
 
-    fn sess(&self) -> &Session {
-        self.sess
-    }
-
-    fn create_dll_import_lib(
-        sess: &Session,
+    fn inject_dll_import_lib(
+        &mut self,
         lib_name: &str,
         dll_imports: &[DllImport],
-        tmpdir: &Path,
-    ) -> PathBuf {
+        tmpdir: &MaybeTempDir,
+    ) {
         let output_path = {
-            let mut output_path: PathBuf = tmpdir.to_path_buf();
+            let mut output_path: PathBuf = tmpdir.as_ref().to_path_buf();
             output_path.push(format!("{}_imports", lib_name));
             output_path.with_extension("lib")
         };
 
-        let target = &sess.target;
+        let target = &self.sess.target;
         let mingw_gnu_toolchain = target.vendor == "pc"
             && target.os == "windows"
             && target.env == "gnu"
@@ -120,7 +117,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()
             .map(|import: &DllImport| {
-                if sess.target.arch == "x86" {
+                if self.sess.target.arch == "x86" {
                     (
                         LlvmArchiveBuilder::i686_decorated_name(import, mingw_gnu_toolchain),
                         import.ordinal,
@@ -137,7 +134,8 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             // that loaded but crashed with an AV upon calling one of the imported
             // functions.  Therefore, use binutils to create the import library instead,
             // by writing a .DEF file to the temp dir and calling binutils's dlltool.
-            let def_file_path = tmpdir.join(format!("{}_imports", lib_name)).with_extension("def");
+            let def_file_path =
+                tmpdir.as_ref().join(format!("{}_imports", lib_name)).with_extension("def");
 
             let def_file_content = format!(
                 "EXPORTS\n{}",
@@ -156,11 +154,11 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             match std::fs::write(&def_file_path, def_file_content) {
                 Ok(_) => {}
                 Err(e) => {
-                    sess.fatal(&format!("Error writing .DEF file: {}", e));
+                    self.sess.fatal(&format!("Error writing .DEF file: {}", e));
                 }
             };
 
-            let dlltool = find_binutils_dlltool(sess);
+            let dlltool = find_binutils_dlltool(self.sess);
             let result = std::process::Command::new(dlltool)
                 .args([
                     "-d",
@@ -174,9 +172,9 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
             match result {
                 Err(e) => {
-                    sess.fatal(&format!("Error calling dlltool: {}", e));
+                    self.sess.fatal(&format!("Error calling dlltool: {}", e));
                 }
-                Ok(output) if !output.status.success() => sess.fatal(&format!(
+                Ok(output) if !output.status.success() => self.sess.fatal(&format!(
                     "Dlltool could not create import library: {}\n{}",
                     String::from_utf8_lossy(&output.stdout),
                     String::from_utf8_lossy(&output.stderr)
@@ -222,13 +220,13 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
                     output_path_z.as_ptr(),
                     ffi_exports.as_ptr(),
                     ffi_exports.len(),
-                    llvm_machine_type(&sess.target.arch) as u16,
-                    !sess.target.is_like_msvc,
+                    llvm_machine_type(&self.sess.target.arch) as u16,
+                    !self.sess.target.is_like_msvc,
                 )
             };
 
             if result == crate::llvm::LLVMRustResult::Failure {
-                sess.fatal(&format!(
+                self.sess.fatal(&format!(
                     "Error creating import library for {}: {}",
                     lib_name,
                     llvm::last_error().unwrap_or("unknown LLVM error".to_string())
@@ -236,7 +234,13 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             }
         };
 
-        output_path
+        self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
+            self.sess.fatal(&format!(
+                "failed to add native library {}: {}",
+                output_path.display(),
+                e
+            ));
+        });
     }
 }
 

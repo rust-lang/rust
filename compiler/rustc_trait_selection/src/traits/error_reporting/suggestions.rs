@@ -184,7 +184,7 @@ pub trait InferCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool;
 
-    fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<Symbol>;
+    fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<String>;
 
     fn suggest_fn_call(
         &self,
@@ -378,7 +378,7 @@ fn suggest_restriction<'tcx>(
             replace_ty: ty::ParamTy::new(generics.count() as u32, Symbol::intern(&type_param_name))
                 .to_ty(tcx),
         });
-        if !trait_pred.is_suggestable(tcx, false) {
+        if !trait_pred.is_suggestable(tcx) {
             return;
         }
         // We know we have an `impl Trait` that doesn't satisfy a required projection.
@@ -417,7 +417,7 @@ fn suggest_restriction<'tcx>(
             Applicability::MaybeIncorrect,
         );
     } else {
-        if !trait_pred.is_suggestable(tcx, false) {
+        if !trait_pred.is_suggestable(tcx) {
             return;
         }
         // Trivial case: `T` needs an extra bound: `T: Bound`.
@@ -586,7 +586,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // else in the predicate.
                     if !trait_pred.skip_binder().trait_ref.substs[1..]
                         .iter()
-                        .all(|g| g.is_suggestable(self.tcx, false))
+                        .all(|g| g.is_suggestable(self.tcx))
                     {
                         return;
                     }
@@ -607,10 +607,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 "{}, {}={}>",
                                 &constraint[..constraint.len() - 1],
                                 item.name,
-                                term
+                                term.to_string()
                             );
                         } else {
-                            constraint.push_str(&format!("<{}={}>", item.name, term));
+                            constraint.push_str(&format!("<{}={}>", item.name, term.to_string()));
                         }
                     }
 
@@ -737,13 +737,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// Given a closure's `DefId`, return the given name of the closure.
     ///
     /// This doesn't account for reassignments, but it's only used for suggestions.
-    fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<Symbol> {
-        let get_name = |err: &mut Diagnostic, kind: &hir::PatKind<'_>| -> Option<Symbol> {
+    fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<String> {
+        let get_name = |err: &mut Diagnostic, kind: &hir::PatKind<'_>| -> Option<String> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
             match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None) => {
-                    Some(ident.name)
+                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
+                    Some(format!("{}", name))
                 }
                 _ => {
                     err.note(msg);
@@ -2682,11 +2682,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::CompareImplItemObligation { trait_item_def_id, kind, .. } => {
+            ObligationCauseCode::CompareImplMethodObligation { trait_item_def_id, .. } => {
                 let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
-                    "the requirement `{}` appears on the `impl`'s {kind} `{}` but not on the \
-                     corresponding trait's {kind}",
+                    "the requirement `{}` appears on the impl method `{}` but not on the \
+                     corresponding trait method",
                     predicate, item_name,
                 );
                 let sp = self
@@ -2697,7 +2697,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let mut assoc_span: MultiSpan = sp.into();
                 assoc_span.push_span_label(
                     sp,
-                    format!("this trait's {kind} doesn't have the requirement `{}`", predicate),
+                    format!("this trait method doesn't have the requirement `{}`", predicate),
                 );
                 if let Some(ident) = self
                     .tcx
@@ -2707,6 +2707,38 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     assoc_span.push_span_label(ident.span, "in this trait");
                 }
                 err.span_note(assoc_span, &msg);
+            }
+            ObligationCauseCode::CompareImplTypeObligation { trait_item_def_id, .. } => {
+                let item_name = self.tcx.item_name(trait_item_def_id);
+                let msg = format!(
+                    "the requirement `{}` appears on the associated impl type `{}` but not on the \
+                     corresponding associated trait type",
+                    predicate, item_name,
+                );
+                let sp = self.tcx.def_span(trait_item_def_id);
+                let mut assoc_span: MultiSpan = sp.into();
+                assoc_span.push_span_label(
+                    sp,
+                    format!(
+                        "this trait associated type doesn't have the requirement `{}`",
+                        predicate,
+                    ),
+                );
+                if let Some(ident) = self
+                    .tcx
+                    .opt_associated_item(trait_item_def_id)
+                    .and_then(|i| self.tcx.opt_item_ident(i.container.id()))
+                {
+                    assoc_span.push_span_label(ident.span, "in this trait");
+                }
+                err.span_note(assoc_span, &msg);
+            }
+            ObligationCauseCode::CompareImplConstObligation => {
+                err.note(&format!(
+                    "the requirement `{}` appears on the associated impl constant \
+                     but not on the corresponding associated trait constant",
+                    predicate
+                ));
             }
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");

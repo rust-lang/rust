@@ -1,3 +1,0 @@
-if match
-
-struct S {}

@@ -120,7 +120,6 @@ mod r#trait {
     type B = Box<dyn GenericLifetime>;
     //~^ ERROR missing lifetime specifier
     //~| HELP consider introducing
-    //~| HELP consider making the bound lifetime-generic
 
     type C = Box<dyn GenericLifetime<'static, 'static>>;
     //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
@@ -137,7 +136,6 @@ mod r#trait {
     type F = Box<dyn GenericLifetime<>>;
     //~^ ERROR missing lifetime specifier
     //~| HELP consider introducing
-    //~| HELP consider making the bound lifetime-generic
 
     type G = Box<dyn GenericType<>>;
     //~^ ERROR this trait takes 1 generic argument but 0 generic arguments
@@ -163,7 +161,6 @@ mod associated_item {
         type A = Box<dyn GenericLifetimeAT<AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
 
         type B = Box<dyn GenericLifetimeAT<'static, 'static, AssocTy=()>>;
         //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
@@ -172,7 +169,6 @@ mod associated_item {
         type C = Box<dyn GenericLifetimeAT<(), AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
         //~| ERROR this trait takes 0 generic arguments but 1 generic argument
         //~| HELP remove
     }
@@ -207,7 +203,6 @@ mod associated_item {
         //~| HELP add missing
         //~| ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
 
         type B = Box<dyn GenericLifetimeTypeAT<'static, AssocTy=()>>;
         //~^ ERROR this trait takes 1 generic argument but 0 generic arguments were supplied
@@ -222,12 +217,10 @@ mod associated_item {
         type D = Box<dyn GenericLifetimeTypeAT<(), AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
 
         type E = Box<dyn GenericLifetimeTypeAT<(), (), AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
         //~| ERROR this trait takes 1 generic argument but 2 generic arguments
         //~| HELP remove
 
@@ -272,7 +265,6 @@ mod associated_item {
         type A = Box<dyn GenericLifetimeLifetimeAT<AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
 
         type B = Box<dyn GenericLifetimeLifetimeAT<'static, AssocTy=()>>;
         //~^ ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
@@ -287,7 +279,6 @@ mod associated_item {
         type A = Box<dyn GenericLifetimeLifetimeTypeAT<AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
-        //~| HELP consider making the bound lifetime-generic
         //~| ERROR this trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
 

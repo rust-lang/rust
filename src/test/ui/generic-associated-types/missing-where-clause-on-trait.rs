@@ -7,7 +7,7 @@ trait Foo {
 }
 impl Foo for () {
     type Assoc<'a, 'b> = () where 'a: 'b;
-    //~^ impl has stricter requirements than trait
+    //~^ `impl` associated type
 }
 
 fn main() {}

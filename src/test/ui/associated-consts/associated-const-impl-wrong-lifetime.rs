@@ -5,7 +5,7 @@ trait Foo {
 
 impl<'a> Foo for &'a () {
     const NAME: &'a str = "unit";
-    //~^ ERROR const not compatible with trait
+    //~^ ERROR mismatched types [E0308]
 }
 
 fn main() {}

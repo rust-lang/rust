@@ -20,7 +20,3 @@ pub fn library_function() {
         extern_fn_3();
     }
 }
-
-fn main() {
-    library_function();
-}

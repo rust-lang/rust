@@ -9,8 +9,7 @@ categories = ["hardware-support", "no-std"]
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["as_crate"]
-as_crate = []
+default = []
 std = []
 generic_const_exprs = []
 

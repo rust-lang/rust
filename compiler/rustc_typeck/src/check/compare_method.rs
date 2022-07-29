@@ -2,7 +2,7 @@ use super::potentially_plural_count;
 use crate::check::regionck::OutlivesEnvironmentExt;
 use crate::check::wfcheck;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -90,10 +90,9 @@ fn compare_predicate_entailment<'tcx>(
     let mut cause = ObligationCause::new(
         impl_m_span,
         impl_m_hir_id,
-        ObligationCauseCode::CompareImplItemObligation {
+        ObligationCauseCode::CompareImplMethodObligation {
             impl_item_def_id: impl_m.def_id.expect_local(),
             trait_item_def_id: trait_m.def_id,
-            kind: impl_m.kind,
         },
     );
 
@@ -224,10 +223,9 @@ fn compare_predicate_entailment<'tcx>(
             let cause = ObligationCause::new(
                 span,
                 impl_m_hir_id,
-                ObligationCauseCode::CompareImplItemObligation {
+                ObligationCauseCode::CompareImplMethodObligation {
                     impl_item_def_id: impl_m.def_id.expect_local(),
                     trait_item_def_id: trait_m.def_id,
-                    kind: impl_m.kind,
                 },
             );
             ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
@@ -1081,11 +1079,7 @@ pub(crate) fn compare_const_impl<'tcx>(
         let mut cause = ObligationCause::new(
             impl_c_span,
             impl_c_hir_id,
-            ObligationCauseCode::CompareImplItemObligation {
-                impl_item_def_id: impl_c.def_id.expect_local(),
-                trait_item_def_id: trait_c.def_id,
-                kind: impl_c.kind,
-            },
+            ObligationCauseCode::CompareImplConstObligation,
         );
 
         // There is no "body" here, so just pass dummy id.
@@ -1218,6 +1212,15 @@ fn compare_type_predicate_entailment<'tcx>(
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
+    let cause = ObligationCause::new(
+        impl_ty_span,
+        impl_ty_hir_id,
+        ObligationCauseCode::CompareImplTypeObligation {
+            impl_item_def_id: impl_ty.def_id.expect_local(),
+            trait_item_def_id: trait_ty.def_id,
+        },
+    );
+
     debug!("compare_type_predicate_entailment: trait_to_impl_substs={:?}", trait_to_impl_substs);
 
     // The predicates declared by the impl definition, the trait and the
@@ -1236,7 +1239,7 @@ fn compare_type_predicate_entailment<'tcx>(
         Reveal::UserFacing,
         hir::Constness::NotConst,
     );
-    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause.clone());
     tcx.infer_ctxt().enter(|infcx| {
         let ocx = ObligationCtxt::new(&infcx);
 
@@ -1244,25 +1247,12 @@ fn compare_type_predicate_entailment<'tcx>(
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        assert_eq!(impl_ty_own_bounds.predicates.len(), impl_ty_own_bounds.spans.len());
-        for (span, predicate) in
-            std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
-        {
-            let cause = ObligationCause::misc(span, impl_ty_hir_id);
+        for predicate in impl_ty_own_bounds.predicates {
             let traits::Normalized { value: predicate, obligations } =
-                traits::normalize(&mut selcx, param_env, cause, predicate);
+                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), predicate);
 
-            let cause = ObligationCause::new(
-                span,
-                impl_ty_hir_id,
-                ObligationCauseCode::CompareImplItemObligation {
-                    impl_item_def_id: impl_ty.def_id.expect_local(),
-                    trait_item_def_id: trait_ty.def_id,
-                    kind: impl_ty.kind,
-                },
-            );
             ocx.register_obligations(obligations);
-            ocx.register_obligation(traits::Obligation::new(cause, param_env, predicate));
+            ocx.register_obligation(traits::Obligation::new(cause.clone(), param_env, predicate));
         }
 
         // Check that all obligations are satisfied by the implementation's

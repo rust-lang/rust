@@ -1,4 +1,3 @@
-#![cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -670,7 +669,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(ls, true);
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
-    untracked!(mir_pretty_relative_line_numbers, true);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
     untracked!(no_interleave_lints, true);
@@ -735,10 +733,8 @@ fn test_unstable_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
-    tracked!(export_executable_symbols, true);
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
-    tracked!(emit_thin_lto, false);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));

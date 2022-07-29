@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
-    LintId::of(assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES),
     LintId::of(blacklisted_name::BLACKLISTED_NAME),
     LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
@@ -71,7 +70,6 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(methods::MANUAL_SATURATING_ARITHMETIC),
     LintId::of(methods::MAP_COLLECT_RESULT_UNIT),
     LintId::of(methods::NEW_RET_NO_SELF),
-    LintId::of(methods::OBFUSCATED_IF_ELSE),
     LintId::of(methods::OK_EXPECT),
     LintId::of(methods::OPTION_MAP_OR_NONE),
     LintId::of(methods::RESULT_MAP_OR_INTO_OPTION),

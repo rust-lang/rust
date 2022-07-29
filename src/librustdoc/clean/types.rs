@@ -496,7 +496,8 @@ impl Item {
         // Primitives and Keywords are written in the source code as private modules.
         // The modules need to be private so that nobody actually uses them, but the
         // keywords and primitives that they are documenting are public.
-        let visibility = if matches!(&kind, ItemKind::KeywordItem | ItemKind::PrimitiveItem(..)) {
+        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
+        {
             Visibility::Public
         } else {
             cx.tcx.visibility(def_id).clean(cx)
@@ -768,7 +769,7 @@ pub(crate) enum ItemKind {
     AssocTypeItem(Typedef, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem,
+    KeywordItem(Symbol),
 }
 
 impl ItemKind {
@@ -807,7 +808,7 @@ impl ItemKind {
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
-            | KeywordItem => [].iter(),
+            | KeywordItem(_) => [].iter(),
         }
     }
 }
@@ -1513,19 +1514,11 @@ impl FnRetTy {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Trait {
-    pub(crate) def_id: DefId,
+    pub(crate) unsafety: hir::Unsafety,
     pub(crate) items: Vec<Item>,
     pub(crate) generics: Generics,
     pub(crate) bounds: Vec<GenericBound>,
-}
-
-impl Trait {
-    pub(crate) fn is_auto(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.trait_is_auto(self.def_id)
-    }
-    pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
-        tcx.trait_def(self.def_id).unsafety
-    }
+    pub(crate) is_auto: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -2175,8 +2168,8 @@ impl Path {
     pub(crate) fn whole_name(&self) -> String {
         self.segments
             .iter()
-            .map(|s| if s.name == kw::PathRoot { "" } else { s.name.as_str() })
-            .intersperse("::")
+            .map(|s| if s.name == kw::PathRoot { String::new() } else { s.name.to_string() })
+            .intersperse("::".into())
             .collect()
     }
 

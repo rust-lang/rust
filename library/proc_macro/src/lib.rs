@@ -382,14 +382,6 @@ pub mod token_stream {
                 bridge::TokenTree::Literal(tt) => TokenTree::Literal(Literal(tt)),
             })
         }
-
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            self.0.size_hint()
-        }
-
-        fn count(self) -> usize {
-            self.0.count()
-        }
     }
 
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -1492,7 +1484,7 @@ impl fmt::Debug for Literal {
 }
 
 /// Tracked access to environment variables.
-#[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
+#[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
 pub mod tracked_env {
     use std::env::{self, VarError};
     use std::ffi::OsStr;
@@ -1502,7 +1494,7 @@ pub mod tracked_env {
     /// compilation, and will be able to rerun the build when the value of that variable changes.
     /// Besides the dependency tracking this function should be equivalent to `env::var` from the
     /// standard library, except that the argument must be UTF-8.
-    #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
+    #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
     pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
         let value = env::var(key);
@@ -1512,13 +1504,13 @@ pub mod tracked_env {
 }
 
 /// Tracked access to additional files.
-#[unstable(feature = "track_path", issue = "99515")]
+#[unstable(feature = "track_path", issue = "73921")]
 pub mod tracked_path {
 
     /// Track a file explicitly.
     ///
     /// Commonly used for tracking asset preprocessing.
-    #[unstable(feature = "track_path", issue = "99515")]
+    #[unstable(feature = "track_path", issue = "73921")]
     pub fn path<P: AsRef<str>>(path: P) {
         let path: &str = path.as_ref();
         crate::bridge::client::FreeFunctions::track_path(path);

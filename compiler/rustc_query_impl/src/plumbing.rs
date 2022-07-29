@@ -340,11 +340,11 @@ macro_rules! define_queries {
 
             #[inline]
             fn make_vtable(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
-                QueryVTable<QueryCtxt<$tcx>, Self::Key, Self::Value>
+                QueryVtable<QueryCtxt<$tcx>, Self::Key, Self::Value>
             {
                 let compute = get_provider!([$($modifiers)*][tcx, $name, key]);
                 let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
-                QueryVTable {
+                QueryVtable {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,

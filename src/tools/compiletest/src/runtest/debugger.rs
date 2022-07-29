@@ -1,5 +1,4 @@
 use crate::common::Config;
-use crate::header::line_directive;
 use crate::runtest::ProcRes;
 
 use std::fs::File;
@@ -17,7 +16,6 @@ impl DebuggerCommands {
         file: &Path,
         config: &Config,
         debugger_prefixes: &[&str],
-        rev: Option<&str>,
     ) -> Result<Self, String> {
         let directives = debugger_prefixes
             .iter()
@@ -27,19 +25,13 @@ impl DebuggerCommands {
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
         let mut check_lines = vec![];
-        let mut counter = 0;
+        let mut counter = 1;
         let reader = BufReader::new(File::open(file).unwrap());
         for line in reader.lines() {
-            counter += 1;
             match line {
                 Ok(line) => {
-                    let (lnrev, line) = line_directive("//", &line).unwrap_or((None, &line));
-
-                    // Skip any revision specific directive that doesn't match the current
-                    // revision being tested
-                    if lnrev.is_some() && lnrev != rev {
-                        continue;
-                    }
+                    let line =
+                        if line.starts_with("//") { line[2..].trim_start() } else { line.as_str() };
 
                     if line.contains("#break") {
                         breakpoint_lines.push(counter);
@@ -57,6 +49,7 @@ impl DebuggerCommands {
                 }
                 Err(e) => return Err(format!("Error while parsing debugger commands: {}", e)),
             }
+            counter += 1;
         }
 
         Ok(Self { commands, check_lines, breakpoint_lines })

@@ -13,9 +13,9 @@ struct Fooy<T>(T);
 
 impl<T> Foo for Fooy<T> {
     type A<'a> = (&'a ()) where Self: 'static;
-    //~^ ERROR impl has stricter requirements than trait
+    //~^ ERROR `impl` associated type
     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-    //~^ ERROR impl has stricter requirements than trait
+    //~^ ERROR `impl` associated type
     //~| ERROR lifetime bound not satisfied
     type C = String where Self: Copy;
     //~^ ERROR the trait bound `T: Copy` is not satisfied

@@ -1,6 +1,5 @@
-// revisions: stock gated stocknc gatednc
-// [gated] check-pass
-#![cfg_attr(any(gated, gatednc), feature(const_trait_impl))]
+// revisions: stock gated
+#![cfg_attr(gated, feature(const_trait_impl))]
 
 // aux-build: cross-crate.rs
 extern crate cross_crate;
@@ -13,12 +12,10 @@ fn non_const_context() {
 }
 
 const fn const_context() {
-    #[cfg(any(stocknc, gatednc))]
-    NonConst.func();
-    //[stocknc]~^ ERROR: the trait bound
-    //[gatednc]~^^ ERROR: the trait bound
+    NonConst.func(); //~ ERROR: cannot call non-const fn
+    //[gated]~^ ERROR: the trait bound
     Const.func();
-    //[stock]~^ ERROR: cannot call
+    //[stock]~^ ERROR: cannot call non-const fn
 }
 
 fn main() {}

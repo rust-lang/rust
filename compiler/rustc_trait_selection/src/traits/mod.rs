@@ -60,9 +60,8 @@ pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
-pub use self::structural_match::{
-    search_for_adt_const_param_violation, search_for_structural_match_violation,
-};
+pub use self::structural_match::search_for_structural_match_violation;
+pub use self::structural_match::{NonStructuralMatchTy, NonStructuralMatchTyKind};
 pub use self::util::{
     elaborate_obligations, elaborate_predicates, elaborate_predicates_with_span,
     elaborate_trait_ref, elaborate_trait_refs,
@@ -164,7 +163,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
 
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
@@ -208,21 +207,21 @@ fn do_normalize_predicates<'tcx>(
     predicates: Vec<ty::Predicate<'tcx>>,
 ) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
     let span = cause.span;
-    // FIXME. We should really... do something with these region
-    // obligations. But this call just continues the older
-    // behavior (i.e., doesn't cause any new bugs), and it would
-    // take some further refactoring to actually solve them. In
-    // particular, we would have to handle implied bounds
-    // properly, and that code is currently largely confined to
-    // regionck (though I made some efforts to extract it
-    // out). -nmatsakis
-    //
-    // @arielby: In any case, these obligations are checked
-    // by wfcheck anyway, so I'm not sure we have to check
-    // them here too, and we will remove this function when
-    // we move over to lazy normalization *anyway*.
-    tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let fulfill_cx = FulfillmentContext::new();
+    tcx.infer_ctxt().enter(|infcx| {
+        // FIXME. We should really... do something with these region
+        // obligations. But this call just continues the older
+        // behavior (i.e., doesn't cause any new bugs), and it would
+        // take some further refactoring to actually solve them. In
+        // particular, we would have to handle implied bounds
+        // properly, and that code is currently largely confined to
+        // regionck (though I made some efforts to extract it
+        // out). -nmatsakis
+        //
+        // @arielby: In any case, these obligations are checked
+        // by wfcheck anyway, so I'm not sure we have to check
+        // them here too, and we will remove this function when
+        // we move over to lazy normalization *anyway*.
+        let fulfill_cx = FulfillmentContext::new_ignoring_regions();
         let predicates =
             match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
                 Ok(predicates) => predicates,

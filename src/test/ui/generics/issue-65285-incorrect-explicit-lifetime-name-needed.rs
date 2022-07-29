@@ -8,7 +8,6 @@ fn should_error<T>() where T : Into<&u32> {}
 trait X<'a, K: 'a> {
     fn foo<'b, L: X<&'b Nested<K>>>();
     //~^ ERROR missing lifetime specifier [E0106]
-    //~| ERROR the type `&'b Nested<K>` does not fulfill the required lifetime
 }
 
 fn bar<'b, L: X<&'b Nested<i32>>>(){}

@@ -1,7 +1,7 @@
 # GitHub Actions
 
-GitHub hosted runners using the latest stable version of Rust have Clippy pre-installed.
-It is as simple as running `cargo clippy` to run lints against the codebase.
+On the GitHub hosted runners, Clippy from the latest stable Rust version comes
+pre-installed. So all you have to do is to run `cargo clippy`.
 
 ```yml
 on: push
@@ -15,7 +15,7 @@ jobs:
   clippy_check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v1
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
 ```

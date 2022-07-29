@@ -394,7 +394,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
-            op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),
+            op: |r| {
+                self.member_constraint(
+                    opaque_type_key.def_id,
+                    span,
+                    concrete_ty,
+                    r,
+                    &choice_regions,
+                )
+            },
         });
     }
 
@@ -430,7 +438,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
+    pub fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
         let origin = match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {
