@@ -6,10 +6,10 @@ define i8* @_ZNK4implIdE4typeEv()  {
   ret i8* bitcast (i8** @_ZTId to i8*)
 }
 
-declare void @_Z17__enzyme_virtualreverse(i8*)
+declare i8* @_Z17__enzyme_virtualreverse(i8*)
 
 define void @_Z18wrapper_1body_intsv()  {
-  call void @_Z17__enzyme_virtualreverse(i8* bitcast (i8* ()* @_ZNK4implIdE4typeEv to i8*))
+  %a = call i8* @_Z17__enzyme_virtualreverse(i8* bitcast (i8* ()* @_ZNK4implIdE4typeEv to i8*))
   ret void
 }
 
