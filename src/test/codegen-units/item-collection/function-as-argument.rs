@@ -18,14 +18,14 @@ fn take_fn_pointer<T1, T2>(f: fn(T1, T2), x: T1, y: T2) {
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
 
-    //~ MONO_ITEM fn take_fn_once::<u32, &str, fn(u32, &str) {function::<u32, &str>}>
+    //~ MONO_ITEM fn take_fn_once::<u32, &str, [fn item {function::<u32, &str>}: fn(u32, &str)]>
     //~ MONO_ITEM fn function::<u32, &str>
-    //~ MONO_ITEM fn <fn(u32, &str) {function::<u32, &str>} as std::ops::FnOnce<(u32, &str)>>::call_once - shim(fn(u32, &str) {function::<u32, &str>})
+    //~ MONO_ITEM fn <[fn item {function::<u32, &str>}: fn(u32, &str)] as std::ops::FnOnce<(u32, &str)>>::call_once - shim([fn item {function::<u32, &str>}: fn(u32, &str)])
     take_fn_once(function, 0u32, "abc");
 
-    //~ MONO_ITEM fn take_fn_once::<char, f64, fn(char, f64) {function::<char, f64>}>
+    //~ MONO_ITEM fn take_fn_once::<char, f64, [fn item {function::<char, f64>}: fn(char, f64)]>
     //~ MONO_ITEM fn function::<char, f64>
-    //~ MONO_ITEM fn <fn(char, f64) {function::<char, f64>} as std::ops::FnOnce<(char, f64)>>::call_once - shim(fn(char, f64) {function::<char, f64>})
+    //~ MONO_ITEM fn <[fn item {function::<char, f64>}: fn(char, f64)] as std::ops::FnOnce<(char, f64)>>::call_once - shim([fn item {function::<char, f64>}: fn(char, f64)])
     take_fn_once(function, 'c', 0f64);
 
     //~ MONO_ITEM fn take_fn_pointer::<i32, ()>
