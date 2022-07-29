@@ -531,6 +531,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
 
                         self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);
+                        self.suggest_dereferencing_index(&obligation, &mut err, trait_predicate);
                         let mut suggested =
                             self.suggest_dereferences(&obligation, &mut err, trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, trait_predicate);
