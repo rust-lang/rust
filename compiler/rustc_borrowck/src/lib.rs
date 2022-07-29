@@ -215,7 +215,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let (move_data, move_errors): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
         match MoveData::gather_moves(&body, tcx, param_env) {
-            Ok(move_data) => (move_data, Vec::new()),
+            Ok((_, move_data)) => (move_data, Vec::new()),
             Err((move_data, move_errors)) => (move_data, move_errors),
         };
     let promoted_errors = promoted

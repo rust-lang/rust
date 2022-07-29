@@ -9,6 +9,7 @@ pub struct UnDerefer<'tcx> {
 }
 
 impl<'tcx> UnDerefer<'tcx> {
+    #[inline]
     pub fn derefer(&self, place: PlaceRef<'tcx>, body: &Body<'tcx>) -> Option<Place<'tcx>> {
         let reffed = self.derefer_sidetable.get(&place.local)?;
 
@@ -17,20 +18,5 @@ impl<'tcx> UnDerefer<'tcx> {
             return self.derefer(new_place.as_ref(), body);
         }
         Some(new_place)
-    }
-
-    pub fn ref_finder(&mut self, body: &Body<'tcx>) {
-        for (_bb, data) in body.basic_blocks().iter_enumerated() {
-            for stmt in data.statements.iter() {
-                match stmt.kind {
-                    StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
-                        if body.local_decls[place.local].is_deref_temp() {
-                            self.derefer_sidetable.insert(place.local, reffed);
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
     }
 }
