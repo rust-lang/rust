@@ -16,9 +16,8 @@ impl NodeCounter {
 }
 
 impl<'ast> Visitor<'ast> for NodeCounter {
-    fn visit_ident(&mut self, ident: Ident) {
+    fn visit_ident(&mut self, _ident: Ident) {
         self.count += 1;
-        walk_ident(self, ident);
     }
     fn visit_foreign_item(&mut self, i: &ForeignItem) {
         self.count += 1;
