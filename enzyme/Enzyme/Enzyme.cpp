@@ -498,6 +498,38 @@ castToDiffeFunctionArgType(IRBuilder<> &Builder, llvm::CallInst *CI,
   return Builder.CreateBitCast(value, destType);
 }
 
+static Optional<StringRef> getMetadataName(llvm::Value *res);
+
+// if all phi arms are (recursively) based on the same metaString, use that
+static Optional<StringRef> recursePhiReads(PHINode *val) {
+  Optional<StringRef> finalMetadata;
+  SmallVector<PHINode *, 1> todo = {val};
+  SmallSet<PHINode *, 1> done;
+  while (todo.size()) {
+    auto phiInst = todo.back();
+    todo.pop_back();
+    if (done.count(phiInst))
+      continue;
+    done.insert(phiInst);
+    for (unsigned j = 0; j < phiInst->getNumIncomingValues(); ++j) {
+      auto newVal = phiInst->getIncomingValue(j);
+      if (auto phi = dyn_cast<PHINode>(newVal)) {
+        todo.push_back(phi);
+      } else {
+        Optional<StringRef> metaString = getMetadataName(newVal);
+        if (metaString) {
+          if (!finalMetadata) {
+            finalMetadata = metaString;
+          } else if (finalMetadata != metaString) {
+            return None;
+          }
+        }
+      }
+    }
+  }
+  return finalMetadata;
+}
+
 static Optional<StringRef> getMetadataName(llvm::Value *res) {
   if (auto av = dyn_cast<MetadataAsValue>(res)) {
     return cast<MDString>(av->getMetadata())->getString();
@@ -528,6 +560,9 @@ static Optional<StringRef> getMetadataName(llvm::Value *res) {
   } else if (auto gv = dyn_cast<AllocaInst>(res)) {
     return gv->getName();
   } else {
+    if (isa<PHINode>(res)) {
+      return recursePhiReads(cast<PHINode>(res));
+    }
     return Optional<StringRef>();
   }
 }
