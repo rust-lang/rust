@@ -1812,32 +1812,25 @@ fn is_field_vis_inherited(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-impl<'tcx> Clean<'tcx, Visibility> for ty::Visibility {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Visibility {
-        match *self {
-            ty::Visibility::Public => Visibility::Public,
-            // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
-            // while rustdoc really does mean inherited. That means that for enum variants, such as
-            // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
-            // Various parts of clean override `tcx.visibility` explicitly to make sure this distinction is captured.
-            ty::Visibility::Invisible => Visibility::Inherited,
-            ty::Visibility::Restricted(module) => Visibility::Restricted(module),
-        }
+pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
+    match vis {
+        ty::Visibility::Public => Visibility::Public,
+        // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
+        // while rustdoc really does mean inherited. That means that for enum variants, such as
+        // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
+        // Various parts of clean override `tcx.visibility` explicitly to make sure this distinction is captured.
+        ty::Visibility::Invisible => Visibility::Inherited,
+        ty::Visibility::Restricted(module) => Visibility::Restricted(module),
     }
 }
 
-impl<'tcx> Clean<'tcx, VariantStruct> for rustc_hir::VariantData<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> VariantStruct {
-        VariantStruct {
-            struct_type: CtorKind::from_hir(self),
-            fields: self.fields().iter().map(|x| clean_field(x, cx)).collect(),
-        }
-    }
-}
-
-impl<'tcx> Clean<'tcx, Vec<Item>> for hir::VariantData<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Vec<Item> {
-        self.fields().iter().map(|x| clean_field(x, cx)).collect()
+fn clean_variant_data<'tcx>(
+    variant: &hir::VariantData<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> VariantStruct {
+    VariantStruct {
+        struct_type: CtorKind::from_hir(variant),
+        fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
     }
 }
 
@@ -1863,8 +1856,10 @@ impl<'tcx> Clean<'tcx, Item> for ty::VariantDef {
 impl<'tcx> Clean<'tcx, Variant> for hir::VariantData<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Variant {
         match self {
-            hir::VariantData::Struct(..) => Variant::Struct(self.clean(cx)),
-            hir::VariantData::Tuple(..) => Variant::Tuple(self.clean(cx)),
+            hir::VariantData::Struct(..) => Variant::Struct(clean_variant_data(self, cx)),
+            hir::VariantData::Tuple(..) => {
+                Variant::Tuple(self.fields().iter().map(|x| clean_field(x, cx)).collect())
+            }
             hir::VariantData::Unit(..) => Variant::CLike,
         }
     }
@@ -1983,7 +1978,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Macro(ref macro_def, _) => {
-                let ty_vis = cx.tcx.visibility(def_id).clean(cx);
+                let ty_vis = clean_visibility(cx.tcx.visibility(def_id));
                 MacroItem(Macro {
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
                 })
@@ -2112,7 +2107,7 @@ fn clean_extern_crate<'tcx>(
         name: Some(name),
         attrs: Box::new(attrs.clean(cx)),
         item_id: crate_def_id.into(),
-        visibility: ty_vis.clean(cx),
+        visibility: clean_visibility(ty_vis),
         kind: box ExternCrateItem { src: orig_name },
         cfg: attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
     }]
