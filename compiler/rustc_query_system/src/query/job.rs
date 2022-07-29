@@ -535,15 +535,13 @@ pub(crate) fn report_cycle<'a>(
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     assert!(!stack.is_empty());
 
-    let fix_span = |span: Span, query: &QueryStackFrame| query.default_span(span);
-
-    let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
+    let span = stack[0].query.default_span(stack[1 % stack.len()].span);
     let mut err =
         struct_span_err!(sess, span, E0391, "cycle detected when {}", stack[0].query.description);
 
     for i in 1..stack.len() {
         let query = &stack[i].query;
-        let span = fix_span(stack[(i + 1) % stack.len()].span, query);
+        let span = query.default_span(stack[(i + 1) % stack.len()].span);
         err.span_note(span, &format!("...which requires {}...", query.description));
     }
 
@@ -574,7 +572,7 @@ pub(crate) fn report_cycle<'a>(
     }
 
     if let Some((span, query)) = usage {
-        err.span_note(fix_span(span, &query), &format!("cycle used when {}", query.description));
+        err.span_note(query.default_span(span), &format!("cycle used when {}", query.description));
     }
 
     err
