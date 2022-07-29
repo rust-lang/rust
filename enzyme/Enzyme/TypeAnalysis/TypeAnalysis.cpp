@@ -1554,135 +1554,140 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
   assert(phi.getNumIncomingValues() > 0);
 
   // TODO generalize this (and for recursive, etc)
-  std::deque<Value *> vals;
-  std::set<Value *> seen{&phi};
-  for (auto &op : phi.incoming_values()) {
-    vals.push_back(op);
-  }
 
-  SmallVector<BinaryOperator *, 4> bos;
+  for (int i = 0; i < 2; i++) {
 
-  // Unique values that propagate into this phi
-  SmallVector<Value *, 4> UniqueValues;
-
-  while (vals.size()) {
-    Value *todo = vals.front();
-    vals.pop_front();
-
-    if (auto bo = dyn_cast<BinaryOperator>(todo)) {
-      if (bo->getOpcode() == BinaryOperator::Add) {
-        if (isa<Constant>(bo->getOperand(0))) {
-          bos.push_back(bo);
-          todo = bo->getOperand(1);
-        }
-        if (isa<Constant>(bo->getOperand(1))) {
-          bos.push_back(bo);
-          todo = bo->getOperand(0);
-        }
-      }
+    std::deque<Value *> vals;
+    std::set<Value *> seen{&phi};
+    for (auto &op : phi.incoming_values()) {
+      vals.push_back(op);
     }
+    SmallVector<BinaryOperator *, 4> bos;
 
-    if (seen.count(todo))
-      continue;
-    seen.insert(todo);
+    // Unique values that propagate into this phi
+    SmallVector<Value *, 4> UniqueValues;
 
-    if (auto nphi = dyn_cast<PHINode>(todo)) {
-      for (auto &op : nphi->incoming_values()) {
-        vals.push_back(op);
-      }
-      continue;
-    }
-    if (auto sel = dyn_cast<SelectInst>(todo)) {
-      vals.push_back(sel->getOperand(1));
-      vals.push_back(sel->getOperand(2));
-      continue;
-    }
-    UniqueValues.push_back(todo);
-  }
+    while (vals.size()) {
+      Value *todo = vals.front();
+      vals.pop_front();
 
-  TypeTree PhiTypes;
-  bool set = false;
-
-  for (size_t i = 0, size = UniqueValues.size(); i < size; ++i) {
-    TypeTree newData = getAnalysis(UniqueValues[i]);
-    if (UniqueValues.size() == 2) {
-      if (auto BO = dyn_cast<BinaryOperator>(UniqueValues[i])) {
-        if (BO->getOpcode() == BinaryOperator::Add ||
-            BO->getOpcode() == BinaryOperator::Mul) {
-          TypeTree otherData = getAnalysis(UniqueValues[1 - i]);
-          // If we are adding/muling to a constant to derive this, we can assume
-          // it to be an integer rather than Anything
-          if (isa<Constant>(UniqueValues[1 - i])) {
-            otherData = TypeTree(BaseType::Integer).Only(-1);
+      if (auto bo = dyn_cast<BinaryOperator>(todo)) {
+        if (bo->getOpcode() == BinaryOperator::Add) {
+          if (isa<Constant>(bo->getOperand(0))) {
+            bos.push_back(bo);
+            todo = bo->getOperand(1);
           }
-          if (BO->getOperand(0) == &phi) {
-            set = true;
-            PhiTypes = otherData;
-            PhiTypes.binopIn(getAnalysis(BO->getOperand(1)), BO->getOpcode());
-            break;
-          } else if (BO->getOperand(1) == &phi) {
-            set = true;
-            PhiTypes = getAnalysis(BO->getOperand(0));
-            PhiTypes.binopIn(otherData, BO->getOpcode());
-            break;
-          }
-        } else if (BO->getOpcode() == BinaryOperator::Sub) {
-          // Repeated subtraction from a type X yields the type X back
-          TypeTree otherData = getAnalysis(UniqueValues[1 - i]);
-          // If we are subtracting from a constant to derive this, we can assume
-          // it to be an integer rather than Anything
-          if (isa<Constant>(UniqueValues[1 - i])) {
-            otherData = TypeTree(BaseType::Integer).Only(-1);
-          }
-          if (BO->getOperand(0) == &phi) {
-            set = true;
-            PhiTypes = otherData;
-            break;
+          if (isa<Constant>(bo->getOperand(1))) {
+            bos.push_back(bo);
+            todo = bo->getOperand(0);
           }
         }
       }
-    }
-    if (set) {
-      PhiTypes &= newData;
-      // TODO consider the or of anything (see selectinst)
-      // however, this cannot be done yet for risk of turning
-      // phi's that add floats into anything
-      // PhiTypes |= newData.JustAnything();
-    } else {
-      set = true;
-      PhiTypes = newData;
-    }
-  }
 
-  assert(set);
-  // If we are only add / sub / etc to derive a value based off 0
-  // we can start by assuming the type of 0 is integer rather
-  // than assuming it could be anything (per null)
-  if (bos.size() > 0 && UniqueValues.size() == 1 &&
-      isa<ConstantInt>(UniqueValues[0]) &&
-      (cast<ConstantInt>(UniqueValues[0])->isZero() ||
-       cast<ConstantInt>(UniqueValues[0])->isOne())) {
-    PhiTypes = TypeTree(BaseType::Integer).Only(-1);
-  }
-  for (BinaryOperator *bo : bos) {
-    TypeTree vd1 = isa<Constant>(bo->getOperand(0))
-                       ? getAnalysis(bo->getOperand(0)).Data0()
-                       : PhiTypes.Data0();
-    TypeTree vd2 = isa<Constant>(bo->getOperand(1))
-                       ? getAnalysis(bo->getOperand(1)).Data0()
-                       : PhiTypes.Data0();
-    vd1.binopIn(vd2, bo->getOpcode());
-    PhiTypes &= vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0);
-  }
+      if (seen.count(todo))
+        continue;
+      seen.insert(todo);
 
-  if (direction & DOWN) {
-    if (phi.getType()->isIntOrIntVectorTy() &&
-        PhiTypes.Inner0() == BaseType::Anything) {
-      if (mustRemainInteger(&phi)) {
-        PhiTypes = TypeTree(BaseType::Integer).Only(-1);
+      if (auto nphi = dyn_cast<PHINode>(todo)) {
+        if (i == 0) {
+          for (auto &op : nphi->incoming_values()) {
+            vals.push_back(op);
+          }
+          continue;
+        }
+      }
+      if (auto sel = dyn_cast<SelectInst>(todo)) {
+        vals.push_back(sel->getOperand(1));
+        vals.push_back(sel->getOperand(2));
+        continue;
+      }
+      UniqueValues.push_back(todo);
+    }
+
+    TypeTree PhiTypes;
+    bool set = false;
+
+    for (size_t i = 0, size = UniqueValues.size(); i < size; ++i) {
+      TypeTree newData = getAnalysis(UniqueValues[i]);
+      if (UniqueValues.size() == 2) {
+        if (auto BO = dyn_cast<BinaryOperator>(UniqueValues[i])) {
+          if (BO->getOpcode() == BinaryOperator::Add ||
+              BO->getOpcode() == BinaryOperator::Mul) {
+            TypeTree otherData = getAnalysis(UniqueValues[1 - i]);
+            // If we are adding/muling to a constant to derive this, we can
+            // assume it to be an integer rather than Anything
+            if (isa<Constant>(UniqueValues[1 - i])) {
+              otherData = TypeTree(BaseType::Integer).Only(-1);
+            }
+            if (BO->getOperand(0) == &phi) {
+              set = true;
+              PhiTypes = otherData;
+              PhiTypes.binopIn(getAnalysis(BO->getOperand(1)), BO->getOpcode());
+              break;
+            } else if (BO->getOperand(1) == &phi) {
+              set = true;
+              PhiTypes = getAnalysis(BO->getOperand(0));
+              PhiTypes.binopIn(otherData, BO->getOpcode());
+              break;
+            }
+          } else if (BO->getOpcode() == BinaryOperator::Sub) {
+            // Repeated subtraction from a type X yields the type X back
+            TypeTree otherData = getAnalysis(UniqueValues[1 - i]);
+            // If we are subtracting from a constant to derive this, we can
+            // assume it to be an integer rather than Anything
+            if (isa<Constant>(UniqueValues[1 - i])) {
+              otherData = TypeTree(BaseType::Integer).Only(-1);
+            }
+            if (BO->getOperand(0) == &phi) {
+              set = true;
+              PhiTypes = otherData;
+              break;
+            }
+          }
+        }
+      }
+      if (set) {
+        PhiTypes &= newData;
+        // TODO consider the or of anything (see selectinst)
+        // however, this cannot be done yet for risk of turning
+        // phi's that add floats into anything
+        // PhiTypes |= newData.JustAnything();
+      } else {
+        set = true;
+        PhiTypes = newData;
       }
     }
-    updateAnalysis(&phi, PhiTypes, &phi);
+
+    assert(set);
+    // If we are only add / sub / etc to derive a value based off 0
+    // we can start by assuming the type of 0 is integer rather
+    // than assuming it could be anything (per null)
+    if (bos.size() > 0 && UniqueValues.size() == 1 &&
+        isa<ConstantInt>(UniqueValues[0]) &&
+        (cast<ConstantInt>(UniqueValues[0])->isZero() ||
+         cast<ConstantInt>(UniqueValues[0])->isOne())) {
+      PhiTypes = TypeTree(BaseType::Integer).Only(-1);
+    }
+    for (BinaryOperator *bo : bos) {
+      TypeTree vd1 = isa<Constant>(bo->getOperand(0))
+                         ? getAnalysis(bo->getOperand(0)).Data0()
+                         : PhiTypes.Data0();
+      TypeTree vd2 = isa<Constant>(bo->getOperand(1))
+                         ? getAnalysis(bo->getOperand(1)).Data0()
+                         : PhiTypes.Data0();
+      vd1.binopIn(vd2, bo->getOpcode());
+      PhiTypes &= vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0);
+    }
+
+    if (direction & DOWN) {
+      if (phi.getType()->isIntOrIntVectorTy() &&
+          PhiTypes.Inner0() == BaseType::Anything) {
+        if (mustRemainInteger(&phi)) {
+          PhiTypes = TypeTree(BaseType::Integer).Only(-1);
+        }
+      }
+      updateAnalysis(&phi, PhiTypes, &phi);
+    }
   }
 }
 
