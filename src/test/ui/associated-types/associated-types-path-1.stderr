@@ -8,10 +8,10 @@ error[E0221]: ambiguous associated type `A` in bounds of `T`
   --> $DIR/associated-types-path-1.rs:11:34
    |
 LL |     type A;
-   |     ------- ambiguous `A` from `Foo`
+   |     ------ ambiguous `A` from `Foo`
 ...
 LL |     type A;
-   |     ------- ambiguous `A` from `Bar`
+   |     ------ ambiguous `A` from `Bar`
 ...
 LL | pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
    |                                  ^^^^ ambiguous associated type `A`

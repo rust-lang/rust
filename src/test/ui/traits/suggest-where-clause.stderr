@@ -85,10 +85,10 @@ LL | pub const fn size_of<T>() -> usize {
    |                      ^ required by this bound in `std::mem::size_of`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
-  --> $DIR/suggest-where-clause.rs:31:5
+  --> $DIR/suggest-where-clause.rs:31:20
    |
 LL |     mem::size_of::<[&U]>();
-   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                    ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[&U]`
 note: required by a bound in `std::mem::size_of`

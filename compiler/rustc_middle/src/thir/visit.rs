@@ -129,6 +129,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         Closure { closure_id: _, substs: _, upvars: _, movability: _, fake_reads: _ } => {}
         Literal { lit: _, neg: _ } => {}
         NonHirLiteral { lit: _, user_ty: _ } => {}
+        ZstLiteral { user_ty: _ } => {}
         NamedConst { def_id: _, substs: _, user_ty: _ } => {}
         ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
@@ -166,11 +167,15 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
             init_scope: _,
             ref pattern,
             lint_level: _,
+            else_block,
         } => {
             if let Some(init) = initializer {
                 visitor.visit_expr(&visitor.thir()[*init]);
             }
             visitor.visit_pat(pattern);
+            if let Some(block) = else_block {
+                visitor.visit_block(block)
+            }
         }
     }
 }

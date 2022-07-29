@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/issue-99073.rs:6:11
+   |
+LL |   move || f(fix(&f))
+   |           ^^^^^^^^^^ expected `[closure@$DIR/issue-99073.rs:6:3: 6:10]`, got `G`
+   |
+note: previous use here
+  --> $DIR/issue-99073.rs:6:3
+   |
+LL |   move || f(fix(&f))
+   |   ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

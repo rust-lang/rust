@@ -91,5 +91,6 @@ module.exports = {
         "no-script-url": "error",
         "no-sequences": "error",
         "no-throw-literal": "error",
+        "no-div-regex": "error",
     }
 };

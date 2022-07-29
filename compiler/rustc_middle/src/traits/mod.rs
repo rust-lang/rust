@@ -10,9 +10,9 @@ mod structural_impls;
 pub mod util;
 
 use crate::infer::canonical::Canonical;
-use crate::thir::abstract_const::NotConstEvaluatable;
+use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, AdtKind, Ty, TyCtxt};
+use crate::ty::{self, AdtKind, Predicate, Ty, TyCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic};
@@ -139,13 +139,8 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { span, body_id: hir::CRATE_HIR_ID, code: Default::default() }
     }
 
-    pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
+    pub fn span(&self) -> Span {
         match *self.code() {
-            ObligationCauseCode::CompareImplMethodObligation { .. }
-            | ObligationCauseCode::MainFunctionType
-            | ObligationCauseCode::StartFunctionType => {
-                tcx.sess.source_map().guess_head_span(self.span)
-            }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,
                 ..
@@ -253,7 +248,7 @@ pub enum ObligationCauseCode<'tcx> {
     ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
 
     /// Obligation incurred due to an object cast.
-    ObjectCastObligation(/* Object type */ Ty<'tcx>),
+    ObjectCastObligation(/* Concrete type */ Ty<'tcx>, /* Object type */ Ty<'tcx>),
 
     /// Obligation incurred due to a coercion.
     Coercion {
@@ -316,18 +311,10 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
-    CompareImplConstObligation,
-
-    /// Error derived when matching traits/impls; see ObligationCause for more details
-    CompareImplMethodObligation {
+    CompareImplItemObligation {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
-    },
-
-    /// Error derived when matching traits/impls; see ObligationCause for more details
-    CompareImplTypeObligation {
-        impl_item_def_id: LocalDefId,
-        trait_item_def_id: DefId,
+        kind: ty::AssocKind,
     },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
@@ -356,7 +343,7 @@ pub enum ObligationCauseCode<'tcx> {
     ConstPatternStructural,
 
     /// Computing common supertype in an if expression
-    IfExpression(Box<IfExpressionCause>),
+    IfExpression(Box<IfExpressionCause<'tcx>>),
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -419,6 +406,7 @@ pub enum ObligationCauseCode<'tcx> {
     BinOp {
         rhs_span: Option<Span>,
         is_lit: bool,
+        output_pred: Option<Predicate<'tcx>>,
     },
 }
 
@@ -492,22 +480,27 @@ impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct MatchExpressionArmCause<'tcx> {
+    pub arm_block_id: Option<hir::HirId>,
+    pub arm_ty: Ty<'tcx>,
     pub arm_span: Span,
+    pub prior_arm_block_id: Option<hir::HirId>,
+    pub prior_arm_ty: Ty<'tcx>,
+    pub prior_arm_span: Span,
     pub scrut_span: Span,
-    pub semi_span: Option<(Span, StatementAsExpression)>,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
-    pub last_ty: Ty<'tcx>,
     pub scrut_hir_id: hir::HirId,
     pub opt_suggest_box_span: Option<Span>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct IfExpressionCause {
-    pub then: Span,
-    pub else_sp: Span,
-    pub outer: Option<Span>,
-    pub semicolon: Option<(Span, StatementAsExpression)>,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Lift, TypeFoldable, TypeVisitable)]
+pub struct IfExpressionCause<'tcx> {
+    pub then_id: hir::HirId,
+    pub else_id: hir::HirId,
+    pub then_ty: Ty<'tcx>,
+    pub else_ty: Ty<'tcx>,
+    pub outer_span: Option<Span>,
     pub opt_suggest_box_span: Option<Span>,
 }
 
@@ -523,7 +516,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_code: InternedObligationCauseCode<'tcx>,
 }
 
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift)]
 pub enum SelectionError<'tcx> {
     /// The trait is not implemented.
     Unimplemented,
@@ -592,7 +585,8 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `ImplSourceUserDefinedData`.
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum ImplSource<'tcx, N> {
     /// ImplSource identifying a particular impl.
     UserDefined(ImplSourceUserDefinedData<'tcx, N>),
@@ -753,14 +747,16 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -769,7 +765,8 @@ pub struct ImplSourceGeneratorData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -778,13 +775,15 @@ pub struct ImplSourceClosureData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceTraitUpcastingData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -798,12 +797,14 @@ pub struct ImplSourceTraitUpcastingData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceBuiltinData<N> {
     pub nested: Vec<N>,
 }
 
-#[derive(PartialEq, Eq, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(PartialEq, Eq, Clone, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -817,7 +818,8 @@ pub struct ImplSourceObjectData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>,
@@ -830,12 +832,14 @@ pub struct ImplSourceDiscriminantKindData;
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplSourcePointeeData;
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceConstDestructData<N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
     pub substs: SubstsRef<'tcx>,

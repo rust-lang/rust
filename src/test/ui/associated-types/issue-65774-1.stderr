@@ -23,7 +23,7 @@ note: required because of the requirements on the impl of `MyDisplay` for `&mut 
    |
 LL | impl<'a, T: MyDisplay> MyDisplay for &'a mut T { }
    |                        ^^^^^^^^^     ^^^^^^^^^
-   = note: required for the cast to the object type `dyn MyDisplay`
+   = note: required for the cast from `&mut T` to the object type `dyn MyDisplay`
 
 error: aborting due to 2 previous errors
 

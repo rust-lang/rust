@@ -1,8 +1,8 @@
 error: static `priv_static` is never used
-  --> $DIR/lint-dead-code-1.rs:20:1
+  --> $DIR/lint-dead-code-1.rs:20:8
    |
 LL | static priv_static: isize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-dead-code-1.rs:5:9
@@ -11,10 +11,10 @@ LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
 error: constant `priv_const` is never used
-  --> $DIR/lint-dead-code-1.rs:27:1
+  --> $DIR/lint-dead-code-1.rs:27:7
    |
 LL | const priv_const: isize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
 
 error: struct `PrivStruct` is never constructed
   --> $DIR/lint-dead-code-1.rs:35:8

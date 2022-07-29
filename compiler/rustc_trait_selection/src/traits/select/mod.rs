@@ -24,7 +24,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -32,14 +32,14 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::abstract_const::NotConstEvaluatable;
+use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::sym;
 
 use std::cell::{Cell, RefCell};
@@ -52,7 +52,7 @@ pub use rustc_middle::traits::select::*;
 mod candidate_assembly;
 mod confirmation;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum IntercrateAmbiguityCause {
     DownstreamCrate { trait_desc: String, self_desc: Option<String> },
     UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
@@ -128,7 +128,7 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// We don't do his until we detect a coherence error because it can
     /// lead to false overflow results (#47139) and because always
     /// computing it may negatively impact performance.
-    intercrate_ambiguity_causes: Option<Vec<IntercrateAmbiguityCause>>,
+    intercrate_ambiguity_causes: Option<FxIndexSet<IntercrateAmbiguityCause>>,
 
     /// The mode that trait queries run in, which informs our error handling
     /// policy. In essence, canonicalized queries need their errors propagated
@@ -254,14 +254,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
         assert!(self.intercrate);
         assert!(self.intercrate_ambiguity_causes.is_none());
-        self.intercrate_ambiguity_causes = Some(vec![]);
+        self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
     }
 
     /// Gets the intercrate ambiguity causes collected since tracking
     /// was enabled and disables tracking at the same time. If
     /// tracking is not enabled, just returns an empty vector.
-    pub fn take_intercrate_ambiguity_causes(&mut self) -> Vec<IntercrateAmbiguityCause> {
+    pub fn take_intercrate_ambiguity_causes(&mut self) -> FxIndexSet<IntercrateAmbiguityCause> {
         assert!(self.intercrate);
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
@@ -394,6 +394,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(_) => return Ok(EvaluatedToErr),
             }
 
+            if self.infcx.opaque_types_added_in_snapshot(snapshot) {
+                return Ok(result.max(EvaluatedToOkModuloOpaqueTypes));
+            }
+
             match self.infcx.region_constraints_added_in_snapshot(snapshot) {
                 None => Ok(result),
                 Some(_) => Ok(result.max(EvaluatedToOkModuloRegions)),
@@ -488,20 +492,93 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                ty::PredicateKind::WellFormed(arg) => match wf::obligations(
-                    self.infcx,
-                    obligation.param_env,
-                    obligation.cause.body_id,
-                    obligation.recursion_depth + 1,
-                    arg,
-                    obligation.cause.span,
-                ) {
-                    Some(mut obligations) => {
-                        self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                        self.evaluate_predicates_recursively(previous_stack, obligations)
+                ty::PredicateKind::WellFormed(arg) => {
+                    // So, there is a bit going on here. First, `WellFormed` predicates
+                    // are coinductive, like trait predicates with auto traits.
+                    // This means that we need to detect if we have recursively
+                    // evaluated `WellFormed(X)`. Otherwise, we would run into
+                    // a "natural" overflow error.
+                    //
+                    // Now, the next question is whether we need to do anything
+                    // special with caching. Considering the following tree:
+                    // - `WF(Foo<T>)`
+                    //   - `Bar<T>: Send`
+                    //     - `WF(Foo<T>)`
+                    //   - `Foo<T>: Trait`
+                    // In this case, the innermost `WF(Foo<T>)` should return
+                    // `EvaluatedToOk`, since it's coinductive. Then if
+                    // `Bar<T>: Send` is resolved to `EvaluatedToOk`, it can be
+                    // inserted into a cache (because without thinking about `WF`
+                    // goals, it isn't in a cycle). If `Foo<T>: Trait` later doesn't
+                    // hold, then `Bar<T>: Send` shouldn't hold. Therefore, we
+                    // *do* need to keep track of coinductive cycles.
+
+                    let cache = previous_stack.cache;
+                    let dfn = cache.next_dfn();
+
+                    for stack_arg in previous_stack.cache.wf_args.borrow().iter().rev() {
+                        if stack_arg.0 != arg {
+                            continue;
+                        }
+                        debug!("WellFormed({:?}) on stack", arg);
+                        if let Some(stack) = previous_stack.head {
+                            // Okay, let's imagine we have two different stacks:
+                            //   `T: NonAutoTrait -> WF(T) -> T: NonAutoTrait`
+                            //   `WF(T) -> T: NonAutoTrait -> WF(T)`
+                            // Because of this, we need to check that all
+                            // predicates between the WF goals are coinductive.
+                            // Otherwise, we can say that `T: NonAutoTrait` is
+                            // true.
+                            // Let's imagine we have a predicate stack like
+                            //         `Foo: Bar -> WF(T) -> T: NonAutoTrait -> T: Auto
+                            // depth   ^1                    ^2                 ^3
+                            // and the current predicate is `WF(T)`. `wf_args`
+                            // would contain `(T, 1)`. We want to check all
+                            // trait predicates greater than `1`. The previous
+                            // stack would be `T: Auto`.
+                            let cycle = stack.iter().take_while(|s| s.depth > stack_arg.1);
+                            let tcx = self.tcx();
+                            let cycle =
+                                cycle.map(|stack| stack.obligation.predicate.to_predicate(tcx));
+                            if self.coinductive_match(cycle) {
+                                stack.update_reached_depth(stack_arg.1);
+                                return Ok(EvaluatedToOk);
+                            } else {
+                                return Ok(EvaluatedToRecur);
+                            }
+                        }
+                        return Ok(EvaluatedToOk);
                     }
-                    None => Ok(EvaluatedToAmbig),
-                },
+
+                    match wf::obligations(
+                        self.infcx,
+                        obligation.param_env,
+                        obligation.cause.body_id,
+                        obligation.recursion_depth + 1,
+                        arg,
+                        obligation.cause.span,
+                    ) {
+                        Some(mut obligations) => {
+                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+
+                            cache.wf_args.borrow_mut().push((arg, previous_stack.depth()));
+                            let result =
+                                self.evaluate_predicates_recursively(previous_stack, obligations);
+                            cache.wf_args.borrow_mut().pop();
+
+                            let result = result?;
+
+                            if !result.must_apply_modulo_regions() {
+                                cache.on_failure(dfn);
+                            }
+
+                            cache.on_completion(dfn);
+
+                            Ok(result)
+                        }
+                        None => Ok(EvaluatedToAmbig),
+                    }
+                }
 
                 ty::PredicateKind::TypeOutlives(pred) => {
                     // A global type with no late-bound regions can only
@@ -665,7 +742,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
-                                obligation.cause.span(self.tcx()),
+                                obligation.cause.span(),
                                 "ConstEquate: const_eval_resolve returned an unexpected error"
                             )
                         }
@@ -712,12 +789,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut param_env = obligation.param_env;
 
         fresh_trait_pred = fresh_trait_pred.map_bound(|mut pred| {
-            pred.remap_constness(self.tcx(), &mut param_env);
+            pred.remap_constness(&mut param_env);
             pred
         });
 
         debug!(?fresh_trait_pred);
 
+        // If a trait predicate is in the (local or global) evaluation cache,
+        // then we know it holds without cycles.
         if let Some(result) = self.check_evaluation_cache(param_env, fresh_trait_pred) {
             debug!(?result, "CACHE HIT");
             return Ok(result);
@@ -881,7 +960,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             });
 
                             debug!(?cause, "evaluate_stack: pushing cause");
-                            self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                            self.intercrate_ambiguity_causes.as_mut().unwrap().insert(cause);
                         }
                     }
                 }
@@ -921,7 +1000,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
     ///   also defaulted traits.
-    pub fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
+    pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
@@ -931,6 +1010,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
         let result = match predicate.kind().skip_binder() {
             ty::PredicateKind::Trait(ref data) => self.tcx().trait_is_auto(data.def_id()),
+            ty::PredicateKind::WellFormed(_) => true,
             _ => false,
         };
         debug!(?predicate, ?result, "coinductive_predicate");
@@ -1172,7 +1252,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                  reservation impl ambiguity on {:?}",
                             def_id
                         );
-                        intercrate_ambiguity_clauses.push(
+                        intercrate_ambiguity_clauses.insert(
                             IntercrateAmbiguityCause::ReservationImpl {
                                 message: value.to_string(),
                             },
@@ -1241,7 +1321,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
         let tcx = self.tcx();
         let mut pred = cache_fresh_trait_pred.skip_binder();
-        pred.remap_constness(tcx, &mut param_env);
+        pred.remap_constness(&mut param_env);
 
         if self.can_use_global_caches(param_env) {
             if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
@@ -1295,7 +1375,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let mut pred = cache_fresh_trait_pred.skip_binder();
 
-        pred.remap_constness(tcx, &mut param_env);
+        pred.remap_constness(&mut param_env);
 
         if !self.can_cache_candidate(&candidate) {
             debug!(?pred, ?candidate, "insert_candidate_cache - candidate is not cacheable");
@@ -2410,6 +2490,15 @@ struct ProvisionalEvaluationCache<'tcx> {
     ///   all cache values whose DFN is >= 4 -- in this case, that
     ///   means the cached value for `F`.
     map: RefCell<FxHashMap<ty::PolyTraitPredicate<'tcx>, ProvisionalEvaluation>>,
+
+    /// The stack of args that we assume to be true because a `WF(arg)` predicate
+    /// is on the stack above (and because of wellformedness is coinductive).
+    /// In an "ideal" world, this would share a stack with trait predicates in
+    /// `TraitObligationStack`. However, trait predicates are *much* hotter than
+    /// `WellFormed` predicates, and it's very likely that the additional matches
+    /// will have a perf effect. The value here is the well-formed `GenericArg`
+    /// and the depth of the trait predicate *above* that well-formed predicate.
+    wf_args: RefCell<Vec<(ty::GenericArg<'tcx>, usize)>>,
 }
 
 /// A cache value for the provisional cache: contains the depth-first
@@ -2423,7 +2512,7 @@ struct ProvisionalEvaluation {
 
 impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
     fn default() -> Self {
-        Self { dfn: Cell::new(0), map: Default::default() }
+        Self { dfn: Cell::new(0), map: Default::default(), wf_args: Default::default() }
     }
 }
 

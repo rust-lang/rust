@@ -32,18 +32,12 @@ note: an implementation of `std::ops::Neg` might be missing for `Z`
   --> $DIR/type-ascription-precedence.rs:9:1
    |
 LL | struct Z;
-   | ^^^^^^^^^ must implement `std::ops::Neg`
+   | ^^^^^^^^ must implement `std::ops::Neg`
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-LL | / pub trait Neg {
-LL | |     /// The resulting type after applying the `-` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn neg(self) -> Self::Output;
-LL | | }
-   | |_^
+LL | pub trait Neg {
+   | ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:45:5

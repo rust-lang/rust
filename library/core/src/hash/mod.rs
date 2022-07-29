@@ -180,7 +180,7 @@ mod sip;
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [`hash`]: Hash::hash
-/// [impl]: ../../std/primitive.str.html#impl-Hash
+/// [impl]: ../../std/primitive.str.html#impl-Hash-for-str
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Hash"]
 pub trait Hash {
@@ -900,7 +900,7 @@ mod impls {
 
     macro_rules! maybe_tuple_doc {
         ($a:ident @ #[$meta:meta] $item:item) => {
-            #[cfg_attr(not(bootstrap), doc(tuple_variadic))]
+            #[cfg_attr(not(bootstrap), doc(fake_variadic))]
             #[doc = "This trait is implemented for tuples up to twelve items long."]
             #[$meta]
             $item

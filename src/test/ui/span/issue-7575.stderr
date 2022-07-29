@@ -42,7 +42,7 @@ error[E0599]: no method named `fff` found for struct `Myisize` in the current sc
   --> $DIR/issue-7575.rs:62:30
    |
 LL | struct Myisize(isize);
-   |        ------- method `fff` not found for this struct
+   | -------------- method `fff` not found for this struct
 ...
 LL |     u.f8(42) + u.f9(342) + m.fff(42)
    |                            --^^^

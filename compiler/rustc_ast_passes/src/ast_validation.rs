@@ -13,7 +13,9 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
+use rustc_errors::{
+    error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -117,33 +119,23 @@ impl<'a> AstValidator<'a> {
 
     /// Emits an error banning the `let` expression provided in the given location.
     fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
-        let sess = &self.session;
-        if sess.opts.unstable_features.is_nightly_build() {
-            let err = "`let` expressions are not supported here";
-            let mut diag = sess.struct_span_err(expr.span, err);
-            diag.note("only supported directly in conditions of `if` and `while` expressions");
-            match forbidden_let_reason {
-                ForbiddenLetReason::GenericForbidden => {}
-                ForbiddenLetReason::NotSupportedOr(span) => {
-                    diag.span_note(
-                        span,
-                        "`||` operators are not supported in let chain expressions",
-                    );
-                }
-                ForbiddenLetReason::NotSupportedParentheses(span) => {
-                    diag.span_note(
-                        span,
-                        "`let`s wrapped in parentheses are not supported in a context with let \
-                        chains",
-                    );
-                }
+        let err = "`let` expressions are not supported here";
+        let mut diag = self.session.struct_span_err(expr.span, err);
+        diag.note("only supported directly in conditions of `if` and `while` expressions");
+        match forbidden_let_reason {
+            ForbiddenLetReason::GenericForbidden => {}
+            ForbiddenLetReason::NotSupportedOr(span) => {
+                diag.span_note(span, "`||` operators are not supported in let chain expressions");
             }
-            diag.emit();
-        } else {
-            sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")
-                .note("variable declaration using `let` is a statement")
-                .emit();
+            ForbiddenLetReason::NotSupportedParentheses(span) => {
+                diag.span_note(
+                    span,
+                    "`let`s wrapped in parentheses are not supported in a context with let \
+                    chains",
+                );
+            }
         }
+        diag.emit();
     }
 
     fn check_gat_where(
@@ -476,6 +468,17 @@ impl<'a> AstValidator<'a> {
     }
 
     fn error_item_without_body(&self, sp: Span, ctx: &str, msg: &str, sugg: &str) {
+        self.error_item_without_body_with_help(sp, ctx, msg, sugg, |_| ());
+    }
+
+    fn error_item_without_body_with_help(
+        &self,
+        sp: Span,
+        ctx: &str,
+        msg: &str,
+        sugg: &str,
+        help: impl FnOnce(&mut DiagnosticBuilder<'_, ErrorGuaranteed>),
+    ) {
         let source_map = self.session.source_map();
         let end = source_map.end_point(sp);
         let replace_span = if source_map.span_to_snippet(end).map(|s| s == ";").unwrap_or(false) {
@@ -483,15 +486,15 @@ impl<'a> AstValidator<'a> {
         } else {
             sp.shrink_to_hi()
         };
-        self.err_handler()
-            .struct_span_err(sp, msg)
-            .span_suggestion(
-                replace_span,
-                &format!("provide a definition for the {}", ctx),
-                sugg,
-                Applicability::HasPlaceholders,
-            )
-            .emit();
+        let mut err = self.err_handler().struct_span_err(sp, msg);
+        err.span_suggestion(
+            replace_span,
+            &format!("provide a definition for the {}", ctx),
+            sugg,
+            Applicability::HasPlaceholders,
+        );
+        help(&mut err);
+        err.emit();
     }
 
     fn check_impl_item_provided<T>(&self, sp: Span, body: &Option<T>, ctx: &str, sugg: &str) {
@@ -630,7 +633,8 @@ impl<'a> AstValidator<'a> {
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
-                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) | Extern::Implicit
+                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
+                | Extern::Implicit(_)
                     if matches!(header.unsafety, Unsafe::Yes(_)) =>
                 {
                     return;
@@ -842,7 +846,7 @@ impl<'a> AstValidator<'a> {
                     .emit();
                 });
                 self.check_late_bound_lifetime_defs(&bfty.generic_params);
-                if let Extern::Implicit = bfty.ext {
+                if let Extern::Implicit(_) = bfty.ext {
                     let sig_span = self.session.source_map().next_point(ty.span.shrink_to_lo());
                     self.maybe_lint_missing_abi(sig_span, ty.id);
                 }
@@ -1190,8 +1194,38 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 if body.is_none() {
                     let msg = "free function without a body";
-                    self.error_item_without_body(item.span, "function", msg, " { <body> }");
+                    let ext = sig.header.ext;
+
+                    let f = |e: &mut DiagnosticBuilder<'_, _>| {
+                        if let Extern::Implicit(start_span) | Extern::Explicit(_, start_span) = &ext
+                        {
+                            let start_suggestion = if let Extern::Explicit(abi, _) = ext {
+                                format!("extern \"{}\" {{", abi.symbol_unescaped)
+                            } else {
+                                "extern {".to_owned()
+                            };
+
+                            let end_suggestion = " }".to_owned();
+                            let end_span = item.span.shrink_to_hi();
+
+                            e
+                            .multipart_suggestion(
+                                "if you meant to declare an externally defined function, use an `extern` block",
+                                vec![(*start_span, start_suggestion), (end_span, end_suggestion)],
+                                Applicability::MaybeIncorrect,
+                             );
+                        }
+                    };
+
+                    self.error_item_without_body_with_help(
+                        item.span,
+                        "function",
+                        msg,
+                        " { <body> }",
+                        f,
+                    );
                 }
+
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 let kind =
@@ -1238,7 +1272,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
                 self.visit_generics(generics);
-                self.with_banned_tilde_const(|this| {
+                self.with_tilde_const_allowed(|this| {
                     walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                 });
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Trait);
@@ -1553,10 +1587,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 .emit();
         }
 
+        if let FnKind::Closure(ClosureBinder::For { generic_params, .. }, ..) = fk {
+            self.check_late_bound_lifetime_defs(generic_params);
+        }
+
         if let FnKind::Fn(
             _,
             _,
-            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit, .. }, .. },
+            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit(_), .. }, .. },
             _,
             _,
             _,

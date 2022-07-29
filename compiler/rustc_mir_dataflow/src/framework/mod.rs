@@ -1,7 +1,7 @@
 //! A framework that can express both [gen-kill] and generic dataflow problems.
 //!
-//! To actually use this framework, you must implement either the `Analysis` or the
-//! `GenKillAnalysis` trait. If your transfer function can be expressed with only gen/kill
+//! To use this framework, implement either the [`Analysis`] or the
+//! [`GenKillAnalysis`] trait. If your transfer function can be expressed with only gen/kill
 //! operations, prefer `GenKillAnalysis` since it will run faster while iterating to fixpoint. The
 //! `impls` module contains several examples of gen/kill dataflow analyses.
 //!
@@ -96,7 +96,7 @@ impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
     }
 }
 
-/// Define the domain of a dataflow problem.
+/// Defines the domain of a dataflow problem.
 ///
 /// This trait specifies the lattice on which this analysis operates (the domain) as well as its
 /// initial value at the entry point of each basic block.
@@ -113,12 +113,12 @@ pub trait AnalysisDomain<'tcx> {
     /// suitable as part of a filename.
     const NAME: &'static str;
 
-    /// The initial value of the dataflow state upon entry to each basic block.
+    /// Returns the initial value of the dataflow state upon entry to each basic block.
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain;
 
     /// Mutates the initial value of the dataflow state upon entry to the `START_BLOCK`.
     ///
-    /// For backward analyses, initial state besides the bottom value is not yet supported. Trying
+    /// For backward analyses, initial state (besides the bottom value) is not yet supported. Trying
     /// to mutate the initial state will result in a panic.
     //
     // FIXME: For backward dataflow analyses, the initial state should be applied to every basic
@@ -155,9 +155,9 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// Updates the current dataflow state with an effect that occurs immediately *before* the
     /// given statement.
     ///
-    /// This method is useful if the consumer of the results of this analysis needs only to observe
+    /// This method is useful if the consumer of the results of this analysis only needs to observe
     /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without implementing `apply_statement_effect`.
+    /// analyses should not implement this without also implementing `apply_statement_effect`.
     fn apply_before_statement_effect(
         &self,
         _state: &mut Self::Domain,
@@ -184,7 +184,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///
     /// This method is useful if the consumer of the results of this analysis needs only to observe
     /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without implementing `apply_terminator_effect`.
+    /// analyses should not implement this without also implementing `apply_terminator_effect`.
     fn apply_before_terminator_effect(
         &self,
         _state: &mut Self::Domain,

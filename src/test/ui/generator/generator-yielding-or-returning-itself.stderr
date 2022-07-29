@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6] as Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6]`
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36] as Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36]`
   --> $DIR/generator-yielding-or-returning-itself.rs:15:5
    |
 LL |     want_cyclic_generator_return(|| {
@@ -16,7 +16,7 @@ LL | pub fn want_cyclic_generator_return<T>(_: T)
 LL |     where T: Generator<Yield = (), Return = T>
    |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_generator_return`
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6] as Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6]`
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35] as Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35]`
   --> $DIR/generator-yielding-or-returning-itself.rs:28:5
    |
 LL |     want_cyclic_generator_yield(|| {

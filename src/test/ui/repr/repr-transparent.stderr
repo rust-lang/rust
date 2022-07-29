@@ -2,9 +2,8 @@ error[E0690]: transparent struct needs at most one non-zero-sized field, but has
   --> $DIR/repr-transparent.rs:26:1
    |
 LL | struct MultipleNonZst(u8, u8);
-   | ^^^^^^^^^^^^^^^^^^^^^^--^^--^^
-   | |                     |   |
-   | |                     |   this field is non-zero-sized
+   | ^^^^^^^^^^^^^^^^^^^^^ --  -- this field is non-zero-sized
+   | |                     |
    | |                     this field is non-zero-sized
    | needs at most one non-zero-sized field, but has 2
 
@@ -12,9 +11,8 @@ error[E0690]: transparent struct needs at most one non-zero-sized field, but has
   --> $DIR/repr-transparent.rs:32:1
    |
 LL | pub struct StructWithProjection(f32, <f32 as Mirror>::It);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^-------------------^^
-   | |                               |    |
-   | |                               |    this field is non-zero-sized
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ---  ------------------- this field is non-zero-sized
+   | |                               |
    | |                               this field is non-zero-sized
    | needs at most one non-zero-sized field, but has 2
 
@@ -36,7 +34,7 @@ error[E0084]: unsupported representation for zero-variant enum
 LL | #[repr(transparent)]
    | ^^^^^^^^^^^^^^^^^^^^
 LL | enum Void {}
-   | ------------ zero-variant enum
+   | --------- zero-variant enum
 
 error[E0731]: transparent enum needs exactly one variant, but has 0
   --> $DIR/repr-transparent.rs:45:1
@@ -60,7 +58,7 @@ error[E0731]: transparent enum needs exactly one variant, but has 2
 LL | enum MultipleVariants {
    | ^^^^^^^^^^^^^^^^^^^^^ needs exactly one variant, but has 2
 LL |     Foo(String),
-   |     -----------
+   |     ---
 LL |     Bar,
    |     --- too many variants in `MultipleVariants`
 

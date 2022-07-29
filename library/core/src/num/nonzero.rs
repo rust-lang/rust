@@ -39,6 +39,7 @@ macro_rules! nonzero_integers {
             #[repr(transparent)]
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
+            #[rustc_diagnostic_item = stringify!($Ty)]
             pub struct $Ty($Int);
 
             impl $Ty {

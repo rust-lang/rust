@@ -16,7 +16,7 @@ pub struct ConstDebugInfo;
 
 impl<'tcx> MirPass<'tcx> for ConstDebugInfo {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() > 0
+        sess.opts.unstable_opts.unsound_mir_opts && sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -88,12 +88,12 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
 }
 
 impl Visitor<'_> for LocalUseVisitor {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         if context.is_mutating_use() {
-            self.local_mutating_uses[*local] = self.local_mutating_uses[*local].saturating_add(1);
+            self.local_mutating_uses[local] = self.local_mutating_uses[local].saturating_add(1);
 
             if context.is_place_assignment() {
-                self.local_assignment_locations[*local] = Some(location);
+                self.local_assignment_locations[local] = Some(location);
             }
         }
     }

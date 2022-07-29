@@ -6,6 +6,7 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::{
     self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitable,
 };
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
@@ -141,16 +142,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = StableHasher::new();
-        let mut hcx = self.create_stable_hashing_context();
-
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
         let ty = self.erase_regions(ty);
 
-        hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
-        hasher.finish()
+        self.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            hcx.while_hashing_spans(false, |hcx| ty.hash_stable(hcx, &mut hasher));
+            hasher.finish()
+        })
     }
 
     pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {
@@ -675,6 +676,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> ty::EarlyBinder<&'tcx ty::List<ty::Predicate<'tcx>>> {
         ty::EarlyBinder(self.item_bounds(def_id))
     }
+
+    pub fn bound_const_param_default(self, def_id: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
+        ty::EarlyBinder(self.const_param_default(def_id))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {
@@ -1041,6 +1046,7 @@ impl<'tcx> Ty<'tcx> {
         ty
     }
 
+    #[inline]
     pub fn outer_exclusive_binder(self) -> ty::DebruijnIndex {
         self.0.outer_exclusive_binder
     }

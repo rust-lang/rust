@@ -441,7 +441,7 @@ impl SimpleFormatArgs {
         };
 
         match arg.position {
-            ArgumentIs(n) | ArgumentImplicitlyIs(n) => {
+            ArgumentIs(n, _) | ArgumentImplicitlyIs(n) => {
                 if self.unnamed.len() <= n {
                     // Use a dummy span to mark all unseen arguments.
                     self.unnamed.resize_with(n, || vec![DUMMY_SP]);
@@ -515,7 +515,7 @@ impl Write {
             args.push(arg, span);
         }
 
-        parser.errors.is_empty().then(move || args)
+        parser.errors.is_empty().then_some(args)
     }
 
     /// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two

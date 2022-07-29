@@ -23,7 +23,6 @@ pub fn opts() -> TargetOptions {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".into()),
         dynamic_linking: true,
-        executables: true,
         families: cvs!["unix"],
         pre_link_args,
         pre_link_objects: crt_objects::new(&[

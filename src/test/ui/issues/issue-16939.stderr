@@ -4,11 +4,11 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
 LL |     |t| f(t);
    |         ^ - argument unexpected
    |
-note: associated function defined here
-  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+note: callable defined here
+  --> $DIR/issue-16939.rs:4:12
    |
-LL |     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-   |                           ^^^^
+LL | fn _foo<F: Fn()> (f: F) {
+   |            ^^^^
 help: remove the extra argument
    |
 LL |     |t| f();

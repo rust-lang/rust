@@ -76,7 +76,7 @@ LL | #[derive(Dlone)]
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub macro Clone($item:item) {
-   | --------------------------- similarly named derive macro `Clone` defined here
+   | --------------- similarly named derive macro `Clone` defined here
 
 error: cannot find derive macro `Dlone` in this scope
   --> $DIR/resolve-error.rs:35:10
@@ -87,7 +87,7 @@ LL | #[derive(Dlone)]
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub macro Clone($item:item) {
-   | --------------------------- similarly named derive macro `Clone` defined here
+   | --------------- similarly named derive macro `Clone` defined here
 
 error: cannot find attribute `FooWithLongNan` in this scope
   --> $DIR/resolve-error.rs:32:3

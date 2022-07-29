@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The options `infodir`, `localstatedir`, and `gpg-password-file` are no longer allowed in config.toml. Previously, they were ignored without warning. Note that `infodir` and `localstatedir` are still accepted by `./configure`, with a warning. [#82451](https://github.com/rust-lang/rust/pull/82451)
 - Change the names for `dist` commands to match the component they generate. [#90684](https://github.com/rust-lang/rust/pull/90684)
 - The `build.fast-submodules` option has been removed. Fast submodule checkouts are enabled unconditionally. Automatic submodule handling can still be disabled with `build.submodules = false`.
+- Several unsupported `./configure` options have been removed: `optimize`, `parallel-compiler`. These can still be enabled with `--set`, although it isn't recommended.
 
 ### Non-breaking changes
 

@@ -6,7 +6,7 @@ use hir::{
     intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
-use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{
@@ -33,6 +33,9 @@ pub(super) fn build_control_flow_graph<'tcx>(
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
+    if let Some(filename) = &tcx.sess.opts.unstable_opts.dump_drop_tracking_cfg {
+        super::cfg_visualize::write_graph_to_file(&drop_range_visitor.drop_ranges, filename, tcx);
+    }
 
     (drop_range_visitor.drop_ranges, drop_range_visitor.places.borrowed_temporaries)
 }
@@ -126,13 +129,14 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
     /// expressions. This method consumes a little deeper into the expression when needed.
     fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
-        debug!("consuming expr {:?}, count={:?}", expr.hir_id, self.expr_index);
+        debug!("consuming expr {:?}, count={:?}", expr.kind, self.expr_index);
         let places = self
             .places
             .consumed
             .get(&expr.hir_id)
             .map_or(vec![], |places| places.iter().cloned().collect());
         for place in places {
+            trace!(?place, "consuming place");
             for_each_consumable(self.hir, place, |value| self.record_drop(value));
         }
     }
@@ -251,7 +255,6 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::Ty(..)
                 | hir::Node::TypeBinding(..)
                 | hir::Node::TraitRef(..)
-                | hir::Node::Binding(..)
                 | hir::Node::Pat(..)
                 | hir::Node::Arm(..)
                 | hir::Node::Local(..)

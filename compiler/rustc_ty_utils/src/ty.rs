@@ -126,7 +126,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // are any errors at that point, so outside of type inference you can be
     // sure that this will succeed without errors anyway.
 
-    if tcx.sess.opts.debugging_opts.chalk {
+    if tcx.sess.opts.unstable_opts.chalk {
         let environment = well_formed_types_in_env(tcx, def_id);
         predicates.extend(environment);
     }
@@ -211,7 +211,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
-    traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
+    traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }
 
 /// Elaborate the environment.

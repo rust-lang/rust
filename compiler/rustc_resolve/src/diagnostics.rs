@@ -28,7 +28,7 @@ use rustc_span::{BytePos, Span};
 use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
-use crate::late::Rib;
+use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
 use crate::{HasGenericParams, MacroRulesScope, Module, ModuleKind, ModuleOrUniformRoot};
@@ -163,7 +163,7 @@ impl<'a> Resolver<'a> {
 
         let container = match parent.kind {
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
-            ModuleKind::Block(..) => "block",
+            ModuleKind::Block => "block",
         };
 
         let old_noun = match old_binding.is_import() {
@@ -508,7 +508,7 @@ impl<'a> Resolver<'a> {
                     E0401,
                     "can't use generic parameters from outer function",
                 );
-                err.span_label(span, "use of generic parameter from outer function".to_string());
+                err.span_label(span, "use of generic parameter from outer function");
 
                 let sm = self.session.source_map();
                 match outer_res {
@@ -565,8 +565,7 @@ impl<'a> Resolver<'a> {
                     } else if let Some(sp) = sm.generate_fn_name_span(span) {
                         err.span_label(
                             sp,
-                            "try adding a local generic parameter in this method instead"
-                                .to_string(),
+                            "try adding a local generic parameter in this method instead",
                         );
                     } else {
                         err.help("try using a local generic parameter instead");
@@ -896,25 +895,40 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::BindingShadowsSomethingUnacceptable {
-                shadowing_binding_descr,
+                shadowing_binding,
                 name,
                 participle,
                 article,
-                shadowed_binding_descr,
+                shadowed_binding,
                 shadowed_binding_span,
             } => {
+                let shadowed_binding_descr = shadowed_binding.descr();
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0530,
                     "{}s cannot shadow {}s",
-                    shadowing_binding_descr,
+                    shadowing_binding.descr(),
                     shadowed_binding_descr,
                 );
                 err.span_label(
                     span,
                     format!("cannot be named the same as {} {}", article, shadowed_binding_descr),
                 );
+                match (shadowing_binding, shadowed_binding) {
+                    (
+                        PatternSource::Match,
+                        Res::Def(DefKind::Ctor(CtorOf::Variant | CtorOf::Struct, CtorKind::Fn), _),
+                    ) => {
+                        err.span_suggestion(
+                            span,
+                            "try specify the pattern arguments",
+                            format!("{}(..)", name),
+                            Applicability::Unspecified,
+                        );
+                    }
+                    _ => (),
+                }
                 let msg =
                     format!("the {} `{}` is {} here", shadowed_binding_descr, name, participle);
                 err.span_label(shadowed_binding_span, msg);
@@ -928,10 +942,7 @@ impl<'a> Resolver<'a> {
                     "generic parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
-                err.span_label(
-                    span,
-                    "defaulted generic parameters cannot be forward declared".to_string(),
-                );
+                err.span_label(span, "defaulted generic parameters cannot be forward declared");
                 err
             }
             ResolutionError::ParamInTyOfConstParam(name) => {
@@ -978,7 +989,7 @@ impl<'a> Resolver<'a> {
                     E0735,
                     "generic parameters cannot use `Self` in their defaults"
                 );
-                err.span_label(span, "`Self` in generic parameter default".to_string());
+                err.span_label(span, "`Self` in generic parameter default");
                 err
             }
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
@@ -1495,6 +1506,21 @@ impl<'a> Resolver<'a> {
             err.help("have you added the `#[macro_use]` on the module/import?");
             return;
         }
+        if ident.name == kw::Default
+            && let ModuleKind::Def(DefKind::Enum, def_id, _) = parent_scope.module.kind
+            && let Some(span) = self.opt_span(def_id)
+        {
+            let source_map = self.session.source_map();
+            let head_span = source_map.guess_head_span(span);
+            if let Ok(head) = source_map.span_to_snippet(head_span) {
+                err.span_suggestion(head_span, "consider adding a derive", format!("#[derive(Default)]\n{head}"), Applicability::MaybeIncorrect);
+            } else {
+                err.span_help(
+                    head_span,
+                    "consider adding `#[derive(Default)]` to this enum",
+                );
+            }
+        }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
             if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
                 ident,
@@ -1600,7 +1626,7 @@ impl<'a> Resolver<'a> {
                     "{}{} `{}` defined here",
                     prefix,
                     suggestion.res.descr(),
-                    suggestion.candidate.as_str(),
+                    suggestion.candidate,
                 ),
             );
         }
@@ -1620,7 +1646,7 @@ impl<'a> Resolver<'a> {
 
     fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
         let res = b.res();
-        if b.span.is_dummy() || self.session.source_map().span_to_snippet(b.span).is_err() {
+        if b.span.is_dummy() || !self.session.source_map().is_span_accessible(b.span) {
             // These already contain the "built-in" prefix or look bad with it.
             let add_built_in =
                 !matches!(b.res(), Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod);
@@ -1997,7 +2023,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
@@ -2032,12 +2058,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
@@ -2051,7 +2077,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
@@ -2059,12 +2085,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                vec![
+                Some(
                     "`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>"
                         .to_string(),
-                ],
+                ),
             ))
         } else {
             None
@@ -2082,12 +2108,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
         let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
-        if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
+        if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
 
     /// Suggests a missing external crate name if that resolves to an correct module.
@@ -2104,7 +2130,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         &mut self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Vec<String>)> {
+    ) -> Option<(Vec<Segment>, Option<String>)> {
         if path[1].ident.span.rust_2015() {
             return None;
         }
@@ -2125,7 +2151,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 name, path, result
             );
             if let PathResult::Module(..) = result {
-                return Some((path, Vec::new()));
+                return Some((path, None));
             }
         }
 
@@ -2149,7 +2175,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         import: &'b Import<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
-    ) -> Option<(Option<Suggestion>, Vec<String>)> {
+    ) -> Option<(Option<Suggestion>, Option<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
             return None;
         };
@@ -2261,12 +2287,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 String::from("a macro with this name exists at the root of the crate"),
                 Applicability::MaybeIncorrect,
             ));
-            let note = vec![
-                "this could be because a macro annotated with `#[macro_export]` will be exported \
-                 at the root of the crate instead of the module where it is defined"
-                    .to_string(),
-            ];
-            Some((suggestion, note))
+            Some((suggestion, Some("this could be because a macro annotated with `#[macro_export]` will be exported \
+            at the root of the crate instead of the module where it is defined"
+               .to_string())))
         } else {
             None
         }
@@ -2561,7 +2584,7 @@ fn show_candidates(
                 let span = source_span[local_def_id];
                 let span = session.source_map().guess_head_span(span);
                 let mut multi_span = MultiSpan::from_span(span);
-                multi_span.push_span_label(span, "not accessible".to_string());
+                multi_span.push_span_label(span, "not accessible");
                 err.span_note(multi_span, &msg);
             } else {
                 err.note(&msg);
@@ -2576,12 +2599,14 @@ fn show_candidates(
                 .skip(1)
                 .all(|(_, descr, _, _)| descr == descr_first)
             {
-                descr_first.to_string()
+                descr_first
             } else {
-                "item".to_string()
+                "item"
             };
+            let plural_descr =
+                if descr.ends_with('s') { format!("{}es", descr) } else { format!("{}s", descr) };
 
-            let mut msg = format!("{}these {}s exist but are inaccessible", prefix, descr);
+            let mut msg = format!("{}these {} exist but are inaccessible", prefix, plural_descr);
             let mut has_colon = false;
 
             let mut spans = Vec::new();

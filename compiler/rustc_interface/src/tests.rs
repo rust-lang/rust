@@ -1,3 +1,4 @@
+#![cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -629,14 +630,14 @@ fn test_top_level_options_tracked_no_crate() {
 }
 
 #[test]
-fn test_debugging_options_tracking_hash() {
+fn test_unstable_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
     macro_rules! untracked {
         ($name: ident, $non_default_value: expr) => {
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_same_hash(&reference, &opts);
         };
     }
@@ -649,6 +650,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(dont_buffer_diagnostics, true);
     untracked!(dump_dep_graph, true);
+    untracked!(dump_drop_tracking_cfg, Some("cfg.dot".to_string()));
     untracked!(dump_mir, Some(String::from("abc")));
     untracked!(dump_mir_dataflow, true);
     untracked!(dump_mir_dir, String::from("abc"));
@@ -668,6 +670,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(ls, true);
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
+    untracked!(mir_pretty_relative_line_numbers, true);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
     untracked!(no_interleave_lints, true);
@@ -689,7 +692,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
-    untracked!(terminal_width, Some(80));
     untracked!(threads, 99);
     untracked!(time, true);
     untracked!(time_llvm_passes, true);
@@ -705,8 +707,8 @@ fn test_debugging_options_tracking_hash() {
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_different_hash(&reference, &opts);
         };
     }
@@ -718,6 +720,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
+    tracked!(box_noalias, Some(false));
     tracked!(
         branch_protection,
         Some(BranchProtection {
@@ -732,7 +735,10 @@ fn test_debugging_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
+    tracked!(export_executable_symbols, true);
     tracked!(dual_proc_macros, true);
+    tracked!(dwarf_version, Some(5));
+    tracked!(emit_thin_lto, false);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
@@ -803,8 +809,8 @@ fn test_debugging_options_tracking_hash() {
     macro_rules! tracked_no_crate_hash {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
-            assert_ne!(opts.debugging_opts.$name, $non_default_value);
-            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(opts.unstable_opts.$name, $non_default_value);
+            opts.unstable_opts.$name = $non_default_value;
             assert_non_crate_hash_different(&reference, &opts);
         };
     }

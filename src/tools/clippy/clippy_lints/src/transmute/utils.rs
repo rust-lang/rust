@@ -1,34 +1,8 @@
-use clippy_utils::last_path_segment;
-use clippy_utils::source::snippet;
-use if_chain::if_chain;
-use rustc_hir::{Expr, GenericArg, QPath, TyKind};
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
-
-/// Gets the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is
-/// not available , use
-/// the type's `ToString` implementation. In weird cases it could lead to types
-/// with invalid `'_`
-/// lifetime, but it should be rare.
-pub(super) fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
-    let seg = last_path_segment(path);
-    if_chain! {
-        if let Some(params) = seg.args;
-        if !params.parenthesized;
-        if let Some(to_ty) = params.args.iter().filter_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        }).nth(1);
-        if let TyKind::Rptr(_, ref to_ty) = to_ty.kind;
-        then {
-            return snippet(cx, to_ty.ty.span, &to_ref_ty.to_string()).to_string();
-        }
-    }
-
-    to_ref_ty.to_string()
-}
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment

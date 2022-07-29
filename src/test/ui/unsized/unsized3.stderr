@@ -101,12 +101,12 @@ LL + fn f9<X>(x1: Box<S<X>>) {
    |
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
-  --> $DIR/unsized3.rs:45:8
+  --> $DIR/unsized3.rs:45:9
    |
 LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
    |        - this type parameter needs to be `std::marker::Sized`
 LL |     f5(&(32, *x1));
-   |     -- ^^^^^^^^^^ doesn't have a size known at compile-time
+   |     --  ^^^^^^^^^ doesn't have a size known at compile-time
    |     |
    |     required by a bound introduced by this call
    |
@@ -123,6 +123,37 @@ LL - fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL + fn f10<X>(x1: Box<S<X>>) {
    |
 
-error: aborting due to 5 previous errors
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized3.rs:45:8
+   |
+LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
+   |        - this type parameter needs to be `std::marker::Sized`
+LL |     f5(&(32, *x1));
+   |     -- ^^^^^^^^^^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
+   = note: required because it appears within the type `({integer}, S<X>)`
+note: required by a bound in `f5`
+  --> $DIR/unsized3.rs:24:7
+   |
+LL | fn f5<Y>(x: &Y) {}
+   |       ^ required by this bound in `f5`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn f10<X: ?Sized>(x1: Box<S<X>>) {
+LL + fn f10<X>(x1: Box<S<X>>) {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn f5<Y: ?Sized>(x: &Y) {}
+   |        ++++++++
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

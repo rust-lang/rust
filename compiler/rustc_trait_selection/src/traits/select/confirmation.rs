@@ -12,7 +12,7 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, EarlyBinder, GenericParamDefKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
@@ -42,115 +42,96 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
-        let mut obligation = obligation;
-        let new_obligation;
-
-        // HACK(const_trait_impl): the surrounding environment is remapped to a non-const context
-        // because nested obligations might be actually `~const` then (incorrectly) requiring
-        // const impls. for example:
-        // ```
-        // pub trait Super {}
-        // pub trait Sub: Super {}
-        //
-        // impl<A> const Super for &A where A: ~const Super {}
-        // impl<A> const Sub for &A where A: ~const Sub {}
-        // ```
-        //
-        // The procedure to check the code above without the remapping code is as follows:
-        // ```
-        // CheckWf(impl const Sub for &A where A: ~const Sub) // <- const env
-        // CheckPredicate(&A: Super)
-        // CheckPredicate(A: ~const Super) // <- still const env, failure
-        // ```
-        if obligation.param_env.is_const() && !obligation.predicate.is_const_if_const() {
-            new_obligation = TraitObligation {
-                cause: obligation.cause.clone(),
-                param_env: obligation.param_env.without_const(),
-                ..*obligation
-            };
-            obligation = &new_obligation;
-        }
-
-        match candidate {
+        let mut impl_src = match candidate {
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
-                Ok(ImplSource::Builtin(data))
+                ImplSource::Builtin(data)
             }
 
             ParamCandidate(param) => {
                 let obligations =
                     self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
-                Ok(ImplSource::Param(obligations, param.skip_binder().constness))
+                ImplSource::Param(obligations, param.skip_binder().constness)
             }
 
             ImplCandidate(impl_def_id) => {
-                Ok(ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id)))
+                ImplSource::UserDefined(self.confirm_impl_candidate(obligation, impl_def_id))
             }
 
             AutoImplCandidate(trait_def_id) => {
                 let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
-                Ok(ImplSource::AutoImpl(data))
+                ImplSource::AutoImpl(data)
             }
 
             ProjectionCandidate(idx) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 // FIXME(jschievink): constness
-                Ok(ImplSource::Param(obligations, ty::BoundConstness::NotConst))
+                ImplSource::Param(obligations, ty::BoundConstness::NotConst)
             }
 
             ObjectCandidate(idx) => {
                 let data = self.confirm_object_candidate(obligation, idx)?;
-                Ok(ImplSource::Object(data))
+                ImplSource::Object(data)
             }
 
             ClosureCandidate => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
-                Ok(ImplSource::Closure(vtable_closure))
+                ImplSource::Closure(vtable_closure)
             }
 
             GeneratorCandidate => {
                 let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                Ok(ImplSource::Generator(vtable_generator))
+                ImplSource::Generator(vtable_generator)
             }
 
             FnPointerCandidate { .. } => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
-                Ok(ImplSource::FnPointer(data))
+                ImplSource::FnPointer(data)
             }
 
             DiscriminantKindCandidate => {
-                Ok(ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData))
+                ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
             }
 
-            PointeeCandidate => Ok(ImplSource::Pointee(ImplSourcePointeeData)),
+            PointeeCandidate => ImplSource::Pointee(ImplSourcePointeeData),
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
-                Ok(ImplSource::TraitAlias(data))
+                ImplSource::TraitAlias(data)
             }
 
             BuiltinObjectCandidate => {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                Ok(ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst))
+                ImplSource::Param(Vec::new(), ty::BoundConstness::NotConst)
             }
 
             BuiltinUnsizeCandidate => {
                 let data = self.confirm_builtin_unsize_candidate(obligation)?;
-                Ok(ImplSource::Builtin(data))
+                ImplSource::Builtin(data)
             }
 
             TraitUpcastingUnsizeCandidate(idx) => {
                 let data = self.confirm_trait_upcasting_unsize_candidate(obligation, idx)?;
-                Ok(ImplSource::TraitUpcasting(data))
+                ImplSource::TraitUpcasting(data)
             }
 
             ConstDestructCandidate(def_id) => {
                 let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
-                Ok(ImplSource::ConstDestruct(data))
+                ImplSource::ConstDestruct(data)
             }
+        };
+
+        if !obligation.predicate.is_const_if_const() {
+            // normalize nested predicates according to parent predicate's constness.
+            impl_src = impl_src.map(|mut o| {
+                o.predicate = o.predicate.without_const(self.tcx());
+                o
+            });
         }
+
+        Ok(impl_src)
     }
 
     fn confirm_projection_candidate(
@@ -555,7 +536,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                         let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
                         let bound =
-                            EarlyBinder(bound.0.kind().skip_binder()).subst(tcx, assoc_ty_substs);
+                            bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
                         tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
                     };
                 let normalized_bound = normalize_with_depth_to(
@@ -683,7 +664,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // FIXME: Chalk
 
-        if !self.tcx().sess.opts.debugging_opts.chalk {
+        if !self.tcx().sess.opts.unstable_opts.chalk {
             nested.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
@@ -813,7 +794,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let cause = ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                    ObjectCastObligation(source, target),
                 );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
@@ -910,7 +891,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let cause = ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                    ObjectCastObligation(source, target),
                 );
                 let outlives = ty::OutlivesPredicate(r_a, r_b);
                 nested.push(Obligation::with_depth(
@@ -931,7 +912,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let cause = ObligationCause::new(
                     obligation.cause.span,
                     obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                    ObjectCastObligation(source, target),
                 );
 
                 let predicate_to_obligation = |predicate| {

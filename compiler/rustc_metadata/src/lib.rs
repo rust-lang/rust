@@ -4,7 +4,7 @@
 #![feature(generators)]
 #![feature(generic_associated_types)]
 #![feature(iter_from_generator)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(proc_macro_internals)]
@@ -34,6 +34,8 @@ mod native_libs;
 mod rmeta;
 
 pub mod creader;
+pub mod fs;
 pub mod locator;
 
+pub use fs::{emit_metadata, METADATA_FILENAME};
 pub use rmeta::{encode_metadata, EncodedMetadata, METADATA_HEADER};

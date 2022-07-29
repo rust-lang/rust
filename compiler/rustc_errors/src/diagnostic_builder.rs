@@ -461,6 +461,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
 
     forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
+    forward!(pub fn clear_suggestions(&mut self,) -> &mut Self);
 
     forward!(pub fn multipart_suggestion(
         &mut self,
@@ -529,7 +530,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         applicability: Applicability,
     ) -> &mut Self);
 
-    forward!(pub fn set_primary_message(&mut self, msg: impl Into<String>) -> &mut Self);
+    forward!(pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
     forward!(pub fn set_arg(
@@ -588,4 +589,28 @@ macro_rules! struct_span_err {
 #[macro_export]
 macro_rules! error_code {
     ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
+}
+
+/// Wrapper around a `DiagnosticBuilder` for creating lints.
+pub struct LintDiagnosticBuilder<'a, G: EmissionGuarantee>(DiagnosticBuilder<'a, G>);
+
+impl<'a, G: EmissionGuarantee> LintDiagnosticBuilder<'a, G> {
+    #[rustc_lint_diagnostics]
+    /// Return the inner `DiagnosticBuilder`, first setting the primary message to `msg`.
+    pub fn build(mut self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'a, G> {
+        self.0.set_primary_message(msg);
+        self.0.set_is_lint();
+        self.0
+    }
+
+    /// Create a `LintDiagnosticBuilder` from some existing `DiagnosticBuilder`.
+    pub fn new(err: DiagnosticBuilder<'a, G>) -> LintDiagnosticBuilder<'a, G> {
+        LintDiagnosticBuilder(err)
+    }
+}
+
+impl<'a> LintDiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn forget_guarantee(self) -> LintDiagnosticBuilder<'a, ()> {
+        LintDiagnosticBuilder(self.0.forget_guarantee())
+    }
 }

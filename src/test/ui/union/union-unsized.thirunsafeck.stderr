@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/union-unsized.rs:7:8
+  --> $DIR/union-unsized.rs:5:8
    |
 LL |     a: str,
    |        ^^^ doesn't have a size known at compile-time
@@ -17,7 +17,7 @@ LL |     a: Box<str>,
    |        ++++   +
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/union-unsized.rs:15:8
+  --> $DIR/union-unsized.rs:13:8
    |
 LL |     b: str,
    |        ^^^ doesn't have a size known at compile-time

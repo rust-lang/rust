@@ -238,7 +238,7 @@ fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
                             c.to_digit(16).ok_or(EscapeError::InvalidCharInUnicodeEscape)?;
                         n_digits += 1;
                         if n_digits > 6 {
-                            // Stop updating value since we're sure that it's is incorrect already.
+                            // Stop updating value since we're sure that it's incorrect already.
                             continue;
                         }
                         let digit = digit as u32;

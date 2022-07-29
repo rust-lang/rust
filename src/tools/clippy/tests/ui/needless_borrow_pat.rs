@@ -1,7 +1,7 @@
 // FIXME: run-rustfix waiting on multi-span suggestions
 
 #![warn(clippy::needless_borrow)]
-#![allow(clippy::needless_borrowed_reference)]
+#![allow(clippy::needless_borrowed_reference, clippy::explicit_auto_deref)]
 
 fn f1(_: &str) {}
 macro_rules! m1 {

@@ -4,7 +4,8 @@
 
 use crate::check::FnCtxt;
 
-use rustc_data_structures::stable_map::FxHashMap;
+use hir::def_id::LocalDefId;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -15,6 +16,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -262,7 +264,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.fix_index_builtin_expr(e);
 
         match e.kind {
-            hir::ExprKind::Closure { body, .. } => {
+            hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
                 let body = self.fcx.tcx.hir().body(body);
                 for param in body.params {
                     self.visit_node_id(e.span, param.hir_id);
@@ -508,13 +510,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
                     let ty = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
                     struct RecursionChecker {
-                        def_id: DefId,
+                        def_id: LocalDefId,
                     }
                     impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
                         type BreakTy = ();
                         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                             if let ty::Opaque(def_id, _) = *t.kind() {
-                                if def_id == self.def_id {
+                                if def_id == self.def_id.to_def_id() {
                                     return ControlFlow::Break(());
                                 }
                             }
@@ -692,8 +694,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
                     t.into(),
-                    vec![],
                     E0282,
+                    false,
                 )
                 .emit();
         }
@@ -706,8 +708,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     Some(self.body.id()),
                     self.span.to_span(self.tcx),
                     c.into(),
-                    vec![],
                     E0282,
+                    false,
                 )
                 .emit();
         }
@@ -746,7 +748,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 // (e.g. keep `for<'a>` named `for<'a>`).
                 // This allows NLL to generate error messages that
                 // refer to the higher-ranked lifetime names written by the user.
-                EraseEarlyRegions { tcx: self.infcx.tcx }.fold_ty(t)
+                EraseEarlyRegions { tcx: self.tcx }.fold_ty(t)
             }
             Err(_) => {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
@@ -764,7 +766,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match self.infcx.fully_resolve(ct) {
-            Ok(ct) => self.infcx.tcx.erase_regions(ct),
+            Ok(ct) => self.tcx.erase_regions(ct),
             Err(_) => {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 self.report_const_error(ct);

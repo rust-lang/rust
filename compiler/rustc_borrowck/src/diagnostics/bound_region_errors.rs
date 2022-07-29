@@ -19,6 +19,9 @@ use std::fmt;
 use std::rc::Rc;
 
 use crate::region_infer::values::RegionElement;
+use crate::session_diagnostics::HigherRankedErrorCause;
+use crate::session_diagnostics::HigherRankedLifetimeError;
+use crate::session_diagnostics::HigherRankedSubtypeError;
 use crate::MirBorrowckCtxt;
 
 #[derive(Clone)]
@@ -69,7 +72,7 @@ impl<'tcx> UniverseInfo<'tcx> {
                 // up in the existing UI tests. Consider investigating this
                 // some more.
                 mbcx.buffer_error(
-                    mbcx.infcx.tcx.sess.struct_span_err(cause.span, "higher-ranked subtype error"),
+                    mbcx.infcx.tcx.sess.create_err(HigherRankedSubtypeError { span: cause.span }),
                 );
             }
         }
@@ -216,9 +219,12 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         tcx: TyCtxt<'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
-        err.note(&format!("could not prove {}", self.canonical_query.value.value.predicate));
-        err
+        tcx.sess.create_err(HigherRankedLifetimeError {
+            cause: Some(HigherRankedErrorCause::CouldNotProve {
+                predicate: self.canonical_query.value.value.predicate.to_string(),
+            }),
+            span,
+        })
     }
 
     fn base_universe(&self) -> ty::UniverseIndex {
@@ -263,9 +269,12 @@ where
         tcx: TyCtxt<'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
-        err.note(&format!("could not normalize `{}`", self.canonical_query.value.value.value));
-        err
+        tcx.sess.create_err(HigherRankedLifetimeError {
+            cause: Some(HigherRankedErrorCause::CouldNotNormalize {
+                value: self.canonical_query.value.value.value.to_string(),
+            }),
+            span,
+        })
     }
 
     fn base_universe(&self) -> ty::UniverseIndex {
@@ -326,7 +335,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
-        tcx.sess.struct_span_err(span, "higher-ranked lifetime error")
+        tcx.sess.create_err(HigherRankedLifetimeError { cause: None, span })
     }
 
     fn base_universe(&self) -> ty::UniverseIndex {
@@ -366,7 +375,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
-        tcx.sess.struct_span_err(span, "higher-ranked lifetime error for opaque type!")
+        tcx.sess.create_err(HigherRankedLifetimeError { cause: None, span })
     }
 
     fn base_universe(&self) -> ty::UniverseIndex {

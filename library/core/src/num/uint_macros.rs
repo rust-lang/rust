@@ -3,7 +3,8 @@ macro_rules! uint_impl {
         $BITS:expr, $MaxV:expr,
         $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
         $reversed:expr, $le_bytes:expr, $be_bytes:expr,
-        $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
+        $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
+        $bound_condition:expr) => {
         /// The smallest value that can be represented by this integer type.
         ///
         /// # Examples
@@ -16,8 +17,8 @@ macro_rules! uint_impl {
         #[stable(feature = "assoc_int_consts", since = "1.43.0")]
         pub const MIN: Self = 0;
 
-        /// The largest value that can be represented by this integer type,
-        #[doc = concat!("2<sup>", $BITS, "</sup> &minus; 1.")]
+        /// The largest value that can be represented by this integer type
+        #[doc = concat!("(2<sup>", $BITS, "</sup> &minus; 1", $bound_condition, ")")]
         ///
         /// # Examples
         ///
@@ -458,6 +459,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
@@ -527,6 +529,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
@@ -573,6 +576,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_mul`.
@@ -932,6 +936,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shl`.
@@ -978,6 +983,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_shr`.

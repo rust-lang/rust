@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi;
+use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
@@ -104,7 +104,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(super) fn new(const_eval_limit: Limit, can_access_statics: bool) -> Self {
+    pub(crate) fn new(const_eval_limit: Limit, can_access_statics: bool) -> Self {
         CompileTimeInterpreter {
             steps_remaining: const_eval_limit.0,
             stack: Vec::new(),
@@ -263,7 +263,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        _abi: Abi,
+        _abi: CallAbi,
         args: &[OpTy<'tcx>],
         _dest: &PlaceTy<'tcx>,
         _ret: Option<mir::BasicBlock>,
@@ -309,7 +309,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &PlaceTy<'tcx, Self::PointerTag>,
+        dest: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
         _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
@@ -369,7 +369,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // we don't deallocate it.
                 let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr)?;
                 let is_allocated_in_another_const = matches!(
-                    ecx.tcx.get_global_alloc(alloc_id),
+                    ecx.tcx.try_get_global_alloc(alloc_id),
                     Some(interpret::GlobalAlloc::Memory(_))
                 );
 
@@ -470,14 +470,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     #[inline(always)]
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
         &mut ecx.machine.stack
     }
 

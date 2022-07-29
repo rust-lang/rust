@@ -204,6 +204,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     /// Obtain the actual discriminant of a value.
+    #[instrument(level = "trace", skip(bx))]
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
@@ -420,12 +421,12 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    #[instrument(level = "trace", skip(self, bx))]
     pub fn codegen_place(
         &mut self,
         bx: &mut Bx,
         place_ref: mir::PlaceRef<'tcx>,
     ) -> PlaceRef<'tcx, Bx::Value> {
-        debug!("codegen_place(place_ref={:?})", place_ref);
         let cx = self.cx;
         let tcx = self.cx.tcx();
 
@@ -434,18 +435,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Place(place) => place,
             LocalRef::UnsizedPlace(place) => bx.load_operand(place).deref(cx),
             LocalRef::Operand(..) => {
-                if let Some(elem) = place_ref
-                    .projection
-                    .iter()
-                    .enumerate()
-                    .find(|elem| matches!(elem.1, mir::ProjectionElem::Deref))
-                {
-                    base = elem.0 + 1;
+                if place_ref.has_deref() {
+                    base = 1;
                     let cg_base = self.codegen_consume(
                         bx,
-                        mir::PlaceRef { projection: &place_ref.projection[..elem.0], ..place_ref },
+                        mir::PlaceRef { projection: &place_ref.projection[..0], ..place_ref },
                     );
-
                     cg_base.deref(bx.cx())
                 } else {
                     bug!("using operand local {:?} as place", place_ref);

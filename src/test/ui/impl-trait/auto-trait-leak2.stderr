@@ -14,7 +14,7 @@ note: required because it's used within this closure
   --> $DIR/auto-trait-leak2.rs:10:5
    |
 LL |     move |x| p.set(x)
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^
 note: required because it appears within the type `impl Fn(i32)`
   --> $DIR/auto-trait-leak2.rs:5:16
    |
@@ -42,7 +42,7 @@ note: required because it's used within this closure
   --> $DIR/auto-trait-leak2.rs:38:5
    |
 LL |     move |x| p.set(x)
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^
 note: required because it appears within the type `impl Fn(i32)`
   --> $DIR/auto-trait-leak2.rs:33:15
    |

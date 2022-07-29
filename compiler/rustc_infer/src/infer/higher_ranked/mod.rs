@@ -34,31 +34,27 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         T: Relate<'tcx>,
     {
         let span = self.trace.cause.span;
+        // First, we instantiate each bound region in the supertype with a
+        // fresh placeholder region. Note that this automatically creates
+        // a new universe if needed.
+        let sup_prime = self.infcx.replace_bound_vars_with_placeholders(sup);
 
-        self.infcx.commit_if_ok(|_| {
-            // First, we instantiate each bound region in the supertype with a
-            // fresh placeholder region. Note that this automatically creates
-            // a new universe if needed.
-            let sup_prime = self.infcx.replace_bound_vars_with_placeholders(sup);
+        // Next, we instantiate each bound region in the subtype
+        // with a fresh region variable. These region variables --
+        // but no other pre-existing region variables -- can name
+        // the placeholders.
+        let sub_prime = self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, sub);
 
-            // Next, we instantiate each bound region in the subtype
-            // with a fresh region variable. These region variables --
-            // but no other pre-existing region variables -- can name
-            // the placeholders.
-            let sub_prime =
-                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, sub);
+        debug!("a_prime={:?}", sub_prime);
+        debug!("b_prime={:?}", sup_prime);
 
-            debug!("a_prime={:?}", sub_prime);
-            debug!("b_prime={:?}", sup_prime);
+        // Compare types now that bound regions have been replaced.
+        let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime)?;
 
-            // Compare types now that bound regions have been replaced.
-            let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime)?;
-
-            debug!("higher_ranked_sub: OK result={result:?}");
-            // NOTE: returning the result here would be dangerous as it contains
-            // placeholders which **must not** be named afterwards.
-            Ok(())
-        })
+        debug!("OK result={result:?}");
+        // NOTE: returning the result here would be dangerous as it contains
+        // placeholders which **must not** be named afterwards.
+        Ok(())
     }
 }
 
@@ -126,7 +122,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // subtyping errors that it would have caught will now be
         // caught later on, during region checking. However, we
         // continue to use it for a transition period.
-        if self.tcx.sess.opts.debugging_opts.no_leak_check || self.skip_leak_check.get() {
+        if self.tcx.sess.opts.unstable_opts.no_leak_check || self.skip_leak_check.get() {
             return Ok(());
         }
 

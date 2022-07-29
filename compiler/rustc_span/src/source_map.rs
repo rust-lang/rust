@@ -463,6 +463,33 @@ impl SourceMap {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
     }
 
+    /// Format the span location suitable for pretty printing anotations with relative line numbers
+    pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
+        if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {
+            return "no-location".to_string();
+        }
+
+        let lo = self.lookup_char_pos(sp.lo());
+        let hi = self.lookup_char_pos(sp.hi());
+        let offset = self.lookup_char_pos(relative_to.lo());
+
+        if lo.file.name != offset.file.name {
+            return self.span_to_embeddable_string(sp);
+        }
+
+        let lo_line = lo.line.saturating_sub(offset.line);
+        let hi_line = hi.line.saturating_sub(offset.line);
+
+        format!(
+            "{}:+{}:{}: +{}:{}",
+            lo.file.name.display(FileNameDisplayPreference::Remapped),
+            lo_line,
+            lo.col.to_usize() + 1,
+            hi_line,
+            hi.col.to_usize() + 1,
+        )
+    }
+
     /// Format the span location to be printed in diagnostics. Must not be emitted
     /// to build artifacts as this may leak local file paths. Use span_to_embeddable_string
     /// for string suitable for embedding.
@@ -586,15 +613,11 @@ impl SourceMap {
         }
     }
 
-    /// Returns whether or not this span points into a file
-    /// in the current crate. This may be `false` for spans
-    /// produced by a macro expansion, or for spans associated
-    /// with the definition of an item in a foreign crate
-    pub fn is_local_span(&self, sp: Span) -> bool {
-        let local_begin = self.lookup_byte_offset(sp.lo());
-        let local_end = self.lookup_byte_offset(sp.hi());
-        // This might be a weird span that covers multiple files
-        local_begin.sf.src.is_some() && local_end.sf.src.is_some()
+    pub fn is_span_accessible(&self, sp: Span) -> bool {
+        self.span_to_source(sp, |src, start_index, end_index| {
+            Ok(src.get(start_index..end_index).is_some())
+        })
+        .map_or(false, |is_accessible| is_accessible)
     }
 
     /// Returns the source snippet as `String` corresponding to the given `Span`.
@@ -709,6 +732,11 @@ impl SourceMap {
         }
 
         sp
+    }
+
+    /// Extends the given `Span` to contain the entire line it is on.
+    pub fn span_extend_to_line(&self, sp: Span) -> Span {
+        self.span_extend_to_prev_char(self.span_extend_to_next_char(sp, '\n', true), '\n', true)
     }
 
     /// Given a `Span`, tries to get a shorter span ending before the first occurrence of `char`
@@ -956,7 +984,7 @@ impl SourceMap {
     }
 
     pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
-        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true).unwrap_or(span);
+        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true)?;
         if let Ok(snippet) = self.span_to_snippet(prev_span) {
             debug!(
                 "generate_fn_name_span: span={:?}, prev_span={:?}, snippet={:?}",

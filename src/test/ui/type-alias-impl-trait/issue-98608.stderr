@@ -1,0 +1,16 @@
+error[E0271]: type mismatch resolving `<fn() -> impl Sized {hi} as FnOnce<()>>::Output == Box<u8>`
+  --> $DIR/issue-98608.rs:4:39
+   |
+LL | fn hi() -> impl Sized { std::ptr::null::<u8>() }
+   |            ---------- the found opaque type
+...
+LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
+   |                                       ^^^^^^^^^^^^ expected struct `Box`, found opaque type
+   |
+   = note:   expected struct `Box<u8>`
+           found opaque type `impl Sized`
+   = note: required for the cast from `fn() -> impl Sized {hi}` to the object type `dyn Fn() -> Box<u8>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

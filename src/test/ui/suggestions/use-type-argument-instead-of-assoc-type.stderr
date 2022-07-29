@@ -18,10 +18,10 @@ error[E0191]: the value of the associated types `A` (from trait `T`), `C` (from 
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:16
    |
 LL |     type A;
-   |     ------- `A` defined here
+   |     ------ `A` defined here
 LL |     type B;
 LL |     type C;
-   |     ------- `C` defined here
+   |     ------ `C` defined here
 ...
 LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ associated types `A`, `C` must be specified

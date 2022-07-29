@@ -9,7 +9,7 @@ const _: [String; 0] = [String::new(); 0];
 
 fn must_be_init() {
     let x: u8;
-    let _ = [x; 0]; //~ ERROR: use of possibly-uninitialized variable: `x`
+    let _ = [x; 0]; //~ ERROR E0381
 }
 
 fn main() {}

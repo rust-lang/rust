@@ -24,15 +24,15 @@ LL | fn main() {
 LL |     (|_| 2333).await;
    |               ^^^^^^ only allowed inside `async` functions and blocks
 
-error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
+error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
   --> $DIR/issue-62009-1.rs:12:15
    |
 LL |     (|_| 2333).await;
-   |               ^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
+   |               ^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
    |
-   = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
-   = note: [closure@$DIR/issue-62009-1.rs:12:5: 12:15] must be a future or must implement `IntoFuture` to be awaited
-   = note: required because of the requirements on the impl of `IntoFuture` for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
+   = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
+   = note: [closure@$DIR/issue-62009-1.rs:12:6: 12:9] must be a future or must implement `IntoFuture` to be awaited
+   = note: required because of the requirements on the impl of `IntoFuture` for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
 help: remove the `.await`
    |
 LL -     (|_| 2333).await;

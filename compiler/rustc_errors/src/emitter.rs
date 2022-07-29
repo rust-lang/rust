@@ -63,7 +63,7 @@ impl HumanReadableErrorType {
         bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
         teach: bool,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
@@ -76,7 +76,7 @@ impl HumanReadableErrorType {
             short,
             teach,
             color,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         )
     }
@@ -281,9 +281,19 @@ pub trait Emitter {
         let message = bundle.get_message(&identifier).expect("missing diagnostic in fluent bundle");
         let value = match attr {
             Some(attr) => {
-                message.get_attribute(attr).expect("missing attribute in fluent message").value()
+                if let Some(attr) = message.get_attribute(attr) {
+                    attr.value()
+                } else {
+                    panic!("missing attribute `{attr}` in fluent message `{identifier}`")
+                }
             }
-            None => message.value().expect("missing value in fluent message"),
+            None => {
+                if let Some(value) = message.value() {
+                    value
+                } else {
+                    panic!("missing value in fluent message `{identifier}`")
+                }
+            }
         };
 
         let mut err = vec![];
@@ -389,11 +399,11 @@ pub trait Emitter {
     ) {
         // Check for spans in macros, before `fix_multispans_in_extern_macros`
         // has a chance to replace them.
-        let has_macro_spans = iter::once(&*span)
+        let has_macro_spans: Vec<_> = iter::once(&*span)
             .chain(children.iter().map(|child| &child.span))
             .flat_map(|span| span.primary_spans())
             .flat_map(|sp| sp.macro_backtrace())
-            .find_map(|expn_data| {
+            .filter_map(|expn_data| {
                 match expn_data.kind {
                     ExpnKind::Root => None,
 
@@ -403,7 +413,8 @@ pub trait Emitter {
 
                     ExpnKind::Macro(macro_kind, name) => Some((macro_kind, name)),
                 }
-            });
+            })
+            .collect();
 
         if !backtrace {
             self.fix_multispans_in_extern_macros(source_map, span, children);
@@ -412,11 +423,22 @@ pub trait Emitter {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some((macro_kind, name)) = has_macro_spans {
-                let descr = macro_kind.descr();
+            if let Some((macro_kind, name)) = has_macro_spans.first() {
+                // Mark the actual macro this originates from
+                let and_then = if let Some((macro_kind, last_name)) = has_macro_spans.last()
+                    && last_name != name
+                {
+                    let descr = macro_kind.descr();
+                    format!(
+                        " which comes from the expansion of the {descr} `{last_name}`",
+                    )
+                } else {
+                    "".to_string()
+                };
 
+                let descr = macro_kind.descr();
                 let msg = format!(
-                    "this {level} originates in the {descr} `{name}` \
+                    "this {level} originates in the {descr} `{name}`{and_then} \
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                 );
 
@@ -656,11 +678,6 @@ impl Emitter for SilentEmitter {
     }
 }
 
-/// Maximum number of lines we will print for a multiline suggestion; arbitrary.
-///
-/// This should be replaced with a more involved mechanism to output multiline suggestions that
-/// more closely mimics the regular diagnostic output, where irrelevant code lines are elided.
-pub const MAX_SUGGESTION_HIGHLIGHT_LINES: usize = 6;
 /// Maximum number of suggestions to be shown
 ///
 /// Arbitrary, but taken from trait import suggestion limit
@@ -705,7 +722,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     ui_testing: bool,
-    terminal_width: Option<usize>,
+    diagnostic_width: Option<usize>,
 
     macro_backtrace: bool,
 }
@@ -725,7 +742,7 @@ impl EmitterWriter {
         fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         teach: bool,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
@@ -737,7 +754,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -750,7 +767,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         colored: bool,
-        terminal_width: Option<usize>,
+        diagnostic_width: Option<usize>,
         macro_backtrace: bool,
     ) -> EmitterWriter {
         EmitterWriter {
@@ -761,7 +778,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
-            terminal_width,
+            diagnostic_width,
             macro_backtrace,
         }
     }
@@ -1610,7 +1627,7 @@ impl EmitterWriter {
                     width_offset + annotated_file.multiline_depth + 1
                 };
 
-                let column_width = if let Some(width) = self.terminal_width {
+                let column_width = if let Some(width) = self.diagnostic_width {
                     width.saturating_sub(code_offset)
                 } else if self.ui_testing {
                     DEFAULT_COLUMN_WIDTH

@@ -9,9 +9,8 @@
 //!
 //! ["The `ty` module: representing types"]: https://rustc-dev-guide.rust-lang.org/ty.html
 
-pub use self::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
-};
+pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -93,6 +92,7 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 
 pub mod _match;
+pub mod abstract_const;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
@@ -110,6 +110,7 @@ pub mod relate;
 pub mod subst;
 pub mod trait_def;
 pub mod util;
+pub mod visit;
 pub mod vtable;
 pub mod walk;
 
@@ -206,7 +207,7 @@ impl MainDefinition {
 /// The "header" of an impl is everything outside the body: a Self type, a trait
 /// ref (in the case of a trait impl), and a set of predicates (from the
 /// bounds / where-clauses).
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct ImplHeader<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
@@ -214,24 +215,14 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
     Inherent(Ty<'tcx>),
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    HashStable,
-    Debug,
-    TypeFoldable
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -307,18 +298,8 @@ impl fmt::Display for BoundConstness {
     }
 }
 
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Copy,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    HashStable,
-    TypeFoldable
-)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct ClosureSizeProfileData<'tcx> {
     /// Tuple containing the types of closure captures before the feature `capture_disjoint_fields`
     pub before_feature_tys: Ty<'tcx>,
@@ -594,6 +575,19 @@ impl<'tcx> Predicate<'tcx> {
 
         Some(tcx.mk_predicate(kind))
     }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
+        if let PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) = self.kind().skip_binder()
+            && constness != BoundConstness::NotConst
+        {
+            self = tcx.mk_predicate(self.kind().rebind(PredicateKind::Trait(TraitPredicate {
+                trait_ref,
+                constness: BoundConstness::NotConst,
+                polarity,
+            })));
+        }
+        self
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
@@ -611,8 +605,14 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        rustc_errors::DiagnosticArgValue::Str(std::borrow::Cow::Owned(self.to_string()))
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum PredicateKind<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -784,7 +784,7 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
 
@@ -803,22 +803,15 @@ pub struct TraitPredicate<'tcx> {
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
-    pub fn remap_constness(&mut self, tcx: TyCtxt<'tcx>, param_env: &mut ParamEnv<'tcx>) {
-        if std::intrinsics::unlikely(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
-            // remap without changing constness of this predicate.
-            // this is because `T: ~const Drop` has a different meaning to `T: Drop`
-            // FIXME(fee1-dead): remove this logic after beta bump
-            param_env.remap_constness_with(self.constness)
-        } else {
-            *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
-        }
+    pub fn remap_constness(&mut self, param_env: &mut ParamEnv<'tcx>) {
+        *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
     }
 
     /// Remap the constness of this predicate before emitting it for diagnostics.
     pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
         // this is different to `remap_constness` that callees want to print this predicate
         // in case of selection errors. `T: ~const Drop` bounds cannot end up here when the
-        // param_env is not const because we it is always satisfied in non-const contexts.
+        // param_env is not const because it is always satisfied in non-const contexts.
         if let hir::Constness::NotConst = param_env.constness() {
             self.constness = ty::BoundConstness::NotConst;
         }
@@ -835,6 +828,14 @@ impl<'tcx> TraitPredicate<'tcx> {
     #[inline]
     pub fn is_const_if_const(self) -> bool {
         self.constness == BoundConstness::ConstIfConst
+    }
+
+    pub fn is_constness_satisfied_by(self, constness: hir::Constness) -> bool {
+        match (self.constness, constness) {
+            (BoundConstness::NotConst, _)
+            | (BoundConstness::ConstIfConst, hir::Constness::Const) => true,
+            (BoundConstness::ConstIfConst, hir::Constness::NotConst) => false,
+        }
     }
 }
 
@@ -863,7 +864,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
@@ -874,7 +875,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicat
 /// whether the `a` type is the type that we should label as "expected" when
 /// presenting user diagnostics.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct SubtypePredicate<'tcx> {
     pub a_is_expected: bool,
     pub a: Ty<'tcx>,
@@ -884,7 +885,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoercePredicate<'tcx> {
     pub a: Ty<'tcx>,
     pub b: Ty<'tcx>,
@@ -892,7 +893,7 @@ pub struct CoercePredicate<'tcx> {
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),
     Const(Const<'tcx>),
@@ -914,8 +915,16 @@ impl<'tcx> Term<'tcx> {
     pub fn ty(&self) -> Option<Ty<'tcx>> {
         if let Term::Ty(ty) = self { Some(*ty) } else { None }
     }
+
     pub fn ct(&self) -> Option<Const<'tcx>> {
         if let Term::Const(c) = self { Some(*c) } else { None }
+    }
+
+    pub fn into_arg(self) -> GenericArg<'tcx> {
+        match self {
+            Term::Ty(ty) => ty.into(),
+            Term::Const(c) => c.into(),
+        }
     }
 }
 
@@ -932,7 +941,7 @@ impl<'tcx> Term<'tcx> {
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub term: Term<'tcx>,
@@ -1038,6 +1047,24 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
+    pub fn to_opt_poly_projection_pred(self) -> Option<PolyProjectionPredicate<'tcx>> {
+        let predicate = self.kind();
+        match predicate.skip_binder() {
+            PredicateKind::Projection(t) => Some(predicate.rebind(t)),
+            PredicateKind::Trait(..)
+            | PredicateKind::Subtype(..)
+            | PredicateKind::Coerce(..)
+            | PredicateKind::RegionOutlives(..)
+            | PredicateKind::WellFormed(..)
+            | PredicateKind::ObjectSafe(..)
+            | PredicateKind::ClosureKind(..)
+            | PredicateKind::TypeOutlives(..)
+            | PredicateKind::ConstEvaluatable(..)
+            | PredicateKind::ConstEquate(..)
+            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+        }
+    }
+
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
@@ -1076,7 +1103,7 @@ impl<'tcx> Predicate<'tcx> {
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
     pub spans: Vec<Span>,
@@ -1092,24 +1119,14 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    HashStable,
-    TyEncodable,
-    TyDecodable,
-    TypeFoldable,
-    Lift
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, Lift)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct OpaqueTypeKey<'tcx> {
-    pub def_id: DefId,
+    pub def_id: LocalDefId,
     pub substs: SubstsRef<'tcx>,
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
 pub struct OpaqueHiddenType<'tcx> {
     /// The span of this particular definition of the opaque type. So
     /// for example:
@@ -1245,7 +1262,7 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 /// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
 /// to get the type of `did`.
-#[derive(Copy, Clone, Debug, TypeFoldable, Lift, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, TyEncodable, TyDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {
@@ -1401,7 +1418,9 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
             self.constness().try_fold_with(folder)?,
         ))
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
         self.reveal().visit_with(visitor)?;
@@ -1528,7 +1547,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// `where Box<u32>: Copy`, which are clearly never
     /// satisfiable. We generally want to behave as if they were true,
     /// although the surrounding function is never reachable.
-    pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
+    pub fn and<T: TypeVisitable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         match self.reveal() {
             Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 
@@ -1561,7 +1580,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,
@@ -1733,11 +1752,9 @@ bitflags! {
         const IS_TRANSPARENT     = 1 << 2;
         // Internal only for now. If true, don't reorder fields.
         const IS_LINEAR          = 1 << 3;
-        // If true, don't expose any niche to type's context.
-        const HIDE_NICHE         = 1 << 4;
         // If true, the type's layout can be randomized using
         // the seed stored in `ReprOptions.layout_seed`
-        const RANDOMIZE_LAYOUT   = 1 << 5;
+        const RANDOMIZE_LAYOUT   = 1 << 4;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
                                  | ReprFlags::IS_SIMD.bits
@@ -1776,7 +1793,7 @@ impl ReprOptions {
         // If the user defined a custom seed for layout randomization, xor the item's
         // path hash with the user defined seed, this will allowing determinism while
         // still allowing users to further randomize layout generation for e.g. fuzzing
-        if let Some(user_seed) = tcx.sess.opts.debugging_opts.layout_seed {
+        if let Some(user_seed) = tcx.sess.opts.unstable_opts.layout_seed {
             field_shuffle_seed ^= user_seed;
         }
 
@@ -1794,7 +1811,6 @@ impl ReprOptions {
                         ReprFlags::empty()
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
-                    attr::ReprNoNiche => ReprFlags::HIDE_NICHE,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
                         size = Some(i);
@@ -1810,7 +1826,7 @@ impl ReprOptions {
 
         // If `-Z randomize-layout` was enabled for the type definition then we can
         // consider performing layout randomization
-        if tcx.sess.opts.debugging_opts.randomize_layout {
+        if tcx.sess.opts.unstable_opts.randomize_layout {
             flags.insert(ReprFlags::RANDOMIZE_LAYOUT);
         }
 
@@ -1845,11 +1861,6 @@ impl ReprOptions {
     #[inline]
     pub fn linear(&self) -> bool {
         self.flags.contains(ReprFlags::IS_LINEAR)
-    }
-
-    #[inline]
-    pub fn hide_niche(&self) -> bool {
-        self.flags.contains(ReprFlags::HIDE_NICHE)
     }
 
     /// Returns the discriminant type, given these `repr` options.
@@ -2138,7 +2149,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
             }
-            ty::InstanceDef::VtableShim(..)
+            ty::InstanceDef::VTableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)
             | ty::InstanceDef::FnPtrShim(..)

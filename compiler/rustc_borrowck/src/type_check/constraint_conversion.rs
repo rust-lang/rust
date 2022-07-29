@@ -6,7 +6,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -22,6 +22,16 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
+    /// Each RBP `GK: 'a` is assumed to be true. These encode
+    /// relationships like `T: 'a` that are added via implicit bounds
+    /// or the `param_env`.
+    ///
+    /// Each region here is guaranteed to be a key in the `indices`
+    /// map. We use the "original" regions (i.e., the keys from the
+    /// map, and not the values) because the code in
+    /// `process_registered_region_obligations` has some special-cased
+    /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
+    /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     param_env: ty::ParamEnv<'tcx>,

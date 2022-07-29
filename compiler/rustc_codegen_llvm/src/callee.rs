@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 use tracing::debug;
 
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_middle::ty::{self, Instance, TypeVisitable};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

@@ -146,6 +146,10 @@ impl Buffer {
     pub(crate) fn reserve(&mut self, additional: usize) {
         self.buffer.reserve(additional)
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.buffer.len()
+    }
 }
 
 fn comma_sep<T: fmt::Display>(
@@ -264,6 +268,12 @@ impl clean::Generics {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Ending {
+    Newline,
+    NoNewline,
+}
+
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
@@ -271,7 +281,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
     cx: &'a Context<'tcx>,
     indent: usize,
-    end_newline: bool,
+    ending: Ending,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
     use fmt::Write;
 
@@ -338,7 +348,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
         let where_preds = comma_sep(where_predicates, false);
         let clause = if f.alternate() {
-            if end_newline {
+            if ending == Ending::Newline {
                 // add a space so stripping <br> tags and breaking spaces still renders properly
                 format!(" where{where_preds}, ")
             } else {
@@ -352,7 +362,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
             let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
 
-            if end_newline {
+            if ending == Ending::Newline {
                 let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
                 // add a space so stripping <br> tags and breaking spaces still renders properly
                 write!(
@@ -733,21 +743,23 @@ pub(crate) fn href_relative_parts<'fqp>(
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..fqp.len()];
-            return box iter::repeat(sym::dotdot)
-                .take(dissimilar_part_count)
-                .chain(fqp_module.iter().copied());
+            return Box::new(
+                iter::repeat(sym::dotdot)
+                    .take(dissimilar_part_count)
+                    .chain(fqp_module.iter().copied()),
+            );
         }
     }
     // e.g. linking to std::sync::atomic from std::sync
     if relative_to_fqp.len() < fqp.len() {
-        box fqp[relative_to_fqp.len()..fqp.len()].iter().copied()
+        Box::new(fqp[relative_to_fqp.len()..fqp.len()].iter().copied())
     // e.g. linking to std::sync from std::sync::atomic
     } else if fqp.len() < relative_to_fqp.len() {
         let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        box iter::repeat(sym::dotdot).take(dissimilar_part_count)
+        Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
     // linking to the same module
     } else {
-        box iter::empty()
+        Box::new(iter::empty())
     }
 }
 
@@ -1153,17 +1165,50 @@ impl clean::Impl {
 
             if let clean::Type::Tuple(types) = &self.for_ &&
                 let [clean::Type::Generic(name)] = &types[..] &&
-                (self.kind.is_tuple_variadic() || self.kind.is_auto()) {
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
                 primitive_link_fragment(f, PrimitiveType::Tuple, &format!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
+            } else if let clean::BareFunction(bare_fn) = &self.for_ &&
+                let [clean::Argument { type_: clean::Type::Generic(name), .. }] = &bare_fn.decl.inputs.values[..] &&
+                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            {
+                // Hardcoded anchor library/core/src/primitive_docs.rs
+                // Link should match `# Trait implementations`
+
+                let hrtb = bare_fn.print_hrtb_with_space(cx);
+                let unsafety = bare_fn.unsafety.print_with_space();
+                let abi = print_abi_with_space(bare_fn.abi);
+                if f.alternate() {
+                    write!(
+                        f,
+                        "{hrtb:#}{unsafety}{abi:#}",
+                    )?;
+                } else {
+                    write!(
+                        f,
+                        "{hrtb}{unsafety}{abi}",
+                    )?;
+                }
+                let ellipsis = if bare_fn.decl.c_variadic {
+                    ", ..."
+                } else {
+                    ""
+                };
+                primitive_link_fragment(f, PrimitiveType::Tuple, &format!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
+                // Write output.
+                if let clean::FnRetTy::Return(ty) = &bare_fn.decl.output {
+                    write!(f, " -> ")?;
+                    fmt_type(ty, f, use_absolute, cx)?;
+                }
             } else if let Some(ty) = self.kind.as_blanket_ty() {
                 fmt_type(ty, f, use_absolute, cx)?;
             } else {
                 fmt_type(&self.for_, f, use_absolute, cx)?;
             }
 
-            fmt::Display::fmt(&print_where_clause(&self.generics, cx, 0, true), f)?;
+            fmt::Display::fmt(&print_where_clause(&self.generics, cx, 0, Ending::Newline), f)?;
             Ok(())
         })
     }
@@ -1283,10 +1328,6 @@ impl clean::FnDecl {
         let mut args = Buffer::html();
         let mut args_plain = Buffer::new();
         for (i, input) in self.inputs.values.iter().enumerate() {
-            if i == 0 {
-                args.push_str("<br>");
-            }
-
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -1312,8 +1353,7 @@ impl clean::FnDecl {
                 }
             } else {
                 if i > 0 {
-                    args.push_str(" <br>");
-                    args_plain.push_str(" ");
+                    args.push_str("<br>");
                 }
                 if input.is_const {
                     args.push_str("const ");
@@ -1360,13 +1400,14 @@ impl clean::FnDecl {
             let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
             let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
             format!(
-                "({args}{close}){arrow}",
+                "({pad}{args}{close}){arrow}",
+                pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
                 args = args.replace("<br>", &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("<br>", ""), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace("<br>", " "), arrow = arrow)
         };
 
         if f.alternate() {

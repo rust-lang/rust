@@ -30,7 +30,7 @@ use crate::ty;
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
-pub struct Allocation<Tag = AllocId, Extra = ()> {
+pub struct Allocation<Prov = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
     bytes: Box<[u8]>,
@@ -38,7 +38,7 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
-    relocations: Relocations<Tag>,
+    relocations: Relocations<Prov>,
     /// Denotes which part of this allocation is initialized.
     init_mask: InitMask,
     /// The alignment of the allocation to detect unaligned reads.
@@ -102,8 +102,8 @@ impl hash::Hash for Allocation {
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct ConstAllocation<'tcx, Tag = AllocId, Extra = ()>(
-    pub Interned<'tcx, Allocation<Tag, Extra>>,
+pub struct ConstAllocation<'tcx, Prov = AllocId, Extra = ()>(
+    pub Interned<'tcx, Allocation<Prov, Extra>>,
 );
 
 impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
@@ -114,8 +114,8 @@ impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
     }
 }
 
-impl<'tcx, Tag, Extra> ConstAllocation<'tcx, Tag, Extra> {
-    pub fn inner(self) -> &'tcx Allocation<Tag, Extra> {
+impl<'tcx, Prov, Extra> ConstAllocation<'tcx, Prov, Extra> {
+    pub fn inner(self) -> &'tcx Allocation<Prov, Extra> {
         self.0.0
     }
 }
@@ -160,10 +160,16 @@ impl AllocError {
 }
 
 /// The information that makes up a memory access: offset and size.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct AllocRange {
     pub start: Size,
     pub size: Size,
+}
+
+impl fmt::Debug for AllocRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{:#x}..{:#x}]", self.start.bytes(), self.end().bytes())
+    }
 }
 
 /// Free-starting constructor for less syntactic overhead.
@@ -173,6 +179,11 @@ pub fn alloc_range(start: Size, size: Size) -> AllocRange {
 }
 
 impl AllocRange {
+    #[inline]
+    pub fn from(r: Range<Size>) -> Self {
+        alloc_range(r.start, r.end - r.start) // `Size` subtraction (overflow-checked)
+    }
+
     #[inline(always)]
     pub fn end(self) -> Size {
         self.start + self.size // This does overflow checking.
@@ -189,7 +200,7 @@ impl AllocRange {
 }
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
-impl<Tag> Allocation<Tag> {
+impl<Prov> Allocation<Prov> {
     /// Creates an allocation initialized by the given bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
@@ -214,6 +225,8 @@ impl<Tag> Allocation<Tag> {
 
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
+    ///
+    /// If `panic_on_fail` is true, this will never return `Err`.
     pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
@@ -243,14 +256,15 @@ impl<Tag> Allocation<Tag> {
 }
 
 impl Allocation {
-    /// Convert Tag and add Extra fields
-    pub fn convert_tag_add_extra<Tag, Extra, Err>(
+    /// Adjust allocation from the ones in tcx to a custom Machine instance
+    /// with a different Provenance and Extra type.
+    pub fn adjust_from_tcx<Prov, Extra, Err>(
         self,
         cx: &impl HasDataLayout,
         extra: Extra,
-        mut tagger: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Tag>, Err>,
-    ) -> Result<Allocation<Tag, Extra>, Err> {
-        // Compute new pointer tags, which also adjusts the bytes.
+        mut adjust_ptr: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Prov>, Err>,
+    ) -> Result<Allocation<Prov, Extra>, Err> {
+        // Compute new pointer provenance, which also adjusts the bytes.
         let mut bytes = self.bytes;
         let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
@@ -259,10 +273,10 @@ impl Allocation {
             let idx = offset.bytes_usize();
             let ptr_bytes = &mut bytes[idx..idx + ptr_size];
             let bits = read_target_uint(endian, ptr_bytes).unwrap();
-            let (ptr_tag, ptr_offset) =
-                tagger(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
+            let (ptr_prov, ptr_offset) =
+                adjust_ptr(Pointer::new(alloc_id, Size::from_bytes(bits)))?.into_parts();
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
-            new_relocations.push((offset, ptr_tag));
+            new_relocations.push((offset, ptr_prov));
         }
         // Create allocation.
         Ok(Allocation {
@@ -277,7 +291,7 @@ impl Allocation {
 }
 
 /// Raw accessors. Provide access to otherwise private bytes.
-impl<Tag, Extra> Allocation<Tag, Extra> {
+impl<Prov, Extra> Allocation<Prov, Extra> {
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
@@ -300,13 +314,13 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 
     /// Returns the relocation list.
-    pub fn relocations(&self) -> &Relocations<Tag> {
+    pub fn relocations(&self) -> &Relocations<Prov> {
         &self.relocations
     }
 }
 
 /// Byte accessors.
-impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
+impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
     /// caring about relocations. It just deduplicates some code between `read_scalar`
     /// and `get_bytes_internal`.
@@ -400,7 +414,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 }
 
 /// Reading and writing.
-impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
+impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
     /// relocation. If `allow_uninit`/`allow_ptr` is `false`, also enforces that the memory in the
     /// given range contains no uninitialized bytes/relocations.
@@ -438,7 +452,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         range: AllocRange,
         read_provenance: bool,
-    ) -> AllocResult<ScalarMaybeUninit<Tag>> {
+    ) -> AllocResult<ScalarMaybeUninit<Prov>> {
         if read_provenance {
             assert_eq!(range.size, cx.data_layout().pointer_size);
         }
@@ -462,7 +476,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 
         // If we are *not* reading a pointer, and we can just ignore relocations,
         // then do exactly that.
-        if !read_provenance && Tag::OFFSET_IS_ADDR {
+        if !read_provenance && Prov::OFFSET_IS_ADDR {
             // We just strip provenance.
             let bytes = self.get_bytes_even_more_internal(range);
             let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
@@ -493,7 +507,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         range: AllocRange,
-        val: ScalarMaybeUninit<Tag>,
+        val: ScalarMaybeUninit<Prov>,
     ) -> AllocResult {
         assert!(self.mutability == Mutability::Mut);
 
@@ -535,23 +549,28 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 }
 
 /// Relocations.
-impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
     /// Returns all relocations overlapping with the given pointer-offset pair.
-    pub fn get_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Tag)] {
+    fn get_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> &[(Size, Prov)] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = range.start.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
         self.relocations.range(Size::from_bytes(start)..range.end())
     }
 
+    /// Returns whether this allocation has relocations overlapping with the given range.
+    ///
+    /// Note: this function exists to allow `get_relocations` to be private, in order to somewhat
+    /// limit access to relocations outside of the `Allocation` abstraction.
+    ///
+    pub fn has_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> bool {
+        !self.get_relocations(cx, range).is_empty()
+    }
+
     /// Checks that there are no relocations overlapping with the given range.
     #[inline(always)]
     fn check_relocations(&self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
-        if self.get_relocations(cx, range).is_empty() {
-            Ok(())
-        } else {
-            Err(AllocError::ReadPointerAsBytes)
-        }
+        if self.has_relocations(cx, range) { Err(AllocError::ReadPointerAsBytes) } else { Ok(()) }
     }
 
     /// Removes all relocations inside the given range.
@@ -562,7 +581,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// immediately in that case.
     fn clear_relocations(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult
     where
-        Tag: Provenance,
+        Prov: Provenance,
     {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
@@ -584,7 +603,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Miri should preserve partial relocations; see
         // https://github.com/rust-lang/miri/issues/2181.
         if first < start {
-            if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
+            if Prov::ERR_ON_PARTIAL_PTR_OVERWRITE {
                 return Err(AllocError::PartialPointerOverwrite(first));
             }
             warn!(
@@ -593,7 +612,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
             self.init_mask.set_range(first, start, false);
         }
         if last > end {
-            if Tag::ERR_ON_PARTIAL_PTR_OVERWRITE {
+            if Prov::ERR_ON_PARTIAL_PTR_OVERWRITE {
                 return Err(AllocError::PartialPointerOverwrite(
                     last - cx.data_layout().pointer_size,
                 ));
@@ -624,22 +643,22 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
 
 /// "Relocations" stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
-pub struct Relocations<Tag = AllocId>(SortedMap<Size, Tag>);
+pub struct Relocations<Prov = AllocId>(SortedMap<Size, Prov>);
 
-impl<Tag> Relocations<Tag> {
+impl<Prov> Relocations<Prov> {
     pub fn new() -> Self {
         Relocations(SortedMap::new())
     }
 
     // The caller must guarantee that the given relocations are already sorted
     // by address and contain no duplicates.
-    pub fn from_presorted(r: Vec<(Size, Tag)>) -> Self {
+    pub fn from_presorted(r: Vec<(Size, Prov)>) -> Self {
         Relocations(SortedMap::from_presorted_elements(r))
     }
 }
 
-impl<Tag> Deref for Relocations<Tag> {
-    type Target = SortedMap<Size, Tag>;
+impl<Prov> Deref for Relocations<Prov> {
+    type Target = SortedMap<Size, Prov>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -649,18 +668,18 @@ impl<Tag> Deref for Relocations<Tag> {
 /// A partial, owned list of relocations to transfer into another allocation.
 ///
 /// Offsets are already adjusted to the destination allocation.
-pub struct AllocationRelocations<Tag> {
-    dest_relocations: Vec<(Size, Tag)>,
+pub struct AllocationRelocations<Prov> {
+    dest_relocations: Vec<(Size, Prov)>,
 }
 
-impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
     pub fn prepare_relocation_copy(
         &self,
         cx: &impl HasDataLayout,
         src: AllocRange,
         dest: Size,
         count: u64,
-    ) -> AllocationRelocations<Tag> {
+    ) -> AllocationRelocations<Prov> {
         let relocations = self.get_relocations(cx, src);
         if relocations.is_empty() {
             return AllocationRelocations { dest_relocations: Vec::new() };
@@ -670,7 +689,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         let mut new_relocations = Vec::with_capacity(relocations.len() * (count as usize));
 
         // If `count` is large, this is rather wasteful -- we are allocating a big array here, which
-        // is mostly filled with redundant information since it's just N copies of the same `Tag`s
+        // is mostly filled with redundant information since it's just N copies of the same `Prov`s
         // at slightly adjusted offsets. The reason we do this is so that in `mark_relocation_range`
         // we can use `insert_presorted`. That wouldn't work with an `Iterator` that just produces
         // the right sequence of relocations for all N copies.
@@ -695,7 +714,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     ///
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
-    pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Tag>) {
+    pub fn mark_relocation_range(&mut self, relocations: AllocationRelocations<Prov>) {
         self.relocations.0.insert_presorted(relocations.dest_relocations);
     }
 }
@@ -1084,9 +1103,9 @@ impl InitMask {
     /// Returns `Ok(())` if it's initialized. Otherwise returns a range of byte
     /// indexes for the first contiguous span of the uninitialized access.
     #[inline]
-    pub fn is_range_initialized(&self, start: Size, end: Size) -> Result<(), Range<Size>> {
+    pub fn is_range_initialized(&self, start: Size, end: Size) -> Result<(), AllocRange> {
         if end > self.len {
-            return Err(self.len..end);
+            return Err(AllocRange::from(self.len..end));
         }
 
         let uninit_start = self.find_bit(start, end, false);
@@ -1094,7 +1113,7 @@ impl InitMask {
         match uninit_start {
             Some(uninit_start) => {
                 let uninit_end = self.find_bit(uninit_start, end, true).unwrap_or(end);
-                Err(uninit_start..uninit_end)
+                Err(AllocRange::from(uninit_start..uninit_end))
             }
             None => Ok(()),
         }
@@ -1160,24 +1179,22 @@ impl<'a> Iterator for InitChunkIter<'a> {
 }
 
 /// Uninitialized bytes.
-impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<Prov: Copy, Extra> Allocation<Prov, Extra> {
     /// Checks whether the given range  is entirely initialized.
     ///
     /// Returns `Ok(())` if it's initialized. Otherwise returns the range of byte
     /// indexes of the first contiguous uninitialized access.
-    fn is_init(&self, range: AllocRange) -> Result<(), Range<Size>> {
+    fn is_init(&self, range: AllocRange) -> Result<(), AllocRange> {
         self.init_mask.is_range_initialized(range.start, range.end()) // `Size` addition
     }
 
     /// Checks that a range of bytes is initialized. If not, returns the `InvalidUninitBytes`
     /// error which will report the first range of bytes which is uninitialized.
     fn check_init(&self, range: AllocRange) -> AllocResult {
-        self.is_init(range).map_err(|idx_range| {
+        self.is_init(range).map_err(|uninit_range| {
             AllocError::InvalidUninitBytes(Some(UninitBytesAccess {
-                access_offset: range.start,
-                access_size: range.size,
-                uninit_offset: idx_range.start,
-                uninit_size: idx_range.end - idx_range.start, // `Size` subtraction
+                access: range,
+                uninit: uninit_range,
             }))
         })
     }
@@ -1210,7 +1227,7 @@ impl InitMaskCompressed {
 }
 
 /// Transferring the initialization mask to other allocations.
-impl<Tag, Extra> Allocation<Tag, Extra> {
+impl<Prov, Extra> Allocation<Prov, Extra> {
     /// Creates a run-length encoding of the initialization mask; panics if range is empty.
     ///
     /// This is essentially a more space-efficient version of

@@ -4,7 +4,6 @@
 mod m {
     type Foo = impl std::fmt::Debug;
     //~^ ERROR cycle detected
-    //~| ERROR cycle detected
 
     // Cycle: error today, but it'd be nice if it eventually worked
 

@@ -54,7 +54,7 @@ impl UseFactsExtractor<'_, '_> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UseFactsExtractor<'a, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         match def_use::categorize(context) {
             Some(DefUse::Def) => self.insert_def(local, location),
             Some(DefUse::Use) => self.insert_use(local, location),

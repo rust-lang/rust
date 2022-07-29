@@ -276,4 +276,4 @@ functions to deal with macros:
 [LateContext]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LateContext.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 [pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TypeckResults.html#method.pat_ty
-[paths]: ../clippy_utils/src/paths.rs
+[paths]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/paths/index.html

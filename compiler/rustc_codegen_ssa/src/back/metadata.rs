@@ -16,13 +16,12 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_target::abi::Endian;
 use rustc_target::spec::{RelocModel, Target};
-
-use crate::METADATA_FILENAME;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///

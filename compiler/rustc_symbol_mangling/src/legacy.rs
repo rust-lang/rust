@@ -3,7 +3,7 @@ use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::util::common::record_time;
 
 use tracing::debug;
@@ -67,7 +67,7 @@ pub(super) fn mangle<'tcx>(
         )
         .unwrap();
 
-    if let ty::InstanceDef::VtableShim(..) = instance.def {
+    if let ty::InstanceDef::VTableShim(..) = instance.def {
         let _ = printer.write_str("{{vtable-shim}}");
     }
 
@@ -96,47 +96,48 @@ fn get_symbol_hash<'tcx>(
     let substs = instance.substs;
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
-    let mut hasher = StableHasher::new();
-    let mut hcx = tcx.create_stable_hashing_context();
+    tcx.with_stable_hashing_context(|mut hcx| {
+        let mut hasher = StableHasher::new();
 
-    record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
-        // the main symbol name is not necessarily unique; hash in the
-        // compiler's internal def-path, guaranteeing each symbol has a
-        // truly unique path
-        tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
+        record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
+            // the main symbol name is not necessarily unique; hash in the
+            // compiler's internal def-path, guaranteeing each symbol has a
+            // truly unique path
+            tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
 
-        // Include the main item-type. Note that, in this case, the
-        // assertions about `needs_subst` may not hold, but this item-type
-        // ought to be the same for every reference anyway.
-        assert!(!item_type.has_erasable_regions());
-        hcx.while_hashing_spans(false, |hcx| {
-            item_type.hash_stable(hcx, &mut hasher);
+            // Include the main item-type. Note that, in this case, the
+            // assertions about `needs_subst` may not hold, but this item-type
+            // ought to be the same for every reference anyway.
+            assert!(!item_type.has_erasable_regions());
+            hcx.while_hashing_spans(false, |hcx| {
+                item_type.hash_stable(hcx, &mut hasher);
 
-            // If this is a function, we hash the signature as well.
-            // This is not *strictly* needed, but it may help in some
-            // situations, see the `run-make/a-b-a-linker-guard` test.
-            if let ty::FnDef(..) = item_type.kind() {
-                item_type.fn_sig(tcx).hash_stable(hcx, &mut hasher);
-            }
+                // If this is a function, we hash the signature as well.
+                // This is not *strictly* needed, but it may help in some
+                // situations, see the `run-make/a-b-a-linker-guard` test.
+                if let ty::FnDef(..) = item_type.kind() {
+                    item_type.fn_sig(tcx).hash_stable(hcx, &mut hasher);
+                }
 
-            // also include any type parameters (for generic items)
-            substs.hash_stable(hcx, &mut hasher);
+                // also include any type parameters (for generic items)
+                substs.hash_stable(hcx, &mut hasher);
 
-            if let Some(instantiating_crate) = instantiating_crate {
-                tcx.def_path_hash(instantiating_crate.as_def_id())
-                    .stable_crate_id()
-                    .hash_stable(hcx, &mut hasher);
-            }
+                if let Some(instantiating_crate) = instantiating_crate {
+                    tcx.def_path_hash(instantiating_crate.as_def_id())
+                        .stable_crate_id()
+                        .hash_stable(hcx, &mut hasher);
+                }
 
-            // We want to avoid accidental collision between different types of instances.
-            // Especially, `VtableShim`s and `ReifyShim`s may overlap with their original
-            // instances without this.
-            discriminant(&instance.def).hash_stable(hcx, &mut hasher);
+                // We want to avoid accidental collision between different types of instances.
+                // Especially, `VTableShim`s and `ReifyShim`s may overlap with their original
+                // instances without this.
+                discriminant(&instance.def).hash_stable(hcx, &mut hasher);
+            });
         });
-    });
 
-    // 64 bits should be enough to avoid collisions.
-    hasher.finish::<u64>()
+        // 64 bits should be enough to avoid collisions.
+        hasher.finish::<u64>()
+    })
 }
 
 // Follow C++ namespace-mangling style, see

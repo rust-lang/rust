@@ -11,67 +11,55 @@ LL | #![feature(specialization)]
 error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
   --> $DIR/specialization-no-default.rs:20:5
    |
-LL | / impl<T> Foo for T {
-LL | |     fn foo(&self) {}
-LL | |     fn bar(&self) {}
-LL | | }
-   | |_- parent `impl` is here
+LL | impl<T> Foo for T {
+   | ----------------- parent `impl` is here
 ...
-LL |       fn foo(&self) {}
-   |       ^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 
 error[E0520]: `bar` specializes an item from a parent `impl`, but that item is not marked `default`
   --> $DIR/specialization-no-default.rs:23:5
    |
-LL | / impl<T> Foo for T {
-LL | |     fn foo(&self) {}
-LL | |     fn bar(&self) {}
-LL | | }
-   | |_- parent `impl` is here
+LL | impl<T> Foo for T {
+   | ----------------- parent `impl` is here
 ...
-LL |       fn bar(&self) {}
-   |       ^^^^^^^^^^^^^^^^ cannot specialize default item `bar`
+LL |     fn bar(&self) {}
+   |     ^^^^^^^^^^^^^^^^ cannot specialize default item `bar`
    |
    = note: to specialize, `bar` in the parent `impl` must be marked `default`
 
 error[E0520]: `T` specializes an item from a parent `impl`, but that item is not marked `default`
   --> $DIR/specialization-no-default.rs:37:5
    |
-LL | / impl<T> Bar for T {
-LL | |     type T = u8;
-LL | | }
-   | |_- parent `impl` is here
+LL | impl<T> Bar for T {
+   | ----------------- parent `impl` is here
 ...
-LL |       type T = ();
-   |       ^^^^^^^^^^^^ cannot specialize default item `T`
+LL |     type T = ();
+   |     ^^^^^^^^^^^^ cannot specialize default item `T`
    |
    = note: to specialize, `T` in the parent `impl` must be marked `default`
 
 error[E0520]: `baz` specializes an item from a parent `impl`, but that item is not marked `default`
   --> $DIR/specialization-no-default.rs:55:5
    |
-LL | / impl<T: Clone> Baz for T {
-LL | |     fn baz(&self) {}
-LL | | }
-   | |_- parent `impl` is here
+LL | impl<T: Clone> Baz for T {
+   | ------------------------ parent `impl` is here
 ...
-LL |       fn baz(&self) {}
-   |       ^^^^^^^^^^^^^^^^ cannot specialize default item `baz`
+LL |     fn baz(&self) {}
+   |     ^^^^^^^^^^^^^^^^ cannot specialize default item `baz`
    |
    = note: to specialize, `baz` in the parent `impl` must be marked `default`
 
 error[E0520]: `redundant` specializes an item from a parent `impl`, but that item is not marked `default`
   --> $DIR/specialization-no-default.rs:74:5
    |
-LL | / impl<T: Clone> Redundant for T {
-LL | |     fn redundant(&self) {}
-LL | | }
-   | |_- parent `impl` is here
+LL | impl<T: Clone> Redundant for T {
+   | ------------------------------ parent `impl` is here
 ...
-LL |       default fn redundant(&self) {}
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `redundant`
+LL |     default fn redundant(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `redundant`
    |
    = note: to specialize, `redundant` in the parent `impl` must be marked `default`
 

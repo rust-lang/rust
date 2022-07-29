@@ -92,9 +92,9 @@ impl LocalsStateAtExit {
         struct HasStorageDead(BitSet<Local>);
 
         impl<'tcx> Visitor<'tcx> for HasStorageDead {
-            fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: Location) {
+            fn visit_local(&mut self, local: Local, ctx: PlaceContext, _: Location) {
                 if ctx == PlaceContext::NonUse(NonUseContext::StorageDead) {
-                    self.0.insert(*local);
+                    self.0.insert(local);
                 }
             }
         }
@@ -223,7 +223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         self.super_assign(assigned_place, rvalue, location)
     }
 
-    fn visit_local(&mut self, temp: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, temp: Local, context: PlaceContext, location: Location) {
         if !context.is_use() {
             return;
         }
@@ -232,7 +232,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         // check whether we (earlier) saw a 2-phase borrow like
         //
         //     TMP = &mut place
-        if let Some(&borrow_index) = self.pending_activations.get(temp) {
+        if let Some(&borrow_index) = self.pending_activations.get(&temp) {
             let borrow_data = &mut self.location_map[borrow_index.as_usize()];
 
             // Watch out: the use of TMP in the borrow itself

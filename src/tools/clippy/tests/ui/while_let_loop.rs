@@ -117,3 +117,29 @@ fn issue1948() {
         }
     };
 }
+
+fn issue_7913(m: &std::sync::Mutex<Vec<u32>>) {
+    // Don't lint. The lock shouldn't be held while printing.
+    loop {
+        let x = if let Some(x) = m.lock().unwrap().pop() {
+            x
+        } else {
+            break;
+        };
+
+        println!("{}", x);
+    }
+}
+
+fn issue_5715(mut m: core::cell::RefCell<Option<u32>>) {
+    // Don't lint. The temporary from `borrow_mut` must be dropped before overwriting the `RefCell`.
+    loop {
+        let x = if let &mut Some(x) = &mut *m.borrow_mut() {
+            x
+        } else {
+            break;
+        };
+
+        m = core::cell::RefCell::new(Some(x + 1));
+    }
+}

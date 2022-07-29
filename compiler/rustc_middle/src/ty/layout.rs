@@ -2,7 +2,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::subst::Subst;
-use crate::ty::{self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_hir as hir;
@@ -235,9 +235,8 @@ fn sanity_check_layout<'tcx>(
     if cfg!(debug_assertions) {
         fn check_layout_abi<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) {
             match layout.abi() {
-                Abi::Scalar(_scalar) => {
+                Abi::Scalar(scalar) => {
                     // No padding in scalars.
-                    /* FIXME(#96185):
                     assert_eq!(
                         layout.align().abi,
                         scalar.align(&tcx).abi,
@@ -247,7 +246,7 @@ fn sanity_check_layout<'tcx>(
                         layout.size(),
                         scalar.size(&tcx),
                         "size mismatch between ABI and layout in {layout:#?}"
-                    );*/
+                    );
                 }
                 Abi::Vector { count, element } => {
                     // No padding in vectors. Alignment can be strengthened, though.
@@ -543,14 +542,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             debug!("univariant offset: {:?} field: {:#?}", offset, field);
             offsets[i as usize] = offset;
 
-            if !repr.hide_niche() {
-                if let Some(mut niche) = field.largest_niche {
-                    let available = niche.available(dl);
-                    if available > largest_niche_available {
-                        largest_niche_available = available;
-                        niche.offset += offset;
-                        largest_niche = Some(niche);
-                    }
+            if let Some(mut niche) = field.largest_niche {
+                let available = niche.available(dl);
+                if available > largest_niche_available {
+                    largest_niche_available = available;
+                    niche.offset += offset;
+                    largest_niche = Some(niche);
                 }
             }
 
@@ -1079,6 +1076,29 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     let mut st = self.univariant_uninterned(ty, &variants[v], &def.repr(), kind)?;
                     st.variants = Variants::Single { index: v };
+
+                    if def.is_unsafe_cell() {
+                        let hide_niches = |scalar: &mut _| match scalar {
+                            Scalar::Initialized { value, valid_range } => {
+                                *valid_range = WrappingRange::full(value.size(dl))
+                            }
+                            // Already doesn't have any niches
+                            Scalar::Union { .. } => {}
+                        };
+                        match &mut st.abi {
+                            Abi::Uninhabited => {}
+                            Abi::Scalar(scalar) => hide_niches(scalar),
+                            Abi::ScalarPair(a, b) => {
+                                hide_niches(a);
+                                hide_niches(b);
+                            }
+                            Abi::Vector { element, count: _ } => hide_niches(element),
+                            Abi::Aggregate { sized: _ } => {}
+                        }
+                        st.largest_niche = None;
+                        return Ok(tcx.intern_layout(st));
+                    }
+
                     let (start, end) = self.tcx.layout_scalar_valid_range(def.did());
                     match st.abi {
                         Abi::Scalar(ref mut scalar) | Abi::ScalarPair(ref mut scalar, _) => {
@@ -1107,11 +1127,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
 
                             // Update `largest_niche` if we have introduced a larger niche.
-                            let niche = if def.repr().hide_niche() {
-                                None
-                            } else {
-                                Niche::from_scalar(dl, Size::ZERO, *scalar)
-                            };
+                            let niche = Niche::from_scalar(dl, Size::ZERO, *scalar);
                             if let Some(niche) = niche {
                                 match st.largest_niche {
                                     Some(largest_niche) => {
@@ -1418,9 +1434,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
                     abi = Abi::Uninhabited;
-                } else if tag.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
-                    // Without latter check aligned enums with custom discriminant values
-                    // Would result in ICE see the issue #92464 for more info
+                } else if tag.size(dl) == size {
+                    // Make sure we only use scalar layout when the enum is entirely its
+                    // own tag (i.e. it has no padding nor any non-ZST variant fields).
                     abi = Abi::Scalar(tag);
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
@@ -1898,7 +1914,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     fn record_layout_for_printing(&self, layout: TyAndLayout<'tcx>) {
         // If we are running with `-Zprint-type-sizes`, maybe record layouts
         // for dumping later.
-        if self.tcx.sess.opts.debugging_opts.print_type_sizes {
+        if self.tcx.sess.opts.unstable_opts.print_type_sizes {
             self.record_layout_for_printing_outlined(layout)
         }
     }
@@ -1959,7 +1975,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         min_size = field_end;
                     }
                     FieldInfo {
-                        name: name.to_string(),
+                        name,
                         offset: offset.bytes(),
                         size: field_layout.size.bytes(),
                         align: field_layout.align.abi.bytes(),
@@ -1968,7 +1984,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 .collect();
 
             VariantInfo {
-                name: n.map(|n| n.to_string()),
+                name: n,
                 kind: if layout.is_unsized() { SizeKind::Min } else { SizeKind::Exact },
                 align: layout.align.abi.bytes(),
                 size: if min_size.bytes() == 0 { layout.size.bytes() } else { min_size.bytes() },
@@ -2602,14 +2618,14 @@ where
                     // Use conservative pointer kind if not optimizing. This saves us the
                     // Freeze/Unpin queries, and can save time in the codegen backend (noalias
                     // attributes in LLVM have compile-time cost even in unoptimized builds).
-                    PointerKind::Shared
+                    PointerKind::SharedMutable
                 } else {
                     match mt {
                         hir::Mutability::Not => {
                             if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
                                 PointerKind::Frozen
                             } else {
-                                PointerKind::Shared
+                                PointerKind::SharedMutable
                             }
                         }
                         hir::Mutability::Mut => {
@@ -2620,7 +2636,7 @@ where
                             if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
                                 PointerKind::UniqueBorrowed
                             } else {
-                                PointerKind::Shared
+                                PointerKind::UniqueBorrowedPinned
                             }
                         }
                     }
@@ -2755,7 +2771,7 @@ impl<'tcx> ty::Instance<'tcx> {
                     _ => unreachable!(),
                 };
 
-                if let ty::InstanceDef::VtableShim(..) = self.def {
+                if let ty::InstanceDef::VTableShim(..) = self.def {
                     // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                     sig = sig.map_bound(|mut sig| {
                         let mut inputs_and_output = sig.inputs_and_output.to_vec();
@@ -2900,7 +2916,7 @@ pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: Spe
         //
         // This is not part of `codegen_fn_attrs` as it can differ between crates
         // and therefore cannot be computed in core.
-        if tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Abort {
+        if tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Abort {
             if Some(did) == tcx.lang_items().drop_in_place_fn() {
                 return false;
             }
@@ -3239,10 +3255,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                     // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
                     // for the entire duration of the function as they can be deallocated
-                    // at any time. Set their valid size to 0.
+                    // at any time. Same for shared mutable references. If LLVM had a
+                    // way to say "dereferenceable on entry" we could use it here.
                     attrs.pointee_size = match kind {
-                        PointerKind::UniqueOwned => Size::ZERO,
-                        _ => pointee.size,
+                        PointerKind::UniqueBorrowed
+                        | PointerKind::UniqueBorrowedPinned
+                        | PointerKind::Frozen => pointee.size,
+                        PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
                     };
 
                     // `Box`, `&T`, and `&mut T` cannot be undef.
@@ -3250,7 +3269,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // this attribute doesn't make it UB for the pointed-to data to be undef.
                     attrs.set(ArgAttribute::NoUndef);
 
-                    // `Box` pointer parameters never alias because ownership is transferred
+                    // The aliasing rules for `Box<T>` are still not decided, but currently we emit
+                    // `noalias` for it. This can be turned off using an unstable flag.
+                    // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
+                    let noalias_for_box =
+                        self.tcx().sess.opts.unstable_opts.box_noalias.unwrap_or(true);
+
                     // `&mut` pointer parameters never alias other parameters,
                     // or mutable global data
                     //
@@ -3264,8 +3288,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // or not to actually emit the attribute. It can also be controlled with the
                     // `-Zmutable-noalias` debugging option.
                     let no_alias = match kind {
-                        PointerKind::Shared | PointerKind::UniqueBorrowed => false,
-                        PointerKind::UniqueOwned => true,
+                        PointerKind::SharedMutable
+                        | PointerKind::UniqueBorrowed
+                        | PointerKind::UniqueBorrowedPinned => false,
+                        PointerKind::UniqueOwned => noalias_for_box,
                         PointerKind::Frozen => !is_return,
                     };
                     if no_alias {

@@ -1,13 +1,8 @@
 error[E0277]: `{integer}` is not a future
-  --> $DIR/issue-83919.rs:22:9
+  --> $DIR/issue-83919.rs:21:26
    |
-LL | /         async move {
-LL | |             42
-LL | |             // 42 does not impl Future and rustc does actually point out the error,
-LL | |             // but rustc used to panic.
-LL | |             // Putting a valid Future here always worked fine.
-LL | |         }
-   | |_________^ `{integer}` is not a future
+LL |     fn get_fut(&self) -> Self::Fut {
+   |                          ^^^^^^^^^ `{integer}` is not a future
    |
    = help: the trait `Future` is not implemented for `{integer}`
    = note: {integer} must be a future or must implement `IntoFuture` to be awaited

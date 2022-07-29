@@ -56,6 +56,7 @@ macro_rules! with_api {
                 fn drop($self: $S::FreeFunctions);
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
+                fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
             },
             TokenStream {
                 fn drop($self: $S::TokenStream);
@@ -65,11 +66,11 @@ macro_rules! with_api {
                 fn from_str(src: &str) -> $S::TokenStream;
                 fn to_string($self: &$S::TokenStream) -> String;
                 fn from_token_tree(
-                    tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
+                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
                 ) -> $S::TokenStream;
                 fn concat_trees(
                     base: Option<$S::TokenStream>,
-                    trees: Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>,
+                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
                 ) -> $S::TokenStream;
                 fn concat_streams(
                     base: Option<$S::TokenStream>,
@@ -77,54 +78,7 @@ macro_rules! with_api {
                 ) -> $S::TokenStream;
                 fn into_trees(
                     $self: $S::TokenStream
-                ) -> Vec<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
-            },
-            Group {
-                fn drop($self: $S::Group);
-                fn clone($self: &$S::Group) -> $S::Group;
-                fn new(delimiter: Delimiter, stream: Option<$S::TokenStream>) -> $S::Group;
-                fn delimiter($self: &$S::Group) -> Delimiter;
-                fn stream($self: &$S::Group) -> $S::TokenStream;
-                fn span($self: &$S::Group) -> $S::Span;
-                fn span_open($self: &$S::Group) -> $S::Span;
-                fn span_close($self: &$S::Group) -> $S::Span;
-                fn set_span($self: &mut $S::Group, span: $S::Span);
-            },
-            Punct {
-                fn new(ch: char, spacing: Spacing) -> $S::Punct;
-                fn as_char($self: $S::Punct) -> char;
-                fn spacing($self: $S::Punct) -> Spacing;
-                fn span($self: $S::Punct) -> $S::Span;
-                fn with_span($self: $S::Punct, span: $S::Span) -> $S::Punct;
-            },
-            Ident {
-                fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
-                fn span($self: $S::Ident) -> $S::Span;
-                fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
-            },
-            Literal {
-                fn drop($self: $S::Literal);
-                fn clone($self: &$S::Literal) -> $S::Literal;
-                fn from_str(s: &str) -> Result<$S::Literal, ()>;
-                fn to_string($self: &$S::Literal) -> String;
-                fn debug_kind($self: &$S::Literal) -> String;
-                fn symbol($self: &$S::Literal) -> String;
-                fn suffix($self: &$S::Literal) -> Option<String>;
-                fn integer(n: &str) -> $S::Literal;
-                fn typed_integer(n: &str, kind: &str) -> $S::Literal;
-                fn float(n: &str) -> $S::Literal;
-                fn f32(n: &str) -> $S::Literal;
-                fn f64(n: &str) -> $S::Literal;
-                fn string(string: &str) -> $S::Literal;
-                fn character(ch: char) -> $S::Literal;
-                fn byte_string(bytes: &[u8]) -> $S::Literal;
-                fn span($self: &$S::Literal) -> $S::Span;
-                fn set_span($self: &mut $S::Literal, span: $S::Span);
-                fn subspan(
-                    $self: &$S::Literal,
-                    start: Bound<usize>,
-                    end: Bound<usize>,
-                ) -> Option<$S::Span>;
+                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
             },
             SourceFile {
                 fn drop($self: $S::SourceFile);
@@ -159,10 +113,14 @@ macro_rules! with_api {
                 fn before($self: $S::Span) -> $S::Span;
                 fn after($self: $S::Span) -> $S::Span;
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
                 fn source_text($self: $S::Span) -> Option<String>;
                 fn save_span($self: $S::Span) -> usize;
                 fn recover_proc_macro_span(id: usize) -> $S::Span;
+            },
+            Symbol {
+                fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
             },
         }
     };
@@ -189,11 +147,15 @@ macro_rules! reverse_decode {
 }
 
 #[allow(unsafe_code)]
+mod arena;
+#[allow(unsafe_code)]
 mod buffer;
 #[forbid(unsafe_code)]
 pub mod client;
 #[allow(unsafe_code)]
 mod closure;
+#[forbid(unsafe_code)]
+mod fxhash;
 #[forbid(unsafe_code)]
 mod handle;
 #[macro_use]
@@ -205,6 +167,8 @@ mod scoped_cell;
 mod selfless_reify;
 #[forbid(unsafe_code)]
 pub mod server;
+#[allow(unsafe_code)]
+mod symbol;
 
 use buffer::Buffer;
 pub use rpc::PanicMessage;
@@ -343,8 +307,10 @@ mark_noop! {
     &'_ [u8],
     &'_ str,
     String,
+    u8,
     usize,
     Delimiter,
+    LitKind,
     Level,
     LineColumn,
     Spacing,
@@ -371,6 +337,33 @@ rpc_encode_decode!(
     enum Spacing {
         Alone,
         Joint,
+    }
+);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum LitKind {
+    Byte,
+    Char,
+    Integer,
+    Float,
+    Str,
+    StrRaw(u8),
+    ByteStr,
+    ByteStrRaw(u8),
+    Err,
+}
+
+rpc_encode_decode!(
+    enum LitKind {
+        Byte,
+        Char,
+        Integer,
+        Float,
+        Str,
+        StrRaw(n),
+        ByteStr,
+        ByteStrRaw(n),
+        Err,
     }
 );
 
@@ -448,16 +441,68 @@ compound_traits!(
     }
 );
 
+#[derive(Copy, Clone)]
+pub struct DelimSpan<Span> {
+    pub open: Span,
+    pub close: Span,
+    pub entire: Span,
+}
+
+impl<Span: Copy> DelimSpan<Span> {
+    pub fn from_single(span: Span) -> Self {
+        DelimSpan { open: span, close: span, entire: span }
+    }
+}
+
+compound_traits!(struct DelimSpan<Span> { open, close, entire });
+
 #[derive(Clone)]
-pub enum TokenTree<G, P, I, L> {
-    Group(G),
-    Punct(P),
-    Ident(I),
-    Literal(L),
+pub struct Group<TokenStream, Span> {
+    pub delimiter: Delimiter,
+    pub stream: Option<TokenStream>,
+    pub span: DelimSpan<Span>,
+}
+
+compound_traits!(struct Group<TokenStream, Span> { delimiter, stream, span });
+
+#[derive(Clone)]
+pub struct Punct<Span> {
+    pub ch: u8,
+    pub joint: bool,
+    pub span: Span,
+}
+
+compound_traits!(struct Punct<Span> { ch, joint, span });
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct Ident<Span, Symbol> {
+    pub sym: Symbol,
+    pub is_raw: bool,
+    pub span: Span,
+}
+
+compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct Literal<Span, Symbol> {
+    pub kind: LitKind,
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+    pub span: Span,
+}
+
+compound_traits!(struct Literal<Sp, Sy> { kind, symbol, suffix, span });
+
+#[derive(Clone)]
+pub enum TokenTree<TokenStream, Span, Symbol> {
+    Group(Group<TokenStream, Span>),
+    Punct(Punct<Span>),
+    Ident(Ident<Span, Symbol>),
+    Literal(Literal<Span, Symbol>),
 }
 
 compound_traits!(
-    enum TokenTree<G, P, I, L> {
+    enum TokenTree<TokenStream, Span, Symbol> {
         Group(tt),
         Punct(tt),
         Ident(tt),
@@ -468,12 +513,12 @@ compound_traits!(
 /// Globals provided alongside the initial inputs for a macro expansion.
 /// Provides values such as spans which are used frequently to avoid RPC.
 #[derive(Clone)]
-pub struct ExpnGlobals<S> {
-    pub def_site: S,
-    pub call_site: S,
-    pub mixed_site: S,
+pub struct ExpnGlobals<Span> {
+    pub def_site: Span,
+    pub call_site: Span,
+    pub mixed_site: Span,
 }
 
 compound_traits!(
-    struct ExpnGlobals<Sp> { def_site, call_site, mixed_site }
+    struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
 );

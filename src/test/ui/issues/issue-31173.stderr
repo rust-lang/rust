@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]> as Iterator>::Item == &_`
+error[E0271]: type mismatch resolving `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]> as Iterator>::Item == &_`
   --> $DIR/issue-31173.rs:10:10
    |
 LL |         .cloned()
@@ -12,11 +12,11 @@ note: required by a bound in `cloned`
 LL |         Self: Sized + Iterator<Item = &'a T>,
    |                                ^^^^^^^^^^^^ required by this bound in `cloned`
 
-error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>`, but its trait bounds were not satisfied
+error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>`, but its trait bounds were not satisfied
   --> $DIR/issue-31173.rs:12:10
    |
 LL |         .collect();
-   |          ^^^^^^^ method cannot be called on `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>` due to unsatisfied trait bounds
+   |          ^^^^^^^ method cannot be called on `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>` due to unsatisfied trait bounds
    |
   ::: $SRC_DIR/core/src/iter/adapters/cloned.rs:LL:COL
    |
@@ -29,10 +29,10 @@ LL | pub struct TakeWhile<I, P> {
    | -------------------------- doesn't satisfy `<_ as Iterator>::Item = &_`
    |
    = note: the following trait bounds were not satisfied:
-           `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]> as Iterator>::Item = &_`
-           which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>: Iterator`
-           `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>: Iterator`
-           which is required by `&mut Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6]>>: Iterator`
+           `<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]> as Iterator>::Item = &_`
+           which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>: Iterator`
+           `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>: Iterator`
+           which is required by `&mut Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>: Iterator`
 
 error: aborting due to 2 previous errors
 

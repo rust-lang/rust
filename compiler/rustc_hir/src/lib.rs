@@ -18,6 +18,8 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_data_structures;
 
+extern crate self as rustc_hir;
+
 mod arena;
 pub mod def;
 pub mod def_path_hash_map;
@@ -41,3 +43,5 @@ pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};
 pub use stable_hash_impls::HashStableContext;
 pub use target::{MethodKind, Target};
+
+arena_types!(rustc_arena::declare_arena);

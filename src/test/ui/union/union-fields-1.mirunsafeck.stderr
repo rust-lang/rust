@@ -5,7 +5,7 @@ LL | union U1 {
    |       -- field in this union
 ...
 LL |     c: u8,
-   |     ^^^^^
+   |     ^
    |
 note: the lint level is defined here
   --> $DIR/union-fields-1.rs:4:9
@@ -19,13 +19,13 @@ error: field `a` is never read
 LL | union U2 {
    |       -- field in this union
 LL |     a: u8,
-   |     ^^^^^
+   |     ^
 
 error: field `a` is never read
   --> $DIR/union-fields-1.rs:16:20
    |
 LL | union NoDropLike { a: u8 }
-   |       ----------   ^^^^^
+   |       ----------   ^
    |       |
    |       field in this union
 
@@ -36,7 +36,7 @@ LL | union U {
    |       - field in this union
 ...
 LL |     c: u8,
-   |     ^^^^^
+   |     ^
 
 error: aborting due to 4 previous errors
 

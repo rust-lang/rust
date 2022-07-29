@@ -73,6 +73,6 @@ impl<CTX> HashStable<CTX> for PredecessorCache {
     }
 }
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     PredecessorCache,
 }

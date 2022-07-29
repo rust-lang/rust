@@ -1,4 +1,5 @@
 use crate::ich;
+
 use rustc_ast as ast;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
@@ -23,7 +24,7 @@ pub struct StableHashingContext<'a> {
     cstore: &'a dyn CrateStore,
     source_span: &'a IndexVec<LocalDefId, Span>,
     // The value of `-Z incremental-ignore-spans`.
-    // This field should only be used by `debug_opts_incremental_ignore_span`
+    // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
     pub(super) body_resolver: BodyResolver<'a>,
     // Very often, we are hashing something that does not need the
@@ -56,14 +57,14 @@ impl<'a> StableHashingContext<'a> {
         always_ignore_spans: bool,
     ) -> Self {
         let hash_spans_initial =
-            !always_ignore_spans && !sess.opts.debugging_opts.incremental_ignore_spans;
+            !always_ignore_spans && !sess.opts.unstable_opts.incremental_ignore_spans;
 
         StableHashingContext {
             body_resolver: BodyResolver::Forbidden,
             definitions,
             cstore,
             source_span,
-            incremental_ignore_spans: sess.opts.debugging_opts.incremental_ignore_spans,
+            incremental_ignore_spans: sess.opts.unstable_opts.incremental_ignore_spans,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
             hashing_controls: HashingControls { hash_spans: hash_spans_initial },
@@ -118,13 +119,13 @@ impl<'a> StableHashingContext<'a> {
         &mut self,
         hash_bodies: bool,
         owner: LocalDefId,
-        bodies: &'a SortedMap<hir::ItemLocalId, &'a hir::Body<'a>>,
-        f: impl FnOnce(&mut Self),
+        bodies: &SortedMap<hir::ItemLocalId, &hir::Body<'_>>,
+        f: impl FnOnce(&mut StableHashingContext<'_>),
     ) {
-        let prev = self.body_resolver;
-        self.body_resolver = BodyResolver::Traverse { hash_bodies, owner, bodies };
-        f(self);
-        self.body_resolver = prev;
+        f(&mut StableHashingContext {
+            body_resolver: BodyResolver::Traverse { hash_bodies, owner, bodies },
+            ..self.clone()
+        });
     }
 
     #[inline]
@@ -185,7 +186,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 
     #[inline]
-    fn debug_opts_incremental_ignore_spans(&self) -> bool {
+    fn unstable_opts_incremental_ignore_spans(&self) -> bool {
         self.incremental_ignore_spans
     }
 

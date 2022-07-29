@@ -71,7 +71,7 @@ LL |
 LL | / extern "C" {
 LL | |     fn foo();
 LL | | }
-   | |_- rustdoc does not generate documentation for extern block
+   | |_- rustdoc does not generate documentation for extern blocks
    |
    = help: use `//` for a plain comment
 

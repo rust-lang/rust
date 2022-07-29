@@ -2,17 +2,15 @@
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitor,
-};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
+use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
-use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 
 use core::intrinsics;
@@ -205,7 +203,9 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
@@ -449,7 +449,9 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_substs(v)),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for SubstsRef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -485,7 +487,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v)),
         }
     }
+}
 
+impl<'tcx> TypeVisitable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -520,6 +524,7 @@ struct SubstFolder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
+    #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -535,6 +540,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        #[cold]
+        #[inline(never)]
+        fn region_param_out_of_range(data: ty::EarlyBoundRegion) -> ! {
+            bug!(
+                "Region parameter out of range when substituting in region {} (index={})",
+                data.name,
+                data.index
+            )
+        }
+
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
@@ -545,14 +560,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
-                    _ => {
-                        let msg = format!(
-                            "Region parameter out of range \
-                             when substituting in region {} (index={})",
-                            data.name, data.index
-                        );
-                        span_bug!(DUMMY_SP, "{}", msg);
-                    }
+                    _ => region_param_out_of_range(data),
                 }
             }
             _ => r,
@@ -590,32 +598,36 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
         let opt_ty = self.substs.get(p.index as usize).map(|k| k.unpack());
         let ty = match opt_ty {
             Some(GenericArgKind::Type(ty)) => ty,
-            Some(kind) => {
-                span_bug!(
-                    DUMMY_SP,
-                    "expected type for `{:?}` ({:?}/{}) but found {:?} \
-                     when substituting, substs={:?}",
-                    p,
-                    source_ty,
-                    p.index,
-                    kind,
-                    self.substs,
-                );
-            }
-            None => {
-                span_bug!(
-                    DUMMY_SP,
-                    "type parameter `{:?}` ({:?}/{}) out of range \
-                     when substituting, substs={:?}",
-                    p,
-                    source_ty,
-                    p.index,
-                    self.substs,
-                );
-            }
+            Some(kind) => self.type_param_expected(p, source_ty, kind),
+            None => self.type_param_out_of_range(p, source_ty),
         };
 
         self.shift_vars_through_binders(ty)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn type_param_expected(&self, p: ty::ParamTy, ty: Ty<'tcx>, kind: GenericArgKind<'tcx>) -> ! {
+        bug!(
+            "expected type for `{:?}` ({:?}/{}) but found {:?} when substituting, substs={:?}",
+            p,
+            ty,
+            p.index,
+            kind,
+            self.substs,
+        )
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn type_param_out_of_range(&self, p: ty::ParamTy, ty: Ty<'tcx>) -> ! {
+        bug!(
+            "type parameter `{:?}` ({:?}/{}) out of range when substituting, substs={:?}",
+            p,
+            ty,
+            p.index,
+            self.substs,
+        )
     }
 
     fn const_for_param(&self, p: ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
@@ -623,32 +635,41 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
         let opt_ct = self.substs.get(p.index as usize).map(|k| k.unpack());
         let ct = match opt_ct {
             Some(GenericArgKind::Const(ct)) => ct,
-            Some(kind) => {
-                span_bug!(
-                    DUMMY_SP,
-                    "expected const for `{:?}` ({:?}/{}) but found {:?} \
-                     when substituting substs={:?}",
-                    p,
-                    source_ct,
-                    p.index,
-                    kind,
-                    self.substs,
-                );
-            }
-            None => {
-                span_bug!(
-                    DUMMY_SP,
-                    "const parameter `{:?}` ({:?}/{}) out of range \
-                     when substituting substs={:?}",
-                    p,
-                    source_ct,
-                    p.index,
-                    self.substs,
-                );
-            }
+            Some(kind) => self.const_param_expected(p, source_ct, kind),
+            None => self.const_param_out_of_range(p, source_ct),
         };
 
         self.shift_vars_through_binders(ct)
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn const_param_expected(
+        &self,
+        p: ty::ParamConst,
+        ct: ty::Const<'tcx>,
+        kind: GenericArgKind<'tcx>,
+    ) -> ! {
+        bug!(
+            "expected const for `{:?}` ({:?}/{}) but found {:?} when substituting substs={:?}",
+            p,
+            ct,
+            p.index,
+            kind,
+            self.substs,
+        )
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn const_param_out_of_range(&self, p: ty::ParamConst, ct: ty::Const<'tcx>) -> ! {
+        bug!(
+            "const parameter `{:?}` ({:?}/{}) out of range when substituting substs={:?}",
+            p,
+            ct,
+            p.index,
+            self.substs,
+        )
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs
@@ -722,7 +743,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
     pub substs: SubstsRef<'tcx>,
@@ -749,7 +770,7 @@ pub struct UserSubsts<'tcx> {
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,

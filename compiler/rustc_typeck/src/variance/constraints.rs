@@ -64,25 +64,21 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
 
     let crate_items = tcx.hir_crate_items(());
 
-    for id in crate_items.items() {
-        constraint_cx.check_item(id);
-    }
+    for def_id in crate_items.definitions() {
+        let def_kind = tcx.def_kind(def_id);
+        match def_kind {
+            DefKind::Struct | DefKind::Union | DefKind::Enum => {
+                constraint_cx.build_constraints_for_item(def_id);
 
-    for id in crate_items.trait_items() {
-        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
-            constraint_cx.check_node_helper(id.hir_id());
-        }
-    }
-
-    for id in crate_items.impl_items() {
-        if let DefKind::AssocFn = tcx.def_kind(id.def_id) {
-            constraint_cx.check_node_helper(id.hir_id());
-        }
-    }
-
-    for id in crate_items.foreign_items() {
-        if let DefKind::Fn = tcx.def_kind(id.def_id) {
-            constraint_cx.check_node_helper(id.hir_id());
+                let adt = tcx.adt_def(def_id);
+                for variant in adt.variants() {
+                    if let Some(ctor) = variant.ctor_def_id {
+                        constraint_cx.build_constraints_for_item(ctor.expect_local());
+                    }
+                }
+            }
+            DefKind::Fn | DefKind::AssocFn => constraint_cx.build_constraints_for_item(def_id),
+            _ => {}
         }
     }
 
@@ -90,48 +86,6 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn check_item(&mut self, id: hir::ItemId) {
-        let def_kind = self.tcx().def_kind(id.def_id);
-        match def_kind {
-            DefKind::Struct | DefKind::Union => {
-                let item = self.tcx().hir().item(id);
-
-                if let hir::ItemKind::Struct(ref struct_def, _)
-                | hir::ItemKind::Union(ref struct_def, _) = item.kind
-                {
-                    self.check_node_helper(item.hir_id());
-
-                    if let hir::VariantData::Tuple(..) = *struct_def {
-                        self.check_node_helper(struct_def.ctor_hir_id().unwrap());
-                    }
-                }
-            }
-            DefKind::Enum => {
-                let item = self.tcx().hir().item(id);
-
-                if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
-                    self.check_node_helper(item.hir_id());
-
-                    for variant in enum_def.variants {
-                        if let hir::VariantData::Tuple(..) = variant.data {
-                            self.check_node_helper(variant.data.ctor_hir_id().unwrap());
-                        }
-                    }
-                }
-            }
-            DefKind::Fn => {
-                self.check_node_helper(id.hir_id());
-            }
-            _ => {}
-        }
-    }
-
-    fn check_node_helper(&mut self, id: hir::HirId) {
-        let tcx = self.terms_cx.tcx;
-        let def_id = tcx.hir().local_def_id(id);
-        self.build_constraints_for_item(def_id);
-    }
-
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.terms_cx.tcx
     }
@@ -145,8 +99,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let inferred_start = self.terms_cx.inferred_starts[&id];
+        let inferred_start = self.terms_cx.inferred_starts[&def_id];
         let current_item = &CurrentItem { inferred_start };
         match tcx.type_of(def_id).kind() {
             ty::Adt(def, _) => {
@@ -372,8 +325,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         }
 
         let (local, remote) = if let Some(def_id) = def_id.as_local() {
-            let id = self.tcx().hir().local_def_id_to_hir_id(def_id);
-            (Some(self.terms_cx.inferred_starts[&id]), None)
+            (Some(self.terms_cx.inferred_starts[&def_id]), None)
         } else {
             (None, Some(self.tcx().variances_of(def_id)))
         };

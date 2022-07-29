@@ -132,11 +132,6 @@ impl<'tcx> QueryCtxt<'tcx> {
         self.queries.on_disk_cache.as_ref()
     }
 
-    #[cfg(parallel_compiler)]
-    pub unsafe fn deadlock(self, registry: &rustc_rayon_core::Registry) {
-        rustc_query_system::query::deadlock(self, registry)
-    }
-
     pub(super) fn encode_query_results(
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx>,
@@ -287,17 +282,21 @@ macro_rules! define_queries {
                 } else {
                     Some(key.default_span(*tcx))
                 };
-                // Use `tcx.hir().opt_def_kind()` to reduce the chance of
-                // accidentally triggering an infinite query loop.
-                let def_kind = key.key_as_def_id()
-                    .and_then(|def_id| def_id.as_local())
-                    .and_then(|def_id| tcx.hir().opt_def_kind(def_id));
+                let def_kind = if kind == dep_graph::DepKind::opt_def_kind {
+                    // Try to avoid infinite recursion.
+                    None
+                } else {
+                    key.key_as_def_id()
+                        .and_then(|def_id| def_id.as_local())
+                        .and_then(|def_id| tcx.opt_def_kind(def_id))
+                };
                 let hash = || {
-                    let mut hcx = tcx.create_stable_hashing_context();
-                    let mut hasher = StableHasher::new();
-                    std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
-                    key.hash_stable(&mut hcx, &mut hasher);
-                    hasher.finish::<u64>()
+                    tcx.with_stable_hashing_context(|mut hcx|{
+                        let mut hasher = StableHasher::new();
+                        std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
+                        key.hash_stable(&mut hcx, &mut hasher);
+                        hasher.finish::<u64>()
+                    })
                 };
 
                 QueryStackFrame::new(name, description, span, def_kind, hash)
@@ -341,11 +340,11 @@ macro_rules! define_queries {
 
             #[inline]
             fn make_vtable(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
-                QueryVtable<QueryCtxt<$tcx>, Self::Key, Self::Value>
+                QueryVTable<QueryCtxt<$tcx>, Self::Key, Self::Value>
             {
                 let compute = get_provider!([$($modifiers)*][tcx, $name, key]);
                 let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
-                QueryVtable {
+                QueryVTable {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
@@ -369,6 +368,17 @@ macro_rules! define_queries {
 
             // We use this for most things when incr. comp. is turned off.
             pub fn Null() -> DepKindStruct {
+                DepKindStruct {
+                    is_anon: false,
+                    is_eval_always: false,
+                    fingerprint_style: FingerprintStyle::Unit,
+                    force_from_dep_node: Some(|_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node)),
+                    try_load_from_on_disk_cache: None,
+                }
+            }
+
+            // We use this for the forever-red node.
+            pub fn Red() -> DepKindStruct {
                 DepKindStruct {
                     is_anon: false,
                     is_eval_always: false,

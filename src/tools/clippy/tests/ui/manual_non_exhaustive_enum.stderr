@@ -1,5 +1,5 @@
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_enum.rs:4:1
+  --> $DIR/manual_non_exhaustive_enum.rs:5:1
    |
 LL |   enum E {
    |   ^-----
@@ -15,13 +15,13 @@ LL | | }
    |
    = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
 help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:8:5
+  --> $DIR/manual_non_exhaustive_enum.rs:9:5
    |
 LL |     _C,
    |     ^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_enum.rs:13:1
+  --> $DIR/manual_non_exhaustive_enum.rs:14:1
    |
 LL | / enum Ep {
 LL | |     A,
@@ -32,7 +32,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:17:5
+  --> $DIR/manual_non_exhaustive_enum.rs:18:5
    |
 LL |     _C,
    |     ^^

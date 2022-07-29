@@ -133,7 +133,7 @@ fn find_local_assigned_to_return_place(
             return local;
         }
 
-        match body.predecessors()[block].as_slice() {
+        match body.basic_blocks.predecessors()[block].as_slice() {
             &[pred] => block = pred,
             _ => return None,
         }
@@ -219,7 +219,7 @@ impl IsReturnPlaceRead {
 }
 
 impl<'tcx> Visitor<'tcx> for IsReturnPlaceRead {
-    fn visit_local(&mut self, &l: &Local, ctxt: PlaceContext, _: Location) {
+    fn visit_local(&mut self, l: Local, ctxt: PlaceContext, _: Location) {
         if l == mir::RETURN_PLACE && ctxt.is_use() && !ctxt.is_place_assignment() {
             self.0 = true;
         }

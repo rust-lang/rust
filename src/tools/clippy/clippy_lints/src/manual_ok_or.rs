@@ -5,7 +5,7 @@ use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{ResultErr, ResultOk};
-use rustc_hir::{Expr, ExprKind, PatKind};
+use rustc_hir::{Closure, Expr, ExprKind, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -88,7 +88,7 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         }
     }
     if_chain! {
-        if let ExprKind::Closure { body, .. } = map_expr.kind;
+        if let ExprKind::Closure(&Closure { body, .. }) = map_expr.kind;
         let body = cx.tcx.hir().body(body);
         if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind;
         if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, &[ref ok_arg]) = body.value.kind;

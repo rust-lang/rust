@@ -228,7 +228,7 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        for pred in body.predecessors()[bb].iter().copied() {
+        for pred in body.basic_blocks.predecessors()[bb].iter().copied() {
             match body[pred].terminator().kind {
                 // Apply terminator-specific edge effects.
                 //
@@ -316,7 +316,7 @@ where
     fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
         assert!(!self.effects_applied);
 
-        let values = &self.body.switch_sources()[&(self.bb, self.pred)];
+        let values = &self.body.basic_blocks.switch_sources()[&(self.bb, self.pred)];
         let targets = values.iter().map(|&value| SwitchIntTarget { value, target: self.bb });
 
         let mut tmp = None;

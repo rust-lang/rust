@@ -2,7 +2,6 @@ use super::BackendTypes;
 use crate::mir::place::PlaceRef;
 use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_span::Symbol;
 use rustc_target::abi::{self, Size};
 
 pub trait ConstMethods<'tcx>: BackendTypes {
@@ -21,7 +20,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_u8(&self, i: u8) -> Self::Value;
     fn const_real(&self, t: Self::Type, val: f64) -> Self::Value;
 
-    fn const_str(&self, s: Symbol) -> (Self::Value, Self::Value);
+    fn const_str(&self, s: &str) -> (Self::Value, Self::Value);
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
 
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
@@ -30,6 +29,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value;
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
+    fn zst_to_backend(&self, llty: Self::Type) -> Self::Value;
     fn from_const_alloc(
         &self,
         layout: TyAndLayout<'tcx>,

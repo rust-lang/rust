@@ -23,6 +23,7 @@ pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
+    const RED: Self = DepKind::Red;
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}(", node.kind)?;
@@ -71,8 +72,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
 
     #[inline]
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        TyCtxt::create_stable_hashing_context(*self)
+    fn with_stable_hashing_context<R>(&self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
+        TyCtxt::with_stable_hashing_context(*self, f)
     }
 
     #[inline]

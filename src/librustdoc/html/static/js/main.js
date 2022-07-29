@@ -4,40 +4,6 @@
 
 "use strict";
 
-if (!String.prototype.startsWith) {
-    String.prototype.startsWith = function(searchString, position) {
-        position = position || 0;
-        return this.indexOf(searchString, position) === position;
-    };
-}
-if (!String.prototype.endsWith) {
-    String.prototype.endsWith = function(suffix, length) {
-        const l = length || this.length;
-        return this.indexOf(suffix, l - suffix.length) !== -1;
-    };
-}
-
-if (!DOMTokenList.prototype.add) {
-    DOMTokenList.prototype.add = function(className) {
-        if (className && !hasClass(this, className)) {
-            if (this.className && this.className.length > 0) {
-                this.className += " " + className;
-            } else {
-                this.className = className;
-            }
-        }
-    };
-}
-
-if (!DOMTokenList.prototype.remove) {
-    DOMTokenList.prototype.remove = function(className) {
-        if (className && this.className) {
-            this.className = (" " + this.className + " ").replace(" " + className + " ", " ")
-                                                         .trim();
-        }
-    };
-}
-
 // Get a value from the rustdoc-vars div, which is used to convey data from
 // Rust to the JS. If there is no such element, return null.
 function getVar(name) {
@@ -412,14 +378,15 @@ function loadCss(cssFileName) {
         window.hidePopoverMenus();
     }
 
-    const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
+        const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
         if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
 
-        if (document.activeElement.tagName === "INPUT") {
+        if (document.activeElement.tagName === "INPUT" &&
+            document.activeElement.type !== "checkbox") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);
@@ -512,23 +479,20 @@ function loadCss(cssFileName) {
         }
 
         if (sidebar) {
-            const isModule = hasClass(document.body, "mod");
-            if (!isModule) {
-                block("primitive", "primitives", "Primitive Types");
-                block("mod", "modules", "Modules");
-                block("macro", "macros", "Macros");
-                block("struct", "structs", "Structs");
-                block("enum", "enums", "Enums");
-                block("union", "unions", "Unions");
-                block("constant", "constants", "Constants");
-                block("static", "static", "Statics");
-                block("trait", "traits", "Traits");
-                block("fn", "functions", "Functions");
-                block("type", "types", "Type Definitions");
-                block("foreigntype", "foreign-types", "Foreign Types");
-                block("keyword", "keywords", "Keywords");
-                block("traitalias", "trait-aliases", "Trait Aliases");
-            }
+            block("primitive", "primitives", "Primitive Types");
+            block("mod", "modules", "Modules");
+            block("macro", "macros", "Macros");
+            block("struct", "structs", "Structs");
+            block("enum", "enums", "Enums");
+            block("union", "unions", "Unions");
+            block("constant", "constants", "Constants");
+            block("static", "static", "Statics");
+            block("trait", "traits", "Traits");
+            block("fn", "functions", "Functions");
+            block("type", "types", "Type Definitions");
+            block("foreigntype", "foreign-types", "Foreign Types");
+            block("keyword", "keywords", "Keywords");
+            block("traitalias", "trait-aliases", "Trait Aliases");
         }
     }
 
@@ -926,6 +890,7 @@ function loadCss(cssFileName) {
     function showHelp() {
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
+            window.hidePopoverMenus();
             menu.style.display = "";
         }
     }
@@ -939,6 +904,8 @@ function loadCss(cssFileName) {
         const shouldShowHelp = menu.style.display === "none";
         if (shouldShowHelp) {
             showHelp();
+        } else {
+            window.hidePopoverMenus();
         }
     });
 

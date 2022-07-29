@@ -1,5 +1,4 @@
-use rustc_errors::DiagnosticBuilder;
-use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, LintDiagnosticBuilder};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;

@@ -19,7 +19,7 @@ struct FailStruct { }
 
 impl<'a: 'b, 'b, 'c> Anything<'a, 'b> for FailStruct {
     const AC: Option<&'c str> = None;
-    //~^ ERROR: mismatched types
+    //~^ ERROR: const not compatible with trait
 }
 
 struct OKStruct2 { }

@@ -67,7 +67,7 @@ use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
-use rustc_mir_dataflow::storage;
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
@@ -957,7 +957,7 @@ fn create_generator_drop_shim<'tcx>(
         tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
-    if tcx.sess.opts.debugging_opts.mir_emit_retag {
+    if tcx.sess.opts.unstable_opts.mir_emit_retag {
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             0,
@@ -1379,14 +1379,14 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
-        let always_live_locals = storage::always_live_locals(&body);
+        let always_live_locals = always_storage_live_locals(&body);
 
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
         sanitize_witness(tcx, body, interior, upvars, &liveness_info.saved_locals);
 
-        if tcx.sess.opts.debugging_opts.validate_mir {
+        if tcx.sess.opts.unstable_opts.validate_mir {
             let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
                 assigned_local: None,
                 saved_locals: &liveness_info.saved_locals,

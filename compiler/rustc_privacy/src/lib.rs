@@ -1,15 +1,19 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(control_flow_enum)]
-#![feature(try_blocks)]
 #![feature(associated_type_defaults)]
+#![feature(control_flow_enum)]
+#![feature(rustc_private)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(not(bootstrap), deny(rustc::untranslatable_diagnostic))]
+#![cfg_attr(not(bootstrap), deny(rustc::diagnostic_outside_of_impl))]
+
+mod errors;
 
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
@@ -19,20 +23,24 @@ use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::span_bug;
-use rustc_middle::thir::abstract_const::Node as ACNode;
+use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst, Node as ACNode};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Const, DefIdTree, GenericParamDefKind};
-use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor};
+use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use rustc_trait_selection::traits::const_evaluatable::{self, AbstractConst};
 
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
 use std::{cmp, fmt, mem};
+
+use errors::{
+    FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
+    InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, UnnamedItemIsPrivate,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -71,7 +79,7 @@ trait DefIdVisitor<'tcx> {
             dummy: Default::default(),
         }
     }
-    fn visit(&mut self, ty_fragment: impl TypeFoldable<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit(&mut self, ty_fragment: impl TypeVisitable<'tcx>) -> ControlFlow<Self::BreakTy> {
         ty_fragment.visit_with(&mut self.skeleton())
     }
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -145,6 +153,7 @@ where
                 }
                 ControlFlow::CONTINUE
             }
+            ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
             _ => bug!("unexpected predicate: {:?}", predicate),
         }
     }
@@ -154,7 +163,7 @@ where
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
-        const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
+        walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
             ACNode::Leaf(leaf) => self.visit_const(leaf),
             ACNode::Cast(_, _, ty) => self.visit_ty(ty),
             ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
@@ -457,7 +466,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         }
 
         let macro_module_def_id = self.tcx.local_parent(local_def_id);
-        if self.tcx.hir().opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
+        if self.tcx.opt_def_kind(macro_module_def_id) != Some(DefKind::Mod) {
             // The macro's parent doesn't correspond to a `mod`, return early (#63164, #65252).
             return;
         }
@@ -935,23 +944,17 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(self.current_item);
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
-            let label = if in_update_syntax {
-                format!("field `{}` is private", field.name)
-            } else {
-                "private field".to_string()
-            };
-
-            struct_span_err!(
-                self.tcx.sess,
+            self.tcx.sess.emit_err(FieldIsPrivate {
                 span,
-                E0451,
-                "field `{}` of {} `{}` is private",
-                field.name,
-                def.variant_descr(),
-                self.tcx.def_path_str(def.did())
-            )
-            .span_label(span, label)
-            .emit();
+                field_name: field.name,
+                variant_descr: def.variant_descr(),
+                def_path_str: self.tcx.def_path_str(def.did()),
+                label: if in_update_syntax {
+                    FieldIsPrivateLabel::IsUpdateSyntax { span, field_name: field.name }
+                } else {
+                    FieldIsPrivateLabel::Other { span }
+                },
+            });
         }
     }
 }
@@ -1075,11 +1078,11 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx
-                .sess
-                .struct_span_err(self.span, &format!("{} `{}` is private", kind, descr))
-                .span_label(self.span, &format!("private {}", kind))
-                .emit();
+            self.tcx.sess.emit_err(ItemIsPrivate {
+                span: self.span,
+                kind,
+                descr: descr.to_string(),
+            });
         }
         is_error
     }
@@ -1250,13 +1253,10 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
                 let kind = kind.descr(def_id);
-                let msg = match name {
-                    Some(name) => format!("{} `{}` is private", kind, name),
-                    None => format!("{} is private", kind),
+                let _ = match name {
+                    Some(name) => sess.emit_err(ItemIsPrivate { span, kind, descr: name }),
+                    None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
-                sess.struct_span_err(span, &msg)
-                    .span_label(span, &format!("private {}", kind))
-                    .emit();
                 return;
             }
         }
@@ -1716,19 +1716,14 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.struct_span_lint_hir(
+            self.tcx.emit_spanned_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                 self.tcx.hir().local_def_id_to_hir_id(self.item_def_id),
                 self.tcx.def_span(self.item_def_id.to_def_id()),
-                |lint| {
-                    lint.build(&format!(
-                        "{} `{}` from private dependency '{}' in public \
-                                                interface",
-                        kind,
-                        descr,
-                        self.tcx.crate_name(def_id.krate)
-                    ))
-                    .emit();
+                FromPrivateDependencyInPublicInterface {
+                    kind,
+                    descr: descr.to_string(),
+                    krate: self.tcx.crate_name(def_id.krate),
                 },
             );
         }
@@ -1753,31 +1748,37 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     }
                 }
             };
-            let make_msg = || format!("{} {} `{}` in public interface", vis_descr, kind, descr);
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
+            let descr = descr.to_string();
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
             {
-                let mut err = if kind == "trait" {
-                    struct_span_err!(self.tcx.sess, span, E0445, "{}", make_msg())
-                } else {
-                    struct_span_err!(self.tcx.sess, span, E0446, "{}", make_msg())
-                };
                 let vis_span =
                     self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
-                err.span_label(span, format!("can't leak {} {}", vis_descr, kind));
-                err.span_label(vis_span, format!("`{}` declared as {}", descr, vis_descr));
-                err.emit();
+                if kind == "trait" {
+                    self.tcx.sess.emit_err(InPublicInterfaceTraits {
+                        span,
+                        vis_descr,
+                        kind,
+                        descr,
+                        vis_span,
+                    });
+                } else {
+                    self.tcx.sess.emit_err(InPublicInterface {
+                        span,
+                        vis_descr,
+                        kind,
+                        descr,
+                        vis_span,
+                    });
+                }
             } else {
-                let err_code = if kind == "trait" { "E0445" } else { "E0446" };
-                self.tcx.struct_span_lint_hir(
+                self.tcx.emit_spanned_lint(
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    |lint| {
-                        lint.build(&format!("{} (error {})", make_msg(), err_code)).emit();
-                    },
+                    PrivateInPublicLint { vis_descr, kind, descr },
                 );
             }
         }

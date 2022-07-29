@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(associated_type_bounds)]
-#![feature(untagged_unions)]
 
 #![allow(unused_assignments)]
 

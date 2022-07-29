@@ -1,5 +1,5 @@
 // run-rustfix
-
+#![feature(lint_reasons)]
 #![warn(clippy::implicit_return)]
 #![allow(clippy::needless_return, clippy::needless_bool, unused, clippy::never_loop)]
 
@@ -128,3 +128,13 @@ async fn foo() -> bool {
 }
 
 fn main() {}
+
+fn check_expect() -> bool {
+    if true {
+        // no error!
+        return true;
+    }
+
+    #[expect(clippy::implicit_return)]
+    true
+}

@@ -9,7 +9,7 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
+use rustc_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
@@ -369,7 +369,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::Closure { body, .. } => {
+            ExprKind::Closure(&Closure { body, .. }) => {
                 let body = self.cx.tcx.hir().body(body);
                 self.visit_expr(&body.value);
             },

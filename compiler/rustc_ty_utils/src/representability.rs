@@ -1,5 +1,5 @@
 //! Check whether a type is representable.
-use rustc_data_structures::stable_map::FxHashMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;

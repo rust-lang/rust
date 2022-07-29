@@ -124,7 +124,7 @@ help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:123:1
    |
 LL | struct CopyWrapper(u32);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:131:29
@@ -136,7 +136,7 @@ help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:123:1
    |
 LL | struct CopyWrapper(u32);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:131:45
@@ -148,7 +148,7 @@ help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:123:1
    |
 LL | struct CopyWrapper(u32);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:131:61
@@ -160,7 +160,7 @@ help: consider marking this type as `Copy`
   --> $DIR/needless_pass_by_value.rs:123:1
    |
 LL | struct CopyWrapper(u32);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:143:40

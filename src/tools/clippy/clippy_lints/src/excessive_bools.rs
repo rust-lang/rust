@@ -94,7 +94,7 @@ impl ExcessiveBools {
 
     fn check_fn_sig(&self, cx: &EarlyContext<'_>, fn_sig: &FnSig, span: Span) {
         match fn_sig.header.ext {
-            Extern::Implicit | Extern::Explicit(_) => return,
+            Extern::Implicit(_) | Extern::Explicit(_, _) => return,
             Extern::None => (),
         }
 

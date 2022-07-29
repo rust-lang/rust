@@ -4,7 +4,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
-use rustc_middle::ty::{ToPredicate, TypeFoldable};
+use rustc_middle::ty::{ToPredicate, TypeVisitable};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;

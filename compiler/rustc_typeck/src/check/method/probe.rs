@@ -21,7 +21,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::lev_distance::{
@@ -343,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'a, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
-        let param_env_and_self_ty = self.infcx.canonicalize_query(
+        let param_env_and_self_ty = self.canonicalize_query(
             ParamEnvAnd { param_env: self.param_env, value: self_ty },
             &mut orig_values,
         );
@@ -351,7 +351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let steps = if mode == Mode::MethodCall {
             self.tcx.method_autoderef_steps(param_env_and_self_ty)
         } else {
-            self.infcx.probe(|_| {
+            self.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
                 // our CanonicalQuery into a "trivial" QueryResponse. This
                 // is a bit inefficient, but I don't think that writing
@@ -711,7 +711,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
 
             let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-            let impl_ty = EarlyBinder(impl_ty).subst(self.tcx, impl_substs);
+            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
             debug!("impl_ty: {:?}", impl_ty);
 
@@ -1065,7 +1065,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let pick = self.pick_all_method(Some(&mut unstable_candidates));
 
         // In this case unstable picking is done by `pick_method`.
-        if !self.tcx.sess.opts.debugging_opts.pick_stable_methods_before_any_unstable {
+        if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
             return pick;
         }
 
@@ -1269,7 +1269,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        if !self.tcx.sess.opts.debugging_opts.pick_stable_methods_before_any_unstable {
+        if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
             return self.pick_method_with_unstable(self_ty);
         }
 
@@ -1809,9 +1809,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.erase_late_bound_regions(xform_fn_sig)
     }
 
-    /// Gets the type of an impl and generate substitutions with placeholders.
-    fn impl_ty_and_substs(&self, impl_def_id: DefId) -> (Ty<'tcx>, SubstsRef<'tcx>) {
-        (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
+    /// Gets the type of an impl and generate substitutions with inference vars.
+    fn impl_ty_and_substs(
+        &self,
+        impl_def_id: DefId,
+    ) -> (ty::EarlyBinder<Ty<'tcx>>, SubstsRef<'tcx>) {
+        (self.tcx.bound_type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
 
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {

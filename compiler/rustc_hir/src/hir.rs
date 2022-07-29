@@ -90,9 +90,6 @@ pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId, ParamName),
 
-    /// User wrote nothing (e.g., the lifetime in `&u32`).
-    Implicit,
-
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
     /// lifetime that they default to must appear elsewhere within the
@@ -110,8 +107,9 @@ pub enum LifetimeName {
     /// that was already reported.
     Error,
 
-    /// User wrote specifies `'_`.
-    Underscore,
+    /// User wrote an anonymous lifetime, either `'_` or nothing.
+    /// The semantics of this lifetime should be inferred by typechecking code.
+    Infer,
 
     /// User wrote `'static`.
     Static,
@@ -120,10 +118,8 @@ pub enum LifetimeName {
 impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
-            LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
-            | LifetimeName::Error => Ident::empty(),
-            LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
+            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Error => Ident::empty(),
+            LifetimeName::Infer => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
             LifetimeName::Param(_, param_name) => param_name.ident(),
         }
@@ -132,8 +128,7 @@ impl LifetimeName {
     pub fn is_anonymous(&self) -> bool {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
-            | LifetimeName::Underscore
+            | LifetimeName::Infer
             | LifetimeName::Param(_, ParamName::Fresh)
             | LifetimeName::Error => true,
             LifetimeName::Static | LifetimeName::Param(..) => false,
@@ -142,9 +137,7 @@ impl LifetimeName {
 
     pub fn is_elided(&self) -> bool {
         match self {
-            LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
-            | LifetimeName::Underscore => true,
+            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
 
             // It might seem surprising that `Fresh` counts as
             // *not* elided -- but this is because, as far as the code
@@ -922,6 +915,17 @@ pub struct Crate<'hir> {
     pub hir_hash: Fingerprint,
 }
 
+#[derive(Debug, HashStable_Generic)]
+pub struct Closure<'hir> {
+    pub binder: ClosureBinder,
+    pub capture_clause: CaptureBy,
+    pub bound_generic_params: &'hir [GenericParam<'hir>],
+    pub fn_decl: &'hir FnDecl<'hir>,
+    pub body: BodyId,
+    pub fn_decl_span: Span,
+    pub movability: Option<Movability>,
+}
+
 /// A block of statements `{ .. }`, which may have a label (in this case the
 /// `targeted_by_break` field will be `true`) and may be `unsafe` by means of
 /// the `rules` being anything but `DefaultBlock`.
@@ -941,6 +945,16 @@ pub struct Block<'hir> {
     /// break out of this block early.
     /// Used by `'label: {}` blocks and by `try {}` blocks.
     pub targeted_by_break: bool,
+}
+
+impl<'hir> Block<'hir> {
+    pub fn innermost_block(&self) -> &Block<'hir> {
+        let mut block = self;
+        while let Some(Expr { kind: ExprKind::Block(inner_block, _), .. }) = block.expr {
+            block = inner_block;
+        }
+        block
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -1316,6 +1330,8 @@ pub struct Local<'hir> {
     pub ty: Option<&'hir Ty<'hir>>,
     /// Initializer expression to set the value, if any.
     pub init: Option<&'hir Expr<'hir>>,
+    /// Else block for a `let...else` binding.
+    pub els: Option<&'hir Block<'hir>>,
     pub hir_id: HirId,
     pub span: Span,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
@@ -1438,18 +1454,8 @@ impl<'hir> Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(
-    Clone,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Hash,
-    HashStable_Generic,
-    Encodable,
-    Decodable,
-    Debug,
-    Copy
-)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Copy)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1481,18 +1487,8 @@ impl GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(
-    Clone,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Hash,
-    HashStable_Generic,
-    Encodable,
-    Decodable,
-    Debug,
-    Copy
-)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Hash, Debug, Copy)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,
@@ -1594,6 +1590,9 @@ impl fmt::Display for ConstContext {
         }
     }
 }
+
+// NOTE: `IntoDiagnosticArg` impl for `ConstContext` lives in `rustc_errors`
+// due to a cyclical dependency between hir that crate.
 
 /// A literal.
 pub type Lit = Spanned<LitKind>;
@@ -1828,6 +1827,14 @@ impl Expr<'_> {
             _ => false,
         }
     }
+
+    pub fn method_ident(&self) -> Option<Ident> {
+        match self.kind {
+            ExprKind::MethodCall(receiver_method, ..) => Some(receiver_method.ident),
+            ExprKind::Unary(_, expr) | ExprKind::AddrOf(.., expr) => expr.method_ident(),
+            _ => None,
+        }
+    }
 }
 
 /// Checks if the specified expression is a built-in range literal.
@@ -1930,14 +1937,7 @@ pub enum ExprKind<'hir> {
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<Movability>`.
-    Closure {
-        capture_clause: CaptureBy,
-        bound_generic_params: &'hir [GenericParam<'hir>],
-        fn_decl: &'hir FnDecl<'hir>,
-        body: BodyId,
-        fn_decl_span: Span,
-        movability: Option<Movability>,
-    },
+    Closure(&'hir Closure<'hir>),
     /// A block (e.g., `'label: { ... }`).
     Block(&'hir Block<'hir>, Option<Label>),
 
@@ -2715,6 +2715,17 @@ impl FnRetTy<'_> {
     }
 }
 
+/// Represents `for<...>` binder before a closure
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub enum ClosureBinder {
+    /// Binder is not specified.
+    Default,
+    /// Binder is specified.
+    ///
+    /// Span points to the whole `for<...>`.
+    For { span: Span },
+}
+
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct Mod<'hir> {
     pub spans: ModSpans,
@@ -3326,7 +3337,6 @@ pub enum Node<'hir> {
     Ty(&'hir Ty<'hir>),
     TypeBinding(&'hir TypeBinding<'hir>),
     TraitRef(&'hir TraitRef<'hir>),
-    Binding(&'hir Pat<'hir>),
     Pat(&'hir Pat<'hir>),
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
@@ -3378,7 +3388,6 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
-            | Node::Binding(..)
             | Node::Arm(..)
             | Node::Local(..)
             | Node::Crate(..)
@@ -3481,7 +3490,7 @@ impl<'hir> Node<'hir> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
-    rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
+    rustc_data_structures::static_assert_size!(super::Expr<'static>, 56);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);

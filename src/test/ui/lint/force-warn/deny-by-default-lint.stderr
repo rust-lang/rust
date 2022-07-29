@@ -2,9 +2,7 @@ warning: any use of this value will cause an error
   --> $DIR/deny-by-default-lint.rs:5:16
    |
 LL | const C: i32 = 1 / 0;
-   | ---------------^^^^^-
-   |                |
-   |                attempt to divide `1_i32` by zero
+   | ------------   ^^^^^ attempt to divide `1_i32` by zero
    |
    = note: requested on the command line with `--force-warn const-err`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -17,9 +15,7 @@ warning: any use of this value will cause an error
   --> $DIR/deny-by-default-lint.rs:5:16
    |
 LL | const C: i32 = 1 / 0;
-   | ---------------^^^^^-
-   |                |
-   |                attempt to divide `1_i32` by zero
+   | ------------   ^^^^^ attempt to divide `1_i32` by zero
    |
    = note: requested on the command line with `--force-warn const-err`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

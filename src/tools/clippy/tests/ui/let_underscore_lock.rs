@@ -13,6 +13,10 @@ fn main() {
     let _ = rw.try_read();
     let _ = rw.try_write();
 
+    // These shouldn't throw an error.
+    let _ = m;
+    let _ = rw;
+
     use parking_lot::{lock_api::RawMutex, Mutex, RwLock};
 
     let p_m: Mutex<()> = Mutex::const_new(RawMutex::INIT, ());
@@ -24,4 +28,9 @@ fn main() {
     let p_rw = RwLock::new(0);
     let _ = p_rw.read();
     let _ = p_rw.write();
+
+    // These shouldn't throw an error.
+    let _ = p_m;
+    let _ = p_m1;
+    let _ = p_rw;
 }

@@ -62,7 +62,6 @@ pub fn target() -> Target {
         vendor: "fortanix".into(),
         abi: "fortanix".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        executables: true,
         linker: Some("rust-lld".into()),
         max_atomic_width: Some(64),
         cpu: "x86-64".into(),

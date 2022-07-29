@@ -2,9 +2,7 @@ error: any use of this value will cause an error
   --> $DIR/unused-broken-const.rs:5:18
    |
 LL | const FOO: i32 = [][0];
-   | -----------------^^^^^-
-   |                  |
-   |                  index out of bounds: the length is 0 but the index is 0
+   | --------------   ^^^^^ index out of bounds: the length is 0 but the index is 0
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -17,9 +15,7 @@ error: any use of this value will cause an error
   --> $DIR/unused-broken-const.rs:5:18
    |
 LL | const FOO: i32 = [][0];
-   | -----------------^^^^^-
-   |                  |
-   |                  index out of bounds: the length is 0 but the index is 0
+   | --------------   ^^^^^ index out of bounds: the length is 0 but the index is 0
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

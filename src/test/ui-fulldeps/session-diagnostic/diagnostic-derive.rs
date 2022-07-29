@@ -1,6 +1,8 @@
 // check-fail
 // Tests error conditions for specifying diagnostics using #[derive(SessionDiagnostic)]
 
+// normalize-stderr-test "the following other types implement trait `IntoDiagnosticArg`:(?:.*\n){0,9}\s+and \d+ others" -> "normalized in stderr"
+
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since SessionDiagnostic is strictly internal to the compiler
 // the test is just ignored on stable and beta:
@@ -15,13 +17,13 @@ use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 extern crate rustc_macros;
-use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_macros::{SessionDiagnostic, LintDiagnostic, SessionSubdiagnostic};
 
 extern crate rustc_middle;
 use rustc_middle::ty::Ty;
 
 extern crate rustc_errors;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 
 extern crate rustc_session;
 
@@ -138,7 +140,7 @@ struct CodeNotProvided {}
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct MessageWrongType {
     #[primary_span]
-    //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     foo: String,
 }
 
@@ -163,7 +165,7 @@ struct ErrorWithField {
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct ErrorWithMessageAppliedToField {
     #[label(typeck::label)]
-    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     name: String,
 }
 
@@ -206,7 +208,7 @@ struct LabelOnSpan {
 #[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
 struct LabelOnNonSpan {
     #[label(typeck::label)]
-    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span`
+    //~^ ERROR the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
     id: u32,
 }
 
@@ -532,4 +534,35 @@ struct LabelWithTrailingList {
     #[label(typeck::label, foo("..."))]
     //~^ ERROR `#[label(...)]` is not a valid attribute
     span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound)]
+//~^ ERROR only `#[error(..)]` and `#[warning(..)]` are supported
+struct LintsBad {
+}
+
+#[derive(LintDiagnostic)]
+#[lint(typeck::ambiguous_lifetime_bound)]
+struct LintsGood {
+}
+
+#[derive(LintDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound)]
+//~^ ERROR only `#[lint(..)]` is supported
+struct ErrorsBad {
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+struct ErrorWithMultiSpan {
+    #[primary_span]
+    span: MultiSpan,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(typeck::ambiguous_lifetime_bound, code = "E0123")]
+#[warn_]
+struct ErrorWithWarn {
+    val: String,
 }

@@ -84,7 +84,7 @@ LL |     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:129:21
+  --> $DIR/needless_match.rs:130:21
    |
 LL |       let _: Simple = if let Simple::A = x {
    |  _____________________^
@@ -97,7 +97,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:168:26
+  --> $DIR/needless_match.rs:169:26
    |
 LL |           let _: Complex = match ce {
    |  __________________________^

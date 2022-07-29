@@ -7,7 +7,7 @@ LL |     fn ts_variant() {
 LL |         Self::TSVariant(());
    |         --------------- ^^ expected type parameter `T`, found `()`
    |         |
-   |         arguments to this function are incorrect
+   |         arguments to this enum variant are incorrect
    |
    = note: expected type parameter `T`
                    found unit type `()`
@@ -55,7 +55,7 @@ LL | impl<T> Enum<T> {
 LL |         Self::<()>::TSVariant(());
    |         --------------------- ^^ expected type parameter `T`, found `()`
    |         |
-   |         arguments to this function are incorrect
+   |         arguments to this enum variant are incorrect
    |
    = note: expected type parameter `T`
                    found unit type `()`

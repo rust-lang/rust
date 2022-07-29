@@ -1,6 +1,6 @@
 macro_rules! some_macro {
     ($other: expr) => ({
-        $other(None) //~ NOTE argument unexpected
+        $other(None) //~ NOTE argument of type `Option<_>` unexpected
     })
 }
 

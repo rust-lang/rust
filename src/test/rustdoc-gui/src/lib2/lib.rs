@@ -2,6 +2,9 @@
 
 #![feature(doc_cfg)]
 
+pub mod another_folder;
+pub mod another_mod;
+
 pub mod module {
     pub mod sub_module {
         pub mod sub_sub_module {

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{CaptureBy, Expr, ExprKind, PatKind};
+use rustc_hir::{CaptureBy, Closure, Expr, ExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -119,12 +119,12 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
             if method.ident.as_str() == "map_err" && args.len() == 2 {
                 // make sure the first argument is a closure, and grab the CaptureRef, BodyId, and fn_decl_span
                 // fields
-                if let ExprKind::Closure {
+                if let ExprKind::Closure(&Closure {
                     capture_clause,
                     body,
                     fn_decl_span,
                     ..
-                } = args[1].kind
+                }) = args[1].kind
                 {
                     // check if this is by Reference (meaning there's no move statement)
                     if capture_clause == CaptureBy::Ref {

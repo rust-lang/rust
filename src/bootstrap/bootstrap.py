@@ -15,44 +15,6 @@ import tempfile
 
 from time import time, sleep
 
-# Acquire a lock on the build directory to make sure that
-# we don't cause a race condition while building
-# Lock is created in `build_dir/lock.db`
-def acquire_lock(build_dir):
-    try:
-        import sqlite3
-
-        path = os.path.join(build_dir, "lock.db")
-        try:
-            con = sqlite3.Connection(path, timeout=0)
-            curs = con.cursor()
-            curs.execute("BEGIN EXCLUSIVE")
-            # The lock is released when the cursor is dropped
-            return curs
-        # If the database is busy then lock has already been acquired
-        # so we wait for the lock.
-        # We retry every quarter second so that execution is passed back to python
-        # so that it can handle signals
-        except sqlite3.OperationalError:
-            del con
-            del curs
-            print("Waiting for lock on build directory")
-            con = sqlite3.Connection(path, timeout=0.25)
-            curs = con.cursor()
-            while True:
-                try:
-                    curs.execute("BEGIN EXCLUSIVE")
-                    break
-                except sqlite3.OperationalError:
-                    pass
-                sleep(0.25)
-            return curs
-    except ImportError:
-        print("warning: sqlite3 not available in python, skipping build directory lock")
-        print("please file an issue on rust-lang/rust")
-        print("this is not a problem for non-concurrent x.py invocations")
-        return None
-
 def support_xz():
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -190,6 +152,10 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
+    # Ensure that the .exe is used on Windows just in case a Linux ELF has been
+    # compiled in the same directory.
+    if os.name == 'nt' and not args[0].endswith('.exe'):
+        args[0] += '.exe'
     # Use Popen here instead of call() as it apparently allows powershell on
     # Windows to not lock up waiting for input presumably.
     ret = subprocess.Popen(args, **kwargs)
@@ -866,6 +832,7 @@ def bootstrap(help_triggered):
 
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
+    parser.add_argument('--build-dir')
     parser.add_argument('--build')
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
@@ -915,7 +882,7 @@ def bootstrap(help_triggered):
 
     build.check_vendored_status()
 
-    build_dir = build.get_toml('build-dir', 'build') or 'build'
+    build_dir = args.build_dir or build.get_toml('build-dir', 'build') or 'build'
     build.build_dir = os.path.abspath(build_dir)
 
     with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
@@ -927,11 +894,8 @@ def bootstrap(help_triggered):
 
     build.build = args.build or build.build_triple()
 
-    # Acquire the lock before doing any build actions
-    # The lock is released when `lock` is dropped
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
-    lock = acquire_lock(build.build_dir)
 
     # Fetch/build the bootstrap
     build.download_toolchain()

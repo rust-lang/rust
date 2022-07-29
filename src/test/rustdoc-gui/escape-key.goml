@@ -3,6 +3,8 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 // First, we check that the search results are hidden when the Escape key is pressed.
 write: (".search-input", "test")
+// To be SURE that the search will be run.
+press-key: 'Enter'
 wait-for: "#search h1" // The search element is empty before the first search 
 // Check that the currently displayed element is search.
 wait-for: "#alternative-display #search"

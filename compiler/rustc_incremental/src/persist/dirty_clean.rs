@@ -134,7 +134,7 @@ struct Assertion {
 }
 
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
-    if !tcx.sess.opts.debugging_opts.query_dep_graph {
+    if !tcx.sess.opts.unstable_opts.query_dep_graph {
         return;
     }
 

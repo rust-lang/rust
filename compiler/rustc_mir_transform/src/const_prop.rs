@@ -19,19 +19,18 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, ConstKind, EarlyBinder, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable,
+    self, ConstKind, EarlyBinder, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
-use rustc_target::spec::abi::Abi;
+use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::spec::abi::Abi as CallAbi;
 use rustc_trait_selection::traits;
 
 use crate::MirPass;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, ConstValue, CtfeValidationMode, Frame,
-    ImmTy, Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
-    Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup,
-    StackPopUnwind,
+    ImmTy, Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemoryKind, OpTy, PlaceTy,
+    Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -60,11 +59,8 @@ macro_rules! throw_machine_stop_str {
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
-    fn is_enabled(&self, _sess: &rustc_session::Session) -> bool {
-        // FIXME(#70073): Unlike the other passes in "optimizations", this one emits errors, so it
-        // runs even when MIR optimizations are disabled. We should separate the lint out from the
-        // transform and move the lint as early in the pipeline as possible.
-        true
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 1
     }
 
     #[instrument(skip(self, tcx), level = "debug")]
@@ -159,18 +155,18 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     }
 }
 
-struct ConstPropMachine<'mir, 'tcx> {
+pub struct ConstPropMachine<'mir, 'tcx> {
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx>>,
     /// `OnlyInsideOwnBlock` locals that were written in the current block get erased at the end.
-    written_only_inside_own_block_locals: FxHashSet<Local>,
+    pub written_only_inside_own_block_locals: FxHashSet<Local>,
     /// Locals that need to be cleared after every block terminates.
-    only_propagate_inside_block_locals: BitSet<Local>,
-    can_const_prop: IndexVec<Local, ConstPropMode>,
+    pub only_propagate_inside_block_locals: BitSet<Local>,
+    pub can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
 impl ConstPropMachine<'_, '_> {
-    fn new(
+    pub fn new(
         only_propagate_inside_block_locals: BitSet<Local>,
         can_const_prop: IndexVec<Local, ConstPropMode>,
     ) -> Self {
@@ -199,7 +195,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
-        _abi: Abi,
+        _abi: CallAbi,
         _args: &[OpTy<'tcx>],
         _destination: &PlaceTy<'tcx>,
         _target: Option<BasicBlock>,
@@ -237,15 +233,19 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
-    fn access_local(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
+    fn access_local<'a>(
+        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
         local: Local,
-    ) -> InterpResult<'tcx, InterpOperand<Self::PointerTag>> {
+    ) -> InterpResult<'tcx, &'a interpret::Operand<Self::Provenance>> {
         let l = &frame.locals[local];
 
-        if l.value == LocalValue::Unallocated {
-            throw_machine_stop_str!("tried to access an unallocated local")
+        if matches!(
+            l.value,
+            LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit))
+        ) {
+            // For us "uninit" means "we don't know its value, might be initiailized or not".
+            // So stop here.
+            throw_machine_stop_str!("tried to access alocal with unknown value ")
         }
 
         l.access()
@@ -255,8 +255,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
         local: Local,
-    ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
-    {
+    ) -> InterpResult<'tcx, &'a mut interpret::Operand<Self::Provenance>> {
         if ecx.machine.can_const_prop[local] == ConstPropMode::NoPropagation {
             throw_machine_stop_str!("tried to write to a local that is marked as not propagatable")
         }
@@ -275,7 +274,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
-        alloc: ConstAllocation<'tcx, Self::PointerTag, Self::AllocExtra>,
+        alloc: ConstAllocation<'tcx, Self::Provenance, Self::AllocExtra>,
         _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
@@ -310,14 +309,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     #[inline(always)]
     fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
         &mut ecx.machine.stack
     }
 }
@@ -391,7 +390,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .layout_of(EarlyBinder(body.return_ty()).subst(tcx, substs))
             .ok()
             // Don't bother allocating memory for large values.
-            .filter(|ret_layout| ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT))
+            // I don't know how return types can seem to be unsized but this happens in the
+            // `type/type-unsatisfiable.rs` test.
+            .filter(|ret_layout| {
+                !ret_layout.is_unsized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
+            })
             .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
 
         let ret = ecx
@@ -436,8 +439,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local] =
-            LocalState { value: LocalValue::Unallocated, layout: Cell::new(None) };
+        ecx.frame_mut().locals[local] = LocalState {
+            value: LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit)),
+            layout: Cell::new(None),
+        };
     }
 
     fn use_ecx<F, T>(&mut self, f: F) -> Option<T>
@@ -511,7 +516,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let l = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
-            let r = r?;
+            let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
             let left_ty = left.ty(self.local_decls, self.tcx);
@@ -616,6 +621,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // There's no other checking to do at this time.
             Rvalue::Aggregate(..)
             | Rvalue::Use(..)
+            | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Len(..)
             | Rvalue::Cast(..)
@@ -653,6 +659,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     (Err(e), Err(_)) => return Err(e),
                     (Ok(_), Ok(_)) => return this.ecx.eval_rvalue_into_place(rvalue, place),
                 };
+
+                if !matches!(const_arg.layout.abi, abi::Abi::Scalar(..)) {
+                    // We cannot handle Scalar Pair stuff.
+                    return this.ecx.eval_rvalue_into_place(rvalue, place);
+                }
 
                 let arg_value = const_arg.to_scalar()?.to_bits(const_arg.layout.size)?;
                 let dest = this.ecx.eval_place(place)?;
@@ -786,12 +797,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns `true` if and only if this `op` should be const-propagated into.
     fn should_const_prop(&mut self, op: &OpTy<'tcx>) -> bool {
-        let mir_opt_level = self.tcx.sess.mir_opt_level();
-
-        if mir_opt_level == 0 {
-            return false;
-        }
-
         if !self.tcx.consider_optimizing(|| format!("ConstantPropagation - OpTy: {:?}", op)) {
             return false;
         }
@@ -811,7 +816,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 /// The mode that `ConstProp` is allowed to run in for a given `Local`.
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum ConstPropMode {
+pub enum ConstPropMode {
     /// The `Local` can be propagated into and reads of this `Local` can also be propagated.
     FullConstProp,
     /// The `Local` can only be propagated into and from its own block.
@@ -823,7 +828,7 @@ enum ConstPropMode {
     NoPropagation,
 }
 
-struct CanConstProp {
+pub struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
     found_assignment: BitSet<Local>,
@@ -833,7 +838,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
-    fn check<'tcx>(
+    pub fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,
@@ -882,7 +887,7 @@ impl CanConstProp {
 }
 
 impl Visitor<'_> for CanConstProp {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
         match context {
             // Projections are fine, because `&mut foo.x` will be caught by
@@ -1042,7 +1047,9 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     let frame = self.ecx.frame_mut();
                     frame.locals[local].value =
                         if let StatementKind::StorageLive(_) = statement.kind {
-                            LocalValue::Unallocated
+                            LocalValue::Live(interpret::Operand::Immediate(
+                                interpret::Immediate::Uninit,
+                            ))
                         } else {
                             LocalValue::Dead
                         };

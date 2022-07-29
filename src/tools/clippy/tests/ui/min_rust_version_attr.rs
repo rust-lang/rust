@@ -155,6 +155,11 @@ fn cast_abs_to_unsigned() {
     assert_eq!(10u32, x.abs() as u32);
 }
 
+fn manual_rem_euclid() {
+    let x: i32 = 10;
+    let _: i32 = ((x % 4) + 4) % 4;
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -174,6 +179,7 @@ fn main() {
     int_from_bool();
     err_expect();
     cast_abs_to_unsigned();
+    manual_rem_euclid();
 }
 
 mod just_under_msrv {
@@ -209,5 +215,14 @@ mod just_above_msrv {
         if s.starts_with("hello, ") {
             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
         }
+    }
+}
+
+mod const_rem_euclid {
+    #![feature(custom_inner_attributes)]
+    #![clippy::msrv = "1.50.0"]
+
+    pub const fn const_rem_euclid_4(num: i32) -> i32 {
+        ((num % 4) + 4) % 4
     }
 }

@@ -11,7 +11,7 @@ pub struct LowerSliceLenCalls;
 
 impl<'tcx> MirPass<'tcx> for LowerSliceLenCalls {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.opts.mir_opt_level() > 0
+        sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -26,11 +26,11 @@ pub fn lower_slice_len_calls<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         return;
     };
 
-    let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-
+    // The one successor remains unchanged, so no need to invalidate
+    let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
     for block in basic_blocks {
         // lower `<[_]>::len` calls
-        lower_slice_len_call(tcx, block, &*local_decls, slice_len_fn_item_def_id);
+        lower_slice_len_call(tcx, block, &body.local_decls, slice_len_fn_item_def_id);
     }
 }
 

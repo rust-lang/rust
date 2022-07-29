@@ -8,11 +8,11 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Attribute, HasAttrs, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::BuiltinLintDiagnostics;
+use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session, SessionDiagnostic};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -985,9 +985,11 @@ pub struct ExtCtxt<'a> {
     /// Error recovery mode entered when expansion is stuck
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
-    pub expansions: FxHashMap<Span, Vec<String>>,
+    pub expansions: FxIndexMap<Span, Vec<String>>,
     /// Used for running pre-expansion lints on freshly loaded modules.
     pub(super) lint_store: LintStoreExpandDyn<'a>,
+    /// Used for storing lints generated during expansion, like `NAMED_ARGUMENTS_USED_POSITIONALLY`
+    pub buffered_early_lint: Vec<BufferedEarlyLint>,
     /// When we 'expand' an inert attribute, we leave it
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
@@ -1018,8 +1020,9 @@ impl<'a> ExtCtxt<'a> {
                 is_trailing_mac: false,
             },
             force_mode: false,
-            expansions: FxHashMap::default(),
+            expansions: FxIndexMap::default(),
             expanded_inert_attrs: MarkedAttrs::new(),
+            buffered_early_lint: vec![],
         }
     }
 
@@ -1077,6 +1080,7 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
+    #[rustc_lint_diagnostics]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -1101,9 +1105,11 @@ impl<'a> ExtCtxt<'a> {
     ///
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
+    #[rustc_lint_diagnostics]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.sess.parse_sess.span_diagnostic.span_err(sp, msg);
     }
+    #[rustc_lint_diagnostics]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.sess.parse_sess.span_diagnostic.span_warn(sp, msg);
     }

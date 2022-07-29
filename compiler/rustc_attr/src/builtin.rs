@@ -135,9 +135,42 @@ impl ConstStability {
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
-    // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol },
+    /// `#[unstable]`
+    Unstable {
+        /// Reason for the current stability level.
+        reason: UnstableReason,
+        /// Relevant `rust-lang/rust` issue.
+        issue: Option<NonZeroU32>,
+        is_soft: bool,
+        /// If part of a feature is stabilized and a new feature is added for the remaining parts,
+        /// then the `implied_by` attribute is used to indicate which now-stable feature previously
+        /// contained a item.
+        ///
+        /// ```pseudo-Rust
+        /// #[unstable(feature = "foo", issue = "...")]
+        /// fn foo() {}
+        /// #[unstable(feature = "foo", issue = "...")]
+        /// fn foobar() {}
+        /// ```
+        ///
+        /// ...becomes...
+        ///
+        /// ```pseudo-Rust
+        /// #[stable(feature = "foo", since = "1.XX.X")]
+        /// fn foo() {}
+        /// #[unstable(feature = "foobar", issue = "...", implied_by = "foo")]
+        /// fn foobar() {}
+        /// ```
+        implied_by: Option<Symbol>,
+    },
+    /// `#[stable]`
+    Stable {
+        /// Rust release which stabilized this feature.
+        since: Symbol,
+        /// Is this item allowed to be referred to on stable, despite being contained in unstable
+        /// modules?
+        allowed_through_unstable_modules: bool,
+    },
 }
 
 impl StabilityLevel {
@@ -146,6 +179,32 @@ impl StabilityLevel {
     }
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
+    }
+}
+
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub enum UnstableReason {
+    None,
+    Default,
+    Some(Symbol),
+}
+
+impl UnstableReason {
+    fn from_opt_reason(reason: Option<Symbol>) -> Self {
+        // UnstableReason::Default constructed manually
+        match reason {
+            Some(r) => Self::Some(r),
+            None => Self::None,
+        }
+    }
+
+    pub fn to_opt_reason(&self) -> Option<Symbol> {
+        match self {
+            Self::None => None,
+            Self::Default => Some(sym::unstable_location_reason_default),
+            Self::Some(r) => Some(*r),
+        }
     }
 }
 
@@ -172,6 +231,7 @@ where
     let mut stab: Option<(Stability, Span)> = None;
     let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
+    let mut allowed_through_unstable_modules = false;
 
     let diagnostic = &sess.parse_sess.span_diagnostic;
 
@@ -182,6 +242,7 @@ where
             sym::unstable,
             sym::stable,
             sym::rustc_promotable,
+            sym::rustc_allowed_through_unstable_modules,
         ]
         .iter()
         .any(|&s| attr.has_name(s))
@@ -193,6 +254,8 @@ where
 
         if attr.has_name(sym::rustc_promotable) {
             promotable = true;
+        } else if attr.has_name(sym::rustc_allowed_through_unstable_modules) {
+            allowed_through_unstable_modules = true;
         }
         // attributes with data
         else if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta {
@@ -239,6 +302,7 @@ where
                     let mut issue = None;
                     let mut issue_num = None;
                     let mut is_soft = false;
+                    let mut implied_by = None;
                     for meta in metas {
                         let Some(mi) = meta.meta_item() else {
                             handle_errors(
@@ -304,6 +368,11 @@ where
                                 }
                                 is_soft = true;
                             }
+                            sym::implied_by => {
+                                if !get(mi, &mut implied_by) {
+                                    continue 'outer;
+                                }
+                            }
                             _ => {
                                 handle_errors(
                                     &sess.parse_sess,
@@ -328,7 +397,12 @@ where
                                 );
                                 continue;
                             }
-                            let level = Unstable { reason, issue: issue_num, is_soft };
+                            let level = Unstable {
+                                reason: UnstableReason::from_opt_reason(reason),
+                                issue: issue_num,
+                                is_soft,
+                                implied_by,
+                            };
                             if sym::unstable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
                             } else {
@@ -387,7 +461,7 @@ where
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
                                             pprust::path_to_string(&mi.path),
-                                            &["since", "note"],
+                                            &["feature", "since"],
                                         ),
                                     );
                                     continue 'outer;
@@ -406,7 +480,7 @@ where
 
                     match (feature, since) {
                         (Some(feature), Some(since)) => {
-                            let level = Stable { since };
+                            let level = Stable { since, allowed_through_unstable_modules: false };
                             if sym::stable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
                             } else {
@@ -442,6 +516,27 @@ where
                 E0717,
                 "`rustc_promotable` attribute must be paired with either a `rustc_const_unstable` \
                 or a `rustc_const_stable` attribute"
+            )
+            .emit();
+        }
+    }
+
+    if allowed_through_unstable_modules {
+        if let Some((
+            Stability {
+                level: StabilityLevel::Stable { ref mut allowed_through_unstable_modules, .. },
+                ..
+            },
+            _,
+        )) = stab
+        {
+            *allowed_through_unstable_modules = true;
+        } else {
+            struct_span_err!(
+                diagnostic,
+                item_sp,
+                E0789,
+                "`rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute"
             )
             .emit();
         }
@@ -856,7 +951,6 @@ pub enum ReprAttr {
     ReprSimd,
     ReprTransparent,
     ReprAlign(u32),
-    ReprNoNiche,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -904,7 +998,6 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     sym::packed => Some(ReprPacked(1)),
                     sym::simd => Some(ReprSimd),
                     sym::transparent => Some(ReprTransparent),
-                    sym::no_niche => Some(ReprNoNiche),
                     sym::align => {
                         let mut err = struct_span_err!(
                             diagnostic,
@@ -943,7 +1036,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         Ok(literal) => acc.push(ReprPacked(literal)),
                         Err(message) => literal_error = Some(message),
                     };
-                } else if matches!(name, sym::C | sym::simd | sym::transparent | sym::no_niche)
+                } else if matches!(name, sym::C | sym::simd | sym::transparent)
                     || int_type_of_word(name).is_some()
                 {
                     recognised = true;
@@ -1001,7 +1094,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     } else {
                         if matches!(
                             meta_item.name_or_empty(),
-                            sym::C | sym::simd | sym::transparent | sym::no_niche
+                            sym::C | sym::simd | sym::transparent
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
@@ -1039,7 +1132,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         .emit();
                     } else if matches!(
                         meta_item.name_or_empty(),
-                        sym::C | sym::simd | sym::transparent | sym::no_niche
+                        sym::C | sym::simd | sym::transparent
                     ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                     {
                         recognised = true;

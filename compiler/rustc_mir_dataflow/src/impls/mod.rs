@@ -317,7 +317,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             Self::update_bits(trans, path, s)
         });
 
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -340,7 +340,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             Self::update_bits(trans, path, s)
         });
 
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -379,7 +379,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 
@@ -495,7 +495,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
-        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+        if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
         }
 

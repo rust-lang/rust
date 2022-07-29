@@ -2,7 +2,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-86162-1.rs:7:9
    |
 LL |     foo(gen()); //<- Do not suggest `foo::<impl Clone>()`!
-   |         ^^^ cannot infer type of the type parameter `T` declared on the function `gen`
+   |     --- ^^^ cannot infer type of the type parameter `T` declared on the function `gen`
+   |     |
+   |     type must be known at this point
    |
    = note: cannot satisfy `_: Clone`
 note: required by a bound in `foo`

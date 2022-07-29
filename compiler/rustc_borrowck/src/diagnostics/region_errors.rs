@@ -1,6 +1,6 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -19,11 +19,11 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::symbol::sym;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
 use crate::borrowck_errors;
+use crate::session_diagnostics::GenericDoesNotLiveLongEnough;
 
 use super::{OutlivesSuggestionBuilder, RegionName};
 use crate::region_infer::BlameConstraint;
@@ -78,6 +78,8 @@ pub(crate) enum RegionErrorKind<'tcx> {
         span: Span,
         /// The hidden type.
         hidden_ty: Ty<'tcx>,
+        /// The opaque type.
+        key: ty::OpaqueTypeKey<'tcx>,
         /// The unexpected region.
         member_region: ty::Region<'tcx>,
     },
@@ -180,11 +182,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
                         let origin = RelateParamBound(type_test_span, generic_ty, None);
                         self.buffer_error(self.infcx.construct_generic_bound_failure(
+                            self.body.source.def_id().expect_local(),
                             type_test_span,
                             Some(origin),
                             type_test.generic_kind,
                             lower_bound_region,
-                            self.body.source.def_id().as_local(),
                         ));
                     } else {
                         // FIXME. We should handle this case better. It
@@ -196,21 +198,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        self.buffer_error(self.infcx.tcx.sess.struct_span_err(
-                            type_test_span,
-                            &format!("`{}` does not live long enough", type_test.generic_kind),
+                        self.buffer_error(self.infcx.tcx.sess.create_err(
+                            GenericDoesNotLiveLongEnough {
+                                kind: type_test.generic_kind.to_string(),
+                                span: type_test_span,
+                            },
                         ));
                     }
                 }
 
-                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
+                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, key, member_region } => {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
+                    let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     self.buffer_error(unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
                         named_region,
+                        named_key,
                     ));
                 }
 
@@ -755,7 +761,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 return;
             };
 
-            let lifetime = if f.has_name() { fr_name.to_string() } else { "'_".to_string() };
+            let lifetime = if f.has_name() { fr_name.name } else { kw::UnderscoreLifetime };
 
             let arg = match param.param.pat.simple_ident() {
                 Some(simple_ident) => format!("argument `{}`", simple_ident),
@@ -767,7 +773,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.infcx.tcx,
                 diag,
                 fn_returns,
-                lifetime,
+                lifetime.to_string(),
                 Some(arg),
                 captures,
                 Some((param.param_ty_span, param.param_ty.to_string())),
@@ -848,13 +854,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span.push_span_label(
-                    *span,
-                    "this has an implicit `'static` lifetime requirement".to_string(),
-                );
+                multi_span
+                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement".to_string(),
+                    "calling this method introduces the `impl`'s 'static` requirement",
                 );
                 err.span_note(multi_span, "the used `impl` has a `'static` requirement");
                 err.span_suggestion_verbose(

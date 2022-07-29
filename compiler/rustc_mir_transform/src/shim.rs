@@ -32,7 +32,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) => bug!("item {:?} passed to make_shim", instance),
-        ty::InstanceDef::VtableShim(def_id) => {
+        ty::InstanceDef::VTableShim(def_id) => {
             build_call_shim(tcx, instance, Some(Adjustment::Deref), CallKind::Direct(def_id))
         }
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
@@ -113,7 +113,7 @@ enum Adjustment {
     /// We get passed `&[mut] self` and call the target with `*self`.
     ///
     /// This either copies `self` (if `Self: Copy`, eg. for function items), or moves out of it
-    /// (for `VtableShim`, which effectively is passed `&own Self`).
+    /// (for `VTableShim`, which effectively is passed `&own Self`).
     Deref,
 
     /// We get passed `self: Self` and call the target with `&mut self`.
@@ -176,7 +176,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     if ty.is_some() {
         // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::from(Local::new(1 + 0));
-        if tcx.sess.opts.debugging_opts.mir_emit_retag {
+        if tcx.sess.opts.unstable_opts.mir_emit_retag {
             // Function arguments should be retagged, and we make this one raw.
             body.basic_blocks_mut()[START_BLOCK].statements.insert(
                 0,
@@ -537,13 +537,12 @@ fn build_call_shim<'tcx>(
     };
 
     let def_id = instance.def_id();
-    let sig = tcx.fn_sig(def_id);
-    let mut sig = tcx.erase_late_bound_regions(sig);
+    let sig = tcx.bound_fn_sig(def_id);
+    let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
-    if let Some(sig_substs) = sig_substs {
-        sig = EarlyBinder(sig).subst(tcx, sig_substs);
-    }
+    let mut sig =
+        if let Some(sig_substs) = sig_substs { sig.subst(tcx, sig_substs) } else { sig.0 };
 
     if let CallKind::Indirect(fnty) = call_kind {
         // `sig` determines our local decls, and thus the callee type in the `Call` terminator. This
@@ -570,7 +569,7 @@ fn build_call_shim<'tcx>(
 
     // FIXME(eddyb) avoid having this snippet both here and in
     // `Instance::fn_sig` (introduce `InstanceDef::fn_sig`?).
-    if let ty::InstanceDef::VtableShim(..) = instance {
+    if let ty::InstanceDef::VTableShim(..) = instance {
         // Modify fn(self, ...) to fn(self: *mut Self, ...)
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];

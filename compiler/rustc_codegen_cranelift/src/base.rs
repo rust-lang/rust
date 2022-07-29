@@ -175,10 +175,37 @@ fn compile_fn<'tcx>(
         );
     });
 
+    #[cfg(any())] // This is never true
+    let _clif_guard = {
+        use std::fmt::Write;
+
+        let func_clone = context.func.clone();
+        let clif_comments_clone = clif_comments.clone();
+        let mut clif = String::new();
+        for flag in module.isa().flags().iter() {
+            writeln!(clif, "set {}", flag).unwrap();
+        }
+        write!(clif, "target {}", module.isa().triple().architecture.to_string()).unwrap();
+        for isa_flag in module.isa().isa_flags().iter() {
+            write!(clif, " {}", isa_flag).unwrap();
+        }
+        writeln!(clif, "\n").unwrap();
+        crate::PrintOnPanic(move || {
+            let mut clif = clif.clone();
+            ::cranelift_codegen::write::decorate_function(
+                &mut &clif_comments_clone,
+                &mut clif,
+                &func_clone,
+            )
+            .unwrap();
+            clif
+        })
+    };
+
     // Define function
     tcx.sess.time("define function", || {
         context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
-        module.define_function(func_id, context).unwrap()
+        module.define_function(func_id, context).unwrap();
     });
 
     // Write optimized function to file for debugging
@@ -503,6 +530,11 @@ fn codegen_stmt<'tcx>(
                     let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
+                Rvalue::CopyForDeref(place) => {
+                    let cplace = codegen_place(fx, place);
+                    let val = cplace.to_cvalue(fx);
+                    lval.write_cvalue(fx, val)
+                }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
                     let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());
@@ -635,29 +667,6 @@ fn codegen_stmt<'tcx>(
                             let (ptr, _extra) = operand.load_scalar_pair(fx);
                             lval.write_cvalue(fx, CValue::by_val(ptr, dest_layout))
                         }
-                    } else if let ty::Adt(adt_def, _substs) = from_ty.kind() {
-                        // enum -> discriminant value
-                        assert!(adt_def.is_enum());
-                        match to_ty.kind() {
-                            ty::Uint(_) | ty::Int(_) => {}
-                            _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
-                        }
-                        let to_clif_ty = fx.clif_type(to_ty).unwrap();
-
-                        let discriminant = crate::discriminant::codegen_get_discriminant(
-                            fx,
-                            operand,
-                            fx.layout_of(operand.layout().ty.discriminant_ty(fx.tcx)),
-                        )
-                        .load_scalar(fx);
-
-                        let res = crate::cast::clif_intcast(
-                            fx,
-                            discriminant,
-                            to_clif_ty,
-                            to_ty.is_signed(),
-                        );
-                        lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
                         let from = operand.load_scalar(fx);
@@ -686,6 +695,7 @@ fn codegen_stmt<'tcx>(
                                 substs,
                                 ty::ClosureKind::FnOnce,
                             )
+                            .expect("failed to normalize and resolve closure during codegen")
                             .polymorphize(fx.tcx);
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
@@ -832,15 +842,7 @@ pub(crate) fn codegen_place<'tcx>(
     for elem in place.projection {
         match elem {
             PlaceElem::Deref => {
-                if cplace.layout().ty.is_box() {
-                    cplace = cplace
-                        .place_field(fx, Field::new(0)) // Box<T> -> Unique<T>
-                        .place_field(fx, Field::new(0)) // Unique<T> -> NonNull<T>
-                        .place_field(fx, Field::new(0)) // NonNull<T> -> *mut T
-                        .place_deref(fx);
-                } else {
-                    cplace = cplace.place_deref(fx);
-                }
+                cplace = cplace.place_deref(fx);
             }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);

@@ -97,4 +97,23 @@ fn main() {
             return;
         },
     }
+
+    // lint here
+    use std::convert::Infallible;
+    match Result::<i32, Infallible>::Ok(1) {
+        Ok(a) => println!("${:?}", a),
+        Err(_) => {
+            println!("else block");
+            return;
+        }
+    }
+
+    use std::borrow::Cow;
+    match Cow::from("moo") {
+        Cow::Owned(a) => println!("${:?}", a),
+        Cow::Borrowed(_) => {
+            println!("else block");
+            return;
+        }
+    }
 }

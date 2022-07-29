@@ -9,6 +9,11 @@ const darkThemes = ["dark", "ayu"];
 window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
+// WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+// If you update this line, then you also need to update the two media queries with the same
+// warning in rustdoc.css
+window.RUSTDOC_MOBILE_BREAKPOINT = 701;
+
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
     if (settingsElement === null) {

@@ -1,8 +1,8 @@
-error[E0283]: type annotations needed
+error[E0283]: type annotations needed: cannot satisfy `&'a (): Foo`
   --> $DIR/issue-34979.rs:6:13
    |
 LL |     &'a (): Foo,
-   |             ^^^ cannot infer type for reference `&'a ()`
+   |             ^^^
    |
    = note: cannot satisfy `&'a (): Foo`
 

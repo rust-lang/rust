@@ -21,7 +21,7 @@ LL |     f(x);
    |     inside `X` at $DIR/recursive.rs:9:15
 ...
 LL | const X: () = f(1);
-   | -------------------
+   | -----------
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -42,7 +42,7 @@ LL |     f(x);
    |     inside `X` at $DIR/recursive.rs:9:15
 ...
 LL | const X: () = f(1);
-   | -------------------
+   | -----------
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

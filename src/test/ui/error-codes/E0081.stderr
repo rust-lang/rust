@@ -1,48 +1,41 @@
 error[E0081]: discriminant value `3` assigned more than once
   --> $DIR/E0081.rs:1:1
    |
-LL | / enum Enum {
-LL | |
-LL | |     P = 3,
-   | |         - first assignment of `3`
-LL | |
-LL | |     X = 3,
-   | |         - second assignment of `3`
-LL | |
-LL | |     Y = 5
-LL | | }
-   | |_^
+LL | enum Enum {
+   | ^^^^^^^^^
+LL |
+LL |     P = 3,
+   |         - first assignment of `3`
+LL |
+LL |     X = 3,
+   |         - second assignment of `3`
 
 error[E0081]: discriminant value `1` assigned more than once
   --> $DIR/E0081.rs:11:1
    |
-LL | / enum EnumOverflowRepr {
-LL | |
-LL | |     P = 257,
-   | |         --- first assignment of `1` (overflowed from `257`)
-LL | |
-LL | |     X = 513,
-   | |         --- second assignment of `1` (overflowed from `513`)
-LL | |
-LL | | }
-   | |_^
+LL | enum EnumOverflowRepr {
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     P = 257,
+   |         --- first assignment of `1` (overflowed from `257`)
+LL |
+LL |     X = 513,
+   |         --- second assignment of `1` (overflowed from `513`)
 
 error[E0081]: discriminant value `-1` assigned more than once
   --> $DIR/E0081.rs:20:1
    |
-LL | / enum NegDisEnum {
-LL | |
-LL | |     First = -1,
-   | |             -- first assignment of `-1`
-LL | |
-LL | |     Second = -2,
-   | |     ----------- assigned discriminant for `Last` was incremented from this discriminant
-LL | |
-LL | |     Last,
-   | |     ---- second assignment of `-1`
-LL | |
-LL | | }
-   | |_^
+LL | enum NegDisEnum {
+   | ^^^^^^^^^^^^^^^
+LL |
+LL |     First = -1,
+   |             -- first assignment of `-1`
+LL |
+LL |     Second = -2,
+   |     ----------- assigned discriminant for `Last` was incremented from this discriminant
+LL |
+LL |     Last,
+   |     ---- second assignment of `-1`
 
 error: aborting due to 3 previous errors
 

@@ -264,5 +264,29 @@ error: called `is_some()` after searching an `Iterator` with `find`
 LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|fp| test_u32_2(*fp.field))`
 
-error: aborting due to 43 previous errors
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:234:18
+   |
+LL |         v.iter().find(|x: &&u32| func(x)).is_some()
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x: &u32| func(&x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:243:26
+   |
+LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref_impl(x)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x: &u32| arg_no_deref_impl(&x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:246:26
+   |
+LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref_dyn(x)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x: &u32| arg_no_deref_dyn(&x))`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_some.rs:249:26
+   |
+LL |         let _ = v.iter().find(|x: &&u32| (*arg_no_deref_dyn)(x)).is_some();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x: &u32| (*arg_no_deref_dyn)(&x))`
+
+error: aborting due to 47 previous errors
 

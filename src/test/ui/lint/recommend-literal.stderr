@@ -16,8 +16,32 @@ LL |     let y: long = 74802374902374923;
    |            not found in this scope
    |            help: perhaps you intended to use this type: `i64`
 
+error[E0412]: cannot find type `Boolean` in this scope
+  --> $DIR/recommend-literal.rs:10:13
+   |
+LL |     let v1: Boolean = true;
+   |             ^^^^^^^
+   |             |
+   |             not found in this scope
+   |             help: perhaps you intended to use this type: `bool`
+
+error[E0412]: cannot find type `Bool` in this scope
+  --> $DIR/recommend-literal.rs:13:13
+   |
+LL |     let v2: Bool = true;
+   |             ^^^^
+   |
+help: a builtin type with a similar name exists
+   |
+LL |     let v2: bool = true;
+   |             ~~~~
+help: perhaps you intended to use this type
+   |
+LL |     let v2: bool = true;
+   |             ~~~~
+
 error[E0412]: cannot find type `boolean` in this scope
-  --> $DIR/recommend-literal.rs:12:9
+  --> $DIR/recommend-literal.rs:19:9
    |
 LL | fn z(a: boolean) {
    |         ^^^^^^^
@@ -26,7 +50,7 @@ LL | fn z(a: boolean) {
    |         help: perhaps you intended to use this type: `bool`
 
 error[E0412]: cannot find type `byte` in this scope
-  --> $DIR/recommend-literal.rs:17:11
+  --> $DIR/recommend-literal.rs:24:11
    |
 LL | fn a() -> byte {
    |           ^^^^
@@ -35,7 +59,7 @@ LL | fn a() -> byte {
    |           help: perhaps you intended to use this type: `u8`
 
 error[E0412]: cannot find type `float` in this scope
-  --> $DIR/recommend-literal.rs:24:12
+  --> $DIR/recommend-literal.rs:31:12
    |
 LL |     width: float,
    |            ^^^^^
@@ -44,7 +68,7 @@ LL |     width: float,
    |            help: perhaps you intended to use this type: `f32`
 
 error[E0412]: cannot find type `int` in this scope
-  --> $DIR/recommend-literal.rs:27:19
+  --> $DIR/recommend-literal.rs:34:19
    |
 LL |     depth: Option<int>,
    |                   ^^^ not found in this scope
@@ -59,7 +83,7 @@ LL | struct Data<int> {
    |            +++++
 
 error[E0412]: cannot find type `short` in this scope
-  --> $DIR/recommend-literal.rs:33:16
+  --> $DIR/recommend-literal.rs:40:16
    |
 LL | impl Stuff for short {}
    |                ^^^^^
@@ -67,6 +91,6 @@ LL | impl Stuff for short {}
    |                not found in this scope
    |                help: perhaps you intended to use this type: `i16`
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0412`.

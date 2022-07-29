@@ -892,7 +892,16 @@ impl char {
     ///
     /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
-    /// Database][ucd] [`UnicodeData.txt`].
+    /// Database][ucd] [`UnicodeData.txt`]. Note that this means ideographic numbers like '三'
+    /// are considered alphabetic, not numeric. Please consider to use `is_ascii_digit` or `is_digit`.
+    ///
+    /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
+    /// If you want everything including characters with overlapping purposes then you might want to use
+    /// a unicode or language-processing library that exposes the appropriate character properties instead
+    /// of looking at the unicode categories.
+    ///
+    /// If you want to parse ASCII decimal digits (0-9) or ASCII base-N, use
+    /// `is_ascii_digit` or `is_digit` instead.
     ///
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     /// [ucd]: https://www.unicode.org/reports/tr44/
@@ -911,6 +920,7 @@ impl char {
     /// assert!(!'K'.is_numeric());
     /// assert!(!'و'.is_numeric());
     /// assert!(!'藏'.is_numeric());
+    /// assert!(!'三'.is_numeric());
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]

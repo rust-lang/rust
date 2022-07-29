@@ -1,4 +1,4 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Trait<'d, 'e>` captures lifetime that does not appear in bounds
   --> $DIR/ordinary-bounds-unrelated.rs:28:33
    |
 LL | fn upper_bounds<'a, 'b, 'c, 'd, 'e>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'d, 'e>

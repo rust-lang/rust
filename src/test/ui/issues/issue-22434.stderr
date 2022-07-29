@@ -2,7 +2,7 @@ error[E0191]: the value of the associated type `A` (from trait `Foo`) must be sp
   --> $DIR/issue-22434.rs:5:23
    |
 LL |     type A;
-   |     ------- `A` defined here
+   |     ------ `A` defined here
 ...
 LL | type I<'a> = &'a (dyn Foo + 'a);
    |                       ^^^ help: specify the associated type: `Foo<A = Type>`

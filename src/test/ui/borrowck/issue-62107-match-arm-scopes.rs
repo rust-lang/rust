@@ -1,7 +1,7 @@
 fn main() {
     let e: i32;
     match e {
-        //~^ ERROR use of possibly-uninitialized variable
+        //~^ ERROR E0381
         ref u if true => {}
         ref v if true => {
             let tx = 0;

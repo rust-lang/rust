@@ -6,6 +6,7 @@
 #![feature(associated_type_bounds)]
 #![feature(strict_provenance)]
 #![feature(int_roundings)]
+#![feature(if_let_guard)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
@@ -62,9 +63,6 @@ pub struct ModuleCodegen<M> {
     pub module_llvm: M,
     pub kind: ModuleKind,
 }
-
-// FIXME(eddyb) maybe include the crate name in this?
-pub const METADATA_FILENAME: &str = "lib.rmeta";
 
 impl<M> ModuleCodegen<M> {
     pub fn into_compiled_module(

@@ -16,7 +16,7 @@ note: `V` could also refer to the associated type defined here
   --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:26:5
    |
 LL |     type V;
-   |     ^^^^^^^
+   |     ^^^^^^
 
 error: ambiguous associated item
   --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:32:15
@@ -35,7 +35,7 @@ note: `V` could also refer to the associated type defined here
   --> $DIR/enum-variant-priority-lint-ambiguous_associated_items.rs:26:5
    |
 LL |     type V;
-   |     ^^^^^^^
+   |     ^^^^^^
 
 error: aborting due to 2 previous errors
 

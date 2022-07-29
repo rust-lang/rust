@@ -1,3 +1,4 @@
+#![feature(lint_reasons)]
 #![warn(clippy::manual_non_exhaustive)]
 #![allow(unused)]
 
@@ -73,6 +74,14 @@ fn foo(x: &mut UsedHidden) {
     if matches!(*x, UsedHidden::B) {
         *x = UsedHidden::_A;
     }
+}
+
+#[expect(clippy::manual_non_exhaustive)]
+enum ExpectLint {
+    A,
+    B,
+    #[doc(hidden)]
+    _C,
 }
 
 fn main() {}

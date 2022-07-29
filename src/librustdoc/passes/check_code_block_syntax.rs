@@ -1,7 +1,8 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler, LazyFallbackBundle};
-use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_errors::{
+    emitter::Emitter, Applicability, Diagnostic, Handler, LazyFallbackBundle, LintDiagnosticBuilder,
+};
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
@@ -52,7 +53,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             None,
             None,
         );
-        let expn_id = LocalExpnId::fresh(expn_data, self.cx.tcx.create_stable_hashing_context());
+        let expn_id =
+            self.cx.tcx.with_stable_hashing_context(|hcx| LocalExpnId::fresh(expn_data, hcx));
         let span = DUMMY_SP.fresh_expansion(expn_id);
 
         let is_empty = rustc_driver::catch_fatal_errors(|| {

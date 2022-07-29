@@ -9,7 +9,6 @@ use hir::OpaqueTyOrigin;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -28,8 +27,8 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef, UserSubsts};
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueHiddenType,
     OpaqueTypeKey, RegionVid, ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
@@ -48,6 +47,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
+use crate::session_diagnostics::MoveUnsized;
 use crate::{
     borrow_set::BorrowSet,
     constraints::{OutlivesConstraint, OutlivesConstraintSet},
@@ -333,9 +333,9 @@ struct TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
-    fn visit_span(&mut self, span: &Span) {
+    fn visit_span(&mut self, span: Span) {
         if !span.is_dummy() {
-            self.last_span = *span;
+            self.last_span = span;
         }
     }
 
@@ -1780,19 +1780,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // slot or local, so to find all unsized rvalues it is enough
             // to check all temps, return slots and locals.
             if self.reported_errors.replace((ty, span)).is_none() {
-                let mut diag = struct_span_err!(
-                    self.tcx().sess,
-                    span,
-                    E0161,
-                    "cannot move a value of type {0}: the size of {0} \
-                     cannot be statically determined",
-                    ty
-                );
-
                 // While this is located in `nll::typeck` this error is not
                 // an NLL error, it's a required check to prevent creation
                 // of unsized rvalues in a call expression.
-                diag.emit();
+                self.tcx().sess.emit_err(MoveUnsized { ty, span });
             }
         }
     }
@@ -2278,6 +2269,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Use(operand) | Rvalue::UnaryOp(_, operand) => {
                 self.check_operand(operand, location);
             }
+            Rvalue::CopyForDeref(place) => {
+                let op = &Operand::Copy(*place);
+                self.check_operand(op, location);
+            }
 
             Rvalue::BinaryOp(_, box (left, right))
             | Rvalue::CheckedBinaryOp(_, box (left, right)) => {
@@ -2308,6 +2303,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::CheckedBinaryOp(..)
             | Rvalue::NullaryOp(..)
+            | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..) => None,
 

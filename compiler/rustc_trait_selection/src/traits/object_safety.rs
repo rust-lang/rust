@@ -11,15 +11,15 @@
 use super::elaborate_predicates;
 
 use crate::infer::TyCtxtInferExt;
-use crate::traits::const_evaluatable::{self, AbstractConst};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::{FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor,
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -731,7 +731,7 @@ fn receiver_is_dispatchable<'tcx>(
     })
 }
 
-fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
+fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,
@@ -841,15 +841,13 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             //
             // This shouldn't really matter though as we can't really use any
             // constants which are not considered const evaluatable.
-            use rustc_middle::thir::abstract_const::Node;
+            use rustc_middle::ty::abstract_const::Node;
             if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv.shrink()) {
-                const_evaluatable::walk_abstract_const(self.tcx, ct, |node| {
-                    match node.root(self.tcx) {
-                        Node::Leaf(leaf) => self.visit_const(leaf),
-                        Node::Cast(_, _, ty) => self.visit_ty(ty),
-                        Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
-                            ControlFlow::CONTINUE
-                        }
+                walk_abstract_const(self.tcx, ct, |node| match node.root(self.tcx) {
+                    Node::Leaf(leaf) => self.visit_const(leaf),
+                    Node::Cast(_, _, ty) => self.visit_ty(ty),
+                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
                     }
                 })
             } else {

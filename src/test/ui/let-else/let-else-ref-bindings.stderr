@@ -20,7 +20,9 @@ error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:24:34
    |
 LL |     let Some(a): Option<&[u8]> = some else { return };
-   |                                  ^^^^ expected `&[u8]`, found struct `Vec`
+   |                  -------------   ^^^^ expected `&[u8]`, found struct `Vec`
+   |                  |
+   |                  expected due to this
    |
    = note: expected enum `Option<&[u8]>`
               found enum `Option<Vec<u8>>`
@@ -29,7 +31,9 @@ error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:27:34
    |
 LL |     let Some(a): Option<&[u8]> = &some else { return };
-   |                                  ^^^^^ expected enum `Option`, found `&Option<Vec<u8>>`
+   |                  -------------   ^^^^^ expected enum `Option`, found `&Option<Vec<u8>>`
+   |                  |
+   |                  expected due to this
    |
    = note:   expected enum `Option<&[u8]>`
            found reference `&Option<Vec<u8>>`
@@ -56,7 +60,9 @@ error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:52:38
    |
 LL |     let Some(a): Option<&mut [u8]> = some else { return };
-   |                                      ^^^^ expected `&mut [u8]`, found struct `Vec`
+   |                  -----------------   ^^^^ expected `&mut [u8]`, found struct `Vec`
+   |                  |
+   |                  expected due to this
    |
    = note: expected enum `Option<&mut [u8]>`
               found enum `Option<Vec<u8>>`
@@ -65,7 +71,9 @@ error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:55:38
    |
 LL |     let Some(a): Option<&mut [u8]> = &mut some else { return };
-   |                                      ^^^^^^^^^ expected enum `Option`, found mutable reference
+   |                  -----------------   ^^^^^^^^^ expected enum `Option`, found mutable reference
+   |                  |
+   |                  expected due to this
    |
    = note:           expected enum `Option<&mut [u8]>`
            found mutable reference `&mut Option<Vec<u8>>`

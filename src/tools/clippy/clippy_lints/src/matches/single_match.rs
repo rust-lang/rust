@@ -140,70 +140,45 @@ fn check_opt_like<'a>(
     ty: Ty<'a>,
     els: Option<&Expr<'_>>,
 ) {
-    // list of candidate `Enum`s we know will never get any more members
-    let candidates = &[
-        (&paths::COW, "Borrowed"),
-        (&paths::COW, "Cow::Borrowed"),
-        (&paths::COW, "Cow::Owned"),
-        (&paths::COW, "Owned"),
-        (&paths::OPTION, "None"),
-        (&paths::RESULT, "Err"),
-        (&paths::RESULT, "Ok"),
-    ];
-
-    // We want to suggest to exclude an arm that contains only wildcards or forms the exhaustive
-    // match with the second branch, without enum variants in matches.
-    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_matches(arms[0].pat, arms[1].pat) {
-        return;
-    }
-
-    let mut paths_and_types = Vec::new();
-    if !collect_pat_paths(&mut paths_and_types, cx, arms[1].pat, ty) {
-        return;
-    }
-
-    let in_candidate_enum = |path_info: &(String, Ty<'_>)| -> bool {
-        let (path, ty) = path_info;
-        for &(ty_path, pat_path) in candidates {
-            if path == pat_path && match_type(cx, *ty, ty_path) {
-                return true;
-            }
-        }
-        false
-    };
-    if paths_and_types.iter().all(in_candidate_enum) {
+    // We don't want to lint if the second arm contains an enum which could
+    // have more variants in the future.
+    if form_exhaustive_matches(cx, ty, arms[0].pat, arms[1].pat) {
         report_single_pattern(cx, ex, arms, expr, els);
     }
 }
 
-/// Collects paths and their types from the given patterns. Returns true if the given pattern could
-/// be simplified, false otherwise.
-fn collect_pat_paths<'a>(acc: &mut Vec<(String, Ty<'a>)>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) -> bool {
+/// Returns `true` if all of the types in the pattern are enums which we know
+/// won't be expanded in the future
+fn pat_in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'a>, pat: &Pat<'_>) -> bool {
+    let mut paths_and_types = Vec::new();
+    collect_pat_paths(&mut paths_and_types, cx, pat, ty);
+    paths_and_types.iter().all(|ty| in_candidate_enum(cx, *ty))
+}
+
+/// Returns `true` if the given type is an enum we know won't be expanded in the future
+fn in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'_>) -> bool {
+    // list of candidate `Enum`s we know will never get any more members
+    let candidates = [&paths::COW, &paths::OPTION, &paths::RESULT];
+
+    for candidate_ty in candidates {
+        if match_type(cx, ty, candidate_ty) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Collects types from the given pattern
+fn collect_pat_paths<'a>(acc: &mut Vec<Ty<'a>>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) {
     match pat.kind {
-        PatKind::Wild => true,
-        PatKind::Tuple(inner, _) => inner.iter().all(|p| {
+        PatKind::Tuple(inner, _) => inner.iter().for_each(|p| {
             let p_ty = cx.typeck_results().pat_ty(p);
-            collect_pat_paths(acc, cx, p, p_ty)
+            collect_pat_paths(acc, cx, p, p_ty);
         }),
-        PatKind::TupleStruct(ref path, ..) => {
-            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                s.print_qpath(path, false);
-            });
-            acc.push((path, ty));
-            true
+        PatKind::TupleStruct(..) | PatKind::Binding(BindingAnnotation::Unannotated, .., None) | PatKind::Path(_) => {
+            acc.push(ty);
         },
-        PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => {
-            acc.push((ident.to_string(), ty));
-            true
-        },
-        PatKind::Path(ref path) => {
-            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                s.print_qpath(path, false);
-            });
-            acc.push((path, ty));
-            true
-        },
-        _ => false,
+        _ => {},
     }
 }
 
@@ -218,7 +193,7 @@ fn contains_only_wilds(pat: &Pat<'_>) -> bool {
 
 /// Returns true if the given patterns forms only exhaustive matches that don't contain enum
 /// patterns without a wildcard.
-fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
+fn form_exhaustive_matches<'a>(cx: &LateContext<'a>, ty: Ty<'a>, left: &Pat<'_>, right: &Pat<'_>) -> bool {
     match (&left.kind, &right.kind) {
         (PatKind::Wild, _) | (_, PatKind::Wild) => true,
         (PatKind::Tuple(left_in, left_pos), PatKind::Tuple(right_in, right_pos)) => {
@@ -263,6 +238,10 @@ fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
                 }
             }
             true
+        },
+        (PatKind::TupleStruct(..), PatKind::Path(_)) => pat_in_candidate_enum(cx, ty, right),
+        (PatKind::TupleStruct(..), PatKind::TupleStruct(_, inner, _)) => {
+            pat_in_candidate_enum(cx, ty, right) && inner.iter().all(contains_only_wilds)
         },
         _ => false,
     }

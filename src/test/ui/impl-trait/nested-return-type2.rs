@@ -1,5 +1,3 @@
-// check-pass
-
 trait Duh {}
 
 impl Duh for i32 {}
@@ -20,11 +18,9 @@ impl<R: Duh, F: FnMut() -> R> Trait for F {
 // the hidden type. We already have obligations registered on the inference
 // var to make it uphold the `: Duh` bound on `Trait::Assoc`. The opaque
 // type does not implement `Duh`, even if its hidden type does.
-// Lazy TAIT would error out, but we inserted a hack to make it work again,
-// keeping backwards compatibility.
 fn foo() -> impl Trait<Assoc = impl Send> {
+    //~^ ERROR `impl Send: Duh` is not satisfied
     || 42
 }
 
-fn main() {
-}
+fn main() {}

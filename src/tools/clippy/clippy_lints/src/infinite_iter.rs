@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{higher, match_def_path, path_def_id, paths};
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{BorrowKind, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::{sym, Symbol};
@@ -159,7 +159,7 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
             if method.ident.name == sym!(flat_map) && args.len() == 2 {
-                if let ExprKind::Closure { body, .. } = args[1].kind {
+                if let ExprKind::Closure(&Closure { body, .. }) = args[1].kind {
                     let body = cx.tcx.hir().body(body);
                     return is_infinite(cx, &body.value);
                 }

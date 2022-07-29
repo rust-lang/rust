@@ -6,14 +6,14 @@
 fn test1() {
     let x: !;
     let c1 = || match x { };
-    //~^ ERROR: use of possibly-uninitialized variable: `x`
+    //~^ ERROR E0381
 }
 
 // Should fake read the discriminant and throw an error
 fn test2() {
     let x: !;
     let c2 = || match x { _ => () };
-    //~^ ERROR: borrow of possibly-uninitialized variable: `x`
+    //~^ ERROR E0381
 }
 
 // Testing single variant patterns
@@ -25,7 +25,7 @@ enum SingleVariant {
 fn test3() {
     let variant: !;
     let c = || {
-    //~^ ERROR: borrow of possibly-uninitialized variable: `variant`
+    //~^ ERROR E0381
         match variant {
             SingleVariant::Points(_) => {}
         }
@@ -36,8 +36,7 @@ fn test3() {
 // Should fake read the discriminant and throw an error
 fn test4() {
     let variant: !;
-    let c = || {
-    //~^ ERROR: borrow of possibly-uninitialized variable: `variant`
+    let c = || { //~ ERROR E0381
         match variant {
             SingleVariant::Points(a) => {
                 println!("{:?}", a);
@@ -52,11 +51,9 @@ fn test5() {
     let g: !;
 
     let a = || {
-        match g { };
-        //~^ ERROR: use of possibly-uninitialized variable: `g`
+        match g { }; //~ ERROR E0381
         let c = ||  {
-            match t { };
-            //~^ ERROR: use of possibly-uninitialized variable: `t`
+            match t { }; //~ ERROR E0381
         };
 
         c();
@@ -68,7 +65,7 @@ fn test5() {
 fn test6() {
     let x: u8;
     let c1 = || match x { };
-    //~^ ERROR: use of possibly-uninitialized variable: `x`
+    //~^ ERROR E0381
     //~| ERROR: non-exhaustive patterns: type `u8` is non-empty
 }
 

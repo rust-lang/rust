@@ -180,6 +180,9 @@ declare_features! (
     /// Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None, None),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None, None),
+    /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
+    (removed, untagged_unions, "1.13.0", Some(55149), None,
+     Some("unions with `Copy` and `ManuallyDrop` fields are stable; there is no intent to stabilize more")),
     /// Allows `#[unwind(..)]`.
     ///
     /// Permits specifying whether a function should permit unwinding or abort on unwind.

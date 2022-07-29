@@ -39,7 +39,11 @@ fn missing_tool(tool_name: &str, skip: bool) {
     if skip {
         println!("Unable to build {}, skipping dist", tool_name)
     } else {
-        panic!("Unable to build {}", tool_name)
+        let help = "note: not all tools are available on all nightlies\nhelp: see https://forge.rust-lang.org/infra/toolstate.html for more information";
+        panic!(
+            "Unable to build submodule tool {} (use `missing-tools = true` to ignore this failure)\n{}",
+            tool_name, help
+        )
     }
 }
 
@@ -358,6 +362,18 @@ impl Step for Rustc {
 
             builder.install(&builder.rustdoc(compiler), &image.join("bin"), 0o755);
 
+            let ra_proc_macro_srv = builder
+                .ensure(tool::RustAnalyzerProcMacroSrv {
+                    compiler: builder.compiler_for(
+                        compiler.stage,
+                        builder.config.build,
+                        compiler.host,
+                    ),
+                    target: compiler.host,
+                })
+                .expect("rust-analyzer-proc-macro-server always builds");
+            builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+
             let libdir_relative = builder.libdir_relative(compiler);
 
             // Copy runtime DLLs needed by the compiler
@@ -557,7 +573,7 @@ impl Step for Std {
             return None;
         }
 
-        builder.ensure(compile::Std { compiler, target });
+        builder.ensure(compile::Std::new(compiler, target));
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
@@ -603,7 +619,7 @@ impl Step for RustcDev {
             return None;
         }
 
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Rustc::new(compiler, target));
 
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
@@ -666,7 +682,7 @@ impl Step for Analysis {
             return None;
         }
 
-        builder.ensure(compile::Std { compiler, target });
+        builder.ensure(compile::Std::new(compiler, target));
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target.triple)
@@ -1044,12 +1060,6 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        // This prevents rust-analyzer from being built for "dist" or "install"
-        // on the stable/beta channels. It is a nightly-only tool and should
-        // not be included.
-        if !builder.build.unstable_features() {
-            return None;
-        }
         let compiler = self.compiler;
         let target = self.target;
 
@@ -1060,7 +1070,7 @@ impl Step for RustAnalyzer {
         }
 
         let rust_analyzer = builder
-            .ensure(tool::RustAnalyzer { compiler, target, extra_features: Vec::new() })
+            .ensure(tool::RustAnalyzer { compiler, target })
             .expect("rust-analyzer always builds");
 
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
@@ -2030,6 +2040,8 @@ impl Step for RustDev {
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
+
+        builder.ensure(crate::native::Llvm { target });
 
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this list, you likely want to change

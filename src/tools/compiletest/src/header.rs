@@ -60,6 +60,8 @@ impl EarlyProps {
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
+    // Regexes that should be expected, in order, on standard out
+    pub regex_error_patterns: Vec<String>,
     // Extra flags to pass to the compiler
     pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
@@ -163,6 +165,7 @@ pub struct TestProps {
 
 mod directives {
     pub const ERROR_PATTERN: &'static str = "error-pattern";
+    pub const REGEX_ERROR_PATTERN: &'static str = "regex-error-pattern";
     pub const COMPILE_FLAGS: &'static str = "compile-flags";
     pub const RUN_FLAGS: &'static str = "run-flags";
     pub const SHOULD_ICE: &'static str = "should-ice";
@@ -200,6 +203,7 @@ impl TestProps {
     pub fn new() -> Self {
         TestProps {
             error_patterns: vec![],
+            regex_error_patterns: vec![],
             compile_flags: vec![],
             run_flags: None,
             pp_exact: None,
@@ -244,6 +248,7 @@ impl TestProps {
 
         // copy over select properties to the aux build:
         props.incremental_dir = self.incremental_dir.clone();
+        props.ignore_pass = true;
         props.load_from(testfile, cfg, config);
 
         props
@@ -284,6 +289,12 @@ impl TestProps {
                     &mut self.error_patterns,
                     |r| r,
                 );
+                config.push_name_value_directive(
+                    ln,
+                    REGEX_ERROR_PATTERN,
+                    &mut self.regex_error_patterns,
+                    |r| r,
+                );
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
@@ -293,7 +304,7 @@ impl TestProps {
                 }
 
                 if let Some(edition) = config.parse_edition(ln) {
-                    self.compile_flags.push(format!("--edition={}", edition));
+                    self.compile_flags.push(format!("--edition={}", edition.trim()));
                     has_edition = true;
                 }
 
@@ -524,6 +535,29 @@ impl TestProps {
     }
 }
 
+pub fn line_directive<'line>(
+    comment: &str,
+    ln: &'line str,
+) -> Option<(Option<&'line str>, &'line str)> {
+    if ln.starts_with(comment) {
+        let ln = ln[comment.len()..].trim_start();
+        if ln.starts_with('[') {
+            // A comment like `//[foo]` is specific to revision `foo`
+            if let Some(close_brace) = ln.find(']') {
+                let lncfg = &ln[1..close_brace];
+
+                Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
+            } else {
+                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
+            }
+        } else {
+            Some((None, ln))
+        }
+    } else {
+        None
+    }
+}
+
 fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str)) {
     if testfile.is_dir() {
         return;
@@ -546,17 +580,8 @@ fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with(comment) && ln[comment.len()..].trim_start().starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let open_brace = ln.find('[').unwrap();
-                let lncfg = &ln[open_brace + 1..close_brace];
-                it(Some(lncfg), ln[(close_brace + 1)..].trim_start());
-            } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
-            }
-        } else if ln.starts_with(comment) {
-            it(None, ln[comment.len()..].trim_start());
+        } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
+            it(lncfg, ln);
         }
     }
 }
@@ -846,11 +871,13 @@ pub fn make_test_description<R: Read>(
     let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
     let has_asm_support = util::has_asm_support(&config.target);
     let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
     // for `-Z gcc-ld=lld`
     let has_rust_lld = config
         .compile_lib_path
@@ -883,11 +910,14 @@ pub fn make_test_description<R: Read>(
         ignore |= !rustc_has_sanitizer_support
             && config.parse_name_directive(ln, "needs-sanitizer-support");
         ignore |= !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address");
+        ignore |= !has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi");
         ignore |= !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak");
         ignore |= !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory");
         ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");
         ignore |= !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress");
         ignore |= !has_memtag && config.parse_name_directive(ln, "needs-sanitizer-memtag");
+        ignore |= !has_shadow_call_stack
+            && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack");
         ignore |= config.target_panic == PanicStrategy::Abort
             && config.parse_name_directive(ln, "needs-unwind");
         ignore |= config.target == "wasm32-unknown-unknown"

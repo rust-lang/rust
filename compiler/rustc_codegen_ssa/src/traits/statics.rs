@@ -13,7 +13,9 @@ pub trait StaticMethods: BackendTypes {
     /// Same as add_used_global(), but only prevent the compiler from potentially removing an
     /// otherwise unused symbol. The linker is still permitted to drop it.
     ///
-    /// This corresponds to the semantics of the `#[used]` attribute.
+    /// This corresponds to the documented semantics of the `#[used]` attribute, although
+    /// on some targets (non-ELF), we may use `add_used_global` for `#[used]` statics
+    /// instead.
     fn add_compiler_used_global(&self, global: Self::Value);
 }
 

@@ -1,6 +1,5 @@
 // run-pass
 #![feature(
-    const_slice_from_raw_parts,
     slice_from_ptr_range,
     const_slice_from_ptr_range,
     pointer_byte_offsets,

@@ -127,6 +127,91 @@ fn int_max() {
     assert_eq!(x.load(SeqCst), 0xf731);
 }
 
+#[test]
+#[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+fn ptr_add_null() {
+    let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
+    assert_eq!(atom.fetch_ptr_add(1, SeqCst).addr(), 0);
+    assert_eq!(atom.load(SeqCst).addr(), 8);
+
+    assert_eq!(atom.fetch_byte_add(1, SeqCst).addr(), 8);
+    assert_eq!(atom.load(SeqCst).addr(), 9);
+
+    assert_eq!(atom.fetch_ptr_sub(1, SeqCst).addr(), 9);
+    assert_eq!(atom.load(SeqCst).addr(), 1);
+
+    assert_eq!(atom.fetch_byte_sub(1, SeqCst).addr(), 1);
+    assert_eq!(atom.load(SeqCst).addr(), 0);
+}
+
+#[test]
+#[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+fn ptr_add_data() {
+    let num = 0i64;
+    let n = &num as *const i64 as *mut _;
+    let atom = AtomicPtr::<i64>::new(n);
+    assert_eq!(atom.fetch_ptr_add(1, SeqCst), n);
+    assert_eq!(atom.load(SeqCst), n.wrapping_add(1));
+
+    assert_eq!(atom.fetch_ptr_sub(1, SeqCst), n.wrapping_add(1));
+    assert_eq!(atom.load(SeqCst), n);
+    let bytes_from_n = |b| n.cast::<u8>().wrapping_add(b).cast::<i64>();
+
+    assert_eq!(atom.fetch_byte_add(1, SeqCst), n);
+    assert_eq!(atom.load(SeqCst), bytes_from_n(1));
+
+    assert_eq!(atom.fetch_byte_add(5, SeqCst), bytes_from_n(1));
+    assert_eq!(atom.load(SeqCst), bytes_from_n(6));
+
+    assert_eq!(atom.fetch_byte_sub(1, SeqCst), bytes_from_n(6));
+    assert_eq!(atom.load(SeqCst), bytes_from_n(5));
+
+    assert_eq!(atom.fetch_byte_sub(5, SeqCst), bytes_from_n(5));
+    assert_eq!(atom.load(SeqCst), n);
+}
+
+#[test]
+#[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+fn ptr_bitops() {
+    let atom = AtomicPtr::<i64>::new(core::ptr::null_mut());
+    assert_eq!(atom.fetch_or(0b0111, SeqCst).addr(), 0);
+    assert_eq!(atom.load(SeqCst).addr(), 0b0111);
+
+    assert_eq!(atom.fetch_and(0b1101, SeqCst).addr(), 0b0111);
+    assert_eq!(atom.load(SeqCst).addr(), 0b0101);
+
+    assert_eq!(atom.fetch_xor(0b1111, SeqCst).addr(), 0b0101);
+    assert_eq!(atom.load(SeqCst).addr(), 0b1010);
+}
+
+#[test]
+#[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+fn ptr_bitops_tagging() {
+    #[repr(align(16))]
+    struct Tagme(u128);
+
+    let tagme = Tagme(1000);
+    let ptr = &tagme as *const Tagme as *mut Tagme;
+    let atom: AtomicPtr<Tagme> = AtomicPtr::new(ptr);
+
+    const MASK_TAG: usize = 0b1111;
+    const MASK_PTR: usize = !MASK_TAG;
+
+    assert_eq!(ptr.addr() & MASK_TAG, 0);
+
+    assert_eq!(atom.fetch_or(0b0111, SeqCst), ptr);
+    assert_eq!(atom.load(SeqCst), ptr.map_addr(|a| a | 0b111));
+
+    assert_eq!(atom.fetch_and(MASK_PTR | 0b0010, SeqCst), ptr.map_addr(|a| a | 0b111));
+    assert_eq!(atom.load(SeqCst), ptr.map_addr(|a| a | 0b0010));
+
+    assert_eq!(atom.fetch_xor(0b1011, SeqCst), ptr.map_addr(|a| a | 0b0010));
+    assert_eq!(atom.load(SeqCst), ptr.map_addr(|a| a | 0b1001));
+
+    assert_eq!(atom.fetch_and(MASK_PTR, SeqCst), ptr.map_addr(|a| a | 0b1001));
+    assert_eq!(atom.load(SeqCst), ptr);
+}
+
 static S_FALSE: AtomicBool = AtomicBool::new(false);
 static S_TRUE: AtomicBool = AtomicBool::new(true);
 static S_INT: AtomicIsize = AtomicIsize::new(0);

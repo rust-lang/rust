@@ -225,7 +225,7 @@ impl Step for Cargotest {
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
-        builder.ensure(compile::Rustc { compiler, target: compiler.host });
+        builder.ensure(compile::Rustc::new(compiler, compiler.host));
         let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
 
         // Note that this is a short, cryptic, and not scoped directory name. This
@@ -353,6 +353,64 @@ impl Step for Rls {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustAnalyzer {
+    stage: u32,
+    host: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self { stage: run.builder.top_stage, host: run.target });
+    }
+
+    /// Runs `cargo test` for rust-analyzer
+    fn run(self, builder: &Builder<'_>) {
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        builder.ensure(tool::RustAnalyzer { compiler, target: self.host }).expect("in-tree tool");
+
+        let workspace_path = "src/tools/rust-analyzer";
+        // until the whole RA test suite runs on `i686`, we only run
+        // `proc-macro-srv` tests
+        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            host,
+            "test",
+            crate_path,
+            SourceType::InTree,
+            &["sysroot-abi".to_owned()],
+        );
+
+        let dir = builder.src.join(workspace_path);
+        // needed by rust-analyzer to find its own text fixtures, cf.
+        // https://github.com/rust-analyzer/expect-test/issues/33
+        cargo.env("CARGO_WORKSPACE_DIR", &dir);
+
+        // RA's test suite tries to write to the source directory, that can't
+        // work in Rust CI
+        cargo.env("SKIP_SLOW_TESTS", "1");
+
+        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        builder.run(&mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt {
     stage: u32,
     host: TargetSelection,
@@ -475,6 +533,9 @@ impl Step for Miri {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
+        // We need the stdlib for the *next* stage, as it was built with this compiler that also built Miri.
+        // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
+        let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
         let miri =
             builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
@@ -483,6 +544,10 @@ impl Step for Miri {
             target: self.host,
             extra_features: Vec::new(),
         });
+        // The stdlib we need might be at a different stage. And just asking for the
+        // sysroot does not seem to populate it, so we do that first.
+        builder.ensure(compile::Std::new(compiler_std, host));
+        let sysroot = builder.sysroot(compiler_std);
         if let (Some(miri), Some(_cargo_miri)) = (miri, cargo_miri) {
             let mut cargo =
                 builder.cargo(compiler, Mode::ToolRustc, SourceType::Submodule, host, "install");
@@ -562,6 +627,7 @@ impl Step for Miri {
 
             // miri tests need to know about the stage sysroot
             cargo.env("MIRI_SYSROOT", miri_sysroot);
+            cargo.env("MIRI_HOST_SYSROOT", sysroot);
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI", miri);
 
@@ -603,7 +669,7 @@ impl Step for CompiletestTest {
 
         // We need `ToolStd` for the locally-built sysroot because
         // compiletest uses unstable features of the `test` crate.
-        builder.ensure(compile::Std { compiler, target: host });
+        builder.ensure(compile::Std::new(compiler, host));
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -673,7 +739,7 @@ impl Step for Clippy {
         }
 
         if !builder.config.cmd.bless() {
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
 
         let mut cargo = builder.cargo(compiler, Mode::ToolRustc, SourceType::InTree, host, "run");
@@ -896,7 +962,7 @@ impl Step for RustdocGUI {
         let nodejs = builder.config.nodejs.as_ref().expect("nodejs isn't available");
         let npm = builder.config.npm.as_ref().expect("npm isn't available");
 
-        builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+        builder.ensure(compile::Std::new(self.compiler, self.target));
 
         // The goal here is to check if the necessary packages are installed, and if not, we
         // panic.
@@ -1021,7 +1087,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                     PATH = inferred_rustfmt_dir.display(),
                     CHAN = builder.config.channel,
                 );
-                std::process::exit(1);
+                crate::detail_exit(1);
             }
             crate::format::format(&builder, !builder.config.cmd.bless(), &[]);
         }
@@ -1251,7 +1317,7 @@ help: to test the compiler, use `--stage 1` instead
 help: to test the standard library, use `--stage 0 library/std` instead
 note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
             );
-            std::process::exit(1);
+            crate::detail_exit(1);
         }
 
         let compiler = self.compiler;
@@ -1273,12 +1339,12 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if suite.ends_with("fulldeps") {
-            builder.ensure(compile::Rustc { compiler, target });
+            builder.ensure(compile::Rustc::new(compiler, target));
         }
 
-        builder.ensure(compile::Std { compiler, target });
+        builder.ensure(compile::Std::new(compiler, target));
         // ensure that `libproc_macro` is available on the host.
-        builder.ensure(compile::Std { compiler, target: compiler.host });
+        builder.ensure(compile::Std::new(compiler, compiler.host));
 
         // Also provide `rust_test_helpers` for the host.
         builder.ensure(native::TestHelpers { target: compiler.host });
@@ -1363,13 +1429,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         if let Some(ref npm) = builder.config.npm {
             cmd.arg("--npm").arg(npm);
         }
-
-        let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
-        if !is_rustdoc {
-            if builder.config.rust_optimize_tests {
-                flags.push("-O".to_string());
-            }
+        if builder.config.rust_optimize_tests {
+            cmd.arg("--optimize-tests");
         }
+        let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.push(builder.config.cmd.rustc_args().join(" "));
 
@@ -1646,7 +1709,7 @@ impl BookTest {
     fn run_ext_doc(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
-        builder.ensure(compile::Std { compiler, target: compiler.host });
+        builder.ensure(compile::Std::new(compiler, compiler.host));
 
         // mdbook just executes a binary named "rustdoc", so we need to update
         // PATH so that it points to our rustdoc.
@@ -1674,7 +1737,7 @@ impl BookTest {
     fn run_local_doc(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
-        builder.ensure(compile::Std { compiler, target: compiler.host });
+        builder.ensure(compile::Std::new(compiler, compiler.host));
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
@@ -1793,7 +1856,7 @@ impl Step for ErrorIndex {
         builder.run_quiet(&mut tool);
         // The tests themselves need to link to std, so make sure it is
         // available.
-        builder.ensure(compile::Std { compiler, target: compiler.host });
+        builder.ensure(compile::Std::new(compiler, compiler.host));
         markdown_test(builder, compiler, &output);
     }
 }
@@ -1870,7 +1933,7 @@ impl Step for CrateLibrustc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.krate("rustc-main")
+        run.crate_or_deps("rustc-main")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1912,7 +1975,7 @@ impl Step for Crate {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.krate("test")
+        run.crate_or_deps("test")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1943,7 +2006,7 @@ impl Step for Crate {
         let mode = self.mode;
         let test_kind = self.test_kind;
 
-        builder.ensure(compile::Std { compiler, target });
+        builder.ensure(compile::Std::new(compiler, target));
         builder.ensure(RemoteCopyLibs { compiler, target });
 
         // If we're not doing a full bootstrap but we're testing a stage2
@@ -2065,7 +2128,7 @@ impl Step for CrateRustdoc {
             // isn't really necessary.
             builder.compiler_for(builder.top_stage, target, target)
         };
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Rustc::new(compiler, target));
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -2180,7 +2243,7 @@ impl Step for CrateRustdocJsonTypes {
         // `compiler`, then it would cause rustdoc to be built *again*, which
         // isn't really necessary.
         let compiler = builder.compiler_for(builder.top_stage, target, target);
-        builder.ensure(compile::Rustc { compiler, target });
+        builder.ensure(compile::Rustc::new(compiler, target));
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -2248,7 +2311,7 @@ impl Step for RemoteCopyLibs {
             return;
         }
 
-        builder.ensure(compile::Std { compiler, target });
+        builder.ensure(compile::Std::new(compiler, target));
 
         builder.info(&format!("REMOTE copy libs to emulator ({})", target));
 
@@ -2418,7 +2481,7 @@ impl Step for TierCheck {
 
     /// Tests the Platform Support page in the rustc book.
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(compile::Std { compiler: self.compiler, target: self.compiler.host });
+        builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             self.compiler,

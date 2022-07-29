@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeFoldable};
+use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -24,6 +24,7 @@ use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDro
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
+use crate::errors::UnstableInStable;
 
 type QualifResults<'mir, 'tcx, Q> =
     rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
@@ -311,7 +312,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Status::Forbidden => None,
         };
 
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+        if self.tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.miri_unleashed_feature(span, gate);
             return;
         }
@@ -418,7 +419,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
@@ -431,7 +432,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_local(reborrowed_place_ref.local, ctx, location);
                     self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
@@ -445,6 +446,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
+            | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(_)
@@ -1026,23 +1028,5 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.tcx
-        .sess
-        .struct_span_err(
-            span,
-            &format!("const-stable function cannot use `#[feature({})]`", gate.as_str()),
-        )
-        .span_suggestion(
-            attr_span,
-            "if it is not part of the public API, make this function unstably const",
-            concat!(r#"#[rustc_const_unstable(feature = "...", issue = "...")]"#, '\n'),
-            Applicability::HasPlaceholders,
-        )
-        .span_suggestion(
-            attr_span,
-            "otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks",
-            format!("#[rustc_allow_const_fn_unstable({})]\n", gate),
-            Applicability::MaybeIncorrect,
-        )
-        .emit();
+    ccx.tcx.sess.emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
 }

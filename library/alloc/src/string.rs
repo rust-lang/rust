@@ -46,9 +46,9 @@
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
-use core::iter::{from_fn, FusedIterator};
+use core::iter::{from_fn, FromIterator};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
@@ -317,11 +317,11 @@ use crate::vec::Vec;
 ///
 /// ```text
 /// 0
-/// 5
-/// 10
-/// 20
-/// 20
-/// 40
+/// 8
+/// 16
+/// 16
+/// 32
+/// 32
 /// ```
 ///
 /// At first, we have no memory allocated at all, but as we append to the

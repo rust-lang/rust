@@ -2,7 +2,7 @@
 
 #![feature(lint_reasons)]
 #![warn(clippy::ref_binding_to_reference)]
-#![allow(clippy::needless_borrowed_reference)]
+#![allow(clippy::needless_borrowed_reference, clippy::explicit_auto_deref)]
 
 fn f1(_: &str) {}
 macro_rules! m2 {

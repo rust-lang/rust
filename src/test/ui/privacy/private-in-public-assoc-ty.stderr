@@ -2,16 +2,16 @@ error[E0446]: private type `Priv` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:17:9
    |
 LL |     struct Priv;
-   |     ------------ `Priv` declared as private
+   |     ----------- `Priv` declared as private
 ...
 LL |         type A = Priv;
-   |         ^^^^^^^^^^^^^^ can't leak private type
+   |         ^^^^^^ can't leak private type
 
 warning: private trait `PrivTr` in public interface (error E0445)
   --> $DIR/private-in-public-assoc-ty.rs:24:9
    |
 LL |         type Alias1: PrivTr;
-   |         ^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(private_in_public)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -21,7 +21,7 @@ warning: private type `Priv` in public interface (error E0446)
   --> $DIR/private-in-public-assoc-ty.rs:27:9
    |
 LL |         type Alias2: PubTrAux1<Priv> = u8;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -30,7 +30,7 @@ warning: private type `Priv` in public interface (error E0446)
   --> $DIR/private-in-public-assoc-ty.rs:30:9
    |
 LL |         type Alias3: PubTrAux2<A = Priv> = u8;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -39,19 +39,19 @@ error[E0446]: private type `Priv` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:34:9
    |
 LL |     struct Priv;
-   |     ------------ `Priv` declared as private
+   |     ----------- `Priv` declared as private
 ...
 LL |         type Alias4 = Priv;
-   |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |         ^^^^^^^^^^^ can't leak private type
 
 error[E0446]: private type `Priv` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:41:9
    |
 LL |     struct Priv;
-   |     ------------ `Priv` declared as private
+   |     ----------- `Priv` declared as private
 ...
 LL |         type Alias1 = Priv;
-   |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
+   |         ^^^^^^^^^^^ can't leak private type
 
 error[E0445]: private trait `PrivTr` in public interface
   --> $DIR/private-in-public-assoc-ty.rs:44:9
@@ -60,7 +60,7 @@ LL |     trait PrivTr {}
    |     ------------ `PrivTr` declared as private
 ...
 LL |         type Exist = impl PrivTr;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
+   |         ^^^^^^^^^^ can't leak private trait
 
 error: aborting due to 4 previous errors; 3 warnings emitted
 

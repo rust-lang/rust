@@ -2,9 +2,7 @@ error: changes to closure capture in Rust 2021 will affect drop order
   --> $DIR/macro.rs:19:13
    |
 LL |     let _ = || dbg!(a.0);
-   |             ^^^^^^^^---^
-   |                     |
-   |                     in Rust 2018, this closure captures all of `a`, but in Rust 2021, it will only capture `a.0`
+   |             ^^      --- in Rust 2018, this closure captures all of `a`, but in Rust 2021, it will only capture `a.0`
 ...
 LL | }
    | - in Rust 2018, `a` is dropped here, but in Rust 2021, only `a.0` will be dropped here as part of the closure

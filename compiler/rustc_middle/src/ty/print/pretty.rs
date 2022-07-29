@@ -2,7 +2,7 @@ use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{
     self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -297,7 +297,7 @@ pub trait PrettyPrinter<'tcx>:
         mut self,
         def_id: DefId,
     ) -> Result<(Self::Path, bool), Self::Error> {
-        if !self.tcx().sess.opts.debugging_opts.trim_diagnostic_paths
+        if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
             || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
             || NO_TRIMMED_PATH.with(|flag| flag.get())
             || SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get())
@@ -712,7 +712,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("closure"));
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
-                        if self.tcx().sess.opts.debugging_opts.span_free_formats {
+                        if self.tcx().sess.opts.unstable_opts.span_free_formats {
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().def_span(did);
@@ -1030,11 +1030,11 @@ pub trait PrettyPrinter<'tcx>:
         }
     }
 
-    fn ty_infer_name(&self, _: ty::TyVid) -> Option<String> {
+    fn ty_infer_name(&self, _: ty::TyVid) -> Option<Symbol> {
         None
     }
 
-    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<String> {
+    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<Symbol> {
         None
     }
 
@@ -1269,7 +1269,7 @@ pub trait PrettyPrinter<'tcx>:
                 if let ty::Array(elem, len) = inner.kind() {
                     if let ty::Uint(ty::UintTy::U8) = elem.kind() {
                         if let ty::ConstKind::Value(ty::ValTree::Leaf(int)) = len.kind() {
-                            match self.tcx().get_global_alloc(alloc_id) {
+                            match self.tcx().try_get_global_alloc(alloc_id) {
                                 Some(GlobalAlloc::Memory(alloc)) => {
                                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);
                                     let range =
@@ -1282,11 +1282,12 @@ pub trait PrettyPrinter<'tcx>:
                                         p!("<too short allocation>")
                                     }
                                 }
-                                // FIXME: for statics and functions, we could in principle print more detail.
+                                // FIXME: for statics, vtables, and functions, we could in principle print more detail.
                                 Some(GlobalAlloc::Static(def_id)) => {
                                     p!(write("<static({:?})>", def_id))
                                 }
                                 Some(GlobalAlloc::Function(_)) => p!("<function>"),
+                                Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
                                 None => p!("<dangling pointer>"),
                             }
                             return Ok(self);
@@ -1297,7 +1298,8 @@ pub trait PrettyPrinter<'tcx>:
             ty::FnPtr(_) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
-                if let Some(GlobalAlloc::Function(instance)) = self.tcx().get_global_alloc(alloc_id)
+                if let Some(GlobalAlloc::Function(instance)) =
+                    self.tcx().try_get_global_alloc(alloc_id)
                 {
                     self = self.typed_value(
                         |this| this.print_value_path(instance.def_id(), instance.substs),
@@ -1355,10 +1357,6 @@ pub trait PrettyPrinter<'tcx>:
                     " as ",
                 )?;
             }
-            // For function type zsts just printing the path is enough
-            ty::FnDef(d, s) if int == ScalarInt::ZST => {
-                p!(print_value_path(*d, s))
-            }
             // Nontrivial types with scalar bit representation
             _ => {
                 let print = |mut this: Self| {
@@ -1381,9 +1379,9 @@ pub trait PrettyPrinter<'tcx>:
 
     /// This is overridden for MIR printing because we only want to hide alloc ids from users, not
     /// from MIR where it is actually useful.
-    fn pretty_print_const_pointer<Tag: Provenance>(
+    fn pretty_print_const_pointer<Prov: Provenance>(
         mut self,
-        _: Pointer<Tag>,
+        _: Pointer<Prov>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
@@ -1447,10 +1445,14 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("{:?}", String::from_utf8_lossy(bytes)));
                     return Ok(self);
                 }
-                _ => {}
+                _ => {
+                    p!("&");
+                    p!(pretty_print_const_valtree(valtree, *inner_ty, print_ty));
+                    return Ok(self);
+                }
             },
             (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
-                let bytes = valtree.try_to_raw_bytes(self.tcx(), *t).unwrap_or_else(|| {
+                let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
                 p!("*");
@@ -1459,16 +1461,8 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
             (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let Some(contents) = self.tcx().try_destructure_const(
-                    ty::Const::from_value(self.tcx(), valtree, ty)
-                ) else {
-                    // Fall back to debug pretty printing for invalid constants.
-                    p!(write("{:?}", valtree));
-                    if print_ty {
-                        p!(": ", print(ty));
-                    }
-                    return Ok(self);
-                };
+                let contents =
+                    self.tcx().destructure_const(ty::Const::from_value(self.tcx(), valtree, ty));
                 let fields = contents.fields.iter().copied();
                 match *ty.kind() {
                     ty::Array(..) => {
@@ -1558,8 +1552,8 @@ pub struct FmtPrinterData<'a, 'tcx> {
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
-    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<String> + 'a>>,
-    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<String> + 'a>>,
+    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<Symbol> + 'a>>,
+    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<Symbol> + 'a>>,
 }
 
 impl<'a, 'tcx> Deref for FmtPrinter<'a, 'tcx> {
@@ -1735,7 +1729,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct, true)
+        self.pretty_print_const(ct, false)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
@@ -1849,11 +1843,11 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
 }
 
 impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
-    fn ty_infer_name(&self, id: ty::TyVid) -> Option<String> {
+    fn ty_infer_name(&self, id: ty::TyVid) -> Option<Symbol> {
         self.0.ty_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
-    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<String> {
+    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<Symbol> {
         self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
@@ -1927,7 +1921,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
-        let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
+        let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
             ty::ReEarlyBound(ref data) => {
@@ -1960,9 +1954,9 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         }
     }
 
-    fn pretty_print_const_pointer<Tag: Provenance>(
+    fn pretty_print_const_pointer<Prov: Provenance>(
         self,
-        p: Pointer<Tag>,
+        p: Pointer<Prov>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
@@ -2000,7 +1994,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             return Ok(self);
         }
 
-        let identify_regions = self.tcx.sess.opts.debugging_opts.identify_regions;
+        let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         // These printouts are concise.  They do not contain all the information
         // the user might want to diagnose an error, but there is basically no way
@@ -2281,14 +2275,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         struct LateBoundRegionNameCollector<'a, 'tcx> {
             used_region_names: &'a mut FxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2392,7 +2386,7 @@ macro_rules! define_print_and_forward_display {
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait path. That is, it will print `Trait<U>` instead of
 /// `<T as Trait<U>>`.
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
@@ -2404,7 +2398,7 @@ impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait name. That is, it will print `Trait` instead of
 /// `<T as Trait<U>>`.
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRefPrintOnlyTraitName<'tcx>(ty::TraitRef<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
@@ -2429,7 +2423,7 @@ impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     }
 }
 
-#[derive(Copy, Clone, TypeFoldable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitPredPrintModifiersAndPath<'tcx>(ty::TraitPredicate<'tcx>);
 
 impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {
@@ -2562,7 +2556,7 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        if let ty::BoundConstness::ConstIfConst = self.constness {
+        if let ty::BoundConstness::ConstIfConst = self.constness && cx.tcx().features().const_trait_impl {
             p!("~const ");
         }
         p!(print(self.trait_ref.print_only_trait_path()))

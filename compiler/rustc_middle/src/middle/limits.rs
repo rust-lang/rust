@@ -25,7 +25,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
             tcx.hir().krate_attrs(),
             tcx.sess,
             sym::move_size_limit,
-            tcx.sess.opts.debugging_opts.move_size_limit.unwrap_or(0),
+            tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0),
         ),
         type_length_limit: get_limit(
             tcx.hir().krate_attrs(),

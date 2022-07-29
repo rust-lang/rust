@@ -125,6 +125,10 @@ pub trait MutVisitor: Sized {
         noop_visit_asyncness(a, self);
     }
 
+    fn visit_closure_binder(&mut self, b: &mut ClosureBinder) {
+        noop_visit_closure_binder(b, self);
+    }
+
     fn visit_block(&mut self, b: &mut P<Block>) {
         noop_visit_block(b, self);
     }
@@ -825,6 +829,17 @@ pub fn visit_constness<T: MutVisitor>(constness: &mut Const, vis: &mut T) {
     }
 }
 
+pub fn noop_visit_closure_binder<T: MutVisitor>(binder: &mut ClosureBinder, vis: &mut T) {
+    match binder {
+        ClosureBinder::NotPresent => {}
+        ClosureBinder::For { span: _, generic_params } => {
+            let mut vec = std::mem::take(generic_params).into_vec();
+            vec.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+            *generic_params = P::from_vec(vec);
+        }
+    }
+}
+
 pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut Async, vis: &mut T) {
     match asyncness {
         Async::Yes { span: _, closure_id, return_impl_trait_id } => {
@@ -1336,7 +1351,8 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(expr);
             arms.flat_map_in_place(|arm| vis.flat_map_arm(arm));
         }
-        ExprKind::Closure(_capture_by, asyncness, _movability, decl, body, span) => {
+        ExprKind::Closure(binder, _capture_by, asyncness, _movability, decl, body, span) => {
+            vis.visit_closure_binder(binder);
             vis.visit_asyncness(asyncness);
             vis.visit_fn_decl(decl);
             vis.visit_expr(body);

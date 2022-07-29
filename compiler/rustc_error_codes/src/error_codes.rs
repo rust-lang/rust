@@ -492,6 +492,7 @@ E0785: include_str!("./error_codes/E0785.md"),
 E0786: include_str!("./error_codes/E0786.md"),
 E0787: include_str!("./error_codes/E0787.md"),
 E0788: include_str!("./error_codes/E0788.md"),
+E0790: include_str!("./error_codes/E0790.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -558,7 +559,7 @@ E0788: include_str!("./error_codes/E0788.md"),
 //  E0273, // on_unimplemented #1
 //  E0274, // on_unimplemented #2
 //  E0278, // requirement is not satisfied
-    E0279, // requirement is not satisfied
+//  E0279,
     E0280, // requirement is not satisfied
 //  E0285, // overflow evaluation builtin bounds
 //  E0296, // replaced with a generic attribute input check
@@ -644,4 +645,5 @@ E0788: include_str!("./error_codes/E0788.md"),
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
+    E0789, // rustc_allowed_through_unstable_modules without stability attribute
 }

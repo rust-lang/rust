@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/closure-print-generic-verbose-2.rs:9:23
    |
 LL |         let c = || println!("{} {}", t, x);
-   |                 -------------------------- the found closure
+   |                 -- the found closure
 LL |         let c1 : () = c;
    |                  --   ^ expected `()`, found closure
    |                  |

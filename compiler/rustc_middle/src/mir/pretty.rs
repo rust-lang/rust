@@ -90,7 +90,7 @@ pub fn dump_mir<'tcx, F>(
 }
 
 pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
-    let Some(ref filters) = tcx.sess.opts.debugging_opts.dump_mir else {
+    let Some(ref filters) = tcx.sess.opts.unstable_opts.dump_mir else {
         return false;
     };
     // see notes on #41697 below
@@ -141,7 +141,7 @@ fn dump_matched_mir_node<'tcx, F>(
         extra_data(PassWhere::AfterCFG, &mut file)?;
     };
 
-    if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
+    if tcx.sess.opts.unstable_opts.dump_mir_graphviz {
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, body.source)?;
@@ -149,7 +149,7 @@ fn dump_matched_mir_node<'tcx, F>(
         };
     }
 
-    if let Some(spanview) = tcx.sess.opts.debugging_opts.dump_mir_spanview {
+    if let Some(spanview) = tcx.sess.opts.unstable_opts.dump_mir_spanview {
         let _: io::Result<()> = try {
             let file_basename =
                 dump_file_basename(tcx, pass_num, pass_name, disambiguator, body.source);
@@ -175,7 +175,7 @@ fn dump_file_basename<'tcx>(
         None => String::new(),
     };
 
-    let pass_num = if tcx.sess.opts.debugging_opts.dump_mir_exclude_pass_number {
+    let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
     } else {
         match pass_num {
@@ -214,7 +214,7 @@ fn dump_file_basename<'tcx>(
 /// graphviz data or other things.
 fn dump_path(tcx: TyCtxt<'_>, basename: &str, extension: &str) -> PathBuf {
     let mut file_path = PathBuf::new();
-    file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
+    file_path.push(Path::new(&tcx.sess.opts.unstable_opts.dump_mir_dir));
 
     let file_name = format!("{}.{}", basename, extension,);
 
@@ -360,7 +360,7 @@ where
             "{:A$} // {}{}",
             indented_body,
             if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-            comment(tcx, statement.source_info),
+            comment(tcx, statement.source_info, body.span),
             A = ALIGN,
         )?;
 
@@ -381,7 +381,7 @@ where
         "{:A$} // {}{}",
         indented_terminator,
         if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-        comment(tcx, data.terminator().source_info),
+        comment(tcx, data.terminator().source_info, body.span),
         A = ALIGN,
     )?;
 
@@ -448,7 +448,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
 
+            // FIXME: this is a poor version of `pretty_print_const_value`.
             let fmt_val = |val: &ConstValue<'tcx>| match val {
+                ConstValue::ZeroSized => format!("<ZST>"),
                 ConstValue::Scalar(s) => format!("Scalar({:?})", s),
                 ConstValue::Slice { .. } => format!("Slice(..)"),
                 ConstValue::ByRef { .. } => format!("ByRef(..)"),
@@ -516,8 +518,14 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     }
 }
 
-fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    format!("scope {} at {}", scope.index(), tcx.sess.source_map().span_to_embeddable_string(span))
+fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo, function_span: Span) -> String {
+    let location = if tcx.sess.opts.unstable_opts.mir_pretty_relative_line_numbers {
+        tcx.sess.source_map().span_to_relative_line_string(span, function_span)
+    } else {
+        tcx.sess.source_map().span_to_embeddable_string(span)
+    };
+
+    format!("scope {} at {}", scope.index(), location,)
 }
 
 /// Prints local variables in a scope tree.
@@ -548,7 +556,7 @@ fn write_scope_tree(
             "{0:1$} // in {2}",
             indented_debug_info,
             ALIGN,
-            comment(tcx, var_debug_info.source_info),
+            comment(tcx, var_debug_info.source_info, body.span),
         )?;
     }
 
@@ -583,7 +591,7 @@ fn write_scope_tree(
             indented_decl,
             ALIGN,
             local_name,
-            comment(tcx, local_decl.source_info),
+            comment(tcx, local_decl.source_info, body.span),
         )?;
     }
 
@@ -679,6 +687,7 @@ pub fn write_allocations<'tcx>(
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
                 Either::Left(Either::Right(std::iter::empty()))
             }
+            ConstValue::ZeroSized => Either::Left(Either::Right(std::iter::empty())),
             ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {
                 Either::Right(alloc_ids_from_alloc(alloc))
             }
@@ -716,12 +725,18 @@ pub fn write_allocations<'tcx>(
                 }
                 write!(w, "{}", display_allocation(tcx, alloc.inner()))
             };
-        write!(w, "\n{}", id)?;
-        match tcx.get_global_alloc(id) {
+        write!(w, "\n{id:?}")?;
+        match tcx.try_get_global_alloc(id) {
             // This can't really happen unless there are bugs, but it doesn't cost us anything to
             // gracefully handle it and allow buggy rustc to be debugged via allocation printing.
             None => write!(w, " (deallocated)")?,
-            Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {})", inst)?,
+            Some(GlobalAlloc::Function(inst)) => write!(w, " (fn: {inst})")?,
+            Some(GlobalAlloc::VTable(ty, Some(trait_ref))) => {
+                write!(w, " (vtable: impl {trait_ref} for {ty})")?
+            }
+            Some(GlobalAlloc::VTable(ty, None)) => {
+                write!(w, " (vtable: impl <auto trait> for {ty})")?
+            }
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 match tcx.eval_static_initializer(did) {
                     Ok(alloc) => {
@@ -764,21 +779,21 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints relocations adequately.
-pub fn display_allocation<'a, 'tcx, Tag, Extra>(
+pub fn display_allocation<'a, 'tcx, Prov, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Tag, Extra>,
-) -> RenderAllocation<'a, 'tcx, Tag, Extra> {
+    alloc: &'a Allocation<Prov, Extra>,
+) -> RenderAllocation<'a, 'tcx, Prov, Extra> {
     RenderAllocation { tcx, alloc }
 }
 
 #[doc(hidden)]
-pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
+pub struct RenderAllocation<'a, 'tcx, Prov, Extra> {
     tcx: TyCtxt<'tcx>,
-    alloc: &'a Allocation<Tag, Extra>,
+    alloc: &'a Allocation<Prov, Extra>,
 }
 
-impl<'a, 'tcx, Tag: Provenance, Extra> std::fmt::Display
-    for RenderAllocation<'a, 'tcx, Tag, Extra>
+impl<'a, 'tcx, Prov: Provenance, Extra> std::fmt::Display
+    for RenderAllocation<'a, 'tcx, Prov, Extra>
 {
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
@@ -822,9 +837,9 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
+fn write_allocation_bytes<'tcx, Prov: Provenance, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &Allocation<Tag, Extra>,
+    alloc: &Allocation<Prov, Extra>,
     w: &mut dyn std::fmt::Write,
     prefix: &str,
 ) -> std::fmt::Result {
@@ -858,7 +873,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
         if i != line_start {
             write!(w, " ")?;
         }
-        if let Some(&tag) = alloc.relocations().get(&i) {
+        if let Some(&prov) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             assert!(alloc.init_mask().is_range_initialized(i, i + ptr_size).is_ok());
             let j = i.bytes_usize();
@@ -867,7 +882,7 @@ fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
             let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
             let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
-            let ptr = Pointer::new(tag, offset);
+            let ptr = Pointer::new(prov, offset);
             let mut target = format!("{:?}", ptr);
             if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
                 // This is too long, try to save some space.

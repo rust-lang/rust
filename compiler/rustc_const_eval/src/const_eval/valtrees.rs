@@ -272,7 +272,7 @@ pub fn valtree_to_const_value<'tcx>(
     match ty.kind() {
         ty::FnDef(..) => {
             assert!(valtree.unwrap_branch().is_empty());
-            ConstValue::Scalar(Scalar::ZST)
+            ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => match valtree {
             ty::ValTree::Leaf(scalar_int) => ConstValue::Scalar(Scalar::Int(scalar_int)),
@@ -344,18 +344,14 @@ fn valtree_into_mplace<'tcx>(
 
     match ty.kind() {
         ty::FnDef(_, _) => {
-            ecx.write_immediate(
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::ZST)),
-                &(*place).into(),
-            )
-            .unwrap();
+            ecx.write_immediate(Immediate::Uninit, &place.into()).unwrap();
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
             let scalar_int = valtree.unwrap_leaf();
             debug!("writing trivial valtree {:?} to place {:?}", scalar_int, place);
             ecx.write_immediate(
                 Immediate::Scalar(ScalarMaybeUninit::Scalar(scalar_int.into())),
-                &(*place).into(),
+                &place.into(),
             )
             .unwrap();
         }
@@ -382,7 +378,7 @@ fn valtree_into_mplace<'tcx>(
             };
             debug!(?imm);
 
-            ecx.write_immediate(imm, &(*place).into()).unwrap();
+            ecx.write_immediate(imm, &place.into()).unwrap();
         }
         ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
             let branches = valtree.unwrap_branch();
@@ -440,7 +436,7 @@ fn valtree_into_mplace<'tcx>(
 
                         let offset = place_adjusted.layout.fields.offset(i);
                         place
-                            .offset(
+                            .offset_with_meta(
                                 offset,
                                 MemPlaceMeta::Meta(Scalar::from_machine_usize(
                                     num_elems as u64,
@@ -464,11 +460,11 @@ fn valtree_into_mplace<'tcx>(
 
             if let Some(variant_idx) = variant_idx {
                 // don't forget filling the place with the discriminant of the enum
-                ecx.write_discriminant(variant_idx, &(*place).into()).unwrap();
+                ecx.write_discriminant(variant_idx, &place.into()).unwrap();
             }
 
             debug!("dump of place after writing discriminant:");
-            dump_place(ecx, (*place).into());
+            dump_place(ecx, place.into());
         }
         _ => bug!("shouldn't have created a ValTree for {:?}", ty),
     }

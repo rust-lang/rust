@@ -46,7 +46,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             let hir_id = self.lower_node_id(e.id);
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
-                            self.sess
+                            self.tcx.sess
                                 .struct_span_err(
                                     e.span,
                                     "#[rustc_box] requires precisely one argument \
@@ -155,6 +155,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_await(span, expr)
                 }
                 ExprKind::Closure(
+                    ref binder,
                     capture_clause,
                     asyncness,
                     movability,
@@ -164,6 +165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ) => {
                     if let Async::Yes { closure_id, .. } = asyncness {
                         self.lower_expr_async_closure(
+                            binder,
                             capture_clause,
                             e.id,
                             closure_id,
@@ -173,6 +175,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         )
                     } else {
                         self.lower_expr_closure(
+                            binder,
                             capture_clause,
                             e.id,
                             movability,
@@ -207,8 +210,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
                 }
                 ExprKind::Underscore => {
-                    self.sess
-                        .struct_span_err(
+                    self.tcx
+                        .sess.struct_span_err(
                             e.span,
                             "in expressions, `_` can only be used on the left-hand side of an assignment",
                         )
@@ -245,7 +248,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            self.sess
+                            self.tcx
+                                .sess
                                 .struct_span_err(*sp, "base expression required after `..`")
                                 .span_label(*sp, "add a base expression here")
                                 .emit();
@@ -474,7 +478,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else {
                 let try_span = this.mark_span_with_reason(
                     DesugaringKind::TryBlock,
-                    this.sess.source_map().end_point(body.span),
+                    this.tcx.sess.source_map().end_point(body.span),
                     this.allow_try_trait.clone(),
                 );
 
@@ -604,13 +608,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |_task_context| -> <ret_ty> { body }`:
-        let generator_kind = hir::ExprKind::Closure {
-            capture_clause,
-            bound_generic_params: &[],
-            fn_decl,
-            body,
-            fn_decl_span: self.lower_span(span),
-            movability: Some(hir::Movability::Static),
+        let generator_kind = {
+            let c = self.arena.alloc(hir::Closure {
+                binder: hir::ClosureBinder::Default,
+                capture_clause,
+                bound_generic_params: &[],
+                fn_decl,
+                body,
+                fn_decl_span: self.lower_span(span),
+                movability: Some(hir::Movability::Static),
+            });
+
+            hir::ExprKind::Closure(c)
         };
         let generator = hir::Expr {
             hir_id: self.lower_node_id(closure_node_id),
@@ -653,7 +662,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
                 let mut err = struct_span_err!(
-                    self.sess,
+                    self.tcx.sess,
                     dot_await_span,
                     E0728,
                     "`await` is only allowed inside `async` functions and blocks"
@@ -830,6 +839,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_closure(
         &mut self,
+        binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
         movability: Movability,
@@ -837,7 +847,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
-        let (body, generator_option) = self.with_new_scopes(move |this| {
+        let (binder_clause, generic_params) = self.lower_closure_binder(binder);
+
+        let (body_id, generator_option) = self.with_new_scopes(move |this| {
             let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
             let mut generator_kind = None;
@@ -852,18 +864,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (body_id, generator_option)
         });
 
-        self.with_lifetime_binder(closure_id, &[], |this, bound_generic_params| {
+        self.with_lifetime_binder(closure_id, generic_params, |this, bound_generic_params| {
             // Lower outside new scope to preserve `is_in_loop_condition`.
             let fn_decl = this.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
-            hir::ExprKind::Closure {
+            let c = self.arena.alloc(hir::Closure {
+                binder: binder_clause,
                 capture_clause,
                 bound_generic_params,
                 fn_decl,
-                body,
+                body: body_id,
                 fn_decl_span: this.lower_span(fn_decl_span),
                 movability: generator_option,
-            }
+            });
+
+            hir::ExprKind::Closure(c)
         })
     }
 
@@ -878,7 +893,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Gen) => {
                 if decl.inputs.len() > 1 {
                     struct_span_err!(
-                        self.sess,
+                        self.tcx.sess,
                         fn_decl_span,
                         E0628,
                         "too many parameters for a generator (expected 0 or 1 parameters)"
@@ -892,16 +907,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    struct_span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static")
-                        .emit();
+                    struct_span_err!(
+                        self.tcx.sess,
+                        fn_decl_span,
+                        E0697,
+                        "closures cannot be static"
+                    )
+                    .emit();
                 }
                 None
             }
         }
     }
 
+    fn lower_closure_binder<'c>(
+        &mut self,
+        binder: &'c ClosureBinder,
+    ) -> (hir::ClosureBinder, &'c [GenericParam]) {
+        let (binder, params) = match binder {
+            ClosureBinder::NotPresent => (hir::ClosureBinder::Default, &[][..]),
+            &ClosureBinder::For { span, ref generic_params } => {
+                let span = self.lower_span(span);
+                (hir::ClosureBinder::For { span }, &**generic_params)
+            }
+        };
+
+        (binder, params)
+    }
+
     fn lower_expr_async_closure(
         &mut self,
+        binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
         inner_closure_id: NodeId,
@@ -909,6 +945,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
     ) -> hir::ExprKind<'hir> {
+        if let &ClosureBinder::For { span, .. } = binder {
+            self.tcx.sess.span_err(
+                span,
+                "`for<...>` binders on `async` closures are not currently supported",
+            );
+        }
+
+        let (binder_clause, generic_params) = self.lower_closure_binder(binder);
+
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
 
@@ -916,7 +961,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
                 struct_span_err!(
-                    this.sess,
+                    this.tcx.sess,
                     fn_decl_span,
                     E0708,
                     "`async` non-`move` closures with parameters are not currently supported",
@@ -946,20 +991,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body_id
         });
 
-        self.with_lifetime_binder(closure_id, &[], |this, bound_generic_params| {
+        self.with_lifetime_binder(closure_id, generic_params, |this, bound_generic_params| {
             // We need to lower the declaration outside the new scope, because we
             // have to conserve the state of being inside a loop condition for the
             // closure argument types.
             let fn_decl = this.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
-            hir::ExprKind::Closure {
+            let c = self.arena.alloc(hir::Closure {
+                binder: binder_clause,
                 capture_clause,
                 bound_generic_params,
                 fn_decl,
                 body,
                 fn_decl_span: this.lower_span(fn_decl_span),
                 movability: None,
-            }
+            });
+            hir::ExprKind::Closure(c)
         })
     }
 
@@ -1163,7 +1210,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.sess
+                        self.tcx
+                            .sess
                             .struct_span_err(
                                 e.span,
                                 "functional record updates are not allowed in destructuring \
@@ -1371,7 +1419,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
                 struct_span_err!(
-                    self.sess,
+                    self.tcx.sess,
                     span,
                     E0727,
                     "`async` generators are not yet supported"
@@ -1516,7 +1564,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             self.allow_try_trait.clone(),
         );
-        let try_span = self.sess.source_map().end_point(span);
+        let try_span = self.tcx.sess.source_map().end_point(span);
         let try_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             try_span,

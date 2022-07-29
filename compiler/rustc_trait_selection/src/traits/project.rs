@@ -28,10 +28,10 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
-use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable};
 use rustc_middle::ty::{self, EarlyBinder, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
@@ -252,22 +252,10 @@ fn project_and_unify_type<'cx, 'tcx>(
         Err(InProgress) => return ProjectAndUnifyResult::Recursive,
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
-    let actual = obligation.predicate.term;
-    // HACK: lazy TAIT would regress src/test/ui/impl-trait/nested-return-type2.rs, so we add
-    // a back-compat hack hat converts the RPITs into inference vars, just like they were before
-    // lazy TAIT.
-    // This does not affect TAITs in general, as tested in the nested-return-type-tait* tests.
-    let InferOk { value: actual, obligations: new } =
-        selcx.infcx().replace_opaque_types_with_inference_vars(
-            actual,
-            obligation.cause.body_id,
-            obligation.cause.span,
-            ObligationCauseCode::MiscObligation,
-            obligation.param_env,
-        );
-    obligations.extend(new);
-
-    match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
+    match infcx
+        .at(&obligation.cause, obligation.param_env)
+        .eq(normalized, obligation.predicate.term)
+    {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             ProjectAndUnifyResult::Holds(obligations)
@@ -372,7 +360,7 @@ where
     result
 }
 
-pub(crate) fn needs_normalization<'tcx, T: TypeFoldable<'tcx>>(value: &T, reveal: Reveal) -> bool {
+pub(crate) fn needs_normalization<'tcx, T: TypeVisitable<'tcx>>(value: &T, reveal: Reveal) -> bool {
     match reveal {
         Reveal::UserFacing => value
             .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),
@@ -765,9 +753,12 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
                     .tcx
                     .mk_const(ty::ConstS { kind: ty::ConstKind::Placeholder(p), ty: ct.ty() })
             }
-            _ if ct.has_vars_bound_at_or_above(self.current_index) => ct.super_fold_with(self),
-            _ => ct,
+            _ => ct.super_fold_with(self),
         }
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.has_vars_bound_at_or_above(self.current_index) { p.super_fold_with(self) } else { p }
     }
 }
 

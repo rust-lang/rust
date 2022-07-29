@@ -74,6 +74,7 @@ macro_rules! book {
 // and checking against it?).
 book!(
     CargoBook, "src/tools/cargo/src/doc", "cargo", submodule = "src/tools/cargo";
+    ClippyBook, "src/tools/clippy/book", "clippy";
     EditionGuide, "src/doc/edition-guide", "edition-guide", submodule;
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", submodule;
     Nomicon, "src/doc/nomicon", "nomicon", submodule;
@@ -534,7 +535,9 @@ impl Step for Rustc {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.krate("rustc-main").path("compiler").default_condition(builder.config.compiler_docs)
+        run.crate_or_deps("rustc-main")
+            .path("compiler")
+            .default_condition(builder.config.compiler_docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -567,7 +570,7 @@ impl Step for Rustc {
         // Build the standard library, so that proc-macros can use it.
         // (Normally, only the metadata would be necessary, but proc-macros are special since they run at compile-time.)
         let compiler = builder.compiler(stage, builder.config.build);
-        builder.ensure(compile::Std { compiler, target: builder.config.build });
+        builder.ensure(compile::Std::new(compiler, builder.config.build));
 
         builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
@@ -643,7 +646,7 @@ impl Step for Rustc {
 }
 
 macro_rules! tool_doc {
-    ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?] $(,)?) => {
+    ($tool: ident, $should_run: literal, $path: literal, [$($krate: literal),+ $(,)?], in_tree = $in_tree:expr $(,)?) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             target: TargetSelection,
@@ -656,7 +659,7 @@ macro_rules! tool_doc {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.krate($should_run).default_condition(builder.config.compiler_docs)
+                run.crate_or_deps($should_run).default_condition(builder.config.compiler_docs)
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -683,7 +686,7 @@ macro_rules! tool_doc {
                 // FIXME: is there a way to only ensure `check::Rustc` here? Last time I tried it failed
                 // with strange errors, but only on a full bors test ...
                 let compiler = builder.compiler(stage, builder.config.build);
-                builder.ensure(compile::Rustc { compiler, target });
+                builder.ensure(compile::Rustc::new(compiler, target));
 
                 builder.info(
                     &format!(
@@ -699,6 +702,12 @@ macro_rules! tool_doc {
                 t!(fs::create_dir_all(&out_dir));
                 t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
+                let source_type = if $in_tree == true {
+                    SourceType::InTree
+                } else {
+                    SourceType::Submodule
+                };
+
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
                     builder,
@@ -707,7 +716,7 @@ macro_rules! tool_doc {
                     target,
                     "doc",
                     $path,
-                    SourceType::InTree,
+                    source_type,
                     &[],
                 );
 
@@ -723,20 +732,38 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--show-type-layout");
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
-                builder.run(&mut cargo.into());
+                if $in_tree == true {
+                    builder.run(&mut cargo.into());
+                } else {
+                    // Allow out-of-tree docs to fail (since the tool might be in a broken state).
+                    if !builder.try_run(&mut cargo.into()) {
+                        builder.info(&format!(
+                            "WARNING: tool {} failed to document; ignoring failure because it is an out-of-tree tool",
+                            stringify!($tool).to_lowercase(),
+                        ));
+                    }
+                }
             }
         }
     }
 }
 
-tool_doc!(Rustdoc, "rustdoc-tool", "src/tools/rustdoc", ["rustdoc", "rustdoc-json-types"]);
+tool_doc!(
+    Rustdoc,
+    "rustdoc-tool",
+    "src/tools/rustdoc",
+    ["rustdoc", "rustdoc-json-types"],
+    in_tree = true
+);
 tool_doc!(
     Rustfmt,
     "rustfmt-nightly",
     "src/tools/rustfmt",
     ["rustfmt-nightly", "rustfmt-config_proc_macro"],
+    in_tree = true
 );
-tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"]);
+tool_doc!(Clippy, "clippy", "src/tools/clippy", ["clippy_utils"], in_tree = true);
+tool_doc!(Miri, "miri", "src/tools/miri", ["miri"], in_tree = false);
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
@@ -866,7 +893,7 @@ impl Step for RustcBook {
         let rustc = builder.rustc(self.compiler);
         // The tool runs `rustc` for extracting output examples, so it needs a
         // functional sysroot.
-        builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+        builder.ensure(compile::Std::new(self.compiler, self.target));
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));

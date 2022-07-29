@@ -17,7 +17,7 @@
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
 #![feature(label_break_value)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
@@ -37,5 +37,4 @@ extern crate smallvec;
 
 pub mod autoderef;
 pub mod infer;
-pub mod opaque_types;
 pub mod traits;

@@ -84,6 +84,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
+            ConstValue::ZeroSized => {
+                let llval = bx.zst_to_backend(bx.immediate_backend_type(layout));
+                OperandValue::Immediate(llval)
+            }
             ConstValue::Slice { data, start, end } => {
                 let Abi::ScalarPair(a_scalar, _) = layout.abi else {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);

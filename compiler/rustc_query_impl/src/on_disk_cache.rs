@@ -9,7 +9,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, interpret};
-use rustc_middle::thir;
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
@@ -653,12 +652,11 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             #[cfg(debug_assertions)]
             {
                 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-                let mut hcx = decoder.tcx.create_stable_hashing_context();
-                let mut hasher = StableHasher::new();
-                hcx.while_hashing_spans(true, |hcx| {
-                    expn_id.expn_data().hash_stable(hcx, &mut hasher)
+                let local_hash: u64 = decoder.tcx.with_stable_hashing_context(|mut hcx| {
+                    let mut hasher = StableHasher::new();
+                    expn_id.expn_data().hash_stable(&mut hcx, &mut hasher);
+                    hasher.finish()
                 });
-                let local_hash: u64 = hasher.finish();
                 debug_assert_eq!(hash.local_hash(), local_hash);
             }
 
@@ -767,7 +765,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [ty::abstract_const::Node<'tcx>] {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }

@@ -50,9 +50,9 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, ToPredicate, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -241,13 +241,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         make_adjustments: impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     ) -> CoerceResult<'tcx> {
         debug!("coerce_from_inference_variable(a={:?}, b={:?})", a, b);
-        assert!(a.is_ty_var() && self.infcx.shallow_resolve(a) == a);
-        assert!(self.infcx.shallow_resolve(b) == b);
+        assert!(a.is_ty_var() && self.shallow_resolve(a) == a);
+        assert!(self.shallow_resolve(b) == b);
 
         if b.is_ty_var() {
             // Two unresolved type variables: create a `Coerce` predicate.
             let target_ty = if self.use_lub {
-                self.infcx.next_ty_var(TypeVariableOrigin {
+                self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::LatticeVariable,
                     span: self.cause.span,
                 })
@@ -991,7 +991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.autoderef(rustc_span::DUMMY_SP, expr_ty).nth(1).and_then(|(deref_ty, _)| {
             self.infcx
                 .type_implements_trait(
-                    self.infcx.tcx.lang_items().deref_mut_trait()?,
+                    self.tcx.lang_items().deref_mut_trait()?,
                     expr_ty,
                     ty::List::empty(),
                     self.param_env,
@@ -1577,8 +1577,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let parent = fcx.tcx.hir().get(parent_id);
         if let Some(expr) = expression
-            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure { body, .. }, .. }) = parent
-            && !matches!(fcx.tcx.hir().body(*body).value.kind, hir::ExprKind::Block(..))
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(&hir::Closure { body, .. }), .. }) = parent
+            && !matches!(fcx.tcx.hir().body(body).value.kind, hir::ExprKind::Block(..))
         {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
         }

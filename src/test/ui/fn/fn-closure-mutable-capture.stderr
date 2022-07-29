@@ -5,8 +5,9 @@ LL | pub fn bar<F: Fn()>(_f: F) {}
    |                         - change this to accept `FnMut` instead of `Fn`
 ...
 LL |     bar(move || x = 1);
-   |     ---         ^^^^^ cannot assign
-   |     |
+   |     --- ------- ^^^^^ cannot assign
+   |     |   |
+   |     |   in this closure
    |     expects `Fn` instead of `FnMut`
 
 error: aborting due to previous error

@@ -1,6 +1,6 @@
 use crate::mir::Mutability;
 use crate::ty::subst::GenericArgKind;
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_hir::def_id::DefId;
 use std::fmt::Debug;
 use std::hash::Hash;

@@ -2,7 +2,7 @@ error: cross-crate traits with a default impl, like `Send`, should not be specia
   --> $DIR/suspicious-impls-lint.rs:9:1
    |
 LL | unsafe impl<T: Send> Send for MayImplementSendErr<&T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/suspicious-impls-lint.rs:1:9
@@ -16,13 +16,13 @@ note: try using the same sequence of generic parameters as the struct definition
   --> $DIR/suspicious-impls-lint.rs:8:1
    |
 LL | struct MayImplementSendErr<T>(T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
   --> $DIR/suspicious-impls-lint.rs:21:1
    |
 LL | unsafe impl Send for ContainsVec<i32> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
@@ -31,13 +31,13 @@ note: try using the same sequence of generic parameters as the struct definition
   --> $DIR/suspicious-impls-lint.rs:20:1
    |
 LL | struct ContainsVec<T>(Vec<T>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
   --> $DIR/suspicious-impls-lint.rs:32:1
    |
 LL | unsafe impl<T: Send> Send for TwoParamsSame<T, T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
@@ -46,13 +46,13 @@ note: try using the same sequence of generic parameters as the struct definition
   --> $DIR/suspicious-impls-lint.rs:31:1
    |
 LL | struct TwoParamsSame<T, U>(T, U);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Send`, should not be specialized
   --> $DIR/suspicious-impls-lint.rs:40:1
    |
 LL | unsafe impl<T> Send for WithPhantomDataSend<*const T, i8> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
@@ -61,13 +61,13 @@ note: try using the same sequence of generic parameters as the struct definition
   --> $DIR/suspicious-impls-lint.rs:39:1
    |
 LL | pub struct WithPhantomDataSend<T, U>(PhantomData<T>, U);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cross-crate traits with a default impl, like `Sync`, should not be specialized
   --> $DIR/suspicious-impls-lint.rs:46:1
    |
 LL | unsafe impl<T> Sync for WithLifetime<'static, Vec<T>> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this will change its meaning in a future release!
    = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
@@ -76,7 +76,7 @@ note: try using the same sequence of generic parameters as the struct definition
   --> $DIR/suspicious-impls-lint.rs:44:1
    |
 LL | pub struct WithLifetime<'a, T>(&'a (), T);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

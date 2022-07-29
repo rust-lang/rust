@@ -160,8 +160,6 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
-    fn type_metadata(&mut self, function: Self::Function, typeid: String);
-    fn typeid_metadata(&mut self, typeid: String) -> Self::Value;
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
     fn store_with_flags(
@@ -221,7 +219,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         assert!(matches!(self.cx().type_kind(float_ty), TypeKind::Float | TypeKind::Double));
         assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
 
-        if let Some(false) = self.cx().sess().opts.debugging_opts.saturating_float_casts {
+        if let Some(false) = self.cx().sess().opts.unstable_opts.saturating_float_casts {
             return if signed { self.fptosi(x, dest_ty) } else { self.fptoui(x, dest_ty) };
         }
 

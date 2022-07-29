@@ -3,6 +3,7 @@ use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
 use crate::sys::locks::Mutex;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
 
 // The implementation is inspired by Andrew D. Birrell's paper
@@ -14,14 +15,26 @@ pub struct Condvar {
     sem2: *const c_void,
 }
 
-pub type MovableCondvar = Condvar;
+pub(crate) type MovableCondvar = LazyBox<Condvar>;
+
+impl LazyInit for Condvar {
+    fn init() -> Box<Self> {
+        Box::new(Self::new())
+    }
+}
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
 impl Condvar {
-    pub const fn new() -> Condvar {
-        Condvar { counter: AtomicUsize::new(0), sem1: ptr::null(), sem2: ptr::null() }
+    pub fn new() -> Self {
+        let mut condvar =
+            Self { counter: AtomicUsize::new(0), sem1: ptr::null(), sem2: ptr::null() };
+        unsafe {
+            let _ = abi::sem_init(&mut condvar.sem1, 0);
+            let _ = abi::sem_init(&mut condvar.sem2, 0);
+        }
+        condvar
     }
 
     pub unsafe fn notify_one(&self) {

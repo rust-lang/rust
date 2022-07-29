@@ -78,10 +78,17 @@ declare_clippy_lint! {
     /// Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,
-    /// `#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and
-    /// `#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on
-    /// `extern crate` items with a `#[macro_use]` attribute.
+    /// This lint permits lint attributes for lints emitted on the items themself.
+    /// For `use` items these lints are:
+    /// * deprecated
+    /// * unreachable_pub
+    /// * unused_imports
+    /// * clippy::enum_glob_use
+    /// * clippy::macro_use_imports
+    /// * clippy::wildcard_imports
+    ///
+    /// For `extern crate` items these lints are:
+    /// * `unused_imports` on items with `#[macro_use]`
     ///
     /// ### Why is this bad?
     /// Lint attributes have no effect on crate imports. Most
@@ -347,7 +354,10 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || extract_clippy_lint(lint).map_or(false, |s| {
                                                 matches!(
                                                     s.as_str(),
-                                                    "wildcard_imports" | "enum_glob_use" | "redundant_pub_crate",
+                                                    "wildcard_imports"
+                                                        | "enum_glob_use"
+                                                        | "redundant_pub_crate"
+                                                        | "macro_use_imports",
                                                 )
                                             })
                                         {

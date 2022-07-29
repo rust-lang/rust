@@ -1,5 +1,8 @@
 #![unstable(issue = "none", feature = "windows_handle")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf};
 use crate::mem;
@@ -248,14 +251,18 @@ impl Handle {
             offset.map(|n| n as _).as_ref(),
             None,
         );
+
+        let status = if status == c::STATUS_PENDING {
+            c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE);
+            io_status.status()
+        } else {
+            status
+        };
         match status {
             // If the operation has not completed then abort the process.
             // Doing otherwise means that the buffer and stack may be written to
             // after this function returns.
-            c::STATUS_PENDING => {
-                eprintln!("I/O error: operation failed to complete synchronously");
-                crate::process::abort();
-            }
+            c::STATUS_PENDING => rtabort!("I/O error: operation failed to complete synchronously"),
 
             // Return `Ok(0)` when there's nothing more to read.
             c::STATUS_END_OF_FILE => Ok(0),
@@ -294,13 +301,17 @@ impl Handle {
                 None,
             )
         };
+        let status = if status == c::STATUS_PENDING {
+            unsafe { c::WaitForSingleObject(self.as_raw_handle(), c::INFINITE) };
+            io_status.status()
+        } else {
+            status
+        };
         match status {
             // If the operation has not completed then abort the process.
             // Doing otherwise means that the buffer may be read and the stack
             // written to after this function returns.
-            c::STATUS_PENDING => {
-                rtabort!("I/O error: operation failed to complete synchronously");
-            }
+            c::STATUS_PENDING => rtabort!("I/O error: operation failed to complete synchronously"),
 
             // Success!
             status if c::nt_success(status) => Ok(io_status.Information),

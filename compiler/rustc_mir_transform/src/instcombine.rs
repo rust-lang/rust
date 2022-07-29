@@ -16,9 +16,8 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        let ctx = InstCombineContext { tcx, local_decls };
-        for block in basic_blocks.iter_mut() {
+        let ctx = InstCombineContext { tcx, local_decls: &body.local_decls };
+        for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {

@@ -9,6 +9,7 @@ mod memory;
 mod operand;
 mod operator;
 mod place;
+mod projection;
 mod step;
 mod terminator;
 mod traits;

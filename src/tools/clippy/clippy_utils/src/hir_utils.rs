@@ -1,19 +1,24 @@
 use crate::consts::constant_simple;
+use crate::macros::macro_backtrace;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
-    ArrayLen, BinOpKind, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
-    InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath, Stmt,
-    StmtKind, Ty, TyKind, TypeBinding,
+    ArrayLen, BinOpKind, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard,
+    HirId, InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath,
+    Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 use std::hash::{Hash, Hasher};
+
+/// Callback that is called when two expressions are not equal in the sense of `SpanlessEq`, but
+/// other conditions would make them equal.
+type SpanlessEqCallback<'a> = dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a;
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator `==` on ast types as this operator would compare true equality with
@@ -25,7 +30,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<(&'tcx TypeckResults<'tcx>, &'tcx TypeckResults<'tcx>)>,
     allow_side_effects: bool,
-    expr_fallback: Option<Box<dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a>>,
+    expr_fallback: Option<Box<SpanlessEqCallback<'a>>>,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -112,6 +117,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 // these only get added if the init and type is equal.
                 both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
+                    && both(&l.els, &r.els, |l, r| self.eq_block(l, r))
                     && self.eq_pat(l.pat, r.pat)
             },
             (&StmtKind::Expr(l), &StmtKind::Expr(r)) | (&StmtKind::Semi(l), &StmtKind::Semi(r)) => self.eq_expr(l, r),
@@ -169,6 +175,15 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
             },
         }
+    }
+
+    fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
+        macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+            matches!(
+                &self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
+                Some(sym::todo_macro | sym::unimplemented_macro)
+            )
+        })
     }
 
     pub fn eq_array_length(&mut self, left: ArrayLen, right: ArrayLen) -> bool {
@@ -286,7 +301,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
             _ => false,
         };
-        is_eq || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
+        (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
+            || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
@@ -622,9 +638,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 self.hash_ty(ty);
             },
-            ExprKind::Closure {
+            ExprKind::Closure(&Closure {
                 capture_clause, body, ..
-            } => {
+            }) => {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(&self.cx.tcx.hir().body(body).value);
@@ -885,6 +901,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_pat(local.pat);
                 if let Some(init) = local.init {
                     self.hash_expr(init);
+                }
+                if let Some(els) = local.els {
+                    self.hash_block(els);
                 }
             },
             StmtKind::Item(..) => {},

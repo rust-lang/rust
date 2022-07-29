@@ -204,14 +204,6 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                          // The `evaluate_obligation` query does not return further
-                                          // obligations. If it evaluates an obligation with an opaque
-                                          // type, that opaque type may get compared to another type,
-                                          // constraining it. We would lose this information.
-                                          // FIXME: differentiate between crate-local opaque types
-                                          // and opaque types from other crates, as only opaque types
-                                          // from the local crate can possibly be a local name
-                                          | TypeFlags::HAS_TY_OPAQUE.bits
                                           // We consider 'freshened' types and constants
                                           // to depend on a particular fn.
                                           // The freshening process throws away information,
@@ -318,6 +310,7 @@ impl DebruijnIndex {
     ///    for<'a> fn(for<'b> fn(&'a x))
     ///
     /// you would need to shift the index for `'a` into a new binder.
+    #[inline]
     #[must_use]
     pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() + amount)
@@ -325,18 +318,21 @@ impl DebruijnIndex {
 
     /// Update this index in place by shifting it "in" through
     /// `amount` number of binders.
+    #[inline]
     pub fn shift_in(&mut self, amount: u32) {
         *self = self.shifted_in(amount);
     }
 
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
+    #[inline]
     #[must_use]
     pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex::from_u32(self.as_u32() - amount)
     }
 
     /// Update in place by shifting out from `amount` binders.
+    #[inline]
     pub fn shift_out(&mut self, amount: u32) {
         *self = self.shifted_out(amount);
     }
@@ -361,6 +357,7 @@ impl DebruijnIndex {
     /// If we invoke `shift_out_to_binder` and the region is in fact
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
+    #[inline]
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
@@ -599,6 +596,7 @@ impl UnifyKey for FloatVid {
 }
 
 #[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash)]
+#[rustc_pass_by_value]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell

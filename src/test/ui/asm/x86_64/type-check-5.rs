@@ -13,10 +13,10 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
-        //~^ ERROR use of possibly-uninitialized variable: `x`
+        //~^ ERROR E0381
         let mut y: u64;
         asm!("{}", inout(reg) y);
-        //~^ ERROR use of possibly-uninitialized variable: `y`
+        //~^ ERROR E0381
         let _ = y;
 
         // Outputs require mutable places

@@ -28,7 +28,7 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
-    self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeFoldable,
+    self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
@@ -38,7 +38,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
-use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
+use rustc_trait_selection::traits::error_reporting::{
+    report_object_safety_error, suggestions::NextTypeParamName,
+};
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use smallvec::SmallVec;
@@ -219,14 +221,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::LateBoundAnon(debruijn, index, anon_index)) => {
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::from_u32(index),
-                    kind: ty::BrAnon(anon_index),
-                };
-                tcx.mk_region(ty::ReLateBound(debruijn, br))
-            }
-
             Some(rl::Region::EarlyBound(index, id)) => {
                 let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
@@ -380,7 +374,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id: DefId,
             generic_args: &'a GenericArgs<'a>,
             span: Span,
-            missing_type_params: Vec<String>,
+            missing_type_params: Vec<Symbol>,
             inferred_params: Vec<Span>,
             infer_args: bool,
             is_object: bool,
@@ -437,7 +431,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // as the rest of the type. As such, we ignore missing
                                 // stability attributes.
                             },
-                        )
+                        );
                     }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
                         self.inferred_params.push(ty.span);
@@ -512,7 +506,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // defaults. This will lead to an ICE if we are not
                             // careful!
                             if self.default_needs_object_self(param) {
-                                self.missing_type_params.push(param.name.to_string());
+                                self.missing_type_params.push(param.name);
                                 tcx.ty_error().into()
                             } else {
                                 // This is a default type parameter.
@@ -548,7 +542,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
                         if !infer_args && has_default {
-                            EarlyBinder(tcx.const_param_default(param.def_id))
+                            tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
                                 .into()
                         } else {
@@ -1148,17 +1142,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .expect("missing associated type");
 
         if !assoc_item.vis.is_accessible_from(def_scope, tcx) {
-            let kind = match assoc_item.kind {
-                ty::AssocKind::Type => "type",
-                ty::AssocKind::Const => "const",
-                _ => unreachable!(),
-            };
             tcx.sess
                 .struct_span_err(
                     binding.span,
-                    &format!("associated {kind} `{}` is private", binding.item_name),
+                    &format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label(binding.span, &format!("private associated {kind}"))
+                .span_label(binding.span, &format!("private {}", assoc_item.kind))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
@@ -1957,7 +1946,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
-                        let sp = tcx.sess.source_map().guess_head_span(sp);
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
@@ -2448,7 +2436,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     let msg = format!("`Self` is of type `{ty}`");
                     if let (Ok(i_sp), Some(t_sp)) = (span_of_impl, span_of_ty) {
-                        let i_sp = tcx.sess.source_map().guess_head_span(i_sp);
                         let mut span: MultiSpan = vec![t_sp].into();
                         span.push_span_label(
                             i_sp,
@@ -2486,7 +2473,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         concrete type's name `{type_name}` instead if you want to \
                                         specify its type parameters"
                                     ),
-                                    type_name.to_string(),
+                                    type_name,
                                     Applicability::MaybeIncorrect,
                                 );
                             }
@@ -2676,7 +2663,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     span,
                     ty,
                     opt_sugg: Some((span, Applicability::MachineApplicable))
-                        .filter(|_| ty.is_suggestable(tcx)),
+                        .filter(|_| ty.is_suggestable(tcx, false)),
                 });
 
                 ty
@@ -2986,6 +2973,50 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Some(r)
     }
 
+    /// Make sure that we are in the condition to suggest the blanket implementation.
+    fn maybe_lint_blanket_trait_impl<T: rustc_errors::EmissionGuarantee>(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        diag: &mut DiagnosticBuilder<'_, T>,
+    ) {
+        let tcx = self.tcx();
+        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id);
+        if let hir::Node::Item(hir::Item {
+            kind:
+                hir::ItemKind::Impl(hir::Impl {
+                    self_ty: impl_self_ty, of_trait: Some(of_trait_ref), generics, ..
+                }),
+            ..
+        }) = tcx.hir().get_by_def_id(parent_id) && self_ty.hir_id == impl_self_ty.hir_id
+        {
+            if !of_trait_ref.trait_def_id().map_or(false, |def_id| def_id.is_local()) {
+                return;
+            }
+            let of_trait_span = of_trait_ref.path.span;
+            // make sure that we are not calling unwrap to abort during the compilation
+            let Ok(impl_trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else { return; };
+            let Ok(of_trait_name) = tcx.sess.source_map().span_to_snippet(of_trait_span) else { return; };
+            // check if the trait has generics, to make a correct suggestion
+            let param_name = generics.params.next_type_param_name(None);
+
+            let add_generic_sugg = if let Some(span) = generics.span_for_param_suggestion() {
+                (span, format!(", {}: {}", param_name, impl_trait_name))
+            } else {
+                (generics.span, format!("<{}: {}>", param_name, impl_trait_name))
+            };
+            diag.multipart_suggestion(
+            format!("alternatively use a blanket \
+                     implementation to implement `{of_trait_name}` for \
+                     all types that also implement `{impl_trait_name}`"),
+                vec![
+                    (self_ty.span, param_name),
+                    add_generic_sugg,
+                ],
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     fn maybe_lint_bare_trait(&self, self_ty: &hir::Ty<'_>, in_path: bool) {
         let tcx = self.tcx();
         if let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
@@ -3021,9 +3052,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if self_ty.span.edition() >= Edition::Edition2021 {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
-                rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg)
-                    .multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable)
-                    .emit();
+                let mut diag =
+                    rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
+                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+                // check if the impl trait that we are considering is a impl of a local trait
+                self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
+                diag.emit();
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
                 tcx.struct_span_lint_hir(
@@ -3031,13 +3065,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self_ty.hir_id,
                     self_ty.span,
                     |lint| {
-                        lint.build(msg)
-                            .multipart_suggestion_verbose(
-                                "use `dyn`",
-                                sugg,
-                                Applicability::MachineApplicable,
-                            )
-                            .emit();
+                        let mut diag = lint.build(msg);
+                        diag.multipart_suggestion_verbose(
+                            "use `dyn`",
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                        self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
+                        diag.emit();
                     },
                 );
             }

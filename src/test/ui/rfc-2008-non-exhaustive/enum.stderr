@@ -8,7 +8,7 @@ note: `EmptyNonExhaustiveEnum` defined here
   --> $DIR/auxiliary/enums.rs:18:1
    |
 LL | pub enum EmptyNonExhaustiveEnum {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `EmptyNonExhaustiveEnum`, which is marked as non-exhaustive
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
@@ -26,12 +26,8 @@ LL |     match enum_unit {
 note: `NonExhaustiveEnum` defined here
   --> $DIR/auxiliary/enums.rs:4:1
    |
-LL | / pub enum NonExhaustiveEnum {
-LL | |     Unit,
-LL | |     Tuple(u32),
-LL | |     Struct { field: u32 },
-LL | | }
-   | |_^
+LL | pub enum NonExhaustiveEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonExhaustiveEnum`, which is marked as non-exhaustive
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
@@ -48,12 +44,8 @@ LL |     match enum_unit {};
 note: `NonExhaustiveEnum` defined here
   --> $DIR/auxiliary/enums.rs:4:1
    |
-LL | / pub enum NonExhaustiveEnum {
-LL | |     Unit,
-LL | |     Tuple(u32),
-LL | |     Struct { field: u32 },
-LL | | }
-   | |_^
+LL | pub enum NonExhaustiveEnum {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonExhaustiveEnum`, which is marked as non-exhaustive
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |

@@ -15,14 +15,17 @@ assert-text: (
 // Checking the "item-info" on an impl block as well:
 goto: file://|DOC_PATH|/lib2/struct.LongItemInfo2.html
 compare-elements-property: (
-    "#impl-SimpleTrait .item-info",
-    "#impl-SimpleTrait + .docblock",
+    "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
+    "#impl-SimpleTrait-for-LongItemInfo2 + .docblock",
     ["scrollWidth"],
 )
-assert-property: ("#impl-SimpleTrait .item-info", {"scrollWidth": "866"})
+assert-property: (
+    "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
+    {"scrollWidth": "866"},
+)
 // Just to be sure we're comparing the correct "item-info":
 assert-text: (
-    "#impl-SimpleTrait .item-info",
+    "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
     "Available on Android or Linux or Emscripten or DragonFly BSD",
     STARTS_WITH,
 )

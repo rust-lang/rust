@@ -410,7 +410,7 @@ jobs:
           - name: dist-x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler"
-              SCRIPT: python x.py dist
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
           - name: dist-i686-msvc

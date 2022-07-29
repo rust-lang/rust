@@ -7,14 +7,15 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, Local, Location, MirPass,
-    MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement,
-    StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
+    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, Local, Location,
+    MirPass, MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope,
+    Statement, StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
-use rustc_mir_dataflow::storage::always_live_locals;
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, VariantIdx};
 
@@ -48,7 +49,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
         let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
 
-        let always_live_locals = always_live_locals(body);
+        let always_live_locals = always_storage_live_locals(body);
         let storage_liveness = MaybeStorageLive::new(always_live_locals)
             .into_engine(tcx, body)
             .iterate_to_fixpoint()
@@ -196,8 +197,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
-    fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
-        if self.body.local_decls.get(*local).is_none() {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        if self.body.local_decls.get(local).is_none() {
             self.fail(
                 location,
                 format!("local {:?} has no corresponding declaration in `body.local_decls`", local),
@@ -205,10 +206,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         if self.reachable_blocks.contains(location.block) && context.is_use() {
-            // Uses of locals must occur while the local's storage is allocated.
+            // We check that the local is live whenever it is used. Technically, violating this
+            // restriction is only UB and not actually indicative of not well-formed MIR. This means
+            // that an optimization which turns MIR that already has UB into MIR that fails this
+            // check is not necessarily wrong. However, we have no such optimizations at the moment,
+            // and so we include this check anyway to help us catch bugs. If you happen to write an
+            // optimization that might cause this to incorrectly fire, feel free to remove this
+            // check.
             self.storage_liveness.seek_after_primary_effect(location);
             let locals_with_storage = self.storage_liveness.get();
-            if !locals_with_storage.contains(*local) {
+            if !locals_with_storage.contains(local) {
                 self.fail(location, format!("use of local {:?}, which has no storage here", local));
             }
         }
@@ -216,7 +223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
-        if self.tcx.sess.opts.debugging_opts.validate_mir && self.mir_phase < MirPhase::DropsLowered
+        if self.tcx.sess.opts.unstable_opts.validate_mir && self.mir_phase < MirPhase::DropsLowered
         {
             // `Operand::Copy` is only supposed to be used with `Copy` types.
             if let Operand::Copy(place) = operand {
@@ -275,7 +282,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 };
 
-                match parent_ty.ty.kind() {
+                let kind = match parent_ty.ty.kind() {
+                    &ty::Opaque(def_id, substs) => {
+                        self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
+                    }
+                    kind => kind,
+                };
+
+                match kind {
                     ty::Tuple(fields) => {
                         let Some(f_ty) = fields.get(f.as_usize()) else {
                             fail_out_of_bounds(self, location);
@@ -299,12 +313,39 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    ty::Generator(_, substs, _) => {
-                        let substs = substs.as_generator();
-                        let Some(f_ty) = substs.upvar_tys().nth(f.as_usize()) else {
-                            fail_out_of_bounds(self, location);
-                            return;
+                    &ty::Generator(def_id, substs, _) => {
+                        let f_ty = if let Some(var) = parent_ty.variant_index {
+                            let gen_body = if def_id == self.body.source.def_id() {
+                                self.body
+                            } else {
+                                self.tcx.optimized_mir(def_id)
+                            };
+
+                            let Some(layout) = gen_body.generator_layout() else {
+                                self.fail(location, format!("No generator layout for {:?}", parent_ty));
+                                return;
+                            };
+
+                            let Some(&local) = layout.variant_fields[var].get(f) else {
+                                fail_out_of_bounds(self, location);
+                                return;
+                            };
+
+                            let Some(&f_ty) = layout.field_tys.get(local) else {
+                                self.fail(location, format!("Out of bounds local {:?} for {:?}", local, parent_ty));
+                                return;
+                            };
+
+                            f_ty
+                        } else {
+                            let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
+                                fail_out_of_bounds(self, location);
+                                return;
+                            };
+
+                            f_ty
                         };
+
                         check_equal(self, location, f_ty);
                     }
                     _ => {
@@ -328,6 +369,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         {
             self.fail(location, format!("{:?}, has deref at the wrong place", place));
         }
+
+        self.super_place(place, cntxt, location);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -339,7 +382,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) => {}
+            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
             Rvalue::Aggregate(agg_kind, _) => {
                 let disallowed = match **agg_kind {
                     AggregateKind::Array(..) => false,
@@ -361,6 +404,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
+            Rvalue::Ref(..) => {}
             Rvalue::Len(p) => {
                 let pty = p.ty(&self.body.local_decls, self.tcx).ty;
                 check_kinds!(
@@ -503,7 +547,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }
-            _ => {}
+            Rvalue::Cast(kind, operand, target_type) => {
+                match kind {
+                    CastKind::Misc => {
+                        let op_ty = operand.ty(self.body, self.tcx);
+                        if op_ty.is_enum() {
+                            self.fail(
+                                location,
+                                format!(
+                                    "enum -> int casts should go through `Rvalue::Discriminant`: {operand:?}:{op_ty} as {target_type}",
+                                ),
+                            );
+                        }
+                    }
+                    // Nothing to check here
+                    CastKind::PointerFromExposedAddress
+                    | CastKind::PointerExposeAddress
+                    | CastKind::Pointer(_) => {}
+                }
+            }
+            Rvalue::Repeat(_, _)
+            | Rvalue::ThreadLocalRef(_)
+            | Rvalue::AddressOf(_, _)
+            | Rvalue::NullaryOp(_, _)
+            | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);
     }
@@ -524,6 +591,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             statement.kind, left_ty, right_ty,
                         ),
                     );
+                }
+                if let Rvalue::CopyForDeref(place) = rvalue {
+                    if !place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_some()
+                    {
+                        self.fail(
+                            location,
+                            "`CopyForDeref` should only be used for dereferenceable types",
+                        )
+                    }
                 }
                 // FIXME(JakobDegen): Check this for all rvalues, not just this one.
                 if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
@@ -823,8 +899,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_terminator(terminator, location);
     }
 
-    fn visit_source_scope(&mut self, scope: &SourceScope) {
-        if self.body.source_scopes.get(*scope).is_none() {
+    fn visit_source_scope(&mut self, scope: SourceScope) {
+        if self.body.source_scopes.get(scope).is_none() {
             self.tcx.sess.diagnostic().delay_span_bug(
                 self.body.span,
                 &format!(

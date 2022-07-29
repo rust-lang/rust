@@ -26,7 +26,6 @@ use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
@@ -56,7 +55,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
+    pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     ///
@@ -276,7 +275,7 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
-    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.debugging_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch != "aarch64" {
             sess.err("-Zbranch-protection is only supported on aarch64");
         } else {
@@ -309,7 +308,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
-    if let CFProtection::Branch | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+    if let CFProtection::Branch | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -317,7 +316,7 @@ pub unsafe fn create_module<'ll>(
             1,
         )
     }
-    if let CFProtection::Return | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+    if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -326,7 +325,7 @@ pub unsafe fn create_module<'ll>(
         )
     }
 
-    if sess.opts.debugging_opts.virtual_function_elimination {
+    if sess.opts.unstable_opts.virtual_function_elimination {
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,

@@ -9,9 +9,8 @@
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
 #![feature(drain_filter)]
-#![feature(let_chains)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
-#![cfg_attr(bootstrap, feature(nll))]
 #![feature(test)]
 #![feature(never_type)]
 #![feature(once_cell)]
@@ -76,7 +75,7 @@ use std::env::{self, VarError};
 use std::io;
 use std::process;
 
-use rustc_driver::{abort_on_err, describe_lints};
+use rustc_driver::abort_on_err;
 use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
@@ -367,7 +366,7 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("Z", |o| {
-            o.optmulti("Z", "", "internal and debugging options (only on nightly build)", "FLAG")
+            o.optmulti("Z", "", "unstable / perma-unstable options (only on nightly build)", "FLAG")
         }),
         stable("sysroot", |o| o.optopt("", "sysroot", "Override the system root", "PATH")),
         unstable("playground-url", |o| {
@@ -461,6 +460,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 "error-format",
                 "How errors and other messages are produced",
                 "human|json|short",
+            )
+        }),
+        unstable("diagnostic-width", |o| {
+            o.optopt(
+                "",
+                "diagnostic-width",
+                "Provide width of the output for truncated error messages",
+                "WIDTH",
             )
         }),
         stable("json", |o| {
@@ -734,7 +741,12 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn main_options(options: config::Options) -> MainResult {
-    let diag = core::new_handler(options.error_format, None, &options.debugging_opts);
+    let diag = core::new_handler(
+        options.error_format,
+        None,
+        options.diagnostic_width,
+        &options.unstable_opts,
+    );
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
@@ -771,15 +783,24 @@ fn main_options(options: config::Options) -> MainResult {
     let config = core::create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
+        let sess = compiler.session();
+
+        if sess.opts.describe_lints {
+            let mut lint_store = rustc_lint::new_lint_store(
+                sess.opts.unstable_opts.no_interleave_lints,
+                sess.enable_internal_lints(),
+            );
+            let registered_lints = if let Some(register_lints) = compiler.register_lints() {
+                register_lints(sess, &mut lint_store);
+                true
+            } else {
+                false
+            };
+            rustc_driver::describe_lints(sess, &lint_store, registered_lints);
+            return Ok(());
+        }
+
         compiler.enter(|queries| {
-            let sess = compiler.session();
-
-            if sess.opts.describe_lints {
-                let (_, lint_store) = &*queries.register_plugins()?.peek();
-                describe_lints(sess, lint_store, true);
-                return Ok(());
-            }
-
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.

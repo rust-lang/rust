@@ -29,7 +29,7 @@ error[E0599]: no variant or associated item named `Squareee` found for enum `Sha
   --> $DIR/suggest-variants.rs:15:12
    |
 LL | enum Shape {
-   |      ----- variant or associated item `Squareee` not found for this enum
+   | ---------- variant or associated item `Squareee` not found for this enum
 ...
 LL |     Shape::Squareee;
    |            ^^^^^^^^
@@ -41,7 +41,7 @@ error[E0599]: no variant or associated item named `Circl` found for enum `Shape`
   --> $DIR/suggest-variants.rs:16:12
    |
 LL | enum Shape {
-   |      ----- variant or associated item `Circl` not found for this enum
+   | ---------- variant or associated item `Circl` not found for this enum
 ...
 LL |     Shape::Circl;
    |            ^^^^^
@@ -53,7 +53,7 @@ error[E0599]: no variant or associated item named `Rombus` found for enum `Shape
   --> $DIR/suggest-variants.rs:17:12
    |
 LL | enum Shape {
-   |      ----- variant or associated item `Rombus` not found for this enum
+   | ---------- variant or associated item `Rombus` not found for this enum
 ...
 LL |     Shape::Rombus;
    |            ^^^^^^ variant or associated item not found in `Shape`

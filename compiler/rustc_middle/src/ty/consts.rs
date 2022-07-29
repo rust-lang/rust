@@ -2,7 +2,7 @@ use crate::mir::interpret::LitToConstInput;
 use crate::mir::ConstantKind;
 use crate::ty::{
     self, InlineConstSubsts, InlineConstSubstsParts, InternalSubsts, ParamEnv, ParamEnvAnd, Ty,
-    TyCtxt, TypeFoldable,
+    TyCtxt, TypeVisitable,
 };
 use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
@@ -203,7 +203,7 @@ impl<'tcx> Const<'tcx> {
     pub fn to_valtree(self) -> ty::ValTree<'tcx> {
         match self.kind() {
             ty::ConstKind::Value(valtree) => valtree,
-            _ => bug!("expected ConstKind::Value"),
+            _ => bug!("expected ConstKind::Value, got {:?}", self.kind()),
         }
     }
 

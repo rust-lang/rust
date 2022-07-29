@@ -105,6 +105,7 @@
 #![feature(const_cell_into_inner)]
 #![feature(const_char_convert)]
 #![feature(const_clone)]
+#![feature(const_cmp)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_float_bits_conv)]
@@ -134,7 +135,7 @@
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]
-#![feature(const_slice_from_raw_parts)]
+#![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_str_from_utf8_unchecked_mut)]
 #![feature(const_swap)]
@@ -163,6 +164,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_fn_floating_point_arithmetic)]
@@ -191,7 +193,6 @@
 #![feature(never_type)]
 #![feature(no_core)]
 #![feature(no_coverage)] // rust-lang/rust#84605
-#![feature(no_niche)] // rust-lang/rust#68303
 #![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(repr_simd)]

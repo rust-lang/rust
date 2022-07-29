@@ -10,7 +10,7 @@ note: required because of the requirements on the impl of `for<'b> Wrap<'b>` for
    |
 LL | impl<'b, P> Wrap<'b> for Wrapper<P>
    |             ^^^^^^^^     ^^^^^^^^^^
-   = note: required for the cast to the object type `dyn for<'b> Wrap<'b>`
+   = note: required for the cast from `Wrapper<P>` to the object type `dyn for<'b> Wrap<'b>`
 help: consider further restricting the associated type
    |
 LL | fn push_process<P>(process: P) where P: Process<'static>, <P as Process<'_>>::Item: Iterator {

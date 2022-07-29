@@ -8,7 +8,7 @@ error[E0391]: cycle detected when const-evaluating + checking `C`
   --> $DIR/write-to-static-mut-in-static.rs:5:1
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires const-evaluating + checking `C`...
   --> $DIR/write-to-static-mut-in-static.rs:5:34

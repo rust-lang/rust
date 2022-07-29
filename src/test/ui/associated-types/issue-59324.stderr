@@ -5,10 +5,7 @@ LL | / pub trait ThriftService<Bug: NotFoo>:
 LL | |
 LL | |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
-...  |
-LL | |
-LL | | }
-   | |_^ the trait `Foo` is not implemented for `Bug`
+   | |______________________________________________^ the trait `Foo` is not implemented for `Bug`
    |
 help: consider further restricting this bound
    |

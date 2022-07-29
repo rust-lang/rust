@@ -86,7 +86,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let param_type = tcx.infer_ctxt().enter(|infcx| {
                             infcx.resolve_numeric_literals_with_default(tcx.type_of(param.def_id))
                         });
-                        if param_type.is_suggestable(tcx) {
+                        if param_type.is_suggestable(tcx, false) {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
                                 "consider changing this type parameter to be a `const` generic",
@@ -645,7 +645,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.emit();
             } else {
                 let mut multispan = MultiSpan::from_span(span);
-                multispan.push_span_label(span_late, note.to_string());
+                multispan.push_span_label(span_late, note);
                 tcx.struct_span_lint_hir(
                     LATE_BOUND_LIFETIME_ARGUMENTS,
                     args.args[0].id(),

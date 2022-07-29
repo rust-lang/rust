@@ -16,7 +16,6 @@ pub fn target(target_cpu: &'static str, mmcu: &'static str) -> Target {
             exe_suffix: ".elf".into(),
 
             linker: Some("avr-gcc".into()),
-            executables: true,
             eh_frame_header: false,
             pre_link_args: TargetOptions::link_args(LinkerFlavor::Gcc, &[mmcu]),
             late_link_args: TargetOptions::link_args(LinkerFlavor::Gcc, &["-lgcc"]),

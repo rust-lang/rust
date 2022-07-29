@@ -2,7 +2,7 @@ error[E0599]: no method named `default_hello` found for struct `GenericAssocMeth
   --> $DIR/suggest-assoc-fn-call-with-turbofish.rs:9:7
    |
 LL | struct GenericAssocMethod<T>(T);
-   |        ------------------ method `default_hello` not found for this struct
+   | ---------------------------- method `default_hello` not found for this struct
 ...
 LL |     x.default_hello();
    |     --^^^^^^^^^^^^^

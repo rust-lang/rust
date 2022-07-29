@@ -84,7 +84,7 @@ error: layout_of(E) = Layout {
   --> $DIR/debug.rs:6:1
    |
 LL | enum E { Foo, Bar(!, i32, i32) }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^
 
 error: layout_of(S) = Layout {
            fields: Arbitrary {
@@ -128,7 +128,7 @@ error: layout_of(S) = Layout {
   --> $DIR/debug.rs:9:1
    |
 LL | struct S { f1: i32, f2: (), f3: i32 }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^
 
 error: layout_of(U) = Layout {
            fields: Union(
@@ -150,7 +150,7 @@ error: layout_of(U) = Layout {
   --> $DIR/debug.rs:12:1
    |
 LL | union U { f1: (i32, i32), f3: i32 }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^
 
 error: layout_of(std::result::Result<i32, i32>) = Layout {
            fields: Arbitrary {
@@ -279,7 +279,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
   --> $DIR/debug.rs:15:1
    |
 LL | type Test = Result<i32, i32>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^
 
 error: layout_of(i32) = Layout {
            fields: Primitive,
@@ -305,7 +305,7 @@ error: layout_of(i32) = Layout {
   --> $DIR/debug.rs:18:1
    |
 LL | type T = impl std::fmt::Debug;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^
 
 error: aborting due to 5 previous errors
 

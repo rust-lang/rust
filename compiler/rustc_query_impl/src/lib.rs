@@ -27,6 +27,8 @@ use rustc_span::Span;
 mod plumbing;
 pub use plumbing::QueryCtxt;
 use rustc_query_system::query::*;
+#[cfg(parallel_compiler)]
+pub use rustc_query_system::query::{deadlock, QueryContext};
 
 mod keys;
 use keys::Key;
@@ -35,7 +37,7 @@ mod values;
 use self::values::Value;
 
 pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::{QueryDescription, QueryVtable};
+pub(crate) use rustc_query_system::query::{QueryDescription, QueryVTable};
 
 mod on_disk_cache;
 pub use on_disk_cache::OnDiskCache;

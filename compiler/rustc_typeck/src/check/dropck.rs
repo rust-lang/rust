@@ -1,5 +1,6 @@
-use crate::check::regionck::RegionCtxt;
-use crate::hir;
+// FIXME(@lcnr): Move this module out of `rustc_typeck`.
+//
+// We don't do any drop checking during hir typeck.
 use crate::hir::def_id::{DefId, LocalDefId};
 use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_middle::ty::error::TypeError;
@@ -7,9 +8,6 @@ use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
-use rustc_span::Span;
-use rustc_trait_selection::traits::query::dropck_outlives::AtExt;
-use rustc_trait_selection::traits::ObligationCause;
 
 /// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -206,6 +204,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     relator.relate(predicate.rebind(ty_a), p.rebind(ty_b)).is_ok()
                         && relator.relate(predicate.rebind(lt_a), p.rebind(lt_b)).is_ok()
                 }
+                (ty::PredicateKind::WellFormed(arg_a), ty::PredicateKind::WellFormed(arg_b)) => {
+                    relator.relate(predicate.rebind(arg_a), p.rebind(arg_b)).is_ok()
+                }
                 _ => predicate == p,
             }
         };
@@ -226,23 +227,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     }
 
     result
-}
-
-/// This function is not only checking that the dropck obligations are met for
-/// the given type, but it's also currently preventing non-regular recursion in
-/// types from causing stack overflows (dropck_no_diverge_on_nonregular_*.rs).
-pub(crate) fn check_drop_obligations<'a, 'tcx>(
-    rcx: &mut RegionCtxt<'a, 'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-    body_id: hir::HirId,
-) {
-    debug!("check_drop_obligations typ: {:?}", ty);
-
-    let cause = &ObligationCause::misc(span, body_id);
-    let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
-    debug!("dropck_outlives = {:#?}", infer_ok);
-    rcx.fcx.register_infer_ok_obligations(infer_ok);
 }
 
 // This is an implementation of the TypeRelation trait with the

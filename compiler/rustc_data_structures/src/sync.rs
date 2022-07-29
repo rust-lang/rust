@@ -146,7 +146,7 @@ cfg_if! {
             t.into_iter()
         }
 
-        pub fn par_for_each_in<T: IntoIterator>(t: T, for_each: impl Fn(T::Item) + Sync + Send) {
+        pub fn par_for_each_in<T: IntoIterator>(t: T, mut for_each: impl FnMut(T::Item) + Sync + Send) {
             // We catch panics here ensuring that all the loop iterations execute.
             // This makes behavior consistent with the parallel compiler.
             let mut panic = None;
@@ -538,6 +538,33 @@ impl<T> RwLock<T> {
     #[inline(always)]
     pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
         self.write()
+    }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
+        ReadGuard::clone(rg)
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn clone_guard<'a>(rg: &ReadGuard<'a, T>) -> ReadGuard<'a, T> {
+        ReadGuard::rwlock(&rg).read()
+    }
+
+    #[cfg(not(parallel_compiler))]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        ReadGuard::leak(self.read())
+    }
+
+    #[cfg(parallel_compiler)]
+    #[inline(always)]
+    pub fn leak(&self) -> &T {
+        let guard = self.read();
+        let ret = unsafe { &*(&*guard as *const T) };
+        std::mem::forget(guard);
+        ret
     }
 }
 

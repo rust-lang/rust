@@ -4,7 +4,7 @@
 
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]
@@ -190,7 +190,11 @@ fn compute_components<'tcx>(
         }
 }
 
-fn compute_components_recursive<'tcx>(
+/// Collect [Component]s for *all* the substs of `parent`.
+///
+/// This should not be used to get the components of `parent` itself.
+/// Use [push_outlives_components] instead.
+pub(super) fn compute_components_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     parent: GenericArg<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,

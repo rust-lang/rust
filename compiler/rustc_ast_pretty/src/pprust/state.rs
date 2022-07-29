@@ -1734,10 +1734,10 @@ impl<'a> State<'a> {
 
         match header.ext {
             ast::Extern::None => {}
-            ast::Extern::Implicit => {
+            ast::Extern::Implicit(_) => {
                 self.word_nbsp("extern");
             }
-            ast::Extern::Explicit(abi) => {
+            ast::Extern::Explicit(abi, _) => {
                 self.word_nbsp("extern");
                 self.print_literal(&abi.as_lit());
                 self.nbsp();

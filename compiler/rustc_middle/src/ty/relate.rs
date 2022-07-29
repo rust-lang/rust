@@ -345,7 +345,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Debug, Clone, TypeFoldable)]
+#[derive(Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
 struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {

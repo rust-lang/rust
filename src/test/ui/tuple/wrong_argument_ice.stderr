@@ -9,7 +9,7 @@ note: associated function defined here
    |
 LL |     pub fn push_back(&mut self, value: T) {
    |            ^^^^^^^^^
-help: use parentheses to construct a tuple
+help: wrap these arguments in parentheses to construct a tuple
    |
 LL |         self.acc.push_back((self.current_provides, self.current_requires));
    |                            +                                            +

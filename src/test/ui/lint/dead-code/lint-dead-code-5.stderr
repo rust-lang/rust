@@ -20,9 +20,9 @@ LL | enum Enum2 {
    |      ----- variants in this enum
 ...
 LL |     Variant5 { _x: isize },
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^
 LL |     Variant6(isize),
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^
 
 error: enum `Enum3` is never used
   --> $DIR/lint-dead-code-5.rs:35:6

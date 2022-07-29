@@ -46,6 +46,7 @@ mod map_unwrap_or;
 mod needless_option_as_deref;
 mod needless_option_take;
 mod no_effect_replace;
+mod obfuscated_if_else;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -369,7 +370,7 @@ declare_clippy_lint! {
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err");
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub ERR_EXPECT,
     style,
     r#"using `.err().expect("")` when `.expect_err("")` can be used"#
@@ -2196,12 +2197,9 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Finds usages of [`char::is_digit`]
-    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
-    /// can be replaced with [`is_ascii_digit`]
-    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
-    /// [`is_ascii_hexdigit`]
-    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
+    /// Finds usages of [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
+    /// can be replaced with [`is_ascii_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
+    /// [`is_ascii_hexdigit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
     ///
     /// ### Why is this bad?
     /// `is_digit(..)` is slower and requires specifying the radix.
@@ -2218,15 +2216,19 @@ declare_clippy_lint! {
     /// c.is_ascii_digit();
     /// c.is_ascii_hexdigit();
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub IS_DIGIT_ASCII_RADIX,
     style,
     "use of `char::is_digit(..)` with literal radix of 10 or 16"
 }
 
 declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calling `take` function after `as_ref`.
     ///
     /// ### Why is this bad?
+    /// Redundant code. `take` writes `None` to its argument.
+    /// In this case the modification is useless as it's a temporary that cannot be read from afterwards.
     ///
     /// ### Example
     /// ```rust
@@ -2238,7 +2240,7 @@ declare_clippy_lint! {
     /// let x = Some(3);
     /// x.as_ref();
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub NEEDLESS_OPTION_TAKE,
     complexity,
     "using `.as_ref().take()` on a temporary value"
@@ -2260,6 +2262,35 @@ declare_clippy_lint! {
     pub NO_EFFECT_REPLACE,
     suspicious,
     "replace with no effect"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `.then_some(..).unwrap_or(..)`
+    ///
+    /// ### Why is this bad?
+    /// This can be written more clearly with `if .. else ..`
+    ///
+    /// ### Limitations
+    /// This lint currently only looks for usages of
+    /// `.then_some(..).unwrap_or(..)`, but will be expanded
+    /// to account for similar patterns.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = true;
+    /// x.then_some("a").unwrap_or("b");
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = true;
+    /// if x { "a" } else { "b" };
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub OBFUSCATED_IF_ELSE,
+    style,
+    "use of `.then_some(..).unwrap_or(..)` can be written \
+    more clearly with `if .. else ..`"
 }
 
 pub struct Methods {
@@ -2363,6 +2394,7 @@ impl_lint_pass!(Methods => [
     IS_DIGIT_ASCII_RADIX,
     NEEDLESS_OPTION_TAKE,
     NO_EFFECT_REPLACE,
+    OBFUSCATED_IF_ELSE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2740,6 +2772,12 @@ impl Methods {
                     }
                 },
                 ("take", []) => needless_option_take::check(cx, expr, recv),
+                ("then", [arg]) => {
+                    if !meets_msrv(self.msrv, msrvs::BOOL_THEN_SOME) {
+                        return;
+                    }
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
+                },
                 ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                     implicit_clone::check(cx, name, expr, recv);
                 },
@@ -2764,6 +2802,9 @@ impl Methods {
                     },
                     Some(("map", [m_recv, m_arg], span)) => {
                         option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
+                    },
+                    Some(("then_some", [t_recv, t_arg], _)) => {
+                        obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
                     },
                     _ => {},
                 },

@@ -1,0 +1,17 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    SLICE_TYPE
+      L_BRACK "["
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+      R_BRACK "]"
+    SEMICOLON ";"
+  WHITESPACE "\n"

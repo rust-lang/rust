@@ -8,5 +8,5 @@ click: ".impl-items .rustdoc-toggle summary::before" // This is the position of 
 assert-attribute-false: (".impl-items .rustdoc-toggle", {"open": ""})
 
 // Click the "Trait" part of "impl Trait" and verify it navigates.
-click: "#impl-Trait h3 a:first-of-type"
+click: "#impl-Trait-for-Foo h3 a:first-of-type"
 assert-text: (".fqn .in-band", "Trait lib2::Trait")

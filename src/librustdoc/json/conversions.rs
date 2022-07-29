@@ -43,7 +43,16 @@ impl JsonRenderer<'_> {
         let span = item.span(self.tcx);
         let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
         let inner = match *item.kind {
-            clean::StrippedItem(_) | clean::KeywordItem(_) => return None,
+            clean::KeywordItem => return None,
+            clean::StrippedItem(ref inner) => {
+                match &**inner {
+                    // We document non-empty stripped modules as with `Module::is_stripped` set to
+                    // `true`, to prevent contained items from being orphaned for downstream users,
+                    // as JSON does no inlining.
+                    clean::ModuleItem(m) if !m.items.is_empty() => from_clean_item(item, self.tcx),
+                    _ => return None,
+                }
+            }
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
@@ -220,7 +229,9 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
     let header = item.fn_header(tcx);
 
     match *item.kind {
-        ModuleItem(m) => ItemEnum::Module(Module { is_crate, items: ids(m.items, tcx) }),
+        ModuleItem(m) => {
+            ItemEnum::Module(Module { is_crate, items: ids(m.items, tcx), is_stripped: false })
+        }
         ImportItem(i) => ItemEnum::Import(i.into_tcx(tcx)),
         StructItem(s) => ItemEnum::Struct(s.into_tcx(tcx)),
         UnionItem(u) => ItemEnum::Union(u.into_tcx(tcx)),
@@ -255,10 +266,21 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         AssocTypeItem(t, b) => ItemEnum::AssocType {
             generics: t.generics.into_tcx(tcx),
             bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            default: t.item_type.map(|ty| ty.into_tcx(tcx)),
+            default: Some(t.item_type.unwrap_or(t.type_).into_tcx(tcx)),
         },
-        // `convert_item` early returns `None` for striped items and keywords.
-        StrippedItem(_) | KeywordItem(_) => unreachable!(),
+        // `convert_item` early returns `None` for stripped items and keywords.
+        KeywordItem => unreachable!(),
+        StrippedItem(inner) => {
+            match *inner {
+                ModuleItem(m) => ItemEnum::Module(Module {
+                    is_crate,
+                    items: ids(m.items, tcx),
+                    is_stripped: true,
+                }),
+                // `convert_item` early returns `None` for stripped items we're not including
+                _ => unreachable!(),
+            }
+        }
         ExternCrateItem { ref src } => ItemEnum::ExternCrate {
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
@@ -532,10 +554,12 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
 
 impl FromWithTcx<clean::Trait> for Trait {
     fn from_tcx(trait_: clean::Trait, tcx: TyCtxt<'_>) -> Self {
-        let clean::Trait { unsafety, items, generics, bounds, is_auto } = trait_;
+        let is_auto = trait_.is_auto(tcx);
+        let is_unsafe = trait_.unsafety(tcx) == rustc_hir::Unsafety::Unsafe;
+        let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
             is_auto,
-            is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
+            is_unsafe,
             items: ids(items, tcx),
             generics: generics.into_tcx(tcx),
             bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
@@ -552,7 +576,7 @@ impl FromWithTcx<clean::Impl> for Impl {
         let trait_ = trait_.map(|path| clean::Type::Path { path }.into_tcx(tcx));
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
-            clean::ImplKind::Normal | clean::ImplKind::TupleVaradic => (false, None),
+            clean::ImplKind::Normal | clean::ImplKind::FakeVaradic => (false, None),
             clean::ImplKind::Auto => (true, None),
             clean::ImplKind::Blanket(ty) => (false, Some(*ty)),
         };
@@ -624,7 +648,7 @@ impl FromWithTcx<clean::VariantStruct> for Struct {
         let clean::VariantStruct { struct_type, fields } = struct_;
         Struct {
             struct_type: from_ctor_kind(struct_type),
-            generics: Default::default(),
+            generics: Generics { params: vec![], where_predicates: vec![] },
             fields_stripped,
             fields: ids(fields, tcx),
             impls: Vec::new(),
@@ -666,7 +690,12 @@ impl FromWithTcx<clean::Import> for Import {
             },
             Glob => Import {
                 source: import.source.path.whole_name(),
-                name: import.source.path.last().to_string(),
+                name: import
+                    .source
+                    .path
+                    .last_opt()
+                    .unwrap_or_else(|| Symbol::intern("*"))
+                    .to_string(),
                 id: import.source.did.map(ItemId::from).map(|i| from_item_id(i, tcx)),
                 glob: true,
             },
@@ -756,7 +785,6 @@ impl FromWithTcx<ItemType> for ItemKind {
             TraitAlias => ItemKind::TraitAlias,
             ProcAttribute => ItemKind::ProcAttribute,
             ProcDerive => ItemKind::ProcDerive,
-            Generic => unreachable!(),
         }
     }
 }

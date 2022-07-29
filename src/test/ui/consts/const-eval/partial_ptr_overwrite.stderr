@@ -1,16 +1,11 @@
 error: any use of this value will cause an error
   --> $DIR/partial_ptr_overwrite.rs:8:9
    |
-LL | / const PARTIAL_OVERWRITE: () = {
-LL | |     let mut p = &42;
-LL | |     unsafe {
-LL | |         let ptr: *mut _ = &mut p;
-LL | |         *(ptr as *mut u8) = 123;
-   | |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at alloc4
-...  |
-LL | |     let x = *p;
-LL | | };
-   | |__-
+LL | const PARTIAL_OVERWRITE: () = {
+   | ---------------------------
+...
+LL |         *(ptr as *mut u8) = 123;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at alloc4
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -22,16 +17,11 @@ Future incompatibility report: Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/partial_ptr_overwrite.rs:8:9
    |
-LL | / const PARTIAL_OVERWRITE: () = {
-LL | |     let mut p = &42;
-LL | |     unsafe {
-LL | |         let ptr: *mut _ = &mut p;
-LL | |         *(ptr as *mut u8) = 123;
-   | |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at alloc4
-...  |
-LL | |     let x = *p;
-LL | | };
-   | |__-
+LL | const PARTIAL_OVERWRITE: () = {
+   | ---------------------------
+...
+LL |         *(ptr as *mut u8) = 123;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ unable to overwrite parts of a pointer in memory at alloc4
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

@@ -96,17 +96,14 @@ fn test_is_null() {
     let nmi: *mut dyn ToString = null_mut::<isize>();
     assert!(nmi.is_null());
 
-    #[cfg(not(bootstrap))]
-    {
-        extern "C" {
-            type Extern;
-        }
-        let ec: *const Extern = null::<Extern>();
-        assert!(ec.is_null());
-
-        let em: *mut Extern = null_mut::<Extern>();
-        assert!(em.is_null());
+    extern "C" {
+        type Extern;
     }
+    let ec: *const Extern = null::<Extern>();
+    assert!(ec.is_null());
+
+    let em: *mut Extern = null_mut::<Extern>();
+    assert!(em.is_null());
 }
 
 #[test]
@@ -362,7 +359,7 @@ fn align_offset_zst() {
 }
 
 #[test]
-fn align_offset_stride1() {
+fn align_offset_stride_one() {
     // For pointers of stride = 1, the pointer can always be aligned. The offset is equal to
     // number of bytes.
     let mut align = 1;
@@ -383,24 +380,8 @@ fn align_offset_stride1() {
 }
 
 #[test]
-fn align_offset_weird_strides() {
-    #[repr(packed)]
-    struct A3(u16, u8);
-    struct A4(u32);
-    #[repr(packed)]
-    struct A5(u32, u8);
-    #[repr(packed)]
-    struct A6(u32, u16);
-    #[repr(packed)]
-    struct A7(u32, u16, u8);
-    #[repr(packed)]
-    struct A8(u32, u32);
-    #[repr(packed)]
-    struct A9(u32, u32, u8);
-    #[repr(packed)]
-    struct A10(u32, u32, u16);
-
-    unsafe fn test_weird_stride<T>(ptr: *const T, align: usize) -> bool {
+fn align_offset_various_strides() {
+    unsafe fn test_stride<T>(ptr: *const T, align: usize) -> bool {
         let numptr = ptr as usize;
         let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
@@ -434,14 +415,39 @@ fn align_offset_weird_strides() {
     while align < limit {
         for ptr in 1usize..4 * align {
             unsafe {
-                x |= test_weird_stride::<A3>(ptr::invalid::<A3>(ptr), align);
-                x |= test_weird_stride::<A4>(ptr::invalid::<A4>(ptr), align);
-                x |= test_weird_stride::<A5>(ptr::invalid::<A5>(ptr), align);
-                x |= test_weird_stride::<A6>(ptr::invalid::<A6>(ptr), align);
-                x |= test_weird_stride::<A7>(ptr::invalid::<A7>(ptr), align);
-                x |= test_weird_stride::<A8>(ptr::invalid::<A8>(ptr), align);
-                x |= test_weird_stride::<A9>(ptr::invalid::<A9>(ptr), align);
-                x |= test_weird_stride::<A10>(ptr::invalid::<A10>(ptr), align);
+                #[repr(packed)]
+                struct A3(u16, u8);
+                x |= test_stride::<A3>(ptr::invalid::<A3>(ptr), align);
+
+                struct A4(u32);
+                x |= test_stride::<A4>(ptr::invalid::<A4>(ptr), align);
+
+                #[repr(packed)]
+                struct A5(u32, u8);
+                x |= test_stride::<A5>(ptr::invalid::<A5>(ptr), align);
+
+                #[repr(packed)]
+                struct A6(u32, u16);
+                x |= test_stride::<A6>(ptr::invalid::<A6>(ptr), align);
+
+                #[repr(packed)]
+                struct A7(u32, u16, u8);
+                x |= test_stride::<A7>(ptr::invalid::<A7>(ptr), align);
+
+                #[repr(packed)]
+                struct A8(u32, u32);
+                x |= test_stride::<A8>(ptr::invalid::<A8>(ptr), align);
+
+                #[repr(packed)]
+                struct A9(u32, u32, u8);
+                x |= test_stride::<A9>(ptr::invalid::<A9>(ptr), align);
+
+                #[repr(packed)]
+                struct A10(u32, u32, u16);
+                x |= test_stride::<A10>(ptr::invalid::<A10>(ptr), align);
+
+                x |= test_stride::<u32>(ptr::invalid::<u32>(ptr), align);
+                x |= test_stride::<u128>(ptr::invalid::<u128>(ptr), align);
             }
         }
         align = (align + 1).next_power_of_two();
@@ -782,6 +788,31 @@ fn nonnull_tagged_pointer_with_provenance() {
             })
         }
     }
+}
+
+#[test]
+fn swap_copy_untyped() {
+    // We call `{swap,copy}{,_nonoverlapping}` at `bool` type on data that is not a valid bool.
+    // These should all do untyped copies, so this should work fine.
+    let mut x = 5u8;
+    let mut y = 6u8;
+
+    let ptr1 = &mut x as *mut u8 as *mut bool;
+    let ptr2 = &mut y as *mut u8 as *mut bool;
+
+    unsafe {
+        ptr::swap(ptr1, ptr2);
+        ptr::swap_nonoverlapping(ptr1, ptr2, 1);
+    }
+    assert_eq!(x, 5);
+    assert_eq!(y, 6);
+
+    unsafe {
+        ptr::copy(ptr1, ptr2, 1);
+        ptr::copy_nonoverlapping(ptr1, ptr2, 1);
+    }
+    assert_eq!(x, 5);
+    assert_eq!(y, 5);
 }
 
 #[test]

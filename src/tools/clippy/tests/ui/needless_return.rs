@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![feature(lint_reasons)]
 #![feature(let_else)]
 #![allow(unused)]
 #![allow(
@@ -9,6 +10,8 @@
     clippy::equatable_if_let
 )]
 #![warn(clippy::needless_return)]
+
+use std::cell::RefCell;
 
 macro_rules! the_answer {
     () => {
@@ -86,17 +89,15 @@ fn test_nested_match(x: u32) {
     }
 }
 
-fn read_line() -> String {
-    use std::io::BufRead;
-    let stdin = ::std::io::stdin();
-    return stdin.lock().lines().next().unwrap().unwrap();
+fn temporary_outlives_local() -> String {
+    let x = RefCell::<String>::default();
+    return x.borrow().clone();
 }
 
 fn borrows_but_not_last(value: bool) -> String {
     if value {
-        use std::io::BufRead;
-        let stdin = ::std::io::stdin();
-        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        let x = RefCell::<String>::default();
+        let _a = x.borrow().clone();
         return String::from("test");
     } else {
         return String::new();
@@ -197,17 +198,15 @@ async fn async_test_void_match(x: u32) {
     }
 }
 
-async fn async_read_line() -> String {
-    use std::io::BufRead;
-    let stdin = ::std::io::stdin();
-    return stdin.lock().lines().next().unwrap().unwrap();
+async fn async_temporary_outlives_local() -> String {
+    let x = RefCell::<String>::default();
+    return x.borrow().clone();
 }
 
 async fn async_borrows_but_not_last(value: bool) -> String {
     if value {
-        use std::io::BufRead;
-        let stdin = ::std::io::stdin();
-        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        let x = RefCell::<String>::default();
+        let _a = x.borrow().clone();
         return String::from("test");
     } else {
         return String::new();
@@ -227,6 +226,15 @@ fn needless_return_macro() -> String {
     let _ = "foo";
     let _ = "bar";
     return format!("Hello {}", "world!");
+}
+
+fn check_expect() -> bool {
+    if true {
+        // no error!
+        return true;
+    }
+    #[expect(clippy::needless_return)]
+    return true;
 }
 
 fn main() {}

@@ -180,10 +180,20 @@ pub struct DynMetadata<Dyn: ?Sized> {
     phantom: crate::marker::PhantomData<Dyn>,
 }
 
+#[cfg(not(bootstrap))]
+extern "C" {
+    /// Opaque type for accessing vtables.
+    ///
+    /// Private implementation detail of `DynMetadata::size_of` etc.
+    /// There is conceptually not actually any Abstract Machine memory behind this pointer.
+    type VTable;
+}
+
 /// The common prefix of all vtables. It is followed by function pointers for trait methods.
 ///
 /// Private implementation detail of `DynMetadata::size_of` etc.
 #[repr(C)]
+#[cfg(bootstrap)]
 struct VTable {
     drop_in_place: fn(*mut ()),
     size_of: usize,
@@ -194,13 +204,28 @@ impl<Dyn: ?Sized> DynMetadata<Dyn> {
     /// Returns the size of the type associated with this vtable.
     #[inline]
     pub fn size_of(self) -> usize {
-        self.vtable_ptr.size_of
+        // Note that "size stored in vtable" is *not* the same as "result of size_of_val_raw".
+        // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
+        // `Send` part!
+        #[cfg(bootstrap)]
+        return self.vtable_ptr.size_of;
+        #[cfg(not(bootstrap))]
+        // SAFETY: DynMetadata always contains a valid vtable pointer
+        return unsafe {
+            crate::intrinsics::vtable_size(self.vtable_ptr as *const VTable as *const ())
+        };
     }
 
     /// Returns the alignment of the type associated with this vtable.
     #[inline]
     pub fn align_of(self) -> usize {
-        self.vtable_ptr.align_of
+        #[cfg(bootstrap)]
+        return self.vtable_ptr.align_of;
+        #[cfg(not(bootstrap))]
+        // SAFETY: DynMetadata always contains a valid vtable pointer
+        return unsafe {
+            crate::intrinsics::vtable_align(self.vtable_ptr as *const VTable as *const ())
+        };
     }
 
     /// Returns the size and alignment together as a `Layout`

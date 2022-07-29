@@ -4,13 +4,13 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_data_structures::stable_set::FxHashSet;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
 use rustc_middle::ty::{
-    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperFoldable, TypeVisitor,
+    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -194,10 +194,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         if !v.0.is_empty() {
                             span = v.0.clone().into();
                             for sp in v.0 {
-                                span.push_span_label(
-                                    sp,
-                                    "`'static` requirement introduced here".to_string(),
-                                );
+                                span.push_span_label(sp, "`'static` requirement introduced here");
                             }
                             add_label = false;
                         }
@@ -205,13 +202,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     if add_label {
                         span.push_span_label(
                             fn_decl.output.span(),
-                            "requirement introduced by this return type".to_string(),
+                            "requirement introduced by this return type",
                         );
                     }
-                    span.push_span_label(
-                        cause.span,
-                        "because of this returned expression".to_string(),
-                    );
+                    span.push_span_label(cause.span, "because of this returned expression");
                     err.span_note(
                         span,
                         "`'static` lifetime requirement introduced by the return type",
@@ -523,13 +517,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             hir_v.visit_ty(&self_ty);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span.push_span_label(
-                    *span,
-                    "this has an implicit `'static` lifetime requirement".to_string(),
-                );
+                multi_span
+                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
                 multi_span.push_span_label(
                     ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement".to_string(),
+                    "calling this method introduces the `impl`'s 'static` requirement",
                 );
                 err.span_note(multi_span, "the used `impl` has a `'static` requirement");
                 err.span_suggestion_verbose(

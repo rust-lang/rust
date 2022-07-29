@@ -33,33 +33,6 @@ LL |         asm!("{}", sym x);
    |
    = help: `sym` operands must refer to either a function or a static
 
-error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:58:26
-   |
-LL |         asm!("{}", const 0f32);
-   |                          ^^^^ expected integer, found `f32`
-
-error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:60:26
-   |
-LL |         asm!("{}", const 0 as *mut u8);
-   |                          ^^^^^^^^^^^^ expected integer, found *-ptr
-   |
-   = note:     expected type `{integer}`
-           found raw pointer `*mut u8`
-
-error[E0308]: mismatched types
-  --> $DIR/type-check-1.rs:62:26
-   |
-LL |         asm!("{}", const &0);
-   |                          ^^ expected integer, found `&{integer}`
-   |
-help: consider removing the borrow
-   |
-LL -         asm!("{}", const &0);
-LL +         asm!("{}", const 0);
-   |
-
 error: invalid asm output
   --> $DIR/type-check-1.rs:15:29
    |
@@ -122,6 +95,33 @@ LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^
    |
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:58:26
+   |
+LL |         asm!("{}", const 0f32);
+   |                          ^^^^ expected integer, found `f32`
+
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:60:26
+   |
+LL |         asm!("{}", const 0 as *mut u8);
+   |                          ^^^^^^^^^^^^ expected integer, found *-ptr
+   |
+   = note:     expected type `{integer}`
+           found raw pointer `*mut u8`
+
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:62:26
+   |
+LL |         asm!("{}", const &0);
+   |                          ^^ expected integer, found `&{integer}`
+   |
+help: consider removing the borrow
+   |
+LL -         asm!("{}", const &0);
+LL +         asm!("{}", const 0);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/type-check-1.rs:76:25

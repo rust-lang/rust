@@ -458,7 +458,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 
 #[lang = "panic"]
 #[track_caller]
-pub fn panic(_msg: &str) -> ! {
+pub fn panic(_msg: &'static str) -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const i8);
         intrinsics::abort();
@@ -497,7 +497,7 @@ pub trait Deref {
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonNull<T: ?Sized>(pub *mut T);
+pub struct NonNull<T: ?Sized>(pub *const T);
 
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
@@ -521,7 +521,7 @@ impl<T: ?Sized> Drop for Box<T> {
     }
 }
 
-impl<T> Deref for Box<T> {
+impl<T: ?Sized> Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {

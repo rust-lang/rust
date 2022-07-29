@@ -9,7 +9,7 @@ use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;
 
-#[derive(Copy, Clone, Debug, TypeFoldable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Downcast to a particular variant of an enum or a generator, if included.
@@ -211,6 +211,7 @@ impl<'tcx> Rvalue<'tcx> {
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
+            Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
         }
     }
 

@@ -129,7 +129,7 @@ fn get_features(
                         .span_suggestion(
                             mi.span(),
                             "expected just one word",
-                            format!("{}", ident.name),
+                            ident.name,
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
@@ -171,7 +171,7 @@ fn get_features(
                 continue;
             }
 
-            if let Some(allowed) = sess.opts.debugging_opts.allow_features.as_ref() {
+            if let Some(allowed) = sess.opts.unstable_opts.allow_features.as_ref() {
                 if allowed.iter().all(|f| name.as_str() != f) {
                     struct_span_err!(
                         span_handler,

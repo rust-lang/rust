@@ -496,10 +496,9 @@ macro_rules! r#try {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
 macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => {{
-        let result = $dst.write_fmt($crate::format_args!($($arg)*));
-        result
-    }};
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args!($($arg)*))
+    };
 }
 
 /// Write formatted data into a buffer, with a newline appended.
@@ -554,10 +553,9 @@ macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
     };
-    ($dst:expr, $($arg:tt)*) => {{
-        let result = $dst.write_fmt($crate::format_args_nl!($($arg)*));
-        result
-    }};
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args_nl!($($arg)*))
+    };
 }
 
 /// Indicates unreachable code.
@@ -1537,7 +1535,7 @@ pub(crate) mod builtin {
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
+    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals, rt)]
     #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcDecodable($item:item) {
@@ -1547,7 +1545,7 @@ pub(crate) mod builtin {
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(core_intrinsics)]
+    #[allow_internal_unstable(core_intrinsics, rt)]
     #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
     #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcEncodable($item:item) {

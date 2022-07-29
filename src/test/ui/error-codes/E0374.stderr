@@ -1,9 +1,8 @@
 error[E0374]: the trait `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced, none found
   --> $DIR/E0374.rs:8:1
    |
-LL | / impl<T, U> CoerceUnsized<Foo<U>> for Foo<T>
-LL | |     where T: CoerceUnsized<U> {}
-   | |________________________________^
+LL | impl<T, U> CoerceUnsized<Foo<U>> for Foo<T>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
