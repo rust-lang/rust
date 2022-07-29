@@ -137,12 +137,8 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
         if let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait();
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            let needed_ref = if implements_trait(cx, receiver_ty, sized_trait_id, &[]) {
-                ""
-            } else {
-                "&"
-            };
-            if n_needed_derefs == 0 && needed_ref.is_empty() {
+            let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
+            if n_needed_derefs == 0 && !needs_ref {
                 span_lint_and_sugg(
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
@@ -167,7 +163,7 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
                     "use this",
                     format!(
                         "{}{:*>width$}{}",
-                        needed_ref,
+                        if needs_ref { "&" } else { "" },
                         "",
                         receiver_snippet,
                         width = n_needed_derefs
