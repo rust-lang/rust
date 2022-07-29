@@ -1182,20 +1182,11 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub name: T,
-}
-
-impl<'a, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.universe.hash_stable(hcx, hasher);
-        self.name.hash_stable(hcx, hasher);
-    }
 }
 
 pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
@@ -1581,6 +1572,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
+#[derive(HashStable)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,
@@ -1595,18 +1587,6 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn without_const(mut self) -> Self {
         self.param_env = self.param_env.without_const();
         self
-    }
-}
-
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ParamEnvAnd<'tcx, T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let ParamEnvAnd { ref param_env, ref value } = *self;
-
-        param_env.hash_stable(hcx, hasher);
-        value.hash_stable(hcx, hasher);
     }
 }
 

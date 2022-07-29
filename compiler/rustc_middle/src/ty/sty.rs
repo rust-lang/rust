@@ -986,6 +986,7 @@ pub enum BoundVariableKind {
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(HashStable)]
 pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
 
 impl<'tcx, T> Binder<'tcx, T>
@@ -1332,6 +1333,7 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(HashStable)]
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
@@ -1345,7 +1347,8 @@ impl fmt::Debug for EarlyBoundRegion {
 }
 
 /// A **`const`** **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct ConstVid<'tcx> {
     pub index: u32,
     pub phantom: PhantomData<&'tcx ()>,
@@ -1353,6 +1356,7 @@ pub struct ConstVid<'tcx> {
 
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
+    #[derive(HashStable)]
     pub struct RegionVid {
         DEBUG_FORMAT = custom,
     }
@@ -1365,6 +1369,7 @@ impl Atom for RegionVid {
 }
 
 rustc_index::newtype_index! {
+    #[derive(HashStable)]
     pub struct BoundVar { .. }
 }
 

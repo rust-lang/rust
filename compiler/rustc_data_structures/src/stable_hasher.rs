@@ -3,6 +3,7 @@ use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
+use std::marker::PhantomData;
 use std::mem;
 
 #[cfg(test)]
@@ -259,6 +260,10 @@ impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {
         unreachable!()
     }
+}
+
+impl<CTX, T> HashStable<CTX> for PhantomData<T> {
+    fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {}
 }
 
 impl<CTX> HashStable<CTX> for ::std::num::NonZeroU32 {
