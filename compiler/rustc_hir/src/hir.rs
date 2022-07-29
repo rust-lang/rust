@@ -778,7 +778,6 @@ impl<'hir> WhereRegionPredicate<'hir> {
 /// An equality predicate (e.g., `T = int`); currently unsupported.
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereEqPredicate<'hir> {
-    pub hir_id: HirId,
     pub span: Span,
     pub lhs_ty: &'hir Ty<'hir>,
     pub rhs_ty: &'hir Ty<'hir>,

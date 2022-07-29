@@ -314,7 +314,6 @@ impl<'a> Parser<'a> {
                 span: lo.to(self.prev_token.span),
                 lhs_ty: ty,
                 rhs_ty,
-                id: ast::DUMMY_NODE_ID,
             }))
         } else {
             self.maybe_recover_bounds_doubled_colon(&ty)?;
