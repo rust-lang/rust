@@ -441,7 +441,7 @@ impl SimpleFormatArgs {
         };
 
         match arg.position {
-            ArgumentIs(n) | ArgumentImplicitlyIs(n) => {
+            ArgumentIs(n, _) | ArgumentImplicitlyIs(n) => {
                 if self.unnamed.len() <= n {
                     // Use a dummy span to mark all unseen arguments.
                     self.unnamed.resize_with(n, || vec![DUMMY_SP]);
