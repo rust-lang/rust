@@ -14,9 +14,9 @@ use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
+use cargo_metadata::{Metadata, MetadataCommand};
 use rustc_version::VersionMeta;
 use serde::{Deserialize, Serialize};
-use cargo_metadata::{MetadataCommand, Metadata};
 
 use version::*;
 
@@ -594,16 +594,16 @@ fn get_cargo_metadata() -> Metadata {
     for arg in ArgSplitFlagValue::new(
         env::args().skip(3), // skip the program name, "miri" and "run" / "test"
         config_flag,
-    ).flatten() { // Only look at `Ok`
+    )
+    // Only look at `Ok`
+    .flatten()
+    {
         additional_options.push(config_flag.to_string());
         additional_options.push(arg);
     }
 
-    let metadata = MetadataCommand::new()
-        .no_deps()
-        .other_options(additional_options)
-        .exec()
-        .unwrap();
+    let metadata =
+        MetadataCommand::new().no_deps().other_options(additional_options).exec().unwrap();
 
     metadata
 }
