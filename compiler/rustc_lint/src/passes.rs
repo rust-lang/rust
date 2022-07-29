@@ -161,44 +161,25 @@ macro_rules! early_lint_methods {
             fn check_ident(a: Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
-            fn check_foreign_item(a: &ast::ForeignItem);
-            fn check_foreign_item_post(a: &ast::ForeignItem);
             fn check_item(a: &ast::Item);
             fn check_item_post(a: &ast::Item);
             fn check_local(a: &ast::Local);
             fn check_block(a: &ast::Block);
-            fn check_block_post(a: &ast::Block);
             fn check_stmt(a: &ast::Stmt);
             fn check_arm(a: &ast::Arm);
             fn check_pat(a: &ast::Pat);
-            fn check_anon_const(a: &ast::AnonConst);
             fn check_pat_post(a: &ast::Pat);
             fn check_expr(a: &ast::Expr);
-            fn check_expr_post(a: &ast::Expr);
             fn check_ty(a: &ast::Ty);
             fn check_generic_arg(a: &ast::GenericArg);
             fn check_generic_param(a: &ast::GenericParam);
             fn check_generics(a: &ast::Generics);
-            fn check_where_predicate(a: &ast::WherePredicate);
             fn check_poly_trait_ref(a: &ast::PolyTraitRef,
                                     b: &ast::TraitBoundModifier);
             fn check_fn(a: rustc_ast::visit::FnKind<'_>, c: Span, d_: ast::NodeId);
-            fn check_fn_post(
-                a: rustc_ast::visit::FnKind<'_>,
-                c: Span,
-                d: ast::NodeId
-            );
             fn check_trait_item(a: &ast::AssocItem);
-            fn check_trait_item_post(a: &ast::AssocItem);
             fn check_impl_item(a: &ast::AssocItem);
-            fn check_impl_item_post(a: &ast::AssocItem);
-            fn check_struct_def(a: &ast::VariantData);
-            fn check_struct_def_post(a: &ast::VariantData);
-            fn check_field_def(a: &ast::FieldDef);
             fn check_variant(a: &ast::Variant);
-            fn check_variant_post(a: &ast::Variant);
-            fn check_lifetime(a: &ast::Lifetime);
-            fn check_path(a: &ast::Path, b: ast::NodeId);
             fn check_attribute(a: &ast::Attribute);
             fn check_mac_def(a: &ast::MacroDef, b: ast::NodeId);
             fn check_mac(a: &ast::MacCall);
