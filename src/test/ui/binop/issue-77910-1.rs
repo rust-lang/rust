@@ -7,5 +7,5 @@ fn main() {
     // we shouldn't ice with the bound var here.
     assert_eq!(foo, y);
     //~^ ERROR binary operation `==` cannot be applied to type
-    //~| ERROR `for<'r> fn(&'r i32) -> &'r i32 {foo}` doesn't implement `Debug`
+    //~| ERROR `[fn item {foo}: for<'r> fn(&'r i32) -> &'r i32]` doesn't implement `Debug`
 }
