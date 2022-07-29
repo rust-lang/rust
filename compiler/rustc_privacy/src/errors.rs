@@ -1,3 +1,4 @@
+use rustc_errors::DiagnosticArgFromDisplay;
 use rustc_macros::{LintDiagnostic, SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -35,7 +36,7 @@ pub struct ItemIsPrivate<'a> {
     #[label]
     pub span: Span,
     pub kind: &'a str,
-    pub descr: String,
+    pub descr: DiagnosticArgFromDisplay<'a>,
 }
 
 #[derive(SessionDiagnostic)]
@@ -55,7 +56,7 @@ pub struct InPublicInterfaceTraits<'a> {
     pub span: Span,
     pub vis_descr: &'static str,
     pub kind: &'a str,
-    pub descr: String,
+    pub descr: DiagnosticArgFromDisplay<'a>,
     #[label(privacy::visibility_label)]
     pub vis_span: Span,
 }
@@ -69,7 +70,7 @@ pub struct InPublicInterface<'a> {
     pub span: Span,
     pub vis_descr: &'static str,
     pub kind: &'a str,
-    pub descr: String,
+    pub descr: DiagnosticArgFromDisplay<'a>,
     #[label(privacy::visibility_label)]
     pub vis_span: Span,
 }
@@ -78,7 +79,7 @@ pub struct InPublicInterface<'a> {
 #[lint(privacy::from_private_dep_in_public_interface)]
 pub struct FromPrivateDependencyInPublicInterface<'a> {
     pub kind: &'a str,
-    pub descr: String,
+    pub descr: DiagnosticArgFromDisplay<'a>,
     pub krate: Symbol,
 }
 
@@ -87,5 +88,5 @@ pub struct FromPrivateDependencyInPublicInterface<'a> {
 pub struct PrivateInPublicLint<'a> {
     pub vis_descr: &'static str,
     pub kind: &'a str,
-    pub descr: String,
+    pub descr: DiagnosticArgFromDisplay<'a>,
 }
