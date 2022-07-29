@@ -7,6 +7,8 @@
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
@@ -116,6 +118,15 @@ impl fmt::Display for TryFromSliceError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.__description(), f)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "try_from", since = "1.34.0")]
+impl Error for TryFromSliceError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        self.__description()
     }
 }
 

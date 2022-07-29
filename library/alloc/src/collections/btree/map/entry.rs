@@ -133,6 +133,17 @@ impl<'a, K: Debug + Ord, V: Debug, A: Allocator + Clone> fmt::Display
     }
 }
 
+#[cfg(not(bootstrap))]
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: core::fmt::Debug + Ord, V: core::fmt::Debug> core::error::Error
+    for crate::collections::btree_map::OccupiedError<'a, K, V>
+{
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}
+
 impl<'a, K: Ord, V, A: Allocator + Clone> Entry<'a, K, V, A> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
