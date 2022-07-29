@@ -14,6 +14,7 @@ use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
+use cargo_metadata::{Metadata, MetadataCommand};
 use rustc_version::VersionMeta;
 use serde::{Deserialize, Serialize};
 
@@ -582,18 +583,13 @@ path = "lib.rs"
     }
 }
 
-#[derive(Deserialize)]
-struct Metadata {
-    target_directory: PathBuf,
-    workspace_members: Vec<String>,
-}
-
 fn get_cargo_metadata() -> Metadata {
-    let mut cmd = cargo();
-    // `-Zunstable-options` is required by `--config`.
-    cmd.args(["metadata", "--no-deps", "--format-version=1", "-Zunstable-options"]);
     // The `build.target-dir` config can be passed by `--config` flags, so forward them to
     // `cargo metadata`.
+    let mut additional_options = Vec::new();
+    // `-Zunstable-options` is required by `--config`.
+    additional_options.push("-Zunstable-options".to_string());
+
     let config_flag = "--config";
     for arg in ArgSplitFlagValue::new(
         env::args().skip(3), // skip the program name, "miri" and "run" / "test"
@@ -602,21 +598,14 @@ fn get_cargo_metadata() -> Metadata {
     // Only look at `Ok`
     .flatten()
     {
-        cmd.arg(config_flag).arg(arg);
+        additional_options.push(config_flag.to_string());
+        additional_options.push(arg);
     }
-    let mut child = cmd
-        .stdin(process::Stdio::null())
-        .stdout(process::Stdio::piped())
-        .spawn()
-        .expect("failed ro run `cargo metadata`");
-    // Check this `Result` after `status.success()` is checked, so we don't print the error
-    // to stderr if `cargo metadata` is also printing to stderr.
-    let metadata: Result<Metadata, _> = serde_json::from_reader(child.stdout.take().unwrap());
-    let status = child.wait().expect("failed to wait for `cargo metadata` to exit");
-    if !status.success() {
-        std::process::exit(status.code().unwrap_or(-1));
-    }
-    metadata.unwrap_or_else(|e| show_error(format!("invalid `cargo metadata` output: {}", e)))
+
+    let metadata =
+        MetadataCommand::new().no_deps().other_options(additional_options).exec().unwrap();
+
+    metadata
 }
 
 /// Pulls all the crates in this workspace from the cargo metadata.
@@ -627,7 +616,7 @@ fn local_crates(metadata: &Metadata) -> String {
     assert!(!metadata.workspace_members.is_empty());
     let mut local_crates = String::new();
     for member in &metadata.workspace_members {
-        let name = member.split(' ').next().unwrap();
+        let name = member.repr.split(' ').next().unwrap();
         let name = name.replace('-', "_");
         local_crates.push_str(&name);
         local_crates.push(',');
