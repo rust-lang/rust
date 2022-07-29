@@ -486,7 +486,7 @@ pub fn read_conf(sess: &Session) -> Conf {
         },
     };
 
-    let TryConf { conf, errors } = utils::conf::read(&file_name);
+    let TryConf { conf, errors, warnings } = utils::conf::read(&file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
         sess.err(&format!(
@@ -494,6 +494,15 @@ pub fn read_conf(sess: &Session) -> Conf {
             file_name.display(),
             format_error(error)
         ));
+    }
+
+    for warning in warnings {
+        sess.struct_warn(&format!(
+            "error reading Clippy's configuration file `{}`: {}",
+            file_name.display(),
+            format_error(warning)
+        ))
+        .emit();
     }
 
     conf
