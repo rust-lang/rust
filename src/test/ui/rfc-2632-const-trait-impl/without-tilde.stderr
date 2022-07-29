@@ -1,8 +1,14 @@
-error: expected one of `!`, `(`, `,`, `=`, `>`, `?`, `for`, `~`, lifetime, or path, found keyword `const`
+error: expected identifier, found keyword `const`
   --> $DIR/without-tilde.rs:5:13
    |
 LL | struct S<T: const Tr>;
-   |             ^^^^^ expected one of 10 possible tokens
+   |             ^^^^^ expected identifier, found keyword
 
-error: aborting due to previous error
+error: expected one of `(`, `+`, `,`, `::`, `<`, `=`, or `>`, found `Tr`
+  --> $DIR/without-tilde.rs:5:19
+   |
+LL | struct S<T: const Tr>;
+   |                   ^^ expected one of 7 possible tokens
+
+error: aborting due to 2 previous errors
 

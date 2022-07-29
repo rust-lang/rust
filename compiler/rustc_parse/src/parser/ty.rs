@@ -640,7 +640,13 @@ impl<'a> Parser<'a> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
 
-        while self.can_begin_bound() || self.token.is_keyword(kw::Dyn) {
+        while self.can_begin_bound()
+            // Continue even if we find a keyword.
+            // This is necessary for error recover on, for example, `impl fn()`.
+            //
+            // The only keyword that can go after generic bounds is `where`, so stop if it's it.
+            || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))
+        {
             if self.token.is_keyword(kw::Dyn) {
                 // Account for `&dyn Trait + dyn Other`.
                 self.struct_span_err(self.token.span, "invalid `dyn` keyword")

@@ -3,4 +3,5 @@
 #![feature(const_trait_impl)]
 
 struct S<T: const Tr>;
-//~^ ERROR expected one of `!`, `(`, `,`, `=`, `>`, `?`, `for`, `~`, lifetime, or path
+//~^ ERROR expected identifier, found keyword `const`
+//~| ERROR expected one of `(`, `+`, `,`, `::`, `<`, `=`, or `>`, found `Tr`
