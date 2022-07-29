@@ -961,7 +961,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
         sig2: &ty::PolyFnSig<'tcx>,
-    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
+        values: &mut (DiagnosticStyledString, DiagnosticStyledString),
+        highlight_empty_parens: bool,
+    ) {
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
             let (_, sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
@@ -974,11 +976,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (lt1, sig1) = get_lifetimes(sig1);
         let (lt2, sig2) = get_lifetimes(sig2);
 
+        // illustrative example:
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        let mut values = (
-            DiagnosticStyledString::normal("".to_string()),
-            DiagnosticStyledString::normal("".to_string()),
-        );
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
@@ -1002,14 +1001,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                           ^^^
-        values.0.push_normal("fn(");
-        values.1.push_normal("fn(");
+        let len1 = sig1.inputs().len();
+        let len2 = sig2.inputs().len();
+        let same_len = len1 == len2;
+        // when comparing between fn item and fn pointer types, make sure to
+        // always pull attention to the mismatching function signatures, too,
+        // by highlighting *something* (to compensate the stylistic difference
+        // `fn(...) -> ...` vs `[fn item {path::to::foo}: fn(...) -> ...]`)
+        let highlight_parens = highlight_empty_parens && !same_len && (len1 == 0 || len2 == 0);
+        values.0.push_normal("fn");
+        values.1.push_normal("fn");
+        values.0.push("(", highlight_parens);
+        values.1.push("(", highlight_parens);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                              ^^^^^
-        let len1 = sig1.inputs().len();
-        let len2 = sig2.inputs().len();
-        if len1 == len2 {
+        if same_len {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
                 let (x1, x2) = self.cmp(*l, *r);
                 (values.0).0.extend(x1.0);
@@ -1033,36 +1040,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         if sig1.c_variadic {
             if len1 > 0 {
-                values.0.push_normal(", ");
+                values.0.push(", ", !same_len);
             }
             values.0.push("...", !sig2.c_variadic);
         }
         if sig2.c_variadic {
             if len2 > 0 {
-                values.1.push_normal(", ");
+                values.1.push(", ", !same_len);
             }
             values.1.push("...", !sig1.c_variadic);
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                   ^
-        values.0.push_normal(")");
-        values.1.push_normal(")");
+        values.0.push(")", highlight_parens);
+        values.1.push(")", highlight_parens);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                     ^^^^^^^^
         let output1 = sig1.output();
         let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);
-        if !output1.is_unit() {
-            values.0.push_normal(" -> ");
+        let non_unit1 = !output1.is_unit();
+        let non_unit2 = !output2.is_unit();
+        if non_unit1 {
+            values.0.push(" -> ", non_unit1 != non_unit2);
             (values.0).0.extend(x1.0);
         }
-        if !output2.is_unit() {
-            values.1.push_normal(" -> ");
+        if non_unit2 {
+            values.1.push(" -> ", non_unit1 != non_unit2);
             (values.1).0.extend(x2.0);
         }
-        values
     }
 
     /// Compares two given types, eliding parts that are the same between them and highlighting
@@ -1363,36 +1371,54 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
                 let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
                 let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
-                let mut values = self.cmp_fn_sig(&sig1, &sig2);
-                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did1, substs1));
-                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_substs(*did2, substs2));
+                let mut values = (
+                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                );
+                let path1 = self.tcx.def_path_str_with_substs(*did1, substs1);
+                let path2 = self.tcx.def_path_str_with_substs(*did2, substs2);
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
+                values.0.push_normal("}: ");
+                values.1.push_normal("}: ");
+                self.cmp_fn_sig(&sig1, &sig2, &mut values, false);
+                values.0.push_normal("]");
+                values.1.push_normal("]");
                 values
             }
 
             (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
                 let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
-                let mut values = self.cmp_fn_sig(&sig1, sig2);
-                values.0.push_highlighted(format!(
-                    " {{{}}}",
-                    self.tcx.def_path_str_with_substs(*did1, substs1)
-                ));
+                let mut values = (
+                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                    DiagnosticStyledString::new(),
+                );
+                values.0.push_highlighted(self.tcx.def_path_str_with_substs(*did1, substs1));
+                values.0.push_normal("}: ");
+                self.cmp_fn_sig(&sig1, sig2, &mut values, true);
+                values.0.push_normal("]");
                 values
             }
 
             (ty::FnPtr(sig1), ty::FnDef(did2, substs2)) => {
                 let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
-                let mut values = self.cmp_fn_sig(sig1, &sig2);
-                values.1.push_normal(format!(
-                    " {{{}}}",
-                    self.tcx.def_path_str_with_substs(*did2, substs2)
-                ));
+                let mut values = (
+                    DiagnosticStyledString::new(),
+                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                );
+                values.1.push_highlighted(self.tcx.def_path_str_with_substs(*did2, substs2));
+                values.1.push_normal("}: ");
+                self.cmp_fn_sig(sig1, &sig2, &mut values, true);
+                values.1.push_normal("]");
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
+            (ty::FnPtr(sig1), ty::FnPtr(sig2)) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                self.cmp_fn_sig(sig1, sig2, &mut values, false);
+                values
+            }
 
             _ => {
                 if t1 == t2 {
