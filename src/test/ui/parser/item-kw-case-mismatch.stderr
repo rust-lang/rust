@@ -1,0 +1,14 @@
+error: keyword `use` is written in a wrong case
+  --> $DIR/item-kw-case-mismatch.rs:6:1
+   |
+LL | Use std::ptr::read;
+   | ^^^ help: write it in the correct case (notice the capitalization): `use`
+
+error: keyword `use` is written in a wrong case
+  --> $DIR/item-kw-case-mismatch.rs:7:1
+   |
+LL | USE std::ptr::write;
+   | ^^^ help: write it in the correct case: `use`
+
+error: aborting due to 2 previous errors
+
