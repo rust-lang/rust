@@ -2483,6 +2483,13 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
       }
     }
 
+    // For an inbound gep, args which are not the pointer being offset
+    // are not used in an active way by definition.
+    if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
+      if (gep->isInBounds() && gep->getPointerOperand() != parent)
+        continue;
+    }
+
     // If this doesn't write to memory this can only be an active use
     // if its return is used in an active way, therefore add this to
     // the list of users to analyze
