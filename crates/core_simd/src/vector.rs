@@ -239,6 +239,7 @@ where
     ///
     /// [cast]: Simd::cast
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
     where
         T: core::convert::FloatToInt<I>,
@@ -349,6 +350,7 @@ where
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[must_use]
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn gather_select_unchecked(
         slice: &[T],
         enable: Mask<isize, LANES>,
@@ -444,6 +446,7 @@ where
     /// ```
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn scatter_select_unchecked(
         self,
         slice: &mut [T],
