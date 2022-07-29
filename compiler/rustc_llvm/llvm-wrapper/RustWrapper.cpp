@@ -6,6 +6,7 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
@@ -298,6 +299,14 @@ extern "C" LLVMAttributeRef LLVMRustCreateByValAttr(LLVMContextRef C, LLVMTypeRe
 
 extern "C" LLVMAttributeRef LLVMRustCreateStructRetAttr(LLVMContextRef C, LLVMTypeRef Ty) {
   return wrap(Attribute::getWithStructRetType(*unwrap(C), unwrap(Ty)));
+}
+
+extern "C" LLVMAttributeRef LLVMRustCreateElementTypeAttr(LLVMContextRef C, LLVMTypeRef Ty) {
+#if LLVM_VERSION_GE(15, 0)
+  return wrap(Attribute::get(*unwrap(C), Attribute::ElementType, unwrap(Ty)));
+#else
+  report_fatal_error("Should not be needed on LLVM < 15");
+#endif
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateUWTableAttr(LLVMContextRef C, bool Async) {
@@ -1943,3 +1952,16 @@ extern "C" LLVMValueRef LLVMGetAggregateElement(LLVMValueRef C, unsigned Idx) {
     return wrap(unwrap<Constant>(C)->getAggregateElement(Idx));
 }
 #endif
+
+extern "C" int32_t LLVMRustGetElementTypeArgIndex(LLVMValueRef CallSite) {
+#if LLVM_VERSION_GE(15, 0)
+    auto *CB = unwrap<CallBase>(CallSite);
+    switch (CB->getIntrinsicID()) {
+        case Intrinsic::arm_ldrex:
+            return 0;
+        case Intrinsic::arm_strex:
+            return 1;
+    }
+#endif
+    return -1;
+}

@@ -39,7 +39,6 @@ use rustc_target::abi::{Align, VariantIdx};
 
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
-use std::ops::{Deref, DerefMut};
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
@@ -583,7 +582,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         metadata_module,
         codegen_units.len(),
     );
-    let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
     //
@@ -704,7 +702,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
                 submit_codegened_module_to_llvm(
                     &backend,
-                    &ongoing_codegen.coordinator_send,
+                    &ongoing_codegen.coordinator.sender,
                     module,
                     cost,
                 );
@@ -714,7 +712,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 submit_pre_lto_module_to_llvm(
                     &backend,
                     tcx,
-                    &ongoing_codegen.coordinator_send,
+                    &ongoing_codegen.coordinator.sender,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -725,7 +723,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
                     &backend,
-                    &ongoing_codegen.coordinator_send,
+                    &ongoing_codegen.coordinator.sender,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
                         source: cgu.previous_work_product(tcx),
@@ -752,55 +750,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     }
 
     ongoing_codegen.check_for_errors(tcx.sess);
-
-    ongoing_codegen.into_inner()
-}
-
-/// A curious wrapper structure whose only purpose is to call `codegen_aborted`
-/// when it's dropped abnormally.
-///
-/// In the process of working on rust-lang/rust#55238 a mysterious segfault was
-/// stumbled upon. The segfault was never reproduced locally, but it was
-/// suspected to be related to the fact that codegen worker threads were
-/// sticking around by the time the main thread was exiting, causing issues.
-///
-/// This structure is an attempt to fix that issue where the `codegen_aborted`
-/// message will block until all workers have finished. This should ensure that
-/// even if the main codegen thread panics we'll wait for pending work to
-/// complete before returning from the main thread, hopefully avoiding
-/// segfaults.
-///
-/// If you see this comment in the code, then it means that this workaround
-/// worked! We may yet one day track down the mysterious cause of that
-/// segfault...
-struct AbortCodegenOnDrop<B: ExtraBackendMethods>(Option<OngoingCodegen<B>>);
-
-impl<B: ExtraBackendMethods> AbortCodegenOnDrop<B> {
-    fn into_inner(mut self) -> OngoingCodegen<B> {
-        self.0.take().unwrap()
-    }
-}
-
-impl<B: ExtraBackendMethods> Deref for AbortCodegenOnDrop<B> {
-    type Target = OngoingCodegen<B>;
-
-    fn deref(&self) -> &OngoingCodegen<B> {
-        self.0.as_ref().unwrap()
-    }
-}
-
-impl<B: ExtraBackendMethods> DerefMut for AbortCodegenOnDrop<B> {
-    fn deref_mut(&mut self) -> &mut OngoingCodegen<B> {
-        self.0.as_mut().unwrap()
-    }
-}
-
-impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
-    fn drop(&mut self) {
-        if let Some(codegen) = self.0.take() {
-            codegen.codegen_aborted();
-        }
-    }
+    ongoing_codegen
 }
 
 impl CrateInfo {

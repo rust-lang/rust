@@ -1192,6 +1192,7 @@ extern "C" {
     pub fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
     pub fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
+    pub fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
     pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
     pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
@@ -2541,4 +2542,6 @@ extern "C" {
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
+
+    pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
 }
