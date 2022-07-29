@@ -651,3 +651,22 @@ fn main() {
         "]],
     );
 }
+
+#[test]
+fn complete_record_expr_path() {
+    check(
+        r#"
+struct Zulu;
+impl Zulu {
+    fn test() -> Self { }
+}
+fn boi(val: Zulu) { }
+fn main() {
+    boi(Zulu:: $0 {});
+}
+"#,
+        expect![[r#"
+            fn test() fn() -> Zulu
+        "#]],
+    );
+}
