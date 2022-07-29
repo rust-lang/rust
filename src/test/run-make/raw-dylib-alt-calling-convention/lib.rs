@@ -1,5 +1,5 @@
-#![feature(raw_dylib)]
 #![feature(abi_vectorcall)]
+#![cfg_attr(target_arch = "x86", feature(raw_dylib))]
 
 #[repr(C)]
 #[derive(Clone)]

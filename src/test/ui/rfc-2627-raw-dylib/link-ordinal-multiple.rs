@@ -1,6 +1,5 @@
 // only-windows
-#![feature(raw_dylib)]
-//~^ WARN the feature `raw_dylib` is incomplete
+#![cfg_attr(target_arch = "x86", feature(raw_dylib))]
 
 #[link(name = "foo", kind = "raw-dylib")]
 extern "C" {

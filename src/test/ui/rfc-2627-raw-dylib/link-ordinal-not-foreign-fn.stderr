@@ -1,29 +1,20 @@
-warning: the feature `raw_dylib` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/link-ordinal-not-foreign-fn.rs:1:12
-   |
-LL | #![feature(raw_dylib)]
-   |            ^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #58713 <https://github.com/rust-lang/rust/issues/58713> for more information
-
 error: attribute should be applied to a foreign function or static
-  --> $DIR/link-ordinal-not-foreign-fn.rs:4:1
+  --> $DIR/link-ordinal-not-foreign-fn.rs:3:1
    |
 LL | #[link_ordinal(123)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: attribute should be applied to a foreign function or static
-  --> $DIR/link-ordinal-not-foreign-fn.rs:8:1
+  --> $DIR/link-ordinal-not-foreign-fn.rs:7:1
    |
 LL | #[link_ordinal(123)]
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: attribute should be applied to a foreign function or static
-  --> $DIR/link-ordinal-not-foreign-fn.rs:12:1
+  --> $DIR/link-ordinal-not-foreign-fn.rs:11:1
    |
 LL | #[link_ordinal(42)]
    | ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 
