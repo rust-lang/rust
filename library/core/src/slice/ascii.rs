@@ -77,7 +77,7 @@ impl [u8] {
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
         EscapeAscii {
             inner: self.iter().flat_map(EscapeByte),
-            len: self.iter().map(|c| EscapeByte(c).len()).sum()
+            len: self.iter().map(|c| EscapeByte(c).len()).sum(),
         }
     }
 
