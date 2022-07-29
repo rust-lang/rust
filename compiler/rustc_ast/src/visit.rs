@@ -15,7 +15,7 @@
 
 use crate::ast::*;
 
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -109,12 +109,7 @@ pub enum LifetimeCtxt {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'ast>: Sized {
-    fn visit_name(&mut self, _span: Span, _name: Symbol) {
-        // Nothing to do.
-    }
-    fn visit_ident(&mut self, ident: Ident) {
-        walk_ident(self, ident);
-    }
+    fn visit_ident(&mut self, _ident: Ident) {}
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) {
         walk_foreign_item(self, i)
     }
@@ -267,10 +262,6 @@ macro_rules! walk_list {
     }
 }
 
-pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, ident: Ident) {
-    visitor.visit_name(ident.span, ident.name);
-}
-
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
     walk_list!(visitor, visit_item, &krate.items);
     walk_list!(visitor, visit_attribute, &krate.attrs);
@@ -315,11 +306,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
     match item.kind {
-        ItemKind::ExternCrate(orig_name) => {
-            if let Some(orig_name) = orig_name {
-                visitor.visit_name(item.span, orig_name);
-            }
-        }
+        ItemKind::ExternCrate(_) => {}
         ItemKind::Use(ref use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
         ItemKind::Static(ref typ, _, ref expr) | ItemKind::Const(_, ref typ, ref expr) => {
             visitor.visit_ty(typ);
