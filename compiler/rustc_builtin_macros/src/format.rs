@@ -11,12 +11,11 @@ use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{InnerSpan, Span};
+use rustc_span::{BytePos, InnerSpan, Span};
 use smallvec::SmallVec;
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
-use rustc_parse_format::Count;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -30,6 +29,136 @@ enum Position {
     Exact(usize),
     Capture(usize),
     Named(Symbol, InnerSpan),
+}
+
+/// Indicates how positional named argument (i.e. an named argument which is used by position
+/// instead of by name) is used in format string
+/// * `Arg` is the actual argument to print
+/// * `Width` is width format argument
+/// * `Precision` is precion format argument
+/// Example: `{Arg:Width$.Precision$}
+#[derive(Debug, Eq, PartialEq)]
+enum PositionalNamedArgType {
+    Arg,
+    Width,
+    Precision,
+}
+
+/// Contains information necessary to create a lint for a positional named argument
+#[derive(Debug)]
+struct PositionalNamedArg {
+    ty: PositionalNamedArgType,
+    /// The piece of the using this argument (multiple pieces can use the same argument)
+    cur_piece: usize,
+    /// The InnerSpan for in the string to be replaced with the named argument
+    /// This will be None when the position is implicit
+    inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
+    /// The name to use instead of the position
+    replacement: Symbol,
+    /// The span for the positional named argument (so the lint can point a message to it)
+    positional_named_arg_span: Span,
+}
+
+impl PositionalNamedArg {
+    /// Determines what span to replace with the name of the named argument
+    fn get_span_to_replace(&self, cx: &Context<'_, '_>) -> Option<Span> {
+        if let Some(inner_span) = &self.inner_span_to_replace {
+            return Some(
+                cx.fmtsp.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end }),
+            );
+        } else if self.ty == PositionalNamedArgType::Arg {
+            // In the case of a named argument whose position is implicit, there will not be a span
+            // to replace. Instead, we insert the name after the `{`, which is the first character
+            // of arg_span.
+            return cx
+                .arg_spans
+                .get(self.cur_piece)
+                .map(|arg_span| arg_span.with_lo(arg_span.lo() + BytePos(1)).shrink_to_lo());
+        }
+
+        None
+    }
+}
+
+/// Encapsulates all the named arguments that have been used positionally
+#[derive(Debug)]
+struct PositionalNamedArgsLint {
+    positional_named_args: Vec<PositionalNamedArg>,
+}
+
+impl PositionalNamedArgsLint {
+    /// For a given positional argument, check if the index is for a named argument.
+    ///
+    /// Since positional arguments are required to come before named arguments, if the positional
+    /// index is greater than or equal to the start of named arguments, we know it's a named
+    /// argument used positionally.
+    ///
+    /// Example:
+    /// println!("{} {} {2}", 0, a=1, b=2);
+    ///
+    /// In this case, the first piece (`{}`) would be ArgumentImplicitlyIs with an index of 0. The
+    /// total number of arguments is 3 and the number of named arguments is 2, so the start of named
+    /// arguments is index 1. Therefore, the index of 0 is okay.
+    ///
+    /// The second piece (`{}`) would be ArgumentImplicitlyIs with an index of 1, which is the start
+    /// of named arguments, and so we should add a lint to use the named argument `a`.
+    ///
+    /// The third piece (`{2}`) would be ArgumentIs with an index of 2, which is greater than the
+    /// start of named arguments, and so we should add a lint to use the named argument `b`.
+    ///
+    /// This same check also works for width and precision formatting when either or both are
+    /// CountIsParam, which contains an index into the arguments.
+    fn maybe_add_positional_named_arg(
+        &mut self,
+        current_positional_arg: usize,
+        total_args_length: usize,
+        format_argument_index: usize,
+        ty: PositionalNamedArgType,
+        cur_piece: usize,
+        inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
+        names: &FxHashMap<Symbol, (usize, Span)>,
+    ) {
+        let start_of_named_args = total_args_length - names.len();
+        if current_positional_arg >= start_of_named_args {
+            self.maybe_push(format_argument_index, ty, cur_piece, inner_span_to_replace, names)
+        }
+    }
+
+    /// Try constructing a PositionalNamedArg struct and pushing it into the vec of positional
+    /// named arguments. If a named arg associated with `format_argument_index` cannot be found,
+    /// a new item will not be added as the lint cannot be emitted in this case.
+    fn maybe_push(
+        &mut self,
+        format_argument_index: usize,
+        ty: PositionalNamedArgType,
+        cur_piece: usize,
+        inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
+        names: &FxHashMap<Symbol, (usize, Span)>,
+    ) {
+        let named_arg = names
+            .iter()
+            .find(|&(_, &(index, _))| index == format_argument_index)
+            .map(|found| found.clone());
+
+        if let Some((&replacement, &(_, positional_named_arg_span))) = named_arg {
+            // In FormatSpec, `precision_span` starts at the leading `.`, which we want to keep in
+            // the lint suggestion, so increment `start` by 1 when `PositionalArgumentType` is
+            // `Precision`.
+            let inner_span_to_replace = if ty == PositionalNamedArgType::Precision {
+                inner_span_to_replace
+                    .map(|is| rustc_parse_format::InnerSpan { start: is.start + 1, end: is.end })
+            } else {
+                inner_span_to_replace
+            };
+            self.positional_named_args.push(PositionalNamedArg {
+                ty,
+                cur_piece,
+                inner_span_to_replace,
+                replacement,
+                positional_named_arg_span,
+            });
+        }
+    }
 }
 
 struct Context<'a, 'b> {
@@ -118,6 +247,7 @@ struct Context<'a, 'b> {
 
     /// Whether this format string came from a string literal, as opposed to a macro.
     is_literal: bool,
+    unused_names_lint: PositionalNamedArgsLint,
 }
 
 /// Parses the arguments from the given list of tokens, returning the diagnostic
@@ -242,7 +372,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.args.len() - self.num_captured_args
     }
 
-    fn resolve_name_inplace(&self, p: &mut parse::Piece<'_>) {
+    fn resolve_name_inplace(&mut self, p: &mut parse::Piece<'_>) {
         // NOTE: the `unwrap_or` branch is needed in case of invalid format
         // arguments, e.g., `format_args!("{foo}")`.
         let lookup =
@@ -252,7 +382,7 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::String(_) => {}
             parse::NextArgument(ref mut arg) => {
                 if let parse::ArgumentNamed(s, _) = arg.position {
-                    arg.position = parse::ArgumentIs(lookup(s));
+                    arg.position = parse::ArgumentIs(lookup(s), None);
                 }
                 if let parse::CountIsName(s, _) = arg.format.width {
                     arg.format.width = parse::CountIsParam(lookup(s));
@@ -273,15 +403,48 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::NextArgument(ref arg) => {
                 // width/precision first, if they have implicit positional
                 // parameters it makes more sense to consume them first.
-                self.verify_count(arg.format.width);
-                self.verify_count(arg.format.precision);
+                self.verify_count(
+                    arg.format.width,
+                    &arg.format.width_span,
+                    PositionalNamedArgType::Width,
+                );
+                self.verify_count(
+                    arg.format.precision,
+                    &arg.format.precision_span,
+                    PositionalNamedArgType::Precision,
+                );
 
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
-                    parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => Exact(i),
+                    parse::ArgumentIs(i, arg_end) => {
+                        self.unused_names_lint.maybe_add_positional_named_arg(
+                            i,
+                            self.args.len(),
+                            i,
+                            PositionalNamedArgType::Arg,
+                            self.curpiece,
+                            arg_end,
+                            &self.names,
+                        );
+
+                        Exact(i)
+                    }
+                    parse::ArgumentImplicitlyIs(i) => {
+                        self.unused_names_lint.maybe_add_positional_named_arg(
+                            i,
+                            self.args.len(),
+                            i,
+                            PositionalNamedArgType::Arg,
+                            self.curpiece,
+                            None,
+                            &self.names,
+                        );
+                        Exact(i)
+                    }
                     parse::ArgumentNamed(s, span) => {
-                        Named(Symbol::intern(s), InnerSpan::new(span.start, span.end))
+                        let symbol = Symbol::intern(s);
+                        Named(symbol, InnerSpan::new(span.start, span.end))
                     }
                 };
 
@@ -349,10 +512,24 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn verify_count(&mut self, c: parse::Count<'_>) {
+    fn verify_count(
+        &mut self,
+        c: parse::Count<'_>,
+        inner_span: &Option<rustc_parse_format::InnerSpan>,
+        named_arg_type: PositionalNamedArgType,
+    ) {
         match c {
             parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
+                self.unused_names_lint.maybe_add_positional_named_arg(
+                    i,
+                    self.args.len(),
+                    i,
+                    named_arg_type,
+                    self.curpiece,
+                    *inner_span,
+                    &self.names,
+                );
                 self.verify_arg_type(Exact(i), Count);
             }
             parse::CountIsName(s, span) => {
@@ -673,7 +850,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 // Build the position
                 let pos = {
                     match arg.position {
-                        parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => {
+                        parse::ArgumentIs(i, ..) | parse::ArgumentImplicitlyIs(i) => {
                             // Map to index in final generated argument array
                             // in case of multiple types specified
                             let arg_idx = match arg_index_consumed.get_mut(i) {
@@ -701,7 +878,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         // track the current argument ourselves.
                         let i = self.curarg;
                         self.curarg += 1;
-                        parse::ArgumentIs(i)
+                        parse::ArgumentIs(i, None)
                     },
                     format: parse::FormatSpec {
                         fill: arg.format.fill,
@@ -971,43 +1148,27 @@ pub fn expand_format_args_nl<'cx>(
     expand_format_args_impl(ecx, sp, tts, true)
 }
 
-fn lint_named_arguments_used_positionally(
-    names: FxHashMap<Symbol, (usize, Span)>,
-    cx: &mut Context<'_, '_>,
-    unverified_pieces: Vec<parse::Piece<'_>>,
-) {
-    let mut used_argument_names = FxHashSet::<&str>::default();
-    for piece in unverified_pieces {
-        if let rustc_parse_format::Piece::NextArgument(a) = piece {
-            match a.position {
-                rustc_parse_format::Position::ArgumentNamed(arg_name, _) => {
-                    used_argument_names.insert(arg_name);
-                }
-                _ => {}
-            };
-            if let Count::CountIsName(s, _) = a.format.width {
-                used_argument_names.insert(s);
-            }
-            if let Count::CountIsName(s, _) = a.format.precision {
-                used_argument_names.insert(s);
-            }
-        }
-    }
+fn create_lints_for_named_arguments_used_positionally(cx: &mut Context<'_, '_>) {
+    for named_arg in &cx.unused_names_lint.positional_named_args {
+        let arg_span = named_arg.get_span_to_replace(cx);
 
-    for (symbol, (index, span)) in names {
-        if !used_argument_names.contains(symbol.as_str()) {
-            let msg = format!("named argument `{}` is not used by name", symbol.as_str());
-            let arg_span = cx.arg_spans.get(index).copied();
-            cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
-                span: MultiSpan::from_span(span),
-                msg: msg.clone(),
-                node_id: ast::CRATE_NODE_ID,
-                lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
-                diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally(
-                    arg_span, span, symbol,
-                ),
-            });
-        }
+        let msg = format!("named argument `{}` is not used by name", named_arg.replacement);
+        let replacement = match named_arg.ty {
+            PositionalNamedArgType::Arg => named_arg.replacement.to_string(),
+            _ => named_arg.replacement.to_string() + "$",
+        };
+
+        cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
+            span: MultiSpan::from_span(named_arg.positional_named_arg_span),
+            msg: msg.clone(),
+            node_id: ast::CRATE_NODE_ID,
+            lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
+            diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally(
+                arg_span,
+                named_arg.positional_named_arg_span,
+                replacement,
+            ),
+        });
     }
 }
 
@@ -1119,11 +1280,6 @@ pub fn expand_preparsed_format_args(
 
     let named_pos: FxHashSet<usize> = names.values().cloned().map(|(i, _)| i).collect();
 
-    // Clone `names` because `names` in Context get updated by verify_piece, which includes usages
-    // of the names of named arguments, resulting in incorrect errors if a name argument is used
-    // but not declared, such as: `println!("x = {x}");`
-    let named_arguments = names.clone();
-
     let mut cx = Context {
         ecx,
         args,
@@ -1148,13 +1304,12 @@ pub fn expand_preparsed_format_args(
         arg_spans,
         arg_with_formatting: Vec::new(),
         is_literal: parser.is_literal,
+        unused_names_lint: PositionalNamedArgsLint { positional_named_args: vec![] },
     };
 
-    // This needs to happen *after* the Parser has consumed all pieces to create all the spans.
-    // unverified_pieces is used later to check named argument names are used, so clone each piece.
+    // This needs to happen *after* the Parser has consumed all pieces to create all the spans
     let pieces = unverified_pieces
-        .iter()
-        .cloned()
+        .into_iter()
         .map(|mut piece| {
             cx.verify_piece(&piece);
             cx.resolve_name_inplace(&mut piece);
@@ -1164,7 +1319,7 @@ pub fn expand_preparsed_format_args(
 
     let numbered_position_args = pieces.iter().any(|arg: &parse::Piece<'_>| match *arg {
         parse::String(_) => false,
-        parse::NextArgument(arg) => matches!(arg.position, parse::Position::ArgumentIs(_)),
+        parse::NextArgument(arg) => matches!(arg.position, parse::Position::ArgumentIs(..)),
     });
 
     cx.build_index_map();
@@ -1316,11 +1471,10 @@ pub fn expand_preparsed_format_args(
         }
 
         diag.emit();
-    } else if cx.invalid_refs.is_empty() && !named_arguments.is_empty() {
+    } else if cx.invalid_refs.is_empty() && cx.ecx.sess.err_count() == 0 {
         // Only check for unused named argument names if there are no other errors to avoid causing
         // too much noise in output errors, such as when a named argument is entirely unused.
-        // We also only need to perform this check if there are actually named arguments.
-        lint_named_arguments_used_positionally(named_arguments, &mut cx, unverified_pieces);
+        create_lints_for_named_arguments_used_positionally(&mut cx);
     }
 
     cx.into_expr()

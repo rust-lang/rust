@@ -62,18 +62,30 @@ fn format_nothing() {
 }
 #[test]
 fn format_position() {
-    same("{3}", &[NextArgument(Argument { position: ArgumentIs(3), format: fmtdflt() })]);
+    same(
+        "{3}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(3, Some(InnerSpan { start: 2, end: 3 })),
+            format: fmtdflt(),
+        })],
+    );
 }
 #[test]
 fn format_position_nothing_else() {
-    same("{3:}", &[NextArgument(Argument { position: ArgumentIs(3), format: fmtdflt() })]);
+    same(
+        "{3:}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(3, Some(InnerSpan { start: 2, end: 3 })),
+            format: fmtdflt(),
+        })],
+    );
 }
 #[test]
 fn format_type() {
     same(
         "{3:x}",
         &[NextArgument(Argument {
-            position: ArgumentIs(3),
+            position: ArgumentIs(3, Some(InnerSpan { start: 2, end: 3 })),
             format: FormatSpec {
                 fill: None,
                 align: AlignUnknown,
@@ -93,7 +105,7 @@ fn format_align_fill() {
     same(
         "{3:>}",
         &[NextArgument(Argument {
-            position: ArgumentIs(3),
+            position: ArgumentIs(3, Some(InnerSpan { start: 2, end: 3 })),
             format: FormatSpec {
                 fill: None,
                 align: AlignRight,
@@ -110,7 +122,7 @@ fn format_align_fill() {
     same(
         "{3:0<}",
         &[NextArgument(Argument {
-            position: ArgumentIs(3),
+            position: ArgumentIs(3, Some(InnerSpan { start: 2, end: 3 })),
             format: FormatSpec {
                 fill: Some('0'),
                 align: AlignLeft,
@@ -127,7 +139,7 @@ fn format_align_fill() {
     same(
         "{3:*<abcd}",
         &[NextArgument(Argument {
-            position: ArgumentIs(3),
+            position: ArgumentIs(3, Some(InnerSpan { start: 2, end: 3 })),
             format: FormatSpec {
                 fill: Some('*'),
                 align: AlignLeft,
@@ -181,7 +193,7 @@ fn format_counts() {
     same(
         "{1:0$.10x}",
         &[NextArgument(Argument {
-            position: ArgumentIs(1),
+            position: ArgumentIs(1, Some(InnerSpan { start: 2, end: 3 })),
             format: FormatSpec {
                 fill: None,
                 align: AlignUnknown,
@@ -291,7 +303,7 @@ fn format_mixture() {
         &[
             String("abcd "),
             NextArgument(Argument {
-                position: ArgumentIs(3),
+                position: ArgumentIs(3, Some(InnerSpan { start: 7, end: 8 })),
                 format: FormatSpec {
                     fill: None,
                     align: AlignUnknown,
