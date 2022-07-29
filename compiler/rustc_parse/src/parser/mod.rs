@@ -616,6 +616,33 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Eats a keyword, optionally ignoring the case.
+    /// If the case differs (and is ignored) an error is issued.
+    /// This is useful for recovery.
+    fn eat_keyword_case(&mut self, kw: Symbol, case_insensitive: bool) -> bool {
+        if self.eat_keyword(kw) {
+            return true;
+        }
+
+        if case_insensitive
+        && let Some((ident, /* is_raw */ false)) = self.token.ident()
+        && ident.as_str().to_lowercase() == kw.as_str().to_lowercase() {
+            self
+                .struct_span_err(ident.span, format!("keyword `{kw}` is written in a wrong case"))
+                .span_suggestion(
+                    ident.span,
+                    "write it in the correct case",
+                    kw,
+                    Applicability::MachineApplicable
+                ).emit();
+
+            self.bump();
+            return true;
+        }
+
+        false
+    }
+
     fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
         if self.token.is_keyword(kw) {
             self.bump();

@@ -143,8 +143,15 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let mut def = self.parse_defaultness();
-        let kind =
-            self.parse_item_kind(&mut attrs, mac_allowed, lo, &vis, &mut def, fn_parse_mode)?;
+        let kind = self.parse_item_kind(
+            &mut attrs,
+            mac_allowed,
+            lo,
+            &vis,
+            &mut def,
+            fn_parse_mode,
+            false,
+        )?;
         if let Some((ident, kind)) = kind {
             self.error_on_unconsumed_default(def, &kind);
             let span = lo.to(self.prev_token.span);
@@ -205,11 +212,12 @@ impl<'a> Parser<'a> {
         vis: &Visibility,
         def: &mut Defaultness,
         fn_parse_mode: FnParseMode,
+        kw_case_insensitive: bool,
     ) -> PResult<'a, Option<ItemInfo>> {
         let def_final = def == &Defaultness::Final;
         let mut def = || mem::replace(def, Defaultness::Final);
 
-        let info = if self.eat_keyword(kw::Use) {
+        let info = if self.eat_keyword_case(kw::Use, kw_case_insensitive) {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
@@ -286,6 +294,17 @@ impl<'a> Parser<'a> {
         } else if self.isnt_macro_invocation() && vis.kind.is_pub() {
             self.recover_missing_kw_before_item()?;
             return Ok(None);
+        } else if self.isnt_macro_invocation() && !kw_case_insensitive {
+            // Recover wrong cased keywords
+            return self.parse_item_kind(
+                attrs,
+                macros_allowed,
+                lo,
+                vis,
+                &mut def(),
+                fn_parse_mode,
+                true,
+            );
         } else if macros_allowed && self.check_path() {
             // MACRO INVOCATION ITEM
             (Ident::empty(), ItemKind::MacCall(P(self.parse_item_macro(vis)?)))
