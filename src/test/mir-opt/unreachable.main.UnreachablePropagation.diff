@@ -22,7 +22,7 @@
           _1 = empty() -> bb1;             // scope 1 at $DIR/unreachable.rs:+1:23: +1:30
                                            // mir::Constant
                                            // + span: $DIR/unreachable.rs:9:23: 9:28
-                                           // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: [fn item {empty}: fn() -> Option<Empty>], val: Value(<ZST>) }
       }
   
       bb1: {

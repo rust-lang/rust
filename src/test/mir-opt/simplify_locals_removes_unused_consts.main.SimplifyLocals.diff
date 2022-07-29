@@ -39,7 +39,7 @@
 +         _1 = use_zst(move _2) -> bb1;    // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:+2:5: +2:22
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:12
-                                           // + literal: Const { ty: fn(((), ())) {use_zst}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: [fn item {use_zst}: fn(((), ()))], val: Value(<ZST>) }
       }
   
       bb1: {
@@ -57,7 +57,7 @@
 +         _3 = use_u8(const 42_u8) -> bb2; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:+4:5: +4:35
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:11
-                                           // + literal: Const { ty: fn(u8) {use_u8}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: [fn item {use_u8}: fn(u8)], val: Value(<ZST>) }
       }
   
       bb2: {

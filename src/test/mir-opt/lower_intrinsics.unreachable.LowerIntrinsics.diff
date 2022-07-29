@@ -15,7 +15,7 @@
 -         _3 = std::intrinsics::unreachable(); // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:45
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:29:14: 29:43
--                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn() -> ! {std::intrinsics::unreachable}, val: Value(<ZST>) }
+-                                          // + literal: Const { ty: [fn item {std::intrinsics::unreachable}: unsafe extern "rust-intrinsic" fn() -> !], val: Value(<ZST>) }
 +         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:45
       }
   

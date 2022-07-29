@@ -3,8 +3,8 @@
   
   fn non_const() -> usize {
       let mut _0: usize;                   // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:26: +0:31
-      let _1: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}; // in scope 0 at $DIR/lower_intrinsics.rs:+2:9: +2:18
-      let mut _2: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}; // in scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:14
+      let _1: [fn item {std::intrinsics::size_of::<T>}: extern "rust-intrinsic" fn() -> usize]; // in scope 0 at $DIR/lower_intrinsics.rs:+2:9: +2:18
+      let mut _2: [fn item {std::intrinsics::size_of::<T>}: extern "rust-intrinsic" fn() -> usize]; // in scope 0 at $DIR/lower_intrinsics.rs:+3:5: +3:14
       scope 1 {
           debug size_of_t => _1;           // in scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:18
       }
@@ -14,7 +14,7 @@
           _1 = std::intrinsics::size_of::<T>; // scope 0 at $DIR/lower_intrinsics.rs:+2:21: +2:51
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:62:21: 62:51
-                                           // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: [fn item {std::intrinsics::size_of::<T>}: extern "rust-intrinsic" fn() -> usize], val: Value(<ZST>) }
           StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:14
           _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:14
 -         _0 = move _2() -> bb1;           // scope 1 at $DIR/lower_intrinsics.rs:+3:5: +3:16

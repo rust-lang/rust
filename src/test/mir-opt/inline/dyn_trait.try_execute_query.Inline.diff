@@ -23,9 +23,9 @@
 +         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(move _4) -> bb1; // scope 1 at $DIR/dyn-trait.rs:+0:5: +0:22
                                            // mir::Constant
 -                                          // + span: $DIR/dyn-trait.rs:27:5: 27:13
--                                          // + literal: Const { ty: for<'r> fn(&'r (dyn Cache<V = <C as Cache>::V> + 'r)) {mk_cycle::<<C as Cache>::V>}, val: Value(<ZST>) }
+-                                          // + literal: Const { ty: [fn item {mk_cycle::<<C as Cache>::V>}: for<'r> fn(&'r (dyn Cache<V = <C as Cache>::V> + 'r))], val: Value(<ZST>) }
 +                                          // + span: $DIR/dyn-trait.rs:21:7: 21:20
-+                                          // + literal: Const { ty: for<'r> fn(&'r dyn Cache<V = <C as Cache>::V>) {<dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache}, val: Value(<ZST>) }
++                                          // + literal: Const { ty: [fn item {<dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache}: for<'r> fn(&'r dyn Cache<V = <C as Cache>::V>)], val: Value(<ZST>) }
       }
   
       bb1: {

@@ -33,7 +33,7 @@
           _1 = foo() -> bb1;               // scope 0 at $DIR/derefer_terminator_test.rs:+1:13: +1:18
                                            // mir::Constant
                                            // + span: $DIR/derefer_terminator_test.rs:5:13: 5:16
-                                           // + literal: Const { ty: fn() -> bool {foo}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: [fn item {foo}: fn() -> bool], val: Value(<ZST>) }
       }
   
       bb1: {
@@ -41,7 +41,7 @@
           _2 = foo() -> bb2;               // scope 1 at $DIR/derefer_terminator_test.rs:+2:13: +2:18
                                            // mir::Constant
                                            // + span: $DIR/derefer_terminator_test.rs:6:13: 6:16
-                                           // + literal: Const { ty: fn() -> bool {foo}, val: Value(<ZST>) }
+                                           // + literal: Const { ty: [fn item {foo}: fn() -> bool], val: Value(<ZST>) }
       }
   
       bb2: {
