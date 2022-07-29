@@ -111,6 +111,11 @@ impl Step for Std {
 
         builder.update_submodule(&Path::new("library").join("stdarch"));
 
+        // Profiler information requires LLVM's compiler-rt
+        if builder.config.profiler {
+            builder.update_submodule(&Path::new("src/llvm-project"));
+        }
+
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
