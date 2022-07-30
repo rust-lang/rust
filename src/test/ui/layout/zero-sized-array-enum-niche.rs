@@ -15,6 +15,14 @@ type AlignedResult = Result<[u32; 0], bool>; //~ ERROR: layout_of
 // It was also using the bool niche for the enum tag, which is fine, but
 // after the fix, layout decides to use a direct tagged repr instead.
 
+// Here's another case with multiple ZST alignments, where we should
+// get the maximal alignment and matching size.
+#[rustc_layout(debug)]
+enum MultipleAlignments { //~ ERROR: layout_of
+    Align2([u16; 0]),
+    Align4([u32; 0]),
+    Niche(bool),
+}
 
 // Tagged repr is clever enough to grow tags to fill any padding, e.g.:
 // 1.   `T_FF` (one byte of Tag, one byte of padding, two bytes of align=2 Field)

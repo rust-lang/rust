@@ -97,6 +97,127 @@ error: layout_of(std::result::Result<[u32; 0], bool>) = Layout {
 LL | type AlignedResult = Result<[u32; 0], bool>;
    | ^^^^^^^^^^^^^^^^^^
 
+error: layout_of(MultipleAlignments) = Layout {
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=2,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(2 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       variants: Single {
+                           index: 0,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align(2 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size(2 bytes),
+                   },
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(4 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       variants: Single {
+                           index: 1,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: None,
+                       align: AbiAndPrefAlign {
+                           abi: Align(4 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size(4 bytes),
+                   },
+                   Layout {
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(1 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       variants: Single {
+                           index: 2,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(1 bytes),
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                       ),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       size: Size(2 bytes),
+                   },
+               ],
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=2,
+               },
+           ),
+           align: AbiAndPrefAlign {
+               abi: Align(4 bytes),
+               pref: $PREF_ALIGN,
+           },
+           size: Size(4 bytes),
+       }
+  --> $DIR/zero-sized-array-enum-niche.rs:21:1
+   |
+LL | enum MultipleAlignments {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
 error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = Layout {
            fields: Arbitrary {
                offsets: [
@@ -191,7 +312,7 @@ error: layout_of(std::result::Result<[u32; 0], Packed<std::num::NonZeroU16>>) = 
            },
            size: Size(4 bytes),
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:29:1
+  --> $DIR/zero-sized-array-enum-niche.rs:37:1
    |
 LL | type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZeroU16>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -294,10 +415,10 @@ error: layout_of(std::result::Result<[u32; 0], Packed<U16IsZero>>) = Layout {
            },
            size: Size(4 bytes),
        }
-  --> $DIR/zero-sized-array-enum-niche.rs:36:1
+  --> $DIR/zero-sized-array-enum-niche.rs:44:1
    |
 LL | type NicheWinsOverTagged = Result<[u32; 0], Packed<U16IsZero>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
