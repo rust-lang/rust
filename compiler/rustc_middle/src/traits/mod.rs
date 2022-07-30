@@ -438,6 +438,8 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     AscribeUserTypeProvePredicate(Span),
+
+    RustCall,
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.

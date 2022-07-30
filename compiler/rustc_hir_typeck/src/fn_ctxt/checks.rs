@@ -136,6 +136,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tuple_arguments,
             Some(method.def_id),
         );
+
         method.sig.output()
     }
 
