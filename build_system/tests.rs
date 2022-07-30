@@ -417,9 +417,7 @@ impl TestRunner {
         rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin", &self.host_triple));
 
         let mut cmd = Command::new(rustc_clif);
-        if !self.rust_flags.is_empty() {
-            cmd.arg(&self.rust_flags);
-        }
+        cmd.args(self.rust_flags.split_whitespace());
         cmd.arg("-L");
         cmd.arg(format!("crate={}", self.out_dir.display()));
         cmd.arg("--out-dir");
