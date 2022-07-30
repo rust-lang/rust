@@ -1071,10 +1071,11 @@ impl File {
         cfg_if::cfg_if! {
             if #[cfg(target_os = "redox")] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
-                return Err(io::const_io_error!(
+                drop(times);
+                Err(io::const_io_error!(
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
-                ));
+                ))
             } else if #[cfg(any(target_os = "android", target_os = "macos"))] {
                 // futimens requires macOS 10.13, and Android API level 19
                 cvt(unsafe {
@@ -1100,12 +1101,12 @@ impl File {
                         )),
                     }
                 })?;
+                Ok(())
             } else {
                 cvt(unsafe { libc::futimens(self.as_raw_fd(), times.0.as_ptr()) })?;
+                Ok(())
             }
         }
-
-        Ok(())
     }
 }
 
