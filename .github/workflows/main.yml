@@ -79,6 +79,10 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.rs prepare
+        
+
+    - name: log expected output
+      run: cat -e regex/examples/regexdna-output.txt
 
     - name: Build without unstable features
       env:
