@@ -1824,44 +1824,36 @@ pub(crate) fn clean_visibility(vis: ty::Visibility) -> Visibility {
     }
 }
 
+pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
+    let kind = match variant.ctor_kind {
+        CtorKind::Const => Variant::CLike,
+        CtorKind::Fn => Variant::Tuple(
+            variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
+        ),
+        CtorKind::Fictive => Variant::Struct(VariantStruct {
+            struct_type: CtorKind::Fictive,
+            fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
+        }),
+    };
+    let what_rustc_thinks =
+        Item::from_def_id_and_parts(variant.def_id, Some(variant.name), VariantItem(kind), cx);
+    // don't show `pub` for variants, which always inherit visibility
+    Item { visibility: Inherited, ..what_rustc_thinks }
+}
+
 fn clean_variant_data<'tcx>(
     variant: &hir::VariantData<'tcx>,
     cx: &mut DocContext<'tcx>,
-) -> VariantStruct {
-    VariantStruct {
-        struct_type: CtorKind::from_hir(variant),
-        fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
-    }
-}
-
-impl<'tcx> Clean<'tcx, Item> for ty::VariantDef {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let kind = match self.ctor_kind {
-            CtorKind::Const => Variant::CLike,
-            CtorKind::Fn => Variant::Tuple(
-                self.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
-            ),
-            CtorKind::Fictive => Variant::Struct(VariantStruct {
-                struct_type: CtorKind::Fictive,
-                fields: self.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
-            }),
-        };
-        let what_rustc_thinks =
-            Item::from_def_id_and_parts(self.def_id, Some(self.name), VariantItem(kind), cx);
-        // don't show `pub` for variants, which always inherit visibility
-        Item { visibility: Inherited, ..what_rustc_thinks }
-    }
-}
-
-impl<'tcx> Clean<'tcx, Variant> for hir::VariantData<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Variant {
-        match self {
-            hir::VariantData::Struct(..) => Variant::Struct(clean_variant_data(self, cx)),
-            hir::VariantData::Tuple(..) => {
-                Variant::Tuple(self.fields().iter().map(|x| clean_field(x, cx)).collect())
-            }
-            hir::VariantData::Unit(..) => Variant::CLike,
+) -> Variant {
+    match variant {
+        hir::VariantData::Struct(..) => Variant::Struct(VariantStruct {
+            struct_type: CtorKind::from_hir(variant),
+            fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
+        }),
+        hir::VariantData::Tuple(..) => {
+            Variant::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
         }
+        hir::VariantData::Unit(..) => Variant::CLike,
     }
 }
 
@@ -2009,7 +2001,7 @@ fn clean_maybe_renamed_item<'tcx>(
 
 impl<'tcx> Clean<'tcx, Item> for hir::Variant<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let kind = VariantItem(self.data.clean(cx));
+        let kind = VariantItem(clean_variant_data(&self.data, cx));
         let what_rustc_thinks =
             Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
         // don't show `pub` for variants, which are always public

@@ -623,15 +623,6 @@ Arguments:
             }
         };
 
-        if let Subcommand::Check { .. } = &cmd {
-            if matches.opt_str("keep-stage").is_some()
-                || matches.opt_str("keep-stage-std").is_some()
-            {
-                eprintln!("--keep-stage not yet supported for x.py check");
-                crate::detail_exit(1);
-            }
-        }
-
         Flags {
             verbose: matches.opt_count("verbose"),
             stage: matches.opt_str("stage").map(|j| j.parse().expect("`stage` should be a number")),

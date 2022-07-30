@@ -1312,6 +1312,13 @@ impl Config {
         git
     }
 
+    pub(crate) fn artifact_channel(&self, commit: &str) -> String {
+        let mut channel = self.git();
+        channel.arg("show").arg(format!("{}:src/ci/channel", commit));
+        let channel = output(&mut channel);
+        channel.trim().to_owned()
+    }
+
     /// Try to find the relative path of `bindir`, otherwise return it in full.
     pub fn bindir_relative(&self) -> &Path {
         let bindir = &self.bindir;
@@ -1547,8 +1554,7 @@ fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
 
 fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
     builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    // FIXME: support downloading artifacts from the beta channel
-    const CHANNEL: &str = "nightly";
+    let channel = builder.config.artifact_channel(commit);
     let host = builder.config.build.triple;
     let bin_root = builder.out.join(host).join("ci-rustc");
     let rustc_stamp = bin_root.join(".rustc-stamp");
@@ -1557,13 +1563,13 @@ fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
         if bin_root.exists() {
             t!(fs::remove_dir_all(&bin_root));
         }
-        let filename = format!("rust-std-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rust-std-{channel}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
         download_ci_component(builder, filename, &pattern, commit);
-        let filename = format!("rustc-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rustc-{channel}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc", commit);
         // download-rustc doesn't need its own cargo, it can just use beta's.
-        let filename = format!("rustc-dev-{CHANNEL}-{host}.tar.xz");
+        let filename = format!("rustc-dev-{channel}-{host}.tar.xz");
         download_ci_component(builder, filename, "rustc-dev", commit);
 
         builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
