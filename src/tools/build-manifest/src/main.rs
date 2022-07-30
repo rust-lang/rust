@@ -184,7 +184,7 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview"];
+static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rustc-tools-preview"];
 
 macro_rules! t {
     ($e:expr) => {
@@ -323,6 +323,7 @@ impl Builder {
         package!("rust-analyzer-preview", HOSTS);
         package!("clippy-preview", HOSTS);
         package!("miri-preview", HOSTS);
+        package!("rustc-tools-preview", HOSTS);
         package!("rustfmt-preview", HOSTS);
         package!("rust-analysis", TARGETS);
         package!("llvm-tools-preview", TARGETS);
@@ -403,6 +404,7 @@ impl Builder {
         rename("rustfmt", "rustfmt-preview");
         rename("clippy", "clippy-preview");
         rename("miri", "miri-preview");
+        rename("rustc-tools", "rustc-tools-preview");
         rename("rust-analyzer", "rust-analyzer-preview");
     }
 
@@ -454,6 +456,7 @@ impl Builder {
         extensions.extend(vec![
             host_component("clippy-preview"),
             host_component("miri-preview"),
+            host_component("rustc-tools-preview"),
             host_component("rls-preview"),
             host_component("rust-analyzer-preview"),
             host_component("rustfmt-preview"),

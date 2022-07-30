@@ -2006,6 +2006,47 @@ impl Step for LlvmTools {
     }
 }
 
+/// This tarball contains tools useful inside/outside the rustc tree (today just
+/// compiletest). This is separate from the rust-dev tarball packaged below
+/// because that contains a full LLVM and in practice keeping that separate
+/// makes a lot of sense (it's probably worth renaming that tarball but that
+/// takes some work to do). We also publish this component on nightly, so that
+/// consumers (like clippy) can make use of it.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct RustcTools {
+    pub target: TargetSelection,
+}
+
+impl Step for RustcTools {
+    type Output = Option<GeneratedTarball>;
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = should_build_extended_tool(&run.builder, "rustc-tools");
+        run.alias("rustc-tools").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustcTools { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        let target = self.target;
+
+        let mut tarball = Tarball::new(builder, "rustc-tools", &target.triple);
+        tarball.set_overlay(OverlayKind::Rust);
+        tarball.is_preview(true);
+
+        // We place compiletest in rustlib since it shouldn't be directly run,
+        // only through some wrapper tool.
+        let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
+        tarball.add_file(builder.tool_exe(tool::Tool::Compiletest), &dst_bindir, 0o755);
+
+        Some(tarball.generate())
+    }
+}
+
 // Tarball intended for internal consumption to ease rustc/std development.
 //
 // Should not be considered stable by end users.

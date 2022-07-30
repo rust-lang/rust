@@ -724,6 +724,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::RustDev,
                 dist::Extended,
+                dist::RustcTools,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
                 // perceive their dependencies (see #93033) which would invalidate fingerprints
                 // and force us to rebuild tools after vendoring dependencies.
