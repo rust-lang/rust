@@ -309,6 +309,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // User-defined transmutability impls are permitted.
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
+            } else if lang_items.tuple_trait() == Some(def_id) {
+                self.assemble_candidate_for_tuple(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -1007,6 +1009,48 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(_) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidate_for_tuple(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = self.infcx().shallow_resolve(obligation.self_ty().skip_binder());
+        match self_ty.kind() {
+            ty::Tuple(_) => {
+                candidates.vec.push(TupleCandidate);
+            }
+            ty::Infer(ty::TyVar(_)) => {
+                candidates.ambiguous = true;
+            }
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(_, _)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::Never
+            | ty::Projection(_)
+            | ty::Opaque(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Error(_)
+            | ty::Infer(_)
+            | ty::Placeholder(_) => {}
         }
     }
 }

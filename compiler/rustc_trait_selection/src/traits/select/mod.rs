@@ -1618,7 +1618,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, and `ConstDestructCandidate` to anything else.
+        // `DiscriminantKindCandidate`, `ConstDestructCandidate`, and `TupleCandidate`
+        // to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
@@ -1638,7 +1639,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDestructCandidate(_),
+                | ConstDestructCandidate(_)
+                | TupleCandidate,
                 _,
             ) => true,
             (
@@ -1646,7 +1648,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDestructCandidate(_),
+                | ConstDestructCandidate(_)
+                | TupleCandidate,
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
