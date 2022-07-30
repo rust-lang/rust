@@ -1035,11 +1035,13 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
         unsafe { mem::ManuallyDrop::new(File::from_raw_handle(f.as_raw_handle())) }
     }
 
+    let mut restart = true;
     while let Some(dir) = dirlist.last() {
         let dir = copy_handle(dir);
 
         // Fill the buffer and iterate the entries.
-        let more_data = dir.fill_dir_buff(&mut buffer, false)?;
+        let more_data = dir.fill_dir_buff(&mut buffer, restart)?;
+        restart = false;
         for (name, is_directory) in buffer.iter() {
             if is_directory {
                 let child_dir = open_link_no_reparse(
