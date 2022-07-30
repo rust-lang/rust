@@ -311,7 +311,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 w,
                 "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
-                 </h2>\n{}",
+                 </h2>{}",
                 ITEM_TABLE_OPEN,
                 id = cx.derive_id(my_section.id().to_owned()),
                 name = my_section.name(),
@@ -415,10 +415,10 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
-                            <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
-                            {visibility_emoji}\
-                            {unsafety_flag}\
-                            {stab_tags}\
+                        <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                        {visibility_emoji}\
+                        {unsafety_flag}\
+                        {stab_tags}\
                      </div>\
                      <div class=\"item-right docblock-short\">{docs}</div>",
                     name = myitem.name.unwrap(),
@@ -1126,7 +1126,8 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
         write!(
             w,
             "<h2 id=\"fields\" class=\"fields small-section-header\">\
-                   Fields<a href=\"#fields\" class=\"anchor\"></a></h2>"
+                Fields<a href=\"#fields\" class=\"anchor\"></a>\
+            </h2>"
         );
         for (field, ty) in fields {
             let name = field.name.expect("union field name");
@@ -1238,7 +1239,8 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
         write!(
             w,
             "<h2 id=\"variants\" class=\"variants small-section-header\">\
-                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>",
+                Variants{}<a href=\"#variants\" class=\"anchor\"></a>\
+            </h2>",
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
@@ -1294,9 +1296,9 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                 w,
                                 "<div class=\"sub-variant-field\">\
                                  <span id=\"{id}\" class=\"variant small-section-header\">\
-                                    <a href=\"#{id}\" class=\"anchor field\"></a>\
-                                    <code>{f}:&nbsp;{t}</code>\
-                                </span>",
+                                     <a href=\"#{id}\" class=\"anchor field\"></a>\
+                                     <code>{f}:&nbsp;{t}</code>\
+                                 </span>",
                                 id = id,
                                 f = field.name.unwrap(),
                                 t = ty.print(cx)

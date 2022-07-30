@@ -82,10 +82,10 @@
             {%- else -%}
                 <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.svg" alt="logo"> {#- -#}
             {%- endif -%}
-            </div>
+            </div> {#- -#}
         </a> {#- -#}
-        <h2 class="location"></h2>
-    </nav>
+        <h2 class="location"></h2> {#- -#}
+    </nav> {#- -#}
     <nav class="sidebar"> {#- -#}
         <a class="sidebar-logo" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
             <div class="logo-container"> {#- -#}
@@ -94,7 +94,7 @@
                 {%- else -%}
                     <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.svg" alt="logo"> {#- -#}
                 {%- endif -%}
-            </div>
+            </div> {#- -#}
         </a> {#- -#}
         {{- sidebar|safe -}}
     </nav> {#- -#}
@@ -122,12 +122,12 @@
                             <div id="help-button" title="help" tabindex="-1"> {#- -#}
                                 <button type="button">?</button> {#- -#}
                             </div> {#- -#}
-                            <div id="settings-menu" tabindex="-1">
+                            <div id="settings-menu" tabindex="-1"> {#- -#}
                                 <a href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
                                     <img width="22" height="22" alt="Change settings" {# -#}
                                      src="{{static_root_path|safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
                                 </a> {#- -#}
-                            </div>
+                            </div> {#- -#}
                         </div> {#- -#}
                     </form> {#- -#}
                 </nav> {#- -#}
@@ -143,6 +143,6 @@
          data-resource-suffix="{{page.resource_suffix}}" {# -#}
          data-rustdoc-version="{{rustdoc_version}}" {# -#}
     > {#- -#}
-    </div>
+    </div> {#- -#}
 </body> {#- -#}
 </html> {#- -#}

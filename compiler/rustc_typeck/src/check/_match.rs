@@ -39,8 +39,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let scrut_diverges = self.diverges.replace(Diverges::Maybe);
 
         // #55810: Type check patterns first so we get types for all bindings.
+        let scrut_span = scrut.span.find_ancestor_inside(expr.span).unwrap_or(scrut.span);
         for arm in arms {
-            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut.span), true);
+            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), true);
         }
 
         // Now typecheck the blocks.

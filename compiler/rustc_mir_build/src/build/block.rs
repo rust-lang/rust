@@ -132,6 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 initializer_span,
                                                 else_block,
                                                 visibility_scope,
+                                                *remainder_scope,
                                                 remainder_span,
                                                 pattern,
                                             )
