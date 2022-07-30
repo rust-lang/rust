@@ -1,5 +1,5 @@
 use std::env;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 use std::process;
 
 mod build_backend;
@@ -122,27 +122,28 @@ pub fn main() {
         process::exit(1);
     }
 
-    let cg_clif_build_dir = Path::new("target").join(&host_triple).join(&channel);
+    let cg_clif_build_dir = build_backend::build_backend(channel, &host_triple, use_unstable_features);
 
-    if command == Command::Test {
-        // TODO: Should we also build_backend here?
-        tests::run_tests(
-            channel,
-            sysroot_kind,
-            &target_dir,
-            &cg_clif_build_dir,
-            &host_triple,
-            &target_triple,
-        ).expect("Failed to run tests");
-    } else {
-        build_backend::build_backend(channel, &host_triple, use_unstable_features);
-        build_sysroot::build_sysroot(
-            channel,
-            sysroot_kind,
-            &target_dir,
-            &cg_clif_build_dir,
-            &host_triple,
-            &target_triple,
-        );
+    match command {
+        Command::Test => {
+            tests::run_tests(
+                channel,
+                sysroot_kind,
+                &target_dir,
+                &cg_clif_build_dir,
+                &host_triple,
+                &target_triple,
+            );
+        },
+        Command::Build => {
+            build_sysroot::build_sysroot(
+                channel,
+                sysroot_kind,
+                &target_dir,
+                &cg_clif_build_dir,
+                &host_triple,
+                &target_triple,
+            );
+        }
     }
 }

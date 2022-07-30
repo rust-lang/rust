@@ -8,8 +8,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
 struct TestCase {
     config: &'static str,
     func: &'static dyn Fn(&TestRunner),
@@ -183,18 +181,16 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             runner.run_cargo(["clean"]);
 
             // newer aho_corasick versions throw a deprecation warning
-            let mut lint_rust_flags = runner.rust_flags.clone();
-            lint_rust_flags.push("--cap-lints".to_string());
-            lint_rust_flags.push("warn".to_string());
+            let lint_rust_flags = format!("{} --cap-lints warn", runner.rust_flags);
 
             let mut build_cmd = runner.cargo_command(["build", "--example", "shootout-regex-dna", "--target", &runner.target_triple]);
-            build_cmd.env("RUSTFLAGS", lint_rust_flags.join(" "));
+            build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
 
             spawn_and_wait(build_cmd);
 
             if runner.host_triple == runner.target_triple {
                 let mut run_cmd = runner.cargo_command(["run", "--example", "shootout-regex-dna", "--target", &runner.target_triple]);
-                run_cmd.env("RUSTFLAGS", lint_rust_flags.join(" "));
+                run_cmd.env("RUSTFLAGS", lint_rust_flags);
 
 
                 let input = fs::read_to_string(PathBuf::from("examples/regexdna-input.txt")).unwrap();
@@ -205,7 +201,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 // Make sure `[codegen mono items] start` doesn't poison the diff
                 let output = output.lines()
                     .filter(|line| !line.contains("codegen mono items"))
-                    .filter(|line| !line.contains("Spawned thread"))
                     .chain(Some("")) // This just adds the trailing newline
                     .collect::<Vec<&str>>()
                     .join("\r\n");
@@ -267,7 +262,7 @@ pub(crate) fn run_tests(
     cg_clif_build_dir: &Path,
     host_triple: &str,
     target_triple: &str,
-) -> Result<()> {
+) {
     let runner = TestRunner::new(host_triple.to_string(), target_triple.to_string());
 
     if config::get_bool("testsuite.no_sysroot") {
@@ -280,7 +275,7 @@ pub(crate) fn run_tests(
             &target_triple,
         );
 
-        let _ = remove_out_dir();
+        let _ = fs::remove_dir_all(Path::new("target").join("out"));
         runner.run_testsuite(NO_SYSROOT_SUITE);
     } else {
         eprintln!("[SKIP] no_sysroot tests");
@@ -311,22 +306,16 @@ pub(crate) fn run_tests(
     } else {
         eprintln!("[SKIP] extended_sysroot tests");
     }
-
-    Ok(())
 }
 
 
-fn remove_out_dir() -> Result<()> {
-    let out_dir = Path::new("target").join("out");
-    Ok(fs::remove_dir_all(out_dir)?)
-}
 
 struct TestRunner {
     root_dir: PathBuf,
     out_dir: PathBuf,
     jit_supported: bool,
-    rust_flags: Vec<String>,
-    run_wrapper: Vec<String>,
+    rust_flags: String,
+    run_wrapper: String,
     host_triple: String,
     target_triple: String,
 }
@@ -342,22 +331,19 @@ impl TestRunner {
         let is_native = host_triple == target_triple;
         let jit_supported = target_triple.contains("x86_64") && is_native;
 
-        let env_rust_flags = env::var("RUSTFLAGS").ok();
-        let env_run_wrapper = env::var("RUN_WRAPPER").ok();
-
-        let mut rust_flags: Vec<&str> = env_rust_flags.iter().map(|s| s.as_str()).collect();
-        let mut run_wrapper: Vec<&str> = env_run_wrapper.iter().map(|s| s.as_str()).collect();
+        let mut rust_flags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
+        let mut run_wrapper = String::new();
 
         if !is_native {
             match target_triple.as_str() {
                 "aarch64-unknown-linux-gnu" => {
                     // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-                    rust_flags.insert(0, "-Clinker=aarch64-linux-gnu-gcc");
-                    run_wrapper.extend(["qemu-aarch64", "-L", "/usr/aarch64-linux-gnu"]);
+                    rust_flags = format!("-Clinker=aarch64-linux-gnu-gcc {}", rust_flags);
+                    run_wrapper = "qemu-aarch64 -L /usr/aarch64-linux-gnu".to_string();
                 },
                 "x86_64-pc-windows-gnu" => {
                     // We are cross-compiling for Windows. Run tests in wine.
-                    run_wrapper.push("wine".into());
+                    run_wrapper = "wine".to_string();
                 }
                 _ => {
                     println!("Unknown non-native platform");
@@ -367,16 +353,15 @@ impl TestRunner {
 
         // FIXME fix `#[linkage = "extern_weak"]` without this
         if host_triple.contains("darwin") {
-            rust_flags.push("-Clink-arg=-undefined");
-            rust_flags.push("-Clink-arg=dynamic_lookup");
+            rust_flags = format!("{} -Clink-arg=-undefined -Clink-arg=dynamic_lookup", rust_flags);
         }
 
         Self {
             root_dir,
             out_dir,
             jit_supported,
-            rust_flags: rust_flags.iter().map(|s| s.to_string()).collect(),
-            run_wrapper: run_wrapper.iter().map(|s| s.to_string()).collect(),
+            rust_flags,
+            run_wrapper,
             host_triple,
             target_triple,
         }
@@ -384,9 +369,9 @@ impl TestRunner {
 
     pub fn run_testsuite(&self, tests: &[TestCase]) {
         for &TestCase { config, func } in tests {
-            let is_jit_test = config.contains("jit");
             let (tag, testname) = config.split_once('.').unwrap();
             let tag = tag.to_uppercase();
+            let is_jit_test = tag == "JIT";
 
             if !config::get_bool(config) || (is_jit_test && !self.jit_supported) {
                 eprintln!("[{tag}] {testname} (skipped)");
@@ -428,14 +413,16 @@ impl TestRunner {
         }
 
         let mut cmd = Command::new(rustc_clif);
-        cmd.args(self.rust_flags.iter());
+        if !self.rust_flags.is_empty() {
+            cmd.arg(&self.rust_flags);
+        }
         cmd.arg("-L");
         cmd.arg(format!("crate={}", self.out_dir.display()));
         cmd.arg("--out-dir");
         cmd.arg(format!("{}", self.out_dir.display()));
         cmd.arg("-Cdebuginfo=2");
         cmd.args(args);
-        cmd.env("RUSTFLAGS", self.rust_flags.join(" "));
+        cmd.env("RUSTFLAGS", &self.rust_flags);
         cmd
     }
 
@@ -454,8 +441,8 @@ impl TestRunner {
         let mut full_cmd = vec![];
 
         // Prepend the RUN_WRAPPER's
-        for rw in self.run_wrapper.iter() {
-            full_cmd.push(rw.to_string());
+        if !self.run_wrapper.is_empty() {
+            full_cmd.push(self.run_wrapper.clone());
         }
 
         full_cmd.push({
@@ -491,7 +478,7 @@ impl TestRunner {
 
         let mut cmd = Command::new(cargo_clif);
         cmd.args(args);
-        cmd.env("RUSTFLAGS", self.rust_flags.join(" "));
+        cmd.env("RUSTFLAGS", &self.rust_flags);
         cmd
     }
 
