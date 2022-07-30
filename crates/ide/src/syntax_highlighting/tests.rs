@@ -915,6 +915,48 @@ fn main() {
 }
 
 #[test]
+fn test_mod_hl_injection() {
+    check_highlighting(
+        r##"
+//- /foo.rs
+//! [Struct]
+//! This is an intra doc injection test for modules
+//! [Struct]
+//! This is an intra doc injection test for modules
+
+pub struct Struct;
+//- /lib.rs crate:foo
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+mod foo;
+"##,
+        expect_file!["./test_data/highlight_module_docs_inline.html"],
+        false,
+    );
+    check_highlighting(
+        r##"
+//- /lib.rs crate:foo
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+/// [crate::foo::Struct]
+/// This is an intra doc injection test for modules
+mod foo;
+//- /foo.rs
+//! [Struct]
+//! This is an intra doc injection test for modules
+//! [Struct]
+//! This is an intra doc injection test for modules
+
+pub struct Struct;
+"##,
+        expect_file!["./test_data/highlight_module_docs_outline.html"],
+        false,
+    );
+}
+
+#[test]
 #[cfg_attr(
     all(unix, not(target_pointer_width = "64")),
     ignore = "depends on `DefaultHasher` outputs"
