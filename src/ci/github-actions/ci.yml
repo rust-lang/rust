@@ -439,6 +439,11 @@ jobs:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl
 
+          - name: x86_64-gnu-llvm-12-stage1
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-xl
+
           - name: x86_64-gnu-nopt
             <<: *job-linux-xl
 
