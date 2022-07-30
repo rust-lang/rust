@@ -186,7 +186,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
             let mut build_cmd = runner.cargo_command(["build", "--example", "shootout-regex-dna", "--target", &runner.target_triple]);
             build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
-
             spawn_and_wait(build_cmd);
 
             if runner.host_triple == runner.target_triple {
@@ -233,11 +232,18 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         runner.in_dir(["regex"], |runner| {
             runner.run_cargo(["clean"]);
 
+            // newer aho_corasick versions throw a deprecation warning
+            let lint_rust_flags = format!("{} --cap-lints warn", runner.rust_flags);
+
             if runner.host_triple == runner.target_triple {
-                runner.run_cargo(["test", "--tests", "--", "--exclude-should-panic", "--test-threads", "1", "-Zunstable-options", "-q"]);
+                let mut run_cmd = runner.cargo_command(["test", "--tests", "--", "--exclude-should-panic", "--test-threads", "1", "-Zunstable-options", "-q"]);
+                run_cmd.env("RUSTFLAGS", lint_rust_flags);
+                spawn_and_wait(run_cmd);
             } else {
                 eprintln!("Cross-Compiling: Not running tests");
-                runner.run_cargo(["build", "--tests", "--target", &runner.target_triple]);
+                let mut build_cmd = runner.cargo_command(["build",  "--tests", "--target", &runner.target_triple]);
+                build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
+                spawn_and_wait(build_cmd);
             }
         });
     }),
