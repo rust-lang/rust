@@ -491,7 +491,7 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_crate_items(()).body_owners.iter().copied()
     }
 
-    pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
+    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
@@ -624,25 +624,10 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    #[cfg(not(parallel_compiler))]
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId)) {
-        self.for_each_module(f)
-    }
-
-    #[cfg(parallel_compiler)]
-    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
-
-        fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
-        where
-            F: Fn(LocalDefId) + Sync,
-        {
-            (*f)(module);
-            let items = tcx.hir_module_items(module);
-            par_iter(&items.submodules[..]).for_each(|&sm| par_iter_submodules(tcx, sm, f));
-        }
+    pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync + Send) {
+        let crate_items = self.tcx.hir_crate_items(());
+        par_for_each_in(&crate_items.submodules[..], |module| f(*module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
