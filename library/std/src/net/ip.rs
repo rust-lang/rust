@@ -1635,6 +1635,7 @@ impl Ipv6Addr {
             && !self.is_unique_local()
             && !self.is_unspecified()
             && !self.is_documentation()
+            && !self.is_benchmarking()
     }
 
     /// Returns the address's multicast scope if the address is multicast.
