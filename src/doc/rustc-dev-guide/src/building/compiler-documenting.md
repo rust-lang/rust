@@ -1,13 +1,13 @@
 # Building documentation
 
 This chapter describes how to build documentation of toolchain components,
-either in whole or individually.
+like the standard library (std) or the compiler (rustc).
 
 - Document everything
 
   This uses `rustdoc` from the beta toolchain,
   so will produce (slightly) different output to stage 1 rustdoc,
-  as `rustdoc` is under active development:
+  as rustdoc is under active development:
 
   ```bash
   ./x.py doc
@@ -20,8 +20,8 @@ either in whole or individually.
   ```
 
   First,
-  the compiler and rustdoc get built to make sure everything is okay,
-  and then it documents the files.
+  the compiler gets built to make sure rustdoc compiles,
+  then that newly-built rustdoc is used to document the components.
 
 - Much like running individual tests or building specific components,
   you can build just the documentation you want:
