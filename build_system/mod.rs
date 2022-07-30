@@ -73,7 +73,7 @@ pub fn main() {
         eprintln!("Switch to the MinGW toolchain for Windows support.");
         eprintln!("Hint: You can use `rustup set default-host x86_64-pc-windows-gnu` to");
         eprintln!("set the global default target to MinGW");
-        // process::exit(1);
+        process::exit(1);
     }
 
 
@@ -83,7 +83,7 @@ pub fn main() {
             if args.next().is_some() {
                 arg_error!("./y.rs prepare doesn't expect arguments");
             }
-            prepare::prepare(&target_triple);
+            prepare::prepare(&host_triple);
             process::exit(0);
         }
         Some("build") => Command::Build,

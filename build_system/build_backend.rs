@@ -39,5 +39,5 @@ pub(crate) fn build_backend(
     eprintln!("[BUILD] rustc_codegen_cranelift");
     super::utils::spawn_and_wait(cmd);
 
-    Path::new("target").join(&host_triple).join(&channel)
+    Path::new("target").join(host_triple).join(channel)
 }
