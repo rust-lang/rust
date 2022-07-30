@@ -25,7 +25,7 @@ where
 
 impl<T> Bar for T
 where
-    T: Foo, //~ ERROR missing `~const` qualifier
+    T: Foo,
     T: Specialize,
 {}
 

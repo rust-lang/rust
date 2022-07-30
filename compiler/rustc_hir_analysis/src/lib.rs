@@ -197,18 +197,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().par_for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
     })?;
 
-    if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.hir()
-                .par_for_each_module(|module| outlives::test::test_inferred_outlives(tcx, module));
-            tcx.hir().par_for_each_module(|module| variance::test::test_variance(tcx, module));
-        })?;
-    }
-
-    tcx.sess.track_errors(|| {
-        tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
-    })?;
-
     tcx.sess.track_errors(|| {
         tcx.sess.time("coherence_checking", || {
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
@@ -222,14 +210,20 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     })?;
 
     tcx.sess.track_errors(|| {
-        tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-    })?;
+        tcx.hir().par_for_each_module(|module| {
+            if tcx.features().rustc_attrs {
+                outlives::test::test_inferred_outlives(tcx, module);
+                variance::test::test_variance(tcx, module);
+            }
 
-    tcx.hir().par_for_each_module(|module| {
-        // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
-        tcx.ensure().check_mod_item_types(module);
-        tcx.ensure().typeck_item_bodies(module);
-    });
+            let Ok(()) = tcx.sess.track_errors(|| tcx.ensure().check_mod_impl_wf(module)) else { return };
+            let Ok(()) = tcx.sess.track_errors(|| tcx.ensure().check_mod_type_wf(module)) else { return };
+
+            // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
+            tcx.ensure().check_mod_item_types(module);
+            tcx.ensure().typeck_item_bodies(module);
+        });
+    })?;
 
     tcx.ensure().check_unused_traits(());
 
