@@ -591,7 +591,12 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::FnDef(def_id, substs) => {
                 let sig = self.tcx().bound_fn_sig(def_id).subst(self.tcx(), substs);
-                p!("[fn item {{", print_value_path(def_id, substs), "}}: ", print(sig), "]");
+                let description = match self.tcx().def_kind(def_id) {
+                    DefKind::Ctor(_, CtorKind::Fn) => "constructor of",
+                    DefKind::Fn => "fn item",
+                    _ => unreachable!(),
+                };
+                p!("[{description} {{", print_value_path(def_id, substs), "}}: ", print(sig), "]");
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
             ty::Infer(infer_ty) => {

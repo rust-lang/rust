@@ -1116,6 +1116,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             s.push_normal(ty.to_string());
         }
 
+        fn fn_def_pretty_prefix(tcx: TyCtxt<'_>, did: DefId) -> DiagnosticStyledString {
+            let description = match tcx.def_kind(did) {
+                hir::def::DefKind::Ctor(_, hir::def::CtorKind::Fn) => "constructor of",
+                hir::def::DefKind::Fn => "fn item",
+                _ => unreachable!(),
+            };
+            DiagnosticStyledString::normal(format!("[{description} {{"))
+        }
+
         // process starts here
         match (t1.kind(), t2.kind()) {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
@@ -1368,15 +1377,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values
             }
 
-            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
+            (&ty::FnDef(did1, substs1), &ty::FnDef(did2, substs2)) => {
+                let sig1 = self.tcx.bound_fn_sig(did1).subst(self.tcx, substs1);
+                let sig2 = self.tcx.bound_fn_sig(did2).subst(self.tcx, substs2);
                 let mut values = (
-                    DiagnosticStyledString::normal("[fn item {".to_string()),
-                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                    fn_def_pretty_prefix(self.tcx, did1),
+                    fn_def_pretty_prefix(self.tcx, did2),
                 );
-                let path1 = self.tcx.def_path_str_with_substs(*did1, substs1);
-                let path2 = self.tcx.def_path_str_with_substs(*did2, substs2);
+                let path1 = self.tcx.def_path_str_with_substs(did1, substs1);
+                let path2 = self.tcx.def_path_str_with_substs(did2, substs2);
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
@@ -1388,26 +1397,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values
             }
 
-            (ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
+            (&ty::FnDef(did1, substs1), ty::FnPtr(sig2)) => {
+                let sig1 = self.tcx.bound_fn_sig(did1).subst(self.tcx, substs1);
                 let mut values = (
-                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                    fn_def_pretty_prefix(self.tcx, did1),
                     DiagnosticStyledString::new(),
                 );
-                values.0.push_highlighted(self.tcx.def_path_str_with_substs(*did1, substs1));
+                values.0.push_highlighted(self.tcx.def_path_str_with_substs(did1, substs1));
                 values.0.push_normal("}: ");
                 self.cmp_fn_sig(&sig1, sig2, &mut values, true);
                 values.0.push_normal("]");
                 values
             }
 
-            (ty::FnPtr(sig1), ty::FnDef(did2, substs2)) => {
-                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
+            (ty::FnPtr(sig1), &ty::FnDef(did2, substs2)) => {
+                let sig2 = self.tcx.bound_fn_sig(did2).subst(self.tcx, substs2);
                 let mut values = (
                     DiagnosticStyledString::new(),
-                    DiagnosticStyledString::normal("[fn item {".to_string()),
+                    fn_def_pretty_prefix(self.tcx, did2),
                 );
-                values.1.push_highlighted(self.tcx.def_path_str_with_substs(*did2, substs2));
+                values.1.push_highlighted(self.tcx.def_path_str_with_substs(did2, substs2));
                 values.1.push_normal("}: ");
                 self.cmp_fn_sig(sig1, &sig2, &mut values, true);
                 values.1.push_normal("]");
