@@ -206,7 +206,8 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                     .join("\r\n");
 
 
-                if output != expected {
+                let output_matches = expected.lines().eq(output.lines());
+                if !output_matches {
                     let res_path = PathBuf::from("res.txt");
                     fs::write(&res_path, &output).unwrap();
 
@@ -457,7 +458,6 @@ impl TestRunner {
             full_cmd.push(arg.to_string());
         }
 
-        println!("full_CMD: {:?}", full_cmd);
         let mut cmd_iter = full_cmd.into_iter();
         let first = cmd_iter.next().unwrap();
 
