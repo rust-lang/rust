@@ -70,10 +70,10 @@ fn main() -> () {
         StorageLive(_8);                 // bb2[0]: scope 3 at $DIR/region-subtyping-basic.rs:+5:9: +5:18
         StorageLive(_9);                 // bb2[1]: scope 3 at $DIR/region-subtyping-basic.rs:+5:15: +5:17
         _9 = (*_6);                      // bb2[2]: scope 3 at $DIR/region-subtyping-basic.rs:+5:15: +5:17
-        _8 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(move _9) -> [return: bb3, unwind: bb7]; // bb2[3]: scope 3 at $DIR/region-subtyping-basic.rs:+5:9: +5:18
+        _8 = ConstValue(ZeroSized: [fn item {use_x}: fn(usize) -> bool])(move _9) -> [return: bb3, unwind: bb7]; // bb2[3]: scope 3 at $DIR/region-subtyping-basic.rs:+5:9: +5:18
                                          // mir::Constant
                                          // + span: $DIR/region-subtyping-basic.rs:21:9: 21:14
-                                         // + literal: Const { ty: fn(usize) -> bool {use_x}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: [fn item {use_x}: fn(usize) -> bool], val: Value(<ZST>) }
     }
 
     bb3: {
@@ -85,10 +85,10 @@ fn main() -> () {
 
     bb4: {
         StorageLive(_10);                // bb4[0]: scope 3 at $DIR/region-subtyping-basic.rs:+7:9: +7:18
-        _10 = ConstValue(ZeroSized: fn(usize) -> bool {use_x})(const ConstValue(Scalar(0x00000016): usize)) -> [return: bb5, unwind: bb7]; // bb4[1]: scope 3 at $DIR/region-subtyping-basic.rs:+7:9: +7:18
+        _10 = ConstValue(ZeroSized: [fn item {use_x}: fn(usize) -> bool])(const ConstValue(Scalar(0x00000016): usize)) -> [return: bb5, unwind: bb7]; // bb4[1]: scope 3 at $DIR/region-subtyping-basic.rs:+7:9: +7:18
                                          // mir::Constant
                                          // + span: $DIR/region-subtyping-basic.rs:23:9: 23:14
-                                         // + literal: Const { ty: fn(usize) -> bool {use_x}, val: Value(<ZST>) }
+                                         // + literal: Const { ty: [fn item {use_x}: fn(usize) -> bool], val: Value(<ZST>) }
     }
 
     bb5: {
