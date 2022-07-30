@@ -189,7 +189,8 @@ fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
     } else {
         &builder.config.stage0_metadata.config.artifacts_server
     };
-    let filename = format!("rust-dev-nightly-{}.tar.xz", builder.build.build.triple);
+    let channel = builder.config.artifact_channel(llvm_sha);
+    let filename = format!("rust-dev-{}-{}.tar.xz", channel, builder.build.build.triple);
     let tarball = rustc_cache.join(&filename);
     if !tarball.exists() {
         let help_on_error = "error: failed to download llvm from ci
