@@ -55,6 +55,8 @@
 #![allow(missing_docs)]
 
 use crate::marker::DiscriminantKind;
+#[cfg(not(bootstrap))]
+use crate::marker::Tuple;
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -2169,8 +2171,72 @@ extern "rust-intrinsic" {
     /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
     /// which violates the principle that a `const fn` must behave the same at
     /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[cfg(bootstrap)]
     #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
     pub fn const_eval_select<ARG, F, G, RET>(arg: ARG, called_in_const: F, called_at_rt: G) -> RET
+    where
+        G: FnOnce<ARG, Output = RET>,
+        F: FnOnce<ARG, Output = RET>;
+
+    /// Selects which function to call depending on the context.
+    ///
+    /// If this function is evaluated at compile-time, then a call to this
+    /// intrinsic will be replaced with a call to `called_in_const`. It gets
+    /// replaced with a call to `called_at_rt` otherwise.
+    ///
+    /// # Type Requirements
+    ///
+    /// The two functions must be both function items. They cannot be function
+    /// pointers or closures. The first function must be a `const fn`.
+    ///
+    /// `arg` will be the tupled arguments that will be passed to either one of
+    /// the two functions, therefore, both functions must accept the same type of
+    /// arguments. Both functions must return RET.
+    ///
+    /// # Safety
+    ///
+    /// The two functions must behave observably equivalent. Safe code in other
+    /// crates may assume that calling a `const fn` at compile-time and at run-time
+    /// produces the same result. A function that produces a different result when
+    /// evaluated at run-time, or has any other observable side-effects, is
+    /// *unsound*.
+    ///
+    /// Here is an example of how this could cause a problem:
+    /// ```no_run
+    /// #![feature(const_eval_select)]
+    /// #![feature(core_intrinsics)]
+    /// use std::hint::unreachable_unchecked;
+    /// use std::intrinsics::const_eval_select;
+    ///
+    /// // Crate A
+    /// pub const fn inconsistent() -> i32 {
+    ///     fn runtime() -> i32 { 1 }
+    ///     const fn compiletime() -> i32 { 2 }
+    ///
+    ///     unsafe {
+    //          // ⚠ This code violates the required equivalence of `compiletime`
+    ///         // and `runtime`.
+    ///         const_eval_select((), compiletime, runtime)
+    ///     }
+    /// }
+    ///
+    /// // Crate B
+    /// const X: i32 = inconsistent();
+    /// let x = inconsistent();
+    /// if x != X { unsafe { unreachable_unchecked(); }}
+    /// ```
+    ///
+    /// This code causes Undefined Behavior when being run, since the
+    /// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
+    /// which violates the principle that a `const fn` must behave the same at
+    /// compile-time and at run-time. The unsafe code in crate B is fine.
+    #[cfg(not(bootstrap))]
+    #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
+    pub fn const_eval_select<ARG: Tuple, F, G, RET>(
+        arg: ARG,
+        called_in_const: F,
+        called_at_rt: G,
+    ) -> RET
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
