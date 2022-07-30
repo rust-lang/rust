@@ -236,8 +236,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
-                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
+                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
                 inline::print_inlined_const(cx.tcx, def.did)
             };

@@ -766,7 +766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // If this didn't hold, we would not have to report an error in
                 // the first place.
-                assert_ne!(hir::HirId::make_owner(encl_item_id), encl_body_owner_id);
+                assert_ne!(encl_item_id, encl_body_owner_id);
 
                 let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
                 let encl_body = self.tcx.hir().body(encl_body_id);

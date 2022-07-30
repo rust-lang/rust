@@ -1616,7 +1616,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_anon_const(&mut self, id: hir::HirId) {
         let def_id = self.tcx.hir().local_def_id(id);
         debug!("EncodeContext::encode_info_for_anon_const({:?})", def_id);
-        let body_id = self.tcx.hir().body_owned_by(id);
+        let body_id = self.tcx.hir().body_owned_by(def_id);
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);
 

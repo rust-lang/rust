@@ -353,9 +353,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
-        let hir_id = self.mir_hir_id();
         let map = self.infcx.tcx.hir();
-        let body_id = map.body_owned_by(hir_id);
+        let body_id = map.body_owned_by(self.mir_def_id());
         let body = map.body(body_id);
 
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };

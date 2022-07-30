@@ -21,7 +21,7 @@ pub(crate) fn thir_body<'tcx>(
     owner_def: ty::WithOptConstParam<LocalDefId>,
 ) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
-    let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(owner_def.did)));
+    let body = hir.body(hir.body_owned_by(owner_def.did));
     let mut cx = Cx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);

@@ -143,8 +143,7 @@ where
         // then we need to exit before calling typeck (which will panic). See
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
         let hir = tcx.hir();
-        let owner = hir.local_def_id_to_hir_id(ex.hir_id.owner);
-        if hir.maybe_body_owned_by(owner).is_none() {
+        if hir.maybe_body_owned_by(ex.hir_id.owner).is_none() {
             return;
         }
 

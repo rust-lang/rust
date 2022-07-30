@@ -601,6 +601,17 @@ impl<'a> Parser<'a> {
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
 
+        if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
+            if symbol.as_str() == "public" {
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    "write `pub` instead of `public` to make the item public",
+                    "pub",
+                    appl,
+                );
+            }
+        }
+
         // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
         // there are unclosed angle brackets
         if self.unmatched_angle_bracket_count > 0

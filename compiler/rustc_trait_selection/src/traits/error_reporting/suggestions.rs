@@ -20,6 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::hir::map;
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
@@ -253,8 +254,8 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         span: Span,
         found_span: Option<Span>,
-        expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
+        expected: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn suggest_fully_qualified_path(
@@ -1536,13 +1537,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         span: Span,
         found_span: Option<Span>,
-        expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
+        expected: ty::PolyTraitRef<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        pub(crate) fn build_fn_sig_string<'tcx>(
+        pub(crate) fn build_fn_sig_ty<'tcx>(
             tcx: TyCtxt<'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,
-        ) -> String {
+        ) -> Ty<'tcx> {
             let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs)
@@ -1564,10 +1565,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     abi::Abi::Rust,
                 ),
             };
-            trait_ref.rebind(sig).to_string()
+
+            tcx.mk_fn_ptr(trait_ref.rebind(sig))
         }
 
-        let argument_kind = match expected_ref.skip_binder().self_ty().kind() {
+        let argument_kind = match expected.skip_binder().self_ty().kind() {
             ty::Closure(..) => "closure",
             ty::Generator(..) => "generator",
             _ => "function",
@@ -1576,17 +1578,22 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             self.tcx.sess,
             span,
             E0631,
-            "type mismatch in {} arguments",
-            argument_kind
+            "type mismatch in {argument_kind} arguments",
         );
 
-        let found_str = format!("expected signature of `{}`", build_fn_sig_string(self.tcx, found));
-        err.span_label(span, found_str);
+        err.span_label(span, "expected due to this");
 
         let found_span = found_span.unwrap_or(span);
-        let expected_str =
-            format!("found signature of `{}`", build_fn_sig_string(self.tcx, expected_ref));
-        err.span_label(found_span, expected_str);
+        err.span_label(found_span, "found signature defined here");
+
+        let expected = build_fn_sig_ty(self.tcx, expected);
+        let found = build_fn_sig_ty(self.tcx, found);
+
+        let (expected_str, found_str) =
+            self.tcx.infer_ctxt().enter(|infcx| infcx.cmp(expected, found));
+
+        let signature_kind = format!("{argument_kind} signature");
+        err.note_expected_found(&signature_kind, expected_str, &signature_kind, found_str);
 
         err
     }
@@ -1790,8 +1797,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let generator_body = generator_did
             .as_local()
-            .map(|def_id| hir.local_def_id_to_hir_id(def_id))
-            .and_then(|hir_id| hir.maybe_body_owned_by(hir_id))
+            .and_then(|def_id| hir.maybe_body_owned_by(def_id))
             .map(|body_id| hir.body(body_id));
         let is_async = match generator_did.as_local() {
             Some(_) => generator_body
@@ -2759,7 +2765,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let body_hir_id = obligation.cause.body_id;
         let item_id = self.tcx.hir().get_parent_node(body_hir_id);
 
-        if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(item_id) {
+        if let Some(body_id) =
+            self.tcx.hir().maybe_body_owned_by(self.tcx.hir().local_def_id(item_id))
+        {
             let body = self.tcx.hir().body(body_id);
             if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
                 let future_trait = self.tcx.require_lang_item(LangItem::Future, None);

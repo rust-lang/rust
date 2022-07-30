@@ -1,4 +1,4 @@
-error: casts cannot be followed by a function call
+error: type ascription cannot be followed by a function call
   --> $DIR/issue-60933.rs:3:20
    |
 LL |     let _: usize = std::mem:size_of::<u32>();

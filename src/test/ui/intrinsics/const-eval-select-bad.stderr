@@ -67,13 +67,15 @@ error[E0631]: type mismatch in function arguments
   --> $DIR/const-eval-select-bad.rs:34:32
    |
 LL | const fn foo(n: i32) -> i32 {
-   | --------------------------- found signature of `fn(i32) -> _`
+   | --------------------------- found signature defined here
 ...
 LL |     const_eval_select((true,), foo, baz);
-   |     -----------------          ^^^ expected signature of `fn(bool) -> _`
+   |     -----------------          ^^^ expected due to this
    |     |
    |     required by a bound introduced by this call
    |
+   = note: expected function signature `fn(bool) -> _`
+              found function signature `fn(i32) -> _`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
    |
