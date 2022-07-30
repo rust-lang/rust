@@ -164,14 +164,14 @@ jobs:
     - name: Test
       run: |
         # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
+        $Env:RUST_BACKTRACE=1
 
         # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
+        $Env:COMPILE_RUNS=2
+        $Env:RUN_RUNS=2
 
         # Enable extra checks
-        export CG_CLIF_ENABLE_VERIFIER=1
+        $Env:CG_CLIF_ENABLE_VERIFIER=1
 
         ./y.exe test
 
