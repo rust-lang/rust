@@ -12,7 +12,8 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, count_recv: &hi
     if_chain! {
         if is_trait_method(cx, count_recv, sym::Iterator);
         let closure = expr_or_init(cx, map_arg);
-        if let Some(body_id) = cx.tcx.hir().maybe_body_owned_by(closure.hir_id);
+        if let Some(def_id) = cx.tcx.hir().opt_local_def_id(closure.hir_id);
+        if let Some(body_id) = cx.tcx.hir().maybe_body_owned_by(def_id);
         let closure_body = cx.tcx.hir().body(body_id);
         if !cx.typeck_results().expr_ty(&closure_body.value).is_unit();
         then {
