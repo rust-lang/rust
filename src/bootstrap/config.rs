@@ -993,7 +993,6 @@ impl Config {
                     // This is currently all tier 1 targets and tier 2 targets with host tools
                     // (since others may not have CI artifacts)
                     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
-                    // FIXME: this is duplicated in bootstrap.py
                     let supported_platforms = [
                         // tier 1
                         "aarch64-unknown-linux-gnu",
@@ -1176,6 +1175,7 @@ impl Config {
 
         if config.llvm_from_ci {
             let triple = &config.build.triple;
+            let ci_llvm_bin = config.ci_llvm_root().join("bin");
             let mut build_target = config
                 .target_config
                 .entry(config.build)
@@ -1183,7 +1183,6 @@ impl Config {
 
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
-            let ci_llvm_bin = config.out.join(&*config.build.triple).join("ci-llvm/bin");
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", config.build)));
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", config.build)));
         }
