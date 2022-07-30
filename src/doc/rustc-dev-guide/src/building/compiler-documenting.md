@@ -1,8 +1,7 @@
 # Building documentation
 
-You can run `rustdoc` directly on a file to make sure the HTML is correct,
-which runs quickly.
-A more conventional way is using `/x.py doc`.
+This chapter describes how to build documentation of toolchain components,
+either in whole or individually.
 
 - Document everything
 
