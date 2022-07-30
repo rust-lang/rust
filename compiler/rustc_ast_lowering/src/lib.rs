@@ -77,6 +77,7 @@ mod block;
 mod expr;
 mod index;
 mod item;
+mod lifetime_collector;
 mod pat;
 mod path;
 
@@ -1352,7 +1353,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }),
                 );
 
-                let (lifetimes_in_bounds, binders_to_ignore) = ast::lifetimes_in_bounds(bounds);
+                let (lifetimes_in_bounds, binders_to_ignore) =
+                    lifetime_collector::lifetimes_in_bounds(bounds);
                 debug!(?lifetimes_in_bounds);
                 debug!(?binders_to_ignore);
 
@@ -1756,7 +1758,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }),
             );
 
-            let (lifetimes_in_bounds, binders_to_ignore) = ast::lifetimes_in_ret_ty(output);
+            let (lifetimes_in_bounds, binders_to_ignore) =
+                lifetime_collector::lifetimes_in_ret_ty(output);
             debug!(?lifetimes_in_bounds);
             debug!(?binders_to_ignore);
 
