@@ -99,7 +99,7 @@ fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
     //
     // > A tag name consists of an ASCII letter followed by zero or more ASCII letters, digits, or
     // > hyphens (-).
-    c.is_ascii_alphabetic() || (c.is_ascii_digit() && !is_empty) || (c == '-' && !is_empty)
+    c.is_ascii_alphabetic() || !is_empty && (c == '-' || c.is_ascii_digit())
 }
 
 fn extract_html_tag(
