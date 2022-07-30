@@ -1,5 +1,6 @@
 use super::build_sysroot;
 use super::config;
+use super::rustc_info::get_wrapper_file_name;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input};
 use build_system::SysrootKind;
 use std::env;
@@ -407,10 +408,7 @@ impl TestRunner {
     {
         let mut rustc_clif = self.root_dir.clone();
         rustc_clif.push("build");
-        rustc_clif.push("rustc-clif");
-        if cfg!(windows) {
-            rustc_clif.set_extension("exe");
-        }
+        rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin", &self.target_triple));
 
         let mut cmd = Command::new(rustc_clif);
         if !self.rust_flags.is_empty() {
@@ -471,10 +469,7 @@ impl TestRunner {
     {
         let mut cargo_clif = self.root_dir.clone();
         cargo_clif.push("build");
-        cargo_clif.push("cargo-clif");
-        if cfg!(windows) {
-            cargo_clif.set_extension("exe");
-        }
+        cargo_clif.push(get_wrapper_file_name("cargo-clif", "bin", &self.target_triple));
 
         let mut cmd = Command::new(cargo_clif);
         cmd.args(args);

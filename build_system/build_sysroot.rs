@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use super::rustc_info::{get_file_name, get_rustc_version};
+use super::rustc_info::{get_file_name, get_wrapper_file_name, get_rustc_version};
 use super::utils::{spawn_and_wait, try_hard_link};
 use super::SysrootKind;
 
@@ -37,10 +37,7 @@ pub(crate) fn build_sysroot(
 
     // Build and copy rustc and cargo wrappers
     for wrapper in ["rustc-clif", "cargo-clif"] {
-        let crate_name = wrapper.replace('-', "_");
-        let wrapper_name = get_file_name(&crate_name, "bin", target_triple);
-        let wrapper_name = wrapper_name.replace('_', "-");
-
+        let wrapper_name = get_wrapper_file_name(wrapper, "bin", target_triple);
 
         let mut build_cargo_wrapper_cmd = Command::new("rustc");
         build_cargo_wrapper_cmd
