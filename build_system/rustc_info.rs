@@ -43,7 +43,7 @@ pub(crate) fn get_default_sysroot() -> PathBuf {
     Path::new(String::from_utf8(default_sysroot).unwrap().trim()).to_owned()
 }
 
-pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
+pub(crate) fn get_file_name(crate_name: &str, crate_type: &str, target: &str) -> String {
     let file_name = Command::new("rustc")
         .stderr(Stdio::inherit())
         .args(&[
@@ -51,6 +51,8 @@ pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
             crate_name,
             "--crate-type",
             crate_type,
+            "--target",
+            target,
             "--print",
             "file-names",
             "-",

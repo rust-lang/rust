@@ -8,7 +8,7 @@ use std::process::Command;
 use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
 use super::utils::{copy_dir_recursively, spawn_and_wait};
 
-pub(crate) fn prepare() {
+pub(crate) fn prepare(target_triple: &str) {
     prepare_sysroot();
 
     eprintln!("[INSTALL] hyperfine");
@@ -49,8 +49,8 @@ pub(crate) fn prepare() {
     build_cmd.arg("build").env_remove("CARGO_TARGET_DIR").current_dir("simple-raytracer");
     spawn_and_wait(build_cmd);
     fs::copy(
-        Path::new("simple-raytracer/target/debug").join(get_file_name("main", "bin")),
-        Path::new("simple-raytracer").join(get_file_name("raytracer_cg_llvm", "bin")),
+        Path::new("simple-raytracer/target/debug").join(get_file_name("main", "bin", target_triple)),
+        Path::new("simple-raytracer").join(get_file_name("raytracer_cg_llvm", "bin", target_triple)),
     )
     .unwrap();
 }

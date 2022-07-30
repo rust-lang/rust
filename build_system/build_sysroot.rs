@@ -23,7 +23,7 @@ pub(crate) fn build_sysroot(
     fs::create_dir_all(target_dir.join("lib")).unwrap();
 
     // Copy the backend
-    let cg_clif_dylib = get_file_name("rustc_codegen_cranelift", "dylib");
+    let cg_clif_dylib = get_file_name("rustc_codegen_cranelift", "dylib", target_triple);
     let cg_clif_dylib_path = target_dir
         .join(if cfg!(windows) {
             // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
@@ -37,11 +37,10 @@ pub(crate) fn build_sysroot(
 
     // Build and copy rustc and cargo wrappers
     for wrapper in ["rustc-clif", "cargo-clif"] {
-        let wrapper_name = if cfg!(windows) {
-            format!("{wrapper}.exe")
-        } else {
-            wrapper.to_string()
-        };
+        let crate_name = wrapper.replace('-', "_");
+        let wrapper_name = get_file_name(&crate_name, "bin", target_triple);
+        let wrapper_name = wrapper_name.replace('_', "-");
+
 
         let mut build_cargo_wrapper_cmd = Command::new("rustc");
         build_cargo_wrapper_cmd
