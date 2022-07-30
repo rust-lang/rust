@@ -1,6 +1,7 @@
 // stderr-per-bitwidth
 // ignore-tidy-linelength
 #![allow(unused)]
+#![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
 
@@ -40,12 +41,10 @@ const NESTED_STR_MUCH_TOO_LONG: (&str,) = (unsafe { mem::transmute((&42, usize::
 //~^ ERROR it is undefined behavior to use this value
 // bad str
 const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR it is undefined behavior to use this value
 // bad str in user-defined unsized type
 const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR it is undefined behavior to use this value
 const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize::MAX)) };
 //~^ ERROR it is undefined behavior to use this value
 
@@ -73,34 +72,26 @@ const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, isize::
 //~^ ERROR it is undefined behavior to use this value
 // bad slice: length not an int
 const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR it is undefined behavior to use this value
 // bad slice box: length too big
 const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999usize)) };
 //~^ ERROR it is undefined behavior to use this value
 // bad slice box: length not an int
 const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)) };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the slice
 const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { mem::transmute(3u8) }];
 //~^ ERROR it is undefined behavior to use this value
-//~| ERROR any use of this value will cause an error
-//~| WARNING this was previously accepted
 
 // good MySliceBool
 const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
 // bad: sized field is not okay
 const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { mem::transmute(3u8) }, [false]);
 //~^ ERROR it is undefined behavior to use this value
-//~| ERROR any use of this value will cause an error
-//~| WARNING this was previously accepted
 // bad: unsized part is not okay
 const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
 //~^ ERROR it is undefined behavior to use this value
-//~| ERROR any use of this value will cause an error
-//~| WARNING this was previously accepted
 
 // # raw slice
 const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) }; // ok
