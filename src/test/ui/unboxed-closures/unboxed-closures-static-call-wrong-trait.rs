@@ -1,6 +1,6 @@
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, tuple_trait)]
 
-fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
+fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
 
 fn main() {
     let mut_ = to_fn_mut(|x| x);

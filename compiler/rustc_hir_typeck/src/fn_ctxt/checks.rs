@@ -215,7 +215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
-                    .emit();
+                    .delay_as_bug();
                     (self.err_args(provided_args.len()), None)
                 }
             }

@@ -1,8 +1,8 @@
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, tuple_trait)]
 
 use std::io::Read;
 
-fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
+fn to_fn_once<A:std::marker::Tuple,F:FnOnce<A>>(f: F) -> F { f }
 
 fn main() {
     let x = 1;

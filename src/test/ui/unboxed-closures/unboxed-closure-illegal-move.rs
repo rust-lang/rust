@@ -1,12 +1,12 @@
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, tuple_trait)]
 
 // Tests that we can't move out of an unboxed closure environment
 // if the upvar is captured by ref or the closure takes self by
 // reference.
 
-fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
-fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
-fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
+fn to_fn<A:std::marker::Tuple,F:Fn<A>>(f: F) -> F { f }
+fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
+fn to_fn_once<A:std::marker::Tuple,F:FnOnce<A>>(f: F) -> F { f }
 
 fn main() {
     // By-ref cases
