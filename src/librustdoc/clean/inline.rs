@@ -17,8 +17,8 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
     self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty, clean_ty,
-    clean_ty_generics, clean_visibility, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId,
-    Type, Visibility,
+    clean_ty_generics, clean_variant_def, clean_visibility, utils, Attributes, AttributesExt,
+    Clean, ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -236,7 +236,7 @@ fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
 
     clean::Enum {
         generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
-        variants: cx.tcx.adt_def(did).variants().iter().map(|v| v.clean(cx)).collect(),
+        variants: cx.tcx.adt_def(did).variants().iter().map(|v| clean_variant_def(v, cx)).collect(),
     }
 }
 
