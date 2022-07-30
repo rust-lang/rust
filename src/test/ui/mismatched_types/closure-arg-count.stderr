@@ -45,41 +45,33 @@ help: change the closure to take multiple arguments instead of a single tuple
 LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |                       ~~~~~~~~~~~~~~~
 
-error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
+error[E0308]: mismatched types
   --> $DIR/closure-arg-count.rs:13:5
    |
 LL |     f(|| panic!());
-   |     ^ -- takes 0 arguments
-   |     |
-   |     expected closure that takes 1 argument
+   |     ^ types differ
    |
+   = note: expected trait `Fn<usize>`
+              found trait `Fn<()>`
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
    |         ^^^^^^^^^ required by this bound in `f`
-help: consider changing the closure to take and ignore the expected argument
-   |
-LL |     f(|_| panic!());
-   |       ~~~
 
-error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
+error[E0308]: mismatched types
   --> $DIR/closure-arg-count.rs:15:5
    |
 LL |     f(  move    || panic!());
-   |     ^   ---------- takes 0 arguments
-   |     |
-   |     expected closure that takes 1 argument
+   |     ^ types differ
    |
+   = note: expected trait `Fn<usize>`
+              found trait `Fn<()>`
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
    |         ^^^^^^^^^ required by this bound in `f`
-help: consider changing the closure to take and ignore the expected argument
-   |
-LL |     f(  move    |_| panic!());
-   |                 ~~~
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:18:53
@@ -198,4 +190,5 @@ LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
 
 error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0593`.
+Some errors have detailed explanations: E0308, E0593.
+For more information about an error, try `rustc --explain E0308`.
