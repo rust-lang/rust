@@ -322,7 +322,7 @@ struct TestRunner {
     out_dir: PathBuf,
     jit_supported: bool,
     rust_flags: String,
-    run_wrapper: String,
+    run_wrapper: Vec<String>,
     host_triple: String,
     target_triple: String,
 }
@@ -339,18 +339,18 @@ impl TestRunner {
         let jit_supported = target_triple.contains("x86_64") && is_native;
 
         let mut rust_flags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
-        let mut run_wrapper = String::new();
+        let mut run_wrapper = Vec::new();
 
         if !is_native {
             match target_triple.as_str() {
                 "aarch64-unknown-linux-gnu" => {
                     // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-                    rust_flags = format!("-Clinker=aarch64-linux-gnu-gcc {}", rust_flags);
-                    run_wrapper = "qemu-aarch64 -L /usr/aarch64-linux-gnu".to_string();
+                    rust_flags = format!("-Clinker=aarch64-linux-gnu-gcc{}", rust_flags);
+                    run_wrapper = vec!["qemu-aarch64", "-L", "/usr/aarch64-linux-gnu"];
                 },
                 "x86_64-pc-windows-gnu" => {
                     // We are cross-compiling for Windows. Run tests in wine.
-                    run_wrapper = "wine".to_string();
+                    run_wrapper = vec!["wine"];
                 }
                 _ => {
                     println!("Unknown non-native platform");
@@ -368,7 +368,7 @@ impl TestRunner {
             out_dir,
             jit_supported,
             rust_flags,
-            run_wrapper,
+            run_wrapper: run_wrapper.iter().map(|s| s.to_string()).collect(),
             host_triple,
             target_triple,
         }
@@ -446,7 +446,7 @@ impl TestRunner {
 
         // Prepend the RUN_WRAPPER's
         if !self.run_wrapper.is_empty() {
-            full_cmd.push(self.run_wrapper.clone());
+            full_cmd.extend(self.run_wrapper.iter().cloned());
         }
 
         full_cmd.push({
@@ -459,6 +459,7 @@ impl TestRunner {
             full_cmd.push(arg.to_string());
         }
 
+        println!("full_CMD: {:?}", full_cmd);
         let mut cmd_iter = full_cmd.into_iter();
         let first = cmd_iter.next().unwrap();
 
