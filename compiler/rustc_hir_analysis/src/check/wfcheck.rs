@@ -1557,11 +1557,17 @@ fn check_fn_or_method<'tcx>(
                 tcx.require_lang_item(hir::LangItem::Tuple, Some(span)),
             );
         } else {
-            tcx.sess.span_err(span, "functions with the \"rust-call\" ABI must take a single non-self argument that is a tuple");
+            tcx.sess.span_err(
+                hir_decl.inputs.last().map_or(span, |input| input.span),
+                "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+            );
         }
         // No more inputs other than the `self` type and the tuple type
         if inputs.next().is_some() {
-            tcx.sess.span_err(span, "functions with the \"rust-call\" ABI must take a single non-self argument that is a tuple");
+            tcx.sess.span_err(
+                hir_decl.inputs.last().map_or(span, |input| input.span),
+                "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+            );
         }
     }
 }

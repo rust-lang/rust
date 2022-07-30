@@ -9,6 +9,9 @@
 #[lang="sized"]
 trait Sized { }
 
+#[lang="tuple_trait"]
+trait Tuple { }
+
 // Functions
 extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
                                    //~^ ERROR intrinsic must be in
