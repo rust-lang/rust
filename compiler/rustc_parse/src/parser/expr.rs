@@ -827,11 +827,12 @@ impl<'a> Parser<'a> {
         cast_expr: P<Expr>,
     ) -> PResult<'a, P<Expr>> {
         let span = cast_expr.span;
-        let maybe_ascription_span = if let ExprKind::Type(ascripted_expr, _) = &cast_expr.kind {
-            Some(ascripted_expr.span.shrink_to_hi().with_hi(span.hi()))
-        } else {
-            None
-        };
+        let (cast_kind, maybe_ascription_span) =
+            if let ExprKind::Type(ascripted_expr, _) = &cast_expr.kind {
+                ("type ascription", Some(ascripted_expr.span.shrink_to_hi().with_hi(span.hi())))
+            } else {
+                ("cast", None)
+            };
 
         // Save the memory location of expr before parsing any following postfix operators.
         // This will be compared with the memory location of the output expression.
@@ -844,7 +845,7 @@ impl<'a> Parser<'a> {
         // If the resulting expression is not a cast, or has a different memory location, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _) | ExprKind::Type(_, _)) || changed {
             let msg = format!(
-                "casts cannot be followed by {}",
+                "{cast_kind} cannot be followed by {}",
                 match with_postfix.kind {
                     ExprKind::Index(_, _) => "indexing",
                     ExprKind::Try(_) => "`?`",
