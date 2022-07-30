@@ -281,16 +281,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-12
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-tools
+          - name: x86_64-msvc-cargo
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
+              SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
+            <<: *job-windows-xl
+
+          # - name: mingw-check
+          #   <<: *job-linux-xl
+
+          # - name: x86_64-gnu-llvm-12
+          #   <<: *job-linux-xl
+
+          # - name: x86_64-gnu-tools
+          #   env:
+          #     CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+          #   <<: *job-linux-xl
 
   auto:
     <<: *base-ci-job

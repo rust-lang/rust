@@ -290,7 +290,7 @@ impl Step for Cargo {
         // available.
         cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
         // Disable a test that has issues with mingw.
-        cargo.env("CARGO_TEST_DISABLE_GIT_CLI", "1");
+        // cargo.env("CARGO_TEST_DISABLE_GIT_CLI", "1");
         // Forcibly disable tests using nightly features since any changes to
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
