@@ -867,7 +867,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
-                        let is_fn_trait = ty::ClosureKind::from_def_id(tcx, trait_ref.def_id()).is_some();
+                        let is_fn_trait =
+                            ty::ClosureKind::from_def_id(tcx, trait_ref.def_id()).is_some();
                         let is_target_feature_fn = if let ty::FnDef(def_id, _) =
                             *trait_ref.skip_binder().self_ty().kind()
                         {
