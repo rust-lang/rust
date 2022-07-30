@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::process;
 
 mod build_backend;
@@ -8,12 +8,16 @@ mod config;
 mod prepare;
 mod rustc_info;
 mod utils;
+mod tests;
 
 fn usage() {
     eprintln!("Usage:");
     eprintln!("  ./y.rs prepare");
     eprintln!(
         "  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
+    );
+    eprintln!(
+        "  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
     );
 }
 
@@ -25,11 +29,13 @@ macro_rules! arg_error {
     }};
 }
 
+#[derive(PartialEq, Debug)]
 enum Command {
     Build,
+    Test,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum SysrootKind {
     None,
     Clif,
@@ -52,6 +58,7 @@ pub fn main() {
             process::exit(0);
         }
         Some("build") => Command::Build,
+        Some("test") => Command::Test,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
         None => {
@@ -115,14 +122,27 @@ pub fn main() {
         process::exit(1);
     }
 
-    let cg_clif_build_dir =
+    let cg_clif_build_dir = Path::new("target").join(&host_triple).join(&channel);
+
+    if command == Command::Test {
+        // TODO: Should we also build_backend here?
+        tests::run_tests(
+            channel,
+            sysroot_kind,
+            &target_dir,
+            &cg_clif_build_dir,
+            &host_triple,
+            &target_triple,
+        ).expect("Failed to run tests");
+    } else {
         build_backend::build_backend(channel, &host_triple, use_unstable_features);
-    build_sysroot::build_sysroot(
-        channel,
-        sysroot_kind,
-        &target_dir,
-        cg_clif_build_dir,
-        &host_triple,
-        &target_triple,
-    );
+        build_sysroot::build_sysroot(
+            channel,
+            sysroot_kind,
+            &target_dir,
+            &cg_clif_build_dir,
+            &host_triple,
+            &target_triple,
+        );
+    }
 }

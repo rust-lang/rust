@@ -103,7 +103,7 @@ jobs:
         # Enable extra checks
         export CG_CLIF_ENABLE_VERIFIER=1
 
-        ./test.sh
+        ./y.rs test
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz build

@@ -10,10 +10,12 @@ pub(crate) fn build_sysroot(
     channel: &str,
     sysroot_kind: SysrootKind,
     target_dir: &Path,
-    cg_clif_build_dir: PathBuf,
+    cg_clif_build_dir: &Path,
     host_triple: &str,
     target_triple: &str,
 ) {
+    eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
+
     if target_dir.exists() {
         fs::remove_dir_all(target_dir).unwrap();
     }
@@ -35,11 +37,17 @@ pub(crate) fn build_sysroot(
 
     // Build and copy rustc and cargo wrappers
     for wrapper in ["rustc-clif", "cargo-clif"] {
+        let wrapper_name = if cfg!(windows) {
+            format!("{wrapper}.exe")
+        } else {
+            wrapper.to_string()
+        };
+
         let mut build_cargo_wrapper_cmd = Command::new("rustc");
         build_cargo_wrapper_cmd
             .arg(PathBuf::from("scripts").join(format!("{wrapper}.rs")))
             .arg("-o")
-            .arg(target_dir.join(wrapper))
+            .arg(target_dir.join(wrapper_name))
             .arg("-g");
         spawn_and_wait(build_cargo_wrapper_cmd);
     }

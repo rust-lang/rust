@@ -1,12 +1,11 @@
 use std::env;
-use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub(crate) fn build_backend(
     channel: &str,
     host_triple: &str,
     use_unstable_features: bool,
-) -> PathBuf {
+)  {
     let mut cmd = Command::new("cargo");
     cmd.arg("build").arg("--target").arg(host_triple);
 
@@ -38,6 +37,4 @@ pub(crate) fn build_backend(
 
     eprintln!("[BUILD] rustc_codegen_cranelift");
     super::utils::spawn_and_wait(cmd);
-
-    Path::new("target").join(host_triple).join(channel)
 }
