@@ -14,16 +14,14 @@ note: required by a bound in `foo`
 LL | fn foo<F: Fn(usize)>(_: F) {}
    |           ^^^^^^^^^ required by this bound in `foo`
 
-error[E0631]: type mismatch in closure arguments
+error[E0308]: mismatched types
   --> $DIR/E0631.rs:8:5
    |
 LL |     bar(|_: isize| {});
-   |     ^^^ ---------- found signature defined here
-   |     |
-   |     expected due to this
+   |     ^^^ types differ
    |
-   = note: expected closure signature `fn(usize) -> _`
-              found closure signature `fn(isize) -> _`
+   = note: expected trait `Fn<usize>`
+              found trait `Fn<(isize,)>`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |
@@ -49,19 +47,16 @@ note: required by a bound in `foo`
 LL | fn foo<F: Fn(usize)>(_: F) {}
    |           ^^^^^^^^^ required by this bound in `foo`
 
-error[E0631]: type mismatch in function arguments
+error[E0308]: mismatched types
   --> $DIR/E0631.rs:10:9
    |
-LL |     fn f(_: u64) {}
-   |     ------------ found signature defined here
-...
 LL |     bar(f);
-   |     --- ^ expected due to this
+   |     --- ^ types differ
    |     |
    |     required by a bound introduced by this call
    |
-   = note: expected function signature `fn(usize) -> _`
-              found function signature `fn(u64) -> _`
+   = note: expected trait `Fn<usize>`
+              found trait `Fn<(u64,)>`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |
@@ -70,4 +65,5 @@ LL | fn bar<F: Fn<usize>>(_: F) {}
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0631`.
+Some errors have detailed explanations: E0308, E0631.
+For more information about an error, try `rustc --explain E0308`.

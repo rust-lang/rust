@@ -11,9 +11,9 @@ fn main() {
     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
     //~^ ERROR closure is expected to take
     f(|| panic!());
-    //~^ ERROR closure is expected to take
+    //~^ ERROR mismatched types
     f(  move    || panic!());
-    //~^ ERROR closure is expected to take
+    //~^ ERROR mismatched types
 
     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
     //~^ ERROR closure is expected to take

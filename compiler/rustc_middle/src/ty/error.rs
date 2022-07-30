@@ -74,6 +74,18 @@ pub enum TypeError<'tcx> {
     TargetFeatureCast(DefId),
 }
 
+impl TypeError<'_> {
+    pub fn involves_regions(self) -> bool {
+        match self {
+            TypeError::RegionsDoesNotOutlive(_, _)
+            | TypeError::RegionsInsufficientlyPolymorphic(_, _)
+            | TypeError::RegionsOverlyPolymorphic(_, _)
+            | TypeError::RegionsPlaceholderMismatch => true,
+            _ => false,
+        }
+    }
+}
+
 /// Explains the source of a type err in a short, human readable way. This is meant to be placed
 /// in parentheses after some larger message. You should also invoke `note_and_explain_type_err()`
 /// afterwards to present additional details, particularly when it comes to lifetime-related
