@@ -1491,7 +1491,8 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 #else
     APInt ai(DL.getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
 #endif
-    g2->accumulateConstantOffset(DL, ai);
+    bool valid = g2->accumulateConstantOffset(DL, ai);
+    assert(valid);
     // Using destructor rather than eraseFromParent
     //   as g2 has no parent
     delete g2;
@@ -1539,14 +1540,31 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     TypeTree upVal = getAnalysis(&phi);
     // only propagate anything's up if there is one
     // incoming value
-    if (phi.getNumIncomingValues() >= 2) {
+    Value *seen = phi.getIncomingValue(0);
+    for (size_t i = 0, end = phi.getNumIncomingValues(); i < end; ++i) {
+      if (seen != phi.getIncomingValue(i)) {
+        seen = nullptr;
+        break;
+      }
+    }
+
+    if (!seen) {
       upVal = upVal.PurgeAnything();
     }
-    auto L = LI.getLoopFor(phi.getParent());
-    bool isHeader = L && L->getHeader() == phi.getParent();
-    for (size_t i = 0, end = phi.getNumIncomingValues(); i < end; ++i) {
-      if (!isHeader || !L->contains(phi.getIncomingBlock(i))) {
-        updateAnalysis(phi.getIncomingValue(i), upVal, &phi);
+
+    if (EnzymeStrictAliasing || seen) {
+      auto L = LI.getLoopFor(phi.getParent());
+      bool isHeader = L && L->getHeader() == phi.getParent();
+      for (size_t i = 0, end = phi.getNumIncomingValues(); i < end; ++i) {
+        if (!isHeader || !L->contains(phi.getIncomingBlock(i))) {
+          updateAnalysis(phi.getIncomingValue(i), upVal, &phi);
+        }
+      }
+    } else {
+      if (EnzymePrintType) {
+        for (size_t i = 0, end = phi.getNumIncomingValues(); i < end; ++i)
+          llvm::errs() << " skipping update into " << *phi.getIncomingValue(i)
+                       << " of " << upVal.str() << " from " << phi << "\n";
       }
     }
   }
@@ -1840,11 +1858,20 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
 }
 
 void TypeAnalyzer::visitSelectInst(SelectInst &I) {
-  if (direction & UP)
-    updateAnalysis(I.getTrueValue(), getAnalysis(&I).PurgeAnything(), &I);
-  if (direction & UP)
-    updateAnalysis(I.getFalseValue(), getAnalysis(&I).PurgeAnything(), &I);
-
+  if (direction & UP) {
+    auto Data = getAnalysis(&I).PurgeAnything();
+    if (EnzymeStrictAliasing || (I.getTrueValue() == I.getFalseValue())) {
+      updateAnalysis(I.getTrueValue(), Data, &I);
+      updateAnalysis(I.getFalseValue(), Data, &I);
+    } else {
+      if (EnzymePrintType) {
+        llvm::errs() << " skipping update into " << *I.getTrueValue() << " of "
+                     << Data.str() << " from " << I << "\n";
+        llvm::errs() << " skipping update into " << *I.getFalseValue() << " of "
+                     << Data.str() << " from " << I << "\n";
+      }
+    }
+  }
   if (direction & DOWN) {
     // special case for min/max result is still that operand [even if something
     // is 0]

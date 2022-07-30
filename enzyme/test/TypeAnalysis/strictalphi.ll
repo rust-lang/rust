@@ -27,7 +27,7 @@ bb153:                                            ; preds = %bb216
 
 ; CHECK: f - {} |
 ; CHECK-NEXT: e
-; CHECK-NEXT:   %i78 = call noalias nonnull i8* @_Znwm(i64 8): {[-1]:Pointer, [-1,0]:Integer}
+; CHECK-NEXT:   %i78 = call noalias nonnull i8* @_Znwm(i64 8): {[-1]:Pointer}
 ; CHECK-NEXT:   br label %bb155: {}
 ; CHECK-NEXT: bb155
 ; CHECK-NEXT:   %i159 = phi i8* [ %i78, %e ], [ %i220, %bb216 ]: {[-1]:Pointer, [-1,0]:Integer}
