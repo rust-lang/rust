@@ -7,7 +7,7 @@ use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 
-use super::{ITER_EMPTY, ITER_ONCE};
+use super::{ITER_ON_EMPTY_COLLECTIONS, ITER_ON_SINGLE_ITEMS};
 
 enum IterType {
     Iter,
@@ -82,7 +82,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: 
         );
         span_lint_and_sugg(
             cx,
-            ITER_ONCE,
+            ITER_ON_SINGLE_ITEMS,
             expr.span,
             &format!("`{method_name}` call on a collection with only one item"),
             "try",
@@ -92,7 +92,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, method_name: 
     } else {
         span_lint_and_sugg(
             cx,
-            ITER_EMPTY,
+            ITER_ON_EMPTY_COLLECTIONS,
             expr.span,
             &format!("`{method_name}` call on an empty collection"),
             "try",
