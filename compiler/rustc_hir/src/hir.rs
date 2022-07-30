@@ -3489,17 +3489,18 @@ impl<'hir> Node<'hir> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
-    rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
-    rustc_data_structures::static_assert_size!(super::Expr<'static>, 56);
-    rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
-    rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
-    rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
-    rustc_data_structures::static_assert_size!(super::GenericBound<'_>, 48);
-    rustc_data_structures::static_assert_size!(super::Generics<'static>, 56);
-    rustc_data_structures::static_assert_size!(super::Impl<'static>, 80);
-
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 80);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 88);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 80);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 72);
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    rustc_data_structures::static_assert_size!(Block<'static>, 48);
+    rustc_data_structures::static_assert_size!(Expr<'static>, 56);
+    rustc_data_structures::static_assert_size!(ForeignItem<'static>, 72);
+    rustc_data_structures::static_assert_size!(GenericBound<'_>, 48);
+    rustc_data_structures::static_assert_size!(Generics<'static>, 56);
+    rustc_data_structures::static_assert_size!(ImplItem<'static>, 80);
+    rustc_data_structures::static_assert_size!(Impl<'static>, 80);
+    rustc_data_structures::static_assert_size!(Item<'static>, 80);
+    rustc_data_structures::static_assert_size!(Pat<'static>, 88);
+    rustc_data_structures::static_assert_size!(QPath<'static>, 24);
+    rustc_data_structures::static_assert_size!(TraitItem<'static>, 88);
+    rustc_data_structures::static_assert_size!(Ty<'static>, 72);
 }

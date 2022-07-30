@@ -796,9 +796,6 @@ pub struct Place<'tcx> {
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Place<'_>, 16);
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ProjectionElem<V, T> {
@@ -862,11 +859,6 @@ pub enum ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-// This type is fairly frequently used, so we shouldn't unintentionally increase
-// its size.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PlaceElem<'_>, 24);
-
 ///////////////////////////////////////////////////////////////////////////
 // Operands
 
@@ -908,9 +900,6 @@ pub enum Operand<'tcx> {
     /// Constants are already semantically values, and remain unchanged.
     Constant(Box<Constant<'tcx>>),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Operand<'_>, 24);
 
 ///////////////////////////////////////////////////////////////////////////
 // Rvalues
@@ -1063,9 +1052,6 @@ pub enum Rvalue<'tcx> {
     CopyForDeref(Place<'tcx>),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Rvalue<'_>, 40);
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
     /// An exposing pointer to address cast. A cast between a pointer and an integer type, or
@@ -1098,9 +1084,6 @@ pub enum AggregateKind<'tcx> {
     Closure(DefId, SubstsRef<'tcx>),
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(AggregateKind<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum NullOp {
@@ -1164,4 +1147,16 @@ pub enum BinOp {
     Gt,
     /// The `ptr.offset` operator
     Offset,
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(AggregateKind<'_>, 48);
+    static_assert_size!(Operand<'_>, 24);
+    static_assert_size!(Place<'_>, 16);
+    static_assert_size!(PlaceElem<'_>, 24);
+    static_assert_size!(Rvalue<'_>, 40);
 }

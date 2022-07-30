@@ -25,9 +25,6 @@ pub enum MemPlaceMeta<Prov: Provenance = AllocId> {
     None,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
-
 impl<Prov: Provenance> MemPlaceMeta<Prov> {
     pub fn unwrap_meta(self) -> Scalar<Prov> {
         match self {
@@ -56,9 +53,6 @@ pub struct MemPlace<Prov: Provenance = AllocId> {
     pub meta: MemPlaceMeta<Prov>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MemPlace, 40);
-
 /// A MemPlace with its layout. Constructing it is only possible in this module.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
@@ -71,9 +65,6 @@ pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
     pub align: Align,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
-
 #[derive(Copy, Clone, Debug)]
 pub enum Place<Prov: Provenance = AllocId> {
     /// A place referring to a value allocated in the `Memory` system.
@@ -83,9 +74,6 @@ pub enum Place<Prov: Provenance = AllocId> {
     /// (Without that optimization, we'd just always be a `MemPlace`.)
     Local { frame: usize, local: mir::Local },
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Place, 48);
 
 #[derive(Clone, Debug)]
 pub struct PlaceTy<'tcx, Prov: Provenance = AllocId> {
@@ -97,9 +85,6 @@ pub struct PlaceTy<'tcx, Prov: Provenance = AllocId> {
     /// This means `layout.align` should never be used for a `PlaceTy`!
     pub align: Align,
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PlaceTy<'_>, 72);
 
 impl<'tcx, Prov: Provenance> std::ops::Deref for PlaceTy<'tcx, Prov> {
     type Target = Place<Prov>;
@@ -900,4 +885,16 @@ where
         };
         Ok(mplace)
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
+    rustc_data_structures::static_assert_size!(MemPlace, 40);
+    rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
+    rustc_data_structures::static_assert_size!(Place, 48);
+    rustc_data_structures::static_assert_size!(PlaceTy<'_>, 72);
 }

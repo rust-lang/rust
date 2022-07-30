@@ -122,10 +122,6 @@ pub(crate) struct Crate {
     pub(crate) external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
 }
 
-// `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Crate, 72);
-
 impl Crate {
     pub(crate) fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
         ExternalCrate::LOCAL.name(tcx)
@@ -388,10 +384,6 @@ impl fmt::Debug for Item {
         fmt.finish()
     }
 }
-
-// `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Item, 56);
 
 pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
     Span::new(def_id.as_local().map_or_else(
@@ -771,10 +763,6 @@ pub(crate) enum ItemKind {
     KeywordItem,
 }
 
-// `ItemKind` is an enum and large variants can bloat up memory usage even for smaller ones
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ItemKind, 112);
-
 impl ItemKind {
     /// Some items contain others such as structs (for their fields) and Enums
     /// (for their variants). This method returns those contained items.
@@ -993,10 +981,6 @@ pub(crate) struct DocFragment {
     pub(crate) kind: DocFragmentKind,
     pub(crate) indent: usize,
 }
-
-// `DocFragment` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(DocFragment, 32);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum DocFragmentKind {
@@ -1382,10 +1366,6 @@ pub(crate) struct GenericParamDef {
     pub(crate) kind: GenericParamDefKind,
 }
 
-// `GenericParamDef` is used in many places. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericParamDef, 56);
-
 impl GenericParamDef {
     pub(crate) fn is_synthetic_type_param(&self) -> bool {
         match self.kind {
@@ -1589,10 +1569,6 @@ pub(crate) enum Type {
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
 }
-
-// `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 72);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -2230,32 +2206,17 @@ pub(crate) enum GenericArg {
     Infer,
 }
 
-// `GenericArg` can occur many times in a single `Path`, so make sure it
-// doesn't increase in size unexpectedly.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 80);
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
     AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
     Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
 }
 
-// `GenericArgs` is in every `PathSegment`, so its size can significantly
-// affect rustdoc's memory usage.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 32);
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct PathSegment {
     pub(crate) name: Symbol,
     pub(crate) args: GenericArgs,
 }
-
-// `PathSegment` usually occurs multiple times in every `Path`, so its size can
-// significantly affect rustdoc's memory usage.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 40);
 
 #[derive(Clone, Debug)]
 pub(crate) struct Typedef {
@@ -2526,4 +2487,20 @@ impl SubstParam {
     pub(crate) fn as_lt(&self) -> Option<&Lifetime> {
         if let Self::Lifetime(lt) = self { Some(lt) } else { None }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    rustc_data_structures::static_assert_size!(Crate, 72); // frequently moved by-value
+    rustc_data_structures::static_assert_size!(DocFragment, 32);
+    rustc_data_structures::static_assert_size!(GenericArg, 80);
+    rustc_data_structures::static_assert_size!(GenericArgs, 32);
+    rustc_data_structures::static_assert_size!(GenericParamDef, 56);
+    rustc_data_structures::static_assert_size!(Item, 56);
+    rustc_data_structures::static_assert_size!(ItemKind, 112);
+    rustc_data_structures::static_assert_size!(PathSegment, 40);
+    rustc_data_structures::static_assert_size!(Type, 72);
 }
