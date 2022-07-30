@@ -368,6 +368,7 @@ pub trait Into<T>: Sized {
     all(_Self = "&str", T = "std::string::String"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
+#[const_trait]
 pub trait From<T>: Sized {
     /// Converts to this type from the input type.
     #[lang = "from"]
