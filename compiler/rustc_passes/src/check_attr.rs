@@ -619,6 +619,9 @@ impl CheckAttrVisitor<'_> {
             }
             // we check the validity of params elsewhere
             Target::Param => return false,
+            Target::Expression => Some("expression"),
+            Target::Statement => Some("statement"),
+            Target::Arm => Some("match arm"),
             _ => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
