@@ -21,9 +21,9 @@ impl FooTy for Bar {
 
 
 fn foo<F: Foo<N=usize>>() {}
-//~^ ERROR mismatch in
+//~^ ERROR expected associated constant bound, found type
 fn foo2<F: FooTy<T=3usize>>() {}
-//~^ ERROR mismatch in
+//~^ ERROR expected associated type bound, found constant
 
 fn main() {
   foo::<Bar>();
