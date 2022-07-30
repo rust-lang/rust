@@ -468,6 +468,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             def_id,
         );
 
+        if fn_sig.abi == abi::Abi::RustCall {
+            let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
+            if let Some(ty) = fn_sig.inputs().last().copied() {
+                self.register_bound(
+                    ty,
+                    self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
+                    traits::ObligationCause::new(sp, self.body_id, traits::RustCall),
+                );
+            } else {
+                self.tcx.sess.span_err(
+                        sp,
+                        "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
+                    );
+            }
+        }
+
         fn_sig.output()
     }
 
