@@ -398,13 +398,7 @@ fn resolve_negative_obligation<'cx, 'tcx>(
     let outlives_env = OutlivesEnvironment::new(param_env);
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
 
-    let errors = infcx.resolve_regions(&outlives_env);
-
-    if !errors.is_empty() {
-        return false;
-    }
-
-    true
+    infcx.resolve_regions(&outlives_env).is_empty()
 }
 
 pub fn trait_ref_is_knowable<'tcx>(

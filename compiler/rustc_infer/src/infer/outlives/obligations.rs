@@ -111,6 +111,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
+    /// NOTE: Prefer using [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// instead of calling this directly.
+    ///
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth. This function must be
@@ -162,6 +165,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         }
     }
 
+    /// Processes registered region obliations and resolves regions, reporting
+    /// any errors if any were raised. Prefer using this function over manually
+    /// calling `resolve_regions_and_report_errors`.
     pub fn check_region_obligations_and_report_errors(
         &self,
         generic_param_scope: LocalDefId,

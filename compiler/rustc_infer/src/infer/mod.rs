@@ -1325,6 +1325,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    ///
+    /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
+    /// first, or preferrably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// to do both of these operations together.
     pub fn resolve_regions_and_report_errors(
         &self,
         generic_param_scope: LocalDefId,
