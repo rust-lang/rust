@@ -14,19 +14,21 @@ note: required by a bound in `foo`
 LL | fn foo<F: Fn(usize)>(_: F) {}
    |           ^^^^^^^^^ required by this bound in `foo`
 
-error[E0308]: mismatched types
+error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:8:5
    |
 LL |     bar(|_: isize| {});
-   |     ^^^ types differ
+   |     ^^^ ---------- found signature defined here
+   |     |
+   |     expected due to this
    |
-   = note: expected trait `Fn<usize>`
-              found trait `Fn<(isize,)>`
+   = note: expected closure signature `fn(usize) -> _`
+              found closure signature `fn(isize) -> _`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |
-LL | fn bar<F: Fn<usize>>(_: F) {}
-   |           ^^^^^^^^^ required by this bound in `bar`
+LL | fn bar<F: Fn<(usize,)>>(_: F) {}
+   |           ^^^^^^^^^^^^ required by this bound in `bar`
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/E0631.rs:9:9
@@ -47,23 +49,25 @@ note: required by a bound in `foo`
 LL | fn foo<F: Fn(usize)>(_: F) {}
    |           ^^^^^^^^^ required by this bound in `foo`
 
-error[E0308]: mismatched types
+error[E0631]: type mismatch in function arguments
   --> $DIR/E0631.rs:10:9
    |
+LL |     fn f(_: u64) {}
+   |     ------------ found signature defined here
+...
 LL |     bar(f);
-   |     --- ^ types differ
+   |     --- ^ expected due to this
    |     |
    |     required by a bound introduced by this call
    |
-   = note: expected trait `Fn<usize>`
-              found trait `Fn<(u64,)>`
+   = note: expected function signature `fn(usize) -> _`
+              found function signature `fn(u64) -> _`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |
-LL | fn bar<F: Fn<usize>>(_: F) {}
-   |           ^^^^^^^^^ required by this bound in `bar`
+LL | fn bar<F: Fn<(usize,)>>(_: F) {}
+   |           ^^^^^^^^^^^^ required by this bound in `bar`
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0308, E0631.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0631`.
