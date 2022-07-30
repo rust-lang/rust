@@ -48,42 +48,13 @@ pub fn main() {
     // The target dir is expected in the default location. Guard against the user changing it.
     env::set_var("CARGO_TARGET_DIR", "target");
 
-
-    let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
-        host_triple
-    } else if let Some(host_triple) = config::get_value("host") {
-        host_triple
-    } else {
-        rustc_info::get_host_triple()
-    };
-    let target_triple = if let Ok(target_triple) = std::env::var("TARGET_TRIPLE") {
-        if target_triple != "" {
-            target_triple
-        } else {
-            host_triple.clone() // Empty target triple can happen on GHA
-        }
-    } else if let Some(target_triple) = config::get_value("target") {
-        target_triple
-    } else {
-        host_triple.clone()
-    };
-
-    if target_triple.ends_with("-msvc") {
-        eprintln!("The MSVC toolchain is not yet supported by rustc_codegen_cranelift.");
-        eprintln!("Switch to the MinGW toolchain for Windows support.");
-        eprintln!("Hint: You can use `rustup set default-host x86_64-pc-windows-gnu` to");
-        eprintln!("set the global default target to MinGW");
-        process::exit(1);
-    }
-
-
     let mut args = env::args().skip(1);
     let command = match args.next().as_deref() {
         Some("prepare") => {
             if args.next().is_some() {
                 arg_error!("./y.rs prepare doesn't expect arguments");
             }
-            prepare::prepare(&host_triple);
+            prepare::prepare();
             process::exit(0);
         }
         Some("build") => Command::Build,
@@ -123,6 +94,33 @@ pub fn main() {
         }
     }
     target_dir = std::env::current_dir().unwrap().join(target_dir);
+
+    let host_triple = if let Ok(host_triple) = std::env::var("HOST_TRIPLE") {
+        host_triple
+    } else if let Some(host_triple) = config::get_value("host") {
+        host_triple
+    } else {
+        rustc_info::get_host_triple()
+    };
+    let target_triple = if let Ok(target_triple) = std::env::var("TARGET_TRIPLE") {
+        if target_triple != "" {
+            target_triple
+        } else {
+            host_triple.clone() // Empty target triple can happen on GHA
+        }
+    } else if let Some(target_triple) = config::get_value("target") {
+        target_triple
+    } else {
+        host_triple.clone()
+    };
+
+    if target_triple.ends_with("-msvc") {
+        eprintln!("The MSVC toolchain is not yet supported by rustc_codegen_cranelift.");
+        eprintln!("Switch to the MinGW toolchain for Windows support.");
+        eprintln!("Hint: You can use `rustup set default-host x86_64-pc-windows-gnu` to");
+        eprintln!("set the global default target to MinGW");
+        process::exit(1);
+    }
 
     let cg_clif_build_dir = build_backend::build_backend(channel, &host_triple, use_unstable_features);
     match command {

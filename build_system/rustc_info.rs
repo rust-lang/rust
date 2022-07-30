@@ -43,7 +43,7 @@ pub(crate) fn get_default_sysroot() -> PathBuf {
     Path::new(String::from_utf8(default_sysroot).unwrap().trim()).to_owned()
 }
 
-pub(crate) fn get_file_name(crate_name: &str, crate_type: &str, target: &str) -> String {
+pub(crate) fn get_file_name(crate_name: &str, crate_type: &str) -> String {
     let file_name = Command::new("rustc")
         .stderr(Stdio::inherit())
         .args(&[
@@ -51,8 +51,6 @@ pub(crate) fn get_file_name(crate_name: &str, crate_type: &str, target: &str) ->
             crate_name,
             "--crate-type",
             crate_type,
-            "--target",
-            target,
             "--print",
             "file-names",
             "-",
@@ -69,8 +67,8 @@ pub(crate) fn get_file_name(crate_name: &str, crate_type: &str, target: &str) ->
 /// Similar to `get_file_name`, but converts any dashes (`-`) in the `crate_name` to
 /// underscores (`_`). This is specially made for the the rustc and cargo wrappers
 /// which have a dash in the name, and that is not allowed in a crate name.
-pub(crate) fn get_wrapper_file_name(crate_name: &str, crate_type: &str, target: &str) -> String {
+pub(crate) fn get_wrapper_file_name(crate_name: &str, crate_type: &str) -> String {
     let crate_name = crate_name.replace('-', "_");
-    let wrapper_name = get_file_name(&crate_name, crate_type, target);
+    let wrapper_name = get_file_name(&crate_name, crate_type);
     wrapper_name.replace('_', "-")
 }

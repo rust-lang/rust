@@ -415,7 +415,7 @@ impl TestRunner {
     {
         let mut rustc_clif = self.root_dir.clone();
         rustc_clif.push("build");
-        rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin", &self.host_triple));
+        rustc_clif.push(get_wrapper_file_name("rustc-clif", "bin"));
 
         let mut cmd = Command::new(rustc_clif);
         cmd.args(self.rust_flags.split_whitespace());
@@ -474,7 +474,7 @@ impl TestRunner {
     {
         let mut cargo_clif = self.root_dir.clone();
         cargo_clif.push("build");
-        cargo_clif.push(get_wrapper_file_name("cargo-clif", "bin", &self.host_triple));
+        cargo_clif.push(get_wrapper_file_name("cargo-clif", "bin"));
 
         let mut cmd = Command::new(cargo_clif);
         cmd.args(args);
