@@ -328,7 +328,7 @@ impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
             let typeck_results = self.maybe_typeck_results.get().or_else(|| {
                 self.tcx
                     .hir()
-                    .maybe_body_owned_by(self.tcx.hir().local_def_id_to_hir_id(expr.hir_id.owner))
+                    .maybe_body_owned_by(expr.hir_id.owner)
                     .map(|body_id| self.tcx.typeck_body(body_id))
             });
 

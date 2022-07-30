@@ -853,7 +853,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let closure_id = self.mir_hir_id();
         let fn_call_id = hir.get_parent_node(closure_id);
         let node = hir.get(fn_call_id);
-        let item_id = hir.enclosing_body_owner(fn_call_id);
+        let def_id = hir.enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
         // If we can detect the expression to be an `fn` call where the closure was an argument,
         // we point at the `fn` definition argument...
@@ -864,7 +864,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 .filter(|(_, arg)| arg.hir_id == closure_id)
                 .map(|(pos, _)| pos)
                 .next();
-            let def_id = hir.local_def_id(item_id);
             let tables = self.infcx.tcx.typeck(def_id);
             if let Some(ty::FnDef(def_id, _)) =
                 tables.node_type_opt(func.hir_id).as_ref().map(|ty| ty.kind())

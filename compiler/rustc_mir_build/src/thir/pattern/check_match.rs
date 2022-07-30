@@ -26,7 +26,7 @@ use rustc_span::{BytePos, Span};
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
         None => return,
-        Some(id) => tcx.hir().body_owned_by(tcx.hir().local_def_id_to_hir_id(id)),
+        Some(def_id) => tcx.hir().body_owned_by(def_id),
     };
 
     let pattern_arena = TypedArena::default();

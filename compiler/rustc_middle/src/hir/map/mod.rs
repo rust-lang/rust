@@ -396,10 +396,10 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn enclosing_body_owner(self, hir_id: HirId) -> HirId {
+    pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
         for (parent, _) in self.parent_iter(hir_id) {
-            if let Some(body) = self.maybe_body_owned_by(parent) {
-                return self.body_owner(body);
+            if let Some(body) = self.find(parent).map(associated_body).flatten() {
+                return self.body_owner_def_id(body);
             }
         }
 
@@ -419,19 +419,20 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
-    /// Given a `HirId`, returns the `BodyId` associated with it,
+    /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(self, hir_id: HirId) -> Option<BodyId> {
-        self.find(hir_id).map(associated_body).flatten()
+    pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
+        self.get_if_local(id.to_def_id()).map(associated_body).flatten()
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
-    pub fn body_owned_by(self, id: HirId) -> BodyId {
+    pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
+            let hir_id = self.local_def_id_to_hir_id(id);
             span_bug!(
-                self.span(id),
+                self.span(hir_id),
                 "body_owned_by: {} has no associated body",
-                self.node_to_string(id)
+                self.node_to_string(hir_id)
             );
         })
     }
@@ -670,7 +671,7 @@ impl<'hir> Map<'hir> {
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
     pub fn is_inside_const_context(self, hir_id: HirId) -> bool {
-        self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
+        self.body_const_context(self.enclosing_body_owner(hir_id)).is_some()
     }
 
     /// Retrieves the `HirId` for `id`'s enclosing method, unless there's a
