@@ -11,8 +11,9 @@ pub fn errno() -> i32 {
     r_efi::efi::Status::ABORTED.as_usize() as i32
 }
 
-pub fn error_string(_errno: i32) -> String {
-    "ABORTED".to_string()
+pub fn error_string(errno: i32) -> String {
+    let r = r_efi::efi::Status::from_usize(errno as usize);
+    super::common::status_to_io_error(r).to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {

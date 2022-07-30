@@ -25,7 +25,7 @@ impl Tcp4Protocol {
         Self::with_child_handle(service_binding, child_handle)
     }
 
-    pub fn config(
+    pub fn default_config(
         &self,
         use_default_address: bool,
         active_flag: bool,
@@ -50,7 +50,15 @@ impl Tcp4Protocol {
             // FIXME: Maybe provide a rust default one at some point
             control_option: crate::ptr::null_mut(),
         };
-        unsafe { Self::config_raw(self.protocol.as_ptr(), &mut config_data) }
+        self.configure(&mut config_data)
+    }
+
+    pub fn configure(&self, config: &mut tcp4::ConfigData) -> io::Result<()> {
+        unsafe { Self::config_raw(self.protocol.as_ptr(), config) }
+    }
+
+    pub fn reset(&self) -> io::Result<()> {
+        unsafe { Self::config_raw(self.protocol.as_ptr(), crate::ptr::null_mut()) }
     }
 
     pub fn accept(&self) -> io::Result<Tcp4Protocol> {
@@ -83,7 +91,19 @@ impl Tcp4Protocol {
     }
 
     pub fn connect(&self) -> io::Result<()> {
-        todo!()
+        let connect_event = uefi::thread::Event::create(
+            r_efi::efi::EVT_NOTIFY_WAIT,
+            r_efi::efi::TPL_CALLBACK,
+            Some(nop_notify4),
+            None,
+        )?;
+        let completion_token =
+            tcp4::CompletionToken { event: connect_event.as_raw_event(), status: Status::ABORTED };
+        let mut connection_token = tcp4::ConnectionToken { completion_token };
+        unsafe { Self::connect_raw(self.protocol.as_ptr(), &mut connection_token) }?;
+        connect_event.wait()?;
+        let r = connection_token.completion_token.status;
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
     pub fn transmit(&self, buf: &[u8]) -> io::Result<usize> {
@@ -337,38 +357,20 @@ impl Tcp4Protocol {
         Ok(Self::new(tcp4_protocol, service_binding, child_handle))
     }
 
-    // FIXME: This function causes the program to freeze.
-    fn get_config_data(&self) -> io::Result<tcp4::ConfigData> {
-        let protocol = self.protocol.as_ptr();
-
-        let mut state: MaybeUninit<tcp4::ConnectionState> = MaybeUninit::uninit();
-        let mut config_data: MaybeUninit<tcp4::ConfigData> = MaybeUninit::uninit();
-        let mut ip4_mode_data: MaybeUninit<ip4::ModeData> = MaybeUninit::uninit();
-        let mut mnp_mode_data: MaybeUninit<managed_network::ConfigData> = MaybeUninit::uninit();
-        let mut snp_mode_data: MaybeUninit<simple_network::Mode> = MaybeUninit::uninit();
-
-        let r = unsafe {
-            ((*protocol).get_mode_data)(
-                protocol,
-                state.as_mut_ptr(),
+    pub fn get_config_data(&self) -> io::Result<tcp4::ConfigData> {
+        // Using MaybeUninit::uninit() generates a Page Fault Here
+        let mut config_data: MaybeUninit<tcp4::ConfigData> = MaybeUninit::zeroed();
+        unsafe {
+            Self::get_mode_data_raw(
+                self.protocol.as_ptr(),
+                crate::ptr::null_mut(),
                 config_data.as_mut_ptr(),
-                ip4_mode_data.as_mut_ptr(),
-                mnp_mode_data.as_mut_ptr(),
-                snp_mode_data.as_mut_ptr(),
+                crate::ptr::null_mut(),
+                crate::ptr::null_mut(),
+                crate::ptr::null_mut(),
             )
-        };
-
-        if r.is_error() {
-            Err(status_to_io_error(r))
-        } else {
-            unsafe {
-                state.assume_init_drop();
-                ip4_mode_data.assume_init_drop();
-                mnp_mode_data.assume_init_drop();
-                snp_mode_data.assume_init_drop();
-            }
-            Ok(unsafe { config_data.assume_init() })
-        }
+        }?;
+        Ok(unsafe { config_data.assume_init() })
     }
 
     unsafe fn receive_raw(
@@ -376,7 +378,6 @@ impl Tcp4Protocol {
         token: *mut tcp4::IoToken,
     ) -> io::Result<()> {
         let r = unsafe { ((*protocol).receive)(protocol, token) };
-
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
@@ -385,7 +386,6 @@ impl Tcp4Protocol {
         token: *mut tcp4::IoToken,
     ) -> io::Result<()> {
         let r = unsafe { ((*protocol).transmit)(protocol, token) };
-
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
@@ -394,7 +394,6 @@ impl Tcp4Protocol {
         config_data: *mut tcp4::ConfigData,
     ) -> io::Result<()> {
         let r = unsafe { ((*protocol).configure)(protocol, config_data) };
-
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
@@ -403,7 +402,35 @@ impl Tcp4Protocol {
         token: *mut tcp4::ListenToken,
     ) -> io::Result<()> {
         let r = unsafe { ((*protocol).accept)(protocol, token) };
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+    }
 
+    unsafe fn get_mode_data_raw(
+        protocol: *mut tcp4::Protocol,
+        tcp4_state: *mut tcp4::ConnectionState,
+        tcp4_config_data: *mut tcp4::ConfigData,
+        ip4_mode_data: *mut ip4::ModeData,
+        mnp_config_data: *mut managed_network::ConfigData,
+        snp_mode_data: *mut simple_network::Mode,
+    ) -> io::Result<()> {
+        let r = unsafe {
+            ((*protocol).get_mode_data)(
+                protocol,
+                tcp4_state,
+                tcp4_config_data,
+                ip4_mode_data,
+                mnp_config_data,
+                snp_mode_data,
+            )
+        };
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+    }
+
+    unsafe fn connect_raw(
+        protocol: *mut tcp4::Protocol,
+        token: *mut tcp4::ConnectionToken,
+    ) -> io::Result<()> {
+        let r = unsafe { ((*protocol).connect)(protocol, token) };
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 }
@@ -417,3 +444,10 @@ impl Drop for Tcp4Protocol {
 
 #[no_mangle]
 pub extern "efiapi" fn nop_notify4(_: r_efi::efi::Event, _: *mut crate::ffi::c_void) {}
+
+// Safety: No one besides us has the raw pointer (since the handle was created using the Service binding Protocol).
+// Also there are no threads to transfer the pointer to.
+unsafe impl Send for Tcp4Protocol {}
+
+// Safety: There are no threads in UEFI
+unsafe impl Sync for Tcp4Protocol {}

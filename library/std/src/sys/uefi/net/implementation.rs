@@ -14,8 +14,10 @@ impl TcpStream {
         Self { inner }
     }
 
-    pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
-        todo!()
+    pub fn connect(addr: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+        let addr = addr?;
+        let inner = uefi_tcp::TcpProtocol::connect(addr)?;
+        Ok(Self { inner })
     }
 
     pub fn connect_timeout(_: &SocketAddr, _: Duration) -> io::Result<TcpStream> {
@@ -30,16 +32,18 @@ impl TcpStream {
         unimplemented!()
     }
 
+    // Possible to implement while waiting for event
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        unimplemented!()
+        Ok(None)
     }
 
+    // Possible to implement while waiting for event
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        unimplemented!()
+        Ok(None)
     }
 
     pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
-        unimplemented!()
+        unsupported()
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -69,11 +73,11 @@ impl TcpStream {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        todo!()
+        self.inner.peer_addr()
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        todo!()
+        self.inner.local_addr()
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -81,7 +85,7 @@ impl TcpStream {
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
-        unimplemented!()
+        unsupported()
     }
 
     // Seems to be similar to abort_on_close option in `EFI_TCP6_PROTOCOL->Close()`
@@ -95,19 +99,19 @@ impl TcpStream {
 
     // Seems to be similar to `EFI_TCP6_OPTION->EnableNagle`
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
-        todo!()
+        unsupported()
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        todo!()
+        self.inner.nodelay()
     }
 
-    pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        unimplemented!()
+    pub fn set_ttl(&self, x: u32) -> io::Result<()> {
+        self.inner.set_ttl(x)
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        unimplemented!()
+        self.inner.ttl()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
@@ -140,7 +144,7 @@ impl TcpListener {
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        todo!()
+        self.inner.local_addr()
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
@@ -149,15 +153,15 @@ impl TcpListener {
     }
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
-        unimplemented!()
+        unsupported()
     }
 
-    pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        unimplemented!()
+    pub fn set_ttl(&self, x: u32) -> io::Result<()> {
+        self.inner.set_ttl(x)
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        unimplemented!()
+        self.inner.ttl()
     }
 
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
@@ -172,7 +176,7 @@ impl TcpListener {
         unimplemented!()
     }
 
-    // Internally TCP6 Protocol is nonblocking
+    // Internally TCP Protocol is nonblocking
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
         todo!()
     }

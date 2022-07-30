@@ -870,4 +870,11 @@ mod uefi_fs {
             let _ = unsafe { ((*protocol).close)(protocol) };
         }
     }
+
+    // Safety: No one besides us has the raw pointer (since the volume is opened by us). Also,
+    // there are no threads to transfer the pointer to.
+    unsafe impl Send for FileProtocol {}
+
+    // Safety: There are no threads in UEFI
+    unsafe impl Sync for FileProtocol {}
 }

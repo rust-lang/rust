@@ -41,6 +41,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     Ok(NonZeroUsize::new(1).unwrap())
 }
 
+// FIXME: Should be possible to implement. see https://edk2-docs.gitbook.io/a-tour-beyond-bios-mitigate-buffer-overflow-in-ue/additional_overflow_detection/stack_overflow_detection
 pub mod guard {
     pub type Guard = !;
     pub unsafe fn current() -> Option<Guard> {

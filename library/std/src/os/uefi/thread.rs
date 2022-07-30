@@ -3,6 +3,7 @@ use crate::io;
 use crate::ptr::NonNull;
 use r_efi::efi::{EventNotify, Status, Tpl};
 
+#[repr(transparent)]
 pub(crate) struct Event {
     inner: NonNull<c_void>,
 }
