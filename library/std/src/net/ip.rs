@@ -713,13 +713,8 @@ impl Ipv4Addr {
             || self.is_shared()
             || self.is_loopback()
             || self.is_link_local()
-            || (self.is_ietf_protocol_assignment()
-                && !(
-                    // Port Control Protocol Anycast (`192.0.0.9`)
-                    u32::from_be_bytes(self.octets()) == 0xc0000009
-                    // Traversal Using Relays around NAT Anycast (`192.0.0.10`)
-                    || u32::from_be_bytes(self.octets()) == 0xc000000a
-                ))
+            // addresses reserved for future protocols (`192.0.0.0/24`)
+            ||(self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0)
             || self.is_documentation()
             || self.is_benchmarking()
             || self.is_reserved()
