@@ -1,5 +1,5 @@
 error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:6:5
+  --> $DIR/closure.rs:7:5
    |
 LL |     t();
    |     ^^^ the trait `Tuple` is not implemented for `()`
@@ -10,20 +10,9 @@ LL | fn main() -> () where (): Tuple {
    |                 +++++++++++++++
 
 error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:12:5
+  --> $DIR/closure.rs:13:5
    |
 LL |     b();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:16:5
-   |
-LL |     c();
    |     ^^^ the trait `Tuple` is not implemented for `()`
    |
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
@@ -34,29 +23,29 @@ LL | fn main() -> () where (): Tuple {
 error[E0277]: `()` is not a tuple
   --> $DIR/closure.rs:17:5
    |
-LL |     b();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:23:5
-   |
-LL |     b();
-   |     ^^^ the trait `Tuple` is not implemented for `()`
-   |
-help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
-   |
-LL | fn main() -> () where (): Tuple {
-   |                 +++++++++++++++
-
-error[E0277]: `()` is not a tuple
-  --> $DIR/closure.rs:27:5
-   |
 LL |     c();
+   |     ^^^ the trait `Tuple` is not implemented for `()`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn main() -> () where (): Tuple {
+   |                 +++++++++++++++
+
+error[E0277]: `()` is not a tuple
+  --> $DIR/closure.rs:18:5
+   |
+LL |     b();
+   |     ^^^ the trait `Tuple` is not implemented for `()`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn main() -> () where (): Tuple {
+   |                 +++++++++++++++
+
+error[E0277]: `()` is not a tuple
+  --> $DIR/closure.rs:24:5
+   |
+LL |     b();
    |     ^^^ the trait `Tuple` is not implemented for `()`
    |
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
@@ -67,8 +56,19 @@ LL | fn main() -> () where (): Tuple {
 error[E0277]: `()` is not a tuple
   --> $DIR/closure.rs:28:5
    |
-LL |     b();
-   |     ^^^ `()` is not a tuple
+LL |     c();
+   |     ^^^ the trait `Tuple` is not implemented for `()`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn main() -> () where (): Tuple {
+   |                 +++++++++++++++
+
+error[E0277]: `()` is not a tuple
+  --> $DIR/closure.rs:29:5
+   |
+LL |     b(); // FIXME: reenable when this is fixed ~ ERROR
+   |     ^^^ the trait `Tuple` is not implemented for `()`
    |
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
