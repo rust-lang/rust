@@ -236,7 +236,7 @@ involve proc macros or build scripts, you must be sure to explicitly build targe
 host platform (in this case, `x86_64-unknown-linux-gnu`).
 
 If you want to always build for other targets without needing to pass flags to `x.py build`,
-then you can configure this in the `[build]` section of your `config.toml` like so:
+you can configure this in the `[build]` section of your `config.toml` like so:
 
 ```toml
 [build]
