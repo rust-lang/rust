@@ -1664,8 +1664,8 @@ impl<'a> Parser<'a> {
             let body = self.parse_token_tree(); // `MacBody`
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
-            let arrow = TokenTree::token(token::FatArrow, pspan.between(bspan)); // `=>`
-            let tokens = TokenStream::new(vec![params.into(), arrow.into(), body.into()]);
+            let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
+            let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             P(MacArgs::Delimited(dspan, MacDelimiter::Brace, tokens))
         } else {

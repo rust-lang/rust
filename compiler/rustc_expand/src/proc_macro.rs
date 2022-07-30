@@ -4,7 +4,7 @@ use crate::proc_macro_server;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::ForceCollect;
@@ -123,7 +123,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Annotatable::Stmt(stmt) => token::NtStmt(stmt),
                 _ => unreachable!(),
             };
-            TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
+            TokenStream::token_alone(token::Interpolated(Lrc::new(nt)), DUMMY_SP)
         } else {
             item.to_tokens()
         };

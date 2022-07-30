@@ -145,7 +145,7 @@ pub fn print_crate<'a>(
 /// This makes printed token streams look slightly nicer,
 /// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
-    if let TokenTree::Token(token) = prev {
+    if let TokenTree::Token(token, _) = prev {
         if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
@@ -154,12 +154,12 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
+        TokenTree::Token(token, _) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
         TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }, _))
         }
         TokenTree::Delimited(_, Delimiter::Bracket, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }, _))
         }
         TokenTree::Delimited(..) => true,
     }
@@ -526,7 +526,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// expression arguments as expressions). It can be done! I think.
     fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
-            TokenTree::Token(token) => {
+            TokenTree::Token(token, _) => {
                 let token_str = self.token_to_string_ext(&token, convert_dollar_crate);
                 self.word(token_str);
                 if let token::DocComment(..) = token.kind {

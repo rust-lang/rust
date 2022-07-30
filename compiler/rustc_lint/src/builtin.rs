@@ -1974,7 +1974,7 @@ impl KeywordIdents {
         for tt in tokens.into_trees() {
             match tt {
                 // Only report non-raw idents.
-                TokenTree::Token(token) => {
+                TokenTree::Token(token, _) => {
                     if let Some((ident, false)) = token.ident() {
                         self.check_ident_token(cx, UnderMacro(true), ident);
                     }

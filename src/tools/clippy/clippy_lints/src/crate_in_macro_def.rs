@@ -110,14 +110,14 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
 
 fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
     if_chain! {
-        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }) = tt;
+        if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }, _) = tt;
         if symbol.as_str() == "crate";
         then { Some(*span) } else { None }
     }
 }
 
 fn is_token(tt: &TokenTree, kind: &TokenKind) -> bool {
-    if let TokenTree::Token(Token { kind: other, .. }) = tt {
+    if let TokenTree::Token(Token { kind: other, .. }, _) = tt {
         kind == other
     } else {
         false
