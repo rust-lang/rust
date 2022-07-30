@@ -197,7 +197,7 @@ declare_clippy_lint! {
     /// result.unwrap();
     /// ```
     ///
-    /// If [expect_used](#expect_used) is allowed, instead:
+    /// Use instead:
     /// ```rust
     /// # let option = Some(1);
     /// # let result: Result<usize, ()> = Ok(1);
@@ -205,7 +205,7 @@ declare_clippy_lint! {
     /// result.expect("more helpful message");
     /// ```
     ///
-    /// Otherwise try using
+    /// If [expect_used](#expect_used) is enabled, instead:
     /// ```rust,ignore
     /// # let option = Some(1);
     /// # let result: Result<usize, ()> = Ok(1);
