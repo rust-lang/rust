@@ -159,19 +159,21 @@ jobs:
         ./y.exe prepare
 
     - name: Build
-      #name: Test
+      run: ./y.exe build
+
+    - name: Test
       run: |
         # Enable backtraces for easier debugging
-        #export RUST_BACKTRACE=1
+        export RUST_BACKTRACE=1
 
         # Reduce amount of benchmark runs as they are slow
-        #export COMPILE_RUNS=2
-        #export RUN_RUNS=2
+        export COMPILE_RUNS=2
+        export RUN_RUNS=2
 
         # Enable extra checks
-        #export CG_CLIF_ENABLE_VERIFIER=1
+        export CG_CLIF_ENABLE_VERIFIER=1
 
-        ./y.exe build
+        ./y.exe test
 
     - name: Package prebuilt cg_clif
       # don't use compression as xzip isn't supported by tar on windows and bzip2 hangs
