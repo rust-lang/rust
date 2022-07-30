@@ -415,6 +415,8 @@ mod desc {
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub const parse_branch_protection: &str =
         "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
+    pub const parse_proc_macro_execution_strategy: &str =
+        "one of supported execution strategies (`same-thread`, or `cross-thread`)";
 }
 
 mod parse {
@@ -1062,6 +1064,18 @@ mod parse {
         }
         true
     }
+
+    pub(crate) fn parse_proc_macro_execution_strategy(
+        slot: &mut ProcMacroExecutionStrategy,
+        v: Option<&str>,
+    ) -> bool {
+        *slot = match v {
+            Some("same-thread") => ProcMacroExecutionStrategy::SameThread,
+            Some("cross-thread") => ProcMacroExecutionStrategy::CrossThread,
+            _ => return false,
+        };
+        true
+    }
 }
 
 options! {
@@ -1457,6 +1471,9 @@ options! {
         "print layout information for each type encountered (default: no)"),
     proc_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
          "show backtraces for panics during proc-macro execution (default: no)"),
+    proc_macro_execution_strategy: ProcMacroExecutionStrategy = (ProcMacroExecutionStrategy::SameThread,
+        parse_proc_macro_execution_strategy, [UNTRACKED],
+        "how to run proc-macro code (default: same-thread)"),
     profile: bool = (false, parse_bool, [TRACKED],
         "insert profiling code (default: no)"),
     profile_closures: bool = (false, parse_no_flag, [UNTRACKED],

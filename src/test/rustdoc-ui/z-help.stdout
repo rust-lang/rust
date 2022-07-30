@@ -114,6 +114,7 @@
     -Z                        print-mono-items=val -- print the result of the monomorphization collection pass
     -Z                        print-type-sizes=val -- print layout information for each type encountered (default: no)
     -Z                    proc-macro-backtrace=val -- show backtraces for panics during proc-macro execution (default: no)
+    -Z           proc-macro-execution-strategy=val -- how to run proc-macro code (default: same-thread)
     -Z                                 profile=val -- insert profiling code (default: no)
     -Z                        profile-closures=val -- profile size of closures
     -Z                            profile-emit=val -- file path to emit profiling data at runtime when using 'profile' (default based on relative source path)
