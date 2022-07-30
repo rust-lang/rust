@@ -425,7 +425,6 @@ impl TestRunner {
         cmd.arg(format!("{}", self.out_dir.display()));
         cmd.arg("-Cdebuginfo=2");
         cmd.args(args);
-        cmd.env("RUSTFLAGS", &self.rust_flags);
         cmd
     }
 
