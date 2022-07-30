@@ -1481,6 +1481,7 @@ symbols! {
         tuple,
         tuple_from_req,
         tuple_indexing,
+        tuple_trait,
         two_phase,
         ty,
         type_alias_enum_variants,

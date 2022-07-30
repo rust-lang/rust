@@ -800,6 +800,15 @@ impl<T: ?Sized> Unpin for *mut T {}
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 pub trait Destruct {}
 
+/// A marker for tuple types.
+///
+/// The implementation of this trait is built-in and cannot be implemented
+/// for any user type.
+#[unstable(feature = "tuple_trait", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "tuple_trait")]
+#[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+pub trait Tuple {}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
