@@ -222,13 +222,9 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 }
 
 /// Enforce some basic invariants on layouts.
-fn sanity_check_layout<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    layout: &TyAndLayout<'tcx>,
-) {
+fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLayout<'tcx>) {
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
-    if tcx.conservative_is_privately_uninhabited(param_env.and(layout.ty)) {
+    if cx.tcx.conservative_is_privately_uninhabited(cx.param_env.and(layout.ty)) {
         assert!(layout.abi.is_uninhabited());
     }
 
@@ -237,31 +233,116 @@ fn sanity_check_layout<'tcx>(
     }
 
     if cfg!(debug_assertions) {
-        fn check_layout_abi<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) {
-            match layout.abi() {
+        /// Yields non-1-ZST fields of the type
+        fn non_zst_fields<'tcx, 'a>(
+            cx: &'a LayoutCx<'tcx, TyCtxt<'tcx>>,
+            layout: &'a TyAndLayout<'tcx>,
+        ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> + 'a {
+            (0..layout.layout.fields().count()).filter_map(|i| {
+                let field = layout.field(cx, i);
+                let zst = field.is_zst() && field.align.abi.bytes() == 1;
+                (!zst).then(|| (layout.fields.offset(i), field))
+            })
+        }
+
+        fn skip_newtypes<'tcx>(
+            cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+            layout: &TyAndLayout<'tcx>,
+        ) -> TyAndLayout<'tcx> {
+            if matches!(layout.layout.variants(), Variants::Multiple { .. }) {
+                // Definitely not a newtype of anything.
+                return *layout;
+            }
+            let mut fields = non_zst_fields(cx, layout);
+            let Some(first) = fields.next() else {
+                // No fields here, so this could be a primitive or enum -- either way it's not a newtype around a thing
+                return *layout
+            };
+            if fields.next().is_none() {
+                let (offset, first) = first;
+                if offset == Size::ZERO && first.layout.size() == layout.size {
+                    // This is a newtype, so keep recursing.
+                    // FIXME(RalfJung): I don't think it would be correct to do any checks for
+                    // alignment here, so we don't. Is that correct?
+                    return skip_newtypes(cx, &first);
+                }
+            }
+            // No more newtypes here.
+            *layout
+        }
+
+        fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLayout<'tcx>) {
+            match layout.layout.abi() {
                 Abi::Scalar(scalar) => {
                     // No padding in scalars.
+                    let size = scalar.size(cx);
+                    let align = scalar.align(cx).abi;
                     assert_eq!(
-                        layout.align().abi,
-                        scalar.align(&tcx).abi,
-                        "alignment mismatch between ABI and layout in {layout:#?}"
-                    );
-                    assert_eq!(
-                        layout.size(),
-                        scalar.size(&tcx),
+                        layout.layout.size(),
+                        size,
                         "size mismatch between ABI and layout in {layout:#?}"
                     );
+                    assert_eq!(
+                        layout.layout.align().abi,
+                        align,
+                        "alignment mismatch between ABI and layout in {layout:#?}"
+                    );
+                    // Check that this matches the underlying field.
+                    let inner = skip_newtypes(cx, layout);
+                    assert!(
+                        matches!(inner.layout.abi(), Abi::Scalar(_)),
+                        "`Scalar` type {} is newtype around non-`Scalar` type {}",
+                        layout.ty,
+                        inner.ty
+                    );
+                    match inner.layout.fields() {
+                        FieldsShape::Primitive => {
+                            // Fine.
+                        }
+                        FieldsShape::Arbitrary { .. } => {
+                            // Should be an enum, the only field is the discriminant.
+                            assert!(
+                                inner.ty.is_enum(),
+                                "`Scalar` layout for non-primitive non-enum type {}",
+                                inner.ty
+                            );
+                            assert_eq!(
+                                inner.layout.fields().count(),
+                                1,
+                                "`Scalar` layout for multiple-field type in {inner:#?}",
+                            );
+                            let offset = inner.layout.fields().offset(0);
+                            let field = inner.field(cx, 0);
+                            // The field should be at the right offset, and match the `scalar` layout.
+                            assert_eq!(
+                                offset,
+                                Size::ZERO,
+                                "`Scalar` field at non-0 offset in {inner:#?}",
+                            );
+                            assert_eq!(
+                                field.size, size,
+                                "`Scalar` field with bad size in {inner:#?}",
+                            );
+                            assert_eq!(
+                                field.align.abi, align,
+                                "`Scalar` field with bad align in {inner:#?}",
+                            );
+                        }
+                        _ => {
+                            panic!("`Scalar` layout for non-primitive non-enum type {}", inner.ty);
+                        }
+                    }
                 }
                 Abi::Vector { count, element } => {
                     // No padding in vectors. Alignment can be strengthened, though.
                     assert!(
-                        layout.align().abi >= element.align(&tcx).abi,
+                        layout.layout.align().abi >= element.align(cx).abi,
                         "alignment mismatch between ABI and layout in {layout:#?}"
                     );
-                    let size = element.size(&tcx) * count;
+                    let size = element.size(cx) * count;
                     assert_eq!(
-                        layout.size(),
-                        size.align_to(tcx.data_layout().vector_align(size).abi),
+                        layout.layout.size(),
+                        size.align_to(cx.data_layout().vector_align(size).abi),
                         "size mismatch between ABI and layout in {layout:#?}"
                     );
                 }
@@ -269,15 +350,15 @@ fn sanity_check_layout<'tcx>(
                     // Sanity-check scalar pairs. These are a bit more flexible and support
                     // padding, but we can at least ensure both fields actually fit into the layout
                     // and the alignment requirement has not been weakened.
-                    let align1 = scalar1.align(&tcx).abi;
-                    let align2 = scalar2.align(&tcx).abi;
+                    let align1 = scalar1.align(cx).abi;
+                    let align2 = scalar2.align(cx).abi;
                     assert!(
-                        layout.align().abi >= cmp::max(align1, align2),
+                        layout.layout.align().abi >= cmp::max(align1, align2),
                         "alignment mismatch between ABI and layout in {layout:#?}",
                     );
-                    let field2_offset = scalar1.size(&tcx).align_to(align2);
+                    let field2_offset = scalar1.size(cx).align_to(align2);
                     assert!(
-                        layout.size() >= field2_offset + scalar2.size(&tcx),
+                        layout.layout.size() >= field2_offset + scalar2.size(cx),
                         "size mismatch between ABI and layout in {layout:#?}"
                     );
                 }
@@ -285,24 +366,14 @@ fn sanity_check_layout<'tcx>(
             }
         }
 
-        check_layout_abi(tcx, layout.layout);
+        check_layout_abi(cx, layout);
 
         if let Variants::Multiple { variants, .. } = &layout.variants {
-            for variant in variants {
-                check_layout_abi(tcx, *variant);
+            for variant in variants.iter() {
                 // No nested "multiple".
                 assert!(matches!(variant.variants(), Variants::Single { .. }));
-                // Skip empty variants.
-                if variant.size() == Size::ZERO
-                    || variant.fields().count() == 0
-                    || variant.abi().is_uninhabited()
-                {
-                    // These are never actually accessed anyway, so we can skip them. (Note that
-                    // sometimes, variants with fields have size 0, and sometimes, variants without
-                    // fields have non-0 size.)
-                    continue;
-                }
-                // Variants should have the same or a smaller size as the full thing.
+                // Variants should have the same or a smaller size as the full thing,
+                // and same for alignment.
                 if variant.size() > layout.size {
                     bug!(
                         "Type with size {} bytes has variant with size {} bytes: {layout:#?}",
@@ -310,10 +381,34 @@ fn sanity_check_layout<'tcx>(
                         variant.size().bytes(),
                     )
                 }
+                if variant.align().abi > layout.align.abi {
+                    bug!(
+                        "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
+                        layout.align.abi.bytes(),
+                        variant.align().abi.bytes(),
+                    )
+                }
+                // Skip empty variants.
+                if variant.size() == Size::ZERO
+                    || variant.fields().count() == 0
+                    || variant.abi().is_uninhabited()
+                {
+                    // These are never actually accessed anyway, so we can skip the coherence check
+                    // for them. They also fail that check, since they have
+                    // `Aggregate`/`Uninhbaited` ABI even when the main type is
+                    // `Scalar`/`ScalarPair`. (Note that sometimes, variants with fields have size
+                    // 0, and sometimes, variants without fields have non-0 size.)
+                    continue;
+                }
                 // The top-level ABI and the ABI of the variants should be coherent.
+                let scalar_coherent = |s1: Scalar, s2: Scalar| {
+                    s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx)
+                };
                 let abi_coherent = match (layout.abi, variant.abi()) {
-                    (Abi::Scalar(..), Abi::Scalar(..)) => true,
-                    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,
+                    (Abi::Scalar(s1), Abi::Scalar(s2)) => scalar_coherent(s1, s2),
+                    (Abi::ScalarPair(a1, b1), Abi::ScalarPair(a2, b2)) => {
+                        scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
+                    }
                     (Abi::Uninhabited, _) => true,
                     (Abi::Aggregate { .. }, _) => true,
                     _ => false,
@@ -372,7 +467,7 @@ fn layout_of<'tcx>(
 
             cx.record_layout_for_printing(layout);
 
-            sanity_check_layout(tcx, param_env, &layout);
+            sanity_check_layout(&cx, &layout);
 
             Ok(layout)
         })
