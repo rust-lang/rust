@@ -1884,7 +1884,8 @@ impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
                 })
                 .collect::<Vec<_>>()
                 .into();
-            let bindings = self.bindings.iter().map(|x| x.clean(cx)).collect::<Vec<_>>().into();
+            let bindings =
+                self.bindings.iter().map(|x| clean_type_binding(x, cx)).collect::<Vec<_>>().into();
             GenericArgs::AngleBracketed { args, bindings }
         }
     }
@@ -2250,12 +2251,13 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
     })
 }
 
-impl<'tcx> Clean<'tcx, TypeBinding> for hir::TypeBinding<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> TypeBinding {
-        TypeBinding {
-            assoc: PathSegment { name: self.ident.name, args: self.gen_args.clean(cx) },
-            kind: self.kind.clean(cx),
-        }
+fn clean_type_binding<'tcx>(
+    type_binding: &hir::TypeBinding<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> TypeBinding {
+    TypeBinding {
+        assoc: PathSegment { name: type_binding.ident.name, args: type_binding.gen_args.clean(cx) },
+        kind: type_binding.kind.clean(cx),
     }
 }
 
