@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use super::rustc_info::{get_file_name, get_wrapper_file_name, get_rustc_version};
+use super::rustc_info::{get_file_name, get_rustc_version, get_wrapper_file_name};
 use super::utils::{spawn_and_wait, try_hard_link};
 use super::SysrootKind;
 

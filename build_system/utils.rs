@@ -1,7 +1,7 @@
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process::{self, Command, Stdio};
-use std::io::Write;
 
 #[track_caller]
 pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {

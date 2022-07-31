@@ -7,8 +7,8 @@ mod build_sysroot;
 mod config;
 mod prepare;
 mod rustc_info;
-mod utils;
 mod tests;
+mod utils;
 
 fn usage() {
     eprintln!("Usage:");
@@ -122,7 +122,8 @@ pub fn main() {
         process::exit(1);
     }
 
-    let cg_clif_build_dir = build_backend::build_backend(channel, &host_triple, use_unstable_features);
+    let cg_clif_build_dir =
+        build_backend::build_backend(channel, &host_triple, use_unstable_features);
     match command {
         Command::Test => {
             tests::run_tests(
@@ -133,7 +134,7 @@ pub fn main() {
                 &host_triple,
                 &target_triple,
             );
-        },
+        }
         Command::Build => {
             build_sysroot::build_sysroot(
                 channel,
