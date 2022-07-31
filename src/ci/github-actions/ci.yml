@@ -286,7 +286,7 @@ jobs:
 
           - name: x86_64-gnu-llvm-12
             <<: *job-linux-xl
-
+            
           - name: x86_64-gnu-tools
             env:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
@@ -432,6 +432,11 @@ jobs:
             <<: *job-linux-xl
 
           - name: x86_64-gnu-llvm-12
+            env:
+              RUST_BACKTRACE: 1
+            <<: *job-linux-xl
+
+          - name: x86_64-gnu-llvm-12-stage1
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl

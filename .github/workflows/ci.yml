@@ -278,6 +278,10 @@ jobs:
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-20.04-xl
+          - name: x86_64-gnu-llvm-12-stage1
+            env:
+              RUST_BACKTRACE: 1
+            os: ubuntu-20.04-xl
           - name: x86_64-gnu-nopt
             os: ubuntu-20.04-xl
             env: {}
