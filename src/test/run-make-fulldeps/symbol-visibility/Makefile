@@ -59,7 +59,7 @@ all:
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_generic_function_from_rlib)" -eq "0" ]
 
 	# Check that a proc macro exports its public #[no_mangle] functions
-	# FIXME avoid exporting #[no_mangle] symbols for proc macros
+	# FIXME(#99978) avoid exporting #[no_mangle] symbols for proc macros
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_cdylib)" -eq "1" ]
 	# Check that a proc macro exports the public #[no_mangle] functions of dependencies
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "1" ]
@@ -108,7 +108,7 @@ endif
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -v __imp_ | grep -c public_generic_function_from_rlib)" -eq "1" ]
 
 	# Check that a proc macro exports its public #[no_mangle] functions
-	# FIXME avoid exporting #[no_mangle] symbols for proc macros
+	# FIXME(#99978) avoid exporting #[no_mangle] symbols for proc macros
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_cdylib)" -eq "1" ]
 	# Check that a proc macro exports the public #[no_mangle] functions of dependencies
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -v __imp_ | grep -c public_c_function_from_rlib)" -eq "1" ]
