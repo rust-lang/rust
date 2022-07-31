@@ -1,36 +1,16 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+# Some systems don't have `python3` in their PATH. This isn't supported by x.py directly;
+# they should use `x.sh` or `x.ps1` instead.
 
-# Modern Linux and macOS systems commonly only have a thing called `python3` and
-# not `python`, while Windows commonly does not have `python3`, so we cannot
-# directly use python in the shebang and have it consistently work. Instead we
-# embed some bash to look for a python to run the rest of the script.
-#
-# On Windows, `py -3` sometimes works. We need to try it first because `python3`
-# sometimes tries to launch the app store on Windows.
-'''':
-for PYTHON in "py -3" python3 python python2; do
-    if command -v $PYTHON >/dev/null; then
-        exec $PYTHON "$0" "$@"
-        break
-    fi
-done
-echo "$0: error: did not find python installed" >&2
-exit 1
-'''
-
-# The rest of this file is Python.
-#
 # This file is only a "symlink" to bootstrap.py, all logic should go there.
 
 import os
 import sys
 
 # If this is python2, check if python3 is available and re-execute with that
-# interpreter.
+# interpreter. Only python3 allows downloading CI LLVM.
 #
-# `./x.py` would not normally benefit from this because the bash above tries
-# python3 before 2, but this matters if someone ran `python x.py` and their
-# system's `python` is python2.
+# This matters if someone's system `python` is python2.
 if sys.version_info.major < 3:
     try:
         os.execvp("py", ["py", "-3"] + sys.argv)

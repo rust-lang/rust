@@ -66,16 +66,21 @@ TESTS_IN_2 := \
 	src/test/ui \
 	src/tools/linkchecker
 
+## MSVC native builders
+
+# these intentionally don't use `$(BOOTSTRAP)` so we can test the shebang on Windows
 ci-subset-1:
-	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_2:%=--exclude %)
+	$(Q)$(CFG_SRC_DIR)/x.py test --stage 2 $(TESTS_IN_2:%=--exclude %)
 ci-subset-2:
-	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_2)
+	$(Q)$(CFG_SRC_DIR)/x.ps1 test --stage 2 $(TESTS_IN_2)
+
+## MingW native builders
 
 TESTS_IN_MINGW_2 := \
 	src/test/ui
 
 ci-mingw-subset-1:
-	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
+	$(Q)$(CFG_SRC_DIR)/x.sh test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
 ci-mingw-subset-2:
 	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2)
 
