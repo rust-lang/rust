@@ -30,10 +30,10 @@ All contributors are expected to follow the [Rust Code of Conduct].
 ## The Clippy book
 
 If you're new to Clippy and don't know where to start the [Clippy book] includes
-a developer guide and is a good place to start your journey.
+a [developer guide] and is a good place to start your journey.
 
-<!-- FIXME: Link to the deployed book, once it is deployed through CI -->
-[Clippy book]: book/src
+[Clippy book]: https://doc.rust-lang.org/nightly/clippy/index.html
+[developer guide]: https://doc.rust-lang.org/nightly/clippy/development/index.html
 
 ## High level approach
 
