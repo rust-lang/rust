@@ -1220,7 +1220,7 @@ extern "rust-intrinsic" {
     /// will generate code *assuming that you, the programmer, ensure that there will never be
     /// undefined behavior*. It is therefore your responsibility to guarantee that every value
     /// passed to `transmute` is valid at both types `T` and `U`. Failing to uphold this condition
-    /// may lead to unexpeced and unstable compilation results. This makes `transmute` **incredibly
+    /// may lead to unexpected and unstable compilation results. This makes `transmute` **incredibly
     /// unsafe**. `transmute` should be the absolute last resort.
     ///
     /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
