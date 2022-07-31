@@ -92,12 +92,12 @@ intrinsics! {
         f64::from_bits(int_to_float::u64_to_f64_bits(i))
     }
 
-    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
+    #[cfg_attr(any(not(target_feature = "llvm14-builtins-abi"), target_os = "uefi"), unadjusted_on_win64)]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
         f32::from_bits(int_to_float::u128_to_f32_bits(i))
     }
 
-    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
+    #[cfg_attr(any(not(target_feature = "llvm14-builtins-abi"), target_os = "uefi"), unadjusted_on_win64)]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
         f64::from_bits(int_to_float::u128_to_f64_bits(i))
     }
@@ -129,13 +129,13 @@ intrinsics! {
         f64::from_bits(int_to_float::u64_to_f64_bits(i.unsigned_abs()) | sign_bit)
     }
 
-    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
+    #[cfg_attr(any(not(target_feature = "llvm14-builtins-abi"), target_os = "uefi"), unadjusted_on_win64)]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
         let sign_bit = ((i >> 127) as u32) << 31;
         f32::from_bits(int_to_float::u128_to_f32_bits(i.unsigned_abs()) | sign_bit)
     }
 
-    #[cfg_attr(not(target_feature = "llvm14-builtins-abi"), unadjusted_on_win64)]
+    #[cfg_attr(any(not(target_feature = "llvm14-builtins-abi"), target_os = "uefi"), unadjusted_on_win64)]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
         let sign_bit = ((i >> 127) as u64) << 63;
         f64::from_bits(int_to_float::u128_to_f64_bits(i.unsigned_abs()) | sign_bit)
