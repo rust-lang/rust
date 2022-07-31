@@ -210,7 +210,8 @@ Release process is handled by `release`, `dist` and `promote` xtasks, `release` 
 ./rust-rust-analyzer  # Note the name!
 ```
 
-Additionally, it assumes that the remote for `rust-analyzer` is called `upstream` (I use `origin` to point to my fork).
+The remote for `rust-analyzer` must be called `upstream` (I use `origin` to point to my fork).
+In addition, for `xtask promote` (see below), `rust-rust-analyzer` must have a `rust-analyzer` remote pointing to this repository on GitHub.
 
 `release` calls the GitHub API calls to scrape pull request comments and categorize them in the changelog.
 This step uses the `curl` and `jq` applications, which need to be available in `PATH`.
@@ -225,13 +226,13 @@ Release steps:
    * push it to `upstream`. This triggers GitHub Actions which:
      * runs `cargo xtask dist` to package binaries and VS Code extension
      * makes a GitHub release
-     * pushes VS Code extension to the marketplace
+     * publishes the VS Code extension to the marketplace
    * call the GitHub API for PR details
    * create a new changelog in `rust-analyzer.github.io`
 3. While the release is in progress, fill in the changelog
 4. Commit & push the changelog
 5. Tweet
-6. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
+6. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's subtree.
    Self-approve the PR.
 
 If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.
