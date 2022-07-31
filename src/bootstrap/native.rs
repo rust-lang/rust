@@ -148,7 +148,7 @@ pub(crate) fn detect_llvm_sha(config: &crate::config::Config) -> String {
 /// This checks both the build triple platform to confirm we're usable at all,
 /// and then verifies if the current HEAD matches the detected LLVM SHA head,
 /// in which case LLVM is indicated as not available.
-pub(crate) fn is_ci_llvm_available(config: &crate::config::Config) -> bool {
+pub(crate) fn is_ci_llvm_available(config: &crate::config::Config, asserts: bool) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -184,6 +184,12 @@ pub(crate) fn is_ci_llvm_available(config: &crate::config::Config) -> bool {
         "x86_64-unknown-netbsd",
     ];
     if !supported_platforms.contains(&&*config.build.triple) {
+        return false;
+    }
+
+    let triple = &*config.build.triple;
+    if (triple == "aarch64-unknown-linux-gnu" || triple.contains("i686")) && asserts {
+        // No alt builder for aarch64-unknown-linux-gnu today.
         return false;
     }
 
