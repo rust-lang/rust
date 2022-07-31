@@ -1019,7 +1019,7 @@ impl<'tcx> Clean<'tcx, bool> for hir::IsAuto {
 
 impl<'tcx> Clean<'tcx, Path> for hir::TraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Path {
-        let path = self.path.clean(cx);
+        let path = clean_path(self.path, cx);
         register_res(cx, path.res);
         path
     }
@@ -1344,7 +1344,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             if let Some(expanded) = maybe_expand_private_type_alias(cx, path) {
                 expanded
             } else {
-                let path = path.clean(cx);
+                let path = clean_path(path, cx);
                 resolve_type(cx, path)
             }
         }
@@ -1380,7 +1380,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
                 ty::Error(_) => return Type::Infer,
                 _ => bug!("clean: expected associated type, found `{:?}`", ty),
             };
-            let trait_ = hir::Path { span, res, segments: &[] }.clean(cx);
+            let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
             register_res(cx, trait_.res);
             let self_def_id = res.opt_def_id();
             let self_type = clean_ty(qself, cx);
@@ -1857,10 +1857,8 @@ fn clean_variant_data<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, Path> for hir::Path<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Path {
-        Path { res: self.res, segments: self.segments.iter().map(|x| x.clean(cx)).collect() }
-    }
+fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
+    Path { res: path.res, segments: path.segments.iter().map(|x| x.clean(cx)).collect() }
 }
 
 impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
@@ -2172,7 +2170,7 @@ fn clean_use_statement<'tcx>(
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
-    let path = path.clean(cx);
+    let path = clean_path(path, cx);
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
             let mut visited = FxHashSet::default();
