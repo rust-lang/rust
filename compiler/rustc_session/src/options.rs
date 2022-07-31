@@ -393,8 +393,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
-    pub const parse_location_detail: &str =
-        "comma separated list of location details to track: `file`, `line`, or `column`";
+    pub const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, or `column`";
     pub const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
     pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
@@ -551,6 +550,9 @@ mod parse {
             ld.line = false;
             ld.file = false;
             ld.column = false;
+            if v == "none" {
+                return true;
+            }
             for s in v.split(',') {
                 match s {
                     "file" => ld.file = true,
@@ -1374,8 +1376,9 @@ options! {
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     location_detail: LocationDetail = (LocationDetail::all(), parse_location_detail, [TRACKED],
-        "comma separated list of location details to be tracked when using caller_location \
-        valid options are `file`, `line`, and `column` (default: all)"),
+        "what location details should be tracked when using caller_location, either \
+        `none`, or a comma separated list of location details, for which \
+        valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
