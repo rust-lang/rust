@@ -7,6 +7,7 @@ mod build_sysroot;
 mod config;
 mod prepare;
 mod rustc_info;
+mod tests;
 mod utils;
 
 fn usage() {
@@ -14,6 +15,9 @@ fn usage() {
     eprintln!("  ./y.rs prepare");
     eprintln!(
         "  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
+    );
+    eprintln!(
+        "  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
     );
 }
 
@@ -25,11 +29,13 @@ macro_rules! arg_error {
     }};
 }
 
+#[derive(PartialEq, Debug)]
 enum Command {
     Build,
+    Test,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum SysrootKind {
     None,
     Clif,
@@ -46,12 +52,13 @@ pub fn main() {
     let command = match args.next().as_deref() {
         Some("prepare") => {
             if args.next().is_some() {
-                arg_error!("./x.rs prepare doesn't expect arguments");
+                arg_error!("./y.rs prepare doesn't expect arguments");
             }
             prepare::prepare();
             process::exit(0);
         }
         Some("build") => Command::Build,
+        Some("test") => Command::Test,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
         None => {
@@ -117,12 +124,26 @@ pub fn main() {
 
     let cg_clif_build_dir =
         build_backend::build_backend(channel, &host_triple, use_unstable_features);
-    build_sysroot::build_sysroot(
-        channel,
-        sysroot_kind,
-        &target_dir,
-        cg_clif_build_dir,
-        &host_triple,
-        &target_triple,
-    );
+    match command {
+        Command::Test => {
+            tests::run_tests(
+                channel,
+                sysroot_kind,
+                &target_dir,
+                &cg_clif_build_dir,
+                &host_triple,
+                &target_triple,
+            );
+        }
+        Command::Build => {
+            build_sysroot::build_sysroot(
+                channel,
+                sysroot_kind,
+                &target_dir,
+                &cg_clif_build_dir,
+                &host_triple,
+                &target_triple,
+            );
+        }
+    }
 }
