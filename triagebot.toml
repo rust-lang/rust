@@ -323,6 +323,7 @@ otherwise, make sure you bump the `FORMAT_VERSION` constant.
 cc = [
     "@CraftSpider",
     "@aDotInTheVoid",
+    "@Enselic",
 ]
 
 [mentions."src/tools/cargo"]

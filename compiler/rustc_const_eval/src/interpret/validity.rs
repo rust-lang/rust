@@ -238,7 +238,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if let Some(local_def_id) = def_id.as_local() {
                     let tables = self.ecx.tcx.typeck(local_def_id);
                     if let Some(captured_place) =
-                        tables.closure_min_captures_flattened(*def_id).nth(field)
+                        tables.closure_min_captures_flattened(local_def_id).nth(field)
                     {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).

@@ -189,7 +189,7 @@ impl Display for RegionName {
 
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
-        self.body.source.def_id().as_local().unwrap()
+        self.body.source.def_id().expect_local()
     }
 
     pub(crate) fn mir_hir_id(&self) -> hir::HirId {

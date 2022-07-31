@@ -343,7 +343,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 );
                 let tcx = self.infcx.tcx;
                 if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
-                    self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
+                    self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                 }
             }
 
@@ -382,7 +382,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
                     && let ty::Closure(id, _) = *ty.kind()
                 {
-                    self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
+                    self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
                 }
             }
 
@@ -685,11 +685,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn show_mutating_upvar(
         &self,
         tcx: TyCtxt<'_>,
-        id: hir::def_id::DefId,
+        closure_local_def_id: hir::def_id::LocalDefId,
         the_place_err: PlaceRef<'tcx>,
         err: &mut Diagnostic,
     ) {
-        let closure_local_def_id = id.expect_local();
         let tables = tcx.typeck(closure_local_def_id);
         let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_local_def_id);
         if let Some((span, closure_kind_origin)) =
@@ -699,7 +698,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
                 // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
-                let captured_places = tables.closure_min_captures[&id].get(&root_hir_id).unwrap();
+                let captured_places =
+                    tables.closure_min_captures[&closure_local_def_id].get(&root_hir_id).unwrap();
 
                 let origin_projection = closure_kind_origin
                     .projections
