@@ -180,8 +180,8 @@ macro_rules! compat_fn_with_fallback {
 
             fn load_from_module(module: Option<Module>) -> F {
                 unsafe {
-                    static symbol_name: &CStr = ansi_str!(sym $symbol);
-                    if let Some(f) = module.and_then(|m| m.proc_address(symbol_name)) {
+                    static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
+                    if let Some(f) = module.and_then(|m| m.proc_address(SYMBOL_NAME)) {
                         PTR.store(f.as_ptr(), Ordering::Relaxed);
                         mem::transmute(f)
                     } else {
@@ -262,8 +262,8 @@ macro_rules! compat_fn_optional {
             #[allow(unused)]
             pub(in crate::sys) fn preload(module: Module) {
                 unsafe {
-                    let symbol_name = ansi_str!(sym $symbol);
-                    if let Some(f) = module.proc_address(symbol_name) {
+                    static SYMBOL_NAME: &CStr = ansi_str!(sym $symbol);
+                    if let Some(f) = module.proc_address(SYMBOL_NAME) {
                         PTR.store(f.as_ptr(), Ordering::Relaxed);
                     }
                 }
