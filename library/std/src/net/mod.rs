@@ -69,15 +69,6 @@ pub enum Shutdown {
     Both,
 }
 
-#[inline]
-const fn htons(i: u16) -> u16 {
-    i.to_be()
-}
-#[inline]
-const fn ntohs(i: u16) -> u16 {
-    u16::from_be(i)
-}
-
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
 where
     F: FnMut(io::Result<&SocketAddr>) -> io::Result<T>,
