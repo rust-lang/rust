@@ -19,9 +19,8 @@ like the standard library (std) or the compiler (rustc).
   ./x.py doc --stage 1
   ```
 
-  First,
-  the compiler gets built to make sure rustdoc compiles,
-  then that newly-built rustdoc is used to document the components.
+  This ensures that (current) rustdoc gets built,
+  then that is used to document the components.
 
 - Much like running individual tests or building specific components,
   you can build just the documentation you want:
