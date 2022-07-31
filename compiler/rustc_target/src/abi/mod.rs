@@ -1279,13 +1279,14 @@ impl<'a> fmt::Debug for LayoutS<'a> {
         // This is how `Layout` used to print before it become
         // `Interned<LayoutS>`. We print it like this to avoid having to update
         // expected output in a lot of tests.
+        let LayoutS { size, align, abi, fields, largest_niche, variants } = self;
         f.debug_struct("Layout")
-            .field("fields", &self.fields)
-            .field("variants", &self.variants)
-            .field("abi", &self.abi)
-            .field("largest_niche", &self.largest_niche)
-            .field("align", &self.align)
-            .field("size", &self.size)
+            .field("size", size)
+            .field("align", align)
+            .field("abi", abi)
+            .field("fields", fields)
+            .field("largest_niche", largest_niche)
+            .field("variants", variants)
             .finish()
     }
 }
