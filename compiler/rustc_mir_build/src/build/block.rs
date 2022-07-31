@@ -84,8 +84,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut let_scope_stack = Vec::with_capacity(8);
         let outer_source_scope = this.source_scope;
         let outer_in_scope_unsafe = this.in_scope_unsafe;
-        // This scope information is kept for breaking out of the current block in case
+        // This scope information is kept for breaking out of the parent remainder scope in case
         // one let-else pattern matching fails.
+        // By doing so, we can be sure that even temporaries that receive extended lifetime
+        // assignments are dropped, too.
         let mut last_remainder_scope = region_scope;
         this.update_source_scope_for_safety_mode(span, safety_mode);
 
