@@ -21,22 +21,16 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 
     fn hash_hir_expr(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher) {
-        self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Expr { hir_id, ref span, ref kind } = *expr;
-
-            hir_id.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-        })
+        let hir::Expr { hir_id, ref span, ref kind } = *expr;
+        hir_id.hash_stable(self, hasher);
+        span.hash_stable(self, hasher);
+        kind.hash_stable(self, hasher);
     }
 
     fn hash_hir_ty(&mut self, ty: &hir::Ty<'_>, hasher: &mut StableHasher) {
-        self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Ty { hir_id, ref kind, ref span } = *ty;
-
-            hir_id.hash_stable(hcx, hasher);
-            kind.hash_stable(hcx, hasher);
-            span.hash_stable(hcx, hasher);
-        })
+        let hir::Ty { hir_id, ref kind, ref span } = *ty;
+        hir_id.hash_stable(self, hasher);
+        kind.hash_stable(self, hasher);
+        span.hash_stable(self, hasher);
     }
 }
