@@ -400,37 +400,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .collect();
 
-            let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                Some(ident) => format!("{ident}: "),
-                None => String::new(),
-            };
+            let suggestions_for = |variant: &_, ctor, field_name| {
+                let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                    Some(ident) => format!("{ident}: "),
+                    None => String::new(),
+                };
 
-            fn brackets_for(
-                ctor: hir::def::CtorKind,
-                field_name: Symbol,
-            ) -> (String, &'static str) {
-                match ctor {
+                let (open, close) = match ctor {
                     hir::def::CtorKind::Fn => ("(".to_owned(), ")"),
                     hir::def::CtorKind::Fictive => (format!(" {{ {field_name}: "), " }"),
+
+                    // unit variants don't have fields
                     hir::def::CtorKind::Const => unreachable!(),
-                }
-            }
+                };
+
+                vec![
+                    (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
+                    (expr.span.shrink_to_hi(), close.to_owned()),
+                ]
+            };
 
             match &compatible_variants[..] {
                 [] => { /* No variants to format */ }
                 [(variant, ctor_kind, field_name, note)] => {
-                    let (open, close) = brackets_for(*ctor_kind, *field_name);
-
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
                         &format!(
                             "try wrapping the expression in `{variant}`{note}",
                             note = note.as_deref().unwrap_or("")
                         ),
-                        vec![
-                            (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
-                            (expr.span.shrink_to_hi(), close.to_owned()),
-                        ],
+                        suggestions_for(&**variant, *ctor_kind, *field_name),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -443,12 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                         compatible_variants.into_iter().map(
                             |(variant, ctor_kind, field_name, _)| {
-                                let (open, close) = brackets_for(ctor_kind, field_name);
-
-                                vec![
-                                    (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
-                                    (expr.span.shrink_to_hi(), close.to_owned()),
-                                ]
+                                suggestions_for(&variant, ctor_kind, field_name)
                             },
                         ),
                         Applicability::MaybeIncorrect,
