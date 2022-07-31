@@ -712,7 +712,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 opt_suggest_box_span,
             }) => {
                 let then_span = self.find_block_span_from_hir_id(then_id);
-                let else_span = self.find_block_span_from_hir_id(then_id);
+                let else_span = self.find_block_span_from_hir_id(else_id);
                 err.span_label(then_span, "expected because of this");
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
@@ -760,11 +760,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         second_ty: Ty<'tcx>,
         second_span: Span,
     ) {
-        let remove_semicolon =
-            [(first_id, second_ty), (second_id, first_ty)].into_iter().find_map(|(id, ty)| {
-                let hir::Node::Block(blk) = self.tcx.hir().get(id?) else { return None };
-                self.could_remove_semicolon(blk, ty)
-            });
+        let remove_semicolon = [
+            (first_id, self.resolve_vars_if_possible(second_ty)),
+            (second_id, self.resolve_vars_if_possible(first_ty)),
+        ]
+        .into_iter()
+        .find_map(|(id, ty)| {
+            let hir::Node::Block(blk) = self.tcx.hir().get(id?) else { return None };
+            self.could_remove_semicolon(blk, ty)
+        });
         match remove_semicolon {
             Some((sp, StatementAsExpression::NeedsBoxing)) => {
                 err.multipart_suggestion(
