@@ -7,7 +7,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-annotate-snippets = "0.8.0"
+annotate-snippets = "0.9"
 fluent-bundle = "0.15.2"
 fluent-syntax = "0.11"
 synstructure = "0.12.1"
