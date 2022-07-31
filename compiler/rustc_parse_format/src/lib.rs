@@ -70,6 +70,9 @@ pub enum Piece<'a> {
 pub struct Argument<'a> {
     /// Where to find this argument
     pub position: Position<'a>,
+    /// The span of the position indicator. Includes any whitespace in implicit
+    /// positions (`{  }`).
+    pub position_span: InnerSpan,
     /// How to format the argument
     pub format: FormatSpec<'a>,
 }
@@ -105,9 +108,9 @@ pub enum Position<'a> {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format,
-    ArgumentIs(usize, Option<InnerSpan>),
+    ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(&'a str, InnerSpan),
+    ArgumentNamed(&'a str),
 }
 
 impl Position<'_> {
@@ -216,14 +219,15 @@ impl<'a> Iterator for Parser<'a> {
                 '{' => {
                     let curr_last_brace = self.last_opening_brace;
                     let byte_pos = self.to_span_index(pos);
-                    self.last_opening_brace = Some(byte_pos.to(InnerOffset(byte_pos.0 + 1)));
+                    let lbrace_end = InnerOffset(byte_pos.0 + 1);
+                    self.last_opening_brace = Some(byte_pos.to(lbrace_end));
                     self.cur.next();
                     if self.consume('{') {
                         self.last_opening_brace = curr_last_brace;
 
                         Some(String(self.string(pos + 1)))
                     } else {
-                        let arg = self.argument();
+                        let arg = self.argument(lbrace_end);
                         if let Some(rbrace_byte_idx) = self.must_consume('}') {
                             let lbrace_inner_offset = self.to_span_index(pos);
                             let rbrace_inner_offset = self.to_span_index(rbrace_byte_idx);
@@ -477,8 +481,16 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
-    fn argument(&mut self) -> Argument<'a> {
+    fn argument(&mut self, start: InnerOffset) -> Argument<'a> {
         let pos = self.position();
+
+        let end = self
+            .cur
+            .clone()
+            .find(|(_, ch)| !ch.is_whitespace())
+            .map_or(start, |(end, _)| self.to_span_index(end));
+        let position_span = start.to(end);
+
         let format = match self.mode {
             ParseMode::Format => self.format(),
             ParseMode::InlineAsm => self.inline_asm(),
@@ -494,7 +506,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Argument { position: pos, format }
+        Argument { position: pos, position_span, format }
     }
 
     /// Parses a positional argument for a format. This could either be an
@@ -502,23 +514,11 @@ impl<'a> Parser<'a> {
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
     fn position(&mut self) -> Option<Position<'a>> {
-        let start_position = self.cur.peek().map(|item| item.0);
         if let Some(i) = self.integer() {
-            let inner_span = start_position.and_then(|start| {
-                self.cur
-                    .peek()
-                    .cloned()
-                    .and_then(|item| Some(self.to_span_index(start).to(self.to_span_index(item.0))))
-            });
-            Some(ArgumentIs(i, inner_span))
+            Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(start, c)) if rustc_lexer::is_id_start(c) => {
-                    let word = self.word();
-                    let end = start + word.len();
-                    let span = self.to_span_index(start).to(self.to_span_index(end));
-                    Some(ArgumentNamed(word, span))
-                }
+                Some(&(_, c)) if rustc_lexer::is_id_start(c) => Some(ArgumentNamed(self.word())),
 
                 // This is an `ArgumentNext`.
                 // Record the fact and do the resolution after parsing the
