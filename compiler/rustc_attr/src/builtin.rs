@@ -428,9 +428,11 @@ where
                                     ConstStability { level, feature, promotable: false },
                                     attr.span,
                                 ));
-                            } else {
+                            } else if sym::rustc_default_body_unstable == meta_name {
                                 body_stab =
                                     Some((DefaultBodyStability { level, feature }, attr.span));
+                            } else {
+                                unreachable!("Unknown stability attribute {meta_name}");
                             }
                         }
                         (None, _, _) => {
