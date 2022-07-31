@@ -246,7 +246,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
         {
-            // Construct a command string with all the aguments.
+            // Construct a command string with all the arguments.
             let cmd_utf16: Vec<u16> = args_to_utf16_command_string(config.args.iter());
 
             let cmd_type = tcx.mk_array(tcx.types.u16, u64::try_from(cmd_utf16.len()).unwrap());
@@ -311,7 +311,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
 /// Evaluates the entry function specified by `entry_id`.
 /// Returns `Some(return_code)` if program executed completed.
-/// Returns `None` if an evaluation error occured.
+/// Returns `None` if an evaluation error occurred.
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
