@@ -1,4 +1,3 @@
-use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 
@@ -40,18 +39,8 @@ pub(super) fn find_library(
     ));
 }
 
-pub trait ArchiveBuilder<'a> {
-    fn new(sess: &'a Session, output: &Path) -> Self;
-
-    fn add_file(&mut self, path: &Path);
-
-    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static;
-
-    fn build(self) -> bool;
-
-    fn sess(&self) -> &Session;
+pub trait ArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
 
     /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
     /// and returns the path on disk to that import library.
@@ -59,29 +48,22 @@ pub trait ArchiveBuilder<'a> {
     /// `linker_with_args`, which is specialized on `ArchiveBuilder` but
     /// doesn't take or create an instance of that type.
     fn create_dll_import_lib(
+        &self,
         sess: &Session,
         lib_name: &str,
         dll_imports: &[DllImport],
         tmpdir: &Path,
     ) -> PathBuf;
+}
 
-    /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>
-    /// and adds it to the current compilation's set of archives.
-    fn inject_dll_import_lib(
+pub trait ArchiveBuilder<'a> {
+    fn add_file(&mut self, path: &Path);
+
+    fn add_archive(
         &mut self,
-        lib_name: &str,
-        dll_imports: &[DllImport],
-        tmpdir: &MaybeTempDir,
-    ) {
-        let output_path =
-            Self::create_dll_import_lib(self.sess(), lib_name, dll_imports, tmpdir.as_ref());
+        archive: &Path,
+        skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> io::Result<()>;
 
-        self.add_archive(&output_path, |_| false).unwrap_or_else(|e| {
-            self.sess().fatal(&format!(
-                "failed to add native library {}: {}",
-                output_path.display(),
-                e
-            ));
-        });
-    }
+    fn build(self: Box<Self>, output: &Path) -> bool;
 }

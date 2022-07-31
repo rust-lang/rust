@@ -133,8 +133,9 @@ impl CodegenBackend for GccCodegenBackend {
     fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+        link_binary(
             sess,
+            &crate::archive::ArArchiveBuilderBuilder,
             &codegen_results,
             outputs,
         )
