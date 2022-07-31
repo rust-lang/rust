@@ -18,6 +18,7 @@ use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
 use rustc_ast::Mutability;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -340,8 +341,11 @@ pub enum FakeReadCause {
     /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
     /// FakeRead for that Place outside the closure, in such a case this option would be
     /// Some(closure_def_id).
-    /// Otherwise, the value of the optional DefId will be None.
-    ForMatchedPlace(Option<DefId>),
+    /// Otherwise, the value of the optional LocalDefId will be None.
+    //
+    // We can use LocaDefId here since fake read statements are removed
+    // before codegen in the `CleanupNonCodegenStatements` pass.
+    ForMatchedPlace(Option<LocalDefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
     /// in a match guard to ensure that its value hasn't change by the time
@@ -365,7 +369,7 @@ pub enum FakeReadCause {
     /// FakeRead for that Place outside the closure, in such a case this option would be
     /// Some(closure_def_id).
     /// Otherwise, the value of the optional DefId will be None.
-    ForLet(Option<DefId>),
+    ForLet(Option<LocalDefId>),
 
     /// If we have an index expression like
     ///
@@ -1095,8 +1099,10 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
-    Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    // Note: We can use LocalDefId since closures and generators a deaggregated
+    // before codegen.
+    Closure(LocalDefId, SubstsRef<'tcx>),
+    Generator(LocalDefId, SubstsRef<'tcx>, hir::Movability),
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]

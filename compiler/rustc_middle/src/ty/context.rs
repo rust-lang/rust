@@ -570,7 +570,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: FxHashMap<DefId, Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
+    pub closure_fake_reads: FxHashMap<LocalDefId, Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
@@ -589,7 +589,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
-    pub closure_size_eval: FxHashMap<DefId, ClosureSizeProfileData<'tcx>>,
+    pub closure_size_eval: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -811,7 +811,7 @@ impl<'tcx> TypeckResults<'tcx> {
     /// by the closure.
     pub fn closure_min_captures_flattened(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
         self.closure_min_captures
             .get(&closure_def_id)

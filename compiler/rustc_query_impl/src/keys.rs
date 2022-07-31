@@ -191,6 +191,16 @@ impl Key for (LocalDefId, DefId) {
     }
 }
 
+impl Key for (LocalDefId, LocalDefId) {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 impl Key for (DefId, Option<Ident>) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {

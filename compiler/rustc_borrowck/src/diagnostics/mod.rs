@@ -5,9 +5,9 @@ use rustc_const_eval::util::{call_kind, CallDesugaringKind};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefId;
 use rustc_hir::GeneratorKind;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
     Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
@@ -15,6 +15,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
@@ -41,7 +42,6 @@ pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 pub(crate) use region_name::{RegionName, RegionNameSource};
 pub(crate) use rustc_const_eval::util::CallKind;
-use rustc_middle::mir::tcx::PlaceTy;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
@@ -325,10 +325,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // so it's safe to call `expect_local`.
                     //
                     // We know the field exists so it's safe to call operator[] and `unwrap` here.
+                    let def_id = def_id.expect_local();
                     let var_id = self
                         .infcx
                         .tcx
-                        .typeck(def_id.expect_local())
+                        .typeck(def_id)
                         .closure_min_captures_flattened(def_id)
                         .nth(field.index())
                         .unwrap()
@@ -715,12 +716,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) = stmt.kind {
-            match kind {
-                box AggregateKind::Closure(def_id, _)
-                | box AggregateKind::Generator(def_id, _, _) => {
+            match **kind {
+                AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
                     debug!("move_spans: def_id={:?} places={:?}", def_id, places);
                     if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
-                        self.closure_span(*def_id, moved_place, places)
+                        self.closure_span(def_id, moved_place, places)
                     {
                         return ClosureUse {
                             generator_kind,
@@ -847,7 +847,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) =
                 stmt.kind
             {
-                let (def_id, is_generator) = match kind {
+                let (&def_id, is_generator) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
                     box AggregateKind::Generator(def_id, _, _) => (def_id, true),
                     _ => continue,
@@ -858,7 +858,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     def_id, is_generator, places
                 );
                 if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
-                    self.closure_span(*def_id, Place::from(target).as_ref(), places)
+                    self.closure_span(def_id, Place::from(target).as_ref(), places)
                 {
                     return ClosureUse { generator_kind, args_span, capture_kind_span, path_span };
                 } else {
@@ -879,7 +879,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// The second span is the location the use resulting in the captured path of the capture
     fn closure_span(
         &self,
-        def_id: DefId,
+        def_id: LocalDefId,
         target_place: PlaceRef<'tcx>,
         places: &[Operand<'tcx>],
     ) -> Option<(Span, Option<GeneratorKind>, Span, Span)> {
@@ -887,17 +887,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let local_did = def_id.as_local()?;
-        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(local_did);
+        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(def_id);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
-            for (captured_place, place) in self
-                .infcx
-                .tcx
-                .typeck(def_id.expect_local())
-                .closure_min_captures_flattened(def_id)
-                .zip(places)
+            for (captured_place, place) in
+                self.infcx.tcx.typeck(def_id).closure_min_captures_flattened(def_id).zip(places)
             {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
