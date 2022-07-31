@@ -94,14 +94,6 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
             // We'll try to suggest constraining type parameters to fulfill the requirements of
             // their `Copy` implementation.
-            let mut generics = None;
-            if let ty::Adt(def, _substs) = self_type.kind() {
-                let self_def_id = def.did();
-                if let Some(local) = self_def_id.as_local() {
-                    let self_item = tcx.hir().expect_item(local);
-                    generics = self_item.kind.generics();
-                }
-            }
             let mut errors: BTreeMap<_, Vec<_>> = Default::default();
             let mut bounds = vec![];
 
@@ -163,16 +155,14 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                     &format!("the `Copy` impl for `{}` requires that `{}`", ty, error_predicate),
                 );
             }
-            if let Some(generics) = generics {
-                suggest_constraining_type_params(
-                    tcx,
-                    generics,
-                    &mut err,
-                    bounds.iter().map(|(param, constraint, def_id)| {
-                        (param.as_str(), constraint.as_str(), *def_id)
-                    }),
-                );
-            }
+            suggest_constraining_type_params(
+                tcx,
+                tcx.hir().get_generics(impl_did).expect("impls always have generics"),
+                &mut err,
+                bounds.iter().map(|(param, constraint, def_id)| {
+                    (param.as_str(), constraint.as_str(), *def_id)
+                }),
+            );
             err.emit();
         }
         Err(CopyImplementationError::NotAnAdt) => {
