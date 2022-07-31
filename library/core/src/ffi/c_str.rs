@@ -2,6 +2,7 @@ use crate::ascii;
 use crate::cmp::Ordering;
 use crate::ffi::c_char;
 use crate::fmt::{self, Write};
+use crate::intrinsics;
 use crate::ops;
 use crate::slice;
 use crate::slice::memchr;
@@ -384,21 +385,41 @@ impl CStr {
     #[must_use]
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
+    #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // We're in a const fn, so this is the best we can do
-        debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
-        // SAFETY: Calling an inner function with the same prerequisites.
-        unsafe { Self::_from_bytes_with_nul_unchecked(bytes) }
-    }
+        fn rt_impl(bytes: &[u8]) -> &CStr {
+            // Chance at catching some UB at runtime with debug builds.
+            debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
 
-    #[inline]
-    const unsafe fn _from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // SAFETY: Casting to CStr is safe because its internal representation
-        // is a [u8] too (safe only inside std).
-        // Dereferencing the obtained pointer is safe because it comes from a
-        // reference. Making a reference is then safe because its lifetime
-        // is bound by the lifetime of the given `bytes`.
-        unsafe { &*(bytes as *const [u8] as *const CStr) }
+            // SAFETY: Casting to CStr is safe because its internal representation
+            // is a [u8] too (safe only inside std).
+            // Dereferencing the obtained pointer is safe because it comes from a
+            // reference. Making a reference is then safe because its lifetime
+            // is bound by the lifetime of the given `bytes`.
+            unsafe { &*(bytes as *const [u8] as *const CStr) }
+        }
+
+        const fn const_impl(bytes: &[u8]) -> &CStr {
+            // Saturating so that an empty slice panics in the assert with a good
+            // message, not here due to underflow.
+            let mut i = bytes.len().saturating_sub(1);
+            assert!(!bytes.is_empty() && bytes[i] == 0, "input was not nul-terminated");
+
+            // Ending null byte exists, skip to the rest.
+            while i != 0 {
+                i -= 1;
+                let byte = bytes[i];
+                assert!(byte != 0, "input contained interior nul");
+            }
+
+            // SAFETY: See `rt_impl` cast.
+            unsafe { &*(bytes as *const [u8] as *const CStr) }
+        }
+
+        // SAFETY: The const and runtime versions have identical behavior
+        // unless the safety contract of `from_bytes_with_nul_unchecked` is
+        // violated, which is UB.
+        unsafe { intrinsics::const_eval_select((bytes,), const_impl, rt_impl) }
     }
 
     /// Returns the inner pointer to this C string.
