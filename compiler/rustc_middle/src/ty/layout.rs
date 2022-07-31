@@ -240,7 +240,11 @@ fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLa
         ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> + 'a {
             (0..layout.layout.fields().count()).filter_map(|i| {
                 let field = layout.field(cx, i);
-                let zst = field.is_zst() && field.align.abi.bytes() == 1;
+                // Also checking `align == 1` here leads to test failures in
+                // `layout/zero-sized-array-union.rs`, where a type has a zero-size field with
+                // alignment 4 that still gets ignored during layout computation (which is okay
+                // since other fields already force alignment 4).
+                let zst = field.is_zst();
                 (!zst).then(|| (layout.fields.offset(i), field))
             })
         }
@@ -327,11 +331,109 @@ fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLa
                                 field.align.abi, align,
                                 "`Scalar` field with bad align in {inner:#?}",
                             );
+                            assert!(
+                                matches!(field.abi, Abi::Scalar(_)),
+                                "`Scalar` field with bad ABI in {inner:#?}",
+                            );
                         }
                         _ => {
                             panic!("`Scalar` layout for non-primitive non-enum type {}", inner.ty);
                         }
                     }
+                }
+                Abi::ScalarPair(scalar1, scalar2) => {
+                    // Sanity-check scalar pairs. These are a bit more flexible and support
+                    // padding, but we can at least ensure both fields actually fit into the layout
+                    // and the alignment requirement has not been weakened.
+                    let size1 = scalar1.size(cx);
+                    let align1 = scalar1.align(cx).abi;
+                    let size2 = scalar2.size(cx);
+                    let align2 = scalar2.align(cx).abi;
+                    assert!(
+                        layout.layout.align().abi >= cmp::max(align1, align2),
+                        "alignment mismatch between ABI and layout in {layout:#?}",
+                    );
+                    let field2_offset = size1.align_to(align2);
+                    assert!(
+                        layout.layout.size() >= field2_offset + size2,
+                        "size mismatch between ABI and layout in {layout:#?}"
+                    );
+                    // Check that the underlying pair of fields matches.
+                    let inner = skip_newtypes(cx, layout);
+                    assert!(
+                        matches!(inner.layout.abi(), Abi::ScalarPair(..)),
+                        "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
+                        layout.ty,
+                        inner.ty
+                    );
+                    if matches!(inner.layout.variants(), Variants::Multiple { .. }) {
+                        // FIXME: ScalarPair for enums is enormously complicated and it is very hard
+                        // to check anything about them.
+                        return;
+                    }
+                    match inner.layout.fields() {
+                        FieldsShape::Arbitrary { .. } => {
+                            // Checked below.
+                        }
+                        FieldsShape::Union(..) => {
+                            // FIXME: I guess we could also check something here? Like, look at all fields?
+                            return;
+                        }
+                        _ => {
+                            panic!("`ScalarPair` layout with unexpected field shape in {inner:#?}");
+                        }
+                    }
+                    let mut fields = non_zst_fields(cx, &inner);
+                    let (offset1, field1) = fields.next().unwrap_or_else(|| {
+                        panic!("`ScalarPair` layout for type with not even one non-ZST field: {inner:#?}")
+                    });
+                    let (offset2, field2) = fields.next().unwrap_or_else(|| {
+                        panic!("`ScalarPair` layout for type with less than two non-ZST fields: {inner:#?}")
+                    });
+                    assert!(
+                        fields.next().is_none(),
+                        "`ScalarPair` layout for type with at least three non-ZST fields: {inner:#?}"
+                    );
+                    // The fields might be in opposite order.
+                    let (offset1, field1, offset2, field2) = if offset1 <= offset2 {
+                        (offset1, field1, offset2, field2)
+                    } else {
+                        (offset2, field2, offset1, field1)
+                    };
+                    // The fields should be at the right offset, and match the `scalar` layout.
+                    assert_eq!(
+                        offset1,
+                        Size::ZERO,
+                        "`ScalarPair` first field at non-0 offset in {inner:#?}",
+                    );
+                    assert_eq!(
+                        field1.size, size1,
+                        "`ScalarPair` first field with bad size in {inner:#?}",
+                    );
+                    assert_eq!(
+                        field1.align.abi, align1,
+                        "`ScalarPair` first field with bad align in {inner:#?}",
+                    );
+                    assert!(
+                        matches!(field1.abi, Abi::Scalar(_)),
+                        "`ScalarPair` first field with bad ABI in {inner:#?}",
+                    );
+                    assert_eq!(
+                        offset2, field2_offset,
+                        "`ScalarPair` second field at bad offset in {inner:#?}",
+                    );
+                    assert_eq!(
+                        field2.size, size2,
+                        "`ScalarPair` second field with bad size in {inner:#?}",
+                    );
+                    assert_eq!(
+                        field2.align.abi, align2,
+                        "`ScalarPair` second field with bad align in {inner:#?}",
+                    );
+                    assert!(
+                        matches!(field2.abi, Abi::Scalar(_)),
+                        "`ScalarPair` second field with bad ABI in {inner:#?}",
+                    );
                 }
                 Abi::Vector { count, element } => {
                     // No padding in vectors. Alignment can be strengthened, though.
@@ -343,22 +445,6 @@ fn sanity_check_layout<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLa
                     assert_eq!(
                         layout.layout.size(),
                         size.align_to(cx.data_layout().vector_align(size).abi),
-                        "size mismatch between ABI and layout in {layout:#?}"
-                    );
-                }
-                Abi::ScalarPair(scalar1, scalar2) => {
-                    // Sanity-check scalar pairs. These are a bit more flexible and support
-                    // padding, but we can at least ensure both fields actually fit into the layout
-                    // and the alignment requirement has not been weakened.
-                    let align1 = scalar1.align(cx).abi;
-                    let align2 = scalar2.align(cx).abi;
-                    assert!(
-                        layout.layout.align().abi >= cmp::max(align1, align2),
-                        "alignment mismatch between ABI and layout in {layout:#?}",
-                    );
-                    let field2_offset = scalar1.size(cx).align_to(align2);
-                    assert!(
-                        layout.layout.size() >= field2_offset + scalar2.size(cx),
                         "size mismatch between ABI and layout in {layout:#?}"
                     );
                 }
