@@ -2257,19 +2257,13 @@ fn clean_type_binding<'tcx>(
 ) -> TypeBinding {
     TypeBinding {
         assoc: PathSegment { name: type_binding.ident.name, args: type_binding.gen_args.clean(cx) },
-        kind: type_binding.kind.clean(cx),
-    }
-}
-
-impl<'tcx> Clean<'tcx, TypeBindingKind> for hir::TypeBindingKind<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> TypeBindingKind {
-        match *self {
+        kind: match type_binding.kind {
             hir::TypeBindingKind::Equality { ref term } => {
                 TypeBindingKind::Equality { term: clean_hir_term(term, cx) }
             }
             hir::TypeBindingKind::Constraint { bounds } => TypeBindingKind::Constraint {
                 bounds: bounds.iter().filter_map(|b| b.clean(cx)).collect(),
             },
-        }
+        },
     }
 }
