@@ -2,8 +2,7 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use rustc_attr::{
-    self as attr, ConstStability, DefaultBodyStability, Stability, StabilityLevel, Unstable,
-    UnstableReason,
+    self as attr, ConstStability, Stability, StabilityLevel, Unstable, UnstableReason,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
@@ -91,7 +90,6 @@ struct Annotator<'a, 'tcx> {
     index: &'a mut Index,
     parent_stab: Option<Stability>,
     parent_const_stab: Option<ConstStability>,
-    parent_body_stab: Option<DefaultBodyStability>,
     parent_depr: Option<DeprecationEntry>,
     in_trait_impl: bool,
 }
@@ -159,7 +157,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
                 None,
                 None,
-                None,
                 visit_children,
             );
             return;
@@ -213,14 +210,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        let body_stab = body_stab.map(|(body_stab, _span)| {
+        if let Some((body_stab, _span)) = body_stab {
             // FIXME: check that this item can have body stability
 
             self.index.default_body_stab_map.insert(def_id, body_stab);
             debug!(?self.index.default_body_stab_map);
-
-            body_stab
-        });
+        }
 
         let stab = stab.map(|(stab, span)| {
             // Error if prohibited, or can't inherit anything from a container.
@@ -299,7 +294,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
             stab,
             if inherit_const_stability.yes() { const_stab } else { None },
-            body_stab,
             visit_children,
         );
     }
@@ -309,14 +303,12 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         depr: Option<DeprecationEntry>,
         stab: Option<Stability>,
         const_stab: Option<ConstStability>,
-        body_stab: Option<DefaultBodyStability>,
         f: impl FnOnce(&mut Self),
     ) {
         // These will be `Some` if this item changes the corresponding stability attribute.
         let mut replaced_parent_depr = None;
         let mut replaced_parent_stab = None;
         let mut replaced_parent_const_stab = None;
-        let mut replaced_parent_body_stab = None;
 
         if let Some(depr) = depr {
             replaced_parent_depr = Some(replace(&mut self.parent_depr, Some(depr)));
@@ -327,9 +319,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some(const_stab) = const_stab {
             replaced_parent_const_stab =
                 Some(replace(&mut self.parent_const_stab, Some(const_stab)));
-        }
-        if let Some(body_stab) = body_stab {
-            replaced_parent_body_stab = Some(self.parent_body_stab.replace(body_stab));
         }
 
         f(self);
@@ -342,9 +331,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
         if let Some(orig_parent_const_stab) = replaced_parent_const_stab {
             self.parent_const_stab = orig_parent_const_stab;
-        }
-        if let Some(orig_parent_body_stab) = replaced_parent_body_stab {
-            self.parent_body_stab = orig_parent_body_stab;
         }
     }
 }
@@ -646,7 +632,6 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             index: &mut index,
             parent_stab: None,
             parent_const_stab: None,
-            parent_body_stab: None,
             parent_depr: None,
             in_trait_impl: false,
         };
