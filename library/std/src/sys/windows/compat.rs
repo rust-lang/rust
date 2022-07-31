@@ -251,7 +251,7 @@ macro_rules! compat_fn_optional {
             pub fn option() -> Option<F> {
                 let mut func = NonNull::new(PTR.load(Ordering::Relaxed));
                 if func.is_none() {
-                    Module::new($module).map(preload);
+                    unsafe { Module::new($module).map(preload) };
                     func = NonNull::new(PTR.load(Ordering::Relaxed));
                 }
                 unsafe {
