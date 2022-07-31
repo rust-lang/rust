@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, ty_sig, variant_of_res};
-use clippy_utils::{get_parent_expr, is_lint_allowed, path_to_local, walk_to_expr_usage};
+use clippy_utils::{get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, path_to_local, walk_to_expr_usage};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -699,6 +699,19 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                 Some(ty_auto_deref_stability(cx, output, precedence).position_for_result(cx))
             },
 
+            Node::ExprField(field) if field.span.ctxt() == ctxt => match get_parent_expr_for_hir(cx, field.hir_id) {
+                Some(Expr {
+                    hir_id,
+                    kind: ExprKind::Struct(path, ..),
+                    ..
+                }) => variant_of_res(cx, cx.qpath_res(path, *hir_id))
+                    .and_then(|variant| variant.fields.iter().find(|f| f.name == field.ident.name))
+                    .map(|field_def| {
+                        ty_auto_deref_stability(cx, cx.tcx.type_of(field_def.did), precedence).position_for_arg()
+                    }),
+                _ => None,
+            },
+
             Node::Expr(parent) if parent.span.ctxt() == ctxt => match parent.kind {
                 ExprKind::Ret(_) => {
                     let owner_id = cx.tcx.hir().body_owner(cx.enclosing_body.unwrap());
@@ -787,17 +800,6 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                             .position_for_arg()
                         }
                     })
-                },
-                ExprKind::Struct(path, fields, _) => {
-                    let variant = variant_of_res(cx, cx.qpath_res(path, parent.hir_id));
-                    fields
-                        .iter()
-                        .find(|f| f.expr.hir_id == child_id)
-                        .zip(variant)
-                        .and_then(|(field, variant)| variant.fields.iter().find(|f| f.name == field.ident.name))
-                        .map(|field| {
-                            ty_auto_deref_stability(cx, cx.tcx.type_of(field.did), precedence).position_for_arg()
-                        })
                 },
                 ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess(name.name)),
                 ExprKind::Unary(UnOp::Deref, child) if child.hir_id == e.hir_id => Some(Position::Deref),
