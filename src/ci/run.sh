@@ -43,7 +43,7 @@ else
     PYTHON="python2"
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
+if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
 fi
