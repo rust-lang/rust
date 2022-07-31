@@ -363,11 +363,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            let compatible_variants: Vec<(String, Option<String>)> = expected_adt
+            let compatible_variants: Vec<(String, _, _, Option<String>)> = expected_adt
                 .variants()
                 .iter()
                 .filter(|variant| {
-                    variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                    variant.fields.len() == 1
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.fields[0];
@@ -391,9 +391,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
                         {
-                            return Some((path.to_string(), note_about_variant_field_privacy));
+                            return Some((path.to_string(), variant.ctor_kind, sole_field.name, note_about_variant_field_privacy));
                         }
-                        Some((variant_path, note_about_variant_field_privacy))
+                        Some((variant_path, variant.ctor_kind, sole_field.name, note_about_variant_field_privacy))
                     } else {
                         None
                     }
@@ -405,9 +405,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None => String::new(),
             };
 
+            fn brackets_for(
+                ctor: hir::def::CtorKind,
+                field_name: Symbol,
+            ) -> (String, &'static str) {
+                match ctor {
+                    hir::def::CtorKind::Fn => ("(".to_owned(), ")"),
+                    hir::def::CtorKind::Fictive => (format!(" {{ {field_name}: "), " }"),
+                    hir::def::CtorKind::Const => unreachable!(),
+                }
+            }
+
             match &compatible_variants[..] {
                 [] => { /* No variants to format */ }
-                [(variant, note)] => {
+                [(variant, ctor_kind, field_name, note)] => {
+                    let (open, close) = brackets_for(*ctor_kind, *field_name);
+
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
                         &format!(
@@ -415,8 +428,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             note = note.as_deref().unwrap_or("")
                         ),
                         vec![
-                            (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
-                            (expr.span.shrink_to_hi(), ")".to_string()),
+                            (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
+                            (expr.span.shrink_to_hi(), close.to_owned()),
                         ],
                         Applicability::MaybeIncorrect,
                     );
@@ -428,12 +441,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "try wrapping the expression in a variant of `{}`",
                             self.tcx.def_path_str(expected_adt.did())
                         ),
-                        compatible_variants.into_iter().map(|(variant, _)| {
-                            vec![
-                                (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
-                                (expr.span.shrink_to_hi(), ")".to_string()),
-                            ]
-                        }),
+                        compatible_variants.into_iter().map(
+                            |(variant, ctor_kind, field_name, _)| {
+                                let (open, close) = brackets_for(ctor_kind, field_name);
+
+                                vec![
+                                    (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
+                                    (expr.span.shrink_to_hi(), close.to_owned()),
+                                ]
+                            },
+                        ),
                         Applicability::MaybeIncorrect,
                     );
                 }
