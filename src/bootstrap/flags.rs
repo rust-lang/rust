@@ -115,7 +115,6 @@ pub enum Subcommand {
         compare_mode: Option<String>,
         pass: Option<String>,
         run: Option<String>,
-        skip: Vec<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -568,7 +567,6 @@ Arguments:
                 compare_mode: matches.opt_str("compare-mode"),
                 pass: matches.opt_str("pass"),
                 run: matches.opt_str("run"),
-                skip: matches.opt_strs("skip"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -706,16 +704,6 @@ impl Subcommand {
 
     pub fn test_args(&self) -> Vec<&str> {
         let mut args = vec![];
-
-        match *self {
-            Subcommand::Test { ref skip, .. } => {
-                for s in skip {
-                    args.push("--skip");
-                    args.push(s.as_str());
-                }
-            }
-            _ => (),
-        };
 
         match *self {
             Subcommand::Test { ref test_args, .. } | Subcommand::Bench { ref test_args, .. } => {
