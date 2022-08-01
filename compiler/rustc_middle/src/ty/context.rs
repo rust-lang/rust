@@ -1459,11 +1459,11 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         format!(
-            "{}[{}]{}",
+            "{}[{:04x}]{}",
             crate_name,
             // Don't print the whole stable crate id. That's just
             // annoying in debug output.
-            &(format!("{:08x}", stable_crate_id.to_u64()))[..4],
+            stable_crate_id.to_u64() >> 8 * 6,
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
