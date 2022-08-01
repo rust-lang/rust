@@ -479,7 +479,7 @@ You can follow instructions for installing <<rust-analyzer-language-server-binar
 == Troubleshooting
 
 Start with looking at the rust-analyzer version.
-Try **Rust Analyzer: Show RA Version** in VS Code (using **Command Palette** feature typically activated by Ctrl+Shift+P) or `rust-analyzer --version` in the command line.
+Try **rust-analyzer: Show RA Version** in VS Code (using **Command Palette** feature typically activated by Ctrl+Shift+P) or `rust-analyzer --version` in the command line.
 If the date is more than a week ago, it's better to update rust-analyzer version.
 
 The next thing to check would be panic messages in rust-analyzer's log.
@@ -492,7 +492,7 @@ To fully capture LSP messages between the editor and the server, set `"rust-anal
 The root cause for many "`nothing works`" problems is that rust-analyzer fails to understand the project structure.
 To debug that, first note the `rust-analyzer` section in the status bar.
 If it has an error icon and red, that's the problem (hover will have somewhat helpful error message).
-**Rust Analyzer: Status** prints dependency information for the current file.
+**rust-analyzer: Status** prints dependency information for the current file.
 Finally, `RA_LOG=project_model=debug` enables verbose logs during project loading.
 
 If rust-analyzer outright crashes, try running `rust-analyzer analysis-stats /path/to/project/directory/` on the command line.

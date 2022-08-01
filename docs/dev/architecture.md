@@ -371,7 +371,7 @@ That is, rust-analyzer requires unwinding.
 
 ### Testing
 
-Rust Analyzer has three interesting [system boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html) to concentrate tests on.
+rust-analyzer has three interesting [system boundaries](https://www.tedinski.com/2018/04/10/making-tests-a-positive-influence-on-design.html) to concentrate tests on.
 
 The outermost boundary is the `rust-analyzer` crate, which defines an LSP interface in terms of stdio.
 We do integration testing of this component, by feeding it with a stream of LSP requests and checking responses.

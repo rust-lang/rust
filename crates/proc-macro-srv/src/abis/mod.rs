@@ -5,7 +5,7 @@
 //! compiler into submodules of this module (e.g proc_macro_srv::abis::abi_1_47).
 //!
 //! All of these ABIs are subsumed in the `Abi` enum, which exposes a simple
-//! interface the rest of rust analyzer can use to talk to the macro
+//! interface the rest of rust-analyzer can use to talk to the macro
 //! provider.
 //!
 //! # Adding a new ABI

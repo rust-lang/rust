@@ -28,7 +28,7 @@ pub struct JoinLinesConfig {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Join lines**
+// | VS Code | **rust-analyzer: Join lines**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113020661-b6922200-917a-11eb-87c4-b75acc028f11.gif[]
