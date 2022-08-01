@@ -1548,12 +1548,13 @@ impl<T: ?Sized> *mut T {
     /// # fn foo(n: usize) {
     /// # use std::mem::align_of;
     /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = x.as_ptr().add(n) as *const u8;
+    /// let mut x = [5u8, 6, 7, 8, 9];
+    /// let ptr = x.as_mut_ptr().add(n);
     /// let offset = ptr.align_offset(align_of::<u16>());
     /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *const u16;
+    ///     let u16_ptr = ptr.add(offset) as *mut u16;
     ///     assert_ne!(*u16_ptr, 500);
+    ///     *u16_ptr = 0;
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
