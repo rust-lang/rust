@@ -165,7 +165,7 @@ fn compare_predicate_entailment<'tcx>(
 
     // Create mapping from trait to placeholder.
     let trait_to_placeholder_substs =
-        impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container.id(), trait_to_impl_substs);
+        impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container_id(tcx), trait_to_impl_substs);
     debug!("compare_impl_method: trait_to_placeholder_substs={:?}", trait_to_placeholder_substs);
 
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
@@ -511,8 +511,8 @@ fn compare_self_type<'tcx>(
 
     let self_string = |method: &ty::AssocItem| {
         let untransformed_self_ty = match method.container {
-            ty::ImplContainer(_) => impl_trait_ref.self_ty(),
-            ty::TraitContainer(_) => tcx.types.self_param,
+            ty::ImplContainer => impl_trait_ref.self_ty(),
+            ty::TraitContainer => tcx.types.self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).input(0);
         let param_env = ty::ParamEnv::reveal_all();
@@ -1194,7 +1194,7 @@ fn compare_type_predicate_entailment<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
     let trait_to_impl_substs =
-        impl_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
+        impl_substs.rebase_onto(tcx, impl_ty.container_id(tcx), impl_trait_ref.substs);
 
     let impl_ty_generics = tcx.generics_of(impl_ty.def_id);
     let trait_ty_generics = tcx.generics_of(trait_ty.def_id);
@@ -1390,9 +1390,9 @@ pub fn check_type_bounds<'tcx>(
     });
     let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
     let impl_ty_substs = tcx.intern_substs(&substs);
+    let container_id = impl_ty.container_id(tcx);
 
-    let rebased_substs =
-        impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
+    let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
     let impl_ty_value = tcx.type_of(impl_ty.def_id);
 
     let param_env = tcx.param_env(impl_ty.def_id);
@@ -1441,8 +1441,7 @@ pub fn check_type_bounds<'tcx>(
     debug!(?normalize_param_env);
 
     let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
-    let rebased_substs =
-        impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
+    let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
         let ocx = ObligationCtxt::new(&infcx);
@@ -1505,10 +1504,13 @@ pub fn check_type_bounds<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let implied_bounds = match impl_ty.container {
-            ty::TraitContainer(_) => FxHashSet::default(),
-            ty::ImplContainer(def_id) => {
-                wfcheck::impl_implied_bounds(tcx, param_env, def_id.expect_local(), impl_ty_span)
-            }
+            ty::TraitContainer => FxHashSet::default(),
+            ty::ImplContainer => wfcheck::impl_implied_bounds(
+                tcx,
+                param_env,
+                container_id.expect_local(),
+                impl_ty_span,
+            ),
         };
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(&infcx, implied_bounds, impl_ty_hir_id);

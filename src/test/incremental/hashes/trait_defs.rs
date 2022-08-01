@@ -277,22 +277,22 @@ trait TraitChangeMethodParametersOrder {
 // Add default implementation to method
 #[cfg(any(cfail1,cfail4))]
 trait TraitAddMethodAutoImplementation {
-    // -----------------------------------------------------------------------------
+    // -------------------------------------------------------------
     // -------------------------
-    // -----------------------------------------------------------------------------
+    // -------------------------------------------------------------
     // -------------------------
     fn method()  ;
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddMethodAutoImplementation {
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn method() {}
 }
@@ -795,20 +795,24 @@ trait TraitAddLifetimeBoundToAssociatedType<'a> {
 // Add default to associated type
 #[cfg(any(cfail1,cfail4))]
 trait TraitAddDefaultToAssociatedType {
-    type Associated;
+    //--------------------------------------------------------------
+    //--------------------------
+    //--------------------------------------------------------------
+    //--------------------------
+    type Associated                 ;
 
     fn method();
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddDefaultToAssociatedType {
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     type Associated = ReferenceType0;
 
@@ -839,20 +843,28 @@ trait TraitAddAssociatedConstant {
 // Add initializer to associated constant
 #[cfg(any(cfail1,cfail4))]
 trait TraitAddInitializerToAssociatedConstant {
-    const Value: u32;
+    //--------------------------------------------------------------
+    //--------------------------
+    //--------------------------------------------------------------
+    //--------------------------
+    const Value: u32    ;
 
+    //--------------------------
+    //--------------------------
+    //--------------------------
+    //--------------------------
     fn method();
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddInitializerToAssociatedConstant {
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     const Value: u32 = 1;
 

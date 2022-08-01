@@ -281,7 +281,7 @@ fn resolve_associated_item<'tcx>(
             }
 
             // If the item does not have a value, then we cannot return an instance.
-            if !leaf_def.item.defaultness.has_value() {
+            if !leaf_def.item.defaultness(tcx).has_value() {
                 return Ok(None);
             }
 

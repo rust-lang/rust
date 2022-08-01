@@ -1141,7 +1141,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .or_else(|| find_item_of_kind(ty::AssocKind::Const))
             .expect("missing associated type");
 
-        if !assoc_item.vis.is_accessible_from(def_scope, tcx) {
+        if !assoc_item.visibility(tcx).is_accessible_from(def_scope, tcx) {
             tcx.sess
                 .struct_span_err(
                     binding.span,
@@ -1160,7 +1160,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
-                        def_path: tcx.def_path_str(assoc_item.container.id()),
+                        def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
                     });
                 })
                 .or_insert(binding.span);
@@ -1997,7 +1997,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let ty = self.normalize_ty(span, ty);
 
         let kind = DefKind::AssocTy;
-        if !item.vis.is_accessible_from(def_scope, tcx) {
+        if !item.visibility(tcx).is_accessible_from(def_scope, tcx) {
             let kind = kind.descr(item.def_id);
             let msg = format!("{} `{}` is private", kind, assoc_ident);
             tcx.sess

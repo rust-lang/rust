@@ -673,7 +673,7 @@ impl<T> Trait<T> for X {
             // the associated type or calling a method that returns the associated type".
             let point_at_assoc_fn = self.point_at_methods_that_satisfy_associated_type(
                 diag,
-                assoc.container.id(),
+                assoc.container_id(self),
                 current_method_ident,
                 proj_ty.item_def_id,
                 values.expected,
@@ -844,7 +844,8 @@ fn foo(&self) -> Self::T { String::new() }
                         hir::AssocItemKind::Type => {
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
-                            if let hir::Defaultness::Default { has_value: true } = item.defaultness
+                            if let hir::Defaultness::Default { has_value: true } =
+                                self.impl_defaultness(item.id.def_id)
                             {
                                 if self.type_of(item.id.def_id) == found {
                                     diag.span_label(

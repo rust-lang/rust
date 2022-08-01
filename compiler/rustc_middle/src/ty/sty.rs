@@ -1179,13 +1179,14 @@ pub struct ProjectionTy<'tcx> {
     /// The `DefId` of the `TraitItem` for the associated type `N`.
     ///
     /// Note that this is not the `DefId` of the `TraitRef` containing this
-    /// associated type, which is in `tcx.associated_item(item_def_id).container`.
+    /// associated type, which is in `tcx.associated_item(item_def_id).container`,
+    /// aka. `tcx.parent(item_def_id).unwrap()`.
     pub item_def_id: DefId,
 }
 
 impl<'tcx> ProjectionTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        tcx.associated_item(self.item_def_id).container.id()
+        tcx.parent(self.item_def_id)
     }
 
     /// Extracts the underlying trait reference and own substs from this projection.
@@ -1195,7 +1196,7 @@ impl<'tcx> ProjectionTy<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        let def_id = tcx.parent(self.item_def_id);
         let trait_generics = tcx.generics_of(def_id);
         (
             ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, trait_generics) },
@@ -1433,7 +1434,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// then this function would return an `exists T. T: Iterator` existential trait
     /// reference.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
-        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        let def_id = tcx.parent(self.item_def_id);
         let subst_count = tcx.generics_of(def_id).count() - 1;
         let substs = tcx.intern_substs(&self.substs[..subst_count]);
         ty::ExistentialTraitRef { def_id, substs }

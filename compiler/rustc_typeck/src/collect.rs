@@ -1234,7 +1234,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !item.defaultness.has_value() {
+                        if !tcx.impl_defaultness(item.id.def_id).has_value() {
                             tcx.sess
                                 .struct_span_err(
                                     item.span,
@@ -2433,7 +2433,7 @@ fn explicit_predicates_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::Generic
             //   supertrait).
             if let ty::Projection(projection) = ty.kind() {
                 projection.substs == trait_identity_substs
-                    && tcx.associated_item(projection.item_def_id).container.id() == def_id
+                    && tcx.associated_item(projection.item_def_id).container_id(tcx) == def_id
             } else {
                 false
             }
@@ -3264,7 +3264,7 @@ fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<S
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(impl_item) = tcx.opt_associated_item(def_id)
-        && let ty::AssocItemContainer::ImplContainer(_) = impl_item.container
+        && let ty::AssocItemContainer::ImplContainer = impl_item.container
         && let Some(trait_item) = impl_item.trait_item_def_id
     {
         return tcx

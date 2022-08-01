@@ -1668,8 +1668,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Checks if the bound region is in Impl Item.
     pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
-        let container_id =
-            self.associated_item(suitable_region_binding_scope.to_def_id()).container.id();
+        let container_id = self.parent(suitable_region_binding_scope.to_def_id());
         if self.impl_trait_ref(container_id).is_some() {
             // For now, we do not try to target impls of traits. This is
             // because this message is going to suggest that the user

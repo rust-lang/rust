@@ -234,7 +234,7 @@ impl UrlFragment {
             &UrlFragment::Item(def_id) => {
                 let kind = match tcx.def_kind(def_id) {
                     DefKind::AssocFn => {
-                        if tcx.associated_item(def_id).defaultness.has_value() {
+                        if tcx.impl_defaultness(def_id).has_value() {
                             "method."
                         } else {
                             "tymethod."

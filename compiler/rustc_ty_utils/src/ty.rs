@@ -70,11 +70,13 @@ fn sized_constraint_for_ty<'tcx>(
 }
 
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    if let hir::ItemKind::Impl(impl_) = &item.kind {
-        impl_.defaultness
-    } else {
-        bug!("`impl_defaultness` called on {:?}", item);
+    match tcx.hir().get_by_def_id(def_id.expect_local()) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
+        hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
+        | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
+        node => {
+            bug!("`impl_defaultness` called on {:?}", node);
+        }
     }
 }
 

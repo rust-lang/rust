@@ -3,7 +3,7 @@ use crate::astconv::AstConv;
 use rustc_hir as hir;
 use rustc_infer::traits::util;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
@@ -30,7 +30,7 @@ fn associated_type_bounds<'tcx>(
     // Associated types are implicitly sized unless a `?Sized` bound is found
     <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, ast_bounds, None, span);
 
-    let trait_def_id = tcx.associated_item(assoc_item_def_id).container.id();
+    let trait_def_id = tcx.parent(assoc_item_def_id);
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id.expect_local());
 
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {

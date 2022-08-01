@@ -231,7 +231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::AllTraits,
             ) {
                 // If we find a different result the caller probably forgot to import a trait.
-                Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container.id()],
+                Ok(ref new_pick) if *new_pick != pick => vec![new_pick.item.container_id(self.tcx)],
                 Err(Ambiguity(ref sources)) => sources
                     .iter()
                     .filter_map(|source| {

@@ -358,7 +358,8 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {
-    assoc_item.defaultness.is_final() && tcx.impl_defaultness(assoc_item.container.id()).is_final()
+    assoc_item.defaultness(tcx).is_final()
+        && tcx.impl_defaultness(assoc_item.container_id(tcx)).is_final()
 }
 
 pub enum TupleArgumentsFlag {

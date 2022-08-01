@@ -1789,7 +1789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // We point at the method, but we just skip the rest of the check for arbitrary
                         // self types and rely on the suggestion to `use` the trait from
                         // `suggest_valid_traits`.
-                        let did = Some(pick.item.container.id());
+                        let did = Some(pick.item.container_id(self.tcx));
                         let skip = skippable.contains(&did);
                         if pick.autoderefs == 0 && !skip {
                             err.span_label(
@@ -1825,7 +1825,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )
                     {
                         debug!("try_alt_rcvr: pick candidate {:?}", pick);
-                        let did = Some(pick.item.container.id());
+                        let did = Some(pick.item.container_id(self.tcx));
                         // We don't want to suggest a container type when the missing
                         // method is `.clone()` or `.deref()` otherwise we'd suggest
                         // `Arc::new(foo).clone()`, which is far from what the user wants.
@@ -1937,7 +1937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             }
                             // We only want to suggest public or local traits (#45781).
-                            item.vis.is_public() || info.def_id.is_local()
+                            item.visibility(self.tcx).is_public() || info.def_id.is_local()
                         })
                         .is_some()
             })

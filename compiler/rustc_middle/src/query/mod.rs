@@ -1147,14 +1147,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Given an `associated_item`, find the trait it belongs to.
-    /// Return `None` if the `DefId` is not an associated item.
-    query trait_of_item(associated_item: DefId) -> Option<DefId> {
-        desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(associated_item) }
-        cache_on_disk_if { associated_item.is_local() }
-        separate_provide_extern
-    }
-
     query is_ctfe_mir_available(key: DefId) -> bool {
         desc { |tcx| "checking if item has ctfe mir available: `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }

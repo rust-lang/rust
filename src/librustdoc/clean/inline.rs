@@ -439,7 +439,7 @@ pub(crate) fn build_impl(
                             .unwrap(); // corresponding associated item has to exist
                         !tcx.is_doc_hidden(trait_item.def_id)
                     } else {
-                        item.vis.is_public()
+                        item.visibility(tcx).is_public()
                     }
                 })
                 .map(|item| item.clean(cx))

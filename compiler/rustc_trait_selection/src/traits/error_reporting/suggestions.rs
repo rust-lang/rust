@@ -2714,7 +2714,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(ident) = self
                     .tcx
                     .opt_associated_item(trait_item_def_id)
-                    .and_then(|i| self.tcx.opt_item_ident(i.container.id()))
+                    .and_then(|i| self.tcx.opt_item_ident(i.container_id(self.tcx)))
                 {
                     assoc_span.push_span_label(ident.span, "in this trait");
                 }
