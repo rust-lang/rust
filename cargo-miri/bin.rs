@@ -548,14 +548,14 @@ path = "lib.rs"
     // Manage the output the user sees.
     if only_setup {
         // We want to be explicit.
-        eprintln!("Preparing a sysroot for Miri...");
+        eprintln!("Preparing a sysroot for Miri (target: {target})...");
         if print_sysroot {
             // Be extra sure there is no noise on stdout.
             command.stdout(process::Stdio::null());
         }
     } else {
         // We want to be quiet, but still let the user know that something is happening.
-        eprint!("Preparing a sysroot for Miri... ");
+        eprint!("Preparing a sysroot for Miri (target: {target})... ");
         command.stdout(process::Stdio::null());
         command.stderr(process::Stdio::null());
     }
