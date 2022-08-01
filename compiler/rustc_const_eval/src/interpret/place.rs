@@ -13,7 +13,7 @@ use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding, Vari
 use super::{
     alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckInAllocMsg,
     ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, OpTy, Operand,
-    Pointer, Provenance, Scalar, ScalarMaybeUninit,
+    Pointer, Provenance, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -254,8 +254,6 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
 // These are defined here because they produce a place.
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     #[inline(always)]
-    /// Note: do not call `as_ref` on the resulting place. This function should only be used to
-    /// read from the resulting mplace, not to get its address back.
     pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         match **self {
             Operand::Indirect(mplace) => {
@@ -267,8 +265,6 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    /// Note: do not call `as_ref` on the resulting place. This function should only be used to
-    /// read from the resulting mplace, not to get its address back.
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
         self.try_as_mplace().unwrap()
     }
@@ -312,7 +308,7 @@ where
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match **val {
             Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
-            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta.check_init()?)),
+            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta)),
             Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
         };
 
@@ -467,7 +463,7 @@ where
     #[inline(always)]
     pub fn write_scalar(
         &mut self,
-        val: impl Into<ScalarMaybeUninit<M::Provenance>>,
+        val: impl Into<Scalar<M::Provenance>>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
         self.write_immediate(Immediate::Scalar(val.into()), dest)
@@ -644,7 +640,7 @@ where
 
         // Let us see if the layout is simple so we take a shortcut,
         // avoid force_allocation.
-        let src = match self.read_immediate_raw(src, /*force*/ false)? {
+        let src = match self.read_immediate_raw(src)? {
             Ok(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 assert!(

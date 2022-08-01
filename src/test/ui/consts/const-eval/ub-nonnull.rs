@@ -31,7 +31,8 @@ union MaybeUninit<T: Copy> {
     init: T,
 }
 const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
 
 // Also test other uses of rustc_layout_scalar_valid_range_start
 
