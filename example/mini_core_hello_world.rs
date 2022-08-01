@@ -375,7 +375,7 @@ struct pthread_attr_t {
 }
 
 #[link(name = "pthread")]
-#[cfg(not(target_env="msvc"))]
+#[cfg(unix)]
 extern "C" {
     fn pthread_attr_init(attr: *mut pthread_attr_t) -> c_int;
 
@@ -399,14 +399,14 @@ type LPVOID = *mut c_void;
 type HANDLE = *mut c_void;
 
 #[link(name = "msvcrt")]
-#[cfg(target_env="msvc")]
+#[cfg(windows)]
 extern "C" {
     fn WaitForSingleObject(
         hHandle: LPVOID,
         dwMilliseconds: DWORD
     ) -> DWORD;
 
-    fn  CreateThread(
+    fn CreateThread(
         lpThreadAttributes: LPVOID, // Technically LPSECURITY_ATTRIBUTES, but we don't use it anyway
         dwStackSize: usize,
         lpStartAddress: extern "C" fn(_: *mut c_void) -> *mut c_void,
@@ -416,14 +416,16 @@ extern "C" {
     ) -> HANDLE;
 }
 
-enum Thread {
-    Windows(HANDLE),
-    Pthread(pthread_t)
+struct Thread {
+    #[cfg(windows)]
+    handle: HANDLE,
+    #[cfg(unix)]
+    handle: pthread_t,
 }
 
 impl Thread {
     unsafe fn create(f: extern "C" fn(_: *mut c_void) -> *mut c_void) -> Self {
-        #[cfg(not(target_env="msvc"))]
+        #[cfg(unix)]
         {
             let mut attr: pthread_attr_t = zeroed();
             let mut thread: pthread_t = 0;
@@ -436,10 +438,12 @@ impl Thread {
                 assert!(false);
             }
 
-            Thread::Pthread(thread)
+            Thread {
+                handle: thread,
+            }
         }
 
-        #[cfg(target_env="msvc")]
+        #[cfg(windows)]
         {
             let handle = CreateThread(0 as *mut c_void, 0, f, 0 as *mut c_void, 0, 0 as *mut u32);
 
@@ -447,24 +451,25 @@ impl Thread {
                 assert!(false);
             }
 
-            Thread::Windows(handle)
+            Thread {
+                handle,
+            }
         }
     }
 
 
     unsafe fn join(self) {
-        match self {
-            #[cfg(not(target_env="msvc"))]
-            Thread::Pthread(thread) => {
-                let mut res = 0 as *mut c_void;
-                pthread_join(thread, &mut res);
-            }
-            #[cfg(target_env="msvc")]
-            Thread::Windows(handle) => {
-                let wait_time = 5000; // in milliseconds
-                assert!(WaitForSingleObject(handle, wait_time) == 0);
-            }
-            _ => assert!(false),
+        #[cfg(unix)]
+        {
+            let mut res = 0 as *mut c_void;
+            pthread_join(self.handle, &mut res);
+        }
+
+        #[cfg(windows)]
+        {
+            // The INFINITE macro is used to signal operations that do not timeout.
+            let infinite = 0xffffffff;
+            assert!(WaitForSingleObject(self.handle, infinite) == 0);
         }
     }
 }
