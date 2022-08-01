@@ -64,7 +64,7 @@ where
                         mem::forget(guard);
                         self.remainder = {
                             // SAFETY: `array` was initialized with `init` elements.
-                            Some(unsafe { array::IntoIter::with_partial(array, 0..init) })
+                            Some(unsafe { array::IntoIter::new_unchecked(array, 0..init) })
                         };
                     }
                     return None;
@@ -124,7 +124,8 @@ where
                     let init = guard.init;
                     mem::forget(guard);
                     // SAFETY: `array` was initialized with `init` elements.
-                    self.remainder = Some(unsafe { array::IntoIter::with_partial(array, 0..init) });
+                    self.remainder =
+                        Some(unsafe { array::IntoIter::new_unchecked(array, 0..init) });
                 }
                 R::from_output(o)
             }
@@ -305,7 +306,7 @@ where
         // SAFETY: `array` was initialized with exactly `init` elements.
         self.remainder = unsafe {
             array.get_unchecked_mut(..init).reverse();
-            Some(array::IntoIter::with_partial(array, 0..init))
+            Some(array::IntoIter::new_unchecked(array, 0..init))
         };
         Some(())
     }
