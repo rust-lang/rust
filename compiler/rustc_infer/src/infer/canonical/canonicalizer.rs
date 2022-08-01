@@ -511,7 +511,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 return self.canonicalize_const_var(
-                    CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty()) },
+                    CanonicalVarInfo {
+                        kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty()),
+                    },
                     ct,
                 );
             }
@@ -696,10 +698,13 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
                         })
                     }
                     CanonicalVarKind::PlaceholderConst(placeholder, t) => {
-                        CanonicalVarKind::PlaceholderConst(ty::Placeholder {
-                            universe: reverse_universe_map[&placeholder.universe],
-                            ..placeholder
-                        }, t)
+                        CanonicalVarKind::PlaceholderConst(
+                            ty::Placeholder {
+                                universe: reverse_universe_map[&placeholder.universe],
+                                ..placeholder
+                            },
+                            t,
+                        )
                     }
                 },
             })
