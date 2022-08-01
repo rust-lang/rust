@@ -345,7 +345,7 @@ fn text_has_safety_comment(src: &str, line_starts: &[BytePos], offset: usize) ->
         if line.starts_with("/*") {
             let src = src[line_start..line_starts.last().unwrap().to_usize() - offset].trim_start();
             let mut tokens = tokenize(src);
-            return src[..tokens.next().unwrap().len]
+            return src[..tokens.next().unwrap().len as usize]
                 .to_ascii_uppercase()
                 .contains("SAFETY:")
                 && tokens.all(|t| t.kind == TokenKind::Whitespace);
