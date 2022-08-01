@@ -656,9 +656,7 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        if crate_type == CrateType::ProcMacro {
-            return;
-        }
+        // FIXME(#99978) hide #[no_mangle] symbols for proc-macros
 
         let is_windows = self.sess.target.is_like_windows;
         let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
