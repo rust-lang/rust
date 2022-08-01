@@ -48,33 +48,7 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let mut array = MaybeUninit::uninit_array();
-        // SAFETY: `array` will still be valid if `guard` is dropped.
-        let mut guard = unsafe { FrontGuard::new(&mut array) };
-
-        for slot in array.iter_mut() {
-            match self.iter.next() {
-                Some(item) => {
-                    slot.write(item);
-                    guard.init += 1;
-                }
-                None => {
-                    if guard.init > 0 {
-                        let init = guard.init;
-                        mem::forget(guard);
-                        self.remainder = {
-                            // SAFETY: `array` was initialized with `init` elements.
-                            Some(unsafe { array::IntoIter::new_unchecked(array, 0..init) })
-                        };
-                    }
-                    return None;
-                }
-            }
-        }
-
-        mem::forget(guard);
-        // SAFETY: All elements of the array were populated in the loop above.
-        Some(unsafe { MaybeUninit::array_assume_init(array) })
+        self.try_for_each(ControlFlow::Break).break_value()
     }
 
     #[inline]
@@ -194,21 +168,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        // We are iterating from the back we need to first handle the remainder.
-        self.next_back_remainder()?;
-
-        let mut array = MaybeUninit::uninit_array();
-        // SAFETY: `array` will still be valid if `guard` is dropped.
-        let mut guard = unsafe { BackGuard::new(&mut array) };
-
-        for slot in array.iter_mut().rev() {
-            slot.write(self.iter.next_back()?);
-            guard.uninit -= 1;
-        }
-
-        mem::forget(guard);
-        // SAFETY: All elements of the array were populated in the loop above.
-        Some(unsafe { MaybeUninit::array_assume_init(array) })
+        self.try_rfold((), |(), x| ControlFlow::Break(x)).break_value()
     }
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
