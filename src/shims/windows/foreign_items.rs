@@ -323,15 +323,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: we should set last_error, but to what?
                 this.write_null(dest)?;
             }
-            // this is only callable from std because we know that std ignores the return value
-            "SwitchToThread" if this.frame_in_std() => {
-                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-
-                this.yield_active_thread();
-
-                // FIXME: this should return a nonzero value if this call does result in switching to another thread.
-                this.write_null(dest)?;
-            }
             "GetStdHandle" => {
                 let [which] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -339,6 +330,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We just make this the identity function, so we know later in `NtWriteFile` which
                 // one it is. This is very fake, but libtest needs it so we cannot make it a
                 // std-only shim.
+                // FIXME: this should return real HANDLEs when io support is added
                 this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
             }
             "CloseHandle" => {
@@ -364,9 +356,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [handle, timeout] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
 
-                this.WaitForSingleObject(handle, timeout)?;
-
-                this.write_scalar(Scalar::from_u32(0), dest)?;
+                let ret = this.WaitForSingleObject(handle, timeout)?;
+                this.write_scalar(Scalar::from_u32(ret), dest)?;
             }
             "GetCurrentThread" => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
@@ -382,6 +373,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "GetProcessHeap" if this.frame_in_std() => {
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Just fake a HANDLE
+                // It's fine to not use the Handle type here because its a stub
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
             "GetModuleHandleA" if this.frame_in_std() => {
@@ -416,6 +408,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.GetCurrentProcessId()?;
                 this.write_scalar(Scalar::from_u32(result), dest)?;
+            }
+            // this is only callable from std because we know that std ignores the return value
+            "SwitchToThread" if this.frame_in_std() => {
+                let [] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+
+                this.yield_active_thread();
+
+                // FIXME: this should return a nonzero value if this call does result in switching to another thread.
+                this.write_null(dest)?;
             }
 
             _ => return Ok(EmulateByNameResult::NotSupported),

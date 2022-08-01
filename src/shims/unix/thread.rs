@@ -13,11 +13,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        let thread_info_place = this.deref_operand(thread)?;
+
+        let start_routine = this.read_pointer(start_routine)?;
+
+        let func_arg = this.read_immediate(arg)?;
+
         this.start_thread(
-            Some(thread),
+            Some(thread_info_place),
             start_routine,
             Abi::C { unwind: false },
-            arg,
+            func_arg,
             this.layout_of(this.tcx.types.usize)?,
         )?;
 
@@ -46,7 +52,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let thread_id = this.read_scalar(thread)?.to_machine_usize(this)?;
-        this.detach_thread(thread_id.try_into().expect("thread ID should fit in u32"), false)?;
+        this.detach_thread(
+            thread_id.try_into().expect("thread ID should fit in u32"),
+            /*allow_terminated_joined*/ false,
+        )?;
 
         Ok(0)
     }

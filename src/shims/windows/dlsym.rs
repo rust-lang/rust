@@ -122,7 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     _ => this.invalid_handle("SetThreadDescription")?,
                 };
 
-                this.set_thread_name_wide(thread, name);
+                this.set_thread_name_wide(thread, &name);
 
                 this.write_null(dest)?;
             }

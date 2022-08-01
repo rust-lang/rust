@@ -1,4 +1,4 @@
-//@ignore-target-windows: TLS destructor order is different on Windows.
+//@only-target-windows: TLS destructor order is different on Windows.
 
 use std::cell::RefCell;
 use std::thread;

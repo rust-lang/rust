@@ -12,7 +12,7 @@ extern "system" {
 
 const INFINITE: u32 = u32::MAX;
 
-// This is how miri represents the handle for thread 0.
+// XXX HACK: This is how miri represents the handle for thread 0.
 // This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`
 // but miri does not implement `DuplicateHandle` yet.
 const MAIN_THREAD: isize = (2i32 << 30) as isize;

@@ -15,6 +15,6 @@ fn main() {
         // assert_eq!(libc::pthread_attr_init(&mut attr), 0); FIXME: this function is not yet implemented.
         assert_eq!(libc::pthread_create(&mut native, &attr, thread_start, ptr::null_mut()), 0);
         assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0);
-        assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0); //~ ERROR: Undefined Behavior: trying to join a detached or already joined thread
+        assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0); //~ ERROR: Undefined Behavior: trying to join an already joined thread
     }
 }

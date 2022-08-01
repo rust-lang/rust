@@ -8,6 +8,14 @@ pub enum PseudoHandle {
     CurrentThread,
 }
 
+/// Miri representation of a Windows `HANDLE`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Handle {
+    Null,
+    Pseudo(PseudoHandle),
+    Thread(ThreadId),
+}
+
 impl PseudoHandle {
     const CURRENT_THREAD_VALUE: u32 = 0;
 
@@ -23,14 +31,6 @@ impl PseudoHandle {
             _ => None,
         }
     }
-}
-
-/// Miri representation of a Windows `HANDLE`
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Handle {
-    Null,
-    Pseudo(PseudoHandle),
-    Thread(ThreadId),
 }
 
 impl Handle {
@@ -62,9 +62,7 @@ impl Handle {
         let floor_log2 = variant_count.ilog2();
 
         // we need to add one for non powers of two to compensate for the difference
-        let ceil_log2 = if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 };
-
-        ceil_log2
+        if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 }
     }
 
     /// Converts a handle into its machine representation.
@@ -120,6 +118,7 @@ impl Handle {
     pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar<Provenance> {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
+        #[allow(clippy::cast_possible_wrap)] // we want it to wrap
         let signed_handle = self.to_packed() as i32;
         Scalar::from_machine_isize(signed_handle.into(), cx)
     }
@@ -130,6 +129,7 @@ impl Handle {
     ) -> InterpResult<'tcx, Option<Self>> {
         let sign_extended_handle = handle.to_machine_isize(cx)?;
 
+        #[allow(clippy::cast_sign_loss)] // we want to lose the sign
         let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {
             signed_handle as u32
         } else {
@@ -154,8 +154,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn CloseHandle(&mut self, handle_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        match Handle::from_scalar(this.read_scalar(handle_op)?.check_init()?, this)? {
-            Some(Handle::Thread(thread)) => this.detach_thread(thread, true)?,
+        let handle = this.read_scalar(handle_op)?.check_init()?;
+
+        match Handle::from_scalar(handle, this)? {
+            Some(Handle::Thread(thread)) =>
+                this.detach_thread(thread, /*allow_terminated_joined*/ true)?,
             _ => this.invalid_handle("CloseHandle")?,
         }
 

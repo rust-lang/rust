@@ -181,7 +181,7 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 }
 
 /// A specific moment in time.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub enum Time {
     Monotonic(Instant),
     RealTime(SystemTime),
@@ -357,16 +357,19 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     ///
     /// `allow_terminated_joined` allows detaching joined threads that have already terminated.
     /// This matches Windows's behavior for `CloseHandle`.
+    ///
+    /// See <https://docs.microsoft.com/en-us/windows/win32/procthread/thread-handles-and-identifiers>:
+    /// > The handle is valid until closed, even after the thread it represents has been terminated.
     fn detach_thread(&mut self, id: ThreadId, allow_terminated_joined: bool) -> InterpResult<'tcx> {
         trace!("detaching {:?}", id);
 
         let is_ub = if allow_terminated_joined && self.threads[id].state == ThreadState::Terminated
         {
+            // "Detached" in particular means "not yet joined". Redundant detaching is still UB.
             self.threads[id].join_status == ThreadJoinStatus::Detached
         } else {
             self.threads[id].join_status != ThreadJoinStatus::Joinable
         };
-
         if is_ub {
             throw_ub_format!("trying to detach thread that was already detached or joined");
         }
@@ -406,7 +409,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Mark that the active thread tries to exclusively join the thread with `joined_thread_id`.
-    /// If the thread is already joined by another thread
+    /// If the thread is already joined by another thread, it will throw UB
     fn join_thread_exclusive(
         &mut self,
         joined_thread_id: ThreadId,
@@ -424,7 +427,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             self.threads
                 .iter()
                 .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
-            "a joinable thread already has threads waiting for its termination"
+            "this thread already has threads waiting for its termination"
         );
 
         self.join_thread(joined_thread_id, data_race)
@@ -803,12 +806,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn set_thread_name_wide(&mut self, thread: ThreadId, new_thread_name: Vec<u16>) {
+    fn set_thread_name_wide(&mut self, thread: ThreadId, new_thread_name: &[u16]) {
         let this = self.eval_context_mut();
-        this.machine.threads.set_thread_name(
-            thread,
-            new_thread_name.into_iter().flat_map(u16::to_ne_bytes).collect(),
-        );
+
+        // The Windows `GetThreadDescription` shim to get the thread name isn't implemented, so being lossy is okay.
+        // This is only read by diagnostics, which already use `from_utf8_lossy`.
+        this.machine
+            .threads
+            .set_thread_name(thread, String::from_utf16_lossy(new_thread_name).into_bytes());
     }
 
     #[inline]
