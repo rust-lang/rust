@@ -32,6 +32,8 @@ fn _if_let_guard() {
         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
         //~^ ERROR `if let` guards are experimental
         //~| ERROR expected expression, found `let` statement
+        //~| ERROR expected expression, found `let` statement
+        //~| ERROR expected expression, found `let` statement
 
         () if let Range { start: _, end: _ } = (true..true) && false => {}
         //~^ ERROR `if let` guards are experimental
