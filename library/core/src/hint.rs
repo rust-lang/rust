@@ -98,9 +98,13 @@ use crate::intrinsics;
 #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn unreachable_unchecked() -> ! {
-    // SAFETY: the safety contract for `intrinsics::unreachable` must
-    // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    if cfg!(debug_assertions) {
+        unreachable!()
+    } else {
+        // SAFETY: the safety contract for `intrinsics::unreachable` must
+        // be upheld by the caller.
+        unsafe { intrinsics::unreachable() }
+    }
 }
 
 /// Emits a machine instruction to signal the processor that it is running in
