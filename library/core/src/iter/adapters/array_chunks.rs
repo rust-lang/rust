@@ -312,6 +312,6 @@ where
 
     #[inline]
     fn is_empty(&self) -> bool {
-        self.iter.len() / N == 0
+        self.iter.len() < N
     }
 }
