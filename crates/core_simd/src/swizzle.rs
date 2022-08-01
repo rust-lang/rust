@@ -271,7 +271,7 @@ where
     /// The reverse of this operation is [`Simd::deinterleave`].
     ///
     /// ```
-    /// #![feature(portable_simd)]
+    /// # #![feature(portable_simd)]
     /// # use core::simd::Simd;
     /// let a = Simd::from_array([0, 1, 2, 3]);
     /// let b = Simd::from_array([4, 5, 6, 7]);
@@ -324,7 +324,7 @@ where
     /// The reverse of this operation is [`Simd::interleave`].
     ///
     /// ```
-    /// #![feature(portable_simd)]
+    /// # #![feature(portable_simd)]
     /// # use core::simd::Simd;
     /// let a = Simd::from_array([0, 4, 1, 5]);
     /// let b = Simd::from_array([2, 6, 3, 7]);
