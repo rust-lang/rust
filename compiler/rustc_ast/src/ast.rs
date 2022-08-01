@@ -1111,10 +1111,6 @@ pub struct Expr {
     pub tokens: Option<LazyTokenStream>,
 }
 
-// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr, 104);
-
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
     /// for example, an `if` condition.
@@ -2883,9 +2879,6 @@ pub enum ItemKind {
     MacroDef(MacroDef),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ItemKind, 112);
-
 impl ItemKind {
     pub fn article(&self) -> &str {
         use ItemKind::*;
@@ -2957,9 +2950,6 @@ pub enum AssocItemKind {
     MacCall(MacCall),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(AssocItemKind, 72);
-
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
@@ -3009,9 +2999,6 @@ pub enum ForeignItemKind {
     MacCall(MacCall),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
-
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
@@ -3038,3 +3025,27 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    rustc_data_structures::static_assert_size!(AssocItemKind, 72);
+    rustc_data_structures::static_assert_size!(Attribute, 152);
+    rustc_data_structures::static_assert_size!(Block, 48);
+    rustc_data_structures::static_assert_size!(Expr, 104);
+    rustc_data_structures::static_assert_size!(Fn, 192);
+    rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
+    rustc_data_structures::static_assert_size!(GenericBound, 88);
+    rustc_data_structures::static_assert_size!(Generics, 72);
+    rustc_data_structures::static_assert_size!(Impl, 200);
+    rustc_data_structures::static_assert_size!(Item, 200);
+    rustc_data_structures::static_assert_size!(ItemKind, 112);
+    rustc_data_structures::static_assert_size!(Lit, 48);
+    rustc_data_structures::static_assert_size!(Pat, 120);
+    rustc_data_structures::static_assert_size!(Path, 40);
+    rustc_data_structures::static_assert_size!(PathSegment, 24);
+    rustc_data_structures::static_assert_size!(Stmt, 32);
+    rustc_data_structures::static_assert_size!(Ty, 96);
+}

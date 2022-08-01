@@ -190,10 +190,6 @@ pub enum StmtKind<'tcx> {
     },
 }
 
-// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 104);
-
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct LocalVarId(pub hir::HirId);
@@ -811,4 +807,15 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             }
         }
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    rustc_data_structures::static_assert_size!(Block, 56);
+    rustc_data_structures::static_assert_size!(Expr<'_>, 104);
+    rustc_data_structures::static_assert_size!(Pat<'_>, 24);
+    rustc_data_structures::static_assert_size!(Stmt<'_>, 120);
 }
