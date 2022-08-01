@@ -1,13 +1,8 @@
-// run-rustfix
-
-#![allow(dead_code)]
-
 struct S;
 struct Y;
 
 trait Trait {}
 
-impl Trait for S {}
 impl Trait for Y {}
 
 fn foo() -> impl Trait {
