@@ -12,9 +12,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     let obj_ty = cx.typeck_results().expr_ty(recv).peel_refs();
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym::Option) {
-        Some((EXPECT_USED, "an Option", "None"))
+        Some((EXPECT_USED, "an Option", "None", ""))
     } else if is_type_diagnostic_item(cx, obj_ty, sym::Result) {
-        Some((EXPECT_USED, "a Result", "Err"))
+        Some((EXPECT_USED, "a Result", "Err", "an "))
     } else {
         None
     };
@@ -23,14 +23,14 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         return;
     }
 
-    if let Some((lint, kind, none_value)) = mess {
+    if let Some((lint, kind, none_value, none_prefix)) = mess {
         span_lint_and_help(
             cx,
             lint,
             expr.span,
-            &format!("used `expect()` on `{}` value", kind,),
+            &format!("used `expect()` on `{kind}` value"),
             None,
-            &format!("if this value is an `{}`, it will panic", none_value,),
+            &format!("if this value is {none_prefix}`{none_value}`, it will panic"),
         );
     }
 }
