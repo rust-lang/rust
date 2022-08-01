@@ -38,7 +38,7 @@ use crate::error::Error;
 use crate::fmt;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::time;
-use crate::sys_common::FromInner;
+use crate::sys_common::{FromInner, IntoInner};
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
@@ -684,5 +684,11 @@ impl fmt::Display for SystemTimeError {
 impl FromInner<time::SystemTime> for SystemTime {
     fn from_inner(time: time::SystemTime) -> SystemTime {
         SystemTime(time)
+    }
+}
+
+impl IntoInner<time::SystemTime> for SystemTime {
+    fn into_inner(self) -> time::SystemTime {
+        self.0
     }
 }

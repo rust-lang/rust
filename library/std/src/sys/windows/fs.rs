@@ -83,6 +83,12 @@ pub struct FilePermissions {
     attrs: c::DWORD,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {
+    accessed: Option<c::FILETIME>,
+    modified: Option<c::FILETIME>,
+}
+
 #[derive(Debug)]
 pub struct DirBuilder;
 
@@ -536,6 +542,21 @@ impl File {
         })?;
         Ok(())
     }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
+        if times.accessed.map_or(false, is_zero) || times.modified.map_or(false, is_zero) {
+            return Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "Cannot set file timestamp to 0",
+            ));
+        }
+        cvt(unsafe {
+            c::SetFileTime(self.as_handle(), None, times.accessed.as_ref(), times.modified.as_ref())
+        })?;
+        Ok(())
+    }
+
     /// Get only basic file information such as attributes and file times.
     fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
         unsafe {
@@ -900,6 +921,16 @@ impl FilePermissions {
         } else {
             self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
         }
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = Some(t.into_inner());
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = Some(t.into_inner());
     }
 }
 
