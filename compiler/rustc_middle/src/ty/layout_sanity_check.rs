@@ -91,6 +91,10 @@ pub(super) fn sanity_check_layout<'tcx>(
                         FieldsShape::Primitive => {
                             // Fine.
                         }
+                        FieldsShape::Union(..) => {
+                            // FIXME: I guess we could also check something here? Like, look at all fields?
+                            return;
+                        }
                         FieldsShape::Arbitrary { .. } => {
                             // Should be an enum, the only field is the discriminant.
                             assert!(
