@@ -699,7 +699,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
         let outlives_environment = OutlivesEnvironment::with_bounds(
             param_env,
             Some(&infcx),
-            infcx.implied_bounds_tys(param_env, id, wf_tys.iter().map(|ty| *ty)),
+            infcx.implied_bounds_tys(param_env, id, wf_tys.clone()),
         );
         let region_bound_pairs = outlives_environment.region_bound_pairs();
 

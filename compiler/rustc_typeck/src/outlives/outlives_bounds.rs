@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_middle::ty::{self, ParamEnv, Ty};
@@ -8,6 +9,7 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
+type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub trait InferCtxtExt<'a, 'tcx> {
     fn implied_outlives_bounds(
         &self,
@@ -20,8 +22,8 @@ pub trait InferCtxtExt<'a, 'tcx> {
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: hir::HirId,
-        tys: impl IntoIterator<Item = Ty<'tcx>> + 'a,
-    ) -> Box<dyn Iterator<Item = OutlivesBound<'tcx>> + 'a>;
+        tys: FxHashSet<Ty<'tcx>>,
+    ) -> Bounds<'a, 'tcx>;
 }
 
 impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
@@ -100,15 +102,13 @@ impl<'a, 'cx, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'cx, 'tcx> {
         &'a self,
         param_env: ParamEnv<'tcx>,
         body_id: HirId,
-        tys: impl IntoIterator<Item = Ty<'tcx>> + 'a,
-    ) -> Box<dyn Iterator<Item = OutlivesBound<'tcx>> + 'a> {
-        Box::new(
-            tys.into_iter()
-                .map(move |ty| {
-                    let ty = self.resolve_vars_if_possible(ty);
-                    self.implied_outlives_bounds(param_env, body_id, ty)
-                })
-                .flatten(),
-        )
+        tys: FxHashSet<Ty<'tcx>>,
+    ) -> Bounds<'a, 'tcx> {
+        tys.into_iter()
+            .map(move |ty| {
+                let ty = self.resolve_vars_if_possible(ty);
+                self.implied_outlives_bounds(param_env, body_id, ty)
+            })
+            .flatten()
     }
 }
