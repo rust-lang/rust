@@ -577,20 +577,45 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     a: ty::Const<'tcx>,
     b: ty::Const<'tcx>,
 ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-    debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
-    let tcx = relation.tcx();
+    inner_super_relate_consts(
+        relation.tcx(),
+        relation.param_env(),
+        relation.a_is_expected(),
+        &mut |a_substs, b_substs| {
+            relation.relate_with_variance(
+                ty::Variance::Invariant,
+                ty::VarianceDiagInfo::default(),
+                a_substs,
+                b_substs,
+            )
+        },
+        a,
+        b,
+    )
+}
 
+fn inner_super_relate_consts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    a_is_expected: bool,
+    recurse_unevaluated: &mut dyn FnMut(
+        SubstsRef<'tcx>,
+        SubstsRef<'tcx>,
+    ) -> RelateResult<'tcx, SubstsRef<'tcx>>,
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
+) -> RelateResult<'tcx, ty::Const<'tcx>> {
     let a_ty;
     let b_ty;
-    if relation.tcx().features().adt_const_params {
-        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
-        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
+    if tcx.features().adt_const_params {
+        a_ty = tcx.normalize_erasing_regions(param_env, a.ty());
+        b_ty = tcx.normalize_erasing_regions(param_env, b.ty());
     } else {
         a_ty = tcx.erase_regions(a.ty());
         b_ty = tcx.erase_regions(b.ty());
     }
     if a_ty != b_ty {
-        relation.tcx().sess.delay_span_bug(
+        tcx.sess.delay_span_bug(
             DUMMY_SP,
             &format!("cannot relate constants of different types: {} != {}", a_ty, b_ty),
         );
@@ -615,7 +640,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().generic_const_exprs =>
         {
-            tcx.try_unify_abstract_consts(relation.param_env().and((au, bu)))
+            tcx.try_unify_abstract_consts(param_env.and((au, bu)))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
@@ -625,13 +650,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
             if au.def == bu.def && au.promoted == bu.promoted =>
         {
             assert_eq!(au.promoted, ());
-
-            let substs = relation.relate_with_variance(
-                ty::Variance::Invariant,
-                ty::VarianceDiagInfo::default(),
-                au.substs,
-                bu.substs,
-            )?;
+            let substs = recurse_unevaluated(au.substs, bu.substs)?;
             return Ok(tcx.mk_const(ty::ConstS {
                 kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
@@ -643,7 +662,11 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         }
         _ => false,
     };
-    if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
+    if is_match {
+        Ok(a)
+    } else {
+        Err(TypeError::ConstMismatch(ExpectedFound::new(a_is_expected, a, b)))
+    }
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
