@@ -370,7 +370,7 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
 
 
     // all: __stack_chk_fail
-    // strong-NOT: __stack_chk_fail
+    // strong: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail

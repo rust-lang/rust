@@ -6,36 +6,41 @@
       let mut _0: ();
       let _2: ();
       let mut _3: std::boxed::Box<[i32]>;
-      let mut _4: ();
+      let mut _4: &mut std::boxed::Box<[i32]>;
       let mut _5: ();
-      let mut _6: ();
-      let mut _7: *const [i32];
+      let mut _6: &mut std::boxed::Box<[i32]>;
+      let mut _7: ();
+      let mut _8: &mut std::boxed::Box<[i32]>;
+      let mut _9: ();
+      let mut _10: *const [i32];
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
           _3 = move _1;
-          _7 = (((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>).0: *const [i32]);
-          _2 = callee(move (*_7)) -> [return: bb3, unwind: bb4];
+          _10 = (((_3.0: std::ptr::Unique<[i32]>).0: std::ptr::NonNull<[i32]>).0: *const [i32]);
+          _2 = callee(move (*_10)) -> [return: bb3, unwind: bb4];
       }
   
-      bb1: {
+      bb1 (cleanup): {
+          resume;
+      }
+  
+      bb2: {
           StorageDead(_3);
           StorageDead(_2);
           _0 = const ();
           return;
       }
   
-      bb2 (cleanup): {
-          resume;
-      }
-  
       bb3: {
-          _4 = alloc::alloc::box_free::<[i32], std::alloc::Global>(move (_3.0: std::ptr::Unique<[i32]>), move (_3.1: std::alloc::Global)) -> bb1;
+          _4 = &mut _3;
+          _5 = <Box<[i32]> as Drop>::drop(move _4) -> [return: bb2, unwind: bb1];
       }
   
       bb4 (cleanup): {
-          _6 = alloc::alloc::box_free::<[i32], std::alloc::Global>(move (_3.0: std::ptr::Unique<[i32]>), move (_3.1: std::alloc::Global)) -> [return: bb2, unwind terminate];
+          _8 = &mut _3;
+          _9 = <Box<[i32]> as Drop>::drop(move _8) -> [return: bb1, unwind terminate];
       }
   }
   

@@ -270,7 +270,7 @@ use core::slice::from_raw_parts_mut;
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::{box_free, WriteCloneIntoRaw};
+use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
@@ -1442,23 +1442,21 @@ impl<T: ?Sized> Rc<T> {
     }
 
     #[cfg(not(no_global_oom_handling))]
-    fn from_box(v: Box<T>) -> Rc<T> {
+    fn from_box(src: Box<T>) -> Rc<T> {
         unsafe {
-            let (box_unique, alloc) = Box::into_unique(v);
-            let bptr = box_unique.as_ptr();
-
-            let value_size = size_of_val(&*bptr);
-            let ptr = Self::allocate_for_ptr(bptr);
+            let value_size = size_of_val(&*src);
+            let ptr = Self::allocate_for_ptr(&*src);
 
             // Copy value as bytes
             ptr::copy_nonoverlapping(
-                bptr as *const T as *const u8,
+                &*src as *const T as *const u8,
                 &mut (*ptr).value as *mut _ as *mut u8,
                 value_size,
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique, alloc);
+            let src = Box::from_raw(Box::into_raw(src) as *mut mem::ManuallyDrop<T>);
+            drop(src);
 
             Self::from_ptr(ptr)
         }
