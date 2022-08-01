@@ -342,7 +342,8 @@ fn render_resolution_simple_(
     let ctx = ctx.import_to_add(import_to_add);
     let kind = res_to_kind(resolution);
 
-    let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.to_smol_str());
+    let mut item =
+        CompletionItem::new(kind, ctx.source_range(), local_name.unescaped().to_smol_str());
     item.set_relevance(ctx.completion_relevance())
         .set_documentation(scope_def_docs(db, resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
