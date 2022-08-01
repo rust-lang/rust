@@ -230,8 +230,8 @@ impl Socket {
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
-            let (addrp, len) = addr.into_inner();
-            cvt(netc::connect(self.0.raw(), addrp, len))
+            let (addr, len) = addr.into_inner();
+            cvt(netc::connect(self.0.raw(), addr.as_ptr(), len))
         };
         self.set_nonblocking(false)?;
 
