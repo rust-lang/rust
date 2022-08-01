@@ -340,7 +340,7 @@ where
             let mut i = 0;
             while i < LANES {
                 // Treat the source as a concatenated vector
-                let src_index = i * 2 + if second { 1 } else { 0 };
+                let src_index = i * 2 + second as usize;
                 idx[i] = if src_index < LANES {
                     Which::First(src_index)
                 } else {
