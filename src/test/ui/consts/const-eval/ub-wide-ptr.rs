@@ -61,7 +61,8 @@ const MYSTR_NO_INIT: &MyStr = unsafe { mem::transmute::<&[_], _>(&[MaybeUninit::
 const SLICE_VALID: &[u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 // bad slice: length uninit
 const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };
@@ -107,7 +108,8 @@ const RAW_SLICE_VALID: *const [u8] = unsafe { mem::transmute((&42u8, 1usize)) };
 const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, 999usize)) }; // ok because raw
 const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { mem::transmute((&42u8, usize::MAX)) }; // ok because raw
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR evaluation of constant value failed
+//~| uninitialized
     let uninit_len = MaybeUninit::<usize> { uninit: () };
     mem::transmute((42, uninit_len))
 };

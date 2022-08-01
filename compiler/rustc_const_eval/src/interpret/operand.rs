@@ -1,11 +1,9 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::fmt::Write;
-
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
-use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
+use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
 use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
@@ -14,7 +12,7 @@ use rustc_target::abi::{VariantIdx, Variants};
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
     InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Place, PlaceTy, Pointer,
-    Provenance, Scalar, ScalarMaybeUninit,
+    Provenance, Scalar,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -27,21 +25,12 @@ use super::{
 #[derive(Copy, Clone, Debug)]
 pub enum Immediate<Prov: Provenance = AllocId> {
     /// A single scalar value (must have *initialized* `Scalar` ABI).
-    /// FIXME: we also currently often use this for ZST.
-    /// `ScalarMaybeUninit` should reject ZST, and we should use `Uninit` for them instead.
-    Scalar(ScalarMaybeUninit<Prov>),
+    Scalar(Scalar<Prov>),
     /// A pair of two scalar value (must have `ScalarPair` ABI where both fields are
     /// `Scalar::Initialized`).
-    ScalarPair(ScalarMaybeUninit<Prov>, ScalarMaybeUninit<Prov>),
+    ScalarPair(Scalar<Prov>, Scalar<Prov>),
     /// A value of fully uninitialized memory. Can have and size and layout.
     Uninit,
-}
-
-impl<Prov: Provenance> From<ScalarMaybeUninit<Prov>> for Immediate<Prov> {
-    #[inline(always)]
-    fn from(val: ScalarMaybeUninit<Prov>) -> Self {
-        Immediate::Scalar(val)
-    }
 }
 
 impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
@@ -51,13 +40,13 @@ impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
     }
 }
 
-impl<'tcx, Prov: Provenance> Immediate<Prov> {
+impl<Prov: Provenance> Immediate<Prov> {
     pub fn from_pointer(p: Pointer<Prov>, cx: &impl HasDataLayout) -> Self {
-        Immediate::Scalar(ScalarMaybeUninit::from_pointer(p, cx))
+        Immediate::Scalar(Scalar::from_pointer(p, cx))
     }
 
     pub fn from_maybe_pointer(p: Pointer<Option<Prov>>, cx: &impl HasDataLayout) -> Self {
-        Immediate::Scalar(ScalarMaybeUninit::from_maybe_pointer(p, cx))
+        Immediate::Scalar(Scalar::from_maybe_pointer(p, cx))
     }
 
     pub fn new_slice(val: Scalar<Prov>, len: u64, cx: &impl HasDataLayout) -> Self {
@@ -69,40 +58,27 @@ impl<'tcx, Prov: Provenance> Immediate<Prov> {
         vtable: Pointer<Option<Prov>>,
         cx: &impl HasDataLayout,
     ) -> Self {
-        Immediate::ScalarPair(val.into(), ScalarMaybeUninit::from_maybe_pointer(vtable, cx))
+        Immediate::ScalarPair(val.into(), Scalar::from_maybe_pointer(vtable, cx))
     }
 
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn to_scalar_or_uninit(self) -> ScalarMaybeUninit<Prov> {
+    pub fn to_scalar(self) -> Scalar<Prov> {
         match self {
             Immediate::Scalar(val) => val,
             Immediate::ScalarPair(..) => bug!("Got a scalar pair where a scalar was expected"),
-            Immediate::Uninit => ScalarMaybeUninit::Uninit,
+            Immediate::Uninit => bug!("Got uninit where a scalar was expected"),
         }
     }
 
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Prov>> {
-        self.to_scalar_or_uninit().check_init()
-    }
-
-    #[inline]
-    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn to_scalar_or_uninit_pair(self) -> (ScalarMaybeUninit<Prov>, ScalarMaybeUninit<Prov>) {
+    pub fn to_scalar_pair(self) -> (Scalar<Prov>, Scalar<Prov>) {
         match self {
             Immediate::ScalarPair(val1, val2) => (val1, val2),
             Immediate::Scalar(..) => bug!("Got a scalar where a scalar pair was expected"),
-            Immediate::Uninit => (ScalarMaybeUninit::Uninit, ScalarMaybeUninit::Uninit),
+            Immediate::Uninit => bug!("Got uninit where a scalar pair was expected"),
         }
-    }
-
-    #[inline]
-    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
-    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Prov>, Scalar<Prov>)> {
-        let (val1, val2) = self.to_scalar_or_uninit_pair();
-        Ok((val1.check_init()?, val2.check_init()?))
     }
 }
 
@@ -119,27 +95,17 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
         /// Helper function for printing a scalar to a FmtPrinter
         fn p<'a, 'tcx, Prov: Provenance>(
             cx: FmtPrinter<'a, 'tcx>,
-            s: ScalarMaybeUninit<Prov>,
+            s: Scalar<Prov>,
             ty: Ty<'tcx>,
         ) -> Result<FmtPrinter<'a, 'tcx>, std::fmt::Error> {
             match s {
-                ScalarMaybeUninit::Scalar(Scalar::Int(int)) => {
-                    cx.pretty_print_const_scalar_int(int, ty, true)
-                }
-                ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr, _sz)) => {
+                Scalar::Int(int) => cx.pretty_print_const_scalar_int(int, ty, true),
+                Scalar::Ptr(ptr, _sz) => {
                     // Just print the ptr value. `pretty_print_const_scalar_ptr` would also try to
                     // print what is points to, which would fail since it has no access to the local
                     // memory.
                     cx.pretty_print_const_pointer(ptr, ty, true)
                 }
-                ScalarMaybeUninit::Uninit => cx.typed_value(
-                    |mut this| {
-                        this.write_str("uninit ")?;
-                        Ok(this)
-                    },
-                    |this| this.print_type(ty),
-                    " ",
-                ),
             }
         }
         ty::tls::with(|tcx| {
@@ -269,7 +235,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
     #[inline]
     pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
-        let int = self.to_scalar().expect("to_const_int doesn't work on scalar pairs").assert_int();
+        let int = self.to_scalar().assert_int();
         ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
     }
 }
@@ -327,7 +293,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn read_immediate_from_mplace_raw(
         &self,
         mplace: &MPlaceTy<'tcx, M::Provenance>,
-        force: bool,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::Provenance>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
@@ -345,47 +310,44 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // case where some of the bytes are initialized and others are not. So, we need an extra
         // check that walks over the type of `mplace` to make sure it is truly correct to treat this
         // like a `Scalar` (or `ScalarPair`).
-        let scalar_layout = match mplace.layout.abi {
-            // `if` does not work nested inside patterns, making this a bit awkward to express.
-            Abi::Scalar(abi::Scalar::Initialized { value: s, .. }) => Some(s),
-            Abi::Scalar(s) if force => Some(s.primitive()),
-            _ => None,
-        };
-        if let Some(s) = scalar_layout {
-            let size = s.size(self);
-            assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
-            let scalar = alloc
-                .read_scalar(alloc_range(Size::ZERO, size), /*read_provenance*/ s.is_ptr())?;
-            return Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }));
-        }
-        let scalar_pair_layout = match mplace.layout.abi {
+        Ok(match mplace.layout.abi {
+            Abi::Scalar(abi::Scalar::Initialized { value: s, .. }) => {
+                let size = s.size(self);
+                assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
+                let scalar = alloc.read_scalar(
+                    alloc_range(Size::ZERO, size),
+                    /*read_provenance*/ s.is_ptr(),
+                )?;
+                Some(ImmTy { imm: scalar.into(), layout: mplace.layout })
+            }
             Abi::ScalarPair(
                 abi::Scalar::Initialized { value: a, .. },
                 abi::Scalar::Initialized { value: b, .. },
-            ) => Some((a, b)),
-            Abi::ScalarPair(a, b) if force => Some((a.primitive(), b.primitive())),
-            _ => None,
-        };
-        if let Some((a, b)) = scalar_pair_layout {
-            // We checked `ptr_align` above, so all fields will have the alignment they need.
-            // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
-            // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-            let (a_size, b_size) = (a.size(self), b.size(self));
-            let b_offset = a_size.align_to(b.align(self).abi);
-            assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
-            let a_val = alloc.read_scalar(
-                alloc_range(Size::ZERO, a_size),
-                /*read_provenance*/ a.is_ptr(),
-            )?;
-            let b_val = alloc
-                .read_scalar(alloc_range(b_offset, b_size), /*read_provenance*/ b.is_ptr())?;
-            return Ok(Some(ImmTy {
-                imm: Immediate::ScalarPair(a_val, b_val),
-                layout: mplace.layout,
-            }));
-        }
-        // Neither a scalar nor scalar pair.
-        return Ok(None);
+            ) => {
+                // We checked `ptr_align` above, so all fields will have the alignment they need.
+                // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
+                // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
+                let (a_size, b_size) = (a.size(self), b.size(self));
+                let b_offset = a_size.align_to(b.align(self).abi);
+                assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
+                let a_val = alloc.read_scalar(
+                    alloc_range(Size::ZERO, a_size),
+                    /*read_provenance*/ a.is_ptr(),
+                )?;
+                let b_val = alloc.read_scalar(
+                    alloc_range(b_offset, b_size),
+                    /*read_provenance*/ b.is_ptr(),
+                )?;
+                Some(ImmTy {
+                    imm: Immediate::ScalarPair(a_val.into(), b_val.into()),
+                    layout: mplace.layout,
+                })
+            }
+            _ => {
+                // Neither a scalar nor scalar pair.
+                None
+            }
+        })
     }
 
     /// Try returning an immediate for the operand. If the layout does not permit loading this as an
@@ -394,20 +356,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
     ///
-    /// If `force` is `true`, then even scalars with fields that can be ununit will be
-    /// read. This means the load is lossy and should not be written back!
-    /// This flag exists only for validity checking.
-    ///
     /// This is an internal function that should not usually be used; call `read_immediate` instead.
     /// ConstProp needs it, though.
     pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::Provenance>,
-        force: bool,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::Provenance>, MPlaceTy<'tcx, M::Provenance>>> {
         Ok(match src.try_as_mplace() {
             Ok(ref mplace) => {
-                if let Some(val) = self.read_immediate_from_mplace_raw(mplace, force)? {
+                if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
                     Ok(val)
                 } else {
                     Err(*mplace)
@@ -418,24 +375,33 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Read an immediate from a place, asserting that that is possible with the given layout.
+    ///
+    /// If this suceeds, the `ImmTy` is never `Uninit`.
     #[inline(always)]
     pub fn read_immediate(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        if let Ok(imm) = self.read_immediate_raw(op, /*force*/ false)? {
-            Ok(imm)
-        } else {
-            span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout.ty);
+        if !matches!(
+            op.layout.abi,
+            Abi::Scalar(abi::Scalar::Initialized { .. })
+                | Abi::ScalarPair(abi::Scalar::Initialized { .. }, abi::Scalar::Initialized { .. })
+        ) {
+            span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
         }
+        let imm = self.read_immediate_raw(op)?.unwrap();
+        if matches!(*imm, Immediate::Uninit) {
+            throw_ub!(InvalidUninitBytes(None));
+        }
+        Ok(imm)
     }
 
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<M::Provenance>> {
-        Ok(self.read_immediate(op)?.to_scalar_or_uninit())
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        Ok(self.read_immediate(op)?.to_scalar())
     }
 
     /// Read a pointer from a place.
@@ -727,7 +693,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Figure out which discriminant and variant this corresponds to.
         Ok(match *tag_encoding {
             TagEncoding::Direct => {
-                let scalar = tag_val.to_scalar()?;
+                let scalar = tag_val.to_scalar();
                 // Generate a specific error if `tag_val` is not an integer.
                 // (`tag_bits` itself is only used for error messages below.)
                 let tag_bits = scalar
@@ -758,7 +724,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (discr_val, index.0)
             }
             TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
-                let tag_val = tag_val.to_scalar()?;
+                let tag_val = tag_val.to_scalar();
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
@@ -785,9 +751,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
                             self.binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
-                        let variant_index_relative = variant_index_relative_val
-                            .to_scalar()?
-                            .assert_bits(tag_val.layout.size);
+                        let variant_index_relative =
+                            variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
                         // Check if this is in the range that indicates an actual discriminant.
                         if variant_index_relative <= u128::from(variants_end - variants_start) {
                             let variant_index_relative = u32::try_from(variant_index_relative)
