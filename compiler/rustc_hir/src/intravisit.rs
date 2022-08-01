@@ -946,33 +946,30 @@ pub fn walk_fn<'v, V: Visitor<'v>>(
 }
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem<'v>) {
-    visitor.visit_ident(trait_item.ident);
-    visitor.visit_generics(&trait_item.generics);
-    visitor.visit_defaultness(&trait_item.defaultness);
-    match trait_item.kind {
+    // N.B., deliberately force a compilation error if/when new fields are added.
+    let TraitItem { ident, generics, ref defaultness, ref kind, span, def_id: _ } = *trait_item;
+    let hir_id = trait_item.hir_id();
+    visitor.visit_ident(ident);
+    visitor.visit_generics(&generics);
+    visitor.visit_defaultness(&defaultness);
+    match *kind {
         TraitItemKind::Const(ref ty, default) => {
-            visitor.visit_id(trait_item.hir_id());
+            visitor.visit_id(hir_id);
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
         TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
-            visitor.visit_id(trait_item.hir_id());
+            visitor.visit_id(hir_id);
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {
                 visitor.visit_ident(param_name);
             }
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
-            visitor.visit_fn(
-                FnKind::Method(trait_item.ident, sig),
-                &sig.decl,
-                body_id,
-                trait_item.span,
-                trait_item.hir_id(),
-            );
+            visitor.visit_fn(FnKind::Method(ident, sig), &sig.decl, body_id, span, hir_id);
         }
         TraitItemKind::Type(bounds, ref default) => {
-            visitor.visit_id(trait_item.hir_id());
+            visitor.visit_id(hir_id);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }
