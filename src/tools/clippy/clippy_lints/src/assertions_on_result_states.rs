@@ -19,6 +19,9 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// An assertion failure cannot output an useful message of the error.
     ///
+    /// ### Known problems
+    /// The suggested replacement decreases the readability of code and log output.
+    ///
     /// ### Example
     /// ```rust,ignore
     /// # let r = Ok::<_, ()>(());
@@ -28,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.64.0"]
     pub ASSERTIONS_ON_RESULT_STATES,
-    style,
+    restriction,
     "`assert!(r.is_ok())`/`assert!(r.is_err())` gives worse error message than directly calling `r.unwrap()`/`r.unwrap_err()`"
 }
 
