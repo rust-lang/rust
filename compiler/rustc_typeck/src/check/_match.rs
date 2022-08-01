@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeVisitable};
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -479,7 +479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match orig_expected {
             Expectation::ExpectHasType(expected)
                 if self.in_tail_expr
-                    && self.ret_coercion.as_ref()?.borrow().merged_ty().has_opaque_types()
+                    && self.return_type_has_opaque
                     && self.can_coerce(outer_ty, expected) =>
             {
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
