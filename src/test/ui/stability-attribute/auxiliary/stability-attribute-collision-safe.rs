@@ -40,3 +40,35 @@ impl Bar {
         2
     }
 }
+
+#[stable(feature = "trait_feature", since = "1.0.0")]
+pub trait Trait {
+    #[unstable(feature = "new_trait_feature", issue = "none")]
+    fn not_safe(&self) -> u32 {
+        0
+    }
+
+    #[unstable(feature = "new_trait_feature", issue = "none", collision_safe)]
+    fn safe(&self) -> u32 {
+        0
+    }
+
+    #[unstable(feature = "new_trait_feature", issue = "none", collision_safe)]
+    fn safe_and_shadowing_a_stable_item(&self) -> u32 {
+        0
+    }
+}
+
+#[stable(feature = "trait_feature", since = "1.0.0")]
+pub trait OtherTrait {
+    #[stable(feature = "trait_feature", since = "1.0.0")]
+    fn safe_and_shadowing_a_stable_item(&self) -> u32 {
+        4
+    }
+}
+
+#[stable(feature = "trait_feature", since = "1.0.0")]
+impl Trait for char { }
+
+#[stable(feature = "trait_feature", since = "1.0.0")]
+impl OtherTrait for char { }

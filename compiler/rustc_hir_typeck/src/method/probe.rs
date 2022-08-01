@@ -1367,21 +1367,30 @@ impl<'tcx> Pick<'tcx> {
         span: Span,
         scope_expr_id: hir::HirId,
     ) {
-        if self.unstable_candidates.is_empty() {
-            return;
-        }
-
-        if self.unstable_candidates.iter().all(|(candidate, _)| {
-            let stab = tcx.lookup_stability(candidate.item.def_id);
-            debug!(?candidate, ?stab);
-            matches!(
-                stab,
-                Some(Stability {
-                    level: StabilityLevel::Unstable { collision_safe: true, .. },
-                    ..
-                })
-            )
-        }) {
+        if self.unstable_candidates.is_empty()
+            || !{
+                let has_collision_unsafe_candidate =
+                    self.unstable_candidates.iter().any(|(candidate, _)| {
+                        let stab = tcx.lookup_stability(candidate.item.def_id);
+                        !matches!(
+                            stab,
+                            Some(Stability {
+                                level: StabilityLevel::Unstable { collision_safe: true, .. },
+                                ..
+                            })
+                        )
+                    });
+                // `collision_safe` shouldn't silence the lint when the selected candidate is from
+                // user code, only when it is a collision with an item from std (where the
+                // assumption is that t-libs have confirmed that such a collision is okay). Use the
+                // existence of a stability attribute on the selected candidate has a heuristic
+                // for item from std.
+                let chosen_candidate_has_stability =
+                    tcx.lookup_stability(self.item.def_id).is_some();
+                debug!(?has_collision_unsafe_candidate, ?chosen_candidate_has_stability, ?self);
+                has_collision_unsafe_candidate || !chosen_candidate_has_stability
+            }
+        {
             return;
         }
 
