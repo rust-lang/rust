@@ -2048,6 +2048,7 @@ impl Step for RustDev {
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
         // will not pick up the extra file until LLVM gets bumped.
         for bin in &[
+            "lld",
             "llvm-config",
             "llvm-ar",
             "llvm-objdump",
