@@ -6,7 +6,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(almost_complete_letter_range::ALMOST_COMPLETE_LETTER_RANGE),
     LintId::of(approx_const::APPROX_CONSTANT),
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
-    LintId::of(assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES),
     LintId::of(async_yields_async::ASYNC_YIELDS_ASYNC),
     LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
     LintId::of(attrs::DEPRECATED_CFG_ATTR),
