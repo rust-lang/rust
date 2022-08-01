@@ -222,18 +222,6 @@ impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
     }
 }
 
-struct TransferWrapper<'a>(&'a mut ChunkedBitSet<Local>);
-
-impl<'a> GenKill<Local> for TransferWrapper<'a> {
-    fn gen(&mut self, l: Local) {
-        self.0.insert(l);
-    }
-
-    fn kill(&mut self, l: Local) {
-        self.0.remove(l);
-    }
-}
-
 impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     fn apply_statement_effect(
         &self,
@@ -271,7 +259,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
                 return;
             }
         }
-        TransferFunction(&mut TransferWrapper(trans)).visit_statement(statement, location);
+        TransferFunction(trans).visit_statement(statement, location);
     }
 
     fn apply_terminator_effect(
@@ -280,7 +268,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        TransferFunction(&mut TransferWrapper(trans)).visit_terminator(terminator, location);
+        TransferFunction(trans).visit_terminator(terminator, location);
     }
 
     fn apply_call_return_effect(
