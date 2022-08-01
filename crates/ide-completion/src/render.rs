@@ -117,7 +117,7 @@ pub(crate) fn render_field(
 ) -> CompletionItem {
     let is_deprecated = ctx.is_deprecated(field);
     let name = field.name(ctx.db());
-    let (name, escaped_name) = (name.to_smol_str(), name.escaped().to_smol_str());
+    let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let mut item = CompletionItem::new(
         SymbolKind::Field,
         ctx.source_range(),
@@ -283,8 +283,8 @@ fn render_resolution_path(
 
     let name = local_name.to_smol_str();
     let mut item = render_resolution_simple_(ctx, &local_name, import_to_add, resolution);
-    if local_name.escaped().is_escaped() {
-        item.insert_text(local_name.escaped().to_smol_str());
+    if local_name.is_escaped() {
+        item.insert_text(local_name.to_smol_str());
     }
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
@@ -306,7 +306,7 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{}<$0>", local_name.escaped()));
+                    .insert_snippet(cap, format!("{}<$0>", local_name));
             }
         }
     }

@@ -134,9 +134,9 @@ impl ModPath {
             }
             first_segment = false;
             if escaped {
-                segment.escaped().fmt(f)?
-            } else {
                 segment.fmt(f)?
+            } else {
+                segment.unescaped().fmt(f)?
             };
         }
         Ok(())

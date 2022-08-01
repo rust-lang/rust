@@ -52,10 +52,10 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format!("{}.{}", receiver, &name).into(),
-            format!("{}.{}", receiver.escaped(), name.escaped()).into(),
+            format!("{}.{}", receiver.unescaped(), name.unescaped()).into(),
+            format!("{}.{}", receiver, name).into(),
         ),
-        _ => (name.to_smol_str(), name.escaped().to_smol_str()),
+        _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
     let mut item = CompletionItem::new(
         if func.self_param(db).is_some() {
