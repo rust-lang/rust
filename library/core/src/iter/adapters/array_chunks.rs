@@ -1,5 +1,5 @@
 use crate::array;
-use crate::iter::{Fuse, FusedIterator, Iterator, TrustedLen};
+use crate::iter::{Fuse, FusedIterator, Iterator};
 use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::ops::{ControlFlow, Try};
@@ -54,11 +54,7 @@ where
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (lower, upper) = self.iter.size_hint();
-        // Keep infinite iterator size hint lower bound as `usize::MAX`. This
-        // is required to implement `TrustedLen`.
-        if lower == usize::MAX {
-            return (lower, upper);
-        }
+
         (lower / N, upper.map(|n| n / N))
     }
 
@@ -318,6 +314,3 @@ where
         self.iter.len() / N == 0
     }
 }
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<I, const N: usize> TrustedLen for ArrayChunks<I, N> where I: TrustedLen {}

@@ -50,7 +50,7 @@ fn test_iterator_array_chunks_size_hint() {
     assert_eq!(it.size_hint(), (0, Some(0)));
 
     let it = (1..).array_chunks::<2>();
-    assert_eq!(it.size_hint(), (usize::MAX, None));
+    assert_eq!(it.size_hint(), (usize::MAX / 2, None));
 
     let it = (1..).filter(|x| x % 2 != 0).array_chunks::<2>();
     assert_eq!(it.size_hint(), (0, None));
