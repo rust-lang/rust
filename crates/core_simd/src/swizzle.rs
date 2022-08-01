@@ -362,10 +362,6 @@ where
             const INDEX: [Which; LANES] = deinterleave::<LANES>(true);
         }
 
-        if LANES == 1 {
-            (self, other)
-        } else {
-            (Even::swizzle2(self, other), Odd::swizzle2(self, other))
-        }
+        (Even::swizzle2(self, other), Odd::swizzle2(self, other))
     }
 }
