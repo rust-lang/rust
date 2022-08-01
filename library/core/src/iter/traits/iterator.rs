@@ -3350,6 +3350,7 @@ pub trait Iterator {
     ///     assert_eq!(x + y + z, 4);
     /// }
     /// ```
+    #[track_caller]
     #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
     fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
     where

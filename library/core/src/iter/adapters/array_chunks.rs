@@ -24,6 +24,7 @@ impl<I, const N: usize> ArrayChunks<I, N>
 where
     I: Iterator,
 {
+    #[track_caller]
     pub(in crate::iter) fn new(iter: I) -> Self {
         assert!(N != 0, "chunk size must be non-zero");
         Self { iter: iter.fuse(), remainder: None }
