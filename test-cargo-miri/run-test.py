@@ -29,7 +29,7 @@ def normalize_stdout(str):
     return str
 
 def normalize_stderr(str):
-    str = str.replace("Preparing a sysroot for Miri... done\n", "") # remove leading cargo-miri setup output
+    str = re.sub("Preparing a sysroot for Miri \(target: [a-z0-9_-]+\)\.\.\. done\n", "", str) # remove leading cargo-miri setup output
     return str
 
 def check_output(actual, path, name):
