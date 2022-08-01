@@ -1545,21 +1545,23 @@ impl<T: ?Sized> *mut T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
+    /// use std::mem::align_of;
+    ///
     /// # unsafe {
-    /// let mut x = [5u8, 6, 7, 8, 9];
-    /// let ptr = x.as_mut_ptr().add(n);
+    /// let mut x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = x.as_mut_ptr();
     /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.add(offset) as *mut u16;
-    ///     assert_ne!(*u16_ptr, 500);
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
     ///     *u16_ptr = 0;
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    /// # } }
+    ///
+    /// assert!(x == [0, 0, 7, 8, 9] || x == [5, 0, 0, 8, 9]);
+    /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
