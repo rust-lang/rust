@@ -216,6 +216,10 @@ jobs:
           path: dist
       - uses: actions/download-artifact@v1
         with:
+          name: dist-arm-unknown-linux-gnueabihf
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
           name: dist-x86_64-pc-windows-msvc
           path: dist
       - uses: actions/download-artifact@v1
