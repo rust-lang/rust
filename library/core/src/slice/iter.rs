@@ -92,7 +92,7 @@ impl<'a, T> Iter<'a, T> {
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as *const u8).wrapping_add(slice.len()) as *const T
+                ptr.wrapping_byte_add(slice.len())
             } else {
                 ptr.add(slice.len())
             };
@@ -228,7 +228,7 @@ impl<'a, T> IterMut<'a, T> {
             assume(!ptr.is_null());
 
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as *mut u8).wrapping_add(slice.len()) as *mut T
+                ptr.wrapping_byte_add(slice.len())
             } else {
                 ptr.add(slice.len())
             };
