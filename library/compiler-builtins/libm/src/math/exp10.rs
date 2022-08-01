@@ -6,16 +6,17 @@ const P10: &[f64] = &[
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15,
 ];
 
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn exp10(x: f64) -> f64 {
     let (mut y, n) = modf(x);
     let u: u64 = n.to_bits();
     /* fabs(n) < 16 without raising invalid on nan */
     if (u >> 52 & 0x7ff) < 0x3ff + 4 {
         if y == 0.0 {
-            return P10[((n as isize) + 15) as usize];
+            return i!(P10, ((n as isize) + 15) as usize);
         }
         y = exp2(LN10 * y);
-        return y * P10[((n as isize) + 15) as usize];
+        return y * i!(P10, ((n as isize) + 15) as usize);
     }
     return pow(10.0, x);
 }

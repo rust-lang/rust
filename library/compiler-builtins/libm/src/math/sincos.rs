@@ -12,6 +12,7 @@
 
 use super::{get_high_word, k_cos, k_sin, rem_pio2};
 
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sincos(x: f64) -> (f64, f64) {
     let s: f64;
     let c: f64;

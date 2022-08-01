@@ -23,6 +23,7 @@ const S2PIO2: f32 = 2.0 * PI_2; /* 0x400921FB, 0x54442D18 */
 const S3PIO2: f32 = 3.0 * PI_2; /* 0x4012D97C, 0x7F3321D2 */
 const S4PIO2: f32 = 4.0 * PI_2; /* 0x401921FB, 0x54442D18 */
 
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sincosf(x: f32) -> (f32, f32) {
     let s: f32;
     let c: f32;
