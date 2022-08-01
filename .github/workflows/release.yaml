@@ -73,7 +73,7 @@ jobs:
           node-version: 14.x
 
       - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'gcc-arm-linux-gnueabihf'
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get update
 
       - name: Install AArch64 target toolchain
@@ -81,7 +81,7 @@ jobs:
         run: sudo apt-get install gcc-aarch64-linux-gnu
 
       - name: Install ARM target toolchain
-        if: matrix.target == 'gcc-arm-linux-gnueabihf'
+        if: matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-arm-linux-gnueabihf
 
       - name: Dist
