@@ -7,12 +7,20 @@ use syntax::{ast, SmolStr, SyntaxKind};
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
 /// not there yet!
+///
+/// Note that `Name` holds and prints escaped name i.e. prefixed with "r#" when it
+/// is a raw identifier. Use [`unescaped()`][Name::unescaped] when you need the
+/// name without "r#".
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Name(Repr);
 
 /// `EscapedName` will add a prefix "r#" to the wrapped `Name` when it is a raw identifier
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EscapedName<'a>(&'a Name);
+
+/// Wrapper of `Name` to print the name without "r#" even when it is a raw identifier.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct UnescapedName<'a>(&'a Name);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 enum Repr {
@@ -45,6 +53,35 @@ impl<'a> fmt::Display for EscapedName<'a> {
                 }
             }
             Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
+        }
+    }
+}
+
+impl<'a> fmt::Display for UnescapedName<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 .0 {
+            Repr::Text(text) => {
+                let text = text.strip_prefix("r#").unwrap_or(text);
+                fmt::Display::fmt(&text, f)
+            }
+            Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
+        }
+    }
+}
+
+impl<'a> UnescapedName<'a> {
+    /// Returns the textual representation of this name as a [`SmolStr`]. Prefer using this over
+    /// [`ToString::to_string`] if possible as this conversion is cheaper in the general case.
+    pub fn to_smol_str(&self) -> SmolStr {
+        match &self.0 .0 {
+            Repr::Text(it) => {
+                if let Some(stripped) = it.strip_prefix("r#") {
+                    SmolStr::new(stripped)
+                } else {
+                    it.clone()
+                }
+            }
+            Repr::TupleField(it) => SmolStr::new(&it.to_string()),
         }
     }
 }
@@ -97,9 +134,11 @@ impl Name {
 
     /// Resolve a name from the text of token.
     fn resolve(raw_text: &str) -> Name {
+        // When `raw_text` starts with "r#" but the name does not coincide with any
+        // keyword, we never need the prefix so we strip it.
         match raw_text.strip_prefix("r#") {
-            Some(text) => Name::new_text(SmolStr::new(text)),
-            None => Name::new_text(raw_text.into()),
+            Some(text) if !is_raw_identifier(text) => Name::new_text(SmolStr::new(text)),
+            _ => Name::new_text(raw_text.into()),
         }
     }
 
@@ -144,6 +183,17 @@ impl Name {
 
     pub fn escaped(&self) -> EscapedName<'_> {
         EscapedName(self)
+    }
+
+    pub fn unescaped(&self) -> UnescapedName<'_> {
+        UnescapedName(self)
+    }
+
+    pub fn is_escaped(&self) -> bool {
+        match &self.0 {
+            Repr::Text(it) => it.starts_with("r#"),
+            Repr::TupleField(_) => false,
+        }
     }
 }
 
