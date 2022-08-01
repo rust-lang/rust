@@ -2207,17 +2207,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                 8,
             false);
 
-        auto firstallocation = cast<Instruction>(CallInst::CreateMalloc(
-            inversionAllocs, numThreads->getType(), malloc->getType(),
-            byteSizeOfType, numThreads, nullptr,
-            malloc->getName() + "_malloccache"));
-        if (firstallocation->getParent() == nullptr) {
-          inversionAllocs->getInstList().push_back(firstallocation);
-        }
-
-        if (auto inst = dyn_cast<Instruction>(malloc)) {
-          entryBuilder.SetInsertPoint(inst->getNextNode());
-        }
+        auto firstallocation =
+            CreateAllocation(entryBuilder, malloc->getType(), numThreads,
+                             malloc->getName() + "_malloccache");
 #if LLVM_VERSION_MAJOR > 7
         Value *tPtr = entryBuilder.CreateInBoundsGEP(
             firstallocation->getType()->getPointerElementType(),
@@ -2226,6 +2218,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         Value *tPtr = entryBuilder.CreateInBoundsGEP(firstallocation,
                                                      ArrayRef<Value *>(tid));
 #endif
+        if (auto inst = dyn_cast<Instruction>(malloc)) {
+          entryBuilder.SetInsertPoint(inst->getNextNode());
+        }
         entryBuilder.CreateStore(malloc, tPtr);
         toStoreInTape = firstallocation;
       }

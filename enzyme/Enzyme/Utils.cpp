@@ -37,11 +37,135 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 
+#include "llvm-c/Core.h"
+
 using namespace llvm;
 
 extern "C" {
 void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
                            void *) = nullptr;
+LLVMValueRef (*CustomAllocator)(LLVMBuilderRef, LLVMTypeRef,
+                                /*Count*/ LLVMValueRef,
+                                /*Align*/ LLVMValueRef) = nullptr;
+LLVMValueRef (*CustomDeallocator)(LLVMBuilderRef, LLVMValueRef) = nullptr;
+}
+
+Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
+                        Twine Name, CallInst **caller, Instruction **ZeroMem) {
+  Value *res;
+  auto &M = *Builder.GetInsertBlock()->getParent()->getParent();
+  auto AlignI = M.getDataLayout().getTypeAllocSizeInBits(T) / 8;
+  auto Align = ConstantInt::get(Count->getType(), AlignI);
+  CallInst *malloccall = nullptr;
+  if (CustomAllocator) {
+    res = unwrap(
+        CustomAllocator(wrap(&Builder), wrap(T), wrap(Count), wrap(Align)));
+    if (auto I = dyn_cast<Instruction>(res))
+      I->setName(Name);
+
+    malloccall = dyn_cast<CallInst>(res);
+    if (malloccall == nullptr) {
+      malloccall = cast<CallInst>(cast<Instruction>(res)->getOperand(0));
+    }
+  } else {
+    if (Builder.GetInsertPoint() == Builder.GetInsertBlock()->end()) {
+      res = CallInst::CreateMalloc(Builder.GetInsertBlock(), Count->getType(),
+                                   T, Align, Count, nullptr, Name);
+      Builder.SetInsertPoint(Builder.GetInsertBlock());
+    } else {
+      res = CallInst::CreateMalloc(&*Builder.GetInsertPoint(), Count->getType(),
+                                   T, Align, Count, nullptr, Name);
+    }
+    if (!cast<Instruction>(res)->getParent())
+      Builder.Insert(cast<Instruction>(res));
+
+    malloccall = dyn_cast<CallInst>(res);
+    if (malloccall == nullptr) {
+      malloccall = cast<CallInst>(cast<Instruction>(res)->getOperand(0));
+    }
+
+    // Assert computation of size of array doesn't wrap
+    if (auto BI = dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
+      if ((BI->getOperand(0) == Align && BI->getOperand(1) == Count) ||
+          (BI->getOperand(1) == Align && BI->getOperand(0) == Count))
+        BI->setHasNoSignedWrap(true);
+      BI->setHasNoUnsignedWrap(true);
+    }
+
+    if (auto ci = dyn_cast<ConstantInt>(Count)) {
+#if LLVM_VERSION_MAJOR >= 14
+      malloccall->addDereferenceableRetAttr(ci->getLimitedValue() * AlignI);
+#if !defined(FLANG) && !defined(ROCM)
+      AttrBuilder B(ci->getContext());
+#else
+      AttrBuilder B;
+#endif
+      B.addDereferenceableOrNullAttr(ci->getLimitedValue() * AlignI);
+      malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
+          malloccall->getContext(), B));
+#else
+      malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
+                                         ci->getLimitedValue() * AlignI);
+      malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
+                                               ci->getLimitedValue() * AlignI);
+#endif
+      // malloccall->removeAttribute(llvm::AttributeList::ReturnIndex,
+      // Attribute::DereferenceableOrNull);
+    }
+#if LLVM_VERSION_MAJOR >= 14
+    malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                    Attribute::NoAlias);
+    malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
+                                    Attribute::NonNull);
+#else
+    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+#endif
+  }
+  if (caller) {
+    *caller = malloccall;
+  }
+  if (ZeroMem) {
+    Value *args[] = {
+        malloccall,
+        ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
+        Builder.CreateMul(Align, Count, "", true, true),
+        ConstantInt::getFalse(malloccall->getContext())};
+    Type *tys[] = {args[0]->getType(), args[2]->getType()};
+
+    *ZeroMem = Builder.CreateCall(
+        Intrinsic::getDeclaration(&M, Intrinsic::memset, tys), args);
+  }
+  return res;
+}
+
+CallInst *CreateDealloc(llvm::IRBuilder<> &Builder, llvm::Value *ToFree) {
+  CallInst *res = nullptr;
+
+  if (CustomDeallocator) {
+    res = dyn_cast_or_null<CallInst>(
+        unwrap(CustomDeallocator(wrap(&Builder), wrap(ToFree))));
+  } else {
+
+    ToFree = Builder.CreatePointerCast(
+        ToFree, Type::getInt8PtrTy(ToFree->getContext()));
+    if (Builder.GetInsertPoint() == Builder.GetInsertBlock()->end()) {
+      res = cast<CallInst>(
+          CallInst::CreateFree(ToFree, Builder.GetInsertBlock()));
+      Builder.SetInsertPoint(Builder.GetInsertBlock());
+    } else {
+      res = cast<CallInst>(
+          CallInst::CreateFree(ToFree, &*Builder.GetInsertPoint()));
+    }
+    if (!cast<Instruction>(res)->getParent())
+      Builder.Insert(cast<Instruction>(res));
+#if LLVM_VERSION_MAJOR >= 14
+    res->addAttributeAtIndex(AttributeList::FirstArgIndex, Attribute::NonNull);
+#else
+    res->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+#endif
+  }
+  return res;
 }
 
 EnzymeFailure::EnzymeFailure(llvm::StringRef RemarkName,
@@ -522,15 +646,7 @@ llvm::Function *getOrInsertDifferentialWaitallSave(llvm::Module &M,
   IRBuilder<> B(entry);
   count = B.CreateZExtOrTrunc(count, Type::getInt64Ty(entry->getContext()));
 
-  Instruction *ret = CallInst::CreateMalloc(
-      entry, count->getType(), reqType,
-      ConstantInt::get(count->getType(),
-                       M.getDataLayout().getTypeAllocSizeInBits(reqType) / 8),
-      count, nullptr, "");
-
-  B.SetInsertPoint(entry);
-  if (!ret->getParent())
-    B.Insert(ret);
+  auto ret = CreateAllocation(B, reqType, count);
 
   BasicBlock *loopBlock = BasicBlock::Create(M.getContext(), "loop", F);
   BasicBlock *endBlock = BasicBlock::Create(M.getContext(), "end", F);

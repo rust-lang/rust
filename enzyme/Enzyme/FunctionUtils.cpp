@@ -299,17 +299,11 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
     }
 
     auto i64 = Type::getInt64Ty(NewF->getContext());
-    auto rep = CallInst::CreateMalloc(
-        insertBefore, i64, AI->getAllocatedType(),
-        ConstantInt::get(
-            i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(
-                     AI->getAllocatedType()) /
-                     8),
-        IRBuilder<>(insertBefore).CreateZExtOrTrunc(AI->getArraySize(), i64),
-        nullptr, nam);
-    CallInst *CI = dyn_cast<CallInst>(rep);
-    if (auto C = dyn_cast<CastInst>(rep))
-      CI = cast<CallInst>(C->getOperand(0));
+    IRBuilder<> B(insertBefore);
+    CallInst *CI = nullptr;
+    auto rep = CreateAllocation(B, AI->getAllocatedType(),
+                                B.CreateZExtOrTrunc(AI->getArraySize(), i64),
+                                nam, &CI);
     CI->setMetadata("enzyme_fromstack",
                     MDNode::get(CI->getContext(),
                                 {ConstantAsMetadata::get(ConstantInt::get(

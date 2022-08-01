@@ -55,7 +55,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   br i1 %10, label %invertentry_root, label %invertentry_post
 
 ; CHECK: invertentry_root:                                 ; preds = %entry
-; CHECK-NEXT:   %11 = tail call i8* @malloc(i64 %9)
+; CHECK-NEXT:   %11 = tail call noalias nonnull i8* @malloc(i64 %9)
 ; CHECK-NEXT:   br label %invertentry_post
 
 ; CHECK: invertentry_post:                                 ; preds = %invertentry_root, %entry

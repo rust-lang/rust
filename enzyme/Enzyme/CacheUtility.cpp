@@ -852,14 +852,12 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       StoreInst *storealloc = nullptr;
       // Statically allocate memory for all iterations if possible
       if (sublimits[i].second.back().first.maxLimit) {
-        auto firstallocation = CallInst::CreateMalloc(
-            &allocationBuilder.GetInsertBlock()->back(), size->getType(),
-            myType, byteSizeOfType, size, nullptr, name + "_malloccache");
-        CallInst *malloccall = dyn_cast<CallInst>(firstallocation);
-        if (malloccall == nullptr) {
-          malloccall =
-              cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
-        }
+        CallInst *malloccall = nullptr;
+        Instruction *ZeroInst = nullptr;
+        Value *firstallocation = CreateAllocation(
+            allocationBuilder, myType, size, name + "_malloccache", &malloccall,
+            /*ZeroMem*/ (EnzymeZeroCache && i == 0) ? &ZeroInst : nullptr);
+
         for (auto &actx : sublimits[i].second) {
           if (actx.first.offset) {
             malloccall->setMetadata("enzyme_ompfor",
@@ -868,67 +866,8 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
           }
         }
 
-        if (EnzymeZeroCache && i == 0) {
-          Value *args[] = {
-              malloccall,
-              ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
-              malloccall->getArgOperand(0),
-              ConstantInt::getFalse(malloccall->getContext())};
-          Type *tys[] = {args[0]->getType(), args[2]->getType()};
-
-          scopeInstructions[alloc].push_back(allocationBuilder.CreateCall(
-              Intrinsic::getDeclaration(newFunc->getParent(), Intrinsic::memset,
-                                        tys),
-              args));
-        }
-
-        // Assert computation of size of array doesn't wrap
-        if (auto BI = dyn_cast<BinaryOperator>(malloccall->getArgOperand(0))) {
-          if ((BI->getOperand(0) == byteSizeOfType &&
-               BI->getOperand(1) == size) ||
-              (BI->getOperand(1) == byteSizeOfType &&
-               BI->getOperand(0) == size))
-            BI->setHasNoSignedWrap(true);
-          BI->setHasNoUnsignedWrap(true);
-        }
-
-        if (auto ci = dyn_cast<ConstantInt>(size)) {
-#if LLVM_VERSION_MAJOR >= 14
-          malloccall->addDereferenceableRetAttr(
-              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-#if !defined(FLANG) && !defined(ROCM)
-          AttrBuilder B(ci->getContext());
-#else
-          AttrBuilder B;
-#endif
-          B.addDereferenceableOrNullAttr(ci->getLimitedValue() *
-                                         byteSizeOfType->getLimitedValue());
-          malloccall->setAttributes(
-              malloccall->getAttributes().addRetAttributes(
-                  malloccall->getContext(), B));
-#else
-          malloccall->addDereferenceableAttr(
-              llvm::AttributeList::ReturnIndex,
-              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-          malloccall->addDereferenceableOrNullAttr(
-              llvm::AttributeList::ReturnIndex,
-              ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-#endif
-          // malloccall->removeAttribute(llvm::AttributeList::ReturnIndex,
-          // Attribute::DereferenceableOrNull);
-        }
-#if LLVM_VERSION_MAJOR >= 14
-        malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                        Attribute::NoAlias);
-        malloccall->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                        Attribute::NonNull);
-#else
-        malloccall->addAttribute(AttributeList::ReturnIndex,
-                                 Attribute::NoAlias);
-        malloccall->addAttribute(AttributeList::ReturnIndex,
-                                 Attribute::NonNull);
-#endif
-
+        if (ZeroInst)
+          scopeInstructions[alloc].push_back(ZeroInst);
         storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
 
         scopeAllocs[alloc].push_back(malloccall);

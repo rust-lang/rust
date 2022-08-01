@@ -2449,56 +2449,16 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     Value *tapeMemory;
     if (recursive && !omp) {
       auto i64 = Type::getInt64Ty(NewF->getContext());
-      ConstantInt *size = ConstantInt::get(
-          i64,
-          NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType) /
-              8);
+      auto size =
+          NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType);
       Value *memory;
-      if (!size->isZero()) {
-        tapeMemory =
-            CallInst::CreateMalloc(NewF->getEntryBlock().getFirstNonPHI(), i64,
-                                   tapeType, size, nullptr, nullptr, "tapemem");
-        CallInst *malloccall = dyn_cast<CallInst>(tapeMemory);
-        if (malloccall == nullptr) {
-          malloccall =
-              cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
-        }
-        for (auto attr : {Attribute::NoAlias, Attribute::NonNull}) {
-#if LLVM_VERSION_MAJOR >= 14
-          malloccall->addRetAttr(attr);
-#else
-          malloccall->addAttribute(AttributeList::ReturnIndex, attr);
-#endif
-        }
-        if (EnzymeZeroCache) {
-          IRBuilder<> B(malloccall->getNextNode());
-          Value *args[] = {
-              malloccall,
-              ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
-              malloccall->getArgOperand(0),
-              ConstantInt::getFalse(malloccall->getContext())};
-          Type *tys[] = {args[0]->getType(), args[2]->getType()};
-
-          B.CreateCall(Intrinsic::getDeclaration(NewF->getParent(),
-                                                 Intrinsic::memset, tys),
-                       args);
-        }
-#if LLVM_VERSION_MAJOR >= 14
-        malloccall->addDereferenceableRetAttr(size->getLimitedValue());
-#if !defined(FLANG) && !defined(ROCM)
-        AttrBuilder B(malloccall->getContext());
-#else
-        AttrBuilder B;
-#endif
-        B.addDereferenceableOrNullAttr(size->getLimitedValue());
-        malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
-            malloccall->getContext(), B));
-#else
-        malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
-                                           size->getLimitedValue());
-        malloccall->addDereferenceableOrNullAttr(
-            llvm::AttributeList::ReturnIndex, size->getLimitedValue());
-#endif
+      if (size != 0) {
+        CallInst *malloccall = nullptr;
+        Instruction *zero = nullptr;
+        IRBuilder<> Builder(NewF->getEntryBlock().getFirstNonPHI());
+        tapeMemory = CreateAllocation(
+            Builder, tapeType, ConstantInt::get(i64, 1), "tapemem", &malloccall,
+            EnzymeZeroCache ? &zero : nullptr);
         memory = malloccall;
       } else {
         memory =
@@ -3330,9 +3290,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           auto size = NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(
               aug.tapeType);
           if (size != 0) {
-            CallInst *ci = cast<CallInst>(CallInst::CreateFree(tape, BB));
-            bb.Insert(ci);
-            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+            CreateDealloc(bb, tape);
           }
         }
         tape = truetape;
@@ -3743,18 +3701,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                               MDNode::get(truetape->getContext(), {}));
 
         if (!omp && gutils->FreeMemory) {
-          CallInst *ci =
-              cast<CallInst>(CallInst::CreateFree(additionalValue, truetape));
-          ci->moveAfter(truetape);
-          ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          CreateDealloc(BuilderZ, tapep);
         }
         additionalValue = truetape;
       } else {
         if (gutils->FreeMemory) {
-          CallInst *ci = cast<CallInst>(
-              CallInst::CreateFree(additionalValue, gutils->inversionAllocs));
-          ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-          BuilderZ.Insert(ci);
+          CreateDealloc(BuilderZ, additionalValue);
         }
         additionalValue = UndefValue::get(augmenteddata->tapeType);
       }
@@ -4355,10 +4307,7 @@ Function *EnzymeLogic::CreateForwardDiff(
                                 MDNode::get(truetape->getContext(), {}));
 
           if (!omp && gutils->FreeMemory) {
-            CallInst *ci =
-                cast<CallInst>(CallInst::CreateFree(additionalValue, truetape));
-            ci->moveAfter(truetape);
-            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+            CreateDealloc(BuilderZ, additionalValue);
           }
           additionalValue = truetape;
         } else {
@@ -4367,11 +4316,7 @@ Function *EnzymeLogic::CreateForwardDiff(
                             ->getDataLayout()
                             .getTypeAllocSizeInBits(augmenteddata->tapeType);
             if (size != 0) {
-              CallInst *ci = cast<CallInst>(CallInst::CreateFree(
-                  additionalValue, gutils->inversionAllocs));
-              ci->addAttribute(AttributeList::FirstArgIndex,
-                               Attribute::NonNull);
-              BuilderZ.Insert(ci);
+              CreateDealloc(BuilderZ, additionalValue);
             }
           }
           additionalValue = UndefValue::get(augmenteddata->tapeType);

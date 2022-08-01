@@ -80,6 +80,12 @@ extern void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
                                   void *);
 }
 
+llvm::Value *CreateAllocation(llvm::IRBuilder<> &B, llvm::Type *T,
+                              llvm::Value *Count, llvm::Twine Name = "",
+                              llvm::CallInst **caller = nullptr,
+                              llvm::Instruction **ZeroMem = nullptr);
+llvm::CallInst *CreateDealloc(llvm::IRBuilder<> &B, llvm::Value *ToFree);
+
 extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,
                                  llvm::ArrayRef<llvm::Value *>)>>

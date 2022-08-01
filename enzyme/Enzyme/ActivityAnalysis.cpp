@@ -118,6 +118,7 @@ const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZNSi7getline",
     "_ZNSirsER",
     "_ZNSt7__cxx1115basic_stringbuf",
+    "_ZNKSt7__cxx1115basic_stringbuf",
     "_ZNSi6ignore",
     "_ZNSt8ios_base",
     "_ZNKSt9basic_ios",
@@ -254,7 +255,6 @@ const std::set<std::string> KnownInactiveFunctions = {
 };
 
 const char *DemangledKnownInactiveFunctionsStartingWith[] = {
-    "fprintf",
     "std::allocator",
     "std::string",
     "std::cerr",

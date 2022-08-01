@@ -2324,22 +2324,14 @@ public:
 #else
     forfree->setAlignment(align);
 #endif
-    CallInst *ci = cast<CallInst>(CallInst::CreateFree(
-        tbuild.CreatePointerCast(forfree,
-                                 Type::getInt8PtrTy(newFunc->getContext())),
-        tbuild.GetInsertBlock()));
-    if (newFunc->getSubprogram())
-      ci->setDebugLoc(DILocation::get(newFunc->getContext(), 0, 0,
-                                      newFunc->getSubprogram(), 0));
-#if LLVM_VERSION_MAJOR >= 14
-    ci->addAttributeAtIndex(AttributeList::FirstArgIndex, Attribute::NonNull);
-#else
-    ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-#endif
-    if (ci->getParent() == nullptr) {
-      tbuild.Insert(ci);
+
+    CallInst *ci = CreateDealloc(tbuild, forfree);
+    if (ci) {
+      if (newFunc->getSubprogram())
+        ci->setDebugLoc(DILocation::get(newFunc->getContext(), 0, 0,
+                                        newFunc->getSubprogram(), 0));
+      scopeFrees[alloc].insert(ci);
     }
-    scopeFrees[alloc].insert(ci);
   }
 
 //! align is the alignment that should be specified for load/store to pointer
