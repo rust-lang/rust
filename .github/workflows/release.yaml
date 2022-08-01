@@ -5,6 +5,8 @@ on:
 
   workflow_dispatch:
 
+  pull_request:
+
   push:
     branches:
       - release
@@ -36,6 +38,9 @@ jobs:
           - os: ubuntu-18.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
+          - os: ubuntu-18.04
+            target: arm-unknown-linux-gnueabihf
+            code-target: linux-armhf
           - os: macos-11
             target: x86_64-apple-darwin
             code-target: darwin-x64
@@ -67,12 +72,16 @@ jobs:
           node-version: 14.x
 
       - name: Update apt repositories
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'gcc-arm-linux-gnueabihf'
         run: sudo apt-get update
 
-      - name: Install target toolchain
+      - name: Install AArch64 target toolchain
         if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: sudo apt-get install gcc-aarch64-linux-gnu
+
+      - name: Install ARM target toolchain
+        if: matrix.target == 'gcc-arm-linux-gnueabihf'
+        run: sudo apt-get install gcc-arm-linux-gnueabihf
 
       - name: Dist
         run: cargo xtask dist --client-patch-version ${{ github.run_number }}
