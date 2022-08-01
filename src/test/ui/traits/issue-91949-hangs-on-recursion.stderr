@@ -4,11 +4,10 @@ warning: function cannot return without recursing
 LL | / fn recurse<T>(elements: T) -> Vec<char>
 LL | | where
 LL | |     T: Iterator<Item = ()>,
-LL | | {
-LL | |     recurse(IteratorOfWrapped(elements).map(|t| t.0))
-   | |     ------------------------------------------------- recursive call site
-LL | | }
-   | |_^ cannot return without recursing
+   | |___________________________^ cannot return without recursing
+LL |   {
+LL |       recurse(IteratorOfWrapped(elements).map(|t| t.0))
+   |       ------------------------------------------------- recursive call site
    |
    = note: `#[warn(unconditional_recursion)]` on by default
    = help: a `loop` may express intention better if this is on purpose

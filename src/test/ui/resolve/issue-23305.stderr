@@ -8,8 +8,14 @@ LL | impl dyn ToNbt<Self> {}
 note: cycle used when collecting item types in top-level module
   --> $DIR/issue-23305.rs:1:1
    |
-LL | pub trait ToNbt<T> {
-   | ^^^^^^^^^^^^^^^^^^
+LL | / pub trait ToNbt<T> {
+LL | |     fn new(val: T) -> Self;
+LL | | }
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
 
 error: aborting due to previous error
 
