@@ -139,7 +139,7 @@ pub struct bool_11 {
     field10: bool,
 }
 
-extern "C" fn bool_struct_in_11(arg0: bool_11) {}
+extern "C" fn bool_struct_in_11(_arg0: bool_11) {}
 
 #[allow(unreachable_code)] // FIXME false positive
 fn main() {
@@ -375,6 +375,7 @@ struct pthread_attr_t {
 }
 
 #[link(name = "pthread")]
+#[cfg(not(target_env="msvc"))]
 extern "C" {
     fn pthread_attr_init(attr: *mut pthread_attr_t) -> c_int;
 
@@ -391,6 +392,86 @@ extern "C" {
     ) -> c_int;
 }
 
+type DWORD = u32;
+type LPDWORD = *mut u32;
+
+type LPVOID = *mut c_void;
+type HANDLE = *mut c_void;
+
+#[link(name = "msvcrt")]
+#[cfg(target_env="msvc")]
+extern "C" {
+    fn WaitForSingleObject(
+        hHandle: LPVOID,
+        dwMilliseconds: DWORD
+    ) -> DWORD;
+
+    fn  CreateThread(
+        lpThreadAttributes: LPVOID, // Technically LPSECURITY_ATTRIBUTES, but we don't use it anyway
+        dwStackSize: usize,
+        lpStartAddress: extern "C" fn(_: *mut c_void) -> *mut c_void,
+        lpParameter: LPVOID,
+        dwCreationFlags: DWORD,
+        lpThreadId: LPDWORD
+    ) -> HANDLE;
+}
+
+enum Thread {
+    Windows(HANDLE),
+    Pthread(pthread_t)
+}
+
+impl Thread {
+    unsafe fn create(f: extern "C" fn(_: *mut c_void) -> *mut c_void) -> Self {
+        #[cfg(not(target_env="msvc"))]
+        {
+            let mut attr: pthread_attr_t = zeroed();
+            let mut thread: pthread_t = 0;
+
+            if pthread_attr_init(&mut attr) != 0 {
+                assert!(false);
+            }
+
+            if pthread_create(&mut thread, &attr, f, 0 as *mut c_void) != 0 {
+                assert!(false);
+            }
+
+            Thread::Pthread(thread)
+        }
+
+        #[cfg(target_env="msvc")]
+        {
+            let handle = CreateThread(0 as *mut c_void, 0, f, 0 as *mut c_void, 0, 0 as *mut u32);
+
+            if (handle as u64) == 0 {
+                assert!(false);
+            }
+
+            Thread::Windows(handle)
+        }
+    }
+
+
+    unsafe fn join(self) {
+        match self {
+            #[cfg(not(target_env="msvc"))]
+            Thread::Pthread(thread) => {
+                let mut res = 0 as *mut c_void;
+                pthread_join(thread, &mut res);
+            }
+            #[cfg(target_env="msvc")]
+            Thread::Windows(handle) => {
+                let wait_time = 5000; // in milliseconds
+                assert!(WaitForSingleObject(handle, wait_time) == 0);
+            }
+            _ => assert!(false),
+        }
+    }
+}
+
+
+
+
 #[thread_local]
 #[cfg(not(jit))]
 static mut TLS: u8 = 42;
@@ -404,21 +485,10 @@ extern "C" fn mutate_tls(_: *mut c_void) -> *mut c_void {
 #[cfg(not(jit))]
 fn test_tls() {
     unsafe {
-        let mut attr: pthread_attr_t = zeroed();
-        let mut thread: pthread_t = 0;
-
         assert_eq!(TLS, 42);
 
-        if pthread_attr_init(&mut attr) != 0 {
-            assert!(false);
-        }
-
-        if pthread_create(&mut thread, &attr, mutate_tls, 0 as *mut c_void) != 0 {
-            assert!(false);
-        }
-
-        let mut res = 0 as *mut c_void;
-        pthread_join(thread, &mut res);
+        let thread = Thread::create(mutate_tls);
+        thread.join();
 
         // TLS of main thread must not have been changed by the other thread.
         assert_eq!(TLS, 42);

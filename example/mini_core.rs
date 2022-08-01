@@ -535,7 +535,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, alloc: ()) {
+unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, _alloc: ()) {
     libc::free(ptr.pointer.0 as *mut u8);
 }
 
