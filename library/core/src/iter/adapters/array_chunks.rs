@@ -2,7 +2,7 @@ use crate::array;
 use crate::iter::{FusedIterator, Iterator};
 use crate::mem;
 use crate::mem::MaybeUninit;
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 use crate::ptr;
 
 /// An iterator over `N` elements of the iterator at a time.
@@ -104,30 +104,12 @@ where
         }
     }
 
-    fn fold<B, F>(self, init: B, mut f: F) -> B
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut array = MaybeUninit::uninit_array();
-        // SAFETY: `array` will still be valid if `guard` is dropped.
-        let mut guard = unsafe { FrontGuard::new(&mut array) };
-
-        self.iter.fold(init, |mut acc, item| {
-            // SAFETY: `init` starts at 0, increases by one each iteration and
-            // is reset to 0 once it reaches N.
-            unsafe { array.get_unchecked_mut(guard.init) }.write(item);
-            guard.init += 1;
-            if guard.init == N {
-                guard.init = 0;
-                let array = mem::replace(&mut array, MaybeUninit::uninit_array());
-                // SAFETY: the condition above asserts that all elements are
-                // initialized.
-                let item = unsafe { MaybeUninit::array_assume_init(array) };
-                acc = f(acc, item);
-            }
-            acc
-        })
+        self.try_fold(init, |acc, x| NeverShortCircuit(f(acc, x))).0
     }
 }
 
@@ -205,31 +187,7 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        // We are iterating from the back we need to first handle the remainder.
-        if self.next_back_remainder().is_none() {
-            return init;
-        }
-
-        let mut array = MaybeUninit::uninit_array();
-
-        // SAFETY: `array` will still be valid if `guard` is dropped.
-        let mut guard = unsafe { BackGuard::new(&mut array) };
-
-        self.iter.rfold(init, |mut acc, item| {
-            guard.uninit -= 1;
-            // SAFETY: `uninit` starts at N, decreases by one each iteration and
-            // is reset to N once it reaches 0.
-            unsafe { array.get_unchecked_mut(guard.uninit) }.write(item);
-            if guard.uninit == 0 {
-                guard.uninit = N;
-                let array = mem::replace(&mut array, MaybeUninit::uninit_array());
-                // SAFETY: the condition above asserts that all elements are
-                // initialized.
-                let item = unsafe { MaybeUninit::array_assume_init(array) };
-                acc = f(acc, item);
-            }
-            acc
-        })
+        self.try_rfold(init, |acc, x| NeverShortCircuit(f(acc, x))).0
     }
 }
 
