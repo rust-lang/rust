@@ -1159,20 +1159,6 @@ impl CrateCheckConfig {
         self.fill_well_known_names();
         self.fill_well_known_values();
     }
-
-    /// Fills a `CrateCheckConfig` with configuration names and values that are actually active.
-    pub fn fill_actual(&mut self, cfg: &CrateConfig) {
-        for &(k, v) in cfg {
-            if let Some(names_valid) = &mut self.names_valid {
-                names_valid.insert(k);
-            }
-            if let Some(v) = v {
-                self.values_valid.entry(k).and_modify(|values| {
-                    values.insert(v);
-                });
-            }
-        }
-    }
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateConfig {

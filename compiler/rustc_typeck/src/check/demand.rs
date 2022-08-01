@@ -1,5 +1,6 @@
 use crate::check::FnCtxt;
 use rustc_infer::infer::InferOk;
+use rustc_middle::middle::stability::EvalResult;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCause;
 
@@ -363,18 +364,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            let compatible_variants: Vec<(String, Option<String>)> = expected_adt
+            let compatible_variants: Vec<(String, _, _, Option<String>)> = expected_adt
                 .variants()
                 .iter()
                 .filter(|variant| {
-                    variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                    variant.fields.len() == 1
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.fields[0];
 
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =
-                        sole_field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx);
+                        sole_field.vis.is_accessible_from(expr.hir_id.owner.to_def_id(), self.tcx)
+                        // Skip suggestions for unstable public fields (for example `Pin::pointer`)
+                        && matches!(self.tcx.eval_stability(sole_field.did, None, expr.span, None), EvalResult::Allow | EvalResult::Unmarked);
 
                     if !field_is_local && !field_is_accessible {
                         return None;
@@ -391,33 +394,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
                         {
-                            return Some((path.to_string(), note_about_variant_field_privacy));
+                            return Some((path.to_string(), variant.ctor_kind, sole_field.name, note_about_variant_field_privacy));
                         }
-                        Some((variant_path, note_about_variant_field_privacy))
+                        Some((variant_path, variant.ctor_kind, sole_field.name, note_about_variant_field_privacy))
                     } else {
                         None
                     }
                 })
                 .collect();
 
-            let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                Some(ident) => format!("{ident}: "),
-                None => String::new(),
+            let suggestions_for = |variant: &_, ctor, field_name| {
+                let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                    Some(ident) => format!("{ident}: "),
+                    None => String::new(),
+                };
+
+                let (open, close) = match ctor {
+                    hir::def::CtorKind::Fn => ("(".to_owned(), ")"),
+                    hir::def::CtorKind::Fictive => (format!(" {{ {field_name}: "), " }"),
+
+                    // unit variants don't have fields
+                    hir::def::CtorKind::Const => unreachable!(),
+                };
+
+                vec![
+                    (expr.span.shrink_to_lo(), format!("{prefix}{variant}{open}")),
+                    (expr.span.shrink_to_hi(), close.to_owned()),
+                ]
             };
 
             match &compatible_variants[..] {
                 [] => { /* No variants to format */ }
-                [(variant, note)] => {
+                [(variant, ctor_kind, field_name, note)] => {
                     // Just a single matching variant.
                     err.multipart_suggestion_verbose(
                         &format!(
                             "try wrapping the expression in `{variant}`{note}",
                             note = note.as_deref().unwrap_or("")
                         ),
-                        vec![
-                            (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
-                            (expr.span.shrink_to_hi(), ")".to_string()),
-                        ],
+                        suggestions_for(&**variant, *ctor_kind, *field_name),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -428,12 +443,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "try wrapping the expression in a variant of `{}`",
                             self.tcx.def_path_str(expected_adt.did())
                         ),
-                        compatible_variants.into_iter().map(|(variant, _)| {
-                            vec![
-                                (expr.span.shrink_to_lo(), format!("{prefix}{variant}(")),
-                                (expr.span.shrink_to_hi(), ")".to_string()),
-                            ]
-                        }),
+                        compatible_variants.into_iter().map(
+                            |(variant, ctor_kind, field_name, _)| {
+                                suggestions_for(&variant, ctor_kind, field_name)
+                            },
+                        ),
                         Applicability::MaybeIncorrect,
                     );
                 }

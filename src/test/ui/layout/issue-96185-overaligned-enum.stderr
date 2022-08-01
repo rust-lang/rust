@@ -1,4 +1,12 @@
 error: layout_of(Aligned1) = Layout {
+           size: Size(8 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(8 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -6,58 +14,6 @@ error: layout_of(Aligned1) = Layout {
                memory_index: [
                    0,
                ],
-           },
-           variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               tag_encoding: Direct,
-               tag_field: 0,
-               variants: [
-                   Layout {
-                       fields: Arbitrary {
-                           offsets: [],
-                           memory_index: [],
-                       },
-                       variants: Single {
-                           index: 0,
-                       },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(8 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(8 bytes),
-                   },
-                   Layout {
-                       fields: Arbitrary {
-                           offsets: [],
-                           memory_index: [],
-                       },
-                       variants: Single {
-                           index: 1,
-                       },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(8 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(8 bytes),
-                   },
-               ],
-           },
-           abi: Aggregate {
-               sized: true,
            },
            largest_niche: Some(
                Niche {
@@ -69,26 +25,6 @@ error: layout_of(Aligned1) = Layout {
                    valid_range: 0..=1,
                },
            ),
-           align: AbiAndPrefAlign {
-               abi: Align(8 bytes),
-               pref: $PREF_ALIGN,
-           },
-           size: Size(8 bytes),
-       }
-  --> $DIR/issue-96185-overaligned-enum.rs:8:1
-   |
-LL | pub enum Aligned1 {
-   | ^^^^^^^^^^^^^^^^^
-
-error: layout_of(Aligned2) = Layout {
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -101,42 +37,54 @@ error: layout_of(Aligned2) = Layout {
                tag_field: 0,
                variants: [
                    Layout {
+                       size: Size(8 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(8 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [],
                            memory_index: [],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 0,
                        },
+                   },
+                   Layout {
+                       size: Size(8 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(8 bytes),
+                           pref: $PREF_ALIGN,
+                       },
                        abi: Aggregate {
                            sized: true,
                        },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(1 bytes),
-                   },
-                   Layout {
                        fields: Arbitrary {
                            offsets: [],
                            memory_index: [],
                        },
+                       largest_niche: None,
                        variants: Single {
                            index: 1,
                        },
-                       abi: Aggregate {
-                           sized: true,
-                       },
-                       largest_niche: None,
-                       align: AbiAndPrefAlign {
-                           abi: Align(1 bytes),
-                           pref: $PREF_ALIGN,
-                       },
-                       size: Size(1 bytes),
                    },
                ],
+           },
+       }
+  --> $DIR/issue-96185-overaligned-enum.rs:8:1
+   |
+LL | pub enum Aligned1 {
+   | ^^^^^^^^^^^^^^^^^
+
+error: layout_of(Aligned2) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
            },
            abi: Scalar(
                Initialized {
@@ -147,6 +95,14 @@ error: layout_of(Aligned2) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -157,11 +113,55 @@ error: layout_of(Aligned2) = Layout {
                    valid_range: 0..=1,
                },
            ),
-           align: AbiAndPrefAlign {
-               abi: Align(1 bytes),
-               pref: $PREF_ALIGN,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=1,
+               },
+               tag_encoding: Direct,
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(1 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 0,
+                       },
+                   },
+                   Layout {
+                       size: Size(1 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: $PREF_ALIGN,
+                       },
+                       abi: Aggregate {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       variants: Single {
+                           index: 1,
+                       },
+                   },
+               ],
            },
-           size: Size(1 bytes),
        }
   --> $DIR/issue-96185-overaligned-enum.rs:16:1
    |
