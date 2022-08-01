@@ -1,5 +1,5 @@
 use crate::array;
-use crate::iter::{Fuse, FusedIterator, Iterator};
+use crate::iter::{FusedIterator, Iterator};
 use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::ops::{ControlFlow, Try};
@@ -16,7 +16,7 @@ use crate::ptr;
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
 pub struct ArrayChunks<I: Iterator, const N: usize> {
-    iter: Fuse<I>,
+    iter: I,
     remainder: Option<array::IntoIter<I::Item, N>>,
 }
 
@@ -27,7 +27,7 @@ where
     #[track_caller]
     pub(in crate::iter) fn new(iter: I) -> Self {
         assert!(N != 0, "chunk size must be non-zero");
-        Self { iter: iter.fuse(), remainder: None }
+        Self { iter, remainder: None }
     }
 
     /// Returns an iterator over the remaining elements of the original iterator
