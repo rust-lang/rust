@@ -1192,6 +1192,27 @@ fn test_rchunks_exact_mut_zip() {
 }
 
 #[test]
+fn chunks_mut_are_send_and_sync() {
+    use std::cell::Cell;
+    use std::slice::{ChunksExactMut, ChunksMut, RChunksExactMut, RChunksMut};
+    use std::sync::MutexGuard;
+
+    #[allow(unused)]
+    fn assert_send_and_sync()
+    where
+        ChunksMut<'static, Cell<i32>>: Send,
+        ChunksMut<'static, MutexGuard<'static, u32>>: Sync,
+        ChunksExactMut<'static, Cell<i32>>: Send,
+        ChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
+        RChunksMut<'static, Cell<i32>>: Send,
+        RChunksMut<'static, MutexGuard<'static, u32>>: Sync,
+        RChunksExactMut<'static, Cell<i32>>: Send,
+        RChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
+    {
+    }
+}
+
+#[test]
 fn test_windows_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.windows(3);
