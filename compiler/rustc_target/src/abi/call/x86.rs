@@ -5,7 +5,7 @@ use crate::spec::HasTargetSpec;
 #[derive(PartialEq)]
 pub enum Flavor {
     General,
-    Fastcall,
+    FastcallOrVectorcall,
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: Flavor)
@@ -60,9 +60,9 @@ where
         }
     }
 
-    if flavor == Flavor::Fastcall {
+    if flavor == Flavor::FastcallOrVectorcall {
         // Mark arguments as InReg like clang does it,
-        // so our fastcall is compatible with C/C++ fastcall.
+        // so our fastcall/vectorcall is compatible with C/C++ fastcall/vectorcall.
 
         // Clang reference: lib/CodeGen/TargetInfo.cpp
         // See X86_32ABIInfo::shouldPrimitiveUseInReg(), X86_32ABIInfo::updateFreeRegs()

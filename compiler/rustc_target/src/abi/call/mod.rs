@@ -669,8 +669,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
         match &cx.target_spec().arch[..] {
             "x86" => {
-                let flavor = if let spec::abi::Abi::Fastcall { .. } = abi {
-                    x86::Flavor::Fastcall
+                let flavor = if let spec::abi::Abi::Fastcall { .. }
+                | spec::abi::Abi::Vectorcall { .. } = abi
+                {
+                    x86::Flavor::FastcallOrVectorcall
                 } else {
                     x86::Flavor::General
                 };

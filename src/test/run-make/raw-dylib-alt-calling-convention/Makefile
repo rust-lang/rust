@@ -14,10 +14,19 @@ ifdef IS_MSVC
 else
 	$(CC) "$(TMPDIR)"/extern.obj -shared -o "$(TMPDIR)"/extern.dll
 endif
-	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt
 
+	"$(TMPDIR)"/driver > "$(TMPDIR)"/output.txt
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/output.txt output.txt
 else
 	$(DIFF) output.txt "$(TMPDIR)"/output.txt
+endif
+
+ifdef IS_MSVC
+	"$(TMPDIR)"/driver true > "$(TMPDIR)"/output.msvc.txt
+ifdef RUSTC_BLESS_TEST
+	cp "$(TMPDIR)"/output.msvc.txt output.msvc.txt
+else
+	$(DIFF) output.msvc.txt "$(TMPDIR)"/output.msvc.txt
+endif
 endif
