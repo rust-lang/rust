@@ -747,3 +747,12 @@ pub enum LifetimeRes {
     /// HACK: This is used to recover the NodeId of an elided lifetime.
     ElidedAnchor { start: NodeId, end: NodeId },
 }
+
+impl LifetimeRes {
+    pub fn binder(&self) -> Option<NodeId> {
+        match self {
+            LifetimeRes::Param { binder, .. } | LifetimeRes::Fresh { binder, .. } => Some(*binder),
+            _ => None,
+        }
+    }
+}

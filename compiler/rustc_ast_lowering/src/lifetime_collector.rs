@@ -1,21 +1,32 @@
+use super::ResolverAstLoweringExt;
 use rustc_ast::visit::{self, BoundKind, LifetimeCtxt, Visitor};
 use rustc_ast::{
     FnRetTy, GenericBounds, Lifetime, NodeId, PolyTraitRef, TraitBoundModifier, Ty, TyKind,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def::LifetimeRes;
+use rustc_middle::ty::ResolverAstLowering;
 
-struct LifetimeCollectVisitor<'ast> {
+struct LifetimeCollectVisitor<'this, 'ast: 'this> {
+    resolver: &'this ResolverAstLowering,
     current_binders: Vec<NodeId>,
-    binders_to_ignore: FxHashMap<NodeId, Vec<NodeId>>,
     collected_lifetimes: Vec<&'ast Lifetime>,
 }
 
-impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
+impl<'this, 'ast: 'this> LifetimeCollectVisitor<'this, 'ast> {
+    fn new(resolver: &'this ResolverAstLowering) -> Self {
+        Self { resolver, current_binders: Vec::new(), collected_lifetimes: Vec::new() }
+    }
+}
+
+impl<'this, 'ast: 'this> Visitor<'ast> for LifetimeCollectVisitor<'this, 'ast> {
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime, _: LifetimeCtxt) {
-        if !self.collected_lifetimes.contains(&lifetime) {
-            self.collected_lifetimes.push(lifetime);
+        let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
+
+        if res.binder().map_or(true, |b| !self.current_binders.contains(&b)) {
+            if !self.collected_lifetimes.contains(&lifetime) {
+                self.collected_lifetimes.push(lifetime);
+            }
         }
-        self.binders_to_ignore.insert(lifetime.id, self.current_binders.clone());
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
@@ -37,26 +48,22 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
     }
 }
 
-pub fn lifetimes_in_ret_ty(ret_ty: &FnRetTy) -> (Vec<&Lifetime>, FxHashMap<NodeId, Vec<NodeId>>) {
-    let mut visitor = LifetimeCollectVisitor {
-        current_binders: Vec::new(),
-        binders_to_ignore: FxHashMap::default(),
-        collected_lifetimes: Vec::new(),
-    };
+pub fn lifetimes_in_ret_ty<'this, 'ast: 'this>(
+    resolver: &'this ResolverAstLowering,
+    ret_ty: &'ast FnRetTy,
+) -> Vec<&'ast Lifetime> {
+    let mut visitor = LifetimeCollectVisitor::new(resolver);
     visitor.visit_fn_ret_ty(ret_ty);
-    (visitor.collected_lifetimes, visitor.binders_to_ignore)
+    visitor.collected_lifetimes
 }
 
-pub fn lifetimes_in_bounds(
-    bounds: &GenericBounds,
-) -> (Vec<&Lifetime>, FxHashMap<NodeId, Vec<NodeId>>) {
-    let mut visitor = LifetimeCollectVisitor {
-        current_binders: Vec::new(),
-        binders_to_ignore: FxHashMap::default(),
-        collected_lifetimes: Vec::new(),
-    };
+pub fn lifetimes_in_bounds<'this, 'ast: 'this>(
+    resolver: &'this ResolverAstLowering,
+    bounds: &'ast GenericBounds,
+) -> Vec<&'ast Lifetime> {
+    let mut visitor = LifetimeCollectVisitor::new(resolver);
     for bound in bounds {
         visitor.visit_param_bound(bound, BoundKind::Bound);
     }
-    (visitor.collected_lifetimes, visitor.binders_to_ignore)
+    visitor.collected_lifetimes
 }
