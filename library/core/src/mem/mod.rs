@@ -1005,7 +1005,7 @@ pub fn drop<T>(_x: T) {}
 /// ```
 #[inline]
 #[unstable(feature = "mem_copy_fn", issue = "98262")]
-pub fn copy<T: Copy>(x: &T) -> T {
+pub const fn copy<T: Copy>(x: &T) -> T {
     *x
 }
 
