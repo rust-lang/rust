@@ -223,8 +223,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{type_string}]"))));
+                    flags.push((sym::_Self, Some(format!("[{}]", self.tcx.type_of(def.did())))));
                 }
                 if aty.is_integral() {
                     flags.push((sym::_Self, Some("[{integral}]".to_string())));
@@ -242,10 +241,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let type_string = self.tcx.type_of(def.did()).to_string();
-                    flags.push((sym::_Self, Some(format!("[{type_string}; _]"))));
+                    let def_ty = self.tcx.type_of(def.did());
+                    flags.push((sym::_Self, Some(format!("[{def_ty}; _]"))));
                     if let Some(n) = len {
-                        flags.push((sym::_Self, Some(format!("[{type_string}; {n}]"))));
+                        flags.push((sym::_Self, Some(format!("[{def_ty}; {n}]"))));
                     }
                 }
                 if aty.is_integral() {

@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::{BasicBlock, BasicBlocks, Body, Operand, TerminatorKind};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
@@ -12,12 +12,7 @@ use std::ops::ControlFlow;
 pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
 
-    if let Some(fn_kind) = tcx.hir().get_by_def_id(def_id).fn_kind() {
-        if let FnKind::Closure = fn_kind {
-            // closures can't recur, so they don't matter.
-            return;
-        }
-
+    if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
         // If this is trait/impl method, extract the trait's substs.
         let trait_substs = match tcx.opt_associated_item(def_id.to_def_id()) {
             Some(AssocItem {
@@ -41,8 +36,8 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
         vis.reachable_recursive_calls.sort();
 
+        let sp = tcx.def_span(def_id);
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span_with_body(hir_id));
         tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
             let mut db = lint.build("function cannot return without recursing");
             db.span_label(sp, "cannot return without recursing");

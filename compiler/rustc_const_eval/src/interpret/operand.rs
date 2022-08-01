@@ -37,9 +37,6 @@ pub enum Immediate<Prov: Provenance = AllocId> {
     Uninit,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Immediate, 56);
-
 impl<Prov: Provenance> From<ScalarMaybeUninit<Prov>> for Immediate<Prov> {
     #[inline(always)]
     fn from(val: ScalarMaybeUninit<Prov>) -> Self {
@@ -117,9 +114,6 @@ pub struct ImmTy<'tcx, Prov: Provenance = AllocId> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
-
 impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /// Helper function for printing a scalar to a FmtPrinter
@@ -187,9 +181,6 @@ pub enum Operand<Prov: Provenance = AllocId> {
     Indirect(MemPlace<Prov>),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Operand, 64);
-
 #[derive(Clone, Debug)]
 pub struct OpTy<'tcx, Prov: Provenance = AllocId> {
     op: Operand<Prov>, // Keep this private; it helps enforce invariants.
@@ -203,9 +194,6 @@ pub struct OpTy<'tcx, Prov: Provenance = AllocId> {
     /// Also CTFE ignores alignment anyway, so this is for Miri only.
     pub align: Option<Align>,
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(OpTy<'_>, 88);
 
 impl<'tcx, Prov: Provenance> std::ops::Deref for OpTy<'tcx, Prov> {
     type Target = Operand<Prov>;
@@ -829,4 +817,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         })
     }
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    rustc_data_structures::static_assert_size!(Immediate, 56);
+    rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
+    rustc_data_structures::static_assert_size!(Operand, 64);
+    rustc_data_structures::static_assert_size!(OpTy<'_>, 88);
 }

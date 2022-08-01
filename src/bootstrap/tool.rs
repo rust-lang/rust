@@ -158,34 +158,38 @@ impl Step for ToolBuild {
                       a transitive dependency has different features activated \
                       than in a previous build:\n"
             );
-            eprintln!(
-                "the following dependencies are duplicated although they \
-                      have the same features enabled:"
-            );
             let (same, different): (Vec<_>, Vec<_>) =
                 duplicates.into_iter().partition(|(_, cur, prev)| cur.2 == prev.2);
-            for (id, cur, prev) in same {
-                eprintln!("  {}", id);
-                // same features
-                eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+            if !same.is_empty() {
+                eprintln!(
+                    "the following dependencies are duplicated although they \
+                      have the same features enabled:"
+                );
+                for (id, cur, prev) in same {
+                    eprintln!("  {}", id);
+                    // same features
+                    eprintln!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+                }
             }
-            eprintln!("the following dependencies have different features:");
-            for (id, cur, prev) in different {
-                eprintln!("  {}", id);
-                let cur_features: HashSet<_> = cur.2.into_iter().collect();
-                let prev_features: HashSet<_> = prev.2.into_iter().collect();
-                eprintln!(
-                    "    `{}` additionally enabled features {:?} at {:?}",
-                    cur.0,
-                    &cur_features - &prev_features,
-                    cur.1
-                );
-                eprintln!(
-                    "    `{}` additionally enabled features {:?} at {:?}",
-                    prev.0,
-                    &prev_features - &cur_features,
-                    prev.1
-                );
+            if !different.is_empty() {
+                eprintln!("the following dependencies have different features:");
+                for (id, cur, prev) in different {
+                    eprintln!("  {}", id);
+                    let cur_features: HashSet<_> = cur.2.into_iter().collect();
+                    let prev_features: HashSet<_> = prev.2.into_iter().collect();
+                    eprintln!(
+                        "    `{}` additionally enabled features {:?} at {:?}",
+                        cur.0,
+                        &cur_features - &prev_features,
+                        cur.1
+                    );
+                    eprintln!(
+                        "    `{}` additionally enabled features {:?} at {:?}",
+                        prev.0,
+                        &prev_features - &cur_features,
+                        prev.1
+                    );
+                }
             }
             eprintln!();
             eprintln!(

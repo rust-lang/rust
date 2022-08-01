@@ -304,6 +304,12 @@ pub(crate) fn run(
         let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx, target_crates };
         tcx.hir().visit_all_item_likes_in_crate(&mut finder);
 
+        // The visitor might have found a type error, which we need to
+        // promote to a fatal error
+        if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+            return Err(String::from("Compilation failed, aborting rustdoc"));
+        }
+
         // Sort call locations within a given file in document order
         for fn_calls in calls.values_mut() {
             for file_calls in fn_calls.values_mut() {
