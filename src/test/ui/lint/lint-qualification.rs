@@ -1,5 +1,8 @@
 #![deny(unused_qualifications)]
 #![allow(deprecated)]
+extern crate alloc;
+type _Foo = alloc::string::String;
+type _Bar = core::task::Poll<i32>;
 
 mod foo {
     pub fn bar() {}

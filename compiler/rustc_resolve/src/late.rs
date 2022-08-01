@@ -3597,9 +3597,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             && path[0].ident.name != kw::DollarCrate
         {
             let unqualified_result = {
-                match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
-                    PathResult::NonModule(path_res) => path_res.base_res(),
-                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                match (
+                    self.resolve_path(&[*path.last().unwrap()], Some(ns), None),
+                    (path[0].ident.as_str().as_bytes() == b"alloc"),
+                ) {
+                    (PathResult::NonModule(path_res), false) => path_res.base_res(),
+                    (PathResult::Module(ModuleOrUniformRoot::Module(module)), false) => {
                         module.res().unwrap()
                     }
                     _ => return Ok(Some(result)),
