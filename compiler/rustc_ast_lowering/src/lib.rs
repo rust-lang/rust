@@ -1446,7 +1446,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))
     }
 
-    fn create_and_capture_lifetime_defs(&mut self, lifetimes_in_bounds: &[&Lifetime]) {
+    fn create_and_capture_lifetime_defs(&mut self, lifetimes_in_bounds: &[Lifetime]) {
         for lifetime in lifetimes_in_bounds {
             let ident = lifetime.ident;
             let span = ident.span;
