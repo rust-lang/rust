@@ -31,10 +31,15 @@
 //! The mechanism of registering a static initializer with the CRT is
 //! documented in
 //! [CRT Initialization](https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-160).
-//! It works by contributing a global symbol to the `.CRT$XCU` section.
+//! It works by contributing a global symbol to the `.CRT$XIU` section.
 //! The linker builds a table of all static initializer functions.
 //! The CRT startup code then iterates that table, calling each
 //! initializer function.
+//!
+//! This originally used the C++ initializer section `.CRT$XCU`. However, this
+//! risks being run after user code that inserts their own initializers.
+//! Instead the C initializer section `CRT$XIU` is used. Function placed here
+//! are run earlier than the C++ initializers.
 //!
 //! # **WARNING!!*
 //! The environment that a static initializer function runs in is highly
@@ -49,7 +54,7 @@
 //! * call any Rust function or CRT function that touches any static
 //!   (global) state.
 
-use crate::ffi::{c_void, CStr};
+use crate::ffi::{c_int, c_void, CStr};
 use crate::ptr::NonNull;
 use crate::sys::c;
 
@@ -86,8 +91,8 @@ pub(crate) const fn const_cstr_from_bytes(bytes: &'static [u8]) -> &'static CStr
 }
 
 #[used]
-#[link_section = ".CRT$XCU"]
-static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
+#[link_section = ".CRT$XIU"]
+static INIT_TABLE_ENTRY: unsafe extern "C" fn() -> c_int = init;
 
 /// This is where the magic preloading of symbols happens.
 ///
@@ -96,7 +101,7 @@ static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
 ///
 /// Therefore, this is limited to `compat_fn_optional` functions which must be
 /// preloaded and any functions which may be more time sensitive, even for the first call.
-unsafe extern "C" fn init() {
+unsafe extern "C" fn init() -> c_int {
     // There is no locking here. This code is executed before main() is entered, and
     // is guaranteed to be single-threaded.
     //
@@ -116,6 +121,9 @@ unsafe extern "C" fn init() {
         // Preloading this means getting a precise time will be as fast as possible.
         c::GetSystemTimePreciseAsFileTime::preload(kernel32);
     }
+
+    // Returns zero for success and non-zero for error.
+    0
 }
 
 /// Represents a loaded module.
