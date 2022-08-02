@@ -64,6 +64,18 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
                 visit::walk_ty(self, t);
                 self.current_binders.pop();
             }
+            TyKind::Rptr(None, _) => {
+                if let Some(LifetimeRes::ElidedAnchor { start, end }) =
+                    self.resolver.get_lifetime_res(t.id)
+                {
+                    for i in start..end {
+                        let lifetime =
+                            Lifetime { id: i, ident: Ident::new(kw::UnderscoreLifetime, t.span) };
+                        self.record_lifetime_use(lifetime);
+                    }
+                }
+                visit::walk_ty(self, t);
+            }
             _ => {
                 visit::walk_ty(self, t);
             }
