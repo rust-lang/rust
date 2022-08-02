@@ -23,7 +23,6 @@ fn tmp() -> PathBuf {
 fn test_posix_realpath_alloc() {
     use std::ffi::OsString;
     use std::ffi::{CStr, CString};
-    use std::fs::{remove_file, File};
     use std::os::unix::ffi::OsStrExt;
     use std::os::unix::ffi::OsStringExt;
 
@@ -51,7 +50,6 @@ fn test_posix_realpath_alloc() {
 /// Test non-allocating variant of `realpath`.
 fn test_posix_realpath_noalloc() {
     use std::ffi::{CStr, CString};
-    use std::fs::{remove_file, File};
     use std::os::unix::ffi::OsStrExt;
 
     let path = tmp().join("miri_test_libc_posix_realpath_noalloc");
@@ -78,12 +76,8 @@ fn test_posix_realpath_noalloc() {
 
 /// Test failure cases for `realpath`.
 fn test_posix_realpath_errors() {
-    use std::convert::TryInto;
     use std::ffi::CString;
-    use std::fs::{create_dir_all, remove_dir_all};
     use std::io::ErrorKind;
-    use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::fs::symlink;
 
     // Test non-existent path returns an error.
     let c_path = CString::new("./nothing_to_see_here").expect("CString::new failed");
@@ -92,48 +86,6 @@ fn test_posix_realpath_errors() {
     let e = std::io::Error::last_os_error();
     assert_eq!(e.raw_os_error(), Some(libc::ENOENT));
     assert_eq!(e.kind(), ErrorKind::NotFound);
-
-    // Test that a long path returns an error.
-    //
-    // Linux first checks if the path exists and macos does not.
-    // Using an existing path ensures all platforms return `ENAMETOOLONG` given a long path.
-    //
-    // Rather than creating a bunch of directories, we create two directories containing symlinks.
-    // Sadly we can't avoid creating directories and instead use a path like "./././././" or "./../../" as linux
-    // appears to collapse "." and ".." before checking path length.
-    let path = tmp().join("posix_realpath_errors");
-    // Cleanup before test.
-    remove_dir_all(&path).ok();
-
-    // The directories we will put symlinks in.
-    let x = path.join("x/");
-    let y = path.join("y/");
-
-    // The symlinks in each directory pointing to each other.
-    let yx_sym = y.join("x");
-    let xy_sym = x.join("y");
-
-    // Create directories.
-    create_dir_all(&x).expect("dir x");
-    create_dir_all(&y).expect("dir y");
-
-    // Create symlinks between directories.
-    symlink(&x, &yx_sym).expect("symlink x");
-    symlink(&y, &xy_sym).expect("symlink y ");
-
-    // This path exists due to the symlinks created above.
-    let too_long = path.join("x/y/".repeat(libc::PATH_MAX.try_into().unwrap()));
-
-    let c_path = CString::new(too_long.into_os_string().as_bytes()).expect("CString::new failed");
-    let r = unsafe { libc::realpath(c_path.as_ptr(), std::ptr::null_mut()) };
-    let e = std::io::Error::last_os_error();
-
-    assert!(r.is_null());
-    assert_eq!(e.raw_os_error(), Some(libc::ENAMETOOLONG));
-    assert_eq!(e.kind(), ErrorKind::InvalidFilename);
-
-    // Cleanup after test.
-    remove_dir_all(&path).ok();
 }
 
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]

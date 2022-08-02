@@ -1700,7 +1700,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // the resolved pathname, and returns a pointer to this buffer.  The
                     // caller should deallocate this buffer using free(3)."
                     // <https://man7.org/linux/man-pages/man3/realpath.3.html>
-                    this.alloc_os_str_as_c_str(resolved.as_os_str(), MiriMemoryKind::C.into())?
+                    this.alloc_path_as_c_str(&resolved, MiriMemoryKind::C.into())?
                 } else {
                     let (wrote_path, _) =
                         this.write_path_to_c_str(&resolved, processed_ptr, path_max)?;

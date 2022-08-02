@@ -42,6 +42,7 @@ const UNIX_IO_ERROR_TABLE: &[(std::io::ErrorKind, &str)] = {
         (AlreadyExists, "EEXIST"),
         (WouldBlock, "EWOULDBLOCK"),
         (DirectoryNotEmpty, "ENOTEMPTY"),
+        (FilesystemLoop, "ELOOP"),
     ]
 };
 
