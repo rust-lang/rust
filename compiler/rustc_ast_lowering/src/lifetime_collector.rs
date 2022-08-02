@@ -38,12 +38,15 @@ impl<'this, 'ast: 'this> Visitor<'ast> for LifetimeCollectVisitor<'this, 'ast> {
     }
 
     fn visit_ty(&mut self, t: &'ast Ty) {
-        if let TyKind::BareFn(_) = t.kind {
-            self.current_binders.push(t.id);
-        }
-        visit::walk_ty(self, t);
-        if let TyKind::BareFn(_) = t.kind {
-            self.current_binders.pop();
+        match t.kind {
+            TyKind::BareFn(_) => {
+                self.current_binders.push(t.id);
+                visit::walk_ty(self, t);
+                self.current_binders.pop();
+            }
+            _ => {
+                visit::walk_ty(self, t);
+            }
         }
     }
 }
