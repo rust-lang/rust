@@ -194,9 +194,9 @@ pub fn run_tests(mut config: Config) -> Result<()> {
                             run_test(&path, &config, &target, &revision, &comments);
 
                         // Using a single `eprintln!` to prevent messages from threads from getting intermingled.
-                        let mut msg = format!("{} ", path.display());
+                        let mut msg = format!("{}", path.display());
                         if !revision.is_empty() {
-                            write!(msg, "(revision `{revision}`) ").unwrap();
+                            write!(msg, " (revision `{revision}`) ").unwrap();
                         }
                         if errors.is_empty() {
                             finished_files_sender.send((msg, TestResult::Ok))?;
