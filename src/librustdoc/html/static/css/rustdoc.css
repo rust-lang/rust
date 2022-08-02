@@ -1111,7 +1111,14 @@ table,
 }
 
 .item-info .stab {
-	display: inline-block;
+	width: fit-content;
+	/* This min-height is needed to unify the height of the stab elements because some of them
+	   have emojis.
+	*/
+	min-height: 36px;
+	display: flex;
+	align-items: center;
+	white-space: pre-wrap;
 }
 .stab {
 	padding: 3px;
@@ -1121,6 +1128,7 @@ table,
 }
 .stab p {
 	display: inline;
+	margin: 0;
 }
 
 .stab .emoji {
