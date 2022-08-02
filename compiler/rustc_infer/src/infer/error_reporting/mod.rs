@@ -962,7 +962,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sig1: &ty::PolyFnSig<'tcx>,
         sig2: &ty::PolyFnSig<'tcx>,
         values: &mut (DiagnosticStyledString, DiagnosticStyledString),
-        highlight_empty_parens: bool,
     ) {
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
@@ -976,7 +975,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (lt1, sig1) = get_lifetimes(sig1);
         let (lt2, sig2) = get_lifetimes(sig2);
 
-        // illustrative example:
+        // running example for illustration:
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
@@ -1001,26 +1000,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                           ^^^
-        let len1 = sig1.inputs().len();
-        let len2 = sig2.inputs().len();
-        let same_len = len1 == len2;
-        let output1 = sig1.output();
-        let output2 = sig2.output();
-        let unit_return1 = output1.is_unit();
-        let unit_return2 = output2.is_unit();
-        // when comparing between fn item and fn pointer types, make sure to
-        // always pull attention to the mismatching function signatures, too,
-        // by highlighting *something* (to compensate the stylistic difference
-        // `fn(...) -> ...` vs `[fn item {path::to::foo}: fn(...) -> ...]`)
-        let highlight_parens =
-            highlight_empty_parens && (len1 == 0 && unit_return1) ^ (len2 == 0 && unit_return2);
-        values.0.push_normal("fn");
-        values.1.push_normal("fn");
-        values.0.push("(", highlight_parens);
-        values.1.push("(", highlight_parens);
+        values.0.push_normal("fn(");
+        values.1.push_normal("fn(");
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                              ^^^^^
+        let len1 = sig1.inputs().len();
+        let len2 = sig2.inputs().len();
+        let same_len = len1 == len2;
         if same_len {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
                 let (x1, x2) = self.cmp(*l, *r);
@@ -1047,22 +1034,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             if len1 > 0 {
                 values.0.push(", ", !same_len);
             }
-            values.0.push("...", !sig2.c_variadic);
+            values.0.push("...", !sig2.c_variadic || !same_len);
         }
         if sig2.c_variadic {
             if len2 > 0 {
                 values.1.push(", ", !same_len);
             }
-            values.1.push("...", !sig1.c_variadic);
+            values.1.push("...", !sig1.c_variadic || !same_len);
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                   ^
-        values.0.push(")", highlight_parens);
-        values.1.push(")", highlight_parens);
+        values.0.push_normal(")");
+        values.1.push_normal(")");
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                     ^^^^^^^^
+        let output1 = sig1.output();
+        let output2 = sig2.output();
+        let unit_return1 = output1.is_unit();
+        let unit_return2 = output2.is_unit();
         let (x1, x2) = self.cmp(output1, output2);
         if !unit_return1 {
             values.0.push(" -> ", unit_return1 != unit_return2);
@@ -1400,7 +1391,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values.1.push(path2, !same_path);
                 values.0.push_normal("}: ");
                 values.1.push_normal("}: ");
-                self.cmp_fn_sig(&sig1, &sig2, &mut values, false);
+                self.cmp_fn_sig(&sig1, &sig2, &mut values);
                 values.0.push_normal("]");
                 values.1.push_normal("]");
                 values
@@ -1412,7 +1403,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut values = (v1, DiagnosticStyledString::new());
                 values.0.push_highlighted(self.tcx.def_path_str_with_substs(did1, substs1));
                 values.0.push_normal("}: ");
-                self.cmp_fn_sig(&sig1, sig2, &mut values, true);
+                self.cmp_fn_sig(&sig1, sig2, &mut values);
                 values.0.push_normal("]");
                 values
             }
@@ -1423,14 +1414,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut values = (DiagnosticStyledString::new(), v2);
                 values.1.push_highlighted(self.tcx.def_path_str_with_substs(did2, substs2));
                 values.1.push_normal("}: ");
-                self.cmp_fn_sig(sig1, &sig2, &mut values, true);
+                self.cmp_fn_sig(sig1, &sig2, &mut values);
                 values.1.push_normal("]");
                 values
             }
 
             (ty::FnPtr(sig1), ty::FnPtr(sig2)) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                self.cmp_fn_sig(sig1, sig2, &mut values, false);
+                self.cmp_fn_sig(sig1, sig2, &mut values);
                 values
             }
 

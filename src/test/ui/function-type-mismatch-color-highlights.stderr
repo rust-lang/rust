@@ -32,8 +32,8 @@
 [0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = (|| 0) as fn() -> u8;
 [0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
-[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn[0m[0m[1m()[0m[0m]`[0m
-[0m           found fn pointer `fn[0m[0m[1m() -> u8[0m[0m`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m           found fn pointer `fn()[0m[0m[1m -> u8[0m[0m`[0m
 
 [0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
 [0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:29:9[0m
@@ -44,8 +44,8 @@
 [0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = (|_| ()) as fn(u8);
 [0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
-[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn[0m[0m[1m()[0m[0m]`[0m
-[0m           found fn pointer `fn[0m[0m[1m(u8)[0m[0m`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m           found fn pointer `fn([0m[0m[1mu8[0m[0m)`[0m
 
 [0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
 [0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:30:9[0m
@@ -132,8 +132,8 @@
 [0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    z = (|| ()) as fn();
 [0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
 [0m   [0m[0m[1m[38;5;12m|[0m
-[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mg3[0m[0m}: fn[0m[0m[1m(u8)[0m[0m]`[0m
-[0m           found fn pointer `fn[0m[0m[1m()[0m[0m`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mg3[0m[0m}: fn([0m[0m[1mu8[0m[0m)]`[0m
+[0m           found fn pointer `fn()`[0m
 
 [0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
 [0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:45:9[0m
