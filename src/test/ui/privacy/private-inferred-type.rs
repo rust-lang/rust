@@ -43,9 +43,9 @@ mod m {
         <u8 as PrivTrait>::method; //~ ERROR type `[fn item {<u8 as PrivTrait>::method}: fn()]` is private
         <u8 as PubTrait>::method; // OK
         PrivTupleStruct;
-        //~^ ERROR type `[fn item {PrivTupleStruct}: fn(u8) -> PrivTupleStruct]` is private
+        //~^ ERROR type `[constructor of {PrivTupleStruct}: fn(u8) -> PrivTupleStruct]` is private
         PubTupleStruct;
-        //~^ ERROR type `[fn item {PubTupleStruct}: fn(u8) -> PubTupleStruct]` is private
+        //~^ ERROR type `[constructor of {PubTupleStruct}: fn(u8) -> PubTupleStruct]` is private
         Pub(0u8).priv_method();
         //~^ ERROR type `[fn item {Pub::<u8>::priv_method}: for<'r> fn(&'r Pub<u8>)]` is private
     }

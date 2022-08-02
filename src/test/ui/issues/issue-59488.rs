@@ -28,6 +28,6 @@ fn main() {
 
     let i = Foo::Bar;
     assert_eq!(Foo::Bar, i);
-    //~^ ERROR binary operation `==` cannot be applied to type `[fn item {Foo::Bar}: fn(usize) -> Foo]` [E0369]
-    //~| ERROR `[fn item {Foo::Bar}: fn(usize) -> Foo]` doesn't implement `Debug` [E0277]
+    //~^ ERROR binary operation `==` cannot be applied to type `[constructor of {Foo::Bar}: fn(usize) -> Foo]` [E0369]
+    //~| ERROR `[constructor of {Foo::Bar}: fn(usize) -> Foo]` doesn't implement `Debug` [E0277]
 }

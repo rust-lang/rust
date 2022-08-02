@@ -10,5 +10,5 @@ impl Foo {
 fn main() {
     let thing = Bar { bar: Foo };
     thing.bar.foo();
-    //~^ ERROR no method named `foo` found for fn item `[fn item {Foo}: fn() -> Foo]` in the current scope [E0599]
+    //~^ ERROR no method named `foo` found for fn item `[constructor of {Foo}: fn() -> Foo]` in the current scope [E0599]
 }
