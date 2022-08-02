@@ -1907,16 +1907,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?self.captured_lifetimes);
 
         let name = match res {
-            LifetimeRes::Param { mut param, binder } => {
+            LifetimeRes::Param { mut param, .. } => {
                 let p_name = ParamName::Plain(ident);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
-                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
-                        match captured_lifetimes.captures.entry(param) {
-                            Entry::Occupied(o) => param = self.local_def_id(o.get().1),
-                            Entry::Vacant(_) => {
-                                panic!("Lifetime {:?} should have a def_id at this point", id);
-                            }
-                        }
+                    if let Entry::Occupied(o) = captured_lifetimes.captures.entry(param) {
+                        param = self.local_def_id(o.get().1);
                     }
 
                     self.captured_lifetimes = Some(captured_lifetimes);
