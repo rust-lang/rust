@@ -47,6 +47,7 @@ bitflags::bitflags! {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;
         const CONST_EXPR        = 1 << 2;
+        const ALLOW_LET         = 1 << 3;
     }
 }
 
@@ -147,15 +148,12 @@ pub struct Parser<'a> {
     /// This allows us to recover when the user forget to add braces around
     /// multiple statements in the closure body.
     pub current_closure: Option<ClosureSpans>,
-    /// Used to track where `let`s are allowed. For example, `if true && let 1 = 1` is valid
-    /// but `[1, 2, 3][let _ = ()]` is not.
-    let_expr_allowed: bool,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 336);
+rustc_data_structures::static_assert_size!(Parser<'_>, 328);
 
 /// Stores span information about a closure.
 #[derive(Clone)]
@@ -462,7 +460,6 @@ impl<'a> Parser<'a> {
                 inner_attr_ranges: Default::default(),
             },
             current_closure: None,
-            let_expr_allowed: false,
         };
 
         // Make parser point to the first token.

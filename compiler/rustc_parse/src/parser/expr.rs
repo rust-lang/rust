@@ -1391,8 +1391,6 @@ impl<'a> Parser<'a> {
         } else if self.is_do_yeet() {
             self.parse_yeet_expr(attrs)
         } else if self.check_keyword(kw::Let) {
-            self.manage_let_chains_context();
-            self.bump();
             self.parse_let_expr(attrs)
         } else if self.eat_keyword(kw::Underscore) {
             Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore, attrs))
@@ -2342,32 +2340,24 @@ impl<'a> Parser<'a> {
 
     /// Parses the condition of a `if` or `while` expression.
     fn parse_cond_expr(&mut self) -> PResult<'a, P<Expr>> {
-        self.with_let_management(true, |local_self| {
-            local_self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)
-        })
-    }
-
-    // Checks if `let` is in an invalid position like `let x = let y = 1;` or
-    // if the current `let` is in a let_chains context but nested in another
-    // expression like `if let Some(_) = _opt && [1, 2, 3][let _ = ()] = 1`.
-    //
-    // This method expects that the current token is `let`.
-    fn manage_let_chains_context(&mut self) {
-        debug_assert!(matches!(self.token.kind, TokenKind::Ident(kw::Let, _)));
-        let is_in_a_let_chains_context_but_nested_in_other_expr = self.let_expr_allowed
-            && !matches!(
-                self.prev_token.kind,
-                TokenKind::AndAnd | TokenKind::Ident(kw::If, _) | TokenKind::Ident(kw::While, _)
-            );
-        if !self.let_expr_allowed || is_in_a_let_chains_context_but_nested_in_other_expr {
-            self.struct_span_err(self.token.span, "expected expression, found `let` statement")
-                .emit();
-        }
+        self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, None)
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
-    /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
+        // This is a *approximate* heuristic that detects if `let` chains are
+        // being parsed in the right position. It's approximate because it
+        // doesn't deny all invalid `let` expressions, just completely wrong usages.
+        let not_in_chain = !matches!(
+            self.prev_token.kind,
+            TokenKind::AndAnd | TokenKind::Ident(kw::If, _) | TokenKind::Ident(kw::While, _)
+        );
+        if !self.restrictions.contains(Restrictions::ALLOW_LET) || not_in_chain {
+            self.struct_span_err(self.token.span, "expected expression, found `let` statement")
+                .emit();
+        }
+
+        self.bump(); // Eat `let` token
         let lo = self.prev_token.span;
         let pat = self.parse_pat_allow_top_alt(
             None,
@@ -2687,7 +2677,9 @@ impl<'a> Parser<'a> {
         // `&&` tokens.
         fn check_let_expr(expr: &Expr) -> bool {
             match expr.kind {
-                ExprKind::Binary(_, ref lhs, ref rhs) => check_let_expr(lhs) || check_let_expr(rhs),
+                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, ref lhs, ref rhs) => {
+                    check_let_expr(lhs) || check_let_expr(rhs)
+                }
                 ExprKind::Let(..) => true,
                 _ => false,
             }
@@ -2703,9 +2695,8 @@ impl<'a> Parser<'a> {
             )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
-                let cond = this.with_let_management(true, |local_this| local_this.parse_expr())?;
-                let has_let_expr = check_let_expr(&cond);
-                if has_let_expr {
+                let cond = this.parse_expr_res(Restrictions::ALLOW_LET, None)?;
+                if check_let_expr(&cond) {
                     let span = if_span.to(cond.span);
                     this.sess.gated_spans.gate(sym::if_let_guard, span);
                 }
@@ -3278,18 +3269,5 @@ impl<'a> Parser<'a> {
             };
             Ok((res, trailing))
         })
-    }
-
-    // Calls `f` with the internal `let_expr_allowed` set to `let_expr_allowed` and then
-    // sets the internal `let_expr_allowed` back to its original value.
-    fn with_let_management<T>(
-        &mut self,
-        let_expr_allowed: bool,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        let last_let_expr_allowed = mem::replace(&mut self.let_expr_allowed, let_expr_allowed);
-        let rslt = f(self);
-        self.let_expr_allowed = last_let_expr_allowed;
-        rslt
     }
 }
