@@ -27,7 +27,7 @@ fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block
 fn bad2() { unsafe { bad1() } }          //~ ERROR: unnecessary `unsafe` block
 unsafe fn bad3() { unsafe {} }           //~ ERROR: unnecessary `unsafe` block
 fn bad4() { unsafe { callback(||{}) } }  //~ ERROR: unnecessary `unsafe` block
-unsafe fn bad5() { unsafe { unsf() } }   //~ ERROR: unnecessary `unsafe` block
+unsafe fn bad5() { unsafe { unsf() } }
 fn bad6() {
     unsafe {                             //~ ERROR: unnecessary `unsafe` block
         unsafe {                         // don't put the warning here
@@ -37,7 +37,7 @@ fn bad6() {
 }
 unsafe fn bad7() {
     unsafe {                             //~ ERROR: unnecessary `unsafe` block
-        unsafe {                         //~ ERROR: unnecessary `unsafe` block
+        unsafe {
             unsf()
         }
     }
@@ -194,15 +194,15 @@ mod additional_tests {
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn granularity_2() {
         unsafe { //~ ERROR: unnecessary `unsafe` block
-            unsafe { unsf() } //~ ERROR: unnecessary `unsafe` block
-            unsafe { unsf() } //~ ERROR: unnecessary `unsafe` block
-            unsafe { unsf() } //~ ERROR: unnecessary `unsafe` block
+            unsafe { unsf() }
+            unsafe { unsf() }
+            unsafe { unsf() }
         }
     }
 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn top_level_used_2() {
-        unsafe { //~ ERROR: unnecessary `unsafe` block
+        unsafe {
             unsf();
             unsafe { unsf() } //~ ERROR: unnecessary `unsafe` block
             unsafe { unsf() } //~ ERROR: unnecessary `unsafe` block
@@ -251,8 +251,8 @@ mod additional_tests {
 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn granular_disallow_op_in_unsafe_fn_3() {
-        unsafe { //~ ERROR: unnecessary `unsafe` block
-            unsafe {
+        unsafe {
+            unsafe { //~ ERROR: unnecessary `unsafe` block
                 #[deny(unsafe_op_in_unsafe_fn)]
                 {
                     unsf();
@@ -406,15 +406,15 @@ mod additional_tests_closures {
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn granularity_2() {
         let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
+            let _ = || unsafe { unsf() };
+            let _ = || unsafe { unsf() };
+            let _ = || unsafe { unsf() };
         };
     }
 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn top_level_used_2() {
-        let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
+        let _ = || unsafe {
             unsf();
             let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
             let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
@@ -463,8 +463,8 @@ mod additional_tests_closures {
 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn granular_disallow_op_in_unsafe_fn_3() {
-        let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe {
+        let _ = || unsafe {
+            let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
                 #[deny(unsafe_op_in_unsafe_fn)]
                 {
                     unsf();
@@ -619,15 +619,15 @@ mod additional_tests_even_more_closures {
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn granularity_2() {
         let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe { let _ = || unsf(); }; //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe { let _ = || unsf(); }; //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe { let _ = || unsf(); }; //~ ERROR: unnecessary `unsafe` block
+            let _ = || unsafe { let _ = || unsf(); };
+            let _ = || unsafe { let _ = || unsf(); };
+            let _ = || unsafe { let _ = || unsf(); };
         };
     }
 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn top_level_used_2() {
-        let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
+        let _ = || unsafe {
             let _ = || unsf();
             let _ = || unsafe { let _ = || unsf(); }; //~ ERROR: unnecessary `unsafe` block
             let _ = || unsafe { let _ = || unsf(); }; //~ ERROR: unnecessary `unsafe` block
@@ -676,8 +676,8 @@ mod additional_tests_even_more_closures {
 
     #[allow(unsafe_op_in_unsafe_fn)]
     unsafe fn granular_disallow_op_in_unsafe_fn_3() {
-        let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-            let _ = || unsafe {
+        let _ = || unsafe {
+            let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
                 #[deny(unsafe_op_in_unsafe_fn)]
                 {
                     let _ = || unsf();
@@ -781,15 +781,15 @@ mod item_likes {
         #[allow(unsafe_op_in_unsafe_fn)]
         unsafe fn granularity_2() {
             let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
+                let _ = || unsafe { unsf() };
+                let _ = || unsafe { unsf() };
+                let _ = || unsafe { unsf() };
             };
         }
 
         #[allow(unsafe_op_in_unsafe_fn)]
         unsafe fn top_level_used_2() {
-            let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
+            let _ = || unsafe {
                 unsf();
                 let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
                 let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
@@ -838,8 +838,8 @@ mod item_likes {
 
         #[allow(unsafe_op_in_unsafe_fn)]
         unsafe fn granular_disallow_op_in_unsafe_fn_3() {
-            let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe {
+            let _ = || unsafe {
+                let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
                     #[deny(unsafe_op_in_unsafe_fn)]
                     {
                         unsf();
@@ -939,15 +939,15 @@ mod item_likes {
         #[allow(unsafe_op_in_unsafe_fn)]
         unsafe fn granularity_2() {
             let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
+                let _ = || unsafe { unsf() };
+                let _ = || unsafe { unsf() };
+                let _ = || unsafe { unsf() };
             };
         }
 
         #[allow(unsafe_op_in_unsafe_fn)]
         unsafe fn top_level_used_2() {
-            let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
+            let _ = || unsafe {
                 unsf();
                 let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
                 let _ = || unsafe { unsf() }; //~ ERROR: unnecessary `unsafe` block
@@ -996,8 +996,8 @@ mod item_likes {
 
         #[allow(unsafe_op_in_unsafe_fn)]
         unsafe fn granular_disallow_op_in_unsafe_fn_3() {
-            let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
-                let _ = || unsafe {
+            let _ = || unsafe {
+                let _ = || unsafe { //~ ERROR: unnecessary `unsafe` block
                     #[deny(unsafe_op_in_unsafe_fn)]
                     {
                         unsf();
@@ -1041,7 +1041,7 @@ mod additional_tests_extra {
 
     #[warn(unsafe_op_in_unsafe_fn)]
     unsafe fn multiple_unsafe_op_in_unsafe_fn_allows() {
-        unsafe { //~ ERROR: unnecessary `unsafe` block
+        unsafe {
             #[allow(unsafe_op_in_unsafe_fn)]
             {
                 unsf();
@@ -1071,11 +1071,11 @@ mod additional_tests_extra {
         #[allow(unsafe_op_in_unsafe_fn)]
         {
             let _ = async { unsafe { //~ ERROR: unnecessary `unsafe` block
-                let _ = async { unsafe { let _ = async { unsf() }; }}; //~ ERROR: unnecessary `unsafe` block
-                let _ = async { unsafe { let _ = async { unsf() }; }}; //~ ERROR: unnecessary `unsafe` block
-                let _ = async { unsafe { let _ = async { unsf() }; }}; //~ ERROR: unnecessary `unsafe` block
+                let _ = async { unsafe { let _ = async { unsf() }; }};
+                let _ = async { unsafe { let _ = async { unsf() }; }};
+                let _ = async { unsafe { let _ = async { unsf() }; }};
             }};
-            let _ = async { unsafe { //~ ERROR: unnecessary `unsafe` block
+            let _ = async { unsafe {
                 let _ = async { unsf() };
                 let _ = async { unsafe { let _ = async { unsf() }; }}; //~ ERROR: unnecessary `unsafe` block
                 let _ = async { unsafe { let _ = async { unsf() }; }}; //~ ERROR: unnecessary `unsafe` block

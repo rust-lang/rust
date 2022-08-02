@@ -5,9 +5,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{lint, mir::*};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 
@@ -259,7 +259,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
         violations: impl IntoIterator<Item = &'a UnsafetyViolation>,
         new_used_unsafe_blocks: impl IntoIterator<Item = (HirId, UsedUnsafeBlockData)>,
     ) {
-        use UsedUnsafeBlockData::{AllAllowedInUnsafeFn, SomeDisallowedInUnsafeFn};
+        use UsedUnsafeBlockData::*;
 
         let update_entry = |this: &mut Self, hir_id, new_usage| {
             match this.used_unsafe_blocks.entry(hir_id) {
@@ -299,15 +299,11 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
                 }
             }),
             Safety::BuiltinUnsafe => {}
-            Safety::ExplicitUnsafe(hir_id) => violations.into_iter().for_each(|violation| {
+            Safety::ExplicitUnsafe(hir_id) => violations.into_iter().for_each(|_violation| {
                 update_entry(
                     self,
                     hir_id,
-                    match self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, violation.lint_root).0
-                    {
-                        Level::Allow => AllAllowedInUnsafeFn(violation.lint_root),
-                        _ => SomeDisallowedInUnsafeFn,
-                    },
+                    SomeDisallowedInUnsafeFn,
                 )
             }),
         };
@@ -522,6 +518,11 @@ fn unsafety_check_result<'tcx>(
 }
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
+    if matches!(kind, UnusedUnsafe::InUnsafeFn(..)) {
+        // We do *not* warn here, these unsafe blocks are actually required when
+        // `unsafe_op_in_unsafe_fn` is warn or higher.
+        return;
+    }
     let span = tcx.sess.source_map().guess_head_span(tcx.hir().span(id));
     tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
         let msg = "unnecessary `unsafe` block";
@@ -535,25 +536,7 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
                     "because it's nested under this `unsafe` block",
                 );
             }
-            UnusedUnsafe::InUnsafeFn(id, usage_lint_root) => {
-                db.span_label(
-                    tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
-                    "because it's nested under this `unsafe` fn",
-                )
-                .note(
-                    "this `unsafe` block does contain unsafe operations, \
-                    but those are already allowed in an `unsafe fn`",
-                );
-                let (level, source) =
-                    tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, usage_lint_root);
-                assert_eq!(level, Level::Allow);
-                lint::explain_lint_level_source(
-                    UNSAFE_OP_IN_UNSAFE_FN,
-                    Level::Allow,
-                    source,
-                    &mut db,
-                );
-            }
+            UnusedUnsafe::InUnsafeFn(_id, _usage_lint_root) => unreachable!(),
         }
 
         db.emit();
