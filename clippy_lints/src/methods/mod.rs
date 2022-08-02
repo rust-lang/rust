@@ -12,6 +12,7 @@ mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
+mod collapsible_str_replace;
 mod err_expect;
 mod expect_fun_call;
 mod expect_used;
@@ -135,6 +136,32 @@ declare_clippy_lint! {
     pub CLONED_INSTEAD_OF_COPIED,
     pedantic,
     "used `cloned` where `copied` could be used instead"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for consecutive calls to `str::replace` (2 or more)
+    /// that can be collapsed into a single call.
+    ///
+    /// ### Why is this bad?
+    /// Consecutive `str::replace` calls scan the string multiple times
+    /// with repetitive code.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let hello = "hesuo worpd"
+    ///     .replace('s', "l")
+    ///     .replace("u", "l")
+    ///     .replace('p', "l")
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let hello = "hesuo worpd".replace(|c| matches!(c, 's' | 'u' | 'p'), "l")
+    /// ```
+    #[clippy::version = "1.64.0"]
+    pub COLLAPSIBLE_STR_REPLACE,
+    perf,
+    "collapse consecutive calls to str::replace (2 or more) into a single call"
 }
 
 declare_clippy_lint! {
@@ -3001,6 +3028,7 @@ impl_lint_pass!(Methods => [
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
     CLONE_DOUBLE_REF,
+    COLLAPSIBLE_STR_REPLACE,
     ITER_OVEREAGER_CLONED,
     CLONED_INSTEAD_OF_COPIED,
     FLAT_MAP_OPTION,
@@ -3491,6 +3519,7 @@ impl Methods {
                 ("sort_unstable_by", [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
+                ("replace", [_, _]) => collapsible_str_replace::check(cx, expr, recv, args),
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
