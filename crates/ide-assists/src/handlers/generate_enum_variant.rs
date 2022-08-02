@@ -2,7 +2,7 @@ use hir::{HasSource, HirDisplay, InFile};
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{
     ast::{self, make, HasArgList},
-    AstNode,
+    match_ast, AstNode, SyntaxNode,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -33,6 +33,7 @@ use crate::assist_context::{AssistContext, Assists};
 // ```
 pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
+    let parent = path_parent(&path)?;
 
     if ctx.sema.resolve_path(&path).is_some() {
         // No need to generate anything if the path resolves
@@ -49,10 +50,56 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) 
         ctx.sema.resolve_path(&path.qualifier()?)
     {
         let target = path.syntax().text_range();
-        return add_variant_to_accumulator(acc, ctx, target, e, &name_ref, &path);
+        return add_variant_to_accumulator(acc, ctx, target, e, &name_ref, parent);
     }
 
     None
+}
+
+#[derive(Debug)]
+enum PathParent {
+    PathExpr(ast::PathExpr),
+    RecordExpr(ast::RecordExpr),
+    UseTree(ast::UseTree),
+}
+
+impl PathParent {
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            PathParent::PathExpr(it) => it.syntax(),
+            PathParent::RecordExpr(it) => it.syntax(),
+            PathParent::UseTree(it) => it.syntax(),
+        }
+    }
+
+    fn make_field_list(&self, ctx: &AssistContext<'_>) -> Option<ast::FieldList> {
+        let scope = ctx.sema.scope(self.syntax())?;
+
+        match self {
+            PathParent::PathExpr(it) => {
+                if let Some(call_expr) = it.syntax().parent().and_then(ast::CallExpr::cast) {
+                    make_tuple_field_list(call_expr, ctx, &scope)
+                } else {
+                    None
+                }
+            }
+            PathParent::RecordExpr(it) => make_record_field_list(it, ctx, &scope),
+            PathParent::UseTree(_) => None,
+        }
+    }
+}
+
+fn path_parent(path: &ast::Path) -> Option<PathParent> {
+    let parent = path.syntax().parent()?;
+
+    match_ast! {
+        match parent {
+            ast::PathExpr(it) => Some(PathParent::PathExpr(it)),
+            ast::RecordExpr(it) => Some(PathParent::RecordExpr(it)),
+            ast::UseTree(it) => Some(PathParent::UseTree(it)),
+            _ => None
+        }
+    }
 }
 
 fn add_variant_to_accumulator(
@@ -61,7 +108,7 @@ fn add_variant_to_accumulator(
     target: syntax::TextRange,
     adt: hir::Enum,
     name_ref: &ast::NameRef,
-    path: &ast::Path,
+    parent: PathParent,
 ) -> Option<()> {
     let db = ctx.db();
     let InFile { file_id, value: enum_node } = adt.source(db)?.original_ast_node(db)?;
@@ -73,7 +120,7 @@ fn add_variant_to_accumulator(
         |builder| {
             builder.edit_file(file_id.original_file(db));
             let node = builder.make_mut(enum_node);
-            let variant = make_variant(ctx, name_ref, &path);
+            let variant = make_variant(ctx, name_ref, parent);
             node.variant_list().map(|it| it.add_variant(variant.clone_for_update()));
         },
     )
@@ -82,27 +129,14 @@ fn add_variant_to_accumulator(
 fn make_variant(
     ctx: &AssistContext<'_>,
     name_ref: &ast::NameRef,
-    path: &ast::Path,
+    parent: PathParent,
 ) -> ast::Variant {
-    let field_list = make_field_list(ctx, path);
+    let field_list = parent.make_field_list(ctx);
     make::variant(make::name(&name_ref.text()), field_list)
 }
 
-fn make_field_list(ctx: &AssistContext<'_>, path: &ast::Path) -> Option<ast::FieldList> {
-    let scope = ctx.sema.scope(&path.syntax())?;
-    if let Some(call_expr) =
-        path.syntax().parent().and_then(|it| it.parent()).and_then(ast::CallExpr::cast)
-    {
-        make_tuple_field_list(call_expr, ctx, &scope)
-    } else if let Some(record_expr) = path.syntax().parent().and_then(ast::RecordExpr::cast) {
-        make_record_field_list(record_expr, ctx, &scope)
-    } else {
-        None
-    }
-}
-
 fn make_record_field_list(
-    record: ast::RecordExpr,
+    record: &ast::RecordExpr,
     ctx: &AssistContext<'_>,
     scope: &hir::SemanticsScope<'_>,
 ) -> Option<ast::FieldList> {
@@ -465,6 +499,37 @@ enum Foo {
 fn main() {
     Foo::Bar { x, y: x, s: Struct {} }
 }
+",
+        )
+    }
+
+    #[test]
+    fn use_tree() {
+        check_assist(
+            generate_enum_variant,
+            r"
+//- /main.rs
+mod foo;
+use foo::Foo::Bar$0;
+
+//- /foo.rs
+enum Foo {}
+",
+            r"
+enum Foo {
+    Bar,
+}
+",
+        )
+    }
+
+    #[test]
+    fn not_applicable_for_path_type() {
+        check_assist_not_applicable(
+            generate_enum_variant,
+            r"
+enum Foo {}
+impl Foo::Bar$0 {}
 ",
         )
     }
