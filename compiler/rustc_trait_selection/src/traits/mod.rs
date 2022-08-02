@@ -30,6 +30,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
@@ -161,22 +162,20 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // The handling of regions in this area of the code is terrible,
-        // see issue #29149. We should be able to improve on this with
-        // NLL.
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
         let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
 
-        fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
+        // The handling of regions in this area of the code is terrible,
+        // see issue #29149. We should be able to improve on this with
+        // NLL.
+        let errors = fully_solve_bound(infcx, cause, param_env, ty, def_id);
 
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        match &errors[..] {
             [] => {
                 debug!(
                     "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
@@ -411,6 +410,36 @@ where
     let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
     debug!("fully_normalize: resolved_value={:?}", resolved_value);
     Ok(resolved_value)
+}
+
+pub fn fully_solve_obligation<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    obligation: PredicateObligation<'tcx>,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_predicate_obligation(infcx, obligation);
+    engine.select_all_or_error(infcx)
+}
+
+pub fn fully_solve_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_predicate_obligations(infcx, obligations);
+    engine.select_all_or_error(infcx)
+}
+
+pub fn fully_solve_bound<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    cause: ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    bound: DefId,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_bound(infcx, param_env, ty, bound, cause);
+    engine.select_all_or_error(infcx)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this

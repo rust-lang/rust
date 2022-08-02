@@ -104,7 +104,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
-use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -113,9 +112,7 @@ use rustc_session::config::EntryFnType;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt as _,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use std::iter;
 
@@ -147,18 +144,15 @@ fn require_same_types<'tcx>(
 ) -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
-        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-        match infcx.at(cause, param_env).eq(expected, actual) {
-            Ok(InferOk { obligations, .. }) => {
-                fulfill_cx.register_predicate_obligations(infcx, obligations);
-            }
+        let errors = match infcx.at(cause, param_env).eq(expected, actual) {
+            Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(infcx, obligations),
             Err(err) => {
                 infcx.report_mismatched_types(cause, expected, actual, err).emit();
                 return false;
             }
-        }
+        };
 
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        match &errors[..] {
             [] => true,
             errors => {
                 infcx.report_fulfillment_errors(errors, None, false);
