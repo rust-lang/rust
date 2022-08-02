@@ -177,6 +177,8 @@ pub struct ResolverAstLowering {
     pub label_res_map: NodeMap<ast::NodeId>,
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
+    /// Mapping from generics def-id to RPIT copied generic def-id
+    pub generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
 
