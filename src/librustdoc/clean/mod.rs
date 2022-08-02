@@ -121,12 +121,6 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, Attributes> for [ast::Attribute] {
-    fn clean(&self, _cx: &mut DocContext<'_>) -> Attributes {
-        Attributes::from_ast(self, None)
-    }
-}
-
 impl<'tcx> Clean<'tcx, Option<GenericBound>> for hir::GenericBound<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<GenericBound> {
         Some(match *self {
@@ -2096,7 +2090,7 @@ fn clean_extern_crate<'tcx>(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: Box::new(attrs.clean(cx)),
+        attrs: Box::new(Attributes::from_ast(attrs)),
         item_id: crate_def_id.into(),
         visibility: clean_visibility(ty_vis),
         kind: Box::new(ExternCrateItem { src: orig_name }),

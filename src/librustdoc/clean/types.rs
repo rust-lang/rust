@@ -34,10 +34,10 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 
 use crate::clean::cfg::Cfg;
+use crate::clean::clean_visibility;
 use crate::clean::external_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
-use crate::clean::{clean_visibility, Clean};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -469,7 +469,7 @@ impl Item {
             def_id,
             name,
             kind,
-            Box::new(ast_attrs.clean(cx)),
+            Box::new(Attributes::from_ast(ast_attrs)),
             cx,
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
@@ -1161,14 +1161,16 @@ impl Attributes {
         false
     }
 
-    pub(crate) fn from_ast(
+    pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
+        Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
+    }
+
+    pub(crate) fn from_ast_with_additional(
         attrs: &[ast::Attribute],
-        additional_attrs: Option<(&[ast::Attribute], DefId)>,
+        (additional_attrs, def_id): (&[ast::Attribute], DefId),
     ) -> Attributes {
         // Additional documentation should be shown before the original documentation.
-        let attrs1 = additional_attrs
-            .into_iter()
-            .flat_map(|(attrs, def_id)| attrs.iter().map(move |attr| (attr, Some(def_id))));
+        let attrs1 = additional_attrs.iter().map(|attr| (attr, Some(def_id)));
         let attrs2 = attrs.iter().map(|attr| (attr, None));
         Attributes::from_ast_iter(attrs1.chain(attrs2), false)
     }

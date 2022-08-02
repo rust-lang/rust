@@ -304,14 +304,14 @@ fn merge_attrs(
         both.extend_from_slice(old_attrs);
         (
             if let Some(new_id) = parent_module {
-                Attributes::from_ast(old_attrs, Some((inner, new_id)))
+                Attributes::from_ast_with_additional(old_attrs, (inner, new_id))
             } else {
-                Attributes::from_ast(&both, None)
+                Attributes::from_ast(&both)
             },
             both.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (old_attrs.clean(cx), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (Attributes::from_ast(&old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
     }
 }
 
