@@ -45,7 +45,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -146,8 +146,6 @@ struct LifetimeCaptureContext {
             LifetimeRes, // original resolution
         ),
     >,
-    /// Traversed binders.  The ids in this set should *not* be rebound.
-    binders_to_ignore: FxHashSet<NodeId>,
 }
 
 trait ResolverAstLoweringExt {
@@ -768,14 +766,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let generic_params = self.arena.alloc_from_iter(generic_params);
         debug!(?generic_params);
 
-        if let Some(ctxt) = &mut self.captured_lifetimes {
-            ctxt.binders_to_ignore.insert(binder);
-        }
-        let ret = f(self, generic_params);
-        if let Some(ctxt) = &mut self.captured_lifetimes {
-            ctxt.binders_to_ignore.remove(&binder);
-        }
-        ret
+        f(self, generic_params)
     }
 
     fn with_dyn_type_scope<T>(&mut self, in_scope: bool, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -1346,7 +1337,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     &mut lctx.captured_lifetimes,
                     Some(LifetimeCaptureContext {
                         captures: std::mem::take(&mut collected_lifetimes),
-                        binders_to_ignore: Default::default(),
                     }),
                 );
 
@@ -1735,10 +1725,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
             let lifetime_stash = std::mem::replace(
                 &mut this.captured_lifetimes,
-                Some(LifetimeCaptureContext {
-                    captures: std::mem::take(&mut captures),
-                    binders_to_ignore: Default::default(),
-                }),
+                Some(LifetimeCaptureContext { captures: std::mem::take(&mut captures) }),
             );
 
             let lifetimes_in_bounds =
