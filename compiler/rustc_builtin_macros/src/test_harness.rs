@@ -336,7 +336,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
-        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public },
         span: sp,
         tokens: None,
     });

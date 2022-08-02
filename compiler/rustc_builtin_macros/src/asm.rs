@@ -857,7 +857,6 @@ pub(super) fn expand_global_asm<'cx>(
                     vis: ast::Visibility {
                         span: sp.shrink_to_lo(),
                         kind: ast::VisibilityKind::Inherited,
-                        tokens: None,
                     },
                     span: ecx.with_def_site_ctxt(sp),
                     tokens: None,

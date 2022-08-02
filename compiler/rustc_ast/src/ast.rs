@@ -2595,7 +2595,6 @@ impl PolyTraitRef {
 pub struct Visibility {
     pub kind: VisibilityKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3039,7 +3038,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(GenericBound, 80);
     rustc_data_structures::static_assert_size!(Generics, 72);
     rustc_data_structures::static_assert_size!(Impl, 192);
-    rustc_data_structures::static_assert_size!(Item, 200);
+    rustc_data_structures::static_assert_size!(Item, 192);
     rustc_data_structures::static_assert_size!(ItemKind, 112);
     rustc_data_structures::static_assert_size!(Lit, 48);
     rustc_data_structures::static_assert_size!(Pat, 112);

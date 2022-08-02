@@ -577,7 +577,6 @@ impl<'a> ExtCtxt<'a> {
             vis: ast::Visibility {
                 span: span.shrink_to_lo(),
                 kind: ast::VisibilityKind::Inherited,
-                tokens: None,
             },
             span,
             tokens: None,

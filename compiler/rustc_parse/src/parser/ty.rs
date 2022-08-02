@@ -521,7 +521,6 @@ impl<'a> Parser<'a> {
         let inherited_vis = rustc_ast::Visibility {
             span: rustc_span::DUMMY_SP,
             kind: rustc_ast::VisibilityKind::Inherited,
-            tokens: None,
         };
         let span_start = self.token.span;
         let ast::FnHeader { ext, unsafety, constness, asyncness } =

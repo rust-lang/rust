@@ -47,7 +47,6 @@ fn test_variant_to_string() {
             vis: ast::Visibility {
                 span: rustc_span::DUMMY_SP,
                 kind: ast::VisibilityKind::Inherited,
-                tokens: None,
             },
             attrs: ast::AttrVec::new(),
             id: ast::DUMMY_NODE_ID,

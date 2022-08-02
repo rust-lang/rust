@@ -525,7 +525,6 @@ impl CStore {
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),
                     kind: ast::VisibilityKind::Inherited,
-                    tokens: None,
                 },
                 tokens: None,
             },

@@ -25,11 +25,8 @@ pub fn placeholder(
 
     let ident = Ident::empty();
     let attrs = Vec::new();
-    let vis = vis.unwrap_or(ast::Visibility {
-        span: DUMMY_SP,
-        kind: ast::VisibilityKind::Inherited,
-        tokens: None,
-    });
+    let vis =
+        vis.unwrap_or(ast::Visibility { span: DUMMY_SP, kind: ast::VisibilityKind::Inherited });
     let span = DUMMY_SP;
     let expr_placeholder = || {
         P(ast::Expr {

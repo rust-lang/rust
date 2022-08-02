@@ -1616,11 +1616,8 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
             let err = if self.check_fn_front_matter(false) {
-                let inherited_vis = Visibility {
-                    span: rustc_span::DUMMY_SP,
-                    kind: VisibilityKind::Inherited,
-                    tokens: None,
-                };
+                let inherited_vis =
+                    Visibility { span: rustc_span::DUMMY_SP, kind: VisibilityKind::Inherited };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
                 if let Err(mut db) =

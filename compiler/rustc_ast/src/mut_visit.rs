@@ -1523,11 +1523,7 @@ impl DummyAstNode for Item {
             attrs: Default::default(),
             id: DUMMY_NODE_ID,
             span: Default::default(),
-            vis: Visibility {
-                kind: VisibilityKind::Public,
-                span: Default::default(),
-                tokens: Default::default(),
-            },
+            vis: Visibility { kind: VisibilityKind::Public, span: Default::default() },
             ident: Ident::empty(),
             kind: ItemKind::ExternCrate(None),
             tokens: Default::default(),

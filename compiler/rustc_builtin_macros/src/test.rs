@@ -37,11 +37,7 @@ pub fn expand_test_case(
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
-        item.vis = ast::Visibility {
-            span: item.vis.span,
-            kind: ast::VisibilityKind::Public,
-            tokens: None,
-        };
+        item.vis = ast::Visibility { span: item.vis.span, kind: ast::VisibilityKind::Public };
         item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
         item.attrs.push(ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker)));
         item

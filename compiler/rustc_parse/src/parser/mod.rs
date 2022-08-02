@@ -1279,7 +1279,6 @@ impl<'a> Parser<'a> {
             return Ok(Visibility {
                 span: self.token.span.shrink_to_lo(),
                 kind: VisibilityKind::Inherited,
-                tokens: None,
             });
         }
         let lo = self.prev_token.span;
@@ -1296,11 +1295,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(Visibility {
-                    span: lo.to(self.prev_token.span),
-                    kind: vis,
-                    tokens: None,
-                });
+                return Ok(Visibility { span: lo.to(self.prev_token.span), kind: vis });
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
                 && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
             {
@@ -1309,11 +1304,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
                 let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
-                return Ok(Visibility {
-                    span: lo.to(self.prev_token.span),
-                    kind: vis,
-                    tokens: None,
-                });
+                return Ok(Visibility { span: lo.to(self.prev_token.span), kind: vis });
             } else if let FollowedByType::No = fbt {
                 // Provide this diagnostic if a type cannot follow;
                 // in particular, if this is not a tuple struct.
@@ -1322,7 +1313,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Visibility { span: lo, kind: VisibilityKind::Public, tokens: None })
+        Ok(Visibility { span: lo, kind: VisibilityKind::Public })
     }
 
     /// Recovery for e.g. `pub(something) fn ...` or `struct X { pub(something) y: Z }`
