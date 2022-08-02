@@ -47,7 +47,9 @@ fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
 
 // Helper functions for building exprs
 fn expr(kind: ExprKind) -> P<Expr> {
-    P(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: ThinVec::new(), tokens: None })
+    P(Expr {
+        id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: ThinVec::new(), tokens: None, b: B::b()
+    })
 }
 
 fn make_x() -> P<Expr> {
@@ -198,6 +200,7 @@ impl MutVisitor for AddParens {
                 span: DUMMY_SP,
                 attrs: ThinVec::new(),
                 tokens: None,
+                b: B::b(),
             })
         });
     }

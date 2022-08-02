@@ -828,6 +828,7 @@ pub(super) fn expand_asm<'cx>(
                     span: sp,
                     attrs: ast::AttrVec::new(),
                     tokens: None,
+                    b: ast::B::b(),
                 })
             } else {
                 DummyResult::raw_expr(sp, true)
@@ -861,6 +862,7 @@ pub(super) fn expand_global_asm<'cx>(
                     },
                     span: ecx.with_def_site_ctxt(sp),
                     tokens: None,
+                    b: ast::B::b(),
                 })])
             } else {
                 DummyResult::any(sp)

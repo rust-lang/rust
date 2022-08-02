@@ -922,6 +922,7 @@ pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
     pub span: Span,
+    pub b: B<96>,
 }
 
 impl Stmt {
@@ -1109,6 +1110,7 @@ pub struct Expr {
     pub span: Span,
     pub attrs: AttrVec,
     pub tokens: Option<LazyTokenStream>,
+    pub b: B<96>,
 }
 
 impl Expr {
@@ -1271,6 +1273,7 @@ impl Expr {
                 span: DUMMY_SP,
                 attrs: ThinVec::new(),
                 tokens: None,
+                b: B::b(),
             },
         )
     }
@@ -2683,6 +2686,7 @@ pub struct Item<K = ItemKind> {
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
     pub tokens: Option<LazyTokenStream>,
+    pub b: B<96>,
 }
 
 impl Item {
@@ -3026,6 +3030,15 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
 pub type ForeignItem = Item<ForeignItemKind>;
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct B<const N: usize>([u8; N]);
+
+impl<const N: usize> B<N> {
+    pub fn b() -> Self {
+        Self([0; N])
+    }
+}
+
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
@@ -3034,18 +3047,18 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(AssocItemKind, 72);
     rustc_data_structures::static_assert_size!(Attribute, 152);
     rustc_data_structures::static_assert_size!(Block, 48);
-    rustc_data_structures::static_assert_size!(Expr, 104);
+    rustc_data_structures::static_assert_size!(Expr, 200);
     rustc_data_structures::static_assert_size!(Fn, 192);
     rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
     rustc_data_structures::static_assert_size!(GenericBound, 88);
     rustc_data_structures::static_assert_size!(Generics, 72);
     rustc_data_structures::static_assert_size!(Impl, 200);
-    rustc_data_structures::static_assert_size!(Item, 200);
+    rustc_data_structures::static_assert_size!(Item, 296);
     rustc_data_structures::static_assert_size!(ItemKind, 112);
     rustc_data_structures::static_assert_size!(Lit, 48);
     rustc_data_structures::static_assert_size!(Pat, 120);
     rustc_data_structures::static_assert_size!(Path, 40);
     rustc_data_structures::static_assert_size!(PathSegment, 24);
-    rustc_data_structures::static_assert_size!(Stmt, 32);
+    rustc_data_structures::static_assert_size!(Stmt, 128);
     rustc_data_structures::static_assert_size!(Ty, 96);
 }

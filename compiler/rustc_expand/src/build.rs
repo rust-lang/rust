@@ -80,6 +80,7 @@ impl<'a> ExtCtxt<'a> {
                 span,
                 attrs: AttrVec::new(),
                 tokens: None,
+                b: ast::B::b(),
             }),
         }
     }
@@ -149,7 +150,12 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            kind: ast::StmtKind::Expr(expr),
+            b: ast::B::b(),
+        }
     }
 
     pub fn stmt_let_pat(&self, sp: Span, pat: P<ast::Pat>, ex: P<ast::Expr>) -> ast::Stmt {
@@ -210,11 +216,21 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_local(&self, local: P<ast::Local>, span: Span) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::StmtKind::Local(local),
+            span,
+            b: ast::B::b(),
+        }
     }
 
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            kind: ast::StmtKind::Item(item),
+            span: sp,
+            b: ast::B::b(),
+        }
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
@@ -224,6 +240,7 @@ impl<'a> ExtCtxt<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
+                b: ast::B::b(),
             }],
         )
     }
@@ -239,7 +256,14 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> P<ast::Expr> {
-        P(ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new(), tokens: None })
+        P(ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            kind,
+            span,
+            attrs: AttrVec::new(),
+            tokens: None,
+            b: ast::B::b(),
+        })
     }
 
     pub fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
@@ -581,6 +605,7 @@ impl<'a> ExtCtxt<'a> {
             },
             span,
             tokens: None,
+            b: ast::B::b(),
         })
     }
 

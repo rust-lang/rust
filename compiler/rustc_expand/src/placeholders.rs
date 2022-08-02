@@ -38,6 +38,7 @@ pub fn placeholder(
             attrs: ast::AttrVec::new(),
             kind: ast::ExprKind::MacCall(mac_placeholder()),
             tokens: None,
+            b: ast::B::b(),
         })
     };
     let ty =
@@ -63,6 +64,7 @@ pub fn placeholder(
             attrs,
             kind: ast::ItemKind::MacCall(mac_placeholder()),
             tokens: None,
+            b: ast::B::b(),
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![P(ast::AssocItem {
             id,
@@ -72,6 +74,7 @@ pub fn placeholder(
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
+            b: ast::B::b(),
         })]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![P(ast::AssocItem {
             id,
@@ -81,6 +84,7 @@ pub fn placeholder(
             attrs,
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
+            b: ast::B::b(),
         })]),
         AstFragmentKind::ForeignItems => {
             AstFragment::ForeignItems(smallvec![P(ast::ForeignItem {
@@ -91,6 +95,7 @@ pub fn placeholder(
                 attrs,
                 kind: ast::ForeignItemKind::MacCall(mac_placeholder()),
                 tokens: None,
+                b: ast::B::b(),
             })])
         }
         AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
@@ -112,7 +117,7 @@ pub fn placeholder(
                 attrs: ast::AttrVec::new(),
                 tokens: None,
             });
-            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
+            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac), b: ast::B::b() }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),
@@ -331,8 +336,12 @@ impl MutVisitor for PlaceholderExpander {
 
             // FIXME: We will need to preserve the original semicolon token and
             // span as part of #15701
-            let empty_stmt =
-                ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Empty, span: DUMMY_SP };
+            let empty_stmt = ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                kind: ast::StmtKind::Empty,
+                span: DUMMY_SP,
+                b: ast::B::b(),
+            };
 
             if let Some(stmt) = stmts.pop() {
                 if stmt.has_trailing_semicolon() {

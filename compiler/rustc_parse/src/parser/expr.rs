@@ -3242,7 +3242,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
-        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
+        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None, b: ast::B::b() })
     }
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {

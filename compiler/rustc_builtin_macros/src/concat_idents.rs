@@ -53,6 +53,7 @@ pub fn expand_concat_idents<'cx>(
                 span: self.ident.span,
                 attrs: ast::AttrVec::new(),
                 tokens: None,
+                b: ast::B::b(),
             }))
         }
 

@@ -581,6 +581,7 @@ impl<'a> TraitDef<'a> {
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
                 tokens: None,
+                b: ast::B::b(),
             })
         });
 
@@ -988,6 +989,7 @@ impl<'a> MethodDef<'a> {
                 body: Some(body_block),
             })),
             tokens: None,
+            b: ast::B::b(),
         })
     }
 

@@ -1095,6 +1095,7 @@ pub(crate) fn convert_try_mac(
             span: mac.span(), // incorrect span, but shouldn't matter too much
             attrs: ast::AttrVec::new(),
             tokens: None,
+            b: ast::B::b(),
         })
     } else {
         None

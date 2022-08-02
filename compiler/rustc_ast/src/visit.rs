@@ -572,7 +572,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
 }
 
 pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignItem) {
-    let Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _ } = *item;
+    let Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _, .. } = *item;
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
@@ -690,7 +690,7 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>, _span: Spa
 }
 
 pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem, ctxt: AssocCtxt) {
-    let Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _ } = *item;
+    let Item { id, span, ident, ref vis, ref attrs, ref kind, tokens: _, .. } = *item;
     visitor.visit_vis(vis);
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);

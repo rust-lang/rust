@@ -1094,7 +1094,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     mut item: P<AssocItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
-    let Item { id, ident, vis, attrs, kind, span, tokens } = item.deref_mut();
+    let Item { id, ident, vis, attrs, kind, span, tokens, .. } = item.deref_mut();
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
@@ -1155,7 +1155,7 @@ pub fn noop_flat_map_item<T: MutVisitor>(
     mut item: P<Item>,
     visitor: &mut T,
 ) -> SmallVec<[P<Item>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, span, tokens, .. } = item.deref_mut();
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     visitor.visit_id(id);
@@ -1171,7 +1171,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     mut item: P<ForeignItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, span, tokens, .. } = item.deref_mut();
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
@@ -1284,7 +1284,7 @@ pub fn noop_visit_inline_asm_sym<T: MutVisitor>(
 }
 
 pub fn noop_visit_expr<T: MutVisitor>(
-    Expr { kind, id, span, attrs, tokens }: &mut Expr,
+    Expr { kind, id, span, attrs, tokens, .. }: &mut Expr,
     vis: &mut T,
 ) {
     match kind {
@@ -1442,14 +1442,14 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
 }
 
 pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, mut span, mut id }: Stmt,
+    Stmt { kind, mut span, mut id, b: _ }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
     let stmts: SmallVec<_> = noop_flat_map_stmt_kind(kind, vis)
         .into_iter()
-        .map(|kind| Stmt { id, kind, span })
+        .map(|kind| Stmt { id, kind, span, b: B::b() })
         .collect();
     if stmts.len() > 1 {
         panic!(
@@ -1531,6 +1531,7 @@ impl DummyAstNode for Item {
             ident: Ident::empty(),
             kind: ItemKind::ExternCrate(None),
             tokens: Default::default(),
+            b: B::b(),
         }
     }
 }
@@ -1543,6 +1544,7 @@ impl DummyAstNode for Expr {
             span: Default::default(),
             attrs: Default::default(),
             tokens: Default::default(),
+            b: B::b(),
         }
     }
 }
@@ -1571,7 +1573,7 @@ impl DummyAstNode for Pat {
 
 impl DummyAstNode for Stmt {
     fn dummy() -> Self {
-        Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default() }
+        Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default(), b: B::b() }
     }
 }
 

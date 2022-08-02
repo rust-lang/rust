@@ -486,6 +486,7 @@ impl MetaItemKind {
                     span: lit.span,
                     attrs: ThinVec::new(),
                     tokens: None,
+                    b: ast::B::b(),
                 });
                 MacArgs::Eq(span, MacArgsEq::Ast(expr))
             }

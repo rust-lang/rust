@@ -64,6 +64,7 @@ impl MultiItemModifier for BuiltinDerive {
                             id: ast::DUMMY_NODE_ID,
                             kind: ast::StmtKind::Item(a.expect_item()),
                             span,
+                            b: ast::B::b(),
                         })));
                     });
                 } else {

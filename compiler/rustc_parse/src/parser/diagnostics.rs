@@ -127,6 +127,7 @@ impl RecoverQPath for Expr {
             attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
             tokens: None,
+            b: ast::B::b(),
         }
     }
 }

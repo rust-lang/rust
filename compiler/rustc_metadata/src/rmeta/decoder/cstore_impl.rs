@@ -529,6 +529,7 @@ impl CStore {
                     tokens: None,
                 },
                 tokens: None,
+                b: ast::B::b(),
             },
             data.root.edition,
         )
