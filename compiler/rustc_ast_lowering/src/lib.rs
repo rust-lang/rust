@@ -1327,6 +1327,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
 
         let mut collected_lifetimes = FxHashMap::default();
+        let mut new_remapping = FxHashMap::default();
+
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             let hir_bounds = if origin == hir::OpaqueTyOrigin::TyAlias {
                 lctx.lower_param_bounds(bounds, itctx)
@@ -1344,7 +1346,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lifetime_collector::lifetimes_in_bounds(&lctx.resolver, bounds);
                 debug!(?lifetimes_in_bounds);
 
-                lctx.create_and_capture_lifetime_defs(opaque_ty_def_id, &lifetimes_in_bounds);
+                lctx.create_and_capture_lifetime_defs(
+                    opaque_ty_def_id,
+                    &lifetimes_in_bounds,
+                    &mut new_remapping,
+                );
 
                 let ret = lctx.lower_param_bounds(bounds, itctx);
 
@@ -1437,6 +1443,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         parent_def_id: LocalDefId,
         lifetimes_in_bounds: &[Lifetime],
+        remapping: &mut FxHashMap<LocalDefId, LocalDefId>,
     ) {
         for lifetime in lifetimes_in_bounds {
             let ident = lifetime.ident;
@@ -1447,42 +1454,42 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                 match res {
-                    LifetimeRes::Param { param, binder: _ } => {
-                        match captured_lifetimes.captures.entry(param) {
-                            Entry::Occupied(_) => {}
-                            Entry::Vacant(v) => {
-                                let node_id = self.next_node_id();
-                                let name = ParamName::Plain(ident);
+                    LifetimeRes::Param { param: old_def_id, binder: _ } => {
+                        if remapping.get(&old_def_id).is_none() {
+                            let node_id = self.next_node_id();
+                            let name = ParamName::Plain(ident);
 
-                                self.create_def(
-                                    parent_def_id,
-                                    node_id,
-                                    DefPathData::LifetimeNs(name.ident().name),
-                                );
+                            let new_def_id = self.create_def(
+                                parent_def_id,
+                                node_id,
+                                DefPathData::LifetimeNs(name.ident().name),
+                            );
 
-                                v.insert((span, node_id, name, res));
-                            }
+                            remapping.insert(old_def_id, new_def_id);
+                            captured_lifetimes
+                                .captures
+                                .insert(old_def_id, (span, node_id, name, res));
                         }
                     }
 
                     LifetimeRes::Fresh { param, binder: _ } => {
                         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
-                        let param = self.local_def_id(param);
-                        match captured_lifetimes.captures.entry(param) {
-                            Entry::Occupied(_) => {}
-                            Entry::Vacant(v) => {
-                                let node_id = self.next_node_id();
+                        let old_def_id = self.local_def_id(param);
+                        if remapping.get(&old_def_id).is_none() {
+                            let node_id = self.next_node_id();
 
-                                let name = ParamName::Fresh;
+                            let name = ParamName::Fresh;
 
-                                self.create_def(
-                                    parent_def_id,
-                                    node_id,
-                                    DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                                );
+                            let new_def_id = self.create_def(
+                                parent_def_id,
+                                node_id,
+                                DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                            );
 
-                                v.insert((span, node_id, name, res));
-                            }
+                            remapping.insert(old_def_id, new_def_id);
+                            captured_lifetimes
+                                .captures
+                                .insert(old_def_id, (span, node_id, name, res));
                         }
                     }
 
@@ -1691,6 +1698,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // lifetime parameters, including those defined in-band.
 
         let mut captures = FxHashMap::default();
+        let mut new_remapping = FxHashMap::default();
 
         let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
         debug!(?extra_lifetime_params);
@@ -1700,7 +1708,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let inner_node_id = self.next_node_id();
 
             // Add a definition for the in scope lifetime def.
-            self.create_def(opaque_ty_def_id, inner_node_id, DefPathData::LifetimeNs(name));
+            let inner_def_id =
+                self.create_def(opaque_ty_def_id, inner_node_id, DefPathData::LifetimeNs(name));
+            new_remapping.insert(outer_def_id, inner_def_id);
 
             let (p_name, inner_res) = match outer_res {
                 // Input lifetime like `'a`:
@@ -1732,7 +1742,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lifetime_collector::lifetimes_in_ret_ty(&this.resolver, output);
             debug!(?lifetimes_in_bounds);
 
-            this.create_and_capture_lifetime_defs(opaque_ty_def_id, &lifetimes_in_bounds);
+            this.create_and_capture_lifetime_defs(
+                opaque_ty_def_id,
+                &lifetimes_in_bounds,
+                &mut new_remapping,
+            );
 
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
