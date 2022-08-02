@@ -81,21 +81,19 @@ impl PositionalNamedArg {
             // For the message span, if there is formatting, we want to use the opening `{` and the
             // next character, which will the `:` indicating the start of formatting. If there is
             // not any formatting, we want to underline the entire span.
-            if self.has_formatting {
-                cx.arg_spans.get(self.cur_piece).map_or((None, None), |arg_span| {
+            cx.arg_spans.get(self.cur_piece).map_or((None, None), |arg_span| {
+                if self.has_formatting {
                     (
                         Some(arg_span.with_lo(arg_span.lo() + BytePos(1)).shrink_to_lo()),
                         Some(arg_span.with_hi(arg_span.lo() + BytePos(2))),
                     )
-                })
-            } else {
-                cx.arg_spans.get(self.cur_piece).map_or((None, None), |arg_span| {
+                } else {
                     let replace_start = arg_span.lo() + BytePos(1);
                     let replace_end = arg_span.hi() - BytePos(1);
                     let to_replace = arg_span.with_lo(replace_start).with_hi(replace_end);
                     (Some(to_replace), Some(*arg_span))
-                })
-            }
+                }
+            })
         } else {
             (None, None)
         }
