@@ -4,7 +4,7 @@
 
 use std::any::type_name;
 
-struct Bar<M>(M);
+struct Bar<M>(#[allow(unused_tuple_struct_fields)] M);
 
 impl<M> Bar<M> {
     fn foo(&self) -> &'static str {

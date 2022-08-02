@@ -20,5 +20,5 @@ impl<T> Test<T> {
 }
 
 trait Foo { fn dummy(&self) { }}
-struct Output(isize);
+struct Output(#[allow(unused_tuple_struct_fields)] isize);
 impl Foo for Output {}

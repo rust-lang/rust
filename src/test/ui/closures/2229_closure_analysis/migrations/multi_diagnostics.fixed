@@ -18,10 +18,10 @@ impl Foo {
     }
 }
 
-struct S(Foo);
+struct S(#[allow(unused_tuple_struct_fields)] Foo);
 
 #[derive(Clone)]
-struct T(i32);
+struct T(#[allow(unused_tuple_struct_fields)] i32);
 
 struct U(S, T);
 
