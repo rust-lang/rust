@@ -1349,7 +1349,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lifetime_collector::lifetimes_in_bounds(&lctx.resolver, bounds);
                 debug!(?lifetimes_in_bounds);
 
-                collected_lifetimes = lctx.create_and_capture_lifetime_defs(
+                collected_lifetimes = lctx.create_lifetime_defs(
                     opaque_ty_def_id,
                     &lifetimes_in_bounds,
                     &mut new_remapping,
@@ -1447,7 +1447,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))
     }
 
-    fn create_and_capture_lifetime_defs(
+    fn create_lifetime_defs(
         &mut self,
         parent_def_id: LocalDefId,
         lifetimes_in_bounds: &[Lifetime],
@@ -1743,7 +1743,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lifetime_collector::lifetimes_in_ret_ty(&this.resolver, output);
             debug!(?lifetimes_in_bounds);
 
-            captures.extend(this.create_and_capture_lifetime_defs(
+            captures.extend(this.create_lifetime_defs(
                 opaque_ty_def_id,
                 &lifetimes_in_bounds,
                 &mut new_remapping,
