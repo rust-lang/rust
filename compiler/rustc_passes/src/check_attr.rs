@@ -619,10 +619,30 @@ impl CheckAttrVisitor<'_> {
             }
             // we check the validity of params elsewhere
             Target::Param => return false,
-            Target::Expression => Some("expression"),
-            Target::Statement => Some("statement"),
-            Target::Arm => Some("match arm"),
-            _ => None,
+            Target::Expression | Target::Statement | Target::Arm => Some(target.name()),
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Fn
+            | Target::Closure
+            | Target::Mod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::OpaqueTy
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Method(..)
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(..)
+            | Target::MacroDef => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return false;
