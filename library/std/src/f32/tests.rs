@@ -662,7 +662,7 @@ fn test_gamma() {
     assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt());
     assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt());
     assert_eq!(0.0f32.gamma(), f32::INFINITY);
-    assert_eq!(-0.0f32.gamma(), f32::NEG_INFINITY);
+    assert_eq!((-0.0f32).gamma(), f32::NEG_INFINITY);
     assert!((-1.0f32).gamma().is_nan());
     assert!((-2.0f32).gamma().is_nan());
     assert!(f32::NAN.gamma().is_nan());
