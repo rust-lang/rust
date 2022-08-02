@@ -60,7 +60,7 @@ pub enum Target {
 
 impl Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", Self::name(&self))
+        write!(f, "{}", Self::name(*self))
     }
 }
 
@@ -142,8 +142,8 @@ impl Target {
         }
     }
 
-    pub fn name(&self) -> &str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             Target::ExternCrate => "extern crate",
             Target::Use => "use",
             Target::Static => "static item",
