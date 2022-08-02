@@ -76,24 +76,24 @@ LL |     foo > bar;
    = note: expected fn item `[fn item {foo}: fn() -> i32]`
               found fn item `[fn item {bar}: fn(i64) -> i64]`
 
-error[E0369]: binary operation `==` cannot be applied to type `[fn item {Foo::Bar}: fn(usize) -> Foo]`
+error[E0369]: binary operation `==` cannot be applied to type `[constructor of {Foo::Bar}: fn(usize) -> Foo]`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |     |
-   |     [fn item {Foo::Bar}: fn(usize) -> Foo]
-   |     [fn item {Foo::Bar}: fn(usize) -> Foo]
+   |     [constructor of {Foo::Bar}: fn(usize) -> Foo]
+   |     [constructor of {Foo::Bar}: fn(usize) -> Foo]
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `[fn item {Foo::Bar}: fn(usize) -> Foo]` doesn't implement `Debug`
+error[E0277]: `[constructor of {Foo::Bar}: fn(usize) -> Foo]` doesn't implement `Debug`
   --> $DIR/issue-59488.rs:30:5
    |
 LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ `[fn item {Foo::Bar}: fn(usize) -> Foo]` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `[constructor of {Foo::Bar}: fn(usize) -> Foo]` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for `[fn item {Foo::Bar}: fn(usize) -> Foo]`
+   = help: the trait `Debug` is not implemented for `[constructor of {Foo::Bar}: fn(usize) -> Foo]`
    = help: the following other types implement trait `Debug`:
              extern "C" fn() -> Ret
              extern "C" fn(A, B) -> Ret

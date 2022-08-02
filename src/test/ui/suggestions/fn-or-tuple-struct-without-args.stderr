@@ -40,7 +40,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:30:16
    |
 LL | struct S(usize, usize);
-   | -------- [fn item {S}: fn(usize, usize) -> S] defined here
+   | -------- [constructor of {S}: fn(usize, usize) -> S] defined here
 ...
 LL |     let _: S = S;
    |            -   ^ expected struct `S`, found fn item
@@ -48,7 +48,7 @@ LL |     let _: S = S;
    |            expected due to this
    |
    = note: expected struct `S`
-             found fn item `[fn item {S}: fn(usize, usize) -> S]`
+             found fn item `[constructor of {S}: fn(usize, usize) -> S]`
 help: use parentheses to instantiate this tuple struct
    |
 LL |     let _: S = S(_, _);
@@ -76,7 +76,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:32:16
    |
 LL | struct V();
-   | -------- [fn item {V}: fn() -> V] defined here
+   | -------- [constructor of {V}: fn() -> V] defined here
 ...
 LL |     let _: V = V;
    |            -   ^ expected struct `V`, found fn item
@@ -84,7 +84,7 @@ LL |     let _: V = V;
    |            expected due to this
    |
    = note: expected struct `V`
-             found fn item `[fn item {V}: fn() -> V]`
+             found fn item `[constructor of {V}: fn() -> V]`
 help: use parentheses to instantiate this tuple struct
    |
 LL |     let _: V = V();
@@ -130,7 +130,7 @@ error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:35:16
    |
 LL |     A(usize),
-   |     - [fn item {E::A}: fn(usize) -> E] defined here
+   |     - [constructor of {E::A}: fn(usize) -> E] defined here
 ...
 LL |     let _: E = E::A;
    |            -   ^^^^ expected enum `E`, found fn item
@@ -138,7 +138,7 @@ LL |     let _: E = E::A;
    |            expected due to this
    |
    = note: expected enum `E`
-           found fn item `[fn item {E::A}: fn(usize) -> E]`
+           found fn item `[constructor of {E::A}: fn(usize) -> E]`
 help: use parentheses to instantiate this tuple variant
    |
 LL |     let _: E = E::A(_);

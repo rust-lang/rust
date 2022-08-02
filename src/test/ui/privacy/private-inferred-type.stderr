@@ -139,7 +139,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `[fn item {PrivTupleStruct}: fn(u8) -> PrivTupleStruct]` is private
+error: type `[constructor of {PrivTupleStruct}: fn(u8) -> PrivTupleStruct]` is private
   --> $DIR/private-inferred-type.rs:45:9
    |
 LL |         PrivTupleStruct;
@@ -150,7 +150,7 @@ LL |     m::m!();
    |
    = note: this error originates in the macro `m::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `[fn item {PubTupleStruct}: fn(u8) -> PubTupleStruct]` is private
+error: type `[constructor of {PubTupleStruct}: fn(u8) -> PubTupleStruct]` is private
   --> $DIR/private-inferred-type.rs:47:9
    |
 LL |         PubTupleStruct;

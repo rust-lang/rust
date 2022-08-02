@@ -30,7 +30,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `[fn item {ext::PrivTupleStruct}: fn(u8) -> ext::PrivTupleStruct]` is private
+error: type `[constructor of {ext::PrivTupleStruct}: fn(u8) -> ext::PrivTupleStruct]` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();
@@ -38,7 +38,7 @@ LL |     ext::m!();
    |
    = note: this error originates in the macro `ext::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: type `[fn item {PubTupleStruct}: fn(u8) -> PubTupleStruct]` is private
+error: type `[constructor of {PubTupleStruct}: fn(u8) -> PubTupleStruct]` is private
   --> $DIR/private-inferred-type-3.rs:16:5
    |
 LL |     ext::m!();

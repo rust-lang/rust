@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-35241.rs:3:20
    |
 LL | struct Foo(u32);
-   | ---------- [fn item {Foo}: fn(u32) -> Foo] defined here
+   | ---------- [constructor of {Foo}: fn(u32) -> Foo] defined here
 LL |
 LL | fn test() -> Foo { Foo }
    |              ---   ^^^ expected struct `Foo`, found fn item
@@ -10,7 +10,7 @@ LL | fn test() -> Foo { Foo }
    |              expected `Foo` because of return type
    |
    = note: expected struct `Foo`
-             found fn item `[fn item {Foo}: fn(u32) -> Foo]`
+             found fn item `[constructor of {Foo}: fn(u32) -> Foo]`
 help: use parentheses to instantiate this tuple struct
    |
 LL | fn test() -> Foo { Foo(_) }
