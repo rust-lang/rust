@@ -163,7 +163,7 @@ impl<'tcx> Clean<'tcx, Option<GenericBound>> for hir::GenericBound<'tcx> {
     }
 }
 
-fn clean_trait_ref_with_bindings<'tcx>(
+pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     bindings: &[TypeBinding],
@@ -178,12 +178,6 @@ fn clean_trait_ref_with_bindings<'tcx>(
     debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
     path
-}
-
-impl<'tcx> Clean<'tcx, Path> for ty::TraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Path {
-        clean_trait_ref_with_bindings(cx, *self, &[])
-    }
 }
 
 fn clean_poly_trait_ref_with_bindings<'tcx>(
@@ -432,7 +426,7 @@ fn clean_projection<'tcx>(
     def_id: Option<DefId>,
 ) -> Type {
     let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
-    let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
+    let trait_ = clean_trait_ref_with_bindings(cx, lifted.trait_ref(cx.tcx), &[]);
     let self_type = clean_middle_ty(ty.self_ty(), cx, None);
     let self_def_id = if let Some(def_id) = def_id {
         cx.tcx.opt_parent(def_id).or(Some(def_id))
