@@ -1004,11 +1004,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
         let same_len = len1 == len2;
+        let output1 = sig1.output();
+        let output2 = sig2.output();
+        let unit_return1 = output1.is_unit();
+        let unit_return2 = output2.is_unit();
         // when comparing between fn item and fn pointer types, make sure to
         // always pull attention to the mismatching function signatures, too,
         // by highlighting *something* (to compensate the stylistic difference
         // `fn(...) -> ...` vs `[fn item {path::to::foo}: fn(...) -> ...]`)
-        let highlight_parens = highlight_empty_parens && !same_len && (len1 == 0 || len2 == 0);
+        let highlight_parens =
+            highlight_empty_parens && (len1 == 0 && unit_return1) ^ (len2 == 0 && unit_return2);
         values.0.push_normal("fn");
         values.1.push_normal("fn");
         values.0.push("(", highlight_parens);
@@ -1058,17 +1063,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                     ^^^^^^^^
-        let output1 = sig1.output();
-        let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);
-        let non_unit1 = !output1.is_unit();
-        let non_unit2 = !output2.is_unit();
-        if non_unit1 {
-            values.0.push(" -> ", non_unit1 != non_unit2);
+        if !unit_return1 {
+            values.0.push(" -> ", unit_return1 != unit_return2);
             (values.0).0.extend(x1.0);
         }
-        if non_unit2 {
-            values.1.push(" -> ", non_unit1 != non_unit2);
+        if !unit_return2 {
+            values.1.push(" -> ", unit_return1 != unit_return2);
             (values.1).0.extend(x2.0);
         }
     }
