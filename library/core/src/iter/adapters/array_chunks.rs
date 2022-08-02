@@ -1,9 +1,6 @@
 use crate::array;
 use crate::iter::{FusedIterator, Iterator};
-use crate::mem;
-use crate::mem::MaybeUninit;
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
-use crate::ptr;
 
 /// An iterator over `N` elements of the iterator at a time.
 ///
@@ -70,37 +67,18 @@ where
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        let mut array = MaybeUninit::uninit_array();
-        // SAFETY: `array` will still be valid if `guard` is dropped.
-        let mut guard = unsafe { FrontGuard::new(&mut array) };
+        let mut acc = init;
+        loop {
+            match self.iter.next_chunk() {
+                Ok(chunk) => acc = f(acc, chunk)?,
+                Err(remainder) => {
+                    // Make sure to not override `self.remainder` with an empty array
+                    // when `next` is called after `ArrayChunks` exhaustion.
+                    self.remainder.get_or_insert(remainder);
 
-        let result = self.iter.try_fold(init, |mut acc, item| {
-            // SAFETY: `init` starts at 0, increases by one each iteration and
-            // is reset to 0 once it reaches N.
-            unsafe { array.get_unchecked_mut(guard.init) }.write(item);
-            guard.init += 1;
-            if guard.init == N {
-                guard.init = 0;
-                let array = mem::replace(&mut array, MaybeUninit::uninit_array());
-                // SAFETY: the condition above asserts that all elements are
-                // initialized.
-                let item = unsafe { MaybeUninit::array_assume_init(array) };
-                acc = f(acc, item)?;
-            }
-            R::from_output(acc)
-        });
-        match result.branch() {
-            ControlFlow::Continue(o) => {
-                if guard.init > 0 {
-                    let init = guard.init;
-                    mem::forget(guard);
-                    // SAFETY: `array` was initialized with `init` elements.
-                    self.remainder =
-                        Some(unsafe { array::IntoIter::new_unchecked(array, 0..init) });
+                    break try { acc };
                 }
-                R::from_output(o)
             }
-            ControlFlow::Break(r) => R::from_residual(r),
         }
     }
 
@@ -110,33 +88,6 @@ where
         F: FnMut(B, Self::Item) -> B,
     {
         self.try_fold(init, |acc, x| NeverShortCircuit(f(acc, x))).0
-    }
-}
-
-/// A guard for an array where elements are filled from the left.
-struct FrontGuard<T, const N: usize> {
-    /// A pointer to the array that is being filled. We need to use a raw
-    /// pointer here because of the lifetime issues in the fold implementations.
-    ptr: *mut T,
-    /// The number of *initialized* elements.
-    init: usize,
-}
-
-impl<T, const N: usize> FrontGuard<T, N> {
-    unsafe fn new(array: &mut [MaybeUninit<T>; N]) -> Self {
-        Self { ptr: MaybeUninit::slice_as_mut_ptr(array), init: 0 }
-    }
-}
-
-impl<T, const N: usize> Drop for FrontGuard<T, N> {
-    fn drop(&mut self) {
-        debug_assert!(self.init <= N);
-        // SAFETY: This raw slice will only contain the initialized objects
-        // within the buffer.
-        unsafe {
-            let slice = ptr::slice_from_raw_parts_mut(self.ptr, self.init);
-            ptr::drop_in_place(slice);
-        }
     }
 }
 
@@ -157,29 +108,20 @@ where
         R: Try<Output = B>,
     {
         // We are iterating from the back we need to first handle the remainder.
-        if self.next_back_remainder().is_none() {
-            return R::from_output(init);
+        self.next_back_remainder();
+
+        let mut acc = init;
+        let mut iter = self.iter.by_ref().rev();
+
+        // NB remainder is handled by `next_back_remainder`, so
+        // `next_chunk` can't return `Err` with non-empty remainder
+        // (assuming correct `I as ExactSizeIterator` impl).
+        while let Ok(mut chunk) = iter.next_chunk() {
+            chunk.reverse();
+            acc = f(acc, chunk)?
         }
 
-        let mut array = MaybeUninit::uninit_array();
-        // SAFETY: `array` will still be valid if `guard` is dropped.
-        let mut guard = unsafe { BackGuard::new(&mut array) };
-
-        self.iter.try_rfold(init, |mut acc, item| {
-            guard.uninit -= 1;
-            // SAFETY: `uninit` starts at N, decreases by one each iteration and
-            // is reset to N once it reaches 0.
-            unsafe { array.get_unchecked_mut(guard.uninit) }.write(item);
-            if guard.uninit == 0 {
-                guard.uninit = N;
-                let array = mem::replace(&mut array, MaybeUninit::uninit_array());
-                // SAFETY: the condition above asserts that all elements are
-                // initialized.
-                let item = unsafe { MaybeUninit::array_assume_init(array) };
-                acc = f(acc, item)?;
-            }
-            R::from_output(acc)
-        })
+        try { acc }
     }
 
     fn rfold<B, F>(mut self, init: B, mut f: F) -> B
@@ -195,63 +137,26 @@ impl<I, const N: usize> ArrayChunks<I, N>
 where
     I: DoubleEndedIterator + ExactSizeIterator,
 {
-    #[inline]
-    fn next_back_remainder(&mut self) -> Option<()> {
+    /// Updates `self.remainder` such that `self.iter.len` is divisible by `N`.
+    fn next_back_remainder(&mut self) {
+        // Make sure to not override `self.remainder` with an empty array
+        // when `next_back` is called after `ArrayChunks` exhaustion.
+        if self.remainder.is_some() {
+            return;
+        }
+
         // We use the `ExactSizeIterator` implementation of the underlying
         // iterator to know how many remaining elements there are.
         let rem = self.iter.len() % N;
-        if rem == 0 {
-            return Some(());
-        }
 
-        let mut array = MaybeUninit::uninit_array();
+        // Take the last `rem` elements out of `self.iter`.
+        let mut remainder =
+            // SAFETY: `unwrap_err` always succeeds because x % N < N for all x.
+            unsafe { self.iter.by_ref().rev().take(rem).next_chunk().unwrap_err_unchecked() };
 
-        // SAFETY: The array will still be valid if `guard` is dropped and
-        // it is forgotten otherwise.
-        let mut guard = unsafe { FrontGuard::new(&mut array) };
-
-        // SAFETY: `rem` is in the range 1..N based on how it is calculated.
-        for slot in unsafe { array.get_unchecked_mut(..rem) }.iter_mut() {
-            slot.write(self.iter.next_back()?);
-            guard.init += 1;
-        }
-
-        let init = guard.init;
-        mem::forget(guard);
-        // SAFETY: `array` was initialized with exactly `init` elements.
-        self.remainder = unsafe {
-            array.get_unchecked_mut(..init).reverse();
-            Some(array::IntoIter::new_unchecked(array, 0..init))
-        };
-        Some(())
-    }
-}
-
-/// A guard for an array where elements are filled from the right.
-struct BackGuard<T, const N: usize> {
-    /// A pointer to the array that is being filled. We need to use a raw
-    /// pointer here because of the lifetime issues in the rfold implementations.
-    ptr: *mut T,
-    /// The number of *uninitialized* elements.
-    uninit: usize,
-}
-
-impl<T, const N: usize> BackGuard<T, N> {
-    unsafe fn new(array: &mut [MaybeUninit<T>; N]) -> Self {
-        Self { ptr: MaybeUninit::slice_as_mut_ptr(array), uninit: N }
-    }
-}
-
-impl<T, const N: usize> Drop for BackGuard<T, N> {
-    fn drop(&mut self) {
-        debug_assert!(self.uninit <= N);
-        // SAFETY: This raw slice will only contain the initialized objects
-        // within the buffer.
-        unsafe {
-            let ptr = self.ptr.offset(self.uninit as isize);
-            let slice = ptr::slice_from_raw_parts_mut(ptr, N - self.uninit);
-            ptr::drop_in_place(slice);
-        }
+        // We used `.rev()` above, so we need to re-reverse the reminder
+        remainder.as_mut_slice().reverse();
+        self.remainder = Some(remainder);
     }
 }
 
