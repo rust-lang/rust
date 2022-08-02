@@ -61,10 +61,10 @@ impl<'tcx> LateLintPass<'tcx> for VerboseFileReads {
 
 fn is_file_read_to_end<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(method_name, exprs, _) = expr.kind;
+        if let ExprKind::MethodCall(method_name, [recv, ..], _) = expr.kind;
         if method_name.ident.as_str() == "read_to_end";
-        if let ExprKind::Path(QPath::Resolved(None, _)) = &exprs[0].kind;
-        let ty = cx.typeck_results().expr_ty(&exprs[0]);
+        if let ExprKind::Path(QPath::Resolved(None, _)) = &recv.kind;
+        let ty = cx.typeck_results().expr_ty(recv);
         if match_type(cx, ty, &paths::FILE);
         then {
             return true

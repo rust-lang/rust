@@ -97,11 +97,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Tuple(slice) => slice.is_empty(),
-        ty::Never => true,
-        _ => false,
-    }
+    ty.is_unit() || ty.is_never()
 }
 
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
