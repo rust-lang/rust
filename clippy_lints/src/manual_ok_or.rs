@@ -47,17 +47,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualOkOr {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(method_segment, args, _) = scrutinee.kind;
+            if let ExprKind::MethodCall(method_segment, [receiver, or_expr, map_expr], _) = scrutinee.kind;
             if method_segment.ident.name == sym!(map_or);
-            if args.len() == 3;
-            let method_receiver = &args[0];
-            let ty = cx.typeck_results().expr_ty(method_receiver);
+            let ty = cx.typeck_results().expr_ty(receiver);
             if is_type_diagnostic_item(cx, ty, sym::Option);
-            let or_expr = &args[1];
-            if is_ok_wrapping(cx, &args[2]);
+            if is_ok_wrapping(cx, map_expr);
             if let ExprKind::Call(Expr { kind: ExprKind::Path(err_path), .. }, &[ref err_arg]) = or_expr.kind;
             if is_lang_ctor(cx, err_path, ResultErr);
-            if let Some(method_receiver_snippet) = snippet_opt(cx, method_receiver.span);
+            if let Some(method_receiver_snippet) = snippet_opt(cx, receiver.span);
             if let Some(err_arg_snippet) = snippet_opt(cx, err_arg.span);
             if let Some(indent) = indent_of(cx, scrutinee.span);
             then {
