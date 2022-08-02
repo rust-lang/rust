@@ -77,7 +77,8 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             SafetyContext::UnsafeBlock { ref mut used, .. } => {
                 // Mark this block as useful (even inside `unsafe fn`, where it is technically
                 // redundant -- but we want to eventually enable `unsafe_op_in_unsafe_fn` by
-                // default which will require those blocks).
+                // default which will require those blocks:
+                // https://github.com/rust-lang/rust/issues/71668#issuecomment-1203075594).
                 *used = true;
             }
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
