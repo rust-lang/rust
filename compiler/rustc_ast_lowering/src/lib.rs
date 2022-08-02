@@ -140,9 +140,7 @@ struct LifetimeCaptureContext {
     captures: FxHashMap<
         LocalDefId, // original parameter id
         (
-            Span,        // Span
-            NodeId,      // synthetized parameter id
-            ParamName,   // parameter name
+            Lifetime,    // Lifetime parameter
             LifetimeRes, // original resolution
         ),
     >,
@@ -1363,20 +1361,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!(?collected_lifetimes);
 
             let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
-                |(_, &(span, p_id, p_name, _))| {
-                    let hir_id = lctx.lower_node_id(p_id);
-                    debug_assert_ne!(lctx.opt_local_def_id(p_id), None);
+                |(_, &(lifetime, _))| {
+                    let hir_id = lctx.lower_node_id(lifetime.id);
+                    debug_assert_ne!(lctx.opt_local_def_id(lifetime.id), None);
 
-                    let kind = if p_name.ident().name == kw::UnderscoreLifetime {
-                        hir::LifetimeParamKind::Elided
+                    let (name, kind) = if lifetime.ident.name == kw::UnderscoreLifetime {
+                        (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
                     } else {
-                        hir::LifetimeParamKind::Explicit
+                        (hir::ParamName::Plain(lifetime.ident), hir::LifetimeParamKind::Explicit)
                     };
 
                     hir::GenericParam {
                         hir_id,
-                        name: p_name,
-                        span,
+                        name,
+                        span: lifetime.ident.span,
                         pure_wrt_drop: false,
                         kind: hir::GenericParamKind::Lifetime { kind },
                         colon_span: None,
@@ -1403,9 +1401,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         });
 
         let lifetimes = self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(
-            |(_, (span, _, p_name, res))| {
+            |(_, (lifetime, res))| {
                 let id = self.next_node_id();
-                let ident = Ident::new(p_name.ident().name, span);
+                let span = lifetime.ident.span;
+
+                let ident = if lifetime.ident.name == kw::UnderscoreLifetime {
+                    Ident::with_dummy_span(kw::UnderscoreLifetime)
+                } else {
+                    lifetime.ident
+                };
+
                 let l = self.new_named_lifetime_with_res(id, span, ident, res);
                 hir::GenericArg::Lifetime(l)
             },
@@ -1446,9 +1451,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         remapping: &mut FxHashMap<LocalDefId, LocalDefId>,
     ) {
         for lifetime in lifetimes_in_bounds {
-            let ident = lifetime.ident;
-            let span = ident.span;
-
             let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
             debug!(?res);
 
@@ -1457,39 +1459,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     LifetimeRes::Param { param: old_def_id, binder: _ } => {
                         if remapping.get(&old_def_id).is_none() {
                             let node_id = self.next_node_id();
-                            let name = ParamName::Plain(ident);
 
                             let new_def_id = self.create_def(
                                 parent_def_id,
                                 node_id,
-                                DefPathData::LifetimeNs(name.ident().name),
+                                DefPathData::LifetimeNs(lifetime.ident.name),
                             );
-
                             remapping.insert(old_def_id, new_def_id);
-                            captured_lifetimes
-                                .captures
-                                .insert(old_def_id, (span, node_id, name, res));
+
+                            let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
+                            captured_lifetimes.captures.insert(old_def_id, (new_lifetime, res));
                         }
                     }
 
                     LifetimeRes::Fresh { param, binder: _ } => {
-                        debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                        debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
                         let old_def_id = self.local_def_id(param);
                         if remapping.get(&old_def_id).is_none() {
                             let node_id = self.next_node_id();
-
-                            let name = ParamName::Fresh;
 
                             let new_def_id = self.create_def(
                                 parent_def_id,
                                 node_id,
                                 DefPathData::LifetimeNs(kw::UnderscoreLifetime),
                             );
-
                             remapping.insert(old_def_id, new_def_id);
-                            captured_lifetimes
-                                .captures
-                                .insert(old_def_id, (span, node_id, name, res));
+
+                            let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
+                            captured_lifetimes.captures.insert(old_def_id, (new_lifetime, res));
                         }
                     }
 
@@ -1703,31 +1700,37 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
         debug!(?extra_lifetime_params);
         for (ident, outer_node_id, outer_res) in extra_lifetime_params {
-            let Ident { name, span } = ident;
             let outer_def_id = self.local_def_id(outer_node_id);
             let inner_node_id = self.next_node_id();
 
             // Add a definition for the in scope lifetime def.
-            let inner_def_id =
-                self.create_def(opaque_ty_def_id, inner_node_id, DefPathData::LifetimeNs(name));
+            let inner_def_id = self.create_def(
+                opaque_ty_def_id,
+                inner_node_id,
+                DefPathData::LifetimeNs(ident.name),
+            );
             new_remapping.insert(outer_def_id, inner_def_id);
 
-            let (p_name, inner_res) = match outer_res {
+            let inner_res = match outer_res {
                 // Input lifetime like `'a`:
                 LifetimeRes::Param { param, .. } => {
-                    (hir::ParamName::Plain(ident), LifetimeRes::Param { param, binder: fn_node_id })
+                    LifetimeRes::Param { param, binder: fn_node_id }
                 }
                 // Input lifetime like `'1`:
                 LifetimeRes::Fresh { param, .. } => {
-                    (hir::ParamName::Fresh, LifetimeRes::Fresh { param, binder: fn_node_id })
+                    LifetimeRes::Fresh { param, binder: fn_node_id }
                 }
                 LifetimeRes::Static | LifetimeRes::Error => continue,
                 res => {
-                    panic!("Unexpected lifetime resolution {:?} for {:?} at {:?}", res, ident, span)
+                    panic!(
+                        "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                        res, ident, ident.span
+                    )
                 }
             };
 
-            captures.insert(outer_def_id, (span, inner_node_id, p_name, inner_res));
+            let new_lifetime = Lifetime { id: inner_node_id, ident };
+            captures.insert(outer_def_id, (new_lifetime, inner_res));
         }
 
         debug!(?captures);
@@ -1765,20 +1768,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let future_bound = ret;
 
             let generic_params =
-                this.arena.alloc_from_iter(captures.iter().map(|(_, &(span, p_id, p_name, _))| {
-                    let hir_id = this.lower_node_id(p_id);
-                    debug_assert_ne!(this.opt_local_def_id(p_id), None);
+                this.arena.alloc_from_iter(captures.iter().map(|(_, &(lifetime, _))| {
+                    let hir_id = this.lower_node_id(lifetime.id);
+                    debug_assert_ne!(this.opt_local_def_id(lifetime.id), None);
 
-                    let kind = if p_name.ident().name == kw::UnderscoreLifetime {
-                        hir::LifetimeParamKind::Elided
+                    let (name, kind) = if lifetime.ident.name == kw::UnderscoreLifetime {
+                        (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
                     } else {
-                        hir::LifetimeParamKind::Explicit
+                        (hir::ParamName::Plain(lifetime.ident), hir::LifetimeParamKind::Explicit)
                     };
 
                     hir::GenericParam {
                         hir_id,
-                        name: p_name,
-                        span,
+                        name,
+                        span: lifetime.ident.span,
                         pure_wrt_drop: false,
                         kind: hir::GenericParamKind::Lifetime { kind },
                         colon_span: None,
@@ -1818,9 +1821,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
         let generic_args =
-            self.arena.alloc_from_iter(captures.into_iter().map(|(_, (span, _, p_name, res))| {
+            self.arena.alloc_from_iter(captures.into_iter().map(|(_, (lifetime, res))| {
                 let id = self.next_node_id();
-                let ident = Ident::new(p_name.ident().name, span);
+                let span = lifetime.ident.span;
+
+                let ident = if lifetime.ident.name == kw::UnderscoreLifetime {
+                    Ident::with_dummy_span(kw::UnderscoreLifetime)
+                } else {
+                    lifetime.ident
+                };
+
                 let l = self.new_named_lifetime_with_res(id, span, ident, res);
                 hir::GenericArg::Lifetime(l)
             }));
@@ -1912,7 +1922,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let p_name = ParamName::Plain(ident);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                     if let Entry::Occupied(o) = captured_lifetimes.captures.entry(param) {
-                        param = self.local_def_id(o.get().1);
+                        param = self.local_def_id(o.get().0.id);
                     }
 
                     self.captured_lifetimes = Some(captured_lifetimes);
@@ -1926,7 +1936,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let mut param = self.local_def_id(param);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
                     if let Entry::Occupied(o) = captured_lifetimes.captures.entry(param) {
-                        param = self.local_def_id(o.get().1);
+                        param = self.local_def_id(o.get().0.id);
                     }
 
                     self.captured_lifetimes = Some(captured_lifetimes);
