@@ -24,6 +24,7 @@ fn main() {
     test_errors();
     test_rename();
     test_directory();
+    test_canonicalize();
     test_dup_stdout_stderr();
 
     // These all require unix, if the test is changed to no longer `ignore-windows`, move these to a unix test
@@ -363,6 +364,24 @@ fn test_rename() {
     assert_eq!(ErrorKind::NotFound, rename(&path1, &path2).unwrap_err().kind());
 
     remove_file(&path2).unwrap();
+}
+
+fn test_canonicalize() {
+    use std::fs::canonicalize;
+    let dir_path = prepare_dir("miri_test_fs_dir");
+    create_dir(&dir_path).unwrap();
+    let path = dir_path.join("test_file");
+    drop(File::create(&path).unwrap());
+
+    let p = canonicalize(format!("{}/./test_file", dir_path.to_string_lossy())).unwrap();
+    assert_eq!(p.to_string_lossy().find('.'), None);
+
+    remove_dir_all(&dir_path).unwrap();
+
+    // Make sure we get an error for long paths.
+    use std::convert::TryInto;
+    let too_long = "x/".repeat(libc::PATH_MAX.try_into().unwrap());
+    assert!(canonicalize(too_long).is_err());
 }
 
 fn test_directory() {

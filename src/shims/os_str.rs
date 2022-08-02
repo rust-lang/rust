@@ -250,6 +250,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.write_os_str_to_wide_str(&os_str, ptr, size)
     }
 
+    /// Allocate enough memory to store a Path as a null-terminated sequence of bytes,
+    /// adjusting path separators if needed.
+    fn alloc_path_as_c_str(
+        &mut self,
+        path: &Path,
+        memkind: MemoryKind<MiriMemoryKind>,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        let this = self.eval_context_mut();
+        let os_str = this
+            .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        this.alloc_os_str_as_c_str(&os_str, memkind)
+    }
+
     fn convert_path_separator<'a>(
         &self,
         os_str: Cow<'a, OsStr>,
