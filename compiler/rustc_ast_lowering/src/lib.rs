@@ -111,9 +111,6 @@ struct LoweringContext<'a, 'hir> {
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
 
-    /// Used to handle lifetimes appearing in impl-traits.
-    captured_lifetimes: Option<LifetimeCaptureContext>,
-
     current_hir_id_owner: LocalDefId,
     item_local_id_counter: hir::ItemLocalId,
     local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
@@ -128,19 +125,6 @@ struct LoweringContext<'a, 'hir> {
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
     allow_into_future: Option<Lrc<[Symbol]>>,
-}
-
-/// When we lower a lifetime, it is inserted in `captures`, and the resolution is modified so
-/// to point to the lifetime parameter impl-trait will generate.
-/// When traversing `for<...>` binders, they are inserted in `binders_to_ignore` so we know *not*
-/// to rebind the introduced lifetimes.
-#[derive(Debug)]
-struct LifetimeCaptureContext {
-    /// Set of lifetimes to rebind.
-    captures: Vec<(
-        Lifetime,    // Lifetime parameter
-        LifetimeRes, // original resolution
-    )>,
 }
 
 trait ResolverAstLoweringExt {
@@ -1361,28 +1345,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             if origin != hir::OpaqueTyOrigin::TyAlias {
-                debug!(?lctx.captured_lifetimes);
-
-                let lifetime_stash = std::mem::replace(
-                    &mut lctx.captured_lifetimes,
-                    Some(LifetimeCaptureContext {
-                        captures: std::mem::take(&mut collected_lifetimes),
-                    }),
-                );
-
                 let lifetimes_in_bounds =
                     lifetime_collector::lifetimes_in_bounds(&lctx.resolver, bounds);
                 debug!(?lifetimes_in_bounds);
 
-                lctx.create_and_capture_lifetime_defs(
+                collected_lifetimes = lctx.create_and_capture_lifetime_defs(
                     opaque_ty_def_id,
                     &lifetimes_in_bounds,
                     &mut new_remapping,
                 );
-
-                let ctxt = std::mem::replace(&mut lctx.captured_lifetimes, lifetime_stash).unwrap();
-
-                collected_lifetimes = ctxt.captures;
             };
             debug!(?new_remapping);
             debug!(?collected_lifetimes);
@@ -1481,58 +1452,58 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         parent_def_id: LocalDefId,
         lifetimes_in_bounds: &[Lifetime],
         remapping: &mut FxHashMap<LocalDefId, LocalDefId>,
-    ) {
+    ) -> Vec<(Lifetime, LifetimeRes)> {
+        let mut result = Vec::new();
+
         for lifetime in lifetimes_in_bounds {
             let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
             debug!(?res);
 
-            if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
-                match res {
-                    LifetimeRes::Param { param: old_def_id, binder: _ } => {
-                        if remapping.get(&old_def_id).is_none() {
-                            let node_id = self.next_node_id();
+            match res {
+                LifetimeRes::Param { param: old_def_id, binder: _ } => {
+                    if remapping.get(&old_def_id).is_none() {
+                        let node_id = self.next_node_id();
 
-                            let new_def_id = self.create_def(
-                                parent_def_id,
-                                node_id,
-                                DefPathData::LifetimeNs(lifetime.ident.name),
-                            );
-                            remapping.insert(old_def_id, new_def_id);
+                        let new_def_id = self.create_def(
+                            parent_def_id,
+                            node_id,
+                            DefPathData::LifetimeNs(lifetime.ident.name),
+                        );
+                        remapping.insert(old_def_id, new_def_id);
 
-                            let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
-                            captured_lifetimes.captures.push((new_lifetime, res));
-                        }
+                        let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
+                        result.push((new_lifetime, res));
                     }
-
-                    LifetimeRes::Fresh { param, binder: _ } => {
-                        debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
-                        let old_def_id = self.local_def_id(param);
-                        if remapping.get(&old_def_id).is_none() {
-                            let node_id = self.next_node_id();
-
-                            let new_def_id = self.create_def(
-                                parent_def_id,
-                                node_id,
-                                DefPathData::LifetimeNs(kw::UnderscoreLifetime),
-                            );
-                            remapping.insert(old_def_id, new_def_id);
-
-                            let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
-                            captured_lifetimes.captures.push((new_lifetime, res));
-                        }
-                    }
-
-                    LifetimeRes::Static | LifetimeRes::Error => {}
-
-                    res => panic!(
-                        "Unexpected lifetime resolution {:?} for {:?} at {:?}",
-                        res, lifetime.ident, lifetime.ident.span
-                    ),
                 }
 
-                self.captured_lifetimes = Some(captured_lifetimes);
+                LifetimeRes::Fresh { param, binder: _ } => {
+                    debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
+                    let old_def_id = self.local_def_id(param);
+                    if remapping.get(&old_def_id).is_none() {
+                        let node_id = self.next_node_id();
+
+                        let new_def_id = self.create_def(
+                            parent_def_id,
+                            node_id,
+                            DefPathData::LifetimeNs(kw::UnderscoreLifetime),
+                        );
+                        remapping.insert(old_def_id, new_def_id);
+
+                        let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
+                        result.push((new_lifetime, res));
+                    }
+                }
+
+                LifetimeRes::Static | LifetimeRes::Error => {}
+
+                res => panic!(
+                    "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                    res, lifetime.ident, lifetime.ident.span
+                ),
             }
         }
+
+        result
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
@@ -1768,24 +1739,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?captures);
 
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
-            let lifetime_stash = std::mem::replace(
-                &mut this.captured_lifetimes,
-                Some(LifetimeCaptureContext { captures: std::mem::take(&mut captures) }),
-            );
-
             let lifetimes_in_bounds =
                 lifetime_collector::lifetimes_in_ret_ty(&this.resolver, output);
             debug!(?lifetimes_in_bounds);
 
-            this.create_and_capture_lifetime_defs(
+            captures.extend(this.create_and_capture_lifetime_defs(
                 opaque_ty_def_id,
                 &lifetimes_in_bounds,
                 &mut new_remapping,
-            );
-
-            let ctxt = std::mem::replace(&mut this.captured_lifetimes, lifetime_stash).unwrap();
-
-            captures = ctxt.captures;
+            ));
 
             this.with_remapping(new_remapping, |this| {
                 // We have to be careful to get elision right here. The
