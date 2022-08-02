@@ -227,7 +227,6 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             rules: BlockCheckMode::Default,
             span,
-            tokens: None,
             could_be_bare_literal: false,
         })
     }

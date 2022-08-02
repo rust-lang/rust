@@ -566,7 +566,6 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
     /// The following *isn't* a parse error, but will cause multiple errors in following stages.
     /// ```compile_fail
     /// let x = {
@@ -3015,7 +3014,7 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     rustc_data_structures::static_assert_size!(AssocItemKind, 64);
     rustc_data_structures::static_assert_size!(Attribute, 144);
-    rustc_data_structures::static_assert_size!(Block, 48);
+    rustc_data_structures::static_assert_size!(Block, 40);
     rustc_data_structures::static_assert_size!(Expr, 96);
     rustc_data_structures::static_assert_size!(Fn, 192);
     rustc_data_structures::static_assert_size!(ForeignItemKind, 64);

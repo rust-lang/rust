@@ -1069,7 +1069,6 @@ impl<'a, 'b> Context<'a, 'b> {
                 id: ast::DUMMY_NODE_ID,
                 rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
                 span: self.macsp,
-                tokens: None,
                 could_be_bare_literal: false,
             }));
 
