@@ -656,7 +656,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                     let span = arg_spans.next().unwrap_or(template_sp);
 
                     let operand_idx = match arg.position {
-                        parse::ArgumentIs(idx, _) | parse::ArgumentImplicitlyIs(idx) => {
+                        parse::ArgumentIs(idx) | parse::ArgumentImplicitlyIs(idx) => {
                             if idx >= args.operands.len()
                                 || named_pos.contains_key(&idx)
                                 || args.reg_args.contains(&idx)
@@ -702,11 +702,12 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 Some(idx)
                             }
                         }
-                        parse::ArgumentNamed(name, span) => {
+                        parse::ArgumentNamed(name) => {
                             match args.named_args.get(&Symbol::intern(name)) {
                                 Some(&idx) => Some(idx),
                                 None => {
                                     let msg = format!("there is no argument named `{}`", name);
+                                    let span = arg.position_span;
                                     ecx.struct_span_err(
                                         template_span
                                             .from_inner(InnerSpan::new(span.start, span.end)),

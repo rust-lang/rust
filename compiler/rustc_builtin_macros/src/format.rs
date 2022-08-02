@@ -381,8 +381,8 @@ impl<'a, 'b> Context<'a, 'b> {
         match *p {
             parse::String(_) => {}
             parse::NextArgument(ref mut arg) => {
-                if let parse::ArgumentNamed(s, _) = arg.position {
-                    arg.position = parse::ArgumentIs(lookup(s), None);
+                if let parse::ArgumentNamed(s) = arg.position {
+                    arg.position = parse::ArgumentIs(lookup(s));
                 }
                 if let parse::CountIsName(s, _) = arg.format.width {
                     arg.format.width = parse::CountIsParam(lookup(s));
@@ -417,14 +417,14 @@ impl<'a, 'b> Context<'a, 'b> {
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
-                    parse::ArgumentIs(i, arg_end) => {
+                    parse::ArgumentIs(i) => {
                         self.unused_names_lint.maybe_add_positional_named_arg(
                             i,
                             self.args.len(),
                             i,
                             PositionalNamedArgType::Arg,
                             self.curpiece,
-                            arg_end,
+                            Some(arg.position_span),
                             &self.names,
                         );
 
@@ -442,8 +442,9 @@ impl<'a, 'b> Context<'a, 'b> {
                         );
                         Exact(i)
                     }
-                    parse::ArgumentNamed(s, span) => {
+                    parse::ArgumentNamed(s) => {
                         let symbol = Symbol::intern(s);
+                        let span = arg.position_span;
                         Named(symbol, InnerSpan::new(span.start, span.end))
                     }
                 };
@@ -878,8 +879,9 @@ impl<'a, 'b> Context<'a, 'b> {
                         // track the current argument ourselves.
                         let i = self.curarg;
                         self.curarg += 1;
-                        parse::ArgumentIs(i, None)
+                        parse::ArgumentIs(i)
                     },
+                    position_span: arg.position_span,
                     format: parse::FormatSpec {
                         fill: arg.format.fill,
                         align: parse::AlignUnknown,
