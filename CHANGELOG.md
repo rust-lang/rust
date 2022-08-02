@@ -3686,6 +3686,7 @@ Released 2018-09-13
 [`manual_find`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_find
 [`manual_find_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_find_map
 [`manual_flatten`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_flatten
+[`manual_instant_elapsed`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_instant_elapsed
 [`manual_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
 [`manual_memcpy`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_memcpy
 [`manual_non_exhaustive`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive

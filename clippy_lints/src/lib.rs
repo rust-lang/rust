@@ -273,6 +273,7 @@ mod main_recursion;
 mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
+mod manual_instant_elapsed;
 mod manual_non_exhaustive;
 mod manual_ok_or;
 mod manual_rem_euclid;
@@ -929,6 +930,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
     store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
     store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports::default()));
+    store.register_late_pass(|| Box::new(manual_instant_elapsed::ManualInstantElapsed));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
