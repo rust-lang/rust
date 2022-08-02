@@ -19,8 +19,8 @@ pub enum Direction {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Move item up**
-// | VS Code | **Rust Analyzer: Move item down**
+// | VS Code | **rust-analyzer: Move item up**
+// | VS Code | **rust-analyzer: Move item down**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113065576-04298180-91b1-11eb-91ce-4505e99ed598.gif[]
