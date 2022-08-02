@@ -301,7 +301,38 @@ fn codegen_float_intrinsic_call<'tcx>(
         _ => unreachable!(),
     };
 
-    let res = fx.easy_call(name, &args, ty);
+    let layout = fx.layout_of(ty);
+    let res = match intrinsic {
+        sym::copysignf32 | sym::copysignf64 => {
+            let a = args[0].load_scalar(fx);
+            let b = args[1].load_scalar(fx);
+            CValue::by_val(fx.bcx.ins().fcopysign(a, b), layout)
+        }
+        sym::fabsf32
+        | sym::fabsf64
+        | sym::floorf32
+        | sym::floorf64
+        | sym::ceilf32
+        | sym::ceilf64
+        | sym::truncf32
+        | sym::truncf64 => {
+            let a = args[0].load_scalar(fx);
+
+            let val = match intrinsic {
+                sym::fabsf32 | sym::fabsf64 => fx.bcx.ins().fabs(a),
+                sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(a),
+                sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(a),
+                sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(a),
+                _ => unreachable!(),
+            };
+
+            CValue::by_val(val, layout)
+        }
+        // These intrinsics aren't supported natively by Cranelift.
+        // Lower them to a libcall.
+        _ => fx.easy_call(name, &args, ty),
+    };
+
     ret.write_cvalue(fx, res);
 
     true
