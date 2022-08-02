@@ -3700,6 +3700,13 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
+    if (funcName == "_ZNSt6localeC1Ev") {
+      TypeTree ptrint;
+      ptrint.insert({-1}, BaseType::Pointer);
+      ptrint.insert({-1, 0}, BaseType::Integer);
+      updateAnalysis(call.getOperand(0), ptrint, &call);
+      return;
+    }
     if (funcName == "__dynamic_cast" ||
         funcName == "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base" ||
         funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base") {

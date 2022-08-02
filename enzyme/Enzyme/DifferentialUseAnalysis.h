@@ -95,13 +95,15 @@ static inline bool is_use_directly_needed_in_reverse(
     return !gutils->isConstantInstruction(MTI);
   }
 
-  // Preserve the length of memsets of backward creation shadows
+  // Preserve the length of memsets of backward creation shadows,
+  // or if float-like and non constant value.
   if (auto MS = dyn_cast<MemSetInst>(user)) {
     if (MS->getArgOperand(1) == val || MS->getArgOperand(2) == val) {
       for (auto pair : gutils->backwardsOnlyShadows)
         if (pair.second.stores.count(MS)) {
           return true;
         }
+      return !gutils->isConstantValue(MS->getArgOperand(0));
     }
   }
 
@@ -390,6 +392,16 @@ static inline bool is_value_needed_in_reverse(
 
         if (!gutils->isConstantValue(
                 const_cast<Value *>(MTI->getArgOperand(0))))
+          return seen[idx] = true;
+        else
+          goto endShadow;
+      }
+
+      if (auto MS = dyn_cast<MemSetInst>(user)) {
+        if (MS->getArgOperand(0) != inst)
+          goto endShadow;
+
+        if (!gutils->isConstantValue(const_cast<Value *>(MS->getArgOperand(0))))
           return seen[idx] = true;
         else
           goto endShadow;
