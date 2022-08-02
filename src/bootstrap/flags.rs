@@ -141,7 +141,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Setup {
-        path: Option<PathBuf>,
+        paths: Vec<PathBuf>,
     },
 }
 
@@ -543,7 +543,7 @@ Arguments:
             Kind::Bench | Kind::Clean | Kind::Dist | Kind::Install => {}
         };
         // Get any optional paths which occur after the subcommand
-        let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
+        let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
         let verbose = matches.opt_present("verbose");
 
@@ -614,26 +614,7 @@ Arguments:
                 }
                 Subcommand::Run { paths }
             }
-            Kind::Setup => {
-                if paths.len() > 1 {
-                    println!("\nat most one profile can be passed to setup\n");
-                    usage(1, &opts, verbose, &subcommand_help)
-                } else if let Some(path) = paths.pop() {
-                    let profile_string = t!(path.into_os_string().into_string().map_err(
-                        |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
-                    ));
-
-                    profile_string.parse().unwrap_or_else(|err| {
-                        eprintln!("error: {}", err);
-                        eprintln!("help: the available profiles are:");
-                        eprint!("{}", Profile::all_for_help("- "));
-                        crate::detail_exit(1);
-                    })
-                } else {
-                    t!(crate::setup::interactive_path())
-                };
-                Subcommand::Setup { paths: vec![PathBuf::from(profile.as_str())] }
-            }
+            Kind::Setup => Subcommand::Setup { paths },
         };
 
         Flags {

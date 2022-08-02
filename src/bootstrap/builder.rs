@@ -824,7 +824,7 @@ impl<'a> Builder<'a> {
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
-            Subcommand::Setup { ref path } => (Kind::Setup, if let Some(p) = path { std::slice::from_ref(p) } else { &[] }),
+            Subcommand::Setup { ref paths } => (Kind::Setup, &paths[..]),
             Subcommand::Clean { .. } => {
                 panic!()
             }
