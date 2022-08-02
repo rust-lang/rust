@@ -130,7 +130,7 @@ impl<'tcx> Clean<'tcx, Attributes> for [ast::Attribute] {
 impl<'tcx> Clean<'tcx, Option<GenericBound>> for hir::GenericBound<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<GenericBound> {
         Some(match *self {
-            hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
 
@@ -214,21 +214,19 @@ impl<'tcx> Clean<'tcx, GenericBound> for ty::PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, Lifetime> for hir::Lifetime {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Lifetime {
-        let def = cx.tcx.named_region(self.hir_id);
-        if let Some(
-            rl::Region::EarlyBound(_, node_id)
-            | rl::Region::LateBound(_, _, node_id)
-            | rl::Region::Free(_, node_id),
-        ) = def
-        {
-            if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {
-                return lt;
-            }
+fn clean_lifetime<'tcx>(lifetime: hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
+    let def = cx.tcx.named_region(lifetime.hir_id);
+    if let Some(
+        rl::Region::EarlyBound(_, node_id)
+        | rl::Region::LateBound(_, _, node_id)
+        | rl::Region::Free(_, node_id),
+    ) = def
+    {
+        if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {
+            return lt;
         }
-        Lifetime(self.name.ident().name)
     }
+    Lifetime(lifetime.name.ident().name)
 }
 
 pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
@@ -305,7 +303,7 @@ impl<'tcx> Clean<'tcx, Option<WherePredicate>> for hir::WherePredicate<'tcx> {
             }
 
             hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
-                lifetime: wrp.lifetime.clean(cx),
+                lifetime: clean_lifetime(wrp.lifetime, cx),
                 bounds: wrp.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
             },
 
@@ -518,7 +516,7 @@ fn clean_generic_param<'tcx>(
                     .filter(|bp| !bp.in_where_clause)
                     .flat_map(|bp| bp.bounds)
                     .map(|bound| match bound {
-                        hir::GenericBound::Outlives(lt) => lt.clean(cx),
+                        hir::GenericBound::Outlives(lt) => clean_lifetime(*lt, cx),
                         _ => panic!(),
                     })
                     .collect()
@@ -1425,7 +1423,8 @@ fn maybe_expand_private_type_alias<'tcx>(
                 });
                 if let Some(lt) = lifetime.cloned() {
                     let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                    let cleaned = if !lt.is_elided() { lt.clean(cx) } else { Lifetime::elided() };
+                    let cleaned =
+                        if !lt.is_elided() { clean_lifetime(lt, cx) } else { Lifetime::elided() };
                     substs.insert(lt_def_id.to_def_id(), SubstParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
@@ -1497,7 +1496,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             // there's no case where it could cause the function to fail to compile.
             let elided =
                 l.is_elided() || matches!(l.name, LifetimeName::Param(_, ParamName::Fresh));
-            let lifetime = if elided { None } else { Some(l.clean(cx)) };
+            let lifetime = if elided { None } else { Some(clean_lifetime(*l, cx)) };
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
@@ -1533,7 +1532,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, ref lifetime, _) => {
             let bounds = bounds.iter().map(|bound| bound.clean(cx)).collect();
-            let lifetime = if !lifetime.is_elided() { Some(lifetime.clean(cx)) } else { None };
+            let lifetime =
+                if !lifetime.is_elided() { Some(clean_lifetime(*lifetime, cx)) } else { None };
             DynTrait(bounds, lifetime)
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
@@ -1871,7 +1871,7 @@ impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
                 .iter()
                 .map(|arg| match arg {
                     hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
-                        GenericArg::Lifetime(lt.clean(cx))
+                        GenericArg::Lifetime(clean_lifetime(*lt, cx))
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
