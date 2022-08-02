@@ -14,9 +14,9 @@ This declares an opaque type named `Foo`, of which the only information is that
 it implements `Bar`. Therefore, any of `Bar`'s interface can be used on a `Foo`,
 but nothing else (regardless of whether it implements any other traits).
 
-Since there needs to be a concrete background type, you can (as of <!-- date:
-2021-01 --> January 2021) express that type by using the opaque type in a
-"defining use site".
+Since there needs to be a concrete background type,
+you can (as of <!-- date-check --> January 2021) express that type
+by using the opaque type in a "defining use site".
 
 ```rust,ignore
 struct Struct;

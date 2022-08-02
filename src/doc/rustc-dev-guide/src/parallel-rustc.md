@@ -1,6 +1,6 @@
 # Parallel Compilation
 
-As of <!-- date: 2022-05 --> May 2022, The only stage of the compiler
+As of <!-- date-check --> May 2022, The only stage of the compiler
 that is already parallel is codegen. The nightly compiler implements query evaluation,
 but there is still a lot of work to be done. The lack of parallelism at other stages
 also represents an opportunity for improving compiler performance. One can try out the current
@@ -54,13 +54,13 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
 
 ## Rustdoc
 
-As of <!-- date: 2022-05--> May 2022, there are still a number of steps
+As of <!-- date-check--> May 2022, there are still a number of steps
 to complete before rustdoc rendering can be made parallel. More details on
 this issue can be found [here][parallel-rustdoc].
 
 ## Current Status
 
-As of <!-- date: 2022-05 --> May 2022, work on explicitly parallelizing the
+As of <!-- date-check --> May 2022, work on explicitly parallelizing the
 compiler has stalled. There is a lot of design and correctness work that needs
 to be done.
 
@@ -76,7 +76,7 @@ These are the basic ideas in the effort to make `rustc` parallel:
 
 [`rayon`]: https://crates.io/crates/rayon
 
-As of <!-- date: 2022-05 --> May 2022, much of this effort is on hold due
+As of <!-- date-check --> May 2022, much of this effort is on hold due
 to lack of manpower. We have a working prototype with promising performance
 gains in many cases. However, there are two blockers:
 

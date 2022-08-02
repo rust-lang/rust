@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-As of <!-- date: 2021-10 --> October 2021, `rustc_codegen_ssa` provides an
+As of <!-- date-check --> October 2021, `rustc_codegen_ssa` provides an
 abstract interface for all backends to implement, to allow other codegen
 backends (e.g. [Cranelift]).
 

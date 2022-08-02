@@ -3,9 +3,10 @@ use std::{
     convert::TryInto as _,
     env, fmt, fs,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
-use chrono::{Datelike as _, TimeZone as _, Utc};
+use chrono::{Datelike as _, Month, TimeZone as _, Utc};
 use glob::glob;
 use regex::Regex;
 
@@ -38,12 +39,18 @@ impl fmt::Display for Date {
 fn make_date_regex() -> Regex {
     Regex::new(
         r"(?x) # insignificant whitespace mode
-        <!--\s*
-        [dD]ate:\s*
-        (?P<y>\d{4}) # year
-        -
-        (?P<m>\d{2}) # month
-        \s*-->",
+        (<!--\s*
+          date-check:\s*
+          (?P<m1>\D+)\s+
+          (?P<y1>\d{4})\s*-->
+        )
+        |
+        (<!--\s*
+          date-check\s*-->\s+
+          (?P<m2>\D+)\s+
+          (?P<y2>\d{4})\b
+        )
+    ",
     )
     .unwrap()
 }
@@ -52,15 +59,22 @@ fn collect_dates_from_file(date_regex: &Regex, text: &str) -> Vec<(usize, Date)>
     let mut line = 1;
     let mut end_of_last_cap = 0;
     date_regex
-        .captures_iter(&text)
-        .map(|cap| {
-            (
-                cap.get(0).unwrap().range(),
-                Date {
-                    year: cap["y"].parse().unwrap(),
-                    month: cap["m"].parse().unwrap(),
-                },
-            )
+        .captures_iter(text)
+        .filter_map(|cap| {
+            if let (Some(month), Some(year), None, None) | (None, None, Some(month), Some(year)) = (
+                cap.name("m1"),
+                cap.name("y1"),
+                cap.name("m2"),
+                cap.name("y2"),
+            ) {
+                let year = year.as_str().parse().expect("year");
+                let month = Month::from_str(month.as_str())
+                    .expect("month")
+                    .number_from_month();
+                Some((cap.get(0).expect("all").range(), Date { year, month }))
+            } else {
+                None
+            }
         })
         .map(|(byte_range, date)| {
             line += text[end_of_last_cap..byte_range.end]
@@ -182,61 +196,153 @@ mod tests {
 
     #[test]
     fn test_date_regex() {
-        let regex = make_date_regex();
-        assert!(regex.is_match("foo <!-- date: 2021-01 --> bar"));
+        let regex = &make_date_regex();
+        assert!(regex.is_match("<!-- date-check: jan 2021 -->"));
+        assert!(regex.is_match("<!-- date-check: january 2021 -->"));
+        assert!(regex.is_match("<!-- date-check: Jan 2021 -->"));
+        assert!(regex.is_match("<!-- date-check: January 2021 -->"));
+        assert!(regex.is_match("<!-- date-check --> jan 2021"));
+        assert!(regex.is_match("<!-- date-check --> january 2021"));
+        assert!(regex.is_match("<!-- date-check --> Jan 2021"));
+        assert!(regex.is_match("<!-- date-check --> January 2021"));
+
+        assert!(regex.is_match("<!-- date-check --> jan 2021 "));
+        assert!(regex.is_match("<!-- date-check --> jan 2021."));
     }
 
     #[test]
-    fn test_date_regex_capitalized() {
-        let regex = make_date_regex();
-        assert!(regex.is_match("foo <!-- Date: 2021-08 --> bar"));
+    fn test_date_regex_fail() {
+        let regexes = &make_date_regex();
+        assert!(!regexes.is_match("<!-- date-check: jan 221 -->"));
+        assert!(!regexes.is_match("<!-- date-check: jan 20221 -->"));
+        assert!(!regexes.is_match("<!-- date-check: 01 2021 -->"));
+        assert!(!regexes.is_match("<!-- date-check --> jan 221"));
+        assert!(!regexes.is_match("<!-- date-check --> jan 20222"));
+        assert!(!regexes.is_match("<!-- date-check --> 01 2021"));
     }
 
     #[test]
     fn test_collect_dates_from_file() {
-        let text = "Test1\n<!-- date: 2021-01 -->\nTest2\nFoo<!-- date: 2021-02 \
-                    -->\nTest3\nTest4\nFoo<!-- date: 2021-03 -->Bar\n<!-- date: 2021-04 \
-                    -->\nTest5\nTest6\nTest7\n<!-- date: \n\n2021-05 -->\nTest8
+        let text = r"
+Test1
+<!-- date-check: jan 2021 -->
+Test2
+Foo<!-- date-check: february 2021
+-->
+Test3
+Test4
+Foo<!-- date-check: Mar 2021 -->Bar
+<!-- date-check:April 2021
+-->
+Test5
+Test6
+Test7
+<!-- date-check:
+
+may 2021 -->
+Test8
+Test1
+<!-- date-check -->  jan 2021
+Test2
+Foo<!-- date-check
+--> february 2021
+Test3
+Test4
+Foo<!-- date-check -->  mar 2021 Bar
+<!-- date-check
+--> apr 2021
+Test5
+Test6
+Test7
+<!-- date-check
+
+ --> may 2021
+Test8
+ <!--
+   date-check
+ --> june 2021.
         ";
         assert_eq!(
             collect_dates_from_file(&make_date_regex(), text),
             vec![
                 (
-                    2,
+                    3,
                     Date {
                         year: 2021,
                         month: 1,
                     }
                 ),
                 (
-                    4,
+                    6,
                     Date {
                         year: 2021,
                         month: 2,
                     }
                 ),
                 (
-                    7,
+                    9,
                     Date {
                         year: 2021,
                         month: 3,
                     }
                 ),
                 (
-                    8,
+                    11,
                     Date {
                         year: 2021,
                         month: 4,
                     }
                 ),
                 (
-                    14,
+                    17,
                     Date {
                         year: 2021,
                         month: 5,
                     }
                 ),
-            ]
+                (
+                    20,
+                    Date {
+                        year: 2021,
+                        month: 1,
+                    }
+                ),
+                (
+                    23,
+                    Date {
+                        year: 2021,
+                        month: 2,
+                    }
+                ),
+                (
+                    26,
+                    Date {
+                        year: 2021,
+                        month: 3,
+                    }
+                ),
+                (
+                    28,
+                    Date {
+                        year: 2021,
+                        month: 4,
+                    }
+                ),
+                (
+                    34,
+                    Date {
+                        year: 2021,
+                        month: 5,
+                    }
+                ),
+                (
+                    38,
+                    Date {
+                        year: 2021,
+                        month: 6,
+                    }
+                ),
+            ],
         );
     }
 }

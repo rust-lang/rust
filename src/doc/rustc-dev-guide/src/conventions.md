@@ -14,14 +14,14 @@ special config, so this may result in different style from normal [`rustfmt`].
 Therefore, formatting this repository using `cargo fmt` is not recommended.
 
 Instead, formatting should be done using `./x.py fmt`. It's a good habit to run
-`./x.py fmt` before every commit, as this reduces conflicts later. 
+`./x.py fmt` before every commit, as this reduces conflicts later.
 
 Formatting is checked by the `tidy` script. It runs automatically when you do
 `./x.py test` and can be run in isolation with `./x.py fmt --check`.
 
 If you want to use format-on-save in your editor, the pinned version of
 `rustfmt` is built under `build/<target>/stage0/bin/rustfmt`. You'll have to
-pass the <!-- date: 2022-04 --> `--edition=2021` argument yourself when calling
+pass the <!-- date-check: April 2022 --> `--edition=2021` argument yourself when calling
 `rustfmt` directly.
 
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs

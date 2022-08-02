@@ -437,17 +437,35 @@ Just a few things to keep in mind:
     the project.
 
   - The date the comment was added, e.g. instead of writing _"Currently, ..."_
-    or _"As of now, ..."_, consider writing
-    _"As of January 2021, ..."_.
-    Try to format the date as `<MONTH> <YEAR>` to ease search.
+    or _"As of now, ..."_,
+    consider adding the date, in one of the following formats:
+    - Jan 2021
+    - January 2021
+    - jan 2021
+    - january 2021
 
-  - Additionally, include a machine-readable comment of the form `<!-- date:
-    2022-04 -->` (if the current month is April 2022). We have an automated
-    tool that uses these (in `ci/date-check`).
+    There is a CI action (in `~/.github/workflows/date-check.yml`)
+    that generates a monthly issue with any of these that are over 6 months old.
 
-    So, for the month of April 2022, the comment would look like: `As of <!--
-    date: 2022-04 --> April 2022`. Make sure to put the comment *between* `as of`
-    and `April 2022`; see [PR #1066][rdg#1066] for the rationale.
+    For the action to pick the date,
+    add a special annotation before specifying the date:
+
+    ```md
+    <!-- date-check --> Jul 2022
+    ```
+
+    Example:
+
+    ```md
+    As of <!-- date-check --> Jul 2022, the foo did the bar.
+    ```
+
+    For cases where the date should not be part of the visible rendered output,
+    use the following instead:
+
+    ```md
+    <!-- date-check: Jul 2022 -->
+    ```
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
     further explanation for the change process or a way to verify that the information is not
@@ -459,7 +477,6 @@ Just a few things to keep in mind:
 
 [rdg]: https://rustc-dev-guide.rust-lang.org/
 [rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
-[rdg#1066]: https://github.com/rust-lang/rustc-dev-guide/pull/1066
 
 ## Issue Triage
 

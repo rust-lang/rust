@@ -1,6 +1,6 @@
 # Lexing and Parsing
 
-As of <!-- date: 2021-01 --> January 2021, the lexer and parser are undergoing
+As of <!-- date-check --> January 2021, the lexer and parser are undergoing
 refactoring to allow extracting them into libraries.
 
 The very first thing the compiler does is take the program (in Unicode
