@@ -52,7 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Get the raw pointer stored in arg[0] (the panic payload).
         let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-        let payload = this.read_scalar(payload)?.check_init()?;
+        let payload = this.read_scalar(payload)?;
         let thread = this.active_thread_mut();
         assert!(thread.panic_payload.is_none(), "the panic runtime should avoid double-panics");
         thread.panic_payload = Some(payload);
@@ -85,7 +85,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Get all the arguments.
         let [try_fn, data, catch_fn] = check_arg_count(args)?;
         let try_fn = this.read_pointer(try_fn)?;
-        let data = this.read_scalar(data)?.check_init()?;
+        let data = this.read_scalar(data)?;
         let catch_fn = this.read_pointer(catch_fn)?;
 
         // Now we make a function call, and pass `data` as first and only argument.

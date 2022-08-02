@@ -38,14 +38,14 @@ fn is_mutex_kind_normal<'mir, 'tcx: 'mir>(
 fn mutexattr_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)
 }
 
 fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
-    kind: impl Into<ScalarMaybeUninit<Provenance>>,
+    kind: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset(attr_op, 0, kind, layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.i32))
 }
@@ -62,7 +62,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     ecx.read_scalar_at_offset_atomic(
         mutex_op,
@@ -75,7 +75,7 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
 fn mutex_set_kind<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
-    kind: impl Into<ScalarMaybeUninit<Provenance>>,
+    kind: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     ecx.write_scalar_at_offset_atomic(
@@ -90,14 +90,14 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
 fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset_atomic(mutex_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn mutex_set_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Provenance>,
-    id: impl Into<ScalarMaybeUninit<Provenance>>,
+    id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset_atomic(
         mutex_op,
@@ -124,8 +124,7 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
                 AtomicReadOrd::Relaxed,
                 false,
             )?
-            .to_scalar_pair()
-            .expect("compare_exchange returns a scalar pair");
+            .to_scalar_pair();
 
         Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
             // Caller of the closure needs to allocate next_id
@@ -146,22 +145,8 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
 fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset_atomic(rwlock_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
-}
-
-fn rwlock_set_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    rwlock_op: &OpTy<'tcx, Provenance>,
-    id: impl Into<ScalarMaybeUninit<Provenance>>,
-) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset_atomic(
-        rwlock_op,
-        4,
-        id,
-        layout_of_maybe_uninit(ecx.tcx, ecx.tcx.types.u32),
-        AtomicWriteOrd::Relaxed,
-    )
 }
 
 fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
@@ -180,8 +165,7 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
                 AtomicReadOrd::Relaxed,
                 false,
             )?
-            .to_scalar_pair()
-            .expect("compare_exchange returns a scalar pair");
+            .to_scalar_pair();
 
         Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
             // Caller of the closure needs to allocate next_id
@@ -201,14 +185,14 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
 fn condattr_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset(attr_op, 0, ecx.machine.layouts.i32)
 }
 
 fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     attr_op: &OpTy<'tcx, Provenance>,
-    clock_id: impl Into<ScalarMaybeUninit<Provenance>>,
+    clock_id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset(
         attr_op,
@@ -230,14 +214,14 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
 fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset_atomic(cond_op, 4, ecx.machine.layouts.u32, AtomicReadOrd::Relaxed)
 }
 
 fn cond_set_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
-    id: impl Into<ScalarMaybeUninit<Provenance>>,
+    id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset_atomic(
         cond_op,
@@ -264,8 +248,7 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
                 AtomicReadOrd::Relaxed,
                 false,
             )?
-            .to_scalar_pair()
-            .expect("compare_exchange returns a scalar pair");
+            .to_scalar_pair();
 
         Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
             // Caller of the closure needs to allocate next_id
@@ -279,14 +262,14 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
 fn cond_get_clock_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
+) -> InterpResult<'tcx, Scalar<Provenance>> {
     ecx.read_scalar_at_offset(cond_op, 8, ecx.machine.layouts.i32)
 }
 
 fn cond_set_clock_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
     cond_op: &OpTy<'tcx, Provenance>,
-    clock_id: impl Into<ScalarMaybeUninit<Provenance>>,
+    clock_id: impl Into<Scalar<Provenance>>,
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset(
         cond_op,
@@ -366,7 +349,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = this.read_scalar(kind_op)?.check_init()?;
+        let kind = this.read_scalar(kind_op)?;
         if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
             // In `glibc` implementation, the numeric values of
             // `PTHREAD_MUTEX_NORMAL` and `PTHREAD_MUTEX_DEFAULT` are equal.
@@ -407,7 +390,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         // Destroying an uninit pthread_mutexattr is UB, so check to make sure it's not uninit.
-        mutexattr_get_kind(this, attr_op)?.check_init()?;
+        mutexattr_get_kind(this, attr_op)?;
 
         // To catch double-destroys, we de-initialize the mutexattr.
         // This is technically not right and might lead to false positives. For example, the below
@@ -421,8 +404,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // However, the way libstd uses the pthread APIs works in our favor here, so we can get away with this.
         // This can always be revisited to have some external state to catch double-destroys
         // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
-
-        mutexattr_set_kind(this, attr_op, ScalarMaybeUninit::Uninit)?;
+        this.write_uninit(&this.deref_operand(attr_op)?.into())?;
 
         Ok(0)
     }
@@ -438,7 +420,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let kind = if this.ptr_is_null(attr)? {
             this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
         } else {
-            mutexattr_get_kind(this, attr_op)?.check_init()?
+            mutexattr_get_kind(this, attr_op)?
         };
 
         // Write 0 to use the same code path as the static initializers.
@@ -452,7 +434,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_lock(&mut self, mutex_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = mutex_get_kind(this, mutex_op)?.check_init()?;
+        let kind = mutex_get_kind(this, mutex_op)?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
@@ -492,7 +474,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = mutex_get_kind(this, mutex_op)?.check_init()?;
+        let kind = mutex_get_kind(this, mutex_op)?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
@@ -528,7 +510,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = mutex_get_kind(this, mutex_op)?.check_init()?;
+        let kind = mutex_get_kind(this, mutex_op)?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
@@ -570,12 +552,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Destroying an uninit pthread_mutex is UB, so check to make sure it's not uninit.
-        mutex_get_kind(this, mutex_op)?.check_init()?;
-        mutex_get_id(this, mutex_op)?.check_init()?;
+        mutex_get_kind(this, mutex_op)?;
+        mutex_get_id(this, mutex_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        mutex_set_kind(this, mutex_op, ScalarMaybeUninit::Uninit)?;
-        mutex_set_id(this, mutex_op, ScalarMaybeUninit::Uninit)?;
+        this.write_uninit(&this.deref_operand(mutex_op)?.into())?;
         // FIXME: delete interpreter state associated with this mutex.
 
         Ok(0)
@@ -695,10 +676,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Destroying an uninit pthread_rwlock is UB, so check to make sure it's not uninit.
-        rwlock_get_id(this, rwlock_op)?.check_init()?;
+        rwlock_get_id(this, rwlock_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        rwlock_set_id(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
+        this.write_uninit(&this.deref_operand(rwlock_op)?.into())?;
         // FIXME: delete interpreter state associated with this rwlock.
 
         Ok(0)
@@ -726,7 +707,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let clock_id = this.read_scalar(clock_id_op)?.check_init()?;
+        let clock_id = this.read_scalar(clock_id_op)?;
         if clock_id == this.eval_libc("CLOCK_REALTIME")?
             || clock_id == this.eval_libc("CLOCK_MONOTONIC")?
         {
@@ -759,10 +740,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
-        condattr_get_clock_id(this, attr_op)?.check_init()?;
+        condattr_get_clock_id(this, attr_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        condattr_set_clock_id(this, attr_op, ScalarMaybeUninit::Uninit)?;
+        this.write_uninit(&this.deref_operand(attr_op)?.into())?;
 
         Ok(0)
     }
@@ -778,7 +759,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let clock_id = if this.ptr_is_null(attr)? {
             this.eval_libc("CLOCK_REALTIME")?
         } else {
-            condattr_get_clock_id(this, attr_op)?.check_init()?
+            condattr_get_clock_id(this, attr_op)?
         };
 
         // Write 0 to use the same code path as the static initializers.
@@ -906,12 +887,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Destroying an uninit pthread_cond is UB, so check to make sure it's not uninit.
-        cond_get_id(this, cond_op)?.check_init()?;
-        cond_get_clock_id(this, cond_op)?.check_init()?;
+        cond_get_id(this, cond_op)?;
+        cond_get_clock_id(this, cond_op)?;
 
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        cond_set_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
-        cond_set_clock_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
+        this.write_uninit(&this.deref_operand(cond_op)?.into())?;
         // FIXME: delete interpreter state associated with this condvar.
 
         Ok(0)

@@ -33,7 +33,7 @@ pub fn futex<'tcx>(
     let val = this.read_scalar(&args[2])?.to_i32()?;
 
     let thread = this.get_active_thread();
-    let addr_scalar = addr.to_scalar()?;
+    let addr_scalar = addr.to_scalar();
     let addr_usize = addr_scalar.to_machine_usize(this)?;
 
     let futex_private = this.eval_libc_i32("FUTEX_PRIVATE_FLAG")?;

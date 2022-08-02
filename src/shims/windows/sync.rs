@@ -19,8 +19,7 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
                 AtomicReadOrd::Relaxed,
                 false,
             )?
-            .to_scalar_pair()
-            .expect("compare_exchange returns a scalar pair");
+            .to_scalar_pair();
 
         Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
             // Caller of the closure needs to allocate next_id

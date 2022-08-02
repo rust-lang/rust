@@ -283,24 +283,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_key_delete" => {
                 let [key] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key = this.read_scalar(key)?.check_init()?.to_bits(key.layout.size)?;
+                let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 this.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
                 let [key] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key = this.read_scalar(key)?.check_init()?.to_bits(key.layout.size)?;
+                let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.get_active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let [key, new_ptr] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let key = this.read_scalar(key)?.check_init()?.to_bits(key.layout.size)?;
+                let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.get_active_thread();
                 let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data.check_init()?, &*this.tcx)?;
+                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -465,7 +465,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "strerror_r" | "__xpg_strerror_r" => {
                 let [errnum, buf, buflen] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let errnum = this.read_scalar(errnum)?.check_init()?;
+                let errnum = this.read_scalar(errnum)?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_scalar(buflen)?.to_machine_usize(this)?;
 
