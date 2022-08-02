@@ -1,0 +1,180 @@
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:26:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = || ();
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found closure[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[0m[0m[1m[fn item {f}: fn()][0m[0m`[0m
+[0m              found closure `[0m[0m[1m[closure@$DIR/function-type-mismatch-color-highlights.rs:26:9: 26:11][0m[0m`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:27:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = || ();
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = (|| ()) as fn();
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m           found fn pointer `fn()`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: change the expected type to be function pointer `fn()`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `f as fn()`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:28:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = (|| 0) as fn() -> u8;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn[0m[0m[1m()[0m[0m]`[0m
+[0m           found fn pointer `fn[0m[0m[1m() -> u8[0m[0m`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:29:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = (|_| ()) as fn(u8);
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn[0m[0m[1m()[0m[0m]`[0m
+[0m           found fn pointer `fn[0m[0m[1m(u8)[0m[0m`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:30:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = g;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found a different fn item[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[fn item {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m              found fn item `[fn item {[0m[0m[1mg[0m[0m}: fn()]`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: different `fn` items always have unique types, even if their signatures are the same[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: change the expected type to be function pointer `fn()`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `f as fn()`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:31:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = g2;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found a different fn item[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[fn item {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m              found fn item `[fn item {[0m[0m[1mg2[0m[0m}: fn()[0m[0m[1m -> u8[0m[0m]`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:32:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = g3;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found a different fn item[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[fn item {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m              found fn item `[fn item {[0m[0m[1mg3[0m[0m}: fn([0m[0m[1mu8[0m[0m)]`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:33:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut x = f;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    x = Struct;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found a different fn item[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mf[0m[0m}: fn()]`[0m
+[0m              found fn item `[[0m[0m[1mconstructor of[0m[0m {[0m[0m[1mStruct[0m[0m}: fn()[0m[0m[1m -> Struct[0m[0m]`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:36:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut y = h::<()>;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-------[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    y = h::<u8>;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected `()`, found `u8`[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[fn item {[0m[0m[1mh::<()>[0m[0m}: fn()]`[0m
+[0m              found fn item `[fn item {[0m[0m[1mh::<u8>[0m[0m}: fn()]`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: different `fn` items always have unique types, even if their signatures are the same[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: change the expected type to be function pointer `fn()`[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mhelp[0m[0m: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `h::<()> as fn()`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:39:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut y = h::<()>;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m-------[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12m...[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    y = h2::<u8>;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found a different fn item[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[fn item {[0m[0m[1mh::<()>[0m[0m}: fn()]`[0m
+[0m              found fn item `[fn item {[0m[0m[1mh2::<u8>[0m[0m}: fn([0m[0m[1mu8[0m[0m)]`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:42:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let mut z = g3;[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m                [0m[0m[1m[38;5;12m--[0m[0m [0m[0m[1m[38;5;12mexpected due to this value[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    z = (|| ()) as fn();
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected fn item, found fn pointer[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mg3[0m[0m}: fn[0m[0m[1m(u8)[0m[0m]`[0m
+[0m           found fn pointer `fn[0m[0m[1m()[0m[0m`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:45:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    p = (|| 0) as fn() -> u8;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mexpected `()`, found `u8`[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn pointer `fn()`[0m
+[0m              found fn pointer `fn()[0m[0m[1m -> u8[0m[0m`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:46:9[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    p = (|_| ()) as fn(u8);
+[0m   [0m[0m[1m[38;5;12m| [0m[0m        [0m[0m[1m[38;5;9m^^^^^^^^^^^^^^^^^^[0m[0m [0m[0m[1m[38;5;9mincorrect number of function parameters[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn pointer `fn()`[0m
+[0m              found fn pointer `fn([0m[0m[1mu8[0m[0m)`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:47:25[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let _: fn() -> u8 = g3;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[38;5;12m----------[0m[0m   [0m[0m[1m[38;5;9m^^[0m[0m [0m[0m[1m[38;5;9mincorrect number of function parameters[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[38;5;12mexpected due to this[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn pointer `fn()[0m[0m[1m -> u8[0m[0m`[0m
+[0m                 found fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mg3[0m[0m}: fn([0m[0m[1mu8[0m[0m)]`[0m
+
+[0m[1m[38;5;9merror[E0308][0m[0m[1m: mismatched types[0m
+[0m  [0m[0m[1m[38;5;12m--> [0m[0m$DIR/function-type-mismatch-color-highlights.rs:48:26[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m[1m[38;5;12mLL[0m[0m [0m[0m[1m[38;5;12m|[0m[0m [0m[0m    let _: fn() -> u16 = g2;
+[0m   [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[38;5;12m-----------[0m[0m   [0m[0m[1m[38;5;9m^^[0m[0m [0m[0m[1m[38;5;9mexpected `u16`, found `u8`[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m| [0m[0m           [0m[0m[1m[38;5;12mexpected due to this[0m
+[0m   [0m[0m[1m[38;5;12m|[0m
+[0m   [0m[0m[1m[38;5;12m= [0m[0m[1mnote[0m[0m: expected fn pointer `fn() -> [0m[0m[1mu16[0m[0m`[0m
+[0m                 found fn item `[[0m[0m[1mfn item[0m[0m {[0m[0m[1mg2[0m[0m}: fn() -> [0m[0m[1mu8[0m[0m]`[0m
+
+[0m[1m[38;5;9merror[0m[0m[1m: aborting due to 15 previous errors[0m
+
+[0m[1mFor more information about this error, try `rustc --explain E0308`.[0m
