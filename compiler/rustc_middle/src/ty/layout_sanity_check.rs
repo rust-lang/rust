@@ -21,7 +21,7 @@ pub(super) fn sanity_check_layout<'tcx>(
     }
 
     if cfg!(debug_assertions) {
-        /// Yields non-1-ZST fields of the type
+        /// Yields non-ZST fields of the type
         fn non_zst_fields<'tcx, 'a>(
             cx: &'a LayoutCx<'tcx, TyCtxt<'tcx>>,
             layout: &'a TyAndLayout<'tcx>,
