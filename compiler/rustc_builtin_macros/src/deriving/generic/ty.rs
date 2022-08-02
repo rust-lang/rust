@@ -4,7 +4,7 @@
 pub use Ty::*;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
+use rustc_ast::{self as ast, Expr, GenericArg, GenericParam, GenericParamKind, Generics, SelfKind, WhereClause};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -176,7 +176,7 @@ impl Bounds {
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
-    ) -> Generics {
+    ) -> (Vec<GenericParam>, WhereClause) {
         let params = self
             .bounds
             .iter()
@@ -186,11 +186,9 @@ impl Bounds {
             })
             .collect();
 
-        Generics {
-            params,
-            where_clause: ast::WhereClause { has_where_token: false, predicates: Vec::new(), span },
-            span,
-        }
+        let where_clause =
+            ast::WhereClause { has_where_token: false, predicates: Vec::new(), span };
+        (params, where_clause)
     }
 }
 

@@ -575,7 +575,7 @@ impl<'a> TraitDef<'a> {
             })
         });
 
-        let Generics { mut params, mut where_clause, .. } =
+        let (mut params, mut where_clause) =
             self.generics.to_generics(cx, self.span, type_ident, generics);
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
@@ -687,7 +687,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let trait_generics = Generics { params, where_clause, span };
+        let trait_generics = Generics { params: params.into_boxed_slice(), where_clause, span };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);
@@ -932,7 +932,7 @@ impl<'a> MethodDef<'a> {
     ) -> P<ast::AssocItem> {
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
-        let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
+        let (params, where_clause) = self.generics.to_generics(cx, span, type_ident, generics);
 
         let args = {
             let self_arg = explicit_self.map(|explicit_self| {
@@ -969,7 +969,7 @@ impl<'a> MethodDef<'a> {
             kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
                 defaultness,
                 sig,
-                generics: fn_generics,
+                generics: Generics { params: params.into_boxed_slice(), where_clause, span },
                 body: Some(body_block),
             })),
             tokens: None,

@@ -1714,7 +1714,7 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
         let generics = ast::Generics {
-            params: Vec::new(),
+            params: Box::new([]),
             where_clause: ast::WhereClause {
                 has_where_token: false,
                 predicates: Vec::new(),

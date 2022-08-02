@@ -608,7 +608,7 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
 }
 
 pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) {
-    walk_list!(visitor, visit_generic_param, &generics.params);
+    walk_list!(visitor, visit_generic_param, generics.params.iter());
     walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
 }
 

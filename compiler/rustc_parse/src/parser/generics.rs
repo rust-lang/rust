@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
             (vec![], self.prev_token.span.shrink_to_hi())
         };
         Ok(ast::Generics {
-            params,
+            params: params.into_boxed_slice(),
             where_clause: WhereClause {
                 has_where_token: false,
                 predicates: Vec::new(),

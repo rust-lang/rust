@@ -1330,7 +1330,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_generics(&mut self, generics: &'a Generics) {
         let mut prev_param_default = None;
-        for param in &generics.params {
+        for param in generics.params.iter() {
             match param.kind {
                 GenericParamKind::Lifetime => (),
                 GenericParamKind::Type { default: Some(_), .. }
@@ -1357,7 +1357,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 deny_equality_constraints(self, predicate, generics);
             }
         }
-        walk_list!(self, visit_generic_param, &generics.params);
+        walk_list!(self, visit_generic_param, generics.params.iter());
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 WherePredicate::BoundPredicate(bound_pred) => {
@@ -1658,7 +1658,7 @@ fn deny_equality_constraints(
         if let TyKind::Path(None, path) = &qself.ty.kind {
             match &path.segments[..] {
                 [PathSegment { ident, args: None, .. }] => {
-                    for param in &generics.params {
+                    for param in generics.params.iter() {
                         if param.ident == *ident {
                             let param = ident;
                             match &full_path.segments[qself.position..] {
@@ -1722,7 +1722,7 @@ fn deny_equality_constraints(
     // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
         if let [potential_param, potential_assoc] = &full_path.segments[..] {
-            for param in &generics.params {
+            for param in generics.params.iter() {
                 if param.ident == potential_param.ident {
                     for bound in &param.bounds {
                         if let ast::GenericBound::Trait(trait_ref, TraitBoundModifier::None) = bound

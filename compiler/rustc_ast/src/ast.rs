@@ -414,7 +414,7 @@ impl GenericParam {
 /// a function, enum, trait, etc.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Generics {
-    pub params: Vec<GenericParam>,
+    pub params: Box<[GenericParam]>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -423,7 +423,7 @@ impl Default for Generics {
     /// Creates an instance of `Generics`.
     fn default() -> Generics {
         Generics {
-            params: Vec::new(),
+            params: Box::new([]),
             where_clause: WhereClause {
                 has_where_token: false,
                 predicates: Vec::new(),
@@ -3042,15 +3042,15 @@ mod size_asserts {
     static_assert_size!(Block, 40);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
-    static_assert_size!(Fn, 192);
+    static_assert_size!(Fn, 184);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
-    static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 192);
-    static_assert_size!(Item, 184);
-    static_assert_size!(ItemKind, 112);
+    static_assert_size!(Generics, 64);
+    static_assert_size!(Impl, 184);
+    static_assert_size!(Item, 176);
+    static_assert_size!(ItemKind, 104);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
