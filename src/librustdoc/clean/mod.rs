@@ -52,11 +52,13 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let mut items: Vec<Item> = vec![];
         let mut inserted = FxHashSet::default();
-        items.extend(
-            self.foreigns
-                .iter()
-                .map(|(item, renamed)| clean_maybe_renamed_foreign_item(cx, item, *renamed)),
-        );
+        items.extend(self.foreigns.iter().map(|(item, renamed)| {
+            let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+            if let Some(name) = item.name {
+                inserted.insert((item.type_(), name));
+            }
+            item
+        }));
         items.extend(self.mods.iter().map(|x| {
             inserted.insert((ItemType::Module, x.name));
             x.clean(cx)
