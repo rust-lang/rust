@@ -42,7 +42,7 @@ pub(crate) mod rustc {
     use rustc_middle::ty::Region;
     use rustc_middle::ty::Ty;
 
-    /// A reference in the layout [`Nfa`].
+    /// A reference in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
     pub struct Ref<'tcx> {
         lifetime: Region<'tcx>,
@@ -58,7 +58,7 @@ pub(crate) mod rustc {
         }
     }
 
-    /// A visibility node in the layout [`Nfa`].
+    /// A visibility node in the layout.
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
     pub enum Def<'tcx> {
         Adt(ty::AdtDef<'tcx>),
