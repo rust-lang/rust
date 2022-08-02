@@ -1495,7 +1495,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
 
-                    LifetimeRes::Infer | LifetimeRes::Static | LifetimeRes::Error => {}
+                    LifetimeRes::Static | LifetimeRes::Error => {}
 
                     res => panic!(
                         "Unexpected lifetime resolution {:?} for {:?} at {:?}",
