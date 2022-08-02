@@ -294,7 +294,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.bopen();
                 self.print_inner_attributes(&item.attrs);
-                for impl_item in items {
+                for impl_item in items.iter() {
                     self.print_assoc_item(impl_item);
                 }
                 let empty = item.attrs.is_empty() && items.is_empty();

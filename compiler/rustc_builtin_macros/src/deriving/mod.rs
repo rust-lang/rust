@@ -187,7 +187,7 @@ fn inject_impl_of_structural_trait(
             generics,
             of_trait: Some(trait_ref),
             self_ty: self_type,
-            items: Vec::new(),
+            items: Box::new([]),
         })),
     );
 

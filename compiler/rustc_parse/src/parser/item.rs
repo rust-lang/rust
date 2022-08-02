@@ -637,7 +637,7 @@ impl<'a> Parser<'a> {
                     generics,
                     of_trait: Some(trait_ref),
                     self_ty: ty_second,
-                    items: impl_items,
+                    items: impl_items.into_boxed_slice(),
                 }))
             }
             None => {
@@ -650,7 +650,7 @@ impl<'a> Parser<'a> {
                     generics,
                     of_trait: None,
                     self_ty: ty_first,
-                    items: impl_items,
+                    items: impl_items.into_boxed_slice(),
                 }))
             }
         };

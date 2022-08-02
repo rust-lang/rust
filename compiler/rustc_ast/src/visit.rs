@@ -340,7 +340,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
-            walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
+            walk_list!(visitor, visit_assoc_item, items.iter(), AssocCtxt::Impl);
         }
         ItemKind::Struct(ref struct_definition, ref generics)
         | ItemKind::Union(ref struct_definition, ref generics) => {

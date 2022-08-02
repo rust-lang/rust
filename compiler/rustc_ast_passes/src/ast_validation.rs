@@ -1052,7 +1052,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_trait_ref(t);
                     this.visit_ty(self_ty);
 
-                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl);
+                    walk_list!(this, visit_assoc_item, items.iter(), AssocCtxt::Impl);
                 });
                 return; // Avoid visiting again.
             }

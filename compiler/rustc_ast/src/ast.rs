@@ -2801,7 +2801,7 @@ pub struct Impl {
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef>,
     pub self_ty: P<Ty>,
-    pub items: Vec<P<AssocItem>>,
+    pub items: Box<[P<AssocItem>]>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3048,7 +3048,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 200);
+    static_assert_size!(Impl, 192);
     static_assert_size!(Item, 184);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
