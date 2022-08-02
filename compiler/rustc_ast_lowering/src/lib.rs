@@ -1919,18 +1919,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 hir::LifetimeName::Param(param, p_name)
             }
-            LifetimeRes::Fresh { param, binder } => {
+            LifetimeRes::Fresh { param, .. } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
 
                 let mut param = self.local_def_id(param);
                 if let Some(mut captured_lifetimes) = self.captured_lifetimes.take() {
-                    if !captured_lifetimes.binders_to_ignore.contains(&binder) {
-                        match captured_lifetimes.captures.entry(param) {
-                            Entry::Occupied(o) => param = self.local_def_id(o.get().1),
-                            Entry::Vacant(_) => {
-                                panic!("Lifetime {:?} should have a def_id at this point", id);
-                            }
-                        }
+                    if let Entry::Occupied(o) = captured_lifetimes.captures.entry(param) {
+                        param = self.local_def_id(o.get().1);
                     }
 
                     self.captured_lifetimes = Some(captured_lifetimes);
