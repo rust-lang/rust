@@ -271,6 +271,7 @@
 #![feature(duration_constants)]
 #![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
 #![cfg_attr(not(bootstrap), feature(error_in_core))]
+#![cfg_attr(not(bootstrap), feature(error_iter))]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]

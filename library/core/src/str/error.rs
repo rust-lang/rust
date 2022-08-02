@@ -1,5 +1,7 @@
 //! Defines utf8 error type.
 
+#[cfg(not(bootstrap))]
+use crate::error::Error;
 use crate::fmt;
 
 /// Errors which can occur when attempting to interpret a sequence of [`u8`]
@@ -122,6 +124,15 @@ impl fmt::Display for Utf8Error {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for Utf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-8: corrupt contents"
+    }
+}
+
 /// An error returned when parsing a `bool` using [`from_str`] fails
 ///
 /// [`from_str`]: super::FromStr::from_str
@@ -134,5 +145,14 @@ pub struct ParseBoolError;
 impl fmt::Display for ParseBoolError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "provided string was not `true` or `false`".fmt(f)
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseBoolError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "failed to parse bool"
     }
 }

@@ -111,6 +111,7 @@
 #![feature(const_pin)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
+#![cfg_attr(not(bootstrap), feature(error_generic_member_access))]
 #![cfg_attr(not(bootstrap), feature(error_in_core))]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
@@ -128,6 +129,7 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(pattern)]
 #![feature(pointer_byte_offsets)]
+#![cfg_attr(not(bootstrap), feature(provide_any))]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(ptr_sub_ptr)]
@@ -239,4 +241,56 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "arc_error", since = "1.52.0")]
+impl<T: core::error::Error + ?Sized> core::error::Error for crate::sync::Arc<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        core::error::Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn core::error::Error> {
+        core::error::Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        core::error::Error::source(&**self)
+    }
+
+    fn provide<'a>(&'a self, req: &mut core::any::Demand<'a>) {
+        core::error::Error::provide(&**self, req);
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "try_reserve", since = "1.57.0")]
+impl core::error::Error for crate::collections::TryReserveError {}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl core::error::Error for crate::ffi::NulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "nul byte found in data"
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+impl core::error::Error for crate::ffi::FromVecWithNulError {}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl core::error::Error for crate::ffi::IntoStringError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "C string contained non-utf8 bytes"
+    }
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        Some(self.__source())
+    }
 }

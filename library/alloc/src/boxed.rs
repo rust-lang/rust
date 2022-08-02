@@ -2365,3 +2365,21 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
         From::from(String::from(err))
     }
 }
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "box_error", since = "1.8.0")]
+impl<T: core::error::Error> core::error::Error for Box<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        core::error::Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn core::error::Error> {
+        core::error::Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        core::error::Error::source(&**self)
+    }
+}
