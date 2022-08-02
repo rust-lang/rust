@@ -136,8 +136,6 @@ struct LoweringContext<'a, 'hir> {
 /// to rebind the introduced lifetimes.
 #[derive(Debug)]
 struct LifetimeCaptureContext {
-    /// parent def_id for new definitions
-    parent_def_id: LocalDefId,
     /// Set of lifetimes to rebind.
     captures: FxHashMap<
         LocalDefId, // original parameter id
@@ -1347,7 +1345,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime_stash = std::mem::replace(
                     &mut lctx.captured_lifetimes,
                     Some(LifetimeCaptureContext {
-                        parent_def_id: opaque_ty_def_id,
                         captures: std::mem::take(&mut collected_lifetimes),
                         binders_to_ignore: Default::default(),
                     }),
@@ -1357,7 +1354,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lifetime_collector::lifetimes_in_bounds(&lctx.resolver, bounds);
                 debug!(?lifetimes_in_bounds);
 
-                lctx.create_and_capture_lifetime_defs(&lifetimes_in_bounds);
+                lctx.create_and_capture_lifetime_defs(opaque_ty_def_id, &lifetimes_in_bounds);
 
                 let ret = lctx.lower_param_bounds(bounds, itctx);
 
@@ -1446,7 +1443,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))
     }
 
-    fn create_and_capture_lifetime_defs(&mut self, lifetimes_in_bounds: &[Lifetime]) {
+    fn create_and_capture_lifetime_defs(
+        &mut self,
+        parent_def_id: LocalDefId,
+        lifetimes_in_bounds: &[Lifetime],
+    ) {
         for lifetime in lifetimes_in_bounds {
             let ident = lifetime.ident;
             let span = ident.span;
@@ -1464,7 +1465,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 let name = ParamName::Plain(ident);
 
                                 self.create_def(
-                                    captured_lifetimes.parent_def_id,
+                                    parent_def_id,
                                     node_id,
                                     DefPathData::LifetimeNs(name.ident().name),
                                 );
@@ -1485,7 +1486,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 let name = ParamName::Fresh;
 
                                 self.create_def(
-                                    captured_lifetimes.parent_def_id,
+                                    parent_def_id,
                                     node_id,
                                     DefPathData::LifetimeNs(kw::UnderscoreLifetime),
                                 );
@@ -1735,7 +1736,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let lifetime_stash = std::mem::replace(
                 &mut this.captured_lifetimes,
                 Some(LifetimeCaptureContext {
-                    parent_def_id: opaque_ty_def_id,
                     captures: std::mem::take(&mut captures),
                     binders_to_ignore: Default::default(),
                 }),
@@ -1745,7 +1745,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 lifetime_collector::lifetimes_in_ret_ty(&this.resolver, output);
             debug!(?lifetimes_in_bounds);
 
-            this.create_and_capture_lifetime_defs(&lifetimes_in_bounds);
+            this.create_and_capture_lifetime_defs(opaque_ty_def_id, &lifetimes_in_bounds);
 
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
