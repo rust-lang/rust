@@ -50,6 +50,18 @@ error[E0277]: the trait bound `(): Foo` is not satisfied
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
 
+error[E0277]: the trait bound `(): NotFoo` is not satisfied
+  --> $DIR/issue-59324.rs:23:29
+   |
+LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
+   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `NotFoo` is not implemented for `()`
+   |
+note: required by a bound in `Foo`
+  --> $DIR/issue-59324.rs:3:16
+   |
+LL | pub trait Foo: NotFoo {
+   |                ^^^^^^ required by this bound in `Foo`
+
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:16:5
    |
@@ -65,6 +77,6 @@ help: consider further restricting this bound
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

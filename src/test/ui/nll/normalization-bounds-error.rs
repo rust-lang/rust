@@ -11,5 +11,6 @@ impl<'a, 'd: 'a> Visitor<'d> for &'a () {
 
 fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
 //~^ ERROR
+//~| ERROR cannot infer an appropriate lifetime for lifetime parameter `'d` due to conflicting requirements
 
 fn main() {}

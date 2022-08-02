@@ -7,7 +7,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>; //~ ERROR `&T` is not an iterator
     type Item = &'a T;
 
-    fn into_iter(self) -> Self::IntoIter { //~ ERROR `&T` is not an iterator
+    fn into_iter(self) -> Self::IntoIter {
         unimplemented!()
     }
 }

@@ -1,17 +1,20 @@
-error: lifetime may not live long enough
-  --> $DIR/implied-bounds-unnorm-associated-type-2.rs:19:5
+error[E0491]: in type `&'a &'b ()`, reference has a longer lifetime than the data it references
+  --> $DIR/implied-bounds-unnorm-associated-type-2.rs:11:17
    |
-LL | fn g<'a, 'b>() {
-   |      --  -- lifetime `'b` defined here
-   |      |
-   |      lifetime `'a` defined here
-LL |     f::<'a, 'b>(());
-   |     ^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+LL | fn f<'a, 'b>(_: <&'a &'b () as Trait>::Type)
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: consider adding the following bound: `'b: 'a`
-   = note: requirement occurs because of a function pointer to `f`
-   = note: the function `f` is invariant over the parameter `'a`
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+note: the pointer is valid for the lifetime `'a` as defined here
+  --> $DIR/implied-bounds-unnorm-associated-type-2.rs:11:6
+   |
+LL | fn f<'a, 'b>(_: <&'a &'b () as Trait>::Type)
+   |      ^^
+note: but the referenced data is only valid for the lifetime `'b` as defined here
+  --> $DIR/implied-bounds-unnorm-associated-type-2.rs:11:10
+   |
+LL | fn f<'a, 'b>(_: <&'a &'b () as Trait>::Type)
+   |          ^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0491`.

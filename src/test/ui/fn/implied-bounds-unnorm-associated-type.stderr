@@ -1,14 +1,20 @@
-error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/implied-bounds-unnorm-associated-type.rs:20:10
+error[E0491]: in type `&'a &'b ()`, reference has a longer lifetime than the data it references
+  --> $DIR/implied-bounds-unnorm-associated-type.rs:13:29
    |
-LL |     let y = f(&x, ());
-   |               -- borrow of `x` occurs here
-LL |     drop(x);
-   |          ^ move out of `x` occurs here
-LL |
-LL |     println!("{}", y);
-   |                    - borrow later used here
+LL | fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the pointer is valid for the lifetime `'a` as defined here
+  --> $DIR/implied-bounds-unnorm-associated-type.rs:13:6
+   |
+LL | fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
+   |      ^^
+note: but the referenced data is only valid for the lifetime `'b` as defined here
+  --> $DIR/implied-bounds-unnorm-associated-type.rs:13:10
+   |
+LL | fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
+   |          ^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0505`.
+For more information about this error, try `rustc --explain E0491`.

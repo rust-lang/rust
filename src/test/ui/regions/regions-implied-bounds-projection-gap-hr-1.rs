@@ -8,7 +8,7 @@
 // regions as opaque entities, just like projections without escaping
 // regions.
 
-trait Trait1<T> { }
+trait Trait1<T> {}
 
 trait Trait2<'a, 'b> {
     type Foo;
@@ -18,10 +18,10 @@ trait Trait2<'a, 'b> {
 // this argument `t` is not automatically considered well-formed,
 // since for it to be WF, we would need to know that `'y: 'x`, but we
 // do not infer that.
-fn callee<'x, 'y, T>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
-    //~^ ERROR the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
-    //~| ERROR the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
+fn callee<'x, 'y, T>(t: &'x dyn for<'z> Trait1<<T as Trait2<'y, 'z>>::Foo>)
+//~^ ERROR the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
+//~| ERROR the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
 {
 }
 
-fn main() { }
+fn main() {}

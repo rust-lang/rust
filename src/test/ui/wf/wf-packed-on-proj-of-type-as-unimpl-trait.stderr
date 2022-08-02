@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `DefaultAllocator: Allocator` is not satisfied
-  --> $DIR/wf-packed-on-proj-of-type-as-unimpl-trait.rs:28:12
+  --> $DIR/wf-packed-on-proj-of-type-as-unimpl-trait.rs:28:19
    |
 LL | struct Foo(Matrix<<DefaultAllocator as Allocator>::Buffer>);
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Allocator` is not implemented for `DefaultAllocator`
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Allocator` is not implemented for `DefaultAllocator`
 
 error: aborting due to previous error
 

@@ -9,6 +9,7 @@ impl<T> Trait for T {
 }
 
 fn f<'a, 'b>(_: <&'a &'b () as Trait>::Type)
+//~^ ERROR in type `&'a &'b ()`, reference has a longer lifetime than the data it references
 where
     'a: 'a,
     'b: 'b,
@@ -17,7 +18,6 @@ where
 
 fn g<'a, 'b>() {
     f::<'a, 'b>(());
-    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

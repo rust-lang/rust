@@ -14,12 +14,16 @@ where
 type RequireOutlives<'a, T> = <T as Dummy<'a>>::Out;
 
 enum Ref1<'a, T> {
-    Ref1Variant1(RequireOutlives<'a, T>), //~ ERROR the parameter type `T` may not live long enough
+    Ref1Variant1(RequireOutlives<'a, T>),
+    //~^ the parameter type `T` may not live long enough [E0309]
+    //~| the parameter type `T` may not live long enough [E0309]
 }
 
 enum Ref2<'a, T> {
     Ref2Variant1,
-    Ref2Variant2(isize, RequireOutlives<'a, T>), //~ ERROR the parameter type `T` may not live long enough
+    Ref2Variant2(isize, RequireOutlives<'a, T>),
+    //~^ the parameter type `T` may not live long enough [E0309]
+    //~| the parameter type `T` may not live long enough [E0309]
 }
 
 enum RefOk<'a, T: 'a> {
@@ -32,6 +36,7 @@ enum RefIndirect<'a, T> {
 }
 
 enum RefDouble<'a, 'b, T> {
+    //~^ the parameter type `T` may not live long enough [E0309]
     RefDoubleVariant1(&'a RequireOutlives<'b, T>),
     //~^ the parameter type `T` may not live long enough [E0309]
 }

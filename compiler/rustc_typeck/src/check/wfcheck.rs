@@ -991,7 +991,6 @@ fn check_associated_item(
         match item.kind {
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(item.def_id);
-                let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
             }
             ty::AssocKind::Fn => {
@@ -1012,7 +1011,6 @@ fn check_associated_item(
                 }
                 if item.defaultness(tcx).has_value() {
                     let ty = tcx.type_of(item.def_id);
-                    let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
             }
@@ -1188,6 +1186,8 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
 
     enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
         let ty = tcx.type_of(item_id);
+        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), ty.into());
+
         let item_ty = wfcx.normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
 
         let mut forbid_unsized = true;
@@ -1197,8 +1197,6 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
                 forbid_unsized = false;
             }
         }
-
-        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {
             wfcx.register_bound(
                 traits::ObligationCause::new(ty_span, wfcx.body_id, traits::WellFormed(None)),
@@ -1262,7 +1260,6 @@ fn check_impl<'tcx>(
             }
             None => {
                 let self_ty = tcx.type_of(item.def_id);
-                let self_ty = wfcx.normalize(item.span, None, self_ty);
                 wfcx.register_wf_obligation(
                     ast_self_ty.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner())),
@@ -1474,35 +1471,6 @@ fn check_fn_or_method<'tcx>(
 ) {
     let tcx = wfcx.tcx();
     let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
-
-    // Normalize the input and output types one at a time, using a different
-    // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
-    // on the entire `FnSig`, since this would use the same `WellFormedLoc`
-    // for each type, preventing the HIR wf check from generating
-    // a nice error message.
-    let ty::FnSig { mut inputs_and_output, c_variadic, unsafety, abi } = sig;
-    inputs_and_output = tcx.mk_type_list(inputs_and_output.iter().enumerate().map(|(i, ty)| {
-        wfcx.normalize(
-            span,
-            Some(WellFormedLoc::Param {
-                function: def_id,
-                // Note that the `param_idx` of the output type is
-                // one greater than the index of the last input type.
-                param_idx: i.try_into().unwrap(),
-            }),
-            ty,
-        )
-    }));
-    // Manually call `normalize_associated_types_in` on the other types
-    // in `FnSig`. This ensures that if the types of these fields
-    // ever change to include projections, we will start normalizing
-    // them automatically.
-    let sig = ty::FnSig {
-        inputs_and_output,
-        c_variadic: wfcx.normalize(span, None, c_variadic),
-        unsafety: wfcx.normalize(span, None, unsafety),
-        abi: wfcx.normalize(span, None, abi),
-    };
 
     for (i, (&input_ty, ty)) in iter::zip(sig.inputs(), hir_decl.inputs).enumerate() {
         wfcx.register_wf_obligation(
@@ -1886,7 +1854,6 @@ impl<'a, 'tcx> WfCheckingCtxt<'a, 'tcx> {
             .map(|field| {
                 let def_id = self.tcx().hir().local_def_id(field.hir_id);
                 let field_ty = self.tcx().type_of(def_id);
-                let field_ty = self.normalize(field.ty.span, None, field_ty);
                 debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
                 AdtField { ty: field_ty, span: field.ty.span, def_id }
             })

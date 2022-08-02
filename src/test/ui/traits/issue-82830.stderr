@@ -4,11 +4,11 @@ error[E0275]: overflow evaluating the requirement `P: Sized`
 LL |     t: MaybeBox<P>,
    |        ^^^^^^^^^^^
    |
-note: required for `P` to implement `A<P, Box<P>>`
-  --> $DIR/issue-82830.rs:10:12
+note: required by a bound in `A`
+  --> $DIR/issue-82830.rs:1:9
    |
-LL | impl<Y, N> A<Y, N> for P {
-   |            ^^^^^^^     ^
+LL | trait A<Y, N> {
+   |         ^ required by this bound in `A`
 
 error: aborting due to previous error
 

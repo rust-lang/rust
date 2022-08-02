@@ -288,7 +288,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        if obligation.predicate.has_projections() {
+        // Normalizing WellFormed predicates is not sound, see #100041
+        if obligation.predicate.has_projections() && obligation.predicate.allow_normalization() {
             let mut obligations = Vec::new();
             let predicate = crate::traits::project::try_normalize_with_depth_to(
                 self.selcx,
