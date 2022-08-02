@@ -1210,7 +1210,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
 }
 
 pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
-    let Pat { id, kind, span, tokens } = pat.deref_mut();
+    let Pat { id, kind, span } = pat.deref_mut();
     vis.visit_id(id);
     match kind {
         PatKind::Wild | PatKind::Rest => {}
@@ -1247,7 +1247,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         PatKind::MacCall(mac) => vis.visit_mac_call(mac),
     }
     vis.visit_span(span);
-    visit_lazy_tts(tokens, vis);
+    visit_lazy_tts(&mut None, vis);
 }
 
 pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonConst, vis: &mut T) {
@@ -1551,12 +1551,7 @@ impl DummyAstNode for Ty {
 
 impl DummyAstNode for Pat {
     fn dummy() -> Self {
-        Pat {
-            id: DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
+        Pat { id: DUMMY_NODE_ID, kind: PatKind::Wild, span: Default::default() }
     }
 }
 

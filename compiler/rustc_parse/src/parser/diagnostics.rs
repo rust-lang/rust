@@ -40,7 +40,6 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None),
         span: ident.span,
-        tokens: None,
     });
     let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID };
     Param {
@@ -102,12 +101,7 @@ impl RecoverQPath for Pat {
         self.to_ty()
     }
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
-        Self {
-            span: path.span,
-            kind: PatKind::Path(qself, path),
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        }
+        Self { span: path.span, kind: PatKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -2148,8 +2142,7 @@ impl<'a> Parser<'a> {
         .emit();
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
-        let pat =
-            P(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID, tokens: None });
+        let pat = P(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID });
         Ok((pat, ty))
     }
 

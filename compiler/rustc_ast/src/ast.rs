@@ -585,7 +585,6 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Pat {
@@ -2259,7 +2258,6 @@ impl Param {
                 id: DUMMY_NODE_ID,
                 kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
-                tokens: None,
             }),
             span,
             ty,
@@ -3034,7 +3032,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(Item, 192);
     rustc_data_structures::static_assert_size!(ItemKind, 112);
     rustc_data_structures::static_assert_size!(Lit, 48);
-    rustc_data_structures::static_assert_size!(Pat, 112);
+    rustc_data_structures::static_assert_size!(Pat, 104);
     rustc_data_structures::static_assert_size!(Path, 32);
     rustc_data_structures::static_assert_size!(PathSegment, 24);
     rustc_data_structures::static_assert_size!(Stmt, 32);

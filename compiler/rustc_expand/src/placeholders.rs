@@ -38,8 +38,7 @@ pub fn placeholder(
         })
     };
     let ty = || P(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span });
-    let pat =
-        || P(ast::Pat { id, kind: ast::PatKind::MacCall(mac_placeholder()), span, tokens: None });
+    let pat = || P(ast::Pat { id, kind: ast::PatKind::MacCall(mac_placeholder()), span });
 
     match kind {
         AstFragmentKind::Crate => AstFragment::Crate(ast::Crate {
@@ -93,7 +92,6 @@ pub fn placeholder(
             id,
             span,
             kind: ast::PatKind::MacCall(mac_placeholder()),
-            tokens: None,
         })),
         AstFragmentKind::Ty => {
             AstFragment::Ty(P(ast::Ty { id, span, kind: ast::TyKind::MacCall(mac_placeholder()) }))
