@@ -443,7 +443,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            bn TupleVariant(…) TupleVariant($1)$0
+            bn TupleVariant TupleVariant
         "#]],
     );
     check_empty(
@@ -458,7 +458,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            bn RecordVariant {…} RecordVariant { field$1 }$0
+            bn RecordVariant RecordVariant
         "#]],
     );
 }

@@ -44,7 +44,6 @@ fn baz() {
             st Record
             st Tuple
             st Unit
-            tt Trait
             un Union
             ev TupleV(…)     TupleV(u32)
             bt u32
@@ -137,7 +136,6 @@ impl Unit {
             st Record
             st Tuple
             st Unit
-            tt Trait
             tp TypeParam
             un Union
             ev TupleV(…)    TupleV(u32)
@@ -651,5 +649,24 @@ fn main() {
         expect![[r"
             fn bar(…) fn(impl Trait<U>)
         "]],
+    );
+}
+
+#[test]
+fn complete_record_expr_path() {
+    check(
+        r#"
+struct Zulu;
+impl Zulu {
+    fn test() -> Self { }
+}
+fn boi(val: Zulu) { }
+fn main() {
+    boi(Zulu:: $0 {});
+}
+"#,
+        expect![[r#"
+            fn test() fn() -> Zulu
+        "#]],
     );
 }

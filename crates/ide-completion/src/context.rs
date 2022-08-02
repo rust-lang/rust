@@ -193,7 +193,10 @@ pub(super) enum Qualified {
         super_chain_len: Option<usize>,
     },
     /// <_>::
-    Infer,
+    TypeAnchor {
+        ty: Option<hir::Type>,
+        trait_: Option<hir::Trait>,
+    },
     /// Whether the path is an absolute path
     Absolute,
 }

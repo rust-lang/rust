@@ -85,7 +85,9 @@ fn render(
                 item.ref_match(ref_match, path_ctx.path.syntax().text_range().start());
             }
             FuncKind::Method(DotAccess { receiver: Some(receiver), .. }, _) => {
-                item.ref_match(ref_match, receiver.syntax().text_range().start());
+                if let Some(original_expr) = completion.sema.original_ast_node(receiver.clone()) {
+                    item.ref_match(ref_match, original_expr.syntax().text_range().start());
+                }
             }
             _ => (),
         }
