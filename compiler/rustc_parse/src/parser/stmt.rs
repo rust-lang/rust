@@ -645,7 +645,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
         P(Block {
-            stmts,
+            stmts: stmts.into_boxed_slice(),
             id: DUMMY_NODE_ID,
             rules,
             span,

@@ -797,7 +797,7 @@ impl EarlyLintPass for UnusedParens {
                     None,
                     None,
                 );
-                for stmt in &block.stmts {
+                for stmt in block.stmts.iter() {
                     <Self as UnusedDelimLint>::check_stmt(self, cx, stmt);
                 }
                 if let Some(e) = else_ {
@@ -960,7 +960,7 @@ impl UnusedDelimLint for UnusedBraces {
                 //      (do not lint `struct A<const N: usize>; let _: A<{ 2 + 3 }>;`)
                 //
                 // FIXME(const_generics): handle paths when #67075 is fixed.
-                if let [stmt] = inner.stmts.as_slice() {
+                if let [stmt] = &*inner.stmts {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
                         if !Self::is_expr_delims_necessary(expr, followed_by_block, false)
                             && (ctx != UnusedDelimsCtx::AnonConst

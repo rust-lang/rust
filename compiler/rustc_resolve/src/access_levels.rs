@@ -149,7 +149,7 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
 
             ast::ItemKind::Enum(EnumDef { ref variants }, _) => {
                 self.set_bindings_access_level(def_id);
-                for variant in variants {
+                for variant in variants.iter() {
                     let variant_def_id = self.r.local_def_id(variant.id);
                     let variant_level = self.r.access_levels.map.get(&variant_def_id).copied();
                     for field in variant.data.fields() {

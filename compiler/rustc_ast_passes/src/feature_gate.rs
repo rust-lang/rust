@@ -477,7 +477,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Enum(ast::EnumDef { ref variants, .. }, ..) => {
-                for variant in variants {
+                for variant in variants.iter() {
                     match (&variant.data, &variant.disr_expr) {
                         (ast::VariantData::Unit(..), _) => {}
                         (_, Some(disr_expr)) => gate_feature_post!(

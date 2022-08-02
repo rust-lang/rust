@@ -229,7 +229,7 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
-            stmts,
+            stmts: stmts.into_boxed_slice(),
             id: ast::DUMMY_NODE_ID,
             rules: BlockCheckMode::Default,
             span,

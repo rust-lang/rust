@@ -1145,7 +1145,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 return; // Avoid visiting again.
             }
             ItemKind::Enum(ref def, _) => {
-                for variant in &def.variants {
+                for variant in def.variants.iter() {
                     self.invalid_visibility(&variant.vis, None);
                     for field in variant.data.fields() {
                         self.invalid_visibility(&field.vis, None);

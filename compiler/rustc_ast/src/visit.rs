@@ -369,7 +369,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
 }
 
 pub fn walk_enum_def<'a, V: Visitor<'a>>(visitor: &mut V, enum_definition: &'a EnumDef) {
-    walk_list!(visitor, visit_variant, &enum_definition.variants);
+    walk_list!(visitor, visit_variant, enum_definition.variants.iter());
 }
 
 pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant)
@@ -714,7 +714,7 @@ pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) 
 }
 
 pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) {
-    walk_list!(visitor, visit_stmt, &block.stmts);
+    walk_list!(visitor, visit_stmt, block.stmts.iter());
 }
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {

@@ -97,7 +97,7 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
     let call = cx.expr_call_global(span, path, vec![]);
 
     cx.expr_block(P(ast::Block {
-        stmts: vec![cx.stmt_expr(call)],
+        stmts: vec![cx.stmt_expr(call)].into_boxed_slice(),
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,

@@ -1090,7 +1090,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let path = self.ecx.std_path(&[sym::fmt, sym::UnsafeArg, sym::new]);
             let unsafe_arg = self.ecx.expr_call_global(self.macsp, path, Vec::new());
             let unsafe_expr = self.ecx.expr_block(P(ast::Block {
-                stmts: vec![self.ecx.stmt_expr(unsafe_arg)],
+                stmts: vec![self.ecx.stmt_expr(unsafe_arg)].into_boxed_slice(),
                 id: ast::DUMMY_NODE_ID,
                 rules: BlockCheckMode::Unsafe(UnsafeSource::CompilerGenerated),
                 span: self.macsp,

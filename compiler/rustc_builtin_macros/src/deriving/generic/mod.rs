@@ -799,7 +799,7 @@ impl<'a> TraitDef<'a> {
     ) -> P<ast::Item> {
         let mut field_tys = Vec::new();
 
-        for variant in &enum_def.variants {
+        for variant in enum_def.variants.iter() {
             field_tys.extend(variant.data.fields().iter().map(|field| field.ty.clone()));
         }
 

@@ -80,7 +80,7 @@ fn cs_total_eq_assert(
             process_variant(vdata);
         }
         StaticEnum(enum_def, ..) => {
-            for variant in &enum_def.variants {
+            for variant in enum_def.variants.iter() {
                 process_variant(&variant.data);
             }
         }

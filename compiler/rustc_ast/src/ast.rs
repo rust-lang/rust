@@ -559,7 +559,7 @@ pub enum MetaItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Block {
     /// The statements in the block.
-    pub stmts: Vec<Stmt>,
+    pub stmts: Box<[Stmt]>,
     pub id: NodeId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -2440,7 +2440,7 @@ pub struct ForeignMod {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct EnumDef {
-    pub variants: Vec<Variant>,
+    pub variants: Box<[Variant]>,
 }
 /// Enum variant.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3039,7 +3039,7 @@ mod size_asserts {
     static_assert_size!(AssocItem, 104);
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
-    static_assert_size!(Block, 48);
+    static_assert_size!(Block, 40);
     static_assert_size!(Expr, 104);
     static_assert_size!(ExprKind, 72);
     static_assert_size!(Fn, 192);

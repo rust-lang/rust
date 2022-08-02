@@ -3662,7 +3662,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Some(block.span);
         }
         // Descend into the block.
-        for stmt in &block.stmts {
+        for stmt in block.stmts.iter() {
             if let StmtKind::Item(ref item) = stmt.kind
                 && let ItemKind::MacroDef(..) = item.kind {
                 num_macro_definition_ribs += 1;
