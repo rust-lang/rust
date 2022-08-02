@@ -22,9 +22,6 @@ pub struct UnsafetyChecker<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 
     /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
-    ///
-    /// The keys are the used `unsafe` blocks, the UnusedUnsafeKind indicates whether
-    /// or not any of the usages happen at a place that doesn't allow `unsafe_op_in_unsafe_fn`.
     used_unsafe_blocks: FxHashSet<HirId>,
 }
 
