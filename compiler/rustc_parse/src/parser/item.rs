@@ -569,12 +569,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
-            P(Ty {
-                kind: TyKind::Path(None, err_path(span)),
-                span,
-                id: DUMMY_NODE_ID,
-                tokens: None,
-            })
+            P(Ty { kind: TyKind::Path(None, err_path(span)), span, id: DUMMY_NODE_ID })
         } else {
             self.parse_ty_with_generics_recovery(&generics)?
         };
@@ -1211,7 +1206,7 @@ impl<'a> Parser<'a> {
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID, tokens: None })
+        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID })
     }
 
     /// Parses an enum declaration.

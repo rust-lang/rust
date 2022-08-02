@@ -54,7 +54,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty(&self, span: Span, kind: ast::TyKind) -> P<ast::Ty> {
-        P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind, tokens: None })
+        P(ast::Ty { id: ast::DUMMY_NODE_ID, span, kind })
     }
 
     pub fn ty_infer(&self, span: Span) -> P<ast::Ty> {

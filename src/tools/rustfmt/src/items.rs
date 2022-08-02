@@ -36,7 +36,6 @@ use crate::visitor::FmtVisitor;
 const DEFAULT_VISIBILITY: ast::Visibility = ast::Visibility {
     kind: ast::VisibilityKind::Inherited,
     span: DUMMY_SP,
-    tokens: None,
 };
 
 fn type_annotation_separator(config: &Config) -> &str {

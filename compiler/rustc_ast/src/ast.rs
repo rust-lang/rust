@@ -621,7 +621,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(P(Ty { kind, id: self.id, span: self.span }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -1212,7 +1212,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(P(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(P(Ty { kind, id: self.id, span: self.span }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1965,17 +1965,11 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Clone for Ty {
     fn clone(&self) -> Self {
-        ensure_sufficient_stack(|| Self {
-            id: self.id,
-            kind: self.kind.clone(),
-            span: self.span,
-            tokens: self.tokens.clone(),
-        })
+        ensure_sufficient_stack(|| Self { id: self.id, kind: self.kind.clone(), span: self.span })
     }
 }
 
@@ -2258,7 +2252,7 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span, tokens: None });
+        let infer_ty = P(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span });
         let param = |mutbl, ty| Param {
             attrs,
             pat: P(Pat {
@@ -2281,7 +2275,6 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
-                    tokens: None,
                 }),
             ),
         }
@@ -3045,5 +3038,5 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(Path, 32);
     rustc_data_structures::static_assert_size!(PathSegment, 24);
     rustc_data_structures::static_assert_size!(Stmt, 32);
-    rustc_data_structures::static_assert_size!(Ty, 88);
+    rustc_data_structures::static_assert_size!(Ty, 80);
 }

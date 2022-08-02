@@ -453,7 +453,7 @@ pub fn noop_visit_constraint<T: MutVisitor>(
 }
 
 pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
-    let Ty { id, kind, span, tokens } = ty.deref_mut();
+    let Ty { id, kind, span } = ty.deref_mut();
     vis.visit_id(id);
     match kind {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}
@@ -491,7 +491,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
     }
     vis.visit_span(span);
-    visit_lazy_tts(tokens, vis);
+    visit_lazy_tts(&mut None, vis);
 }
 
 pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: &mut T) {
@@ -1545,12 +1545,7 @@ impl DummyAstNode for Expr {
 
 impl DummyAstNode for Ty {
     fn dummy() -> Self {
-        Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::Err,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
+        Ty { id: DUMMY_NODE_ID, kind: TyKind::Err, span: Default::default() }
     }
 }
 

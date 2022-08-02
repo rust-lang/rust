@@ -42,7 +42,7 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
         span: ident.span,
         tokens: None,
     });
-    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
+    let ty = Ty { kind: TyKind::Err, span: ident.span, id: ast::DUMMY_NODE_ID };
     Param {
         attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -93,12 +93,7 @@ impl RecoverQPath for Ty {
         Some(P(self.clone()))
     }
     fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
-        Self {
-            span: path.span,
-            kind: TyKind::Path(qself, path),
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        }
+        Self { span: path.span, kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 

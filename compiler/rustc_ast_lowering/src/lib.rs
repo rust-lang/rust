@@ -1019,7 +1019,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 id: node_id,
                                 kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
                                 span: this.lower_span(constraint.span),
-                                tokens: None,
                             },
                             itctx,
                         );
