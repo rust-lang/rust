@@ -5,7 +5,7 @@ use crate::fmt;
 use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 use crate::path::{Path, PathBuf};
-use crate::sys::time::SystemTime;
+use crate::sys::time::{SystemTime, UNIX_EPOCH};
 use crate::sys::unsupported;
 use r_efi::protocols::file;
 
@@ -21,8 +21,7 @@ pub struct FileAttr {
     perm: FilePermissions,
     file_type: FileType,
     created_time: SystemTime,
-    last_accessed_time: SystemTime,
-    modification_time: SystemTime,
+    file_times: FileTimes,
 }
 
 pub struct ReadDir {
@@ -55,6 +54,12 @@ pub struct FileType {
     attr: u64,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct FileTimes {
+    last_accessed_time: SystemTime,
+    modification_time: SystemTime,
+}
+
 #[derive(Debug)]
 pub struct DirBuilder {
     attr: u64,
@@ -75,11 +80,11 @@ impl FileAttr {
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(self.modification_time)
+        Ok(self.file_times.modification_time)
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(self.last_accessed_time)
+        Ok(self.file_times.last_accessed_time)
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
@@ -93,8 +98,10 @@ impl From<&file::Info> for FileAttr {
             size: info.file_size,
             perm: FilePermissions { attr: info.attribute },
             file_type: FileType { attr: info.attribute },
-            modification_time: SystemTime::from(info.modification_time),
-            last_accessed_time: SystemTime::from(info.last_access_time),
+            file_times: FileTimes {
+                last_accessed_time: SystemTime::from(info.last_access_time),
+                modification_time: SystemTime::from(info.modification_time),
+            },
             created_time: SystemTime::from(info.create_time),
         }
     }
@@ -152,6 +159,21 @@ impl Iterator for ReadDir {
         } else {
             dir_entry
         }
+    }
+}
+
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.last_accessed_time = t;
+    }
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modification_time = t;
+    }
+}
+
+impl Default for FileTimes {
+    fn default() -> Self {
+        Self { last_accessed_time: UNIX_EPOCH, modification_time: UNIX_EPOCH }
     }
 }
 
@@ -320,6 +342,10 @@ impl File {
 
     pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
         self.ptr.set_file_attr(perm.attr)
+    }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        unsupported()
     }
 }
 
