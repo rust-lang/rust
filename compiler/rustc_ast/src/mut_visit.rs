@@ -519,14 +519,14 @@ pub fn noop_visit_ident<T: MutVisitor>(Ident { name: _, span }: &mut Ident, vis:
     vis.visit_span(span);
 }
 
-pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path, vis: &mut T) {
+pub fn noop_visit_path<T: MutVisitor>(Path { segments, span }: &mut Path, vis: &mut T) {
     vis.visit_span(span);
     for PathSegment { ident, id, args } in segments {
         vis.visit_ident(ident);
         vis.visit_id(id);
         visit_opt(args, |args| vis.visit_generic_args(args));
     }
-    visit_lazy_tts(tokens, vis);
+    visit_lazy_tts(&mut None, vis);
 }
 
 pub fn noop_visit_qself<T: MutVisitor>(qself: &mut Option<QSelf>, vis: &mut T) {

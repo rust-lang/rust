@@ -158,8 +158,8 @@ macro_rules! impl_has_tokens_none {
     };
 }
 
-impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path, Ty, Visibility);
-impl_has_tokens_none!(Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant);
+impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Ty, Visibility);
+impl_has_tokens_none!(Arm, ExprField, FieldDef, GenericParam, Param, Path, PatField, Variant);
 
 impl<T: AstDeref<Target: HasTokens>> HasTokens for T {
     fn tokens(&self) -> Option<&LazyTokenStream> {

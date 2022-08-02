@@ -1331,7 +1331,7 @@ impl<'a> Resolver<'a> {
                         }
 
                         segms.push(ast::PathSegment::from_ident(ident));
-                        let path = Path { span: name_binding.span, segments: segms, tokens: None };
+                        let path = Path { span: name_binding.span, segments: segms };
                         let did = match res {
                             Res::Def(DefKind::Ctor(..), did) => this.opt_parent(did),
                             _ => res.opt_def_id(),

@@ -94,7 +94,6 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: Vec<PathSegment>,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 impl PartialEq<Symbol> for Path {
@@ -117,7 +116,7 @@ impl Path {
     // Convert a span and an identifier to the corresponding
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
+        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span }
     }
 
     pub fn is_global(&self) -> bool {
@@ -3031,21 +3030,21 @@ pub type ForeignItem = Item<ForeignItemKind>;
 mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(AssocItemKind, 72);
-    rustc_data_structures::static_assert_size!(Attribute, 152);
+    rustc_data_structures::static_assert_size!(AssocItemKind, 64);
+    rustc_data_structures::static_assert_size!(Attribute, 144);
     rustc_data_structures::static_assert_size!(Block, 48);
     rustc_data_structures::static_assert_size!(Expr, 104);
     rustc_data_structures::static_assert_size!(Fn, 192);
-    rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
-    rustc_data_structures::static_assert_size!(GenericBound, 88);
+    rustc_data_structures::static_assert_size!(ForeignItemKind, 64);
+    rustc_data_structures::static_assert_size!(GenericBound, 80);
     rustc_data_structures::static_assert_size!(Generics, 72);
-    rustc_data_structures::static_assert_size!(Impl, 200);
+    rustc_data_structures::static_assert_size!(Impl, 192);
     rustc_data_structures::static_assert_size!(Item, 200);
     rustc_data_structures::static_assert_size!(ItemKind, 112);
     rustc_data_structures::static_assert_size!(Lit, 48);
-    rustc_data_structures::static_assert_size!(Pat, 120);
-    rustc_data_structures::static_assert_size!(Path, 40);
+    rustc_data_structures::static_assert_size!(Pat, 112);
+    rustc_data_structures::static_assert_size!(Path, 32);
     rustc_data_structures::static_assert_size!(PathSegment, 24);
     rustc_data_structures::static_assert_size!(Stmt, 32);
-    rustc_data_structures::static_assert_size!(Ty, 96);
+    rustc_data_structures::static_assert_size!(Ty, 88);
 }

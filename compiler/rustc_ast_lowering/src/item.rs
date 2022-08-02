@@ -231,7 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::ExternCrate(orig_name) => hir::ItemKind::ExternCrate(orig_name),
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix.
-                let prefix = Path { segments: vec![], span: use_tree.span, tokens: None };
+                let prefix = Path { segments: vec![], span: use_tree.span };
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
@@ -497,7 +497,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 *ident = tree.ident();
 
                 // First, apply the prefix to the path.
-                let mut path = Path { segments, span: path.span, tokens: None };
+                let mut path = Path { segments, span: path.span };
 
                 // Correctly resolve `self` imports.
                 if path.segments.len() > 1
@@ -560,11 +560,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
-                let path = self.lower_path(
-                    id,
-                    &Path { segments, span: path.span, tokens: None },
-                    ParamMode::Explicit,
-                );
+                let path =
+                    self.lower_path(id, &Path { segments, span: path.span }, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -592,7 +589,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // for that we return the `{}` import (called the
                 // `ListStem`).
 
-                let prefix = Path { segments, span: prefix.span.to(path.span), tokens: None };
+                let prefix = Path { segments, span: prefix.span.to(path.span) };
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {

@@ -56,7 +56,6 @@ fn expand<'cx>(
                         .into_iter()
                         .map(|ident| PathSegment::from_ident(ident))
                         .collect(),
-                    tokens: None,
                 },
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(sp),
