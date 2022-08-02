@@ -72,7 +72,8 @@ fn clone_on_copy() -> Option<(i32)> {
     let mut vec = Vec::new();
     vec.push(42.clone());
 
+    //  Issue #9277
     let opt: &Option<i32> = &None;
-    let value = opt.clone()?;
+    let value = opt.clone()?; // operator precedence needed (*opt)?
     None
 }

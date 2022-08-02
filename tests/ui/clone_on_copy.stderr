@@ -49,9 +49,9 @@ LL |     vec.push(42.clone());
    |              ^^^^^^^^^^ help: try removing the `clone` call: `42`
 
 error: using `clone` on type `std::option::Option<i32>` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:76:17
+  --> $DIR/clone_on_copy.rs:77:17
    |
-LL |     let value = opt.clone()?;
+LL |     let value = opt.clone()?; // operator precedence needed (*opt)?
    |                 ^^^^^^^^^^^ help: try dereferencing it: `(*opt)`
 
 error: aborting due to 9 previous errors
