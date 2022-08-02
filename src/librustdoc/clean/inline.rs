@@ -16,9 +16,9 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty, clean_ty,
-    clean_ty_generics, clean_variant_def, clean_visibility, utils, Attributes, AttributesExt,
-    Clean, ImplKind, ItemId, Type, Visibility,
+    self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty,
+    clean_trait_ref_with_bindings, clean_ty, clean_ty_generics, clean_variant_def,
+    clean_visibility, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -304,14 +304,14 @@ fn merge_attrs(
         both.extend_from_slice(old_attrs);
         (
             if let Some(new_id) = parent_module {
-                Attributes::from_ast(old_attrs, Some((inner, new_id)))
+                Attributes::from_ast_with_additional(old_attrs, (inner, new_id))
             } else {
-                Attributes::from_ast(&both, None)
+                Attributes::from_ast(&both)
             },
             both.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (old_attrs.clean(cx), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (Attributes::from_ast(&old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
     }
 }
 
@@ -450,7 +450,7 @@ pub(crate) fn build_impl(
         ),
     };
     let polarity = tcx.impl_polarity(did);
-    let trait_ = associated_trait.map(|t| t.clean(cx));
+    let trait_ = associated_trait.map(|t| clean_trait_ref_with_bindings(cx, t, &[]));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }

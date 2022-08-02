@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
-    LintId::of(assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES),
     LintId::of(blacklisted_name::BLACKLISTED_NAME),
     LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
