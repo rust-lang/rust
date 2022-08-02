@@ -2067,7 +2067,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     ty,
                     kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundConst { ty, var: ty::BoundVar::from_usize(idx) },
+                        name: ty::BoundVar::from_usize(idx),
                     }),
                 })
                 .into()

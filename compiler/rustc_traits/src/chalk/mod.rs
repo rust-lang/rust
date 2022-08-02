@@ -76,7 +76,7 @@ pub(crate) fn evaluate_goal<'tcx>(
                         chalk_ir::UniverseIndex { counter: ui.index() },
                     ),
                     CanonicalVarKind::Const(_ui, _ty) => unimplemented!(),
-                    CanonicalVarKind::PlaceholderConst(_pc) => unimplemented!(),
+                    CanonicalVarKind::PlaceholderConst(_pc, _ty) => unimplemented!(),
                 }),
             ),
             value: obligation.value.lower_into(interner),

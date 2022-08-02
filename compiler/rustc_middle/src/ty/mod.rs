@@ -1200,7 +1200,7 @@ pub struct BoundConst<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
+pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 
 /// A `DefId` which, in case it is a const argument, is potentially bundled with
 /// the `DefId` of the generic parameter it instantiates.
