@@ -167,7 +167,6 @@ fn main() {
             st Foo
             st Foo {…}              Foo { foo1: u32, foo2: u32 }
             tt Default
-            tt Sized
             bt u32
             kw crate::
             kw self::

@@ -2769,6 +2769,10 @@ impl Type {
         self.derived(self.ty.strip_references().clone())
     }
 
+    pub fn strip_reference(&self) -> Type {
+        self.derived(self.ty.strip_reference().clone())
+    }
+
     pub fn is_unknown(&self) -> bool {
         self.ty.is_unknown()
     }

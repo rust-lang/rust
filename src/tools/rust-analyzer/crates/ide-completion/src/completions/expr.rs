@@ -11,7 +11,14 @@ pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    &ExprCtx {
+    expr_ctx: &ExprCtx,
+) {
+    let _p = profile::span("complete_expr_path");
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
+
+    let &ExprCtx {
         in_block_expr,
         in_loop_body,
         after_if_expr,
@@ -23,12 +30,7 @@ pub(crate) fn complete_expr_path(
         ref impl_,
         in_match_guard,
         ..
-    }: &ExprCtx,
-) {
-    let _p = profile::span("complete_expr_path");
-    if !ctx.qualifier_ctx.none() {
-        return;
-    }
+    } = expr_ctx;
 
     let wants_mut_token =
         ref_expr_parent.as_ref().map(|it| it.mut_token().is_none()).unwrap_or(false);
@@ -46,11 +48,32 @@ pub(crate) fn complete_expr_path(
     };
 
     match qualified {
-        Qualified::Infer => ctx
+        Qualified::TypeAnchor { ty: None, trait_: None } => ctx
             .traits_in_scope()
             .iter()
             .flat_map(|&it| hir::Trait::from(it).items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
+        Qualified::TypeAnchor { trait_: Some(trait_), .. } => {
+            trait_.items(ctx.sema.db).into_iter().for_each(|item| add_assoc_item(acc, item))
+        }
+        Qualified::TypeAnchor { ty: Some(ty), trait_: None } => {
+            if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
+                cov_mark::hit!(completes_variant_through_alias);
+                acc.add_enum_variants(ctx, path_ctx, e);
+            }
+
+            ctx.iterate_path_candidates(&ty, |item| {
+                add_assoc_item(acc, item);
+            });
+
+            // Iterate assoc types separately
+            ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
+                if let hir::AssocItem::TypeAlias(ty) = item {
+                    acc.add_type_alias(ctx, ty)
+                }
+                None::<()>
+            });
+        }
         Qualified::With { resolution: None, .. } => {}
         Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
@@ -179,10 +202,21 @@ pub(crate) fn complete_expr_path(
                     }
                 }
             }
-            ctx.process_all_names(&mut |name, def| {
-                if scope_def_applicable(def) {
-                    acc.add_path_resolution(ctx, path_ctx, name, def);
+            ctx.process_all_names(&mut |name, def| match def {
+                ScopeDef::ModuleDef(hir::ModuleDef::Trait(t)) => {
+                    let assocs = t.items_with_supertraits(ctx.db);
+                    match &*assocs {
+                        // traits with no assoc items are unusable as expressions since
+                        // there is no associated item path that can be constructed with them
+                        [] => (),
+                        // FIXME: Render the assoc item with the trait qualified
+                        &[_item] => acc.add_path_resolution(ctx, path_ctx, name, def),
+                        // FIXME: Append `::` to the thing here, since a trait on its own won't work
+                        [..] => acc.add_path_resolution(ctx, path_ctx, name, def),
+                    }
                 }
+                _ if scope_def_applicable(def) => acc.add_path_resolution(ctx, path_ctx, name, def),
+                _ => (),
             });
 
             if is_func_update.is_none() {

@@ -13,7 +13,7 @@ mod html;
 #[cfg(test)]
 mod tests;
 
-use hir::{InFile, Name, Semantics};
+use hir::{Name, Semantics};
 use ide_db::{FxHashMap, RootDatabase};
 use syntax::{
     ast, AstNode, AstToken, NodeOrToken, SyntaxKind::*, SyntaxNode, TextRange, WalkEvent, T,
@@ -325,7 +325,7 @@ fn traverse(
             Leave(NodeOrToken::Node(node)) => {
                 // Doc comment highlighting injection, we do this when leaving the node
                 // so that we overwrite the highlighting of the doc comment itself.
-                inject::doc_comment(hl, sema, InFile::new(file_id.into(), &node));
+                inject::doc_comment(hl, sema, file_id, &node);
                 continue;
             }
         };

@@ -23,8 +23,6 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
-use std::mem;
-
 use hir::{db::DefDatabase, PrefixKind, Semantics};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
@@ -107,12 +105,9 @@ fn completion_list_with_config(
 ) -> String {
     // filter out all but one builtintype completion for smaller test outputs
     let items = get_all_items(config, ra_fixture, trigger_character);
-    let mut bt_seen = false;
     let items = items
         .into_iter()
-        .filter(|it| {
-            it.kind() != CompletionItemKind::BuiltinType || !mem::replace(&mut bt_seen, true)
-        })
+        .filter(|it| it.kind() != CompletionItemKind::BuiltinType || it.label() == "u32")
         .filter(|it| include_keywords || it.kind() != CompletionItemKind::Keyword)
         .filter(|it| include_keywords || it.kind() != CompletionItemKind::Snippet)
         .sorted_by_key(|it| (it.kind(), it.label().to_owned(), it.detail().map(ToOwned::to_owned)))

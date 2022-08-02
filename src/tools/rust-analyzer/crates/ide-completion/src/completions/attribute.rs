@@ -115,7 +115,7 @@ pub(crate) fn complete_attribute_path(
             });
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer | Qualified::With { .. } => {}
+        Qualified::TypeAnchor { .. } | Qualified::With { .. } => {}
     }
 
     let attributes = annotated_item_kind.and_then(|kind| {
