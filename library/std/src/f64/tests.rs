@@ -637,17 +637,21 @@ fn test_atanh() {
 
 #[test]
 fn test_gamma() {
-    assert_eq!(0.0f64.gamma(), f64::INFINITY);
     assert_approx_eq!(1.0f64.gamma(), 1.0f64);
     assert_approx_eq!(2.0f64.gamma(), 1.0f64);
     assert_approx_eq!(3.0f64.gamma(), 2.0f64);
     assert_approx_eq!(4.0f64.gamma(), 6.0f64);
     assert_approx_eq!(5.0f64.gamma(), 24.0f64);
-
     assert_approx_eq!(0.5f64.gamma(), consts::PI.sqrt());
     assert_approx_eq!((-0.5f64).gamma(), -2.0 * consts::PI.sqrt());
-
+    assert_eq!(0.0f64.gamma(), f64::INFINITY);
+    assert_eq!(-0.0f64.gamma(), f64::NEG_INFINITY);
     assert!((-1.0f64).gamma().is_nan());
+    assert!((-2.0f64).gamma().is_nan());
+    assert!(f64::NAN.gamma().is_nan());
+    assert!(f64::NEG_INFINITY.gamma().is_nan());
+    assert_eq!(f64::INFINITY.gamma(), f64::INFINITY);
+    assert_eq!(171.71f64.gamma(), f64::INFINITY);
 }
 
 #[test]
