@@ -60,6 +60,7 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) 
 enum PathParent {
     PathExpr(ast::PathExpr),
     RecordExpr(ast::RecordExpr),
+    PathPat(ast::PathPat),
     UseTree(ast::UseTree),
 }
 
@@ -68,6 +69,7 @@ impl PathParent {
         match self {
             PathParent::PathExpr(it) => it.syntax(),
             PathParent::RecordExpr(it) => it.syntax(),
+            PathParent::PathPat(it) => it.syntax(),
             PathParent::UseTree(it) => it.syntax(),
         }
     }
@@ -84,7 +86,7 @@ impl PathParent {
                 }
             }
             PathParent::RecordExpr(it) => make_record_field_list(it, ctx, &scope),
-            PathParent::UseTree(_) => None,
+            PathParent::UseTree(_) | PathParent::PathPat(_) => None,
         }
     }
 }
@@ -96,6 +98,7 @@ fn path_parent(path: &ast::Path) -> Option<PathParent> {
         match parent {
             ast::PathExpr(it) => Some(PathParent::PathExpr(it)),
             ast::RecordExpr(it) => Some(PathParent::RecordExpr(it)),
+            ast::PathPat(it) => Some(PathParent::PathPat(it)),
             ast::UseTree(it) => Some(PathParent::UseTree(it)),
             _ => None
         }
@@ -530,6 +533,31 @@ enum Foo {
             r"
 enum Foo {}
 impl Foo::Bar$0 {}
+",
+        )
+    }
+
+    #[test]
+    fn path_pat() {
+        check_assist(
+            generate_enum_variant,
+            r"
+enum Foo {}
+fn foo(x: Foo) {
+    match x {
+        Foo::Bar$0 =>
+    }
+}
+",
+            r"
+enum Foo {
+    Bar,
+}
+fn foo(x: Foo) {
+    match x {
+        Foo::Bar =>
+    }
+}
 ",
         )
     }
