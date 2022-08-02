@@ -827,7 +827,6 @@ pub(super) fn expand_asm<'cx>(
                     kind: ast::ExprKind::InlineAsm(P(inline_asm)),
                     span: sp,
                     attrs: ast::AttrVec::new(),
-                    tokens: None,
                 })
             } else {
                 DummyResult::raw_expr(sp, true)

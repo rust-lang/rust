@@ -1106,7 +1106,6 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Expr {
@@ -1263,13 +1262,7 @@ impl Expr {
     pub fn take(&mut self) -> Self {
         mem::replace(
             self,
-            Expr {
-                id: DUMMY_NODE_ID,
-                kind: ExprKind::Err,
-                span: DUMMY_SP,
-                attrs: ThinVec::new(),
-                tokens: None,
-            },
+            Expr { id: DUMMY_NODE_ID, kind: ExprKind::Err, span: DUMMY_SP, attrs: ThinVec::new() },
         )
     }
 
@@ -3023,7 +3016,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(AssocItemKind, 64);
     rustc_data_structures::static_assert_size!(Attribute, 144);
     rustc_data_structures::static_assert_size!(Block, 48);
-    rustc_data_structures::static_assert_size!(Expr, 104);
+    rustc_data_structures::static_assert_size!(Expr, 96);
     rustc_data_structures::static_assert_size!(Fn, 192);
     rustc_data_structures::static_assert_size!(ForeignItemKind, 64);
     rustc_data_structures::static_assert_size!(GenericBound, 80);

@@ -158,9 +158,10 @@ macro_rules! impl_has_tokens_none {
     };
 }
 
-impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item);
+impl_has_tokens!(AssocItem, AttrItem, Block, ForeignItem, Item);
 impl_has_tokens_none!(
     Arm,
+    Expr,
     ExprField,
     FieldDef,
     GenericParam,

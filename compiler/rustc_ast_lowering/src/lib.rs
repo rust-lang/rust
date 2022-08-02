@@ -1123,7 +1123,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     kind: ExprKind::Path(qself.clone(), path.clone()),
                                     span,
                                     attrs: AttrVec::new(),
-                                    tokens: None,
                                 };
 
                                 let ct = self.with_new_scopes(|this| hir::AnonConst {

@@ -244,7 +244,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 kind: ExprKind::Path(sym.qself.clone(), sym.path.clone()),
                                 span: *op_sp,
                                 attrs: AttrVec::new(),
-                                tokens: None,
                             };
 
                             // Wrap the expression in an AnonConst.

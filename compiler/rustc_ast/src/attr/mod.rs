@@ -485,7 +485,6 @@ impl MetaItemKind {
                     kind: ast::ExprKind::Lit(lit.clone()),
                     span: lit.span,
                     attrs: ThinVec::new(),
-                    tokens: None,
                 });
                 MacArgs::Eq(span, MacArgsEq::Ast(expr))
             }

@@ -1094,7 +1094,6 @@ pub(crate) fn convert_try_mac(
             kind: ast::ExprKind::Try(parse_expr(context, ts)?),
             span: mac.span(), // incorrect span, but shouldn't matter too much
             attrs: ast::AttrVec::new(),
-            tokens: None,
         })
     } else {
         None

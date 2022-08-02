@@ -1283,10 +1283,7 @@ pub fn noop_visit_inline_asm_sym<T: MutVisitor>(
     vis.visit_path(path);
 }
 
-pub fn noop_visit_expr<T: MutVisitor>(
-    Expr { kind, id, span, attrs, tokens }: &mut Expr,
-    vis: &mut T,
-) {
+pub fn noop_visit_expr<T: MutVisitor>(Expr { kind, id, span, attrs }: &mut Expr, vis: &mut T) {
     match kind {
         ExprKind::Box(expr) => vis.visit_expr(expr),
         ExprKind::Array(exprs) => visit_exprs(exprs, vis),
@@ -1431,7 +1428,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
     vis.visit_id(id);
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
-    visit_lazy_tts(tokens, vis);
+    visit_lazy_tts(&mut None, vis);
 }
 
 pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Option<P<Expr>> {
@@ -1538,7 +1535,6 @@ impl DummyAstNode for Expr {
             kind: ExprKind::Err,
             span: Default::default(),
             attrs: Default::default(),
-            tokens: Default::default(),
         }
     }
 }
