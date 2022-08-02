@@ -1123,8 +1123,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             assert!(N == 1 || N == 2);
             let descriptions = dids.map(|did| match tcx.def_kind(did) {
                 hir::def::DefKind::Ctor(_, hir::def::CtorKind::Fn) => "constructor of",
-                hir::def::DefKind::Fn => "fn item",
-                _ => unreachable!(),
+                hir::def::DefKind::Fn | hir::def::DefKind::AssocFn => "fn item",
+                kind => unreachable!("unexpected DefKind for FnDef: {kind:?}"),
             });
             let highlight = N == 1 || descriptions[0] != descriptions[1];
             descriptions.map(|description| {
