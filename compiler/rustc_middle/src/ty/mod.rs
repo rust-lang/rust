@@ -48,7 +48,7 @@ pub use subst::*;
 pub use vtable::*;
 
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::ops::ControlFlow;
 use std::{fmt, str};
 
@@ -1704,6 +1704,59 @@ impl VariantDef {
     }
 }
 
+impl PartialEq for VariantDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `VariantDef` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self {
+            def_id: lhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = &self;
+
+        let Self {
+            def_id: rhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = other;
+
+        lhs_def_id == rhs_def_id
+    }
+}
+
+impl Eq for VariantDef {}
+
+impl Hash for VariantDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `Hash` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `VariantDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { def_id, ctor_def_id: _, name: _, discr: _, fields: _, ctor_kind: _, flags: _ } =
+            &self;
+
+        def_id.hash(s)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub enum VariantDiscr {
     /// Explicit value for this variant, i.e., `X = 123`.
@@ -1722,6 +1775,42 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility,
+}
+
+impl PartialEq for FieldDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `PartialEq` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did: lhs_did, name: _, vis: _ } = &self;
+
+        let Self { did: rhs_did, name: _, vis: _ } = other;
+
+        lhs_did == rhs_did
+    }
+}
+
+impl Eq for FieldDef {}
+
+impl Hash for FieldDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `Hash` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did, name: _, vis: _ } = &self;
+
+        did.hash(s)
+    }
 }
 
 bitflags! {

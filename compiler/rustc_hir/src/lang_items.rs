@@ -191,6 +191,9 @@ language_item_table! {
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
 
+    // language items relating to transmutability
+    TransmuteTrait,          sym::transmute_trait,     transmute_trait,            Target::Trait,          GenericRequirement::Exact(6);
+
     Add(Op),                 sym::add,                 add_trait,                  Target::Trait,          GenericRequirement::Exact(1);
     Sub(Op),                 sym::sub,                 sub_trait,                  Target::Trait,          GenericRequirement::Exact(1);
     Mul(Op),                 sym::mul,                 mul_trait,                  Target::Trait,          GenericRequirement::Exact(1);

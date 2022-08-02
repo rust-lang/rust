@@ -508,6 +508,7 @@ impl fmt::Debug for Align {
 
 impl Align {
     pub const ONE: Align = Align { pow2: 0 };
+    pub const MAX: Align = Align { pow2: 29 };
 
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, String> {
@@ -540,7 +541,7 @@ impl Align {
         if bytes != 1 {
             return Err(not_power_of_2(align));
         }
-        if pow2 > 29 {
+        if pow2 > Self::MAX.pow2 {
             return Err(too_large(align));
         }
 

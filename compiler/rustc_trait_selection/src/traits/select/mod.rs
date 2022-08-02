@@ -1630,6 +1630,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
             }
 
+            // FIXME(@jswrenn): this should probably be more sophisticated
+            (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => false,
+
             // (*)
             (
                 BuiltinCandidate { has_nested: false }
