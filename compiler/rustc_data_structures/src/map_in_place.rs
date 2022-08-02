@@ -70,6 +70,19 @@ impl<T> MapInPlace<T> for Vec<T> {
     flat_map_in_place!();
 }
 
+impl<T> MapInPlace<T> for Box<[T]> {
+    fn flat_map_in_place<F, I>(&mut self, f: F)
+    where
+        F: FnMut(T) -> I,
+        I: IntoIterator<Item = T>,
+    {
+        let slice = std::mem::take(self);
+        let mut vec = slice.into_vec();
+        vec.flat_map_in_place(f);
+        *self = vec.into_boxed_slice();
+    }
+}
+
 impl<T, A: Array<Item = T>> MapInPlace<T> for SmallVec<A> {
     flat_map_in_place!();
 }
