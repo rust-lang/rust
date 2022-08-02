@@ -209,7 +209,14 @@ impl CheckAttrVisitor<'_> {
         }
 
         // FIXME(@lcnr): this doesn't belong here.
-        if matches!(target, Target::Closure | Target::Fn | Target::Method(_) | Target::ForeignFn) {
+        if matches!(
+            target,
+            Target::Closure
+                | Target::Fn
+                | Target::Method(_)
+                | Target::ForeignFn
+                | Target::ForeignStatic
+        ) {
             self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 

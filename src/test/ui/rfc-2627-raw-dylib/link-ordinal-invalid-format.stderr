@@ -15,5 +15,13 @@ LL |     #[link_ordinal("JustMonika")]
    |
    = note: an unsuffixed integer value, e.g., `1`, is expected
 
-error: aborting due to previous error; 1 warning emitted
+error: illegal ordinal format in `link_ordinal`
+  --> $DIR/link-ordinal-invalid-format.rs:9:5
+   |
+LL |     #[link_ordinal("JustMonika")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an unsuffixed integer value, e.g., `1`, is expected
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
