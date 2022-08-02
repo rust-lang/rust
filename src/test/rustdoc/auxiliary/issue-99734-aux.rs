@@ -5,3 +5,7 @@ impl Option {
 
 /// [`Option::unwrap`]
 pub mod task {}
+
+extern "C" {
+    pub fn main() -> std::ffi::c_int;
+}
