@@ -59,6 +59,9 @@ use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
 use crate::mem;
 
+#[cfg(not(bootstrap))]
+pub mod mir;
+
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
