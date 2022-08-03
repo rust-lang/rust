@@ -555,7 +555,7 @@ pub struct ConstTrait {
 #[error(passes::link_ordinal)]
 pub struct LinkOrdinal {
     #[primary_span]
-    pub attr_span: Span
+    pub attr_span: Span,
 }
 
 #[derive(SessionDiagnostic)]

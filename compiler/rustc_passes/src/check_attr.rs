@@ -146,9 +146,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::stable
                 | sym::rustc_allowed_through_unstable_modules
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
-                sym::link_ordinal => {
-                    self.check_link_ordinal(&attr, span, target)
-                },
+                sym::link_ordinal => self.check_link_ordinal(&attr, span, target),
                 _ => true,
             };
             is_valid &= attr_is_valid;
