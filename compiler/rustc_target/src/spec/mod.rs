@@ -37,7 +37,7 @@
 use crate::abi::Endian;
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
-use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use crate::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{sym, Symbol};
@@ -1172,13 +1172,10 @@ pub struct TargetOptions {
     /// Objects to link before and after all other object code.
     pub pre_link_objects: CrtObjects,
     pub post_link_objects: CrtObjects,
-    /// Same as `(pre|post)_link_objects`, but when we fail to pull the objects with help of the
-    /// target's native gcc and fall back to the "self-contained" mode and pull them manually.
-    /// See `crt_objects.rs` for some more detailed documentation.
-    pub pre_link_objects_fallback: CrtObjects,
-    pub post_link_objects_fallback: CrtObjects,
-    /// Which logic to use to determine whether to fall back to the "self-contained" mode or not.
-    pub crt_objects_fallback: Option<CrtObjectsFallback>,
+    /// Same as `(pre|post)_link_objects`, but when self-contained linking mode is enabled.
+    pub pre_link_objects_self_contained: CrtObjects,
+    pub post_link_objects_self_contained: CrtObjects,
+    pub link_self_contained: LinkSelfContainedDefault,
 
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post-link objects. Standard platform
@@ -1554,9 +1551,9 @@ impl Default for TargetOptions {
             relro_level: RelroLevel::None,
             pre_link_objects: Default::default(),
             post_link_objects: Default::default(),
-            pre_link_objects_fallback: Default::default(),
-            post_link_objects_fallback: Default::default(),
-            crt_objects_fallback: None,
+            pre_link_objects_self_contained: Default::default(),
+            post_link_objects_self_contained: Default::default(),
+            link_self_contained: LinkSelfContainedDefault::False,
             late_link_args: LinkArgs::new(),
             late_link_args_dynamic: LinkArgs::new(),
             late_link_args_static: LinkArgs::new(),
@@ -1977,20 +1974,20 @@ impl Target {
                 Ok::<(), String>(())
             } );
 
-            ($key_name:ident, crt_objects_fallback) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<CrtObjectsFallback>() {
-                        Ok(fallback) => base.$key_name = Some(fallback),
-                        _ => return Some(Err(format!("'{}' is not a valid CRT objects fallback. \
-                                                      Use 'musl', 'mingw' or 'wasm'", s))),
+            ($key_name:ident = $json_name:expr, link_self_contained) => ( {
+                let name = $json_name;
+                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
+                    match s.parse::<LinkSelfContainedDefault>() {
+                        Ok(lsc_default) => base.$key_name = lsc_default,
+                        _ => return Some(Err(format!("'{}' is not a valid `-Clink-self-contained` default. \
+                                                      Use 'false', 'true', 'musl' or 'mingw'", s))),
                     }
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
-            ($key_name:ident, link_objects) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(val) = obj.remove(&name) {
+            ($key_name:ident = $json_name:expr, link_objects) => ( {
+                let name = $json_name;
+                if let Some(val) = obj.remove(name) {
                     let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
                         JSON object with fields per CRT object kind.", name))?;
                     let mut args = CrtObjects::new();
@@ -2112,11 +2109,11 @@ impl Target {
         key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
-        key!(pre_link_objects, link_objects);
-        key!(post_link_objects, link_objects);
-        key!(pre_link_objects_fallback, link_objects);
-        key!(post_link_objects_fallback, link_objects);
-        key!(crt_objects_fallback, crt_objects_fallback)?;
+        key!(pre_link_objects = "pre-link-objects", link_objects);
+        key!(post_link_objects = "post-link-objects", link_objects);
+        key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
+        key!(post_link_objects_self_contained = "post-link-objects-fallback", link_objects);
+        key!(link_self_contained = "crt-objects-fallback", link_self_contained)?;
         key!(pre_link_args, link_args);
         key!(late_link_args, link_args);
         key!(late_link_args_dynamic, link_args);
@@ -2357,9 +2354,9 @@ impl ToJson for Target {
         target_option_val!(lld_flavor);
         target_option_val!(pre_link_objects);
         target_option_val!(post_link_objects);
-        target_option_val!(pre_link_objects_fallback);
-        target_option_val!(post_link_objects_fallback);
-        target_option_val!(crt_objects_fallback);
+        target_option_val!(pre_link_objects_self_contained, "pre-link-objects-fallback");
+        target_option_val!(post_link_objects_self_contained, "post-link-objects-fallback");
+        target_option_val!(link_self_contained, "crt-objects-fallback");
         target_option_val!(link_args - pre_link_args);
         target_option_val!(link_args - late_link_args);
         target_option_val!(link_args - late_link_args_dynamic);
