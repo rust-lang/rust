@@ -520,7 +520,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
     /// The caller is responsible for calling the access hooks!
-    fn get_alloc_raw(
+    pub fn get_alloc_raw(
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::Provenance, M::AllocExtra>> {

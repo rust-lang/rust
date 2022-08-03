@@ -60,6 +60,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(yeet_expr)]
 #![feature(const_option)]
+#![feature(vec_into_raw_parts)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 
