@@ -181,16 +181,28 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if (src, dest).has_opaque_types() {
             return true;
         }
-        // Normalize projections and things like that.
-        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
-        let src = self.tcx.normalize_erasing_regions(param_env, src);
-        let dest = self.tcx.normalize_erasing_regions(param_env, dest);
 
-        // Type-changing assignments can happen when subtyping is used. While
-        // all normal lifetimes are erased, higher-ranked types with their
-        // late-bound lifetimes are still around and can lead to type
-        // differences. So we compare ignoring lifetimes.
-        equal_up_to_regions(self.tcx, param_env, src, dest)
+        let try_equal_with_param_env = |param_env| {
+            let src = self.tcx.normalize_erasing_regions(param_env, src);
+            let dest = self.tcx.normalize_erasing_regions(param_env, dest);
+            // Type-changing assignments can happen when subtyping is used. While
+            // all normal lifetimes are erased, higher-ranked types with their
+            // late-bound lifetimes are still around and can lead to type
+            // differences. So we compare ignoring lifetimes.
+            equal_up_to_regions(self.tcx, param_env, src, dest)
+        };
+
+        // Normalize projections and things like that.
+        // First, try with reveal_all. This might not work in some cases, as the predicates
+        // can be cleared in reveal_all mode. We try the reveal first anyways as it is used
+        // by some other passes like inlining as well.
+        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
+        if try_equal_with_param_env(param_env) {
+            true
+        } else {
+            // If this fails, we can try it without the reveal.
+            try_equal_with_param_env(self.param_env)
+        }
     }
 }
 
