@@ -1,4 +1,4 @@
-warning: the where-clause bound `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>` is trivially false
+warning: the where-clause bound `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>` is impossible to satisfy
   --> $DIR/issue-89118.rs:9:5
    |
 LL | / trait StackContext
@@ -9,7 +9,9 @@ LL | |
 LL | | {
 LL | |     type Dispatcher;
 LL | | }
-   | |_- this cannot be referenced without causing an error
+   | |_- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
   --> $DIR/issue-89118.rs:20:8
@@ -31,13 +33,15 @@ LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
 
-warning: the where-clause bound `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>` is trivially false
+warning: the where-clause bound `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>` is impossible to satisfy
   --> $DIR/issue-89118.rs:29:5
    |
 LL | / struct EthernetWorker<C>(C)
 LL | | where
 LL | |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
-   | |_____^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- this cannot be referenced without causing an error
+   | |_____^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
   --> $DIR/issue-89118.rs:31:9

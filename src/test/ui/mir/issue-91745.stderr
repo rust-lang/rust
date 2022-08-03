@@ -1,4 +1,4 @@
-warning: the where-clause bound `<T as Broken>::Assoc: Foo` is trivially false
+warning: the where-clause bound `<T as Broken>::Assoc: Foo` is impossible to satisfy
   --> $DIR/issue-91745.rs:14:28
    |
 LL |       fn broken(&self) where Self::Assoc: Foo {
@@ -6,7 +6,9 @@ LL |       fn broken(&self) where Self::Assoc: Foo {
 LL | |
 LL | |         let _x: <Self::Assoc as Foo>::Bar;
 LL | |     }
-   | |_____- this cannot be referenced without causing an error
+   | |_____- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 warning: 1 warning emitted
 

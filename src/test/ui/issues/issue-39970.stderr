@@ -1,4 +1,4 @@
-warning: the where-clause bound `for<'a> <() as Array<'a>>::Element == ()` is trivially false
+warning: the where-clause bound `for<'a> <() as Array<'a>>::Element == ()` is impossible to satisfy
   --> $DIR/issue-39970.rs:15:5
    |
 LL | / impl Visit for () where
@@ -7,7 +7,9 @@ LL | |     (): for<'a> Array<'a, Element=()>, // ICE
    | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | |
 LL | | {}
-   | |__- this cannot be referenced without causing an error
+   | |__- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
   --> $DIR/issue-39970.rs:20:5

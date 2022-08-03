@@ -1885,17 +1885,22 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                             ),
                         );
                         if !fulfill_cx.select_all_or_error(self.infcx).is_empty() {
-                            self.tcx()
+                            let mut diag = self.tcx()
                                 .sess
                                 .struct_span_warn(
                                     span,
-                                    format!("the where-clause bound `{pred}` is trivially false"),
-                                )
-                                .span_label(
-                                    self.span,
-                                    "this cannot be referenced without causing an error",
-                                )
-                                .emit();
+                                    format!("the where-clause bound `{pred}` is impossible to satisfy"),
+                                );
+                            diag.span_label(
+                                self.span,
+                                "this item cannot be referenced without causing an error",
+                            );
+                            if self.infcx.tcx.sess.opts.unstable_features.is_nightly_build() {
+                                diag.help(
+                                    "add `#![feature(trivial_bounds)]` to the crate attributes to allow it",
+                                );
+                            }
+                            diag.emit();
                         }
                     }
                 });

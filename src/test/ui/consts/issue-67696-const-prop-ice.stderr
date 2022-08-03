@@ -1,20 +1,26 @@
-warning: the where-clause bound `[for<'r> fn(&'r ())]: Copy` is trivially false
+warning: the where-clause bound `[for<'r> fn(&'r ())]: Copy` is impossible to satisfy
   --> $DIR/issue-67696-const-prop-ice.rs:13:33
    |
 LL |     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
-   |     ----------------------------^^^^^^^^^^------------------- this cannot be referenced without causing an error
+   |     ----------------------------^^^^^^^^^^------------------- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
-warning: the where-clause bound `[for<'r> fn(&'r ())]: Clone` is trivially false
+warning: the where-clause bound `[for<'r> fn(&'r ())]: Clone` is impossible to satisfy
   --> $DIR/issue-67696-const-prop-ice.rs:13:33
    |
 LL |     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
-   |     ----------------------------^^^^^^^^^^------------------- this cannot be referenced without causing an error
+   |     ----------------------------^^^^^^^^^^------------------- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
-warning: the where-clause bound `[for<'r> fn(&'r ())]: Sized` is trivially false
+warning: the where-clause bound `[for<'r> fn(&'r ())]: Sized` is impossible to satisfy
   --> $DIR/issue-67696-const-prop-ice.rs:13:33
    |
 LL |     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
-   |     ----------------------------^^^^^^^^^^------------------- this cannot be referenced without causing an error
+   |     ----------------------------^^^^^^^^^^------------------- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 warning: 3 warnings emitted
 

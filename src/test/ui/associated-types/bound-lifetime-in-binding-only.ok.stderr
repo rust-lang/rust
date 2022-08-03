@@ -1,4 +1,4 @@
-warning: the where-clause bound `for<'a> <Parameterized<'a> as Foo>::Item == &'a i32` is trivially false
+warning: the where-clause bound `for<'a> <Parameterized<'a> as Foo>::Item == &'a i32` is impossible to satisfy
   --> $DIR/bound-lifetime-in-binding-only.rs:67:19
    |
 LL |   fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
@@ -6,9 +6,11 @@ LL |   fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
 LL | |
 LL | |
 LL | | }
-   | |_- this cannot be referenced without causing an error
+   | |_- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
-warning: the where-clause bound `for<'a> Parameterized<'a>: Foo` is trivially false
+warning: the where-clause bound `for<'a> Parameterized<'a>: Foo` is impossible to satisfy
   --> $DIR/bound-lifetime-in-binding-only.rs:67:19
    |
 LL |   fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
@@ -16,7 +18,9 @@ LL |   fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
 LL | |
 LL | |
 LL | | }
-   | |_- this cannot be referenced without causing an error
+   | |_- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 error: fatal error triggered by #[rustc_error]
   --> $DIR/bound-lifetime-in-binding-only.rs:73:1

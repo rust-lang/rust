@@ -1,4 +1,4 @@
-warning: the where-clause bound `<S as Identity<Q>>::T: Clone` is trivially false
+warning: the where-clause bound `<S as Identity<Q>>::T: Clone` is impossible to satisfy
   --> $DIR/issue-94999.rs:26:5
    |
 LL | / impl<Q> Clone for X
@@ -9,7 +9,9 @@ LL | |
 ...  |
 LL | |     }
 LL | | }
-   | |_- this cannot be referenced without causing an error
+   | |_- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 warning: 1 warning emitted
 

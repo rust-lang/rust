@@ -1,4 +1,4 @@
-warning: the where-clause bound `<String as Mirror<S>>::Image: Copy` is trivially false
+warning: the where-clause bound `<String as Mirror<S>>::Image: Copy` is impossible to satisfy
   --> $DIR/issue-42796.rs:9:40
    |
 LL |   pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy {
@@ -6,7 +6,9 @@ LL |   pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy
 LL | |
 LL | |     loop { drop(victim); }
 LL | | }
-   | |_- this cannot be referenced without causing an error
+   | |_- this item cannot be referenced without causing an error
+   |
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
 
 error[E0382]: borrow of moved value: `s`
   --> $DIR/issue-42796.rs:19:20
