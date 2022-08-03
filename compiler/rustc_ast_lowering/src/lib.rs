@@ -1345,10 +1345,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             if origin != hir::OpaqueTyOrigin::TyAlias {
+                // When lowering `fn foo<'a>() -> impl Debug + 'a`, the `lifetime_collector` finds
+                // the set of lifetimes that appear in the bounds (in this case, 'a) and returns
+                // that set in the variable lifetimes_in_bounds.
                 let lifetimes_in_bounds =
                     lifetime_collector::lifetimes_in_bounds(&lctx.resolver, bounds);
                 debug!(?lifetimes_in_bounds);
 
+                // For each captured lifetime (e.g., 'a), we create a new lifetime parameter that
+                // is a generic defined on the TAIT, so we have type Foo<'a1> = ... and we
+                // establish a mapping from the original parameter 'a to the new parameter 'a1.
                 collected_lifetimes = lctx.create_lifetime_defs(
                     opaque_ty_def_id,
                     &lifetimes_in_bounds,
@@ -1359,6 +1365,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!(?collected_lifetimes);
 
             lctx.with_remapping(new_remapping, |lctx| {
+                // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
+                // get back Debug + 'a1, which is suitable for use on the TAIT.
                 let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
 
                 let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
