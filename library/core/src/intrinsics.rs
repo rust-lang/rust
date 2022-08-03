@@ -1212,8 +1212,8 @@ extern "rust-intrinsic" {
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
     /// destination value, then forgets the original. Note that source and destination
-    /// are passed by-value, which means if `T` or `U` contains padding, that padding
-    /// might *not* be preserved by `transmute`.
+    /// are passed by-value, which means if `T` or `U` contain padding, that padding
+    /// is *not* guaranteed to be preserved by `transmute`.
     ///
     /// Both the argument and the result must be [valid](../../nomicon/what-unsafe-does.html) at
     /// their given type. Violating this condition leads to [undefined behavior][ub]. The compiler
@@ -1225,6 +1225,8 @@ extern "rust-intrinsic" {
     ///
     /// Transmuting pointers to integers in a `const` context is [undefined behavior][ub].
     /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
+    /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
+    /// Rust memory model and should be avoided. See below for alternatives.)
     ///
     /// Because `transmute` is a by-value operation, alignment of the *transmuted values
     /// themselves* is not a concern. As with any other function, the compiler already ensures
