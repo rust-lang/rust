@@ -263,14 +263,14 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                     };
 
                     let [pat, in_token, iter] = [
-                        (SyntaxKind::UNDERSCORE, "_"), 
-                        (SyntaxKind::IN_KW, "in"), 
+                        (SyntaxKind::UNDERSCORE, "_"),
+                        (SyntaxKind::IN_KW, "in"),
                         (SyntaxKind::IDENT, "__ra_fixup")
                     ].map(|(kind, text)| SyntheticToken { kind, text: text.into(), range: end_range, id: EMPTY_ID});
 
                     if it.pat().is_none() && it.in_token().is_none() && it.iterable().is_none() {
                         append.insert(for_token.into(), vec![pat, in_token, iter]);
-                    } 
+                    }
 
                     // Tricky: add logic to add in just a pattern or iterable if not all
                     // the pieces are missing
