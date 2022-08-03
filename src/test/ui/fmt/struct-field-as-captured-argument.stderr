@@ -42,5 +42,38 @@ help: consider using a positional formatting argument instead
 LL |     format!("{1} {} {baz}", "aa", foo.field, baz = 3);
    |               ~                 +++++++++++
 
-error: aborting due to 4 previous errors
+error: invalid format string: field access isn't supported
+  --> $DIR/struct-field-as-captured-argument.rs:15:15
+   |
+LL |     format!("{foo.field:?} {} {baz}", "aa", baz = 3);
+   |               ^^^^^^^^^ not supported in format string
+   |
+help: consider using a positional formatting argument instead
+   |
+LL |     format!("{1:?} {} {baz}", "aa", foo.field, baz = 3);
+   |               ~                   +++++++++++
+
+error: invalid format string: field access isn't supported
+  --> $DIR/struct-field-as-captured-argument.rs:16:15
+   |
+LL |     format!("{foo.field:#?} {} {baz}", "aa", baz = 3);
+   |               ^^^^^^^^^ not supported in format string
+   |
+help: consider using a positional formatting argument instead
+   |
+LL |     format!("{1:#?} {} {baz}", "aa", foo.field, baz = 3);
+   |               ~                    +++++++++++
+
+error: invalid format string: field access isn't supported
+  --> $DIR/struct-field-as-captured-argument.rs:17:15
+   |
+LL |     format!("{foo.field:.3} {} {baz}", "aa", baz = 3);
+   |               ^^^^^^^^^ not supported in format string
+   |
+help: consider using a positional formatting argument instead
+   |
+LL |     format!("{1:.3} {} {baz}", "aa", foo.field, baz = 3);
+   |               ~                    +++++++++++
+
+error: aborting due to 7 previous errors
 
