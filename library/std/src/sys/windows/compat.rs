@@ -151,7 +151,7 @@ impl Module {
 macro_rules! compat_fn_with_fallback {
     (pub static $module:ident: &CStr = $name:expr; $(
         $(#[$meta:meta])*
-        pub fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
+        $vis:vis fn $symbol:ident($($argname:ident: $argtype:ty),*) -> $rettype:ty $fallback_body:block
     )*) => (
         pub static $module: &CStr = $name;
     $(
@@ -208,7 +208,7 @@ macro_rules! compat_fn_with_fallback {
             }
         }
         $(#[$meta])*
-        pub use $symbol::call as $symbol;
+        $vis use $symbol::call as $symbol;
     )*)
 }
 
