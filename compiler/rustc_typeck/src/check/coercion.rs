@@ -38,10 +38,12 @@
 use crate::astconv::AstConv;
 use crate::check::FnCtxt;
 use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::Expr;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
 use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
@@ -86,6 +88,19 @@ impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
 }
 
 type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
+
+struct CollectRetsVisitor<'tcx> {
+    ret_exprs: Vec<&'tcx hir::Expr<'tcx>>,
+}
+
+impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        if let hir::ExprKind::Ret(_) = expr.kind {
+            self.ret_exprs.push(expr);
+        }
+        intravisit::walk_expr(self, expr);
+    }
+}
 
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
@@ -1481,6 +1496,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 let mut err;
                 let mut unsized_return = false;
+                let mut visitor = CollectRetsVisitor { ret_exprs: vec![] };
                 match *cause.code() {
                     ObligationCauseCode::ReturnNoExpression => {
                         err = struct_span_err!(
@@ -1505,6 +1521,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         );
                         if !fcx.tcx.features().unsized_locals {
                             unsized_return = self.is_return_ty_unsized(fcx, blk_id);
+                        }
+                        if let Some(expression) = expression
+                            && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind {
+                              intravisit::walk_block(& mut visitor, loop_blk);
                         }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
@@ -1551,11 +1571,38 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     );
                 }
 
+                if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
+                    self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
+                }
                 err.emit_unless(unsized_return);
 
                 self.final_ty = Some(fcx.tcx.ty_error());
             }
         }
+    }
+    fn note_unreachable_loop_return<'a>(
+        &self,
+        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+        expr: &hir::Expr<'tcx>,
+        ret_exprs: &Vec<&'tcx hir::Expr<'tcx>>,
+    ) {
+        let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else { return;};
+        let mut span: MultiSpan = vec![loop_span].into();
+        span.push_span_label(loop_span, "this might have zero elements to iterate on".to_string());
+        for ret_expr in ret_exprs {
+            span.push_span_label(
+                ret_expr.span,
+                "if the loop doesn't execute, this value would never get returned".to_string(),
+            );
+        }
+        err.span_note(
+            span,
+            "the function expects a value to always be returned, but loops might run zero times",
+        );
+        err.help(
+            "return a value for the case when the loop has zero elements to iterate on, or \
+           consider changing the return type to account for that possibility",
+        );
     }
 
     fn report_return_mismatched_types<'a>(
