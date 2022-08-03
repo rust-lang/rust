@@ -109,13 +109,32 @@ pub fn ios_llvm_target(arch: &str) -> String {
     format!("{}-apple-ios{}.{}.0", arch, major, minor)
 }
 
+pub fn ios_lld_platform_version() -> String {
+    let (major, minor) = ios_deployment_target();
+    format!("{}.{}", major, minor)
+}
+
 pub fn ios_sim_llvm_target(arch: &str) -> String {
     let (major, minor) = ios_deployment_target();
     format!("{}-apple-ios{}.{}.0-simulator", arch, major, minor)
 }
 
+fn tvos_deployment_target() -> (u32, u32) {
+    deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
+}
+
+pub fn tvos_lld_platform_version() -> String {
+    let (major, minor) = tvos_deployment_target();
+    format!("{}.{}", major, minor)
+}
+
 fn watchos_deployment_target() -> (u32, u32) {
     deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
+}
+
+pub fn watchos_lld_platform_version() -> String {
+    let (major, minor) = watchos_deployment_target();
+    format!("{}.{}", major, minor)
 }
 
 pub fn watchos_sim_llvm_target(arch: &str) -> String {
