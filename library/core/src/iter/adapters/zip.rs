@@ -2,6 +2,7 @@ use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -30,6 +31,27 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
             n -= 1;
         }
         None
+    }
+    #[inline]
+    fn adjust_back(&mut self)
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+    {
+        let a_sz = self.a.len();
+        let b_sz = self.b.len();
+        if a_sz != b_sz {
+            // Adjust a, b to equal length
+            if a_sz > b_sz {
+                for _ in 0..a_sz - b_sz {
+                    self.a.next_back();
+                }
+            } else {
+                for _ in 0..b_sz - a_sz {
+                    self.b.next_back();
+                }
+            }
+        }
     }
 }
 
@@ -95,6 +117,23 @@ where
     }
 
     #[inline]
+    fn fold<T, F>(self, init: T, f: F) -> T
+    where
+        F: FnMut(T, Self::Item) -> T,
+    {
+        ZipImpl::fold(self, init, f)
+    }
+
+    #[inline]
+    fn try_fold<T, F, R>(&mut self, init: T, f: F) -> R
+    where
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>,
+    {
+        ZipImpl::try_fold(self, init, f)
+    }
+
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -115,6 +154,23 @@ where
     fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
         ZipImpl::next_back(self)
     }
+
+    #[inline]
+    fn rfold<T, F>(self, init: T, f: F) -> T
+    where
+        F: FnMut(T, Self::Item) -> T,
+    {
+        ZipImpl::rfold(self, init, f)
+    }
+
+    #[inline]
+    fn try_rfold<T, F, R>(&mut self, init: T, f: F) -> R
+    where
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>,
+    {
+        ZipImpl::try_rfold(self, init, f)
+    }
 }
 
 // Zip specialization trait
@@ -129,6 +185,25 @@ trait ZipImpl<A, B> {
     where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator;
+    fn fold<T, F>(self, init: T, f: F) -> T
+    where
+        F: FnMut(T, Self::Item) -> T;
+    fn try_fold<T, F, R>(&mut self, init: T, f: F) -> R
+    where
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>;
+    fn rfold<T, F>(self, init: T, f: F) -> T
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+        F: FnMut(T, Self::Item) -> T;
+    fn try_rfold<T, F, R>(&mut self, init: T, f: F) -> R
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>;
+
     // This has the same safety requirements as `Iterator::__iterator_get_unchecked`
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
@@ -171,24 +246,107 @@ macro_rules! zip_impl_general_defaults {
             // and doesn’t call `next_back` too often, so this implementation is safe in
             // the `TrustedRandomAccessNoCoerce` specialization
 
-            let a_sz = self.a.len();
-            let b_sz = self.b.len();
-            if a_sz != b_sz {
-                // Adjust a, b to equal length
-                if a_sz > b_sz {
-                    for _ in 0..a_sz - b_sz {
-                        self.a.next_back();
-                    }
-                } else {
-                    for _ in 0..b_sz - a_sz {
-                        self.b.next_back();
-                    }
-                }
-            }
+            self.adjust_back();
             match (self.a.next_back(), self.b.next_back()) {
                 (Some(x), Some(y)) => Some((x, y)),
                 (None, None) => None,
                 _ => unreachable!(),
+            }
+        }
+
+        #[inline]
+        default fn fold<T, F>(self, init: T, mut f: F) -> T
+        where
+            F: FnMut(T, Self::Item) -> T,
+        {
+            let mut a = self.a;
+            let mut b = self.b;
+
+            let acc = a.try_fold(init, move |acc, x| match b.next() {
+                Some(y) => Ok(f(acc, (x, y))),
+                None => Err(acc),
+            });
+
+            match acc {
+                Ok(exhausted_a) => exhausted_a,
+                Err(exhausted_b) => exhausted_b,
+            }
+        }
+
+        #[inline]
+        default fn try_fold<T, F, R>(&mut self, init: T, mut f: F) -> R
+        where
+            F: FnMut(T, Self::Item) -> R,
+            R: Try<Output = T>,
+        {
+            let a = &mut self.a;
+            let b = &mut self.b;
+
+            let acc = a.try_fold(init, move |acc, x| match b.next() {
+                Some(y) => {
+                    let result = f(acc, (x, y));
+                    match result.branch() {
+                        ControlFlow::Continue(continue_) => Ok(continue_),
+                        ControlFlow::Break(break_) => Err(R::from_residual(break_)),
+                    }
+                }
+                None => Err(R::from_output(acc)),
+            });
+
+            match acc {
+                Ok(ok) => R::from_output(ok),
+                Err(err) => err,
+            }
+        }
+
+        #[inline]
+        default fn rfold<T, F>(mut self, init: T, mut f: F) -> T
+        where
+            A: DoubleEndedIterator + ExactSizeIterator,
+            B: DoubleEndedIterator + ExactSizeIterator,
+            F: FnMut(T, Self::Item) -> T,
+        {
+            self.adjust_back();
+            let mut a = self.a;
+            let mut b = self.b;
+
+            let acc = a.try_rfold(init, move |acc, x| match b.next_back() {
+                Some(y) => Ok(f(acc, (x, y))),
+                None => Err(acc),
+            });
+
+            match acc {
+                Ok(exhausted_a) => exhausted_a,
+                Err(exhausted_b) => exhausted_b,
+            }
+        }
+
+        #[inline]
+        default fn try_rfold<T, F, R>(&mut self, init: T, mut f: F) -> R
+        where
+            A: DoubleEndedIterator + ExactSizeIterator,
+            B: DoubleEndedIterator + ExactSizeIterator,
+            F: FnMut(T, Self::Item) -> R,
+            R: Try<Output = T>,
+        {
+            self.adjust_back();
+            let a = &mut self.a;
+            let b = &mut self.b;
+
+            let acc = a.try_rfold(init, move |acc, x| match b.next_back() {
+                Some(y) => {
+                    let result = f(acc, (x, y));
+                    match result.branch() {
+                        ControlFlow::Continue(c) => ControlFlow::Continue(c),
+                        ControlFlow::Break(b) => ControlFlow::Break(R::from_residual(b)),
+                    }
+                }
+                None => ControlFlow::Break(R::from_output(acc)),
+            });
+
+            match acc {
+                ControlFlow::Continue(c) => R::from_output(c),
+                ControlFlow::Break(b) => b,
             }
         }
     };
@@ -371,6 +529,60 @@ where
         } else {
             None
         }
+    }
+
+    #[inline]
+    fn fold<T, F>(mut self, init: T, mut f: F) -> T
+    where
+        F: FnMut(T, Self::Item) -> T,
+    {
+        let mut accum = init;
+        while let Some(x) = <Self as ZipImpl<A, B>>::next(&mut self) {
+            accum = f(accum, x);
+        }
+        accum
+    }
+
+    #[inline]
+    fn try_fold<T, F, R>(&mut self, init: T, mut f: F) -> R
+    where
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>,
+    {
+        let mut accum = init;
+        while let Some(x) = <Self as ZipImpl<A, B>>::next(self) {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+
+    #[inline]
+    fn rfold<T, F>(mut self, init: T, mut f: F) -> T
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+        F: FnMut(T, Self::Item) -> T,
+    {
+        let mut accum = init;
+        while let Some(x) = <Self as ZipImpl<A, B>>::next_back(&mut self) {
+            accum = f(accum, x);
+        }
+        accum
+    }
+
+    #[inline]
+    fn try_rfold<T, F, R>(&mut self, init: T, mut f: F) -> R
+    where
+        A: DoubleEndedIterator + ExactSizeIterator,
+        B: DoubleEndedIterator + ExactSizeIterator,
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>,
+    {
+        let mut accum = init;
+        while let Some(x) = <Self as ZipImpl<A, B>>::next_back(self) {
+            accum = f(accum, x)?;
+        }
+        try { accum }
     }
 }
 
