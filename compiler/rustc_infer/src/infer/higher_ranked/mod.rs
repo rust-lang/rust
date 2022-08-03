@@ -17,7 +17,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     ///
     /// This is implemented by first entering a new universe.
     /// We then replace all bound variables in `sup` with placeholders,
-    /// and all bound variables in `sup` with inference vars.
+    /// and all bound variables in `sub` with inference vars.
     /// We can then just relate the two resulting types as normal.
     ///
     /// Note: this is a subtle algorithm. For a full explanation, please see
