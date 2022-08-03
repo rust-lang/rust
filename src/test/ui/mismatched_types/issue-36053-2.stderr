@@ -35,6 +35,10 @@ LL | pub struct Filter<I, P> {
            which is required by `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:48]>: Iterator`
            `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:48]>: Iterator`
            which is required by `&mut Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:48]>: Iterator`
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     once::<&str>("str").fuse().filter(|a: &str| true).iter.count();
+   |                                                       +++++
 
 error: aborting due to 2 previous errors
 

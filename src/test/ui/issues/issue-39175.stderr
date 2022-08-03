@@ -5,6 +5,10 @@ LL |     Command::new("echo").arg("hello").exec();
    |                                       ^^^^ method not found in `&mut Command`
    |
    = help: items from traits can only be used if the trait is in scope
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     Command::new("echo").arg("hello").inner.exec();
+   |                                       ++++++
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL | use std::os::unix::process::CommandExt;

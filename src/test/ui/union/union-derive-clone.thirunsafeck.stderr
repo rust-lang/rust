@@ -42,6 +42,10 @@ help: consider annotating `CloneNoCopy` with `#[derive(Clone, Copy)]`
    |
 LL | #[derive(Clone, Copy)]
    |
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     let w = u.a.clone();
+   |               ++
 
 error: aborting due to 2 previous errors
 

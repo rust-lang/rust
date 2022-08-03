@@ -2611,15 +2611,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // up to a depth of three
             None
         } else {
-            // recursively search fields of `candidate_field` if it's a ty::Adt
             field_path.push(candidate_field.ident(self.tcx).normalize_to_macros_2_0());
             let field_ty = candidate_field.ty(self.tcx, subst);
-            if let Some((nested_fields, subst)) = self.get_field_candidates(span, field_ty) {
-                for field in nested_fields.iter() {
+            if matches(candidate_field, field_ty) {
+                return Some(field_path);
+            } else if let Some((nested_fields, subst)) = self.get_field_candidates(span, field_ty) {
+                // recursively search fields of `candidate_field` if it's a ty::Adt
+                for field in nested_fields {
                     if field.vis.is_accessible_from(id, self.tcx) {
-                        if matches(candidate_field, field_ty) {
-                            return Some(field_path);
-                        } else if let Some(field_path) = self.check_for_nested_field_satisfying(
+                        if let Some(field_path) = self.check_for_nested_field_satisfying(
                             span,
                             matches,
                             field,
