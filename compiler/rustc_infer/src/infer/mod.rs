@@ -840,18 +840,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.inner.borrow_mut().commit(undo_snapshot);
     }
 
-    /// Executes `f` and commit the bindings.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn commit_unconditionally<R, F>(&self, f: F) -> R
-    where
-        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
-    {
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.commit_from(snapshot);
-        r
-    }
-
     /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
     #[instrument(skip(self, f), level = "debug")]
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
