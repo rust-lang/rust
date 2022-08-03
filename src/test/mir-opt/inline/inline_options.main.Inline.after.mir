@@ -52,8 +52,4 @@ fn main() -> () {
         _0 = const ();                   // scope 0 at $DIR/inline-options.rs:+0:11: +3:2
         return;                          // scope 0 at $DIR/inline-options.rs:+3:2: +3:2
     }
-
-    bb5 (cleanup): {
-        resume;                          // scope 0 at $DIR/inline-options.rs:+0:1: +3:2
-    }
 }

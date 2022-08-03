@@ -39,8 +39,4 @@ fn main() -> () {
         StorageDead(_1);                 // scope 0 at $DIR/issue-76997-inline-scopes-parenting.rs:+3:1: +3:2
         return;                          // scope 0 at $DIR/issue-76997-inline-scopes-parenting.rs:+3:2: +3:2
     }
-
-    bb1 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-76997-inline-scopes-parenting.rs:+0:1: +3:2
-    }
 }

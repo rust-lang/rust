@@ -23,10 +23,6 @@
           _0 = const ();                   // scope 0 at $DIR/inline-specialization.rs:+0:11: +2:2
           StorageDead(_1);                 // scope 0 at $DIR/inline-specialization.rs:+2:1: +2:2
           return;                          // scope 0 at $DIR/inline-specialization.rs:+2:2: +2:2
-+     }
-+ 
-+     bb1 (cleanup): {
-+         resume;                          // scope 0 at $DIR/inline-specialization.rs:+0:1: +2:2
       }
   }
   

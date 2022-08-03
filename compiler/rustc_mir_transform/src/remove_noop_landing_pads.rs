@@ -83,9 +83,9 @@ impl RemoveNoopLandingPads {
     fn remove_nop_landing_pads(&self, body: &mut Body<'_>) {
         debug!("body: {:#?}", body);
 
-        // make sure there's a single resume block
+        // make sure there's a resume block
         let resume_block = {
-            let patch = MirPatch::new(body);
+            let mut patch = MirPatch::new(body);
             let resume_block = patch.resume_block();
             patch.apply(body);
             resume_block
