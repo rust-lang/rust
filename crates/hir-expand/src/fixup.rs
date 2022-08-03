@@ -67,7 +67,6 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
             preorder.skip_subtree();
             continue;
         }
-
         // In some other situations, we can fix things by just appending some tokens.
         let end_range = TextRange::empty(node.text_range().end());
         match_ast! {
@@ -195,6 +194,69 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                 },
                 // FIXME: foo::
                 // FIXME: for, match etc.
+                ast::MatchExpr(it) => {
+                    if it.expr().is_none() {
+                        let match_token = match it.match_token() {
+                            Some(t) => t,
+                            None => continue
+                        };
+                        append.insert(match_token.into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::IDENT,
+                                text: "__ra_fixup".into(),
+                                range: end_range,
+                                id: EMPTY_ID
+                            },
+                        ]);
+                    }
+                    if it.match_arm_list().is_none() {
+                        // No match arms
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::UNDERSCORE,
+                                text: "_".into(),
+                                range: end_range,
+                                id: EMPTY_ID
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::EQ,
+                                text: "=".into(),
+                                range: end_range,
+                                id: EMPTY_ID
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_ANGLE,
+                                text: ">".into(),
+                                range: end_range,
+                                id: EMPTY_ID
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
                 _ => (),
             }
         }
@@ -285,6 +347,53 @@ mod tests {
         // (but token IDs don't matter)
         let (original_as_tt, _) = mbe::syntax_node_to_token_tree(&parsed.syntax_node());
         assert_eq!(tt.to_string(), original_as_tt.to_string());
+    }
+
+
+    #[test]
+    fn match_no_expr_no_arms() {
+        check(
+            r#"
+fn foo() {
+    match
+}
+"#,
+            expect![[r#"
+fn foo () {match __ra_fixup {_ => {}}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn match_expr_no_arms() {
+        check(
+            r#"
+fn foo() {
+    match x {
+
+    }
+}
+"#,
+            expect![[r#"
+fn foo () {match x {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn match_no_expr() {
+        check(
+            r#"
+fn foo() {
+    match {
+        _ => {}
+    }
+}
+"#,
+            expect![[r#"
+fn foo () {match __ra_fixup {_ => {}}}
+"#]],
+        )
     }
 
     #[test]
