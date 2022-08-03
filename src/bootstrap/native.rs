@@ -345,13 +345,6 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
-        if builder.config.llvm_thin_lto {
-            cfg.define("LLVM_ENABLE_LTO", "Thin");
-            if !target.contains("apple") {
-                cfg.define("LLVM_ENABLE_LLD", "ON");
-            }
-        }
-
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
@@ -463,15 +456,8 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        if let Some(ref linker) = builder.config.llvm_use_linker {
-            cfg.define("LLVM_USE_LINKER", linker);
-        }
-
-        if builder.config.llvm_allow_old_toolchain {
-            cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
-        }
-
         configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
             cfg.define(key, val);
@@ -731,6 +717,25 @@ fn configure_cmake(
     }
 }
 
+fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmake::Config) {
+    // ThinLTO is only available when building with LLVM, enabling LLD is required.
+    // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+    if builder.config.llvm_thin_lto {
+        cfg.define("LLVM_ENABLE_LTO", "Thin");
+        if !target.contains("apple") {
+            cfg.define("LLVM_ENABLE_LLD", "ON");
+        }
+    }
+
+    if let Some(ref linker) = builder.config.llvm_use_linker {
+        cfg.define("LLVM_USE_LINKER", linker);
+    }
+
+    if builder.config.llvm_allow_old_toolchain {
+        cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
+    }
+}
+
 // Adapted from https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2347-L2365
 fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
@@ -794,6 +799,7 @@ impl Step for Lld {
         }
 
         configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_llvm(builder, target, &mut cfg);
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
@@ -824,10 +830,6 @@ impl Step for Lld {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
-
-        if builder.config.llvm_allow_old_toolchain {
-            cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
-        }
 
         // While we're using this horrible workaround to shim the execution of
         // llvm-config, let's just pile on more. I can't seem to figure out how
