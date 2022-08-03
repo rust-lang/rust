@@ -2582,10 +2582,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match base_t.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     let tcx = self.tcx;
+                    let fields = &base_def.non_enum_variant().fields;
+                    // Some struct, e.g. some that impl `Deref`, have all private fields
+                    // because you're expected to deref them to access the _real_ fields.
+                    // This, for example, will help us suggest accessing a field through a `Box<T>`.
+                    if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
+                        continue;
+                    }
                     return Some((
-                        base_def
-                            .non_enum_variant()
-                            .fields
+                        fields
                             .iter()
                             .filter(move |field| field.vis.is_accessible_from(mod_id, tcx))
                             // For compile-time reasons put a limit on number of fields we search
