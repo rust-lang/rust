@@ -23,26 +23,49 @@ use crate::*;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
+// This mapping is the reverse of `decode_error_kind` in
+// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>
+// and should be kept in sync.
 const UNIX_IO_ERROR_TABLE: &[(std::io::ErrorKind, &str)] = {
     use std::io::ErrorKind::*;
     &[
+        (ArgumentListTooLong, "E2BIG"),
+        (AddrInUse, "EADDRINUSE"),
+        (AddrNotAvailable, "EADDRNOTAVAIL"),
+        (ResourceBusy, "EBUSY"),
+        (ConnectionAborted, "ECONNABORTED"),
         (ConnectionRefused, "ECONNREFUSED"),
         (ConnectionReset, "ECONNRESET"),
-        (PermissionDenied, "EPERM"),
-        (BrokenPipe, "EPIPE"),
-        (NotConnected, "ENOTCONN"),
-        (ConnectionAborted, "ECONNABORTED"),
-        (AddrNotAvailable, "EADDRNOTAVAIL"),
-        (AddrInUse, "EADDRINUSE"),
-        (NotFound, "ENOENT"),
+        (Deadlock, "EDEADLK"),
+        (FilesystemQuotaExceeded, "EDQUOT"),
+        (AlreadyExists, "EEXIST"),
+        (FileTooLarge, "EFBIG"),
+        (HostUnreachable, "EHOSTUNREACH"),
         (Interrupted, "EINTR"),
         (InvalidInput, "EINVAL"),
-        (InvalidFilename, "ENAMETOOLONG"),
-        (TimedOut, "ETIMEDOUT"),
-        (AlreadyExists, "EEXIST"),
-        (WouldBlock, "EWOULDBLOCK"),
-        (DirectoryNotEmpty, "ENOTEMPTY"),
+        (IsADirectory, "EISDIR"),
         (FilesystemLoop, "ELOOP"),
+        (NotFound, "ENOENT"),
+        (OutOfMemory, "ENOMEM"),
+        (StorageFull, "ENOSPC"),
+        (Unsupported, "ENOSYS"),
+        (TooManyLinks, "EMLINK"),
+        (InvalidFilename, "ENAMETOOLONG"),
+        (NetworkDown, "ENETDOWN"),
+        (NetworkUnreachable, "ENETUNREACH"),
+        (NotConnected, "ENOTCONN"),
+        (NotADirectory, "ENOTDIR"),
+        (DirectoryNotEmpty, "ENOTEMPTY"),
+        (BrokenPipe, "EPIPE"),
+        (ReadOnlyFilesystem, "EROFS"),
+        (NotSeekable, "ESPIPE"),
+        (StaleNetworkFileHandle, "ESTALE"),
+        (TimedOut, "ETIMEDOUT"),
+        (ExecutableFileBusy, "ETXTBSY"),
+        (CrossesDevices, "EXDEV"),
+        // The following have two valid options...we pick one.
+        (PermissionDenied, "EPERM"),
+        (WouldBlock, "EWOULDBLOCK"),
     ]
 };
 
