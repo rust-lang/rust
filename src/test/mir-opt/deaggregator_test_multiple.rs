@@ -1,3 +1,4 @@
+// unit-test: Deaggregator
 // Test that deaggregate fires more than once per block
 
 enum Foo {

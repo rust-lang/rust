@@ -1,6 +1,7 @@
 // Test that `-C instrument-coverage` injects Coverage statements. The Coverage Counter statements
 // are later converted into LLVM instrprof.increment intrinsics, during codegen.
 
+// unit-test: InstrumentCoverage
 // needs-profiler-support
 // ignore-windows
 // compile-flags: -C instrument-coverage --remap-path-prefix={{src-base}}=/the/src

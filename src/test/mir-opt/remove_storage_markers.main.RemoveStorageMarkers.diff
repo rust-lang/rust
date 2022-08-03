@@ -23,13 +23,6 @@
               scope 3 {
                   debug i => _12;          // in scope 3 at $DIR/remove_storage_markers.rs:+2:9: +2:10
               }
-              scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<i32>>::next) { // at $DIR/remove_storage_markers.rs:8:14: 8:19
-                  debug self => _8;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-                  let mut _14: &mut std::ops::Range<i32>; // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-              }
-          }
-          scope 4 (inlined <std::ops::Range<i32> as IntoIterator>::into_iter) { // at $DIR/remove_storage_markers.rs:8:14: 8:19
-              debug self => _3;            // in scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
           }
       }
   
@@ -41,29 +34,39 @@
           Deinit(_3);                      // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           (_3.0: i32) = const 0_i32;       // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           (_3.1: i32) = const 10_i32;      // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          _2 = move _3;                    // scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
--         StorageDead(_3);                 // scope 1 at $DIR/remove_storage_markers.rs:+2:18: +2:19
--         StorageLive(_4);                 // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          _4 = move _2;                    // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          goto -> bb1;                     // scope 2 at $DIR/remove_storage_markers.rs:+2:5: +4:6
+          _2 = <std::ops::Range<i32> as IntoIterator>::into_iter(move _3) -> bb1; // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+                                           // mir::Constant
+                                           // + span: $DIR/remove_storage_markers.rs:10:14: 10:19
+                                           // + literal: Const { ty: fn(std::ops::Range<i32>) -> <std::ops::Range<i32> as IntoIterator>::IntoIter {<std::ops::Range<i32> as IntoIterator>::into_iter}, val: Value(<ZST>) }
       }
   
       bb1: {
+-         StorageDead(_3);                 // scope 1 at $DIR/remove_storage_markers.rs:+2:18: +2:19
+-         StorageLive(_4);                 // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+          _4 = move _2;                    // scope 1 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+          goto -> bb2;                     // scope 2 at $DIR/remove_storage_markers.rs:+2:5: +4:6
+      }
+  
+      bb2: {
 -         StorageLive(_6);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
 -         StorageLive(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
 -         StorageLive(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
 -         StorageLive(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           _9 = &mut _4;                    // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           _8 = &mut (*_9);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
--         StorageLive(_14);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-          _14 = &mut (*_8);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-          _7 = <std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next(move _14) -> bb4; // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+          _7 = <std::ops::Range<i32> as Iterator>::next(move _8) -> bb3; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
                                            // mir::Constant
-                                           // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
-                                           // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> Option<<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next}, val: Value(<ZST>) }
+                                           // + span: $DIR/remove_storage_markers.rs:10:14: 10:19
+                                           // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> Option<<std::ops::Range<i32> as Iterator>::Item> {<std::ops::Range<i32> as Iterator>::next}, val: Value(<ZST>) }
       }
   
-      bb2: {
+      bb3: {
+-         StorageDead(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:18: +2:19
+          _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+          switchInt(move _10) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+      }
+  
+      bb4: {
 -         StorageLive(_12);                // scope 2 at $DIR/remove_storage_markers.rs:+2:9: +2:10
           _12 = ((_7 as Some).0: i32);     // scope 2 at $DIR/remove_storage_markers.rs:+2:9: +2:10
 -         StorageLive(_13);                // scope 3 at $DIR/remove_storage_markers.rs:+3:16: +3:17
@@ -76,10 +79,14 @@
 -         StorageDead(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:+4:5: +4:6
 -         StorageDead(_6);                 // scope 2 at $DIR/remove_storage_markers.rs:+4:5: +4:6
           _5 = const ();                   // scope 2 at $DIR/remove_storage_markers.rs:+2:5: +4:6
-          goto -> bb1;                     // scope 2 at $DIR/remove_storage_markers.rs:+2:5: +4:6
+          goto -> bb2;                     // scope 2 at $DIR/remove_storage_markers.rs:+2:5: +4:6
       }
   
-      bb3: {
+      bb5: {
+          unreachable;                     // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+      }
+  
+      bb6: {
           _0 = const ();                   // scope 2 at $DIR/remove_storage_markers.rs:+2:5: +4:6
 -         StorageDead(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:+4:5: +4:6
 -         StorageDead(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:+4:5: +4:6
@@ -88,13 +95,6 @@
 -         StorageDead(_2);                 // scope 1 at $DIR/remove_storage_markers.rs:+4:5: +4:6
 -         StorageDead(_1);                 // scope 0 at $DIR/remove_storage_markers.rs:+5:1: +5:2
           return;                          // scope 0 at $DIR/remove_storage_markers.rs:+5:2: +5:2
-      }
-  
-      bb4: {
--         StorageDead(_14);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
--         StorageDead(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:18: +2:19
-          _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          switchInt(move _10) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
       }
   }
   
