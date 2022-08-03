@@ -2736,7 +2736,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 self.errors.push((
                                     e.span,
                                     format!(
-                                        "if the `for` loop runs 0 times, {} is not initialized ",
+                                        "if the `for` loop runs 0 times, {} is not initialized",
                                         self.name
                                     ),
                                 ));
