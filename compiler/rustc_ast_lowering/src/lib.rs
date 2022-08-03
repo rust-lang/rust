@@ -557,6 +557,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug_assert!(_old.is_none())
     }
 
+    /// Installs the remapping `remap` in scope while `f` is being executed.
+    /// This causes references to the `LocalDefId` keys to be changed to
+    /// refer to the values instead.
+    ///
+    /// The remapping is used when one piece of AST expands to multiple
+    /// pieces of HIR. For example, the function `fn foo<'a>(...) -> impl Debug + 'a`,
+    /// expands to both a function definition (`foo`) and a TAIT for the return value,
+    /// both of which have a lifetime parameter `'a`. The remapping allows us to
+    /// rewrite the `'a` in the return value to refer to the
+    /// `'a` declared on the TAIT, instead of the function.
     fn with_remapping<R>(
         &mut self,
         remap: FxHashMap<LocalDefId, LocalDefId>,
