@@ -23,8 +23,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, ConstInt, ConstKind, EarlyBinder, Instance, ParamEnv, ScalarInt, Ty, TyCtxt,
-    TypeVisitable,
+    self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::lint;
 use rustc_span::Span;
@@ -196,7 +195,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         );
 
         let ret_layout = ecx
-            .layout_of(EarlyBinder(body.return_ty()).subst(tcx, substs))
+            .layout_of(body.bound_return_ty().subst(tcx, substs))
             .ok()
             // Don't bother allocating memory for large values.
             // I don't know how return types can seem to be unsized but this happens in the
