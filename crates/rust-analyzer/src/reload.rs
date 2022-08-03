@@ -621,7 +621,10 @@ pub(crate) fn load_proc_macro(
         };
         let expander: Arc<dyn ProcMacroExpander> =
             if dummy_replace.iter().any(|replace| &**replace == name) {
-                Arc::new(DummyExpander)
+                match kind {
+                    ProcMacroKind::Attr => Arc::new(IdentityExpander),
+                    _ => Arc::new(EmptyExpander),
+                }
             } else {
                 Arc::new(Expander(expander))
             };
@@ -647,11 +650,11 @@ pub(crate) fn load_proc_macro(
         }
     }
 
-    /// Dummy identity expander, used for proc-macros that are deliberately ignored by the user.
+    /// Dummy identity expander, used for attribute proc-macros that are deliberately ignored by the user.
     #[derive(Debug)]
-    struct DummyExpander;
+    struct IdentityExpander;
 
-    impl ProcMacroExpander for DummyExpander {
+    impl ProcMacroExpander for IdentityExpander {
         fn expand(
             &self,
             subtree: &tt::Subtree,
@@ -659,6 +662,21 @@ pub(crate) fn load_proc_macro(
             _: &Env,
         ) -> Result<tt::Subtree, ProcMacroExpansionError> {
             Ok(subtree.clone())
+        }
+    }
+
+    /// Empty expander, used for proc-macros that are deliberately ignored by the user.
+    #[derive(Debug)]
+    struct EmptyExpander;
+
+    impl ProcMacroExpander for EmptyExpander {
+        fn expand(
+            &self,
+            _: &tt::Subtree,
+            _: Option<&tt::Subtree>,
+            _: &Env,
+        ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+            Ok(tt::Subtree::default())
         }
     }
 }
