@@ -332,6 +332,7 @@ mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
 mod partialeq_ne_impl;
+mod partialeq_to_none;
 mod pass_by_ref_or_value;
 mod path_buf_push_overwrite;
 mod pattern_type_mismatch;
@@ -931,6 +932,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
     store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports::default()));
     store.register_late_pass(|| Box::new(manual_instant_elapsed::ManualInstantElapsed));
+    store.register_late_pass(|| Box::new(partialeq_to_none::PartialeqToNone));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -267,6 +267,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(option_env_unwrap::OPTION_ENV_UNWRAP),
     LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
     LintId::of(partialeq_ne_impl::PARTIALEQ_NE_IMPL),
+    LintId::of(partialeq_to_none::PARTIALEQ_TO_NONE),
     LintId::of(precedence::PRECEDENCE),
     LintId::of(ptr::CMP_NULL),
     LintId::of(ptr::INVALID_NULL_PTR_USAGE),
