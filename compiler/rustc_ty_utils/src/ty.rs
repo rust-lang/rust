@@ -33,8 +33,9 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
+                .0
                 .iter()
-                .map(|ty| EarlyBinder(*ty).subst(tcx, substs))
+                .map(|ty| adt_tys.rebind(*ty).subst(tcx, substs))
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }

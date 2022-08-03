@@ -1883,7 +1883,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
                 Where(obligation.predicate.rebind({
-                    sized_crit.iter().map(|ty| EarlyBinder(*ty).subst(self.tcx(), substs)).collect()
+                    sized_crit
+                        .0
+                        .iter()
+                        .map(|ty| sized_crit.rebind(*ty).subst(self.tcx(), substs))
+                        .collect()
                 }))
             }
 
