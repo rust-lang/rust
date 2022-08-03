@@ -2356,11 +2356,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx.predicates_of(def_id);
+        let predicates = tcx.bound_predicates_of(def_id);
         debug!(?predicates);
-        assert_eq!(predicates.parent, None);
-        let mut obligations = Vec::with_capacity(predicates.predicates.len());
-        for (predicate, span) in predicates.predicates {
+        assert_eq!(predicates.0.parent, None);
+        let mut obligations = Vec::with_capacity(predicates.0.predicates.len());
+        for (predicate, span) in predicates.0.predicates {
             let span = *span;
             let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
@@ -2374,7 +2374,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                EarlyBinder(*predicate).subst(tcx, substs),
+                predicates.rebind(*predicate).subst(tcx, substs),
                 &mut obligations,
             );
             obligations.push(Obligation { cause, recursion_depth, param_env, predicate });
