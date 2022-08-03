@@ -1453,11 +1453,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             GenericParamKind::Lifetime => {
                 let ident_span = self.lower_span(ident.span);
                 let ident = self.lower_ident(ident);
-                let res = self.resolver.get_lifetime_res(id).unwrap_or_else(|| {
-                    panic!("Missing resolution for lifetime {:?} at {:?}", id, ident.span)
-                });
                 let lt_id = self.next_node_id();
-                let lifetime = self.new_named_lifetime_with_res(lt_id, ident_span, ident, res);
+                let lifetime = self.new_named_lifetime(id, lt_id, ident_span, ident);
                 Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
                     span,
