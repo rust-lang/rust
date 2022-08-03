@@ -82,8 +82,8 @@ pub fn target() -> Target {
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     options.add_pre_link_args(LinkerFlavor::Gcc, &["--target=wasm32-wasi"]);
 
-    options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
-    options.post_link_objects_fallback = crt_objects::post_wasi_fallback();
+    options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
+    options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
 
     // Right now this is a bit of a workaround but we're currently saying that
     // the target by default has a static crt which we're taking as a signal
