@@ -2,7 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd, VariantData};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};
 use rustc_session::parse::{feature_err, feature_err_issue};
@@ -577,6 +577,32 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
+    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
+        if let ast::StmtKind::Semi(expr) = &stmt.kind
+            && let ast::ExprKind::Assign(lhs, _, _) = &expr.kind
+            && let ast::ExprKind::Type(..) = lhs.kind
+            && self.sess.parse_sess.span_diagnostic.err_count() == 0
+            && !self.features.type_ascription
+            && !lhs.span.allows_unstable(sym::type_ascription)
+        {
+            // When we encounter a statement of the form `foo: Ty = val;`, this will emit a type
+            // ascription error, but the likely intention was to write a `let` statement. (#78907).
+            feature_err_issue(
+                &self.sess.parse_sess,
+                sym::type_ascription,
+                lhs.span,
+                GateIssue::Language,
+                "type ascription is experimental",
+            ).span_suggestion_verbose(
+                lhs.span.shrink_to_lo(),
+                "you might have meant to introduce a new binding",
+                "let ".to_string(),
+                Applicability::MachineApplicable,
+            ).emit();
+        }
+        visit::walk_stmt(self, stmt);
+    }
+
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::Box(_) => {
@@ -795,8 +821,6 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
     // checks if `#![feature]` has been used to enable any lang feature
     // does not check the same for lib features unless there's at least one
     // declared lang feature
-    use rustc_errors::Applicability;
-
     if !sess.opts.unstable_features.is_nightly_build() {
         let lang_features = &sess.features_untracked().declared_lang_features;
         if lang_features.len() == 0 {
