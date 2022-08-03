@@ -1396,6 +1396,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
 
+        // Contains the new lifetime definitions created for the TAIT (if any).
         let mut collected_lifetimes = Vec::new();
         let mut new_remapping = FxHashMap::default();
 
@@ -1760,6 +1761,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // by the opaque type. This should include all in-scope
         // lifetime parameters, including those defined in-band.
 
+        // Contains the new lifetime definitions created for the TAIT (if any) generated for the
+        // return type.
         let mut captures = Vec::new();
         let mut new_remapping = FxHashMap::default();
 
