@@ -6,6 +6,7 @@
 extern crate std;
 
 #[start]
-fn start(_: isize, _: *const *const u8) -> isize where fn(&()): Eq { //~ ERROR [E0647]
+fn start(_: isize, _: *const *const u8) -> isize where fn(&()): Eq {
+    //~^ ERROR start function is not allowed to have a `where` clause
     0
 }

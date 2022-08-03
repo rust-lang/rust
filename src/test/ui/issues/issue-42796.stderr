@@ -1,5 +1,15 @@
+warning: the where-clause bound `<String as Mirror<S>>::Image: Copy` is trivially false
+  --> $DIR/issue-42796.rs:9:40
+   |
+LL |   pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy {
+   |  _-                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |
+LL | |     loop { drop(victim); }
+LL | | }
+   | |_- this cannot be referenced without causing an error
+
 error[E0382]: borrow of moved value: `s`
-  --> $DIR/issue-42796.rs:18:20
+  --> $DIR/issue-42796.rs:19:20
    |
 LL |     let s = "Hello!".to_owned();
    |         - move occurs because `s` has type `String`, which does not implement the `Copy` trait
@@ -11,6 +21,6 @@ LL |     println!("{}", s);
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0382`.

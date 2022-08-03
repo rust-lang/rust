@@ -113,6 +113,16 @@ LL | fn return_str() -> str where str: Sized {
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error: aborting due to 11 previous errors
+warning: the where-clause bound `for<'r> fn(&'r ()): Foo` is trivially false
+  --> $DIR/feature-gate-trivial_bounds.rs:65:32
+   |
+LL |   fn global_hr(x: fn(&())) where fn(&()): Foo { // OK
+   |  _-                              ^^^^^^^^^^^^
+LL | |
+LL | |     x.test();
+LL | | }
+   | |_- this cannot be referenced without causing an error
+
+error: aborting due to 11 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

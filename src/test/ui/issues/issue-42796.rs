@@ -7,6 +7,7 @@ impl<T, Smoke> Mirror<Smoke> for T {
 }
 
 pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy {
+    //~^ WARNING the where-clause bound
     loop { drop(victim); }
 }
 

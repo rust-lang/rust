@@ -10,7 +10,7 @@ use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::{OutlivesEnvironment, RegionBoundPairs};
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::Normalized;
+use rustc_infer::traits::{Normalized, TraitEngine, TraitEngineExt as _};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -27,7 +27,8 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::query::NoSolution;
 use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
+    self, FulfillmentContext, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    SelectionContext, WellFormedLoc,
 };
 
 use std::cell::LazyCell;
@@ -1817,7 +1818,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
     /// aren't true.
     fn check_false_global_bounds(&mut self) {
-        let tcx = self.ocx.infcx.tcx;
+        let tcx = self.infcx.tcx;
         let mut span = self.span;
         let empty_env = ty::ParamEnv::empty();
 
@@ -1833,33 +1834,71 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             if let ty::PredicateKind::WellFormed(..) = obligation.predicate.kind().skip_binder() {
                 continue;
             }
+
             let pred = obligation.predicate;
+
+            // only use the span of the predicate clause (#90869)
+            let hir_node = tcx.hir().find(self.body_id);
+            if let Some(hir::Generics { predicates, .. }) =
+                hir_node.and_then(|node| node.generics())
+            {
+                let obligation_span = obligation.cause.span();
+                span = predicates
+                    .iter()
+                    // There seems to be no better way to find out which predicate we are in
+                    .find(|pred| pred.span().contains(obligation_span))
+                    .map(|pred| pred.span())
+                    .unwrap_or(obligation_span);
+            }
+
             // Match the existing behavior.
             if pred.is_global() && !pred.has_late_bound_regions() {
-                let pred = self.normalize(span, None, pred);
-                let hir_node = tcx.hir().find(self.body_id);
-
-                // only use the span of the predicate clause (#90869)
-
-                if let Some(hir::Generics { predicates, .. }) =
-                    hir_node.and_then(|node| node.generics())
-                {
-                    let obligation_span = obligation.cause.span();
-
-                    span = predicates
-                        .iter()
-                        // There seems to be no better way to find out which predicate we are in
-                        .find(|pred| pred.span().contains(obligation_span))
-                        .map(|pred| pred.span())
-                        .unwrap_or(obligation_span);
-                }
-
+                let normalized_pred = self.normalize(span, None, pred);
                 let obligation = traits::Obligation::new(
                     traits::ObligationCause::new(span, self.body_id, traits::TrivialBound),
                     empty_env,
-                    pred,
+                    normalized_pred,
                 );
-                self.ocx.register_obligation(obligation);
+                self.register_obligation(obligation);
+            } else {
+                self.infcx.probe(|_| {
+                    // Manually normalize because `wfcx.normalize` may report errors
+                    let Normalized { value: normalized_pred, obligations } = traits::normalize(
+                        &mut SelectionContext::new(self.infcx),
+                        self.param_env,
+                        ObligationCause::dummy(),
+                        pred,
+                    );
+                    if normalized_pred.is_global() {
+                        let mut fulfill_cx = FulfillmentContext::new_in_snapshot();
+                        fulfill_cx.register_predicate_obligations(self.infcx, obligations);
+                        fulfill_cx.register_predicate_obligation(
+                            self.infcx,
+                            traits::Obligation::new(
+                                traits::ObligationCause::new(
+                                    span,
+                                    self.body_id,
+                                    traits::TrivialBound,
+                                ),
+                                empty_env,
+                                normalized_pred,
+                            ),
+                        );
+                        if !fulfill_cx.select_all_or_error(self.infcx).is_empty() {
+                            self.tcx()
+                                .sess
+                                .struct_span_warn(
+                                    span,
+                                    format!("the where-clause bound `{pred}` is trivially false"),
+                                )
+                                .span_label(
+                                    self.span,
+                                    "this cannot be referenced without causing an error",
+                                )
+                                .emit();
+                        }
+                    }
+                });
             }
         }
     }

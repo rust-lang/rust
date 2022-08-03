@@ -65,6 +65,8 @@ fn ok2<T: for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>>() {
 
 #[cfg(ok)]
 fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
+    //[ok]~^ WARNING the where-clause bound
+    //[ok]~| WARNING the where-clause bound
 }
 
 #[rustc_error]

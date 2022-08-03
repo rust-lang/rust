@@ -12,6 +12,7 @@ pub trait Broken {
 impl<T> Broken for T {
     type Assoc = ();
     fn broken(&self) where Self::Assoc: Foo {
+        //~^ WARNING the where-clause bound
         let _x: <Self::Assoc as Foo>::Bar;
     }
 }

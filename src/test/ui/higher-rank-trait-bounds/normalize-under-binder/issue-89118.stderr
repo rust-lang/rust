@@ -1,5 +1,18 @@
+warning: the where-clause bound `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>` is trivially false
+  --> $DIR/issue-89118.rs:9:5
+   |
+LL | / trait StackContext
+LL | | where
+LL | |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |
+LL | | {
+LL | |     type Dispatcher;
+LL | | }
+   | |_- this cannot be referenced without causing an error
+
 error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
-  --> $DIR/issue-89118.rs:19:8
+  --> $DIR/issue-89118.rs:20:8
    |
 LL |     C: StackContext,
    |        ^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
@@ -18,8 +31,16 @@ LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
 
+warning: the where-clause bound `for<'a> Ctx<()>: BufferUdpStateContext<&'a ()>` is trivially false
+  --> $DIR/issue-89118.rs:29:5
+   |
+LL | / struct EthernetWorker<C>(C)
+LL | | where
+LL | |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
+   | |_____^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- this cannot be referenced without causing an error
+
 error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
-  --> $DIR/issue-89118.rs:29:9
+  --> $DIR/issue-89118.rs:31:9
    |
 LL | impl<C> EthernetWorker<C> {}
    |         ^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
@@ -30,7 +51,7 @@ note: required because of the requirements on the impl of `for<'a> BufferUdpStat
 LL | impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^     ^
 note: required by a bound in `EthernetWorker`
-  --> $DIR/issue-89118.rs:28:14
+  --> $DIR/issue-89118.rs:29:14
    |
 LL | struct EthernetWorker<C>(C)
    |        -------------- required by a bound in this
@@ -39,7 +60,7 @@ LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `EthernetWorker`
 
 error[E0277]: the trait bound `for<'a> &'a (): BufferMut` is not satisfied
-  --> $DIR/issue-89118.rs:22:20
+  --> $DIR/issue-89118.rs:23:20
    |
 LL |     type Handler = Ctx<C::Dispatcher>;
    |                    ^^^^^^^^^^^^^^^^^^ the trait `for<'a> BufferMut` is not implemented for `&'a ()`
@@ -58,6 +79,6 @@ LL | where
 LL |     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `StackContext`
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0277`.

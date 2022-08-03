@@ -1,0 +1,15 @@
+warning: the where-clause bound `for<'any> &'any mut (): Clone` is trivially false
+  --> $DIR/issue-94680.rs:9:13
+   |
+LL | /         pub fn cloneit(it: &'_ mut T) -> (&'_ mut T, &'_ mut T)
+LL | |         where
+LL | |             for<'any> &'any mut T: Clone,
+   | |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |
+LL | |         {
+LL | |             (it.clone(), it)
+LL | |         }
+   | |_________- this cannot be referenced without causing an error
+
+warning: 1 warning emitted
+

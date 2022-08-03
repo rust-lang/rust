@@ -11,6 +11,9 @@ trait A {
 
 impl A for [fn(&())] {
     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
+    //~^ WARNING the where-clause bound
+    //~| WARNING the where-clause bound
+    //~| WARNING the where-clause bound
 }
 
 impl A for i32 {

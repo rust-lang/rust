@@ -24,6 +24,7 @@ impl Holds for X {
 impl<Q> Clone for X
 where
     <S as Identity<Q>>::T: Clone,
+    //~^ WARNING the where-clause bound
     X: Holds<Q = Q>,
 {
     fn clone(&self) -> Self {

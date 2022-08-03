@@ -1,0 +1,20 @@
+warning: the where-clause bound `[for<'r> fn(&'r ())]: Copy` is trivially false
+  --> $DIR/issue-67696-const-prop-ice.rs:13:33
+   |
+LL |     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
+   |     ----------------------------^^^^^^^^^^------------------- this cannot be referenced without causing an error
+
+warning: the where-clause bound `[for<'r> fn(&'r ())]: Clone` is trivially false
+  --> $DIR/issue-67696-const-prop-ice.rs:13:33
+   |
+LL |     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
+   |     ----------------------------^^^^^^^^^^------------------- this cannot be referenced without causing an error
+
+warning: the where-clause bound `[for<'r> fn(&'r ())]: Sized` is trivially false
+  --> $DIR/issue-67696-const-prop-ice.rs:13:33
+   |
+LL |     fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
+   |     ----------------------------^^^^^^^^^^------------------- this cannot be referenced without causing an error
+
+warning: 3 warnings emitted
+

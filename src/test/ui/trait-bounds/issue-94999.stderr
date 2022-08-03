@@ -1,0 +1,15 @@
+warning: the where-clause bound `<S as Identity<Q>>::T: Clone` is trivially false
+  --> $DIR/issue-94999.rs:26:5
+   |
+LL | / impl<Q> Clone for X
+LL | | where
+LL | |     <S as Identity<Q>>::T: Clone,
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | |
+...  |
+LL | |     }
+LL | | }
+   | |_- this cannot be referenced without causing an error
+
+warning: 1 warning emitted
+

@@ -7,6 +7,7 @@ impl<B: BufferMut, C> BufferUdpStateContext<B> for C {}
 trait StackContext
 where
     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>,
+    //~^ WARNING the where-clause bound
 {
     type Dispatcher;
 }
@@ -26,6 +27,7 @@ where
 struct EthernetWorker<C>(C)
 where
     Ctx<()>: for<'a> BufferUdpStateContext<&'a ()>;
+    //~^ WARNING the where-clause bound
 impl<C> EthernetWorker<C> {}
 //~^ ERROR: is not satisfied [E0277]
 
