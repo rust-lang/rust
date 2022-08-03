@@ -18,7 +18,7 @@ specific with this target, so any ARMv4T device should work fine.
 The target is cross-compiled, and uses static linking.
 
 The linker that comes with rustc cannot link for this platform (the platform is
-to old). You will need the `arm-none-eabi-ld` linker from a GNU Binutils
+too old). You will need the `arm-none-eabi-ld` linker from a GNU Binutils
 targeting ARM. This can be obtained for Windows/Mac/Linux from the [ARM
 Developer Website][arm-dev], or possibly from your OS's package manager.
 
