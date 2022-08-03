@@ -135,7 +135,11 @@ trait ResolverAstLoweringExt {
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
     fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
+    /// Record the map from `from` local def id to `to` local def id, on `generics_def_id_map`
+    /// field.
     fn record_def_id_remap(&mut self, from: LocalDefId, to: LocalDefId);
+    /// Get the previously recorded `to` local def id given the `from` local def id, obtained using
+    /// `generics_def_id_map` field.
     fn get_remapped_def_id(&self, local_def_id: LocalDefId) -> LocalDefId;
 }
 
