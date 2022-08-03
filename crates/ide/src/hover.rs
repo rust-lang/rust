@@ -235,7 +235,11 @@ fn hover_type_fallback(
     let node = token
         .parent_ancestors()
         .take_while(|it| !ast::Item::can_cast(it.kind()))
-        .find(|n| ast::Expr::can_cast(n.kind()) || ast::Pat::can_cast(n.kind()))?;
+        .find(|n| {
+            ast::Expr::can_cast(n.kind())
+                || ast::Pat::can_cast(n.kind())
+                || ast::Type::can_cast(n.kind())
+        })?;
 
     let expr_or_pat = match_ast! {
         match node {
