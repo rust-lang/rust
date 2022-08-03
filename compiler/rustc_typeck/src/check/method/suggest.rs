@@ -1000,7 +1000,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     label_span_not_found(&mut err);
                 }
 
-                self.check_for_field_method(&mut err, source, span, actual, item_name);
+                // Don't suggest (for example) `expr.field.method()` if `expr.method()`
+                // doesn't exist due to unsatisfied predicates.
+                if unsatisfied_predicates.is_empty() {
+                    self.check_for_field_method(&mut err, source, span, actual, item_name);
+                }
 
                 self.check_for_unwrap_self(&mut err, source, span, actual, item_name);
 
