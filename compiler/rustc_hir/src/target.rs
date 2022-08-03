@@ -162,7 +162,7 @@ impl Target {
             Target::Union => "union",
             Target::Trait => "trait",
             Target::TraitAlias => "trait alias",
-            Target::Impl => "item",
+            Target::Impl => "implementation block",
             Target::Expression => "expression",
             Target::Statement => "statement",
             Target::Arm => "match arm",
