@@ -787,15 +787,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    /// Register a binder to be ignored for lifetime capture.
-    #[tracing::instrument(level = "debug", skip(self, f))]
+    /// Lowers a lifetime binder that defines `generic_params`, returning the corresponding HIR
+    /// nodes. The returned list includes any "extra" lifetime parameters that were added by the
+    /// name resolver owing to lifetime elision; this also populates the resolver's node-id->def-id
+    /// map, so that later calls to `opt_node_id_to_def_id` that refer to these extra lifetime
+    /// parameters will be successful.
+    #[tracing::instrument(level = "debug", skip(self))]
     #[inline]
-    fn with_lifetime_binder<T>(
+    fn lower_lifetime_binder(
         &mut self,
         binder: NodeId,
         generic_params: &[GenericParam],
-        f: impl FnOnce(&mut Self, &'hir [hir::GenericParam<'hir>]) -> T,
-    ) -> T {
+    ) -> &'hir [hir::GenericParam<'hir>] {
         let mut generic_params: Vec<_> = self.lower_generic_params_mut(generic_params).collect();
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
@@ -805,7 +808,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let generic_params = self.arena.alloc_from_iter(generic_params);
         debug!(?generic_params);
 
-        f(self, generic_params)
+        generic_params
     }
 
     fn with_dyn_type_scope<T>(&mut self, in_scope: bool, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -1226,15 +1229,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => {
-                self.with_lifetime_binder(t.id, &f.generic_params, |this, generic_params| {
-                    hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                        generic_params,
-                        unsafety: this.lower_unsafety(f.unsafety),
-                        abi: this.lower_extern(f.ext),
-                        decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
-                        param_names: this.lower_fn_params_to_names(&f.decl),
-                    }))
-                })
+                let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
+                hir::TyKind::BareFn(self.arena.alloc(hir::BareFnTy {
+                    generic_params,
+                    unsafety: self.lower_unsafety(f.unsafety),
+                    abi: self.lower_extern(f.ext),
+                    decl: self.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
+                    param_names: self.lower_fn_params_to_names(&f.decl),
+                }))
             }
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => hir::TyKind::Tup(
@@ -2069,14 +2071,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &PolyTraitRef,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
-        self.with_lifetime_binder(
-            p.trait_ref.ref_id,
-            &p.bound_generic_params,
-            |this, bound_generic_params| {
-                let trait_ref = this.lower_trait_ref(&p.trait_ref, itctx);
-                hir::PolyTraitRef { bound_generic_params, trait_ref, span: this.lower_span(p.span) }
-            },
-        )
+        let bound_generic_params =
+            self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
+        let trait_ref = self.lower_trait_ref(&p.trait_ref, itctx);
+        hir::PolyTraitRef { bound_generic_params, trait_ref, span: self.lower_span(p.span) }
     }
 
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext) -> hir::MutTy<'hir> {
