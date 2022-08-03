@@ -1,3 +1,4 @@
+// unit-test: SimplifyLocals
 // compile-flags: -C overflow-checks=no
 
 fn use_zst(_: ((), ())) {}
