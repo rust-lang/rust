@@ -528,20 +528,14 @@ pub struct GenericParamCount {
 pub struct Generics<'hir> {
     pub params: &'hir [GenericParam<'hir>],
     pub predicates: &'hir [WherePredicate<'hir>],
-    pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
 }
 
 impl<'hir> Generics<'hir> {
     pub const fn empty() -> &'hir Generics<'hir> {
-        const NOPE: Generics<'_> = Generics {
-            params: &[],
-            predicates: &[],
-            has_where_clause_predicates: false,
-            where_clause_span: DUMMY_SP,
-            span: DUMMY_SP,
-        };
+        const NOPE: Generics<'_> =
+            Generics { params: &[], predicates: &[], where_clause_span: DUMMY_SP, span: DUMMY_SP };
         &NOPE
     }
 
@@ -578,7 +572,7 @@ impl<'hir> Generics<'hir> {
     ///  in `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
     pub fn tail_span_for_predicate_suggestion(&self) -> Span {
         let end = self.where_clause_span.shrink_to_hi();
-        if self.has_where_clause_predicates {
+        if self.has_where_clause_predicates() {
             self.predicates
                 .iter()
                 .filter(|p| p.in_where_clause())
@@ -592,7 +586,7 @@ impl<'hir> Generics<'hir> {
     }
 
     pub fn add_where_or_trailing_comma(&self) -> &'static str {
-        if self.has_where_clause_predicates {
+        if self.has_where_clause_predicates() {
             ","
         } else if self.where_clause_span.is_empty() {
             " where"
@@ -688,6 +682,10 @@ impl<'hir> Generics<'hir> {
             //             ^^^^^^^^^
             bounds[bound_pos - 1].span().shrink_to_hi().to(span)
         }
+    }
+
+    pub fn has_where_clause_predicates(&self) -> bool {
+        !self.where_clause_span.is_empty()
     }
 }
 
@@ -3495,7 +3493,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(Expr<'static>, 56);
     rustc_data_structures::static_assert_size!(ForeignItem<'static>, 72);
     rustc_data_structures::static_assert_size!(GenericBound<'_>, 48);
-    rustc_data_structures::static_assert_size!(Generics<'static>, 56);
+    rustc_data_structures::static_assert_size!(Generics<'static>, 48);
     rustc_data_structures::static_assert_size!(ImplItem<'static>, 88);
     rustc_data_structures::static_assert_size!(Impl<'static>, 80);
     rustc_data_structures::static_assert_size!(Item<'static>, 80);

@@ -277,7 +277,7 @@ pub fn suggest_constraining_type_params<'a>(
             continue;
         }
 
-        if generics.has_where_clause_predicates {
+        if generics.has_where_clause_predicates() {
             // This part is a bit tricky, because using the `where` clause user can
             // provide zero, one or many bounds for the same type parameter, so we
             // have following cases to consider:

@@ -393,7 +393,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         .emit();
                         error = true;
                     }
-                    if generics.has_where_clause_predicates {
+                    if generics.has_where_clause_predicates() {
                         struct_span_err!(
                             tcx.sess,
                             generics.where_clause_span,
