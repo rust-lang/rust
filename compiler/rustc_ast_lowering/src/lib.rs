@@ -1349,6 +1349,35 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
     }
 
+    /// Lowers a `ReturnPositionOpaqueTy` (`-> impl Trait`) or a `TypeAliasesOpaqueTy` (`type F =
+    /// impl Trait`): this creates the associated Opaque Type (TAIT) definition and then returns a
+    /// HIR type that references the TAIT.
+    ///
+    /// Given a function definition like:
+    ///
+    /// ```rust
+    /// fn test<'a, T: Debug>(x: &'a T) -> impl Debug + 'a {
+    ///     x
+    /// }
+    /// ```
+    ///
+    /// we will create a TAIT definition in the HIR like
+    ///
+    /// ```
+    /// type TestReturn<'a, T, 'x> = impl Debug + 'x
+    /// ```
+    ///
+    /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
+    ///
+    /// ```rust
+    /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
+    /// ```
+    ///
+    /// Note the subtely around type parameters! The new TAIT, `TestReturn`, inherits all the
+    /// type parameters from the function `test` (this is implemented in the query layer, they aren't
+    /// added explicitly in the HIR). But this includes all the lifetimes, and we only want to
+    /// capture the lifetimes that are referenced in the bounds. Therefore, we add *extra* lifetime parameters
+    /// for the lifetimes that get captured (`'x`, in our example above) and reference those.
     #[tracing::instrument(level = "debug", skip(self))]
     fn lower_opaque_impl_trait(
         &mut self,
