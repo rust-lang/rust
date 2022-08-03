@@ -58,7 +58,7 @@ jobs:
             # contains package information of crates installed via `cargo install`.
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'cargo-miri/version.rs') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'cargo-miri/src/version.rs') }}
           restore-keys: ${{ runner.os }}-cargo
 
       - name: Install rustup-toolchain-install-master and xargo

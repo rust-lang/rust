@@ -9,7 +9,7 @@ edition = "2021"
 
 [[bin]]
 name = "cargo-miri"
-path = "bin.rs"
+path = "src/main.rs"
 test = false # we have no unit tests
 doctest = false # and no doc tests
 
