@@ -380,6 +380,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.typing.continueCommentsOnNewline": {
+                    "markdownDescription": "Whether to prefix newlines after comments with the corresponding comment prefix.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.expressionFillDefault": {
                     "markdownDescription": "Placeholder expression to use for missing expressions in assists.",

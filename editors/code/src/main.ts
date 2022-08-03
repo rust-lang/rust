@@ -84,7 +84,9 @@ async function tryActivate(context: vscode.ExtensionContext): Promise<RustAnalyz
 
     warnAboutExtensionConflicts();
 
-    ctx.pushCleanup(configureLanguage());
+    if (config.typingContinueCommentsOnNewline) {
+        ctx.pushCleanup(configureLanguage());
+    }
 
     vscode.workspace.onDidChangeConfiguration(
         (_) =>
