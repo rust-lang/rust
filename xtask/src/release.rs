@@ -81,7 +81,7 @@ impl flags::Promote {
         let date = date_iso(sh)?;
         let branch = format!("rust-analyzer-{date}");
         cmd!(sh, "git switch -c {branch}").run()?;
-        cmd!(sh, "git subtree pull -P src/tools/rust-analyzer rust-analyzer master").run()?;
+        cmd!(sh, "git subtree pull -m ':arrow_up: rust-analyzer' -P src/tools/rust-analyzer rust-analyzer release").run()?;
 
         if !self.dry_run {
             cmd!(sh, "git push -u origin {branch}").run()?;
