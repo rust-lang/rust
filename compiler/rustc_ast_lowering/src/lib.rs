@@ -137,13 +137,10 @@ struct LoweringContext<'a, 'hir> {
 #[derive(Debug)]
 struct LifetimeCaptureContext {
     /// Set of lifetimes to rebind.
-    captures: FxHashMap<
-        LocalDefId, // original parameter id
-        (
-            Lifetime,    // Lifetime parameter
-            LifetimeRes, // original resolution
-        ),
-    >,
+    captures: Vec<(
+        Lifetime,    // Lifetime parameter
+        LifetimeRes, // original resolution
+    )>,
 }
 
 trait ResolverAstLoweringExt {
@@ -1324,7 +1321,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
 
-        let mut collected_lifetimes = FxHashMap::default();
+        let mut collected_lifetimes = Vec::new();
         let mut new_remapping = FxHashMap::default();
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
@@ -1360,8 +1357,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
             debug!(?collected_lifetimes);
 
-            let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
-                |(_, &(lifetime, _))| {
+            let lifetime_defs =
+                lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(|&(lifetime, _)| {
                     let hir_id = lctx.lower_node_id(lifetime.id);
                     debug_assert_ne!(lctx.opt_local_def_id(lifetime.id), None);
 
@@ -1379,8 +1376,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         kind: hir::GenericParamKind::Lifetime { kind },
                         colon_span: None,
                     }
-                },
-            ));
+                }));
 
             debug!("lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs);
 
@@ -1400,8 +1396,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
         });
 
-        let lifetimes = self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(
-            |(_, (lifetime, res))| {
+        let lifetimes =
+            self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(|(lifetime, res)| {
                 let id = self.next_node_id();
                 let span = lifetime.ident.span;
 
@@ -1413,8 +1409,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 let l = self.new_named_lifetime_with_res(id, span, ident, res);
                 hir::GenericArg::Lifetime(l)
-            },
-        ));
+            }));
 
         debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes);
 
@@ -1468,7 +1463,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             remapping.insert(old_def_id, new_def_id);
 
                             let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
-                            captured_lifetimes.captures.insert(old_def_id, (new_lifetime, res));
+                            captured_lifetimes.captures.push((new_lifetime, res));
                         }
                     }
 
@@ -1486,7 +1481,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             remapping.insert(old_def_id, new_def_id);
 
                             let new_lifetime = Lifetime { id: node_id, ident: lifetime.ident };
-                            captured_lifetimes.captures.insert(old_def_id, (new_lifetime, res));
+                            captured_lifetimes.captures.push((new_lifetime, res));
                         }
                     }
 
@@ -1694,7 +1689,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // by the opaque type. This should include all in-scope
         // lifetime parameters, including those defined in-band.
 
-        let mut captures = FxHashMap::default();
+        let mut captures = Vec::new();
         let mut new_remapping = FxHashMap::default();
 
         let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
@@ -1730,7 +1725,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             let new_lifetime = Lifetime { id: inner_node_id, ident };
-            captures.insert(outer_def_id, (new_lifetime, inner_res));
+            captures.push((new_lifetime, inner_res));
         }
 
         debug!(?captures);
@@ -1768,7 +1763,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let future_bound = ret;
 
             let generic_params =
-                this.arena.alloc_from_iter(captures.iter().map(|(_, &(lifetime, _))| {
+                this.arena.alloc_from_iter(captures.iter().map(|&(lifetime, _)| {
                     let hir_id = this.lower_node_id(lifetime.id);
                     debug_assert_ne!(this.opt_local_def_id(lifetime.id), None);
 
@@ -1821,7 +1816,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
         let generic_args =
-            self.arena.alloc_from_iter(captures.into_iter().map(|(_, (lifetime, res))| {
+            self.arena.alloc_from_iter(captures.into_iter().map(|(lifetime, res)| {
                 let id = self.next_node_id();
                 let span = lifetime.ident.span;
 
