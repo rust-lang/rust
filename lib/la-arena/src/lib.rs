@@ -208,6 +208,16 @@ impl<T> Arena<T> {
         Arena { data: Vec::new() }
     }
 
+    /// Create a new empty arena with specific capacity.
+    ///
+    /// ```
+    /// let arena: la_arena::Arena<i32> = la_arena::Arena::with_capacity(42);
+    /// assert!(arena.is_empty());
+    /// ```
+    pub fn with_capacity(capacity: usize) -> Arena<T> {
+        Arena { data: Vec::with_capacity(capacity) }
+    }
+
     /// Empties the arena, removing all contained values.
     ///
     /// ```

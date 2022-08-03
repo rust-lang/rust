@@ -11,6 +11,16 @@ pub struct ArenaMap<IDX, V> {
 }
 
 impl<T, V> ArenaMap<Idx<T>, V> {
+    /// Creates a new empty map.
+    pub const fn new() -> Self {
+        Self { v: Vec::new(), _ty: PhantomData }
+    }
+
+    /// Create a new empty map with specific capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self { v: Vec::with_capacity(capacity), _ty: PhantomData }
+    }
+
     /// Inserts a value associated with a given arena index into the map.
     pub fn insert(&mut self, idx: Idx<T>, t: V) {
         let idx = Self::to_idx(idx);
@@ -70,6 +80,6 @@ impl<T, V> std::ops::IndexMut<Idx<V>> for ArenaMap<Idx<V>, T> {
 
 impl<T, V> Default for ArenaMap<Idx<V>, T> {
     fn default() -> Self {
-        ArenaMap { v: Vec::new(), _ty: PhantomData }
+        Self::new()
     }
 }
