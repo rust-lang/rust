@@ -151,8 +151,6 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
-        // Normalize the trait reference. The WF rules ought to ensure
-        // that this always succeeds.
         let impl1_trait_ref = match traits::fully_normalize(
             &infcx,
             FulfillmentContext::new(),
@@ -161,8 +159,12 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
             impl1_trait_ref,
         ) {
             Ok(impl1_trait_ref) => impl1_trait_ref,
-            Err(err) => {
-                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+            Err(_errors) => {
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(impl1_def_id),
+                    format!("failed to fully normalize {impl1_trait_ref}"),
+                );
+                impl1_trait_ref
             }
         };
 
