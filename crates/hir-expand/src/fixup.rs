@@ -193,7 +193,6 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                     }
                 },
                 // FIXME: foo::
-                // FIXME: for, match etc.
                 ast::MatchExpr(it) => {
                     if it.expr().is_none() {
                         let match_token = match it.match_token() {
@@ -245,6 +244,42 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                             SyntheticToken {
                                 kind: SyntaxKind::R_CURLY,
                                 text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
+                ast::ForExpr(it) => {
+                    let for_token = match it.for_token() {
+                        Some(token) => token,
+                        None => continue
+                    };
+
+                    let [pat, in_token, iter] = [
+                        (SyntaxKind::UNDERSCORE, "_"), 
+                        (SyntaxKind::IN_KW, "in"), 
+                        (SyntaxKind::IDENT, "__ra_fixup")
+                    ].map(|(kind, text)| SyntheticToken { kind, text: text.into(), range: end_range, id: EMPTY_ID});
+
+                    if it.pat().is_none() && it.in_token().is_none() && it.iterable().is_none() {
+                        append.insert(for_token.into(), vec![pat, in_token, iter]);
+                    } 
+
+                    // Tricky: add logic to add in just a pattern or iterable if not all
+                    // the pieces are missing
+
+                    if it.loop_body().is_none() {
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
                                 range: end_range,
                                 id: EMPTY_ID,
                             },
@@ -349,6 +384,47 @@ mod tests {
         assert_eq!(tt.to_string(), original_as_tt.to_string());
     }
 
+    #[test]
+    fn for_no_iter_no_body() {
+        check(
+            r#"
+fn foo() {
+    for
+}
+"#,
+            expect![[r#"
+fn foo () {for _ in __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn for_no_iter() {
+        check(
+            r#"
+fn foo() {
+    for {}
+}
+"#,
+            expect![[r#"
+fn foo () {for _ in __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn for_no_body() {
+        check(
+            r#"
+fn foo() {
+    for bar in qux
+}
+"#,
+            expect![[r#"
+fn foo () {for bar in qux {}}
+"#]],
+        )
+    }
 
     #[test]
     fn match_no_expr_no_arms() {
