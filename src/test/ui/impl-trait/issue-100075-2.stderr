@@ -1,0 +1,24 @@
+warning: function cannot return without recursing
+  --> $DIR/issue-100075-2.rs:1:1
+   |
+LL | fn opaque<T>(t: T) -> impl Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |     opaque(Some(t))
+   |     --------------- recursive call site
+   |
+   = note: `#[warn(unconditional_recursion)]` on by default
+   = help: a `loop` may express intention better if this is on purpose
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/issue-100075-2.rs:1:23
+   |
+LL | fn opaque<T>(t: T) -> impl Sized {
+   |                       ^^^^^^^^^^ recursive opaque type
+...
+LL |     opaque(Some(t))
+   |     --------------- returning here with type `impl Sized`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0720`.
