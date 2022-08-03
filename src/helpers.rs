@@ -23,49 +23,51 @@ use crate::*;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
-// This mapping is the reverse of `decode_error_kind` in
-// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>
-// and should be kept in sync.
-const UNIX_IO_ERROR_TABLE: &[(std::io::ErrorKind, &str)] = {
+// This mapping should match `decode_error_kind` in
+// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>.
+const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
     &[
-        (ArgumentListTooLong, "E2BIG"),
-        (AddrInUse, "EADDRINUSE"),
-        (AddrNotAvailable, "EADDRNOTAVAIL"),
-        (ResourceBusy, "EBUSY"),
-        (ConnectionAborted, "ECONNABORTED"),
-        (ConnectionRefused, "ECONNREFUSED"),
-        (ConnectionReset, "ECONNRESET"),
-        (Deadlock, "EDEADLK"),
-        (FilesystemQuotaExceeded, "EDQUOT"),
-        (AlreadyExists, "EEXIST"),
-        (FileTooLarge, "EFBIG"),
-        (HostUnreachable, "EHOSTUNREACH"),
-        (Interrupted, "EINTR"),
-        (InvalidInput, "EINVAL"),
-        (IsADirectory, "EISDIR"),
-        (FilesystemLoop, "ELOOP"),
-        (NotFound, "ENOENT"),
-        (OutOfMemory, "ENOMEM"),
-        (StorageFull, "ENOSPC"),
-        (Unsupported, "ENOSYS"),
-        (TooManyLinks, "EMLINK"),
-        (InvalidFilename, "ENAMETOOLONG"),
-        (NetworkDown, "ENETDOWN"),
-        (NetworkUnreachable, "ENETUNREACH"),
-        (NotConnected, "ENOTCONN"),
-        (NotADirectory, "ENOTDIR"),
-        (DirectoryNotEmpty, "ENOTEMPTY"),
-        (BrokenPipe, "EPIPE"),
-        (ReadOnlyFilesystem, "EROFS"),
-        (NotSeekable, "ESPIPE"),
-        (StaleNetworkFileHandle, "ESTALE"),
-        (TimedOut, "ETIMEDOUT"),
-        (ExecutableFileBusy, "ETXTBSY"),
-        (CrossesDevices, "EXDEV"),
-        // The following have two valid options...we pick one.
-        (PermissionDenied, "EPERM"),
-        (WouldBlock, "EWOULDBLOCK"),
+        ("E2BIG", ArgumentListTooLong),
+        ("EADDRINUSE", AddrInUse),
+        ("EADDRNOTAVAIL", AddrNotAvailable),
+        ("EBUSY", ResourceBusy),
+        ("ECONNABORTED", ConnectionAborted),
+        ("ECONNREFUSED", ConnectionRefused),
+        ("ECONNRESET", ConnectionReset),
+        ("EDEADLK", Deadlock),
+        ("EDQUOT", FilesystemQuotaExceeded),
+        ("EEXIST", AlreadyExists),
+        ("EFBIG", FileTooLarge),
+        ("EHOSTUNREACH", HostUnreachable),
+        ("EINTR", Interrupted),
+        ("EINVAL", InvalidInput),
+        ("EISDIR", IsADirectory),
+        ("ELOOP", FilesystemLoop),
+        ("ENOENT", NotFound),
+        ("ENOMEM", OutOfMemory),
+        ("ENOSPC", StorageFull),
+        ("ENOSYS", Unsupported),
+        ("EMLINK", TooManyLinks),
+        ("ENAMETOOLONG", InvalidFilename),
+        ("ENETDOWN", NetworkDown),
+        ("ENETUNREACH", NetworkUnreachable),
+        ("ENOTCONN", NotConnected),
+        ("ENOTDIR", NotADirectory),
+        ("ENOTEMPTY", DirectoryNotEmpty),
+        ("EPIPE", BrokenPipe),
+        ("EROFS", ReadOnlyFilesystem),
+        ("ESPIPE", NotSeekable),
+        ("ESTALE", StaleNetworkFileHandle),
+        ("ETIMEDOUT", TimedOut),
+        ("ETXTBSY", ExecutableFileBusy),
+        ("EXDEV", CrossesDevices),
+        // The following have two valid options. We have both for the forwards mapping; only the
+        // first one will be used for the backwards mapping.
+        ("EPERM", PermissionDenied),
+        ("EACCES", PermissionDenied),
+        ("EWOULDBLOCK", WouldBlock),
+        ("EAGAIN", WouldBlock),
     ]
 };
 
@@ -577,7 +579,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
         if target.families.iter().any(|f| f == "unix") {
-            for &(kind, name) in UNIX_IO_ERROR_TABLE {
+            for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if err_kind == kind {
                     return this.eval_libc(name);
                 }
@@ -615,7 +617,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let target = &this.tcx.sess.target;
         if target.families.iter().any(|f| f == "unix") {
             let errnum = errnum.to_i32()?;
-            for &(kind, name) in UNIX_IO_ERROR_TABLE {
+            for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if errnum == this.eval_libc_i32(name)? {
                     return Ok(kind);
                 }
