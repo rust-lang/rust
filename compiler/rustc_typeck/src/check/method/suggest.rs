@@ -1334,10 +1334,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
     ) {
         if let SelfSource::MethodCall(expr) = source
-            && let Some((fields, substs)) = self.get_field_candidates(span, actual)
+            && let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id()
+            && let Some((fields, substs)) = self.get_field_candidates_considering_privacy(span, actual, mod_id)
         {
             let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
-            for candidate_field in fields.iter() {
+            for candidate_field in fields {
                 if let Some(field_path) = self.check_for_nested_field_satisfying(
                     span,
                     &|_, field_ty| {
@@ -1353,7 +1354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     candidate_field,
                     substs,
                     vec![],
-                    self.tcx.parent_module(expr.hir_id).to_def_id(),
+                    mod_id,
                 ) {
                     let field_path_str = field_path
                         .iter()

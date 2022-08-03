@@ -41,16 +41,6 @@ LL | pub struct BufWriter<W: Write> {
            `&dyn std::io::Write: std::io::Write`
            which is required by `BufWriter<&dyn std::io::Write>: std::io::Write`
    = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: one of the expressions' fields has a method of the same name
-  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
-   |
-LL |         $dst.inner.write_fmt($crate::format_args_nl!($($arg)*))
-   |              ++++++
-help: one of the expressions' fields has a method of the same name
-  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
-   |
-LL |         $dst.buf.write_fmt($crate::format_args_nl!($($arg)*))
-   |              ++++
 
 error: aborting due to 3 previous errors
 

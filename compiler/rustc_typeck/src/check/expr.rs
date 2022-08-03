@@ -2535,15 +2535,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
-        if let Some((fields, substs)) = self.get_field_candidates(span, expr_t) {
-            for candidate_field in fields.iter() {
+        let mod_id = self.tcx.parent_module(id).to_def_id();
+        if let Some((fields, substs)) =
+            self.get_field_candidates_considering_privacy(span, expr_t, mod_id)
+        {
+            for candidate_field in fields {
                 if let Some(mut field_path) = self.check_for_nested_field_satisfying(
                     span,
                     &|candidate_field, _| candidate_field.ident(self.tcx()) == field,
                     candidate_field,
                     substs,
                     vec![],
-                    self.tcx.parent_module(id).to_def_id(),
+                    mod_id,
                 ) {
                     // field_path includes `field` that we're looking for, so pop it.
                     field_path.pop();
@@ -2567,22 +2570,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    pub(crate) fn get_field_candidates(
+    pub(crate) fn get_field_candidates_considering_privacy(
         &self,
         span: Span,
-        base_t: Ty<'tcx>,
-    ) -> Option<(&[ty::FieldDef], SubstsRef<'tcx>)> {
-        debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_t);
+        base_ty: Ty<'tcx>,
+        mod_id: DefId,
+    ) -> Option<(impl Iterator<Item = &'tcx ty::FieldDef> + 'tcx, SubstsRef<'tcx>)> {
+        debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
-        for (base_t, _) in self.autoderef(span, base_t) {
+        for (base_t, _) in self.autoderef(span, base_ty) {
             match base_t.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
-                    let fields = &base_def.non_enum_variant().fields;
-                    // For compile-time reasons put a limit on number of fields we search
-                    if fields.len() > 100 {
-                        return None;
-                    }
-                    return Some((fields, substs));
+                    let tcx = self.tcx;
+                    return Some((
+                        base_def
+                            .non_enum_variant()
+                            .fields
+                            .iter()
+                            .filter(move |field| field.vis.is_accessible_from(mod_id, tcx))
+                            // For compile-time reasons put a limit on number of fields we search
+                            .take(100),
+                        substs,
+                    ));
                 }
                 _ => {}
             }
@@ -2599,7 +2608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         candidate_field: &ty::FieldDef,
         subst: SubstsRef<'tcx>,
         mut field_path: Vec<Ident>,
-        id: DefId,
+        mod_id: DefId,
     ) -> Option<Vec<Ident>> {
         debug!(
             "check_for_nested_field_satisfying(span: {:?}, candidate_field: {:?}, field_path: {:?}",
@@ -2615,20 +2624,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let field_ty = candidate_field.ty(self.tcx, subst);
             if matches(candidate_field, field_ty) {
                 return Some(field_path);
-            } else if let Some((nested_fields, subst)) = self.get_field_candidates(span, field_ty) {
+            } else if let Some((nested_fields, subst)) =
+                self.get_field_candidates_considering_privacy(span, field_ty, mod_id)
+            {
                 // recursively search fields of `candidate_field` if it's a ty::Adt
                 for field in nested_fields {
-                    if field.vis.is_accessible_from(id, self.tcx) {
-                        if let Some(field_path) = self.check_for_nested_field_satisfying(
-                            span,
-                            matches,
-                            field,
-                            subst,
-                            field_path.clone(),
-                            id,
-                        ) {
-                            return Some(field_path);
-                        }
+                    if let Some(field_path) = self.check_for_nested_field_satisfying(
+                        span,
+                        matches,
+                        field,
+                        subst,
+                        field_path.clone(),
+                        mod_id,
+                    ) {
+                        return Some(field_path);
                     }
                 }
             }

@@ -25,14 +25,6 @@ help: consider annotating `R` with `#[derive(Clone)]`
    |
 LL | #[derive(Clone)]
    |
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _j = i.0.clone();
-   |                ++
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _j = i.1.clone();
-   |                ++
 
 error: aborting due to previous error
 

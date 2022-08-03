@@ -33,10 +33,6 @@ LL | pub struct TakeWhile<I, P> {
            which is required by `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>: Iterator`
            `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>: Iterator`
            which is required by `&mut Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 6:43]>>: Iterator`
-help: one of the expressions' fields has a method of the same name
-   |
-LL |         .it.collect();
-   |          +++
 
 error: aborting due to 2 previous errors
 

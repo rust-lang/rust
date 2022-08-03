@@ -23,14 +23,6 @@ LL | | >(Unique<T>, A);
            which is required by `Box<dyn Foo>: Clone`
            `dyn Foo: Clone`
            which is required by `Box<dyn Foo>: Clone`
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _z = y.0.clone();
-   |                ++
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _z = y.1.clone();
-   |                ++
 
 error: aborting due to previous error
 

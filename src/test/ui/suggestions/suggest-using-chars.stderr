@@ -25,10 +25,6 @@ help: because of the in-memory representation of `&str`, to obtain an `Iterator`
    |
 LL |     let _ = String::from("bar").chars();
    |                                 ~~~~~
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _ = String::from("bar").vec.iter();
-   |                                 ++++
 
 error[E0599]: no method named `iter` found for reference `&String` in the current scope
   --> $DIR/suggest-using-chars.rs:5:36
@@ -40,10 +36,6 @@ help: because of the in-memory representation of `&str`, to obtain an `Iterator`
    |
 LL |     let _ = (&String::from("bar")).chars();
    |                                    ~~~~~
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let _ = (&String::from("bar")).vec.iter();
-   |                                    ++++
 
 error[E0599]: no method named `iter` found for type `{integer}` in the current scope
   --> $DIR/suggest-using-chars.rs:6:15
