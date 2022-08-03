@@ -51,11 +51,17 @@ impl<'tcx> Cx<'tcx> {
         trace!(?expr.ty);
 
         // Now apply adjustments, if any.
-        for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
-            trace!(?expr, ?adjustment);
-            let span = expr.span;
-            expr =
-                self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
+        if self.apply_adjustments {
+            for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
+                trace!(?expr, ?adjustment);
+                let span = expr.span;
+                expr = self.apply_adjustment(
+                    hir_expr,
+                    expr,
+                    adjustment,
+                    adjustment_span.unwrap_or(span),
+                );
+            }
         }
 
         trace!(?expr.ty, "after adjustments");
