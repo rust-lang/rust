@@ -47,4 +47,57 @@ fn main() {
         let _ = &packed2.y; // ok, has align 2 in packed(2) struct
         let _ = &packed2.z; // ok, has align 1
     }
+
+    unsafe {
+        struct U16(u16);
+
+        impl Drop for U16 {
+            fn drop(&mut self) {
+                println!("{:p}", self);
+            }
+        }
+
+        struct HasDrop;
+
+        impl Drop for HasDrop {
+            fn drop(&mut self) {}
+        }
+
+        #[allow(unused)]
+        struct Wrapper {
+            a: U16,
+            b: HasDrop,
+        }
+        #[allow(unused)]
+        #[repr(packed(2))]
+        struct Wrapper2 {
+            a: U16,
+            b: HasDrop,
+        }
+
+        // An outer struct with more restrictive packing than the inner struct -- make sure we
+        // notice that!
+        #[repr(packed)]
+        struct Misalign<T>(u8, T);
+
+        let m1 = Misalign(
+            0,
+            Wrapper {
+                a: U16(10),
+                b: HasDrop,
+            },
+        );
+        let _ref = &m1.1.a; //~ ERROR reference to packed field
+        //~^ previously accepted
+
+        let m2 = Misalign(
+            0,
+            Wrapper2 {
+                a: U16(10),
+                b: HasDrop,
+            },
+        );
+        let _ref = &m2.1.a; //~ ERROR reference to packed field
+        //~^ previously accepted
+    }
 }
