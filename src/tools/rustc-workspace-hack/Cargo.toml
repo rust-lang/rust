@@ -79,11 +79,10 @@ crossbeam-utils = { version = "0.8.0", features = ["nightly"] }
 libc = { version = "0.2.79", features = ["align"] }
 # Ensure default features of libz-sys, which are disabled in some scenarios.
 libz-sys = { version = "1.1.2" }
-
-# looks like the only user of deprecated `use_std` feature is `combine`, so this
-# can be removed if/when https://github.com/Marwes/combine/pull/348 be merged and released.
+# The only user of memchr's deprecated `use_std` feature is `combine`, so this can be
+# removed if/when https://github.com/Marwes/combine/pull/348 is merged and released.
 memchr = { version = "2.5", features = ["std", "use_std"] }
-# same for regex
+# Ensure default features of regex, which are disabled in some scenarios.
 regex = { version = "1.5.6" }
 proc-macro2 = { version = "1", features = ["default"] }
 quote = { version = "1", features = ["default"] }

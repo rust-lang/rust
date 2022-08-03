@@ -324,6 +324,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_type(ty)
     }
 
+    pub fn resolve_trait(&self, trait_: &ast::Path) -> Option<Trait> {
+        self.imp.resolve_trait(trait_)
+    }
+
     // FIXME: Figure out a nice interface to inspect adjustments
     pub fn is_implicit_reborrow(&self, expr: &ast::Expr) -> Option<Mutability> {
         self.imp.is_implicit_reborrow(expr)
@@ -924,7 +928,12 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(|it| it.value)
+        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
+            |InFile { file_id, value }| {
+                self.cache(find_root(value.syntax()), file_id);
+                value
+            },
+        )
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
@@ -1007,6 +1016,20 @@ impl<'db> SemanticsImpl<'db> {
         let ty = hir_ty::TyLoweringContext::new(self.db, &analyze.resolver)
             .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))
+    }
+
+    fn resolve_trait(&self, path: &ast::Path) -> Option<Trait> {
+        let analyze = self.analyze(path.syntax())?;
+        let hygiene = hir_expand::hygiene::Hygiene::new(self.db.upcast(), analyze.file_id);
+        let ctx = body::LowerCtx::with_hygiene(self.db.upcast(), &hygiene);
+        let hir_path = Path::from_src(path.clone(), &ctx)?;
+        match analyze
+            .resolver
+            .resolve_path_in_type_ns_fully(self.db.upcast(), hir_path.mod_path())?
+        {
+            TypeNs::TraitId(id) => Some(Trait { id }),
+            _ => None,
+        }
     }
 
     fn is_implicit_reborrow(&self, expr: &ast::Expr) -> Option<Mutability> {

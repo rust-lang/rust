@@ -39,6 +39,8 @@ pub(crate) struct ProcMacroSrv {
     expanders: HashMap<(PathBuf, SystemTime), dylib::Expander>,
 }
 
+const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
+
 impl ProcMacroSrv {
     pub fn expand(&mut self, task: ExpandMacro) -> Result<FlatTree, PanicMessage> {
         let expander = self.expander(task.lib.as_ref()).map_err(|err| {
@@ -66,13 +68,18 @@ impl ProcMacroSrv {
         // FIXME: replace this with std's scoped threads once they stabilize
         // (then remove dependency on crossbeam)
         let result = crossbeam::scope(|s| {
-            let res = s
+            let res = match s
+                .builder()
+                .stack_size(EXPANDER_STACK_SIZE)
+                .name(task.macro_name.clone())
                 .spawn(|_| {
                     expander
                         .expand(&task.macro_name, &macro_body, attributes.as_ref())
                         .map(|it| FlatTree::new(&it))
-                })
-                .join();
+                }) {
+                Ok(handle) => handle.join(),
+                Err(e) => std::panic::resume_unwind(Box::new(e)),
+            };
 
             match res {
                 Ok(res) => res,

@@ -34,6 +34,7 @@ pub trait TyExt {
     fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig>;
 
     fn strip_references(&self) -> &Ty;
+    fn strip_reference(&self) -> &Ty;
 
     /// If this is a `dyn Trait`, returns that trait.
     fn dyn_trait(&self) -> Option<TraitId>;
@@ -180,6 +181,10 @@ impl TyExt for Ty {
             t = ty;
         }
         t
+    }
+
+    fn strip_reference(&self) -> &Ty {
+        self.as_reference().map_or(self, |(ty, _, _)| ty)
     }
 
     fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>> {

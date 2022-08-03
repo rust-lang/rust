@@ -1055,7 +1055,7 @@ impl DefCollector<'_> {
         };
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
-            let resolver2 = |path| {
+            let resolver = |path| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
                     self.db,
                     ResolveMode::Other,
@@ -1068,7 +1068,7 @@ impl DefCollector<'_> {
                     .take_macros()
                     .map(|it| (it, macro_id_to_def_id(self.db, it)))
             };
-            let resolver = |path| resolver2(path).map(|(_, it)| it);
+            let resolver_def_id = |path| resolver(path).map(|(_, it)| it);
 
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
@@ -1077,7 +1077,7 @@ impl DefCollector<'_> {
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
-                        &resolver,
+                        &resolver_def_id,
                         &mut |_err| (),
                     );
                     if let Ok(Ok(call_id)) = call_id {
@@ -1093,7 +1093,7 @@ impl DefCollector<'_> {
                         *derive_attr,
                         *derive_pos as u32,
                         self.def_map.krate,
-                        &resolver2,
+                        &resolver,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1158,7 +1158,7 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    let def = match resolver(path.clone()) {
+                    let def = match resolver_def_id(path.clone()) {
                         Some(def) if def.is_attribute() => def,
                         _ => return true,
                     };
@@ -1292,7 +1292,8 @@ impl DefCollector<'_> {
             true
         });
         // Attribute resolution can add unresolved macro invocations, so concatenate the lists.
-        self.unresolved_macros.extend(macros);
+        macros.extend(mem::take(&mut self.unresolved_macros));
+        self.unresolved_macros = macros;
 
         for (module_id, depth, container, macro_call_id) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, depth, container);

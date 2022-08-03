@@ -74,7 +74,7 @@ pub(crate) fn complete_pattern(
                 hir::ModuleDef::Variant(variant)
                     if refutable || single_variant_enum(variant.parent_enum(ctx.db)) =>
                 {
-                    acc.add_variant_pat(ctx, pattern_ctx, variant, Some(name.clone()));
+                    acc.add_variant_pat(ctx, pattern_ctx, None, variant, Some(name.clone()));
                     true
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(e)) => refutable || single_variant_enum(e),
@@ -180,6 +180,6 @@ pub(crate) fn complete_pattern_path(
 
             acc.add_nameref_keywords_with_colon(ctx);
         }
-        Qualified::Infer | Qualified::With { .. } => {}
+        Qualified::TypeAnchor { .. } | Qualified::With { .. } => {}
     }
 }

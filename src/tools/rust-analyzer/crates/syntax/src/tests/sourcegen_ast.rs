@@ -682,6 +682,8 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                     | "value"
                     | "trait"
                     | "self_ty"
+                    | "iterable"
+                    | "condition"
             );
             if manually_implemented {
                 return;
