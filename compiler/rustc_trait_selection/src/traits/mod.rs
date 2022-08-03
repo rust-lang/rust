@@ -164,7 +164,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
 
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
