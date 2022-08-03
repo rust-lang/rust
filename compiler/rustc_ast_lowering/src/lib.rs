@@ -482,6 +482,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         start
     }
 
+    /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
+    /// resolver (if any), after applying any remapping from `get_remapped_def_id`.
+    ///
+    /// For example: for each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
+    /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping from the
+    /// original parameter 'a to the new parameter 'a1.
+    ///
+    /// This method will return, given `'a` node id, `'a1` def id, going through, as a mid step,
+    /// the def_id of `'a`.
+    /// For cases when there are no mappings, it will just return the def_id that correspond to the
+    /// given node_id.
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.resolver
             .node_id_to_def_id
