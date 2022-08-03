@@ -109,6 +109,14 @@ fn main() {
         let _: Ty2<u32, u32> = transmute(value::<MaybeUninit<Ty2<u32, u32>>>()); // Ok
 
         let _: Ty<&[u32]> = transmute::<&[u32], _>(value::<&Vec<u32>>()); // Ok
+
+        let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<Ty2<u32, u32>, u32>>()); // Ok
+        let _: *const Ty2C<Ty2<u32, u32>, u32> = transmute(value::<*const Ty2<u32, u32>>()); // Ok
+        let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<(), Ty2<u32, u32>>>()); // Ok
+        let _: *const Ty2C<(), Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>()); // Ok
+
+        let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty2<u32, u32>>>()); // Err
+        let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>()); // Err
     }
 }
 

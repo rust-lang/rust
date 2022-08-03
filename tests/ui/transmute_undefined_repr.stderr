@@ -60,8 +60,24 @@ LL |         let _: Box<Ty2<u32, u32>> = transmute(value::<&'static mut Ty2<u32,
    |
    = note: two instances of the same generic type (`Ty2`) may have different layouts
 
+error: transmute into `*const Ty2<u32, u32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:118:39
+   |
+LL |         let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty2<u32, u32>>>()); // Err
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the contained type `Ty2<u32, u32>` has an undefined layout
+
+error: transmute from `*const Ty2<u32, u32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:119:50
+   |
+LL |         let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>()); // Err
+   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the contained type `Ty2<u32, u32>` has an undefined layout
+
 error: transmute from `std::vec::Vec<Ty2<U, i32>>` to `std::vec::Vec<Ty2<T, u32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:138:35
+  --> $DIR/transmute_undefined_repr.rs:146:35
    |
 LL |         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>()); // Err
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,12 +85,12 @@ LL |         let _: Vec<Ty2<T, u32>> = transmute(value::<Vec<Ty2<U, i32>>>()); /
    = note: two instances of the same generic type (`Vec`) may have different layouts
 
 error: transmute from `std::vec::Vec<Ty2<T, u32>>` to `std::vec::Vec<Ty2<U, i32>>`, both of which have an undefined layout
-  --> $DIR/transmute_undefined_repr.rs:139:35
+  --> $DIR/transmute_undefined_repr.rs:147:35
    |
 LL |         let _: Vec<Ty2<U, i32>> = transmute(value::<Vec<Ty2<T, u32>>>()); // Err
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: two instances of the same generic type (`Vec`) may have different layouts
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 

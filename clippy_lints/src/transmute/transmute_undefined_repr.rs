@@ -164,9 +164,18 @@ pub(super) fn check<'tcx>(
                     );
                     return true;
                 },
+                // `Repr(C)` <-> unordered type.
+                // If the first field of the `Repr(C)` type matches then the transmute is ok
+                (ReducedTy::OrderedFields(_, Some(from_sub_ty)), ReducedTy::UnorderedFields(to_sub_ty))
+                | (ReducedTy::UnorderedFields(from_sub_ty), ReducedTy::OrderedFields(_, Some(to_sub_ty)))
+                | (ReducedTy::Ref(from_sub_ty), ReducedTy::Ref(to_sub_ty)) => {
+                    from_ty = from_sub_ty;
+                    to_ty = to_sub_ty;
+                    continue;
+                },
                 (
                     ReducedTy::UnorderedFields(from_ty),
-                    ReducedTy::Other(_) | ReducedTy::OrderedFields(_) | ReducedTy::Ref(_),
+                    ReducedTy::Other(_) | ReducedTy::OrderedFields(..) | ReducedTy::Ref(_),
                 ) => {
                     span_lint_and_then(
                         cx,
@@ -182,7 +191,7 @@ pub(super) fn check<'tcx>(
                     return true;
                 },
                 (
-                    ReducedTy::Other(_) | ReducedTy::OrderedFields(_) | ReducedTy::Ref(_),
+                    ReducedTy::Other(_) | ReducedTy::OrderedFields(..) | ReducedTy::Ref(_),
                     ReducedTy::UnorderedFields(to_ty),
                 ) => {
                     span_lint_and_then(
@@ -198,14 +207,9 @@ pub(super) fn check<'tcx>(
                     );
                     return true;
                 },
-                (ReducedTy::Ref(from_sub_ty), ReducedTy::Ref(to_sub_ty)) => {
-                    from_ty = from_sub_ty;
-                    to_ty = to_sub_ty;
-                    continue;
-                },
                 (
-                    ReducedTy::OrderedFields(_) | ReducedTy::Ref(_) | ReducedTy::Other(_) | ReducedTy::Param,
-                    ReducedTy::OrderedFields(_) | ReducedTy::Ref(_) | ReducedTy::Other(_) | ReducedTy::Param,
+                    ReducedTy::OrderedFields(..) | ReducedTy::Ref(_) | ReducedTy::Other(_) | ReducedTy::Param,
+                    ReducedTy::OrderedFields(..) | ReducedTy::Ref(_) | ReducedTy::Other(_) | ReducedTy::Param,
                 )
                 | (
                     ReducedTy::UnorderedFields(_) | ReducedTy::Param,
@@ -269,7 +273,8 @@ enum ReducedTy<'tcx> {
     TypeErasure,
     /// The type is a struct containing either zero non-zero sized fields, or multiple non-zero
     /// sized fields with a defined order.
-    OrderedFields(Ty<'tcx>),
+    /// The second value is the first non-zero sized type.
+    OrderedFields(Ty<'tcx>, Option<Ty<'tcx>>),
     /// The type is a struct containing multiple non-zero sized fields with no defined order.
     UnorderedFields(Ty<'tcx>),
     /// The type is a reference to the contained type.
@@ -294,7 +299,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
             ty::Tuple(args) => {
                 let mut iter = args.iter();
                 let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
-                    return ReducedTy::OrderedFields(ty);
+                    return ReducedTy::OrderedFields(ty, None);
                 };
                 if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
                     ty = sized_ty;
@@ -316,7 +321,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     continue;
                 }
                 if def.repr().inhibit_struct_field_reordering_opt() {
-                    ReducedTy::OrderedFields(ty)
+                    ReducedTy::OrderedFields(ty, Some(sized_ty))
                 } else {
                     ReducedTy::UnorderedFields(ty)
                 }
