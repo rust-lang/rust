@@ -109,7 +109,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 // it is not immediately clear why Copy is not implemented for a field, since
                 // all we point at is the field itself.
                 tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-                    let mut fulfill_cx = traits::FulfillmentContext::new();
+                    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
                     fulfill_cx.register_bound(
                         &infcx,
                         param_env,

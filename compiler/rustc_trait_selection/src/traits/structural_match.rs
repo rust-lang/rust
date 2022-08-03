@@ -1,6 +1,6 @@
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::ObligationCause;
-use crate::traits::{self, TraitEngine};
+use crate::traits::{TraitEngine, TraitEngineExt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -72,7 +72,7 @@ fn type_marked_structural<'tcx>(
     adt_ty: Ty<'tcx>,
     cause: ObligationCause<'tcx>,
 ) -> bool {
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id =
         infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
