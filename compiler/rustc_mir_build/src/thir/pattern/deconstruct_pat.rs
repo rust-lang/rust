@@ -617,7 +617,7 @@ impl SplitVarLenSlice {
             // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
             // is fixed-length or variable-length, it will be the only relevant slice to output
             // here.
-            Some(_) => (0..0), // empty range
+            Some(_) => 0..0, // empty range
             // We cover all arities in the range `(self.arity..infinity)`. We split that range into
             // two: lengths smaller than `max_slice.arity()` are treated independently as
             // fixed-lengths slices, and lengths above are captured by `max_slice`.

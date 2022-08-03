@@ -839,7 +839,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
-            }) => (tcx.sess.source_map().end_point(fn_decl_span)),
+            }) => tcx.sess.source_map().end_point(fn_decl_span),
             _ => self.body.span,
         };
 
