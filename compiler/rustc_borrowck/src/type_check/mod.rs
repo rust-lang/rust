@@ -2635,10 +2635,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) = self.eq_substs(
             typeck_root_substs,
             parent_substs,
-            Locations::Single(location),
+            location.to_locations(),
             ConstraintCategory::BoringNoLocation,
         ) {
-            bug!("we shouldn't error, this should only impose region constraints");
+            span_mirbug!(
+                self,
+                def_id,
+                "could not relate closure to parent {:?} != {:?}",
+                typeck_root_substs,
+                parent_substs
+            );
         }
 
         tcx.predicates_of(def_id).instantiate(tcx, substs)

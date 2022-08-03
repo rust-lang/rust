@@ -47,12 +47,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
-        let mut relation = TypeRelating::new(
+        TypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::other()),
             ty::Variance::Invariant,
-        );
-        ty::relate::relate_substs(&mut relation, a, b)?;
+        )
+        .relate(a, b)?;
         Ok(())
     }
 }
