@@ -995,15 +995,6 @@ impl<'tcx> Clean<'tcx, FnRetTy> for hir::FnRetTy<'tcx> {
     }
 }
 
-impl<'tcx> Clean<'tcx, bool> for hir::IsAuto {
-    fn clean(&self, _: &mut DocContext<'tcx>) -> bool {
-        match *self {
-            hir::IsAuto::Yes => true,
-            hir::IsAuto::No => false,
-        }
-    }
-}
-
 impl<'tcx> Clean<'tcx, Path> for hir::TraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Path {
         let path = clean_path(self.path, cx);
