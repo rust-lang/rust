@@ -2267,7 +2267,7 @@ fn add_local_native_libraries(
                     // be added explicitly if necessary, see the error in `fn link_rlib`) compiled
                     // as an executable due to `--test`. Use whole-archive implicitly, like before
                     // the introduction of native lib modifiers.
-                    || (bundle != Some(false) && sess.opts.test)
+                    || (whole_archive == None && bundle != Some(false) && sess.opts.test)
                 {
                     cmd.link_whole_staticlib(
                         name,
