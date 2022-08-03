@@ -951,7 +951,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     }
 
     fn visit_body(&mut self, body: &mut Body<'tcx>) {
-        for (bb, data) in body.basic_blocks_mut().iter_enumerated_mut() {
+        for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
             self.visit_basic_block_data(bb, data);
         }
     }

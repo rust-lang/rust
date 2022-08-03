@@ -116,7 +116,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
                 ElaborateBoxDerefVisitor { tcx, unique_did, nonnull_did, local_decls, patch };
 
             for (block, BasicBlockData { statements, terminator, .. }) in
-                body.basic_blocks.as_mut().iter_enumerated_mut()
+                body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut()
             {
                 let mut index = 0;
                 for statement in statements {
