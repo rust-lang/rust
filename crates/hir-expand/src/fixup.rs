@@ -218,36 +218,6 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                                 id: EMPTY_ID,
                             },
                             SyntheticToken {
-                                kind: SyntaxKind::UNDERSCORE,
-                                text: "_".into(),
-                                range: end_range,
-                                id: EMPTY_ID
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::EQ,
-                                text: "=".into(),
-                                range: end_range,
-                                id: EMPTY_ID
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_ANGLE,
-                                text: ">".into(),
-                                range: end_range,
-                                id: EMPTY_ID
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::L_CURLY,
-                                text: "{".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
-                                kind: SyntaxKind::R_CURLY,
-                                text: "}".into(),
-                                range: end_range,
-                                id: EMPTY_ID,
-                            },
-                            SyntheticToken {
                                 kind: SyntaxKind::R_CURLY,
                                 text: "}".into(),
                                 range: end_range,
@@ -270,10 +240,11 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
 
                     if it.pat().is_none() && it.in_token().is_none() && it.iterable().is_none() {
                         append.insert(for_token.into(), vec![pat, in_token, iter]);
+                    } else if it.pat().is_none() {
+                        append.insert(for_token.into(), vec![pat]);
+                    } else if it.pat().is_none() && it.in_token().is_none() {
+                        append.insert(for_token.into(), vec![pat, in_token]);
                     }
-
-                    // Tricky: add logic to add in just a pattern or iterable if not all
-                    // the pieces are missing
 
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
@@ -398,6 +369,18 @@ fn foo () {for _ in __ra_fixup {}}
         )
     }
 
+    fn for_no_iter_no_in() {
+        check(
+            r#"
+fn foo() {
+    for _ {}
+}
+"#,
+            expect![[r#"
+fn foo () {for _ in __ra_fixup {}}
+"#]],
+        )
+    }
     #[test]
     fn for_no_iter() {
         check(
@@ -435,7 +418,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup {_ => {}}}
+fn foo () {match __ra_fixup {}}
 "#]],
         )
     }
@@ -467,7 +450,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup {_ => {}}}
+fn foo () {match __ra_fixup {}}
 "#]],
         )
     }
