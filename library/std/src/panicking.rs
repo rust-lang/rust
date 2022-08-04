@@ -528,7 +528,7 @@ pub fn panicking() -> bool {
 
 /// Entry point of panics from the libcore crate (`panic_impl` lang item).
 #[cfg(not(test))]
-#[panic_handler]
+#[cfg_attr(not(feature = "no_panic_impl"), panic_handler)]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
