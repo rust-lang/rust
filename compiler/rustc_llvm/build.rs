@@ -103,8 +103,10 @@ fn main() {
         println!("cargo:rustc-check-cfg=values(llvm_component,\"{}\")", component);
     }
 
-    if tracked_env_var_os("RUST_CHECK").is_some() {
+    if env::var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
+        // We only track the RUST_CHECK var if it exists to prevent spurious rebuilds.
+        println!("cargo:rerun-if-env-changed=RUST_CHECK");
         return;
     }
 

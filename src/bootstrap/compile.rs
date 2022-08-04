@@ -780,9 +780,21 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             cargo.env("LLVM_RUSTLLVM", "1");
         }
         let llvm_config = builder.ensure(native::Llvm { target });
-        cargo.env("LLVM_CONFIG", &llvm_config);
+
+        // HACK: on windows, paths are case insensitive, so case differences cause spurious rebuilds
+        if target.contains("windows") {
+            cargo.env("LLVM_CONFIG", llvm_config.as_os_str().to_ascii_lowercase());
+        } else {
+            cargo.env("LLVM_CONFIG", &llvm_config);
+        }
+
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-            cargo.env("CFG_LLVM_ROOT", s);
+            // HACK: on windows, paths are case insensitive, so case differences cause spurious rebuilds
+            if target.contains("windows") {
+                cargo.env("CFG_LLVM_ROOT", s.as_os_str().to_ascii_lowercase());
+            } else {
+                cargo.env("CFG_LLVM_ROOT", s);
+            }
         }
 
         // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
