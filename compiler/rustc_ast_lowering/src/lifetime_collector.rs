@@ -29,6 +29,17 @@ impl<'ast> LifetimeCollectVisitor<'ast> {
             }
         }
     }
+
+    fn record_elided_anchor(&mut self, node_id: NodeId, span: Span) {
+        if let Some(LifetimeRes::ElidedAnchor { start, end }) =
+            self.resolver.get_lifetime_res(node_id)
+        {
+            for i in start..end {
+                let lifetime = Lifetime { id: i, ident: Ident::new(kw::UnderscoreLifetime, span) };
+                self.record_lifetime_use(lifetime);
+            }
+        }
+    }
 }
 
 impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
@@ -37,15 +48,7 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
     }
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'ast PathSegment) {
-        if let Some(LifetimeRes::ElidedAnchor { start, end }) =
-            self.resolver.get_lifetime_res(path_segment.id)
-        {
-            for i in start..end {
-                let lifetime =
-                    Lifetime { id: i, ident: Ident::new(kw::UnderscoreLifetime, path_span) };
-                self.record_lifetime_use(lifetime);
-            }
-        }
+        self.record_elided_anchor(path_segment.id, path_span);
         visit::walk_path_segment(self, path_span, path_segment);
     }
 
@@ -65,15 +68,7 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
                 self.current_binders.pop();
             }
             TyKind::Rptr(None, _) => {
-                if let Some(LifetimeRes::ElidedAnchor { start, end }) =
-                    self.resolver.get_lifetime_res(t.id)
-                {
-                    for i in start..end {
-                        let lifetime =
-                            Lifetime { id: i, ident: Ident::new(kw::UnderscoreLifetime, t.span) };
-                        self.record_lifetime_use(lifetime);
-                    }
-                }
+                self.record_elided_anchor(t.id, t.span);
                 visit::walk_ty(self, t);
             }
             _ => {
