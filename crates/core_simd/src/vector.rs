@@ -1,6 +1,6 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdConstPtr, SimdMutPtr, SimdPartialOrd,
-    SupportedLaneCount, Swizzle,
+    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdCastPtr, SimdConstPtr, SimdMutPtr,
+    SimdPartialOrd, SupportedLaneCount, Swizzle,
 };
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
@@ -209,11 +209,23 @@ where
     #[must_use]
     #[inline]
     #[cfg(not(bootstrap))]
-    pub fn cast<U: SimdElement>(self) -> Simd<U, LANES>
+    pub fn cast<U: SimdCast>(self) -> Simd<U, LANES>
     where
-        T: SimdCast<U>,
+        T: SimdCast,
     {
-        SimdCast::cast(self)
+        // Safety: supported types are guaranteed by SimdCast
+        unsafe { intrinsics::simd_as(self) }
+    }
+
+    /// Lanewise casts pointers to another pointer type.
+    #[must_use]
+    #[inline]
+    pub fn cast_ptr<U: SimdCastPtr>(self) -> Simd<U, LANES>
+    where
+        T: SimdCastPtr,
+    {
+        // Safety: supported types are guaranteed by SimdCastPtr
+        unsafe { intrinsics::simd_cast_ptr(self) }
     }
 
     /// Rounds toward zero and converts to the same-width integer type, assuming that
@@ -234,11 +246,11 @@ where
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
     where
-        T: core::convert::FloatToInt<I> + SimdCast<I>,
-        I: SimdElement,
+        T: core::convert::FloatToInt<I> + SimdCast,
+        I: SimdCast,
     {
-        // Safety: the caller is responsible for the invariants
-        unsafe { SimdCast::cast_unchecked(self) }
+        // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
+        unsafe { intrinsics::simd_cast(self) }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.

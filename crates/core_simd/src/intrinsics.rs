@@ -154,4 +154,27 @@ extern "platform-intrinsic" {
 
     // equivalent to wrapping_offset
     pub(crate) fn simd_arith_offset<T, U>(ptr: T, offset: U) -> T;
+
+    /*
+    /// equivalent to `T as U` semantics, specifically for pointers
+    pub(crate) fn simd_cast_ptr<T, U>(ptr: T) -> U;
+
+    /// expose a pointer as an address
+    pub(crate) fn simd_expose_addr<T, U>(ptr: T) -> U;
+
+    /// convert an exposed address back to a pointer
+    pub(crate) fn simd_from_exposed_addr<T, U>(addr: T) -> U;
+    */
+}
+
+pub(crate) unsafe fn simd_cast_ptr<T, U>(_ptr: T) -> U {
+    unimplemented!()
+}
+
+pub(crate) unsafe fn simd_expose_addr<T, U>(_ptr: T) -> U {
+    unimplemented!()
+}
+
+pub(crate) unsafe fn simd_from_exposed_addr<T, U>(_addr: T) -> U {
+    unimplemented!()
 }

@@ -37,6 +37,15 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// Equivalent to calling [`pointer::with_addr`] on each lane.
     fn with_addr(self, addr: Self::Usize) -> Self;
 
+    /// Gets the "address" portion of the pointer, and "exposes" the provenance part for future use
+    /// in [`from_exposed_addr`].
+    fn expose_addr(self) -> Self::Usize;
+
+    /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
+    ///
+    /// Equivalent to calling [`pointer::from_exposed_addr`] on each lane.
+    fn from_exposed_addr(addr: Self::Usize) -> Self;
+
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
     /// Equivalent to calling [`pointer::wrapping_offset`] on each lane.
@@ -85,18 +94,25 @@ where
     }
 
     #[inline]
-    fn with_addr(self, _addr: Self::Usize) -> Self {
-        unimplemented!()
-        /*
+    fn with_addr(self, addr: Self::Usize) -> Self {
         // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
         //
         // In the mean-time, this operation is defined to be "as if" it was
         // a wrapping_offset, so we can emulate it as such. This should properly
         // restore pointer provenance even under today's compiler.
-        self.cast::<*mut u8>()
+        self.cast_ptr::<*mut u8>()
             .wrapping_offset(addr.cast::<isize>() - self.addr().cast::<isize>())
-            .cast()
-        */
+            .cast_ptr()
+    }
+
+    #[inline]
+    fn expose_addr(self) -> Self::Usize {
+        unsafe { intrinsics::simd_expose_addr(self) }
+    }
+
+    #[inline]
+    fn from_exposed_addr(addr: Self::Usize) -> Self {
+        unsafe { intrinsics::simd_from_exposed_addr(addr) }
     }
 
     #[inline]
