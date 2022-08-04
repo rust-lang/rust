@@ -102,19 +102,17 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     res?;
     bt_fmt.finish()?;
     if print_fmt == PrintFmt::Short {
+        writeln!(
+            fmt,
+            "note: Some details are omitted, \
+             run with `"
+        )?;
+
         if let Ok(_) = crate::env::var("PSModulePath") {
-            writeln!(
-                fmt,
-                "note: Some details are omitted, \
-             run with `$env:RUST_BACKTRACE=\"full\"` for a verbose backtrace."
-            )?;
-        } else {
-            writeln!(
-                fmt,
-                "note: Some details are omitted, \
-             run with `RUST_BACKTRACE=full` for a verbose backtrace."
-            )?;
+            write!(fmt, "$env:")?;
         }
+
+        write!(fmt, "RUST_BACKTRACE=full` for a verbose backtrace.")?;
     }
     Ok(())
 }
