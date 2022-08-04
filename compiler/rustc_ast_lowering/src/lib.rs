@@ -1399,7 +1399,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Contains the new lifetime definitions created for the TAIT (if any).
         let mut collected_lifetimes = Vec::new();
-        let mut new_remapping = FxHashMap::default();
 
         // If this came from a TAIT (as opposed to a function that returns an RPIT), we only want
         // to capture the lifetimes that appear in the bounds. So visit the bounds to find out
@@ -1415,6 +1414,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!(?lifetimes_to_remap);
 
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
+            let mut new_remapping = FxHashMap::default();
+
             // If this opaque type is only capturing a subset of the lifetimes (those that appear
             // in bounds), then create the new lifetime parameters required and create a mapping
             // from the old `'a` (on the function) to the new `'a` (on the opaque type).
