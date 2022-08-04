@@ -1,7 +1,7 @@
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::{Applicability, MultiSpan};
+use rustc_errors::{Applicability, LintDiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
-use rustc_middle::{lint::LintDiagnosticBuilder, ty};
+use rustc_middle::ty;
 use rustc_span::Symbol;
 
 declare_lint! {
