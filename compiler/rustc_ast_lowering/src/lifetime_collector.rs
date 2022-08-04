@@ -30,6 +30,9 @@ impl<'ast> LifetimeCollectVisitor<'ast> {
         }
     }
 
+    /// This collect lifetimes that are elided, for nodes like `Foo<T>` where there are no explicit
+    /// lifetime nodes. Is equivalent to having "pseudo" nodes introduced for each of the node ids
+    /// in the list start..end.
     fn record_elided_anchor(&mut self, node_id: NodeId, span: Span) {
         if let Some(LifetimeRes::ElidedAnchor { start, end }) =
             self.resolver.get_lifetime_res(node_id)
