@@ -3,12 +3,12 @@ Version 1.63.0 (2022-08-11)
 
 Language
 --------
-- [Remove migrate borrowck mode.][95565]
+- [Remove migrate borrowck mode for pre-NLL errors.][95565]
 - [Modify MIR building to drop repeat expressions with length zero.][95953]
 - [Remove label/lifetime shadowing warnings.][96296]
-- [Stabilize `explicit_generic_args_with_impl_trait`.][96868]
-- [make `cenum_impl_drop_cast` deny-by-default.][97652]
-- [Prevent unwinding when `-C panic=abort` is used regardless declared ABI.][96959]
+- [Allow explicit generic arguments in the presence of `impl Trait` args.][96868]
+- [Make `cenum_impl_drop_cast` warnings deny-by-default.][97652]
+- [Prevent unwinding when `-C panic=abort` is used regardless of declared ABI.][96959]
 - [lub: don't bail out due to empty binders.][97867]
 
 Compiler
@@ -16,7 +16,7 @@ Compiler
 - [Stabilize the `bundle` native library modifier,][95818] also removing the
   deprecated `static-nobundle` linking kind.
 - [Add Apple WatchOS compile targets\*.][95243]
-- [Add Windows application manifest to rustc-main.][96737]
+- [Add a Windows application manifest to rustc-main.][96737]
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
    information on Rust's tiered platform support.
@@ -28,9 +28,9 @@ Libraries
 - [`impl Read and Write for VecDeque<u8>`.][95632]
 - [STD support for the Nintendo 3DS.][95897]
 - [Make write/print macros eagerly drop temporaries.][96455]
-- [Implement `[OsStr]::join`.][96881]
+- [Implement internal traits that enable `[OsStr]::join`.][96881]
 - [Implement `Hash` for `core::alloc::Layout`.][97034]
-- [os str capacity documentation.][97202]
+- [Add capacity documentation for `OsString`.][97202]
 - [Put a bound on collection misbehavior.][97316]
 - [Make `std::mem::needs_drop` accept `?Sized`.][97675]
 - [`impl Termination for Infallible` and then make the `Result` impls of `Termination` more generic.][97803]
@@ -91,13 +91,14 @@ These APIs are now usable in const contexts:
 
 Cargo
 -----
-- [Stabilize config-cli.][cargo/10755]
-- [Expose rust-version through env var.][cargo/10713]
+- [Stabilize the `--config path` command-line argument.][cargo/10755]
+- [Expose rust-version in the environment as `CARGO_PKG_RUST_VERSION`.][cargo/10713]
 
 Compatibility Notes
 -------------------
 
-- [rustc: Stricter checking for #[link] attributes.][96885]
+- [`#[link]` attributes are now checked more strictly,][96885] which may introduce
+  errors for invalid attribute arguments that were previously ignored.
 
 Internal Changes
 ----------------
