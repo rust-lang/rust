@@ -707,6 +707,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Option<(Ty<'tcx>, DefId)> {
         let tcx = self.tcx();
         if tcx.features().trait_upcasting {
@@ -720,7 +721,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let obligation = traits::Obligation::new(
-            ObligationCause::dummy(),
+            cause.clone(),
             param_env,
             ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
         );
@@ -735,7 +736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 item_def_id: tcx.lang_items().deref_target()?,
                 substs: trait_ref.substs,
             },
-            ObligationCause::dummy(),
+            cause.clone(),
             0,
             // We're *intentionally* throwing these away,
             // since we don't actually use them.
@@ -809,7 +810,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let target_trait_did = principal_def_id_b.unwrap();
                         let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
                         if let Some((deref_output_ty, deref_output_trait_did)) = self
-                            .need_migrate_deref_output_trait_object(source, obligation.param_env)
+                            .need_migrate_deref_output_trait_object(
+                                source,
+                                obligation.param_env,
+                                &obligation.cause,
+                            )
                         {
                             if deref_output_trait_did == target_trait_did {
                                 self.tcx().struct_span_lint_hir(

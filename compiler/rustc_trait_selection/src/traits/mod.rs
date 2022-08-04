@@ -378,6 +378,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     )
 }
 
+/// Normalize a type and process all resulting obligations, returning any errors
 pub fn fully_normalize<'a, 'tcx, T>(
     infcx: &InferCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
@@ -412,6 +413,8 @@ where
     Ok(resolved_value)
 }
 
+/// Process an obligation (and any nested obligations that come from it) to
+/// completion, returning any errors
 pub fn fully_solve_obligation<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     obligation: PredicateObligation<'tcx>,
@@ -421,6 +424,8 @@ pub fn fully_solve_obligation<'a, 'tcx>(
     engine.select_all_or_error(infcx)
 }
 
+/// Process a set of obligations (and any nested obligations that come from them)
+/// to completion
 pub fn fully_solve_obligations<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
@@ -430,6 +435,9 @@ pub fn fully_solve_obligations<'a, 'tcx>(
     engine.select_all_or_error(infcx)
 }
 
+/// Process a bound (and any nested obligations that come from it) to completion.
+/// This is a convenience function for traits that have no generic arguments, such
+/// as auto traits, and builtin traits like Copy or Sized.
 pub fn fully_solve_bound<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
