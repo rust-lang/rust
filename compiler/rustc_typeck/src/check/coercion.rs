@@ -1478,6 +1478,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     // type)
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
+                let (expected, found) = fcx.resolve_vars_if_possible((expected, found));
 
                 let mut err;
                 let mut unsized_return = false;
@@ -1663,7 +1664,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 sp,
                 &format!(
                     "return type inferred to be `{}` here",
-                    fcx.resolve_vars_if_possible(expected)
+                    expected
                 ),
             );
         }
