@@ -1,5 +1,5 @@
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_middle::{lint::LintDiagnosticBuilder, ty};
 use rustc_span::Symbol;
@@ -119,7 +119,16 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             };
 
             if is_sync_lock {
-                cx.struct_span_lint(LET_UNDERSCORE_LOCK, local.span, |lint| {
+                let mut span = MultiSpan::from_spans(vec![local.pat.span, init.span]);
+                span.push_span_label(
+                    local.pat.span,
+                    "this lock is not assigned to a binding and is immediately dropped".to_string(),
+                );
+                span.push_span_label(
+                    init.span,
+                    "this binding will immediately drop the value assigned to it".to_string(),
+                );
+                cx.struct_span_lint(LET_UNDERSCORE_LOCK, span, |lint| {
                     build_and_emit_lint(
                         lint,
                         local,
