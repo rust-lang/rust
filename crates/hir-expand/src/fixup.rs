@@ -240,10 +240,9 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
 
                     if it.pat().is_none() && it.in_token().is_none() && it.iterable().is_none() {
                         append.insert(for_token.into(), vec![pat, in_token, iter]);
+                    // does something funky -- see test case for_no_pat
                     } else if it.pat().is_none() {
                         append.insert(for_token.into(), vec![pat]);
-                    } else if it.pat().is_none() && it.in_token().is_none() {
-                        append.insert(for_token.into(), vec![pat, in_token]);
                     }
 
                     if it.loop_body().is_none() {
@@ -356,7 +355,7 @@ mod tests {
     }
 
     #[test]
-    fn for_no_iter_no_body() {
+    fn just_for_token() {
         check(
             r#"
 fn foo() {
@@ -369,20 +368,8 @@ fn foo () {for _ in __ra_fixup {}}
         )
     }
 
-    fn for_no_iter_no_in() {
-        check(
-            r#"
-fn foo() {
-    for _ {}
-}
-"#,
-            expect![[r#"
-fn foo () {for _ in __ra_fixup {}}
-"#]],
-        )
-    }
     #[test]
-    fn for_no_iter() {
+    fn for_no_iter_pattern() {
         check(
             r#"
 fn foo() {
@@ -405,6 +392,23 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {for bar in qux {}}
+"#]],
+        )
+    }
+
+    // FIXME: https://github.com/rust-lang/rust-analyzer/pull/12937#discussion_r937633695
+    #[test]
+    fn for_no_pat() {
+        check(
+            r#"
+fn foo() {
+    for in qux {
+
+    }
+}
+"#,
+            expect![[r#"
+fn foo () {__ra_fixup}
 "#]],
         )
     }
