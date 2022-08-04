@@ -1279,19 +1279,20 @@ pub fn expand_preparsed_format_args(
             let captured_arg_span =
                 fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
             let positional_args = args.iter().filter(|arg| !arg.named).collect::<Vec<_>>();
-            let mut suggestions = vec![(captured_arg_span, positional_args.len().to_string())];
             if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
                 let span = match positional_args.last() {
                     Some(arg) => arg.expr.span,
                     None => fmt_sp,
                 };
-                suggestions.push((span.shrink_to_hi(), format!(", {}", arg)))
+                e.multipart_suggestion_verbose(
+                    "consider using a positional formatting argument instead",
+                    vec![
+                        (captured_arg_span, positional_args.len().to_string()),
+                        (span.shrink_to_hi(), format!(", {}", arg)),
+                    ],
+                    Applicability::MachineApplicable,
+                );
             }
-            e.multipart_suggestion_verbose(
-                "consider using a positional formatting argument instead",
-                suggestions,
-                Applicability::MachineApplicable,
-            );
         }
         e.emit();
         return DummyResult::raw_expr(sp, true);

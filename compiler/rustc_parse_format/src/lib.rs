@@ -229,20 +229,16 @@ impl<'a> Iterator for Parser<'a> {
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument(lbrace_end);
-                        match self.must_consume('}') {
-                            Some(rbrace_byte_idx) => {
-                                let lbrace_inner_offset = self.to_span_index(pos);
-                                let rbrace_inner_offset = self.to_span_index(rbrace_byte_idx);
-                                if self.is_literal {
-                                    self.arg_places.push(
-                                        lbrace_inner_offset
-                                            .to(InnerOffset(rbrace_inner_offset.0 + 1)),
-                                    );
-                                }
+                        if let Some(rbrace_byte_idx) = self.must_consume('}') {
+                            let lbrace_inner_offset = self.to_span_index(pos);
+                            let rbrace_inner_offset = self.to_span_index(rbrace_byte_idx);
+                            if self.is_literal {
+                                self.arg_places.push(
+                                    lbrace_inner_offset.to(InnerOffset(rbrace_inner_offset.0 + 1)),
+                                );
                             }
-                            None => {
-                                self.suggest_positional_arg_instead_of_captured_arg(arg);
-                            }
+                        } else {
+                            self.suggest_positional_arg_instead_of_captured_arg(arg);
                         }
                         Some(NextArgument(arg))
                     }
@@ -767,6 +763,9 @@ impl<'a> Parser<'a> {
             let byte_pos = self.to_span_index(end);
             let start = InnerOffset(byte_pos.0 + 1);
             let field = self.argument(start);
+            if !self.consume('}') {
+                return;
+            }
             if let ArgumentNamed(_) = arg.position {
                 if let ArgumentNamed(_) = field.position {
                     self.errors.insert(
