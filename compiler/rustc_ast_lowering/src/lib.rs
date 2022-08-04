@@ -1768,7 +1768,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Contains the new lifetime definitions created for the TAIT (if any) generated for the
         // return type.
-        let mut captures = Vec::new();
+        let mut collected_lifetimes = Vec::new();
         let mut new_remapping = FxHashMap::default();
 
         let extra_lifetime_params = self.resolver.take_extra_lifetime_params(opaque_ty_node_id);
@@ -1804,10 +1804,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             let lifetime = Lifetime { id: outer_node_id, ident };
-            captures.push((inner_node_id, lifetime, Some(inner_res)));
+            collected_lifetimes.push((inner_node_id, lifetime, Some(inner_res)));
         }
 
-        debug!(?captures);
+        debug!(?collected_lifetimes);
 
         // We only want to capture the lifetimes that appear in the bounds. So visit the bounds to
         // find out exactly which ones those are.
@@ -1820,7 +1820,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // If this opaque type is only capturing a subset of the lifetimes (those that appear
             // in bounds), then create the new lifetime parameters required and create a mapping
             // from the old `'a` (on the function) to the new `'a` (on the opaque type).
-            captures.extend(
+            collected_lifetimes.extend(
                 this.create_lifetime_defs(
                     opaque_ty_def_id,
                     &lifetimes_to_remap,
@@ -1829,7 +1829,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 .into_iter()
                 .map(|(new_node_id, lifetime)| (new_node_id, lifetime, None)),
             );
-            debug!(?captures);
+            debug!(?collected_lifetimes);
             debug!(?new_remapping);
 
             // Install the remapping from old to new (if any):
@@ -1845,7 +1845,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let future_bound =
                     this.lower_async_fn_output_type_to_future_bound(output, fn_def_id, span);
 
-                let generic_params = this.arena.alloc_from_iter(captures.iter().map(
+                let generic_params = this.arena.alloc_from_iter(collected_lifetimes.iter().map(
                     |&(new_node_id, lifetime, _)| {
                         let hir_id = this.lower_node_id(new_node_id);
                         debug_assert_ne!(this.opt_local_def_id(new_node_id), None);
@@ -1903,8 +1903,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
-        let generic_args =
-            self.arena.alloc_from_iter(captures.into_iter().map(|(_, lifetime, res)| {
+        let generic_args = self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(
+            |(_, lifetime, res)| {
                 let id = self.next_node_id();
                 let span = lifetime.ident.span;
 
@@ -1919,7 +1919,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 );
                 let l = self.new_named_lifetime_with_res(id, span, ident, res);
                 hir::GenericArg::Lifetime(l)
-            }));
+            },
+        ));
 
         // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the
