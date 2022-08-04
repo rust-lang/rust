@@ -192,6 +192,7 @@ impl GlobalState {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.change_kind) {
+                        tracing::warn!("fetch-fiel_change");
                         self.fetch_workspaces_queue
                             .request_op(format!("vfs file change: {}", path.display()));
                     }
@@ -201,6 +202,7 @@ impl GlobalState {
                     }
                 }
 
+                // Clear native diagnostics when their file gets deleted
                 if !file.exists() {
                     self.diagnostics.clear_native_for(file.file_id);
                 }
