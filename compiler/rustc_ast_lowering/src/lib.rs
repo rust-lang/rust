@@ -1379,7 +1379,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
     /// ```
     ///
-    /// Note the subtely around type parameters! The new TAIT, `TestReturn`, inherits all the
+    /// Note the subtlety around type parameters! The new TAIT, `TestReturn`, inherits all the
     /// type parameters from the function `test` (this is implemented in the query layer, they aren't
     /// added explicitly in the HIR). But this includes all the lifetimes, and we only want to
     /// capture the lifetimes that are referenced in the bounds. Therefore, we add *extra* lifetime parameters
