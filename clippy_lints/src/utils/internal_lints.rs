@@ -569,7 +569,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
                 item.span,
                 "this item has an invalid `clippy::version` attribute",
                 None,
-                "please use a valid sematic version, see `doc/adding_lints.md`",
+                "please use a valid semantic version, see `doc/adding_lints.md`",
             );
         }
     } else {
