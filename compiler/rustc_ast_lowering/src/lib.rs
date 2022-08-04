@@ -210,7 +210,10 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
         self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
     }
 
-    /// Push a remapping into the top-most map. Panics if no map has been pushed.
+    /// Push a remapping into the top-most map.
+    /// Panics if no map has been pushed.
+    /// Remapping is used when creating lowering `-> impl Trait` return
+    /// types to create the resulting opaque type.
     #[tracing::instrument(level = "debug", skip(self))]
     fn record_def_id_remap(&mut self, from: LocalDefId, to: LocalDefId) {
         self.generics_def_id_map.last_mut().expect("no map pushed").insert(from, to);
