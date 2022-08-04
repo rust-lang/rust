@@ -1427,10 +1427,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             // Install the remapping from old to new (if any):
             lctx.with_remapping(new_remapping, |lctx| {
-                // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
-                // get back Debug + 'a1, which is suitable for use on the TAIT.
-                let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
-
                 let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
                     |&(new_node_id, lifetime)| {
                         let hir_id = lctx.lower_node_id(new_node_id);
@@ -1455,8 +1451,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     },
                 ));
-
                 debug!("lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs);
+
+                // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
+                // get back Debug + 'a1, which is suitable for use on the TAIT.
+                let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
 
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: self.arena.alloc(hir::Generics {
