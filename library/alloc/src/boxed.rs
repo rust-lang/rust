@@ -1328,6 +1328,36 @@ impl Clone for Box<str> {
     }
 }
 
+#[stable(feature = "boxed_slice_eq", since = "1.64.0")]
+impl<T: PartialEq, A: Allocator> PartialEq<[T]> for Box<[T], A> {
+    fn eq(&self, other: &[T]) -> bool {
+        <[T] as PartialEq>::eq(&**self, other)
+    }
+    fn ne(&self, other: &[T]) -> bool {
+        <[T] as PartialEq>::ne(&**self, other)
+    }
+}
+
+#[stable(feature = "boxed_slice_eq", since = "1.64.0")]
+impl<T: PartialEq, A: Allocator> PartialEq<&[T]> for Box<[T], A> {
+    fn eq(&self, other: &&[T]) -> bool {
+        <[T] as PartialEq>::eq(&**self, *other)
+    }
+    fn ne(&self, other: &&[T]) -> bool {
+        <[T] as PartialEq>::ne(&**self, *other)
+    }
+}
+
+#[stable(feature = "boxed_slice_eq", since = "1.64.0")]
+impl<T: PartialEq, A: Allocator> PartialEq<&mut [T]> for Box<[T], A> {
+    fn eq(&self, other: &&mut [T]) -> bool {
+        <[T] as PartialEq>::eq(&**self, *other)
+    }
+    fn ne(&self, other: &&mut [T]) -> bool {
+        <[T] as PartialEq>::ne(&**self, *other)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for Box<T, A> {
     #[inline]
