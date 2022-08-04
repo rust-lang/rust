@@ -5,6 +5,7 @@ use rustc_ast::{
     TyKind,
 };
 use rustc_hir::def::LifetimeRes;
+use rustc_middle::span_bug;
 use rustc_middle::ty::ResolverAstLowering;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
@@ -21,11 +22,26 @@ impl<'ast> LifetimeCollectVisitor<'ast> {
     }
 
     fn record_lifetime_use(&mut self, lifetime: Lifetime) {
-        let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
-
-        if res.binder().map_or(true, |b| !self.current_binders.contains(&b)) {
-            if !self.collected_lifetimes.contains(&lifetime) {
-                self.collected_lifetimes.push(lifetime);
+        match self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error) {
+            LifetimeRes::Param { binder, .. } | LifetimeRes::Fresh { binder, .. } => {
+                if !self.current_binders.contains(&binder) {
+                    if !self.collected_lifetimes.contains(&lifetime) {
+                        self.collected_lifetimes.push(lifetime);
+                    }
+                }
+            }
+            LifetimeRes::Static | LifetimeRes::Error => {
+                if !self.collected_lifetimes.contains(&lifetime) {
+                    self.collected_lifetimes.push(lifetime);
+                }
+            }
+            LifetimeRes::Infer => {}
+            res => {
+                let bug_msg = format!(
+                    "Unexpected lifetime resolution {:?} for {:?} at {:?}",
+                    res, lifetime.ident, lifetime.ident.span
+                );
+                span_bug!(lifetime.ident.span, "{}", bug_msg);
             }
         }
     }
