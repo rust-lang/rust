@@ -514,11 +514,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::NullaryOp(..) => {}
         }
 
-        // FIXME we need to revisit this for #67176
-        if rvalue.needs_subst() {
-            return None;
-        }
-
         self.use_ecx(source_info, |this| this.ecx.eval_rvalue_into_place(rvalue, place))
     }
 }
