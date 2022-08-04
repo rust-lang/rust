@@ -501,6 +501,10 @@ function loadCss(cssFileName) {
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
         const inlined_types = new Set();
 
+        const TEXT_IDX = 0;
+        const SYNTHETIC_IDX = 1;
+        const TYPES_IDX = 2;
+
         if (synthetic_implementors) {
             // This `inlined_types` variable is used to avoid having the same implementation
             // showing up twice. For example "String" in the "Sync" doc page.
@@ -536,10 +540,12 @@ function loadCss(cssFileName) {
 
             struct_loop:
             for (const struct of structs) {
-                const list = struct.synthetic ? synthetic_implementors : implementors;
+                const list = struct[SYNTHETIC_IDX] ? synthetic_implementors : implementors;
 
-                if (struct.synthetic) {
-                    for (const struct_type of struct.types) {
+                // The types list is only used for synthetic impls.
+                // If this changes, `main.js` and `write_shared.rs` both need changed.
+                if (struct[SYNTHETIC_IDX]) {
+                    for (const struct_type of struct[TYPES_IDX]) {
                         if (inlined_types.has(struct_type)) {
                             continue struct_loop;
                         }
@@ -548,7 +554,7 @@ function loadCss(cssFileName) {
                 }
 
                 const code = document.createElement("h3");
-                code.innerHTML = struct.text;
+                code.innerHTML = struct[TEXT_IDX];
                 addClass(code, "code-header");
                 addClass(code, "in-band");
 
