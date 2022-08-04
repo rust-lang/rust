@@ -27,7 +27,7 @@ pub trait SimdConstPtr: Copy + Sealed {
     /// directly cast into a valid pointer.
     ///
     /// This method semantically discards *provenance* and
-    /// *address-space* information. To properly restore that information, use [`with_addr`].
+    /// *address-space* information. To properly restore that information, use [`Self::with_addr`].
     ///
     /// Equivalent to calling [`pointer::addr`] on each lane.
     fn addr(self) -> Self::Usize;
@@ -41,12 +41,12 @@ pub trait SimdConstPtr: Copy + Sealed {
     fn with_addr(self, addr: Self::Usize) -> Self;
 
     /// Gets the "address" portion of the pointer, and "exposes" the provenance part for future use
-    /// in [`from_exposed_addr`].
+    /// in [`Self::from_exposed_addr`].
     fn expose_addr(self) -> Self::Usize;
 
     /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
     ///
-    /// Equivalent to calling [`pointer::from_exposed_addr`] on each lane.
+    /// Equivalent to calling [`core::ptr::from_exposed_addr`] on each lane.
     fn from_exposed_addr(addr: Self::Usize) -> Self;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
