@@ -1395,6 +1395,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
         let opaque_ty_def_id = self.local_def_id(opaque_ty_node_id);
+        debug!(?opaque_ty_def_id);
 
         // Contains the new lifetime definitions created for the TAIT (if any).
         let mut collected_lifetimes = Vec::new();
@@ -1454,11 +1455,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     },
                 ));
-                debug!("lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs);
+                debug!(?lifetime_defs);
 
                 // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
                 // get back Debug + 'a1, which is suitable for use on the TAIT.
                 let hir_bounds = lctx.lower_param_bounds(bounds, itctx);
+                debug!(?hir_bounds);
 
                 let opaque_ty_item = hir::OpaqueTy {
                     generics: self.arena.alloc(hir::Generics {
@@ -1471,8 +1473,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     bounds: hir_bounds,
                     origin,
                 };
+                debug!(?opaque_ty_item);
 
-                trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_id);
                 lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
             })
         });
@@ -1493,8 +1495,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let l = self.new_named_lifetime(lifetime.id, id, span, ident);
                 hir::GenericArg::Lifetime(l)
             }));
-
-        debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes);
+        debug!(?lifetimes);
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
         hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
