@@ -1809,21 +1809,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         debug!(?captures);
 
-        self.with_hir_id_owner(opaque_ty_node_id, |this| {
-            let lifetimes_in_bounds =
-                lifetime_collector::lifetimes_in_ret_ty(&this.resolver, output);
-            debug!(?lifetimes_in_bounds);
+        // We only want to capture the lifetimes that appear in the bounds. So visit the bounds to
+        // find out exactly which ones those are.
+        // in fn return position, like the `fn test<'a>() -> impl Debug + 'a` example,
+        // we only keep the lifetimes that appear in the `impl Debug` itself:
+        let lifetimes_to_remap = lifetime_collector::lifetimes_in_ret_ty(&self.resolver, output);
+        debug!(?lifetimes_to_remap);
 
+        self.with_hir_id_owner(opaque_ty_node_id, |this| {
+            // If this opaque type is only capturing a subset of the lifetimes (those that appear
+            // in bounds), then create the new lifetime parameters required and create a mapping
+            // from the old `'a` (on the function) to the new `'a` (on the opaque type).
             captures.extend(
                 this.create_lifetime_defs(
                     opaque_ty_def_id,
-                    &lifetimes_in_bounds,
+                    &lifetimes_to_remap,
                     &mut new_remapping,
                 )
                 .into_iter()
                 .map(|(new_node_id, lifetime)| (new_node_id, lifetime, None)),
             );
+            debug!(?captures);
+            debug!(?new_remapping);
 
+            // Install the remapping from old to new (if any):
             this.with_remapping(new_remapping, |this| {
                 // We have to be careful to get elision right here. The
                 // idea is that we create a lifetime parameter for each
