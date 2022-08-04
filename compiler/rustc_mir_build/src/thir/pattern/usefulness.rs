@@ -411,12 +411,12 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// This is roughly the inverse of `Constructor::apply`.
     fn pop_head_constructor(
         &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(cx, ctor);
+        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(pcx, ctor);
         new_fields.extend_from_slice(&self.pats[1..]);
         PatStack::from_vec(new_fields)
     }
@@ -469,13 +469,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
         let mut matrix = Matrix::empty();
         for row in &self.patterns {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx.cx, ctor);
+                let new_row = row.pop_head_constructor(pcx, ctor);
                 matrix.push(new_row);
             }
         }
@@ -575,7 +575,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     /// with the results of specializing with the other constructors.
     fn apply_constructor(
         self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
         matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
         ctor: &Constructor<'tcx>,
     ) -> Self {
@@ -713,7 +713,7 @@ impl<'p, 'tcx> Witness<'p, 'tcx> {
     ///
     /// left_ty: struct X { a: (bool, &'static str), b: usize}
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-    fn apply_constructor(mut self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
+    fn apply_constructor(mut self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Self {
         let pat = {
             let len = self.0.len();
             let arity = ctor.arity(pcx);
@@ -786,7 +786,7 @@ fn is_useful<'p, 'tcx>(
     is_under_guard: bool,
     is_top_level: bool,
 ) -> Usefulness<'p, 'tcx> {
-    debug!("matrix,v={:?}{:?}", matrix, v);
+    debug!(?matrix, ?v);
     let Matrix { patterns: rows, .. } = matrix;
 
     // The base case. We are pattern-matching on () and the return value is
@@ -805,11 +805,6 @@ fn is_useful<'p, 'tcx>(
     }
 
     debug_assert!(rows.iter().all(|r| r.len() == v.len()));
-
-    let ty = v.head().ty();
-    let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
-    debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
-    let pcx = PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
 
     // If the first pattern is an or-pattern, expand it.
     let mut ret = Usefulness::new_not_useful(witness_preference);
@@ -832,6 +827,11 @@ fn is_useful<'p, 'tcx>(
             }
         }
     } else {
+        let ty = v.head().ty();
+        let is_non_exhaustive = cx.is_foreign_non_exhaustive_enum(ty);
+        debug!("v.head: {:?}, v.span: {:?}", v.head(), v.head().span());
+        let pcx = &PatCtxt { cx, ty, span: v.head().span(), is_top_level, is_non_exhaustive };
+
         let v_ctor = v.head().ctor();
         debug!(?v_ctor);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
@@ -853,7 +853,7 @@ fn is_useful<'p, 'tcx>(
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let spec_matrix = start_matrix.specialize_constructor(pcx, &ctor);
-            let v = v.pop_head_constructor(cx, &ctor);
+            let v = v.pop_head_constructor(pcx, &ctor);
             let usefulness = ensure_sufficient_stack(|| {
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false)
             });
