@@ -6,6 +6,8 @@ impl<T> PrintName<T> {
     const VOID: () = [()][2]; //~WARN any use of this value will cause an error
     //~^ WARN this operation will panic at runtime
     //~| WARN this was previously accepted by the compiler but is being phased out
+    //~| WARN this was previously accepted by the compiler but is being phased out
+    //~| WARN any use of this value will cause an error
 }
 
 const fn no_codegen<T>() {
