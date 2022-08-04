@@ -46,7 +46,10 @@ impl Target {
                         )
                     }
                     (LinkerFlavor::Gcc, LldFlavor::Ld64) => {
-                        assert_matches!(flavor, LinkerFlavor::Gcc)
+                        assert_matches!(
+                            flavor,
+                            LinkerFlavor::Lld(LldFlavor::Ld64) | LinkerFlavor::Gcc
+                        )
                     }
                     (LinkerFlavor::Msvc | LinkerFlavor::Lld(LldFlavor::Link), LldFlavor::Link) => {
                         assert_matches!(

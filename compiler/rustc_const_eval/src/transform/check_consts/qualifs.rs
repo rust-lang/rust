@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{
-    self, FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext,
+    self, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngineExt,
 };
 
 use super::ConstCx;
@@ -191,7 +191,7 @@ impl Qualif for NeedsNonConstDrop {
 
             // If we successfully found one, then select all of the predicates
             // implied by our const drop impl.
-            let mut fcx = FulfillmentContext::new();
+            let mut fcx = <dyn TraitEngine<'tcx>>::new(cx.tcx);
             for nested in impl_src.nested_obligations() {
                 fcx.register_predicate_obligation(&infcx, nested);
             }

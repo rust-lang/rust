@@ -24,7 +24,10 @@ pub(crate) struct AutoTraitFinder<'a, 'tcx> {
     pub(crate) cx: &'a mut core::DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
+impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx>
+where
+    'tcx: 'a, // should be an implied bound; rustc bug #98852.
+{
     pub(crate) fn new(cx: &'a mut core::DocContext<'tcx>) -> Self {
         AutoTraitFinder { cx }
     }

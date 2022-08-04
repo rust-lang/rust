@@ -205,7 +205,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // At this point, we already have all of the bounds we need. FulfillmentContext is used
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
-            let mut fulfill = FulfillmentContext::new();
+            let mut fulfill = <dyn TraitEngine<'tcx>>::new(tcx);
             fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
             let errors = fulfill.select_all_or_error(&infcx);
 

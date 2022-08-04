@@ -596,8 +596,6 @@ impl CheckAttrVisitor<'_> {
 
         let span = meta.span();
         if let Some(location) = match target {
-            Target::Impl => Some("implementation block"),
-            Target::ForeignMod => Some("extern block"),
             Target::AssocTy => {
                 let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
                 let containing_item = self.tcx.hir().expect_item(parent_hir_id);
@@ -619,7 +617,34 @@ impl CheckAttrVisitor<'_> {
             }
             // we check the validity of params elsewhere
             Target::Param => return false,
-            _ => None,
+            Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::ForeignMod
+            | Target::Closure
+            | Target::Impl => Some(target.name()),
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Fn
+            | Target::Mod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::OpaqueTy
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Method(..)
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(..)
+            | Target::MacroDef => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return false;

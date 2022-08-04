@@ -2675,7 +2675,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
         || !matches!(os.as_ref(), "ios" | "tvos" | "watchos")
-        || flavor != LinkerFlavor::Gcc
+        || (flavor != LinkerFlavor::Gcc && flavor != LinkerFlavor::Lld(LldFlavor::Ld64))
     {
         return;
     }
@@ -2706,13 +2706,16 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
             return;
         }
     };
-    if llvm_target.contains("macabi") {
-        cmd.args(&["-target", llvm_target])
-    } else {
-        let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
-        cmd.args(&["-arch", arch_name])
+
+    match flavor {
+        LinkerFlavor::Gcc => {
+            cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+        }
+        LinkerFlavor::Lld(LldFlavor::Ld64) => {
+            cmd.args(&["-syslibroot", &sdk_root]);
+        }
+        _ => unreachable!(),
     }
-    cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {

@@ -5,7 +5,7 @@
 
 use crate::infer::{DefiningAnchor, TyCtxtInferExt};
 use crate::traits::{
-    FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
+    ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine, TraitEngineExt,
     Unimplemented,
 };
 use rustc_middle::traits::CodegenObligationError;
@@ -53,7 +53,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
         let impl_source = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });

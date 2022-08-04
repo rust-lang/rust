@@ -3,7 +3,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_trait_selection::infer::InferCtxt;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::query::NoSolution;
-use rustc_trait_selection::traits::{FulfillmentContext, ObligationCause, TraitEngine};
+use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt};
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
@@ -63,7 +63,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         if let Some(constraints) = constraints {
             // Instantiation may have produced new inference variables and constraints on those
             // variables. Process these constraints.
-            let mut fulfill_cx = FulfillmentContext::new();
+            let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self.tcx);
             let cause = ObligationCause::misc(span, body_id);
             for &constraint in &constraints.outlives {
                 let obligation = self.query_outlives_constraint_to_obligation(
