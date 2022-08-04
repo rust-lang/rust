@@ -41,8 +41,8 @@ Stabilized APIs
 
 - [`array::from_fn`]
 - [`Box::into_pin`]
-- [`BinaryHeap::try_reserve_exact`]
 - [`BinaryHeap::try_reserve`]
+- [`BinaryHeap::try_reserve_exact`]
 - [`OsString::try_reserve`]
 - [`OsString::try_reserve_exact`]
 - [`PathBuf::try_reserve`]
@@ -134,6 +134,54 @@ and related tools.
 [97867]: https://github.com/rust-lang/rust/pull/97867/
 [cargo/10713]: https://github.com/rust-lang/cargo/pull/10713/
 [cargo/10755]: https://github.com/rust-lang/cargo/pull/10755/
+
+[`array::from_fn`]: https://doc.rust-lang.org/stable/std/array/fn.from_fn.html
+[`Box::into_pin`]: https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.into_pin
+[`BinaryHeap::try_reserve_exact`]: https://doc.rust-lang.org/stable/alloc/collections/binary_heap/struct.BinaryHeap.html#method.try_reserve_exact
+[`BinaryHeap::try_reserve`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.try_reserve
+[`OsString::try_reserve`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.try_reserve
+[`OsString::try_reserve_exact`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.try_reserve_exact
+[`PathBuf::try_reserve`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.try_reserve
+[`PathBuf::try_reserve_exact`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.try_reserve_exact
+[`Path::try_exists`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.try_exists
+[`Ref::filter_map`]: https://doc.rust-lang.org/stable/std/cell/struct.Ref.html#method.filter_map
+[`RefMut::filter_map`]: https://doc.rust-lang.org/stable/std/cell/struct.RefMut.html#method.filter_map
+[`NonNull::<[T]>::len`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.len
+[`ToOwned::clone_into`]: https://doc.rust-lang.org/stable/std/borrow/trait.ToOwned.html#method.clone_into
+[`Ipv6Addr::to_ipv4_mapped`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.to_ipv4_mapped
+[`unix::io::AsFd`]: https://doc.rust-lang.org/stable/std/os/unix/io/trait.AsFd.html
+[`unix::io::BorrowedFd<'fd>`]: https://doc.rust-lang.org/stable/std/os/unix/io/struct.BorrowedFd.html
+[`unix::io::OwnedFd`]: https://doc.rust-lang.org/stable/std/os/unix/io/struct.OwnedFd.html
+[`windows::io::AsHandle`]: https://doc.rust-lang.org/stable/std/os/windows/io/trait.AsHandle.html
+[`windows::io::BorrowedHandle<'handle>`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.BorrowedHandle.html
+[`windows::io::OwnedHandle`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.OwnedHandle.html
+[`windows::io::HandleOrInvalid`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.HandleOrInvalid.html
+[`windows::io::HandleOrNull`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.HandleOrNull.html
+[`windows::io::InvalidHandleError`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.InvalidHandleError.html
+[`windows::io::NullHandleError`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.NullHandleError.html
+[`windows::io::AsSocket`]: https://doc.rust-lang.org/stable/std/os/windows/io/trait.AsSocket.html
+[`windows::io::BorrowedSocket<'handle>`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.BorrowedSocket.html
+[`windows::io::OwnedSocket`]: https://doc.rust-lang.org/stable/std/os/windows/io/struct.OwnedSocket.html
+[`thread::scope`]: https://doc.rust-lang.org/stable/std/thread/fn.scope.html
+[`thread::Scope`]: https://doc.rust-lang.org/stable/std/thread/struct.Scope.html
+[`thread::ScopedJoinHandle`]: https://doc.rust-lang.org/stable/std/thread/struct.ScopedJoinHandle.html
+
+[`array::from_ref`]: https://doc.rust-lang.org/stable/std/array/fn.from_ref.html
+[`slice::from_ref`]: https://doc.rust-lang.org/stable/std/slice/fn.from_ref.html
+[`intrinsics::copy`]: https://doc.rust-lang.org/stable/std/intrinsics/fn.copy.html
+[`intrinsics::copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/intrinsics/fn.copy_nonoverlapping.html
+[`<*const T>::copy_to`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to
+[`<*const T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to_nonoverlapping
+[`<*mut T>::copy_to`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to-1
+[`<*mut T>::copy_to_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_to_nonoverlapping-1
+[`<*mut T>::copy_from`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_from
+[`<*mut T>::copy_from_nonoverlapping`]: https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.copy_from_nonoverlapping
+[`str::from_utf8`]: https://doc.rust-lang.org/stable/std/str/fn.from_utf8.html
+[`Utf8Error::error_len`]: https://doc.rust-lang.org/stable/std/str/struct.Utf8Error.html#method.error_len
+[`Utf8Error::valid_up_to`]: https://doc.rust-lang.org/stable/std/str/struct.Utf8Error.html#method.valid_up_to
+[`Condvar::new`]: https://doc.rust-lang.org/stable/std/sync/struct.Condvar.html#method.new
+[`Mutex::new`]: https://doc.rust-lang.org/stable/std/sync/struct.Mutex.html#method.new
+[`RwLock::new`]: https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html#method.new
 
 Version 1.62.1 (2022-07-19)
 ==========================
