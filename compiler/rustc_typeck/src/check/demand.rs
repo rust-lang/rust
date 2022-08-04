@@ -45,7 +45,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
-        self.report_closure_inferred_return_type(err, expected);
     }
 
     // Requires that the two types unify, and prints an error message if
@@ -1416,27 +1415,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             _ => false,
-        }
-    }
-
-    // Report the type inferred by the return statement.
-    fn report_closure_inferred_return_type(&self, err: &mut Diagnostic, expected: Ty<'tcx>) {
-        if let Some(sp) = self.ret_coercion_span.get()
-            // If the closure has an explicit return type annotation, or if
-            // the closure's return type has been inferred from outside
-            // requirements (such as an Fn* trait bound), then a type error
-            // may occur at the first return expression we see in the closure
-            // (if it conflicts with the declared return type). Skip adding a
-            // note in this case, since it would be incorrect.
-            && !self.return_type_pre_known
-        {
-            err.span_note(
-                sp,
-                &format!(
-                    "return type inferred to be `{}` here",
-                    self.resolve_vars_if_possible(expected)
-                ),
-            );
         }
     }
 }

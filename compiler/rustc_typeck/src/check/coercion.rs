@@ -1648,9 +1648,30 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             );
         }
 
-        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
+        let ret_coercion_span = fcx.ret_coercion_span.get();
+
+        if let Some(sp) = ret_coercion_span
+            // If the closure has an explicit return type annotation, or if
+            // the closure's return type has been inferred from outside
+            // requirements (such as an Fn* trait bound), then a type error
+            // may occur at the first return expression we see in the closure
+            // (if it conflicts with the declared return type). Skip adding a
+            // note in this case, since it would be incorrect.
+            && !fcx.return_type_pre_known
+        {
+            err.span_note(
+                sp,
+                &format!(
+                    "return type inferred to be `{}` here",
+                    fcx.resolve_vars_if_possible(expected)
+                ),
+            );
+        }
+
+        if let (Some(sp), Some(fn_output)) = (ret_coercion_span, fn_output) {
             self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }
+
         err
     }
 
