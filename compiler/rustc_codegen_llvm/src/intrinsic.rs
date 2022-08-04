@@ -1718,11 +1718,19 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         );
 
         match in_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(p) => require!(
+                p.ty.is_sized(bx.tcx.at(span), ty::ParamEnv::reveal_all()),
+                "cannot cast pointer to unsized type `{}`",
+                in_elem
+            ),
             _ => return_error!("expected pointer, got `{}`", in_elem),
         }
         match out_elem.kind() {
-            ty::RawPtr(_) => {}
+            ty::RawPtr(p) => require!(
+                p.ty.is_sized(bx.tcx.at(span), ty::ParamEnv::reveal_all()),
+                "cannot cast to pointer to unsized type `{}`",
+                out_elem
+            ),
             _ => return_error!("expected pointer, got `{}`", out_elem),
         }
 
