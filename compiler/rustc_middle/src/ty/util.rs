@@ -680,6 +680,24 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_const_param_default(self, def_id: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
         ty::EarlyBinder(self.const_param_default(def_id))
     }
+
+    pub fn bound_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
+        ty::EarlyBinder(self.predicates_of(def_id))
+    }
+
+    pub fn bound_explicit_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
+        ty::EarlyBinder(self.explicit_predicates_of(def_id))
+    }
+
+    pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
+        ty::EarlyBinder(self.impl_subject(def_id))
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {

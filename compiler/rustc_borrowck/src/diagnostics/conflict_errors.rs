@@ -16,9 +16,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{
-    self, subst::Subst, suggest_constraining_type_params, EarlyBinder, PredicateKind, Ty,
-};
+use rustc_middle::ty::{self, subst::Subst, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
@@ -461,23 +459,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |predicates: &[(ty::Predicate<'tcx>, Span)], substs| {
-            predicates.iter().find_map(|(pred, _)| {
-                let pred = if let Some(substs) = substs {
-                    EarlyBinder(*pred).subst(tcx, substs).kind().skip_binder()
-                } else {
-                    pred.kind().skip_binder()
-                };
-                if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
+        let find_fn_kind_from_did =
+            |predicates: ty::EarlyBinder<&[(ty::Predicate<'tcx>, Span)]>, substs| {
+                predicates.0.iter().find_map(|(pred, _)| {
+                    let pred = if let Some(substs) = substs {
+                        predicates.rebind(*pred).subst(tcx, substs).kind().skip_binder()
+                    } else {
+                        pred.kind().skip_binder()
+                    };
+                    if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
                     if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
                         return Some(hir::Mutability::Not);
                     } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
                         return Some(hir::Mutability::Mut);
                     }
                 }
-                None
-            })
-        };
+                    None
+                })
+            };
 
         // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
@@ -485,11 +484,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // borrowed variants in a function body when we see a move error.
         let borrow_level = match ty.kind() {
             ty::Param(_) => find_fn_kind_from_did(
-                tcx.explicit_predicates_of(self.mir_def_id().to_def_id()).predicates,
+                tcx.bound_explicit_predicates_of(self.mir_def_id().to_def_id())
+                    .map_bound(|p| p.predicates),
                 None,
             ),
             ty::Opaque(did, substs) => {
-                find_fn_kind_from_did(tcx.explicit_item_bounds(*did), Some(*substs))
+                find_fn_kind_from_did(tcx.bound_explicit_item_bounds(*did), Some(*substs))
             }
             ty::Closure(_, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),

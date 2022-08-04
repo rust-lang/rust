@@ -280,6 +280,11 @@ struct Context<'a, 'b> {
     unused_names_lint: PositionalNamedArgsLint,
 }
 
+pub struct FormatArg {
+    expr: P<ast::Expr>,
+    named: bool,
+}
+
 /// Parses the arguments from the given list of tokens, returning the diagnostic
 /// if there's a parse error so we can continue parsing other format!
 /// expressions.
@@ -293,8 +298,8 @@ fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> PResult<'a, (P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<Symbol, (usize, Span)>)> {
-    let mut args = Vec::<P<ast::Expr>>::new();
+) -> PResult<'a, (P<ast::Expr>, Vec<FormatArg>, FxHashMap<Symbol, (usize, Span)>)> {
+    let mut args = Vec::<FormatArg>::new();
     let mut names = FxHashMap::<Symbol, (usize, Span)>::default();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -362,7 +367,7 @@ fn parse_args<'a>(
                 let e = p.parse_expr()?;
                 if let Some((prev, _)) = names.get(&ident.name) {
                     ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
-                        .span_label(args[*prev].span, "previously here")
+                        .span_label(args[*prev].expr.span, "previously here")
                         .span_label(e.span, "duplicate argument")
                         .emit();
                     continue;
@@ -374,7 +379,7 @@ fn parse_args<'a>(
                 // args. And remember the names.
                 let slot = args.len();
                 names.insert(ident.name, (slot, ident.span));
-                args.push(e);
+                args.push(FormatArg { expr: e, named: true });
             }
             _ => {
                 let e = p.parse_expr()?;
@@ -385,11 +390,11 @@ fn parse_args<'a>(
                     );
                     err.span_label(e.span, "positional arguments must be before named arguments");
                     for pos in names.values() {
-                        err.span_label(args[pos.0].span, "named argument");
+                        err.span_label(args[pos.0].expr.span, "named argument");
                     }
                     err.emit();
                 }
-                args.push(e);
+                args.push(FormatArg { expr: e, named: false });
             }
         }
     }
@@ -1214,7 +1219,7 @@ pub fn expand_preparsed_format_args(
     ecx: &mut ExtCtxt<'_>,
     sp: Span,
     efmt: P<ast::Expr>,
-    args: Vec<P<ast::Expr>>,
+    args: Vec<FormatArg>,
     names: FxHashMap<Symbol, (usize, Span)>,
     append_newline: bool,
 ) -> P<ast::Expr> {
@@ -1304,6 +1309,25 @@ pub fn expand_preparsed_format_args(
                 e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
             }
         }
+        if err.should_be_replaced_with_positional_argument {
+            let captured_arg_span =
+                fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
+            let positional_args = args.iter().filter(|arg| !arg.named).collect::<Vec<_>>();
+            if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
+                let span = match positional_args.last() {
+                    Some(arg) => arg.expr.span,
+                    None => fmt_sp,
+                };
+                e.multipart_suggestion_verbose(
+                    "consider using a positional formatting argument instead",
+                    vec![
+                        (captured_arg_span, positional_args.len().to_string()),
+                        (span.shrink_to_hi(), format!(", {}", arg)),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
         e.emit();
         return DummyResult::raw_expr(sp, true);
     }
@@ -1318,7 +1342,7 @@ pub fn expand_preparsed_format_args(
 
     let mut cx = Context {
         ecx,
-        args,
+        args: args.into_iter().map(|arg| arg.expr).collect(),
         num_captured_args: 0,
         arg_types,
         arg_unique_types,

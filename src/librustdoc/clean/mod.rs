@@ -956,7 +956,11 @@ fn clean_fn_decl_with_args<'tcx>(
     decl: &hir::FnDecl<'tcx>,
     args: Arguments,
 ) -> FnDecl {
-    FnDecl { inputs: args, output: decl.output.clean(cx), c_variadic: decl.c_variadic }
+    let output = match decl.output {
+        hir::FnRetTy::Return(typ) => Return(clean_ty(typ, cx)),
+        hir::FnRetTy::DefaultReturn(..) => DefaultReturn,
+    };
+    FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
 }
 
 fn clean_fn_decl_from_did_and_sig<'tcx>(
@@ -991,27 +995,16 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, FnRetTy> for hir::FnRetTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> FnRetTy {
-        match *self {
-            Self::Return(typ) => Return(clean_ty(typ, cx)),
-            Self::DefaultReturn(..) => DefaultReturn,
-        }
-    }
-}
-
-impl<'tcx> Clean<'tcx, Path> for hir::TraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Path {
-        let path = clean_path(self.path, cx);
-        register_res(cx, path.res);
-        path
-    }
+fn clean_trait_ref<'tcx>(trait_ref: &hir::TraitRef<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
+    let path = clean_path(trait_ref.path, cx);
+    register_res(cx, path.res);
+    path
 }
 
 impl<'tcx> Clean<'tcx, PolyTrait> for hir::PolyTraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> PolyTrait {
         PolyTrait {
-            trait_: self.trait_ref.clean(cx),
+            trait_: clean_trait_ref(&self.trait_ref, cx),
             generic_params: self
                 .bound_generic_params
                 .iter()
@@ -2000,7 +1993,7 @@ fn clean_impl<'tcx>(
 ) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
-    let trait_ = impl_.of_trait.as_ref().map(|t| t.clean(cx));
+    let trait_ = impl_.of_trait.as_ref().map(|t| clean_trait_ref(t, cx));
     let items =
         impl_.items.iter().map(|ii| tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>();
     let def_id = tcx.hir().local_def_id(hir_id);
