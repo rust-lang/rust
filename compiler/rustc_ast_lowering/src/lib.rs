@@ -1400,27 +1400,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut collected_lifetimes = Vec::new();
         let mut new_remapping = FxHashMap::default();
 
+        // If this came from a TAIT (as opposed to a function that returns an RPIT), we only want
+        // to capture the lifetimes that appear in the bounds. So visit the bounds to find out
+        // exactly which ones those are.
+        let lifetimes_to_remap = if origin == hir::OpaqueTyOrigin::TyAlias {
+            // in a TAIT like `type Foo<'a> = impl Foo<'a>`, we don't keep all the lifetime parameters
+            Vec::new()
+        } else {
+            // in fn return position, like the `fn test<'a>() -> impl Debug + 'a` example,
+            // we only keep the lifetimes that appear in the `impl Debug` itself:
+            lifetime_collector::lifetimes_in_bounds(&self.resolver, bounds)
+        };
+        debug!(?lifetimes_to_remap);
+
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
-            if origin != hir::OpaqueTyOrigin::TyAlias {
-                // When lowering `fn foo<'a>() -> impl Debug + 'a`, the `lifetime_collector` finds
-                // the set of lifetimes that appear in the bounds (in this case, 'a) and returns
-                // that set in the variable lifetimes_in_bounds.
-                let lifetimes_in_bounds =
-                    lifetime_collector::lifetimes_in_bounds(&lctx.resolver, bounds);
-                debug!(?lifetimes_in_bounds);
-
-                // For each captured lifetime (e.g., 'a), we create a new lifetime parameter that
-                // is a generic defined on the TAIT, so we have type Foo<'a1> = ... and we
-                // establish a mapping from the original parameter 'a to the new parameter 'a1.
-                collected_lifetimes = lctx.create_lifetime_defs(
-                    opaque_ty_def_id,
-                    &lifetimes_in_bounds,
-                    &mut new_remapping,
-                );
-            };
-            debug!(?new_remapping);
+            // If this opaque type is only capturing a subset of the lifetimes (those that appear
+            // in bounds), then create the new lifetime parameters required and create a mapping
+            // from the old `'a` (on the function) to the new `'a` (on the opaque type).
+            collected_lifetimes = lctx.create_lifetime_defs(
+                opaque_ty_def_id,
+                &lifetimes_to_remap,
+                &mut new_remapping,
+            );
             debug!(?collected_lifetimes);
+            debug!(?new_remapping);
 
+            // Install the remapping from old to new (if any):
             lctx.with_remapping(new_remapping, |lctx| {
                 // Then when we lower the param bounds, references to 'a are remapped to 'a1, so we
                 // get back Debug + 'a1, which is suitable for use on the TAIT.
