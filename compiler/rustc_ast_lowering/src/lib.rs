@@ -1477,6 +1477,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })
         });
 
+        // This creates HIR lifetime arguments as `hir::GenericArg`, in the given example `type
+        // TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection containing `&['x]`.
         let lifetimes =
             self.arena.alloc_from_iter(collected_lifetimes.into_iter().map(|(_, lifetime)| {
                 let id = self.next_node_id();
