@@ -184,7 +184,7 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    /// Create a new [`Context`] from a [`&Waker`](Waker).
+    /// Create a new `Context` from a [`&Waker`](Waker).
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[must_use]
     #[inline]
@@ -214,7 +214,7 @@ impl fmt::Debug for Context<'_> {
 /// This handle encapsulates a [`RawWaker`] instance, which defines the
 /// executor-specific wakeup behavior.
 ///
-/// The typical life of a [`Waker`] is that it is constructed by an executor, wrapped in a
+/// The typical life of a `Waker` is that it is constructed by an executor, wrapped in a
 /// [`Context`], then passed to [`Future::poll()`]. Then, if the future chooses to return
 /// [`Poll::Pending`], it must also store the waker somehow and call [`Waker::wake()`] when
 /// the future should be polled again.
@@ -245,7 +245,7 @@ impl Waker {
     /// As long as the executor keeps running and the task is not finished, it is
     /// guaranteed that each invocation of [`wake()`](Self::wake) (or
     /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
-    /// [`poll()`] of the task to which this [`Waker`] belongs. This makes
+    /// [`poll()`] of the task to which this `Waker` belongs. This makes
     /// it possible to temporarily yield to other tasks while running potentially
     /// unbounded processing loops.
     ///
@@ -289,7 +289,7 @@ impl Waker {
         unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
     }
 
-    /// Returns `true` if this `Waker` and another [`Waker`] would awake the same task.
+    /// Returns `true` if this `Waker` and another `Waker` would awake the same task.
     ///
     /// This function works on a best-effort basis, and may return false even
     /// when the `Waker`s would awaken the same task. However, if this function
