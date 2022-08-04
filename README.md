@@ -233,7 +233,7 @@ Snapshot binaries are currently built and tested on several platforms:
 | Platform / Architecture                     | x86 | x86_64 |
 |---------------------------------------------|-----|--------|
 | Windows (7, 8, 10, ...)                     | ✓   | ✓      |
-| Linux (kernel 2.6.32, glibc 2.11 or later)  | ✓   | ✓      |
+| Linux (kernel 3.2, glibc 2.17 or later)     | ✓   | ✓      |
 | macOS (10.7 Lion or later)                  | (\*) | ✓      |
 
 (\*): Apple dropped support for running 32-bit binaries starting from macOS 10.15 and iOS 11.
