@@ -241,7 +241,7 @@ For targets: `powerpc-unknown-linux-gnu`
 - Target options > Emit assembly for CPU = powerpc -- pure 32-bit PowerPC
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 3.2.101
-- Binary utilities > Version of binutils = 2.32
+- Binary utilities > Version of binutils = 2.30
 - C-library > glibc version = 2.17 -- ~RHEL7 glibc
 - C compiler > gcc version = 8.3.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
