@@ -11,7 +11,7 @@ LL |         unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  `ptr_offset_from` called on pointers into different allocations
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_from_ub.rs:24:14
    |
@@ -91,7 +91,7 @@ LL |         unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_from_ub.rs:115:14
    |
@@ -105,7 +105,7 @@ LL |         unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds offset_from: null pointer is a dangling pointer (it has no provenance)
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_from_ub.rs:121:14
    |

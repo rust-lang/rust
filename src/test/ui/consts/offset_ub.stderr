@@ -5,7 +5,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:7:46
    |
@@ -19,7 +19,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: allocN has size 1, so pointer to 2 bytes starting at offset 0 is out-of-bounds
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:8:43
    |
@@ -33,7 +33,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: allocN has size 100, so pointer to 101 bytes starting at offset 0 is out-of-bounds
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:9:45
    |
@@ -47,7 +47,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:11:43
    |
@@ -61,7 +61,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u16>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:12:44
    |
@@ -75,7 +75,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:13:56
    |
@@ -89,7 +89,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  overflowing in-bounds pointer arithmetic
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:14:57
    |
@@ -103,7 +103,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: allocN has size 1, so pointer to 2 bytes starting at offset -4 is out-of-bounds
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:15:49
    |
@@ -117,7 +117,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: allocN has size 0, so pointer to 1 byte starting at offset 0 is out-of-bounds
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:17:50
    |
@@ -131,7 +131,7 @@ LL |         unsafe { intrinsics::offset(self, count) as *mut T }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: 0x1[noalloc] is a dangling pointer (it has no provenance)
-   |                  inside `ptr::mut_ptr::<impl *mut u8>::offset` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+   |                  inside `std::ptr::mut_ptr::<impl *mut u8>::offset` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:18:42
    |
@@ -145,7 +145,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: null pointer is a dangling pointer (it has no provenance)
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:21:50
    |
@@ -159,7 +159,7 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
    |                  out-of-bounds pointer arithmetic: 0x7f..f[noalloc] is a dangling pointer (it has no provenance)
-   |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |                  inside `std::ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
   ::: $DIR/offset_ub.rs:24:47
    |

@@ -10,6 +10,7 @@ use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
 };
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
@@ -261,7 +262,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             {
                 write!(f, "inside closure")?;
             } else {
-                write!(f, "inside `{}`", self.instance)?;
+                with_no_trimmed_paths!(write!(f, "inside `{}`", self.instance))?;
             }
             if !self.span.is_dummy() {
                 let sm = tcx.sess.source_map();

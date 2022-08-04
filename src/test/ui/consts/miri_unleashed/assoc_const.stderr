@@ -23,9 +23,9 @@ LL | pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | |
    | calling non-const function `<Vec<u32> as Drop>::drop`
-   | inside `std::ptr::drop_in_place::<Vec<u32>> - shim(Some(Vec<u32>))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   | inside `std::ptr::drop_in_place::<(Vec<u32>, u32)> - shim(Some((Vec<u32>, u32)))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   | inside `<String as Bar<Vec<u32>, String>>::F` at $DIR/assoc_const.rs:14:31
+   | inside `std::ptr::drop_in_place::<std::vec::Vec<u32>> - shim(Some(std::vec::Vec<u32>))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   | inside `std::ptr::drop_in_place::<(std::vec::Vec<u32>, u32)> - shim(Some((std::vec::Vec<u32>, u32)))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   | inside `<std::string::String as Bar<std::vec::Vec<u32>, std::string::String>>::F` at $DIR/assoc_const.rs:14:31
    |
   ::: $DIR/assoc_const.rs:14:5
    |
