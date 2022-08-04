@@ -366,13 +366,15 @@ pub(super) fn write_shared(
                 .collect::<Vec<_>>();
             files.sort_unstable();
             let subs = subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(",");
-            let dirs =
-                if subs.is_empty() { String::new() } else { format!(",\"dirs\":[{}]", subs) };
+            let dirs = if subs.is_empty() && files.is_empty() {
+                String::new()
+            } else {
+                format!(",[{}]", subs)
+            };
             let files = files.join(",");
-            let files =
-                if files.is_empty() { String::new() } else { format!(",\"files\":[{}]", files) };
+            let files = if files.is_empty() { String::new() } else { format!(",[{}]", files) };
             format!(
-                "{{\"name\":\"{name}\"{dirs}{files}}}",
+                "[\"{name}\"{dirs}{files}]",
                 name = self.elem.to_str().expect("invalid osstring conversion"),
                 dirs = dirs,
                 files = files
@@ -411,18 +413,23 @@ pub(super) fn write_shared(
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
         let make_sources = || {
             let (mut all_sources, _krates) =
-                try_err!(collect(&dst, krate.name(cx.tcx()).as_str(), "sourcesIndex"), &dst);
+                try_err!(collect_json(&dst, krate.name(cx.tcx()).as_str()), &dst);
             all_sources.push(format!(
-                "sourcesIndex[\"{}\"] = {};",
+                r#""{}":{}"#,
                 &krate.name(cx.tcx()),
-                hierarchy.to_json_string()
+                hierarchy
+                    .to_json_string()
+                    // All these `replace` calls are because we have to go through JS string for JSON content.
+                    .replace('\\', r"\\")
+                    .replace('\'', r"\'")
+                    // We need to escape double quotes for the JSON.
+                    .replace("\\\"", "\\\\\"")
             ));
             all_sources.sort();
-            Ok(format!(
-                "var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
-                all_sources.join("\n")
-            )
-            .into_bytes())
+            let mut v = String::from("var sourcesIndex = JSON.parse('{\\\n");
+            v.push_str(&all_sources.join(",\\\n"));
+            v.push_str("\\\n}');\ncreateSourceSidebar();\n");
+            Ok(v.into_bytes())
         };
         write_crate("source-files.js", &make_sources)?;
     }
