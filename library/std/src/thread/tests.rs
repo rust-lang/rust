@@ -329,3 +329,22 @@ fn test_scoped_threads_nll() {
     let x = 42_u8;
     foo(&x);
 }
+
+// Regression test for https://github.com/rust-lang/rust/issues/98498.
+#[test]
+#[cfg(miri)] // relies on Miri's data race detector
+fn scope_join_race() {
+    for _ in 0..100 {
+        let a_bool = AtomicBool::new(false);
+
+        thread::scope(|s| {
+            for _ in 0..5 {
+                s.spawn(|| a_bool.load(Ordering::Relaxed));
+            }
+
+            for _ in 0..5 {
+                s.spawn(|| a_bool.load(Ordering::Relaxed));
+            }
+        });
+    }
+}
