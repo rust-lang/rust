@@ -447,7 +447,10 @@ impl GlobalState {
         let memdocs_added_or_removed = self.mem_docs.take_changes();
 
         if self.is_quiescent() {
-            if !was_quiescent {
+            if !was_quiescent
+                && !self.fetch_workspaces_queue.op_requested()
+                && !self.fetch_build_data_queue.op_requested()
+            {
                 for flycheck in &self.flycheck {
                     flycheck.update();
                 }

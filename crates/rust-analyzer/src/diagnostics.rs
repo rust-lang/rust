@@ -72,7 +72,6 @@ impl DiagnosticCollection {
         let check_fixes = Arc::make_mut(&mut self.check_fixes);
         check_fixes.entry(flycheck_id).or_default().entry(file_id).or_default().extend(fix);
         diagnostics.push(diagnostic);
-        tracing::warn!(?flycheck_id, ?file_id, "add_check_diagnostic changes pushed");
         self.changes.insert(file_id);
     }
 
