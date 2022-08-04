@@ -51,10 +51,6 @@
 + 
 +     bb3: {
 +         drop((((*_5) as Some).0: B)) -> bb2; // scope 3 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-+     }
-+ 
-+     bb4 (cleanup): {
-+         resume;                          // scope 0 at $DIR/inline-shims.rs:+0:1: +3:2
       }
   }
   

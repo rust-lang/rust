@@ -87,10 +87,6 @@
           StorageDead(_2);                 // scope 1 at $DIR/derefer_test_multiple.rs:+7:1: +7:2
           StorageDead(_1);                 // scope 0 at $DIR/derefer_test_multiple.rs:+7:1: +7:2
           return;                          // scope 0 at $DIR/derefer_test_multiple.rs:+7:2: +7:2
-+     }
-+ 
-+     bb1 (cleanup): {
-+         resume;                          // scope 0 at $DIR/derefer_test_multiple.rs:+0:1: +7:2
       }
   }
   

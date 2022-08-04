@@ -96,9 +96,5 @@
           _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           switchInt(move _10) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
       }
-  
-      bb5 (cleanup): {
-          resume;                          // scope 0 at $DIR/remove_storage_markers.rs:+0:1: +5:2
-      }
   }
   
