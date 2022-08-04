@@ -232,10 +232,8 @@ fn hover_type_fallback(
     token: &SyntaxToken,
     original_token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    let node = token
-        .parent_ancestors()
-        .take_while(|it| !ast::Item::can_cast(it.kind()))
-        .find(|n| {
+    let node =
+        token.parent_ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find(|n| {
             ast::Expr::can_cast(n.kind())
                 || ast::Pat::can_cast(n.kind())
                 || ast::Type::can_cast(n.kind())
