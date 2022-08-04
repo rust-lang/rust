@@ -763,6 +763,8 @@ impl<'a> Parser<'a> {
             let byte_pos = self.to_span_index(end);
             let start = InnerOffset(byte_pos.0 + 1);
             let field = self.argument(start);
+            // We can only parse `foo.bar` field access, any deeper nesting,
+            // or another type of expression, like method calls, are not supported
             if !self.consume('}') {
                 return;
             }
