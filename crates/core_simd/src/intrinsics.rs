@@ -61,9 +61,6 @@ extern "platform-intrinsic" {
     /// xor
     pub(crate) fn simd_xor<T>(x: T, y: T) -> T;
 
-    /// getelementptr (without inbounds)
-    pub(crate) fn simd_arith_offset<T, U>(ptrs: T, offsets: U) -> T;
-
     /// fptoui/fptosi/uitofp/sitofp
     /// casting floats to integers is truncating, so it is safe to convert values like e.g. 1.5
     /// but the truncated value must fit in the target type or the result is poison.
@@ -152,7 +149,8 @@ extern "platform-intrinsic" {
     #[allow(unused)]
     pub(crate) fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
 
-    // equivalent to wrapping_offset
+    /// getelementptr (without inbounds)
+    /// equivalent to wrapping_offset
     pub(crate) fn simd_arith_offset<T, U>(ptr: T, offset: U) -> T;
 
     /*
