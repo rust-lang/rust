@@ -210,6 +210,69 @@ trait ZipImpl<A, B> {
         Self: Iterator + TrustedRandomAccessNoCoerce;
 }
 
+#[inline]
+fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+    move |acc, x| Ok(f(acc, x))
+}
+
+#[inline]
+fn check_fold<AItem, B: Iterator, T, F: FnMut(T, (AItem, B::Item)) -> T>(
+    mut b: B,
+    mut f: F,
+) -> impl FnMut(T, AItem) -> T {
+    move |acc, x| match b.next() {
+        Some(y) => f(acc, (x, y)),
+        None => panic!("Iterator expected Some(item), found None."),
+    }
+}
+
+#[inline]
+fn check_rfold<AItem, B: DoubleEndedIterator, T, F: FnMut(T, (AItem, B::Item)) -> T>(
+    mut b: B,
+    mut f: F,
+) -> impl FnMut(T, AItem) -> T {
+    move |acc, x| match b.next_back() {
+        Some(y) => f(acc, (x, y)),
+        None => panic!("Iterator expected Some(item), found None."),
+    }
+}
+
+#[inline]
+fn check_try_fold<
+    'b,
+    AItem,
+    B: Iterator,
+    T,
+    R: Try<Output = T>,
+    F: 'b + FnMut(T, (AItem, B::Item)) -> R,
+>(
+    b: &'b mut B,
+    mut f: F,
+) -> impl 'b + FnMut(T, AItem) -> ControlFlow<R, T> {
+    move |acc, x| match b.next() {
+        Some(y) => ControlFlow::from_try(f(acc, (x, y))),
+        None => ControlFlow::Break(R::from_output(acc)),
+    }
+}
+
+#[inline]
+fn check_try_rfold<
+    'b,
+    AItem,
+    B: DoubleEndedIterator,
+    T,
+    R: Try<Output = T>,
+    F: 'b + FnMut(T, (AItem, B::Item)) -> R,
+>(
+    b: &'b mut B,
+    mut f: F,
+) -> impl 'b + FnMut(T, AItem) -> ControlFlow<R, T> {
+    move |acc, x| match b.next_back() {
+        Some(y) => ControlFlow::from_try(f(acc, (x, y))),
+        None => ControlFlow::Break(R::from_output(acc)),
+    }
+}
+
 // Work around limitations of specialization, requiring `default` impls to be repeated
 // in intermediary impls.
 macro_rules! zip_impl_general_defaults {
@@ -255,74 +318,40 @@ macro_rules! zip_impl_general_defaults {
         }
 
         #[inline]
-        default fn fold<T, F>(self, init: T, mut f: F) -> T
+        default fn fold<T, F>(mut self, init: T, f: F) -> T
         where
             F: FnMut(T, Self::Item) -> T,
         {
-            let mut a = self.a;
-            let mut b = self.b;
-
-            let acc = a.try_fold(init, move |acc, x| match b.next() {
-                Some(y) => Ok(f(acc, (x, y))),
-                None => Err(acc),
-            });
-
-            match acc {
-                Ok(exhausted_a) => exhausted_a,
-                Err(exhausted_b) => exhausted_b,
+            let (lower, upper) = Iterator::size_hint(&self);
+            if upper == Some(lower) {
+                self.a.fold(init, check_fold(self.b, f))
+            } else {
+                ZipImpl::try_fold(&mut self, init, ok(f)).unwrap()
             }
         }
 
         #[inline]
-        default fn try_fold<T, F, R>(&mut self, init: T, mut f: F) -> R
+        default fn try_fold<T, F, R>(&mut self, init: T, f: F) -> R
         where
             F: FnMut(T, Self::Item) -> R,
             R: Try<Output = T>,
         {
-            let a = &mut self.a;
-            let b = &mut self.b;
-
-            let acc = a.try_fold(init, move |acc, x| match b.next() {
-                Some(y) => {
-                    let result = f(acc, (x, y));
-                    match result.branch() {
-                        ControlFlow::Continue(continue_) => Ok(continue_),
-                        ControlFlow::Break(break_) => Err(R::from_residual(break_)),
-                    }
-                }
-                None => Err(R::from_output(acc)),
-            });
-
-            match acc {
-                Ok(ok) => R::from_output(ok),
-                Err(err) => err,
-            }
+            self.a.try_fold(init, check_try_fold(&mut self.b, f)).into_try()
         }
 
         #[inline]
-        default fn rfold<T, F>(mut self, init: T, mut f: F) -> T
+        default fn rfold<T, F>(mut self, init: T, f: F) -> T
         where
             A: DoubleEndedIterator + ExactSizeIterator,
             B: DoubleEndedIterator + ExactSizeIterator,
             F: FnMut(T, Self::Item) -> T,
         {
             self.adjust_back();
-            let mut a = self.a;
-            let mut b = self.b;
-
-            let acc = a.try_rfold(init, move |acc, x| match b.next_back() {
-                Some(y) => Ok(f(acc, (x, y))),
-                None => Err(acc),
-            });
-
-            match acc {
-                Ok(exhausted_a) => exhausted_a,
-                Err(exhausted_b) => exhausted_b,
-            }
+            self.a.rfold(init, check_rfold(self.b, f))
         }
 
         #[inline]
-        default fn try_rfold<T, F, R>(&mut self, init: T, mut f: F) -> R
+        default fn try_rfold<T, F, R>(&mut self, init: T, f: F) -> R
         where
             A: DoubleEndedIterator + ExactSizeIterator,
             B: DoubleEndedIterator + ExactSizeIterator,
@@ -330,24 +359,7 @@ macro_rules! zip_impl_general_defaults {
             R: Try<Output = T>,
         {
             self.adjust_back();
-            let a = &mut self.a;
-            let b = &mut self.b;
-
-            let acc = a.try_rfold(init, move |acc, x| match b.next_back() {
-                Some(y) => {
-                    let result = f(acc, (x, y));
-                    match result.branch() {
-                        ControlFlow::Continue(c) => ControlFlow::Continue(c),
-                        ControlFlow::Break(b) => ControlFlow::Break(R::from_residual(b)),
-                    }
-                }
-                None => ControlFlow::Break(R::from_output(acc)),
-            });
-
-            match acc {
-                ControlFlow::Continue(c) => R::from_output(c),
-                ControlFlow::Break(b) => b,
-            }
+            self.a.try_rfold(init, check_try_rfold(&mut self.b, f)).into_try()
         }
     };
 }
@@ -408,6 +420,40 @@ where
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         unsafe { (self.a.__iterator_get_unchecked(idx), self.b.__iterator_get_unchecked(idx)) }
+    }
+}
+
+#[inline]
+fn adjust_back_trusted_random_access<
+    A: TrustedRandomAccess + DoubleEndedIterator + ExactSizeIterator,
+    B: TrustedRandomAccess + DoubleEndedIterator + ExactSizeIterator,
+>(
+    zipped: &mut Zip<A, B>,
+) {
+    if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
+        let sz_a = zipped.a.size();
+        let sz_b = zipped.b.size();
+        // Adjust a, b to equal length, make sure that only the first call
+        // of `next_back` does this, otherwise we will break the restriction
+        // on calls to `zipped.next_back()` after calling `get_unchecked()`.
+        if sz_a != sz_b {
+            let sz_a = zipped.a.size();
+            if A::MAY_HAVE_SIDE_EFFECT && sz_a > zipped.len {
+                for _ in 0..sz_a - zipped.len {
+                    // since next_back() may panic we increment the counters beforehand
+                    // to keep Zip's state in sync with the underlying iterator source
+                    zipped.a_len -= 1;
+                    zipped.a.next_back();
+                }
+                debug_assert_eq!(zipped.a_len, zipped.len);
+            }
+            let sz_b = zipped.b.size();
+            if B::MAY_HAVE_SIDE_EFFECT && sz_b > zipped.len {
+                for _ in 0..sz_b - zipped.len {
+                    zipped.b.next_back();
+                }
+            }
+        }
     }
 }
 
@@ -490,31 +536,7 @@ where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator,
     {
-        if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
-            let sz_a = self.a.size();
-            let sz_b = self.b.size();
-            // Adjust a, b to equal length, make sure that only the first call
-            // of `next_back` does this, otherwise we will break the restriction
-            // on calls to `self.next_back()` after calling `get_unchecked()`.
-            if sz_a != sz_b {
-                let sz_a = self.a.size();
-                if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
-                    for _ in 0..sz_a - self.len {
-                        // since next_back() may panic we increment the counters beforehand
-                        // to keep Zip's state in sync with the underlying iterator source
-                        self.a_len -= 1;
-                        self.a.next_back();
-                    }
-                    debug_assert_eq!(self.a_len, self.len);
-                }
-                let sz_b = self.b.size();
-                if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
-                    for _ in 0..sz_b - self.len {
-                        self.b.next_back();
-                    }
-                }
-            }
-        }
+        adjust_back_trusted_random_access(self);
         if self.index < self.len {
             // since get_unchecked executes code which can panic we increment the counters beforehand
             // so that the same index won't be accessed twice, as required by TrustedRandomAccess
@@ -536,9 +558,19 @@ where
     where
         F: FnMut(T, Self::Item) -> T,
     {
+        // we don't need to adjust `self.{index, len}` since we have ownership of the iterator
         let mut accum = init;
-        while let Some(x) = <Self as ZipImpl<A, B>>::next(&mut self) {
-            accum = f(accum, x);
+        let index = self.index;
+        let len = self.len;
+        for i in index..len {
+            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
+            accum = unsafe {
+                f(accum, (self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
+            };
+        }
+        if A::MAY_HAVE_SIDE_EFFECT && len < self.a_len {
+            // SAFETY: `i` is smaller than `self.a_len`, which is equal to `self.a.len()`
+            unsafe { self.a.__iterator_get_unchecked(len) };
         }
         accum
     }
@@ -549,10 +581,27 @@ where
         F: FnMut(T, Self::Item) -> R,
         R: Try<Output = T>,
     {
+        let index = self.index;
+        let len = self.len;
+
         let mut accum = init;
-        while let Some(x) = <Self as ZipImpl<A, B>>::next(self) {
-            accum = f(accum, x)?;
+
+        for i in index..len {
+            // adjust `self.index` beforehand in case once of the iterators panics.
+            self.index = i + 1;
+            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
+            accum = unsafe {
+                f(accum, (self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))?
+            };
         }
+
+        if A::MAY_HAVE_SIDE_EFFECT && len < self.a_len {
+            self.index = len + 1;
+            self.len = len + 1;
+            // SAFETY: `i` is smaller than `self.a_len`, which is equal to `self.a.len()`
+            unsafe { self.a.__iterator_get_unchecked(len) };
+        }
+
         try { accum }
     }
 
@@ -563,9 +612,18 @@ where
         B: DoubleEndedIterator + ExactSizeIterator,
         F: FnMut(T, Self::Item) -> T,
     {
+        // we don't need to adjust `self.{len, a_len}` since we have ownership of the iterator
+        adjust_back_trusted_random_access(&mut self);
+
         let mut accum = init;
-        while let Some(x) = <Self as ZipImpl<A, B>>::next_back(&mut self) {
-            accum = f(accum, x);
+        let index = self.index;
+        let len = self.len;
+        for i in 0..len - index {
+            let i = len - i - 1;
+            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
+            accum = unsafe {
+                f(accum, (self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
+            };
         }
         accum
     }
@@ -578,9 +636,21 @@ where
         F: FnMut(T, Self::Item) -> R,
         R: Try<Output = T>,
     {
+        adjust_back_trusted_random_access(self);
+
         let mut accum = init;
-        while let Some(x) = <Self as ZipImpl<A, B>>::next_back(self) {
-            accum = f(accum, x)?;
+        let index = self.index;
+        let len = self.len;
+        for i in 0..len - index {
+            // inner `i` goes backwards from `len` (exclusive) to `index` (inclusive)
+            let i = len - i - 1;
+            // adjust `self.{len, a_len}` beforehand in case once of the iterators panics.
+            self.len = i;
+            self.a_len -= 1;
+            // SAFETY: `i` is smaller than `self.len`, thus smaller than `self.a.len()` and `self.b.len()`
+            accum = unsafe {
+                f(accum, (self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))?
+            };
         }
         try { accum }
     }
