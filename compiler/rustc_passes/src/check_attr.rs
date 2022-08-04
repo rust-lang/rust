@@ -1864,7 +1864,7 @@ impl CheckAttrVisitor<'_> {
 
     fn check_link_ordinal(&self, attr: &Attribute, _span: Span, target: Target) -> bool {
         match target {
-            Target::ForeignFn => true,
+            Target::ForeignFn | Target::ForeignStatic => true,
             _ => {
                 self.tcx.sess.emit_err(errors::LinkOrdinal { attr_span: attr.span });
                 false
