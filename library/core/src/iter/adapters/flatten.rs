@@ -308,6 +308,14 @@ where
     I: Iterator + Default,
     <I as Iterator>::Item: IntoIterator,
 {
+    /// Creates a `Flatten` iterator from the default value of `I`.
+    ///
+    /// ```
+    /// # use core::slice;
+    /// # use std::iter::Flatten;
+    /// let iter: Flatten<slice::Iter<'_, [u8; 4]>> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
     fn default() -> Self {
         Flatten::new(Default::default())
     }

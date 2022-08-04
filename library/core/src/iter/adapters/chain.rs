@@ -288,6 +288,21 @@ where
     A: Iterator + Default,
     B: Iterator + Default,
 {
+    /// Creates a `Chain` from the default values for `A` and `B`.
+    ///
+    /// ```
+    /// # use core::iter::Chain;
+    /// # use core::slice;
+    /// # use std::collections::{btree_set, BTreeSet};
+    /// # use std::mem;
+    /// struct Foo<'a>(Chain<slice::Iter<'a, u8>, btree_set::Iter<'a, u8>>);
+    ///
+    /// let set = BTreeSet::<u8>::new();
+    /// let slice: &[u8] = &[];
+    /// let mut foo = Foo(slice.iter().chain(set.iter()));
+    ///
+    /// // take requires `Default`
+    /// let _: Chain<_, _> = mem::take(&mut foo.0);
     fn default() -> Self {
         Chain::new(Default::default(), Default::default())
     }

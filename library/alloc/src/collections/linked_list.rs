@@ -1077,6 +1077,13 @@ impl<T> FusedIterator for Iter<'_, T> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Default for Iter<'_, T> {
+    /// Creates an empty `linked_list::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::linked_list;
+    /// let iter: linked_list::Iter<'_, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Iter { head: None, tail: None, len: 0, marker: Default::default() }
     }
@@ -1824,6 +1831,13 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Default for IntoIter<T> {
+    /// Creates an empty `linked_list::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::linked_list;
+    /// let iter: linked_list::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         LinkedList::new().into_iter()
     }

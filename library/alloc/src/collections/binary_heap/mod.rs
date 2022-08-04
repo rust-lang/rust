@@ -1470,6 +1470,13 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Default for IntoIter<T> {
+    /// Creates an empty `binary_heap::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::binary_heap;
+    /// let iter: binary_heap::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         IntoIter { iter: Default::default() }
     }

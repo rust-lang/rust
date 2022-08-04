@@ -141,6 +141,13 @@ impl<I> Default for Rev<I>
 where
     I: Default + Iterator,
 {
+    /// Creates a `Rev` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Rev;
+    /// let iter: Rev<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Rev::new(Default::default())
     }

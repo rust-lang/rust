@@ -364,6 +364,13 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Iter<'_, K, V> {
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, K: 'a, V: 'a> Default for Iter<'a, K, V> {
+    /// Creates an empty `btree_map::Iter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Iter<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Iter { range: Default::default(), length: 0 }
     }
@@ -395,6 +402,13 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IterMut<'_, K, V> {
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
+    /// Creates an empty `btree_map::IterMut`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IterMut<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         IterMut { range: Default::default(), length: 0, _marker: PhantomData {} }
     }
@@ -437,6 +451,13 @@ impl<K: Debug, V: Debug, A: Allocator + Clone> Debug for IntoIter<K, V, A> {
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V> Default for IntoIter<K, V> {
+    /// Creates an empty `btree_map::IntoIter`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IntoIter<u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         IntoIter { range: Default::default(), length: 0, alloc: Global }
     }
@@ -1791,6 +1812,13 @@ impl<K, V> Clone for Keys<'_, K, V> {
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V> Default for Keys<'_, K, V> {
+    /// Creates an empty `btree_map::Keys`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Keys<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Keys { inner: Default::default() }
     }
@@ -1839,6 +1867,13 @@ impl<K, V> Clone for Values<'_, K, V> {
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V> Default for Values<'_, K, V> {
+    /// Creates an empty `btree_map::Values`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Values<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Values { inner: Default::default() }
     }
@@ -1982,6 +2017,13 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V> Default for Range<'_, K, V> {
+    /// Creates an empty `btree_map::Range`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::Range<'_, u8, u8> = Default::default();
+    /// assert_eq!(iter.count(), 0);
+    /// ```
     fn default() -> Self {
         Range { inner: Default::default() }
     }
@@ -2065,6 +2107,13 @@ impl<K, V, A: Allocator + Clone> FusedIterator for IntoKeys<K, V, A> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V> Default for IntoKeys<K, V> {
+    /// Creates an empty `btree_map::IntoKeys`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IntoKeys<u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         IntoKeys { inner: Default::default() }
     }
@@ -2106,6 +2155,13 @@ impl<K, V, A: Allocator + Clone> FusedIterator for IntoValues<K, V, A> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<K, V> Default for IntoValues<K, V> {
+    /// Creates an empty `btree_map::IntoValues`.
+    ///
+    /// ```
+    /// # use std::collections::btree_map;
+    /// let iter: btree_map::IntoValues<u8, u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         IntoValues { inner: Default::default() }
     }

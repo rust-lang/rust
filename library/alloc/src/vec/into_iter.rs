@@ -349,6 +349,14 @@ unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<T> Default for IntoIter<T> {
+    /// Creates an empty `vec::IntoIter`.
+    ///
+    /// ```
+    /// # use std::vec;
+    /// let iter: vec::IntoIter<u8> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// assert_eq!(iter.as_slice(), &[]);
+    /// ```
     fn default() -> Self {
         super::Vec::new().into_iter()
     }

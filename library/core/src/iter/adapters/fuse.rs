@@ -183,6 +183,14 @@ where
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<I: Default> Default for Fuse<I> {
+    /// Creates a `Fuse` iterator from the default value of `I`.
+    ///
+    /// ```
+    /// # use core::slice;
+    /// # use std::iter::Fuse;
+    /// let iter: Fuse<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Fuse { iter: Default::default() }
     }

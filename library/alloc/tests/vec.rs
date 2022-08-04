@@ -1,6 +1,5 @@
 use core::alloc::{Allocator, Layout};
-use core::assert_eq;
-use core::iter::{ExactSizeIterator, IntoIterator};
+use core::iter::IntoIterator;
 use core::ptr::NonNull;
 use std::alloc::System;
 use std::assert_matches::assert_matches;
@@ -1034,13 +1033,6 @@ fn test_into_iter_clone() {
     assert_eq!(it.next(), Some(2));
     iter_equal(it.clone(), &[]);
     assert_eq!(it.next(), None);
-}
-
-#[test]
-fn test_into_iter_default() {
-    let iter: IntoIter<u8> = Default::default();
-    assert_eq!(iter.len(), 0);
-    assert_eq!(iter.as_slice(), &[]);
 }
 
 #[test]

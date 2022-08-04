@@ -247,6 +247,13 @@ where
     I: Default + Iterator<Item = &'a T>,
     T: Copy,
 {
+    /// Creates a `Copied` iterator from the default value of `I`
+    /// ```
+    /// # use core::slice;
+    /// # use core::iter::Copied;
+    /// let iter: Copied<slice::Iter<'_, u8>> = Default::default();
+    /// assert_eq!(iter.len(), 0);
+    /// ```
     fn default() -> Self {
         Self::new(Default::default())
     }
