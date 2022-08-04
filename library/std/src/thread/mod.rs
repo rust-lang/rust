@@ -209,7 +209,7 @@ pub use self::local::fast::Key as __FastLocalKeyInner;
 #[doc(hidden)]
 pub use self::local::os::Key as __OsLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
+#[cfg(all(target_family = "wasm", not(target_vendor = "wasmer"), not(target_feature = "atomics")))]
 #[doc(hidden)]
 pub use self::local::statik::Key as __StaticLocalKeyInner;
 
@@ -540,11 +540,11 @@ impl Builder {
             // SAFETY: the stack guard passed is the one for the current thread.
             // This means the current thread's stack and the new thread's stack
             // are properly set and protected from each other.
-            #[cfg(not(target_os = "wasi"))]
             thread_info::set(unsafe { imp::guard::current() }, their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
+
             // SAFETY: `their_packet` as been built just above and moved by the
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
             // same `JoinInner` as this closure meaning the mutation will be

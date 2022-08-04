@@ -182,7 +182,12 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
 
 pub mod guard {
     pub type Guard = !;
+
     pub unsafe fn init() -> Option<Guard> {
+        None
+    }
+    
+    pub unsafe fn current() -> Option<Guard> {
         None
     }
 }

@@ -961,6 +961,7 @@ supported_targets! {
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-unknown-wasi", wasm32_unknown_wasi),
     ("wasm32-wasmer-wasi", wasm32_wasmer_wasi),
+    ("wasm64-unknown-emscripten", wasm64_unknown_emscripten),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
     ("wasm64-wasmer-wasi", wasm64_wasmer_wasi),
 
