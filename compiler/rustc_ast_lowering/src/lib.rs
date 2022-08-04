@@ -1427,6 +1427,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             // Install the remapping from old to new (if any):
             lctx.with_remapping(new_remapping, |lctx| {
+                // This creates HIR lifetime definitions as `hir::GenericParam`, in the given
+                // example `type TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection
+                // containing `&['x]`.
                 let lifetime_defs = lctx.arena.alloc_from_iter(collected_lifetimes.iter().map(
                     |&(new_node_id, lifetime)| {
                         let hir_id = lctx.lower_node_id(new_node_id);
