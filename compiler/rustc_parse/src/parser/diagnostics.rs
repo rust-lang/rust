@@ -560,7 +560,8 @@ impl<'a> Parser<'a> {
                     || (sm.is_multiline(
                         self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo())
                     ) && t == &token::Pound)
-            }) {
+            }) && !expected.contains(&TokenType::Token(token::Comma))
+            {
                 // Missing semicolon typo. This is triggered if the next token could either start a
                 // new statement or is a block close. For example:
                 //
