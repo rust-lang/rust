@@ -9,7 +9,8 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide_db::base_db::{SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
+use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::{ChangeKind, FileId};
@@ -727,9 +728,21 @@ impl GlobalState {
                     let (vfs, _) = &*this.vfs.read();
                     if let Some(file_id) = vfs.file_id(&vfs_path) {
                         let analysis = this.analysis_host.analysis();
-                        let crate_ids = analysis.crate_for(file_id)?;
+                        // Crates containing or depending on the saved file
+                        let crate_ids: Vec<_> = analysis
+                            .crate_for(file_id)?
+                            .into_iter()
+                            .flat_map(|id| {
+                                this.analysis_host
+                                    .raw_database()
+                                    .crate_graph()
+                                    .transitive_rev_deps(id)
+                            })
+                            .sorted()
+                            .unique()
+                            .collect();
 
-                        let paths: Vec<_> = crate_ids
+                        let crate_root_paths: Vec<_> = crate_ids
                             .iter()
                             .filter_map(|&crate_id| {
                                 analysis
@@ -740,16 +753,17 @@ impl GlobalState {
                                     .transpose()
                             })
                             .collect::<ide::Cancellable<_>>()?;
-                        let paths: Vec<_> = paths.iter().map(Deref::deref).collect();
+                        let crate_root_paths: Vec<_> =
+                            crate_root_paths.iter().map(Deref::deref).collect();
 
+                        // Find all workspaces that have at least one target containing the saved file
                         let workspace_ids =
                             this.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
                                 project_model::ProjectWorkspace::Cargo { cargo, .. } => {
                                     cargo.packages().any(|pkg| {
-                                        cargo[pkg]
-                                            .targets
-                                            .iter()
-                                            .any(|&it| paths.contains(&cargo[it].root.as_path()))
+                                        cargo[pkg].targets.iter().any(|&it| {
+                                            crate_root_paths.contains(&cargo[it].root.as_path())
+                                        })
                                     })
                                 }
                                 project_model::ProjectWorkspace::Json { project, .. } => project
@@ -757,6 +771,8 @@ impl GlobalState {
                                     .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
                                 project_model::ProjectWorkspace::DetachedFiles { .. } => false,
                             });
+
+                        // Find and trigger corresponding flychecks
                         for flycheck in &this.flycheck {
                             for (id, _) in workspace_ids.clone() {
                                 if id == flycheck.id() {
