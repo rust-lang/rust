@@ -233,7 +233,7 @@ provide! { tcx, def_id, other, cdata,
     associated_item_def_ids => {
         tcx.arena.alloc_from_iter(cdata.get_associated_item_def_ids(def_id.index, tcx.sess))
     }
-    associated_item => { cdata.get_associated_item(def_id.index) }
+    associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
@@ -535,8 +535,8 @@ impl CStore {
         )
     }
 
-    pub fn fn_has_self_parameter_untracked(&self, def: DefId) -> bool {
-        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index)
+    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
+        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {

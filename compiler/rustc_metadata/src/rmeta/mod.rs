@@ -398,8 +398,6 @@ define_tables! {
     macro_rules: Table<DefIndex, ()>,
     macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
-    // Slot is full when there is a self parameter.
-    fn_has_self_parameter: Table<DefIndex, ()>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
 }
 

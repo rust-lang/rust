@@ -1335,9 +1335,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
                 self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
                 self.tables.constness.set(def_id.index, hir::Constness::NotConst);
-                if trait_item.fn_has_self_parameter {
-                    self.tables.fn_has_self_parameter.set(def_id.index, ());
-                }
             }
             ty::AssocKind::Type => {
                 self.encode_explicit_item_bounds(def_id);
@@ -1369,9 +1366,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hir::Constness::NotConst
                 };
                 self.tables.constness.set(def_id.index, constness);
-                if impl_item.fn_has_self_parameter {
-                    self.tables.fn_has_self_parameter.set(def_id.index, ());
-                }
             }
             ty::AssocKind::Const | ty::AssocKind::Type => {}
         }

@@ -32,7 +32,7 @@ use rustc_session::cstore::{
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
@@ -1087,8 +1087,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_fn_has_self_parameter(self, id: DefIndex) -> bool {
-        self.root.tables.fn_has_self_parameter.get(self, id).is_some()
+    fn get_fn_has_self_parameter(self, id: DefIndex, sess: &'a Session) -> bool {
+        self.root
+            .tables
+            .fn_arg_names
+            .get(self, id)
+            .unwrap_or_else(LazyArray::empty)
+            .decode((self, sess))
+            .nth(0)
+            .map_or(false, |ident| ident.name == kw::SelfLower)
     }
 
     fn get_associated_item_def_ids(
@@ -1105,7 +1112,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .map(move |child_index| self.local_def_id(child_index))
     }
 
-    fn get_associated_item(self, id: DefIndex) -> ty::AssocItem {
+    fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
         let name = self.item_name(id);
 
         let kind = match self.def_kind(id) {
@@ -1114,7 +1121,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             DefKind::AssocTy => ty::AssocKind::Type,
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
-        let has_self = self.get_fn_has_self_parameter(id);
+        let has_self = self.get_fn_has_self_parameter(id, sess);
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
 
         ty::AssocItem {
