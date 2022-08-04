@@ -956,7 +956,11 @@ fn clean_fn_decl_with_args<'tcx>(
     decl: &hir::FnDecl<'tcx>,
     args: Arguments,
 ) -> FnDecl {
-    FnDecl { inputs: args, output: decl.output.clean(cx), c_variadic: decl.c_variadic }
+    let output = match decl.output {
+        hir::FnRetTy::Return(typ) => Return(clean_ty(typ, cx)),
+        hir::FnRetTy::DefaultReturn(..) => DefaultReturn,
+    };
+    FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
 }
 
 fn clean_fn_decl_from_did_and_sig<'tcx>(
@@ -988,15 +992,6 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
                 })
                 .collect(),
         },
-    }
-}
-
-impl<'tcx> Clean<'tcx, FnRetTy> for hir::FnRetTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> FnRetTy {
-        match *self {
-            Self::Return(typ) => Return(clean_ty(typ, cx)),
-            Self::DefaultReturn(..) => DefaultReturn,
-        }
     }
 }
 
