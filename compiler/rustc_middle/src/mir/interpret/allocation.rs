@@ -33,7 +33,7 @@ use crate::ty;
 pub struct Allocation<Prov = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    pub bytes: Box<[u8]>,
+    bytes: Box<[u8]>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -352,6 +352,11 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
 
 /// Byte accessors.
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
+    /// Get the pointer of the [u8] of bytes.
+    pub fn get_bytes_addr(&self) -> Size {
+        Size::from_bytes(self.bytes.as_ptr() as u64)
+    }
+
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
     /// caring about relocations. It just deduplicates some code between `read_scalar`
     /// and `get_bytes_internal`.
