@@ -552,7 +552,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             { "{:x}", value } expected { "initialized bytes" }
                     );
                 }
-                if M::enforce_number_no_provenance(self.ecx) {
+                // Always check for number provenance during CTFE validation, even if the machine
+                // internally temporarily accepts number provenance.
+                if self.ctfe_mode.is_some() || M::enforce_number_no_provenance(self.ecx) {
                     // As a special exception we *do* match on a `Scalar` here, since we truly want
                     // to know its underlying representation (and *not* cast it to an integer).
                     let is_ptr = value.check_init().map_or(false, |v| matches!(v, Scalar::Ptr(..)));
@@ -924,10 +926,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 };
 
+                // Always check for number provenance during CTFE validation, even if the machine
+                // internally temporarily accepts number provenance.
                 match alloc.check_bytes(
                     alloc_range(Size::ZERO, size),
                     /*allow_uninit*/ !M::enforce_number_init(self.ecx),
-                    /*allow_ptr*/ !M::enforce_number_no_provenance(self.ecx),
+                    /*allow_ptr*/ !(self.ctfe_mode.is_some() || M::enforce_number_no_provenance(self.ecx)),
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}

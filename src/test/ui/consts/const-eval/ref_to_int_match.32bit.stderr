@@ -1,14 +1,13 @@
-error: any use of this value will cause an error
-  --> $DIR/ref_to_int_match.rs:25:27
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ref_to_int_match.rs:25:1
    |
 LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
-   | --------------------------^^^^^^^^^^^^^^^^---
-   |                           |
-   |                           unable to turn pointer into raw bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc3, but expected plain (non-pointer) bytes
    |
-   = note: `#[deny(const_err)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾─alloc3──╼                                     │ ╾──╼
+           }
 
 error: could not evaluate constant pattern
   --> $DIR/ref_to_int_match.rs:7:14
@@ -24,3 +23,4 @@ LL |         10..=BAR => {},
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0080`.

@@ -465,7 +465,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
 
     #[inline(always)]
     fn enforce_number_no_provenance(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        true
+        false
     }
 
     #[inline(always)]
