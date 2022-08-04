@@ -197,21 +197,9 @@ impl Parker {
         // purpose, to make sure every unpark() has a release-acquire ordering
         // with park().
         if self.state.swap(NOTIFIED, Release) == PARKED {
-            if let Some(wake_by_address_single) = c::WakeByAddressSingle::option() {
-                unsafe {
-                    wake_by_address_single(self.ptr());
-                }
-            } else {
-                // If we run NtReleaseKeyedEvent before the waiting thread runs
-                // NtWaitForKeyedEvent, this (shortly) blocks until we can wake it up.
-                // If the waiting thread wakes up before we run NtReleaseKeyedEvent
-                // (e.g. due to a timeout), this blocks until we do wake up a thread.
-                // To prevent this thread from blocking indefinitely in that case,
-                // park_impl() will, after seeing the state set to NOTIFIED after
-                // waking up, call NtWaitForKeyedEvent again to unblock us.
-                unsafe {
-                    c::NtReleaseKeyedEvent(keyed_event_handle(), self.ptr(), 0, ptr::null_mut());
-                }
+            unsafe {
+                // This calls either WakeByAddressSingle or unpark_keyed_event (see below).
+                c::wake_by_address_single_or_unpark_keyed_event(self.ptr());
             }
         }
     }
@@ -219,6 +207,19 @@ impl Parker {
     fn ptr(&self) -> c::LPVOID {
         &self.state as *const _ as c::LPVOID
     }
+}
+
+// This function signature makes it compatible with c::WakeByAddressSingle
+// so that it can be used as a fallback for that function.
+pub unsafe extern "C" fn unpark_keyed_event(address: c::LPVOID) {
+    // If we run NtReleaseKeyedEvent before the waiting thread runs
+    // NtWaitForKeyedEvent, this (shortly) blocks until we can wake it up.
+    // If the waiting thread wakes up before we run NtReleaseKeyedEvent
+    // (e.g. due to a timeout), this blocks until we do wake up a thread.
+    // To prevent this thread from blocking indefinitely in that case,
+    // park_impl() will, after seeing the state set to NOTIFIED after
+    // waking up, call NtWaitForKeyedEvent again to unblock us.
+    c::NtReleaseKeyedEvent(keyed_event_handle(), address, 0, ptr::null_mut());
 }
 
 fn keyed_event_handle() -> c::HANDLE {
