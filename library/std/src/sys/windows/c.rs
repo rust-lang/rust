@@ -1254,10 +1254,16 @@ compat_fn_with_fallback! {
     pub static SYNCH_API: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
     #[allow(unused)]
     fn WakeByAddressSingle(Address: LPVOID) -> () {
+        // This fallback is currently tightly coupled to its use in Parker::unpark.
+        //
+        // FIXME: If `WakeByAddressSingle` needs to be used anywhere other than
+        // Parker::unpark then this fallback will be wrong and will need to be decoupled.
         crate::sys::windows::thread_parker::unpark_keyed_event(Address)
     }
 }
 pub use crate::sys::compat::WaitOnAddress;
+// Change exported name of `WakeByAddressSingle` to make the strange fallback
+// behaviour clear.
 pub use WakeByAddressSingle::call as wake_by_address_single_or_unpark_keyed_event;
 
 compat_fn_with_fallback! {

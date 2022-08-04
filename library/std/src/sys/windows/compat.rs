@@ -7,14 +7,14 @@
 //! `GetModuleHandle` and `GetProcAddress` to look up DLL entry points at
 //! runtime.
 //!
-//! This is implemented simply by storing a function pointer in an atomic
-//! and using relaxed ordering to load it. This means that calling it will be no
-//! more expensive then calling any other dynamically imported function.
+//! This is implemented simply by storing a function pointer in an atomic.
+//! Loading and calling this function will have little or no overhead
+//! compared with calling any other dynamically imported function.
 //!
 //! The stored function pointer starts out as an importer function which will
 //! swap itself with the real function when it's called for the first time. If
 //! the real function can't be imported then a fallback function is used in its
-//! place. While this is zero cost for the happy path (where the function is
+//! place. While this is low cost for the happy path (where the function is
 //! already loaded) it does mean there's some overhead the first time the
 //! function is called. In the worst case, multiple threads may all end up
 //! importing the same function unnecessarily.
@@ -175,7 +175,7 @@ pub mod WaitOnAddress {
 
     #[inline(always)]
     pub fn option() -> Option<F> {
-        let f = WAIT_ON_ADDRESS.load(Ordering::Relaxed);
+        let f = WAIT_ON_ADDRESS.load(Ordering::Acquire);
         if !f.is_null() { Some(unsafe { mem::transmute(f) }) } else { try_load() }
     }
 
@@ -185,7 +185,7 @@ pub mod WaitOnAddress {
             // load the module
             let mut wait_on_address = None;
             if let Some(func) = try_load_inner() {
-                WAIT_ON_ADDRESS.store(func.as_ptr(), Ordering::Relaxed);
+                WAIT_ON_ADDRESS.store(func.as_ptr(), Ordering::Release);
                 wait_on_address = Some(unsafe { mem::transmute(func) });
             }
             // Don't try to load the module again even if loading failed.
