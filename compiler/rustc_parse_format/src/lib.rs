@@ -175,6 +175,7 @@ pub struct ParseError {
     pub label: string::String,
     pub span: InnerSpan,
     pub secondary_label: Option<(string::String, InnerSpan)>,
+    pub should_be_replaced_with_positional_argument: bool,
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -236,6 +237,8 @@ impl<'a> Iterator for Parser<'a> {
                                     lbrace_inner_offset.to(InnerOffset(rbrace_inner_offset.0 + 1)),
                                 );
                             }
+                        } else {
+                            self.suggest_positional_arg_instead_of_captured_arg(arg);
                         }
                         Some(NextArgument(arg))
                     }
@@ -313,6 +316,7 @@ impl<'a> Parser<'a> {
             label: label.into(),
             span,
             secondary_label: None,
+            should_be_replaced_with_positional_argument: false,
         });
     }
 
@@ -336,6 +340,7 @@ impl<'a> Parser<'a> {
             label: label.into(),
             span,
             secondary_label: None,
+            should_be_replaced_with_positional_argument: false,
         });
     }
 
@@ -407,6 +412,7 @@ impl<'a> Parser<'a> {
                     label,
                     span: pos.to(pos),
                     secondary_label,
+                    should_be_replaced_with_positional_argument: false,
                 });
                 None
             }
@@ -434,6 +440,7 @@ impl<'a> Parser<'a> {
                     label,
                     span: pos.to(pos),
                     secondary_label,
+                    should_be_replaced_with_positional_argument: false,
                 });
             } else {
                 self.err(description, format!("expected `{:?}`", c), pos.to(pos));
@@ -749,6 +756,34 @@ impl<'a> Parser<'a> {
             }
         }
         if found { Some(cur) } else { None }
+    }
+
+    fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {
+        if let Some(end) = self.consume_pos('.') {
+            let byte_pos = self.to_span_index(end);
+            let start = InnerOffset(byte_pos.0 + 1);
+            let field = self.argument(start);
+            // We can only parse `foo.bar` field access, any deeper nesting,
+            // or another type of expression, like method calls, are not supported
+            if !self.consume('}') {
+                return;
+            }
+            if let ArgumentNamed(_) = arg.position {
+                if let ArgumentNamed(_) = field.position {
+                    self.errors.insert(
+                        0,
+                        ParseError {
+                            description: "field access isn't supported".to_string(),
+                            note: None,
+                            label: "not supported".to_string(),
+                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
+                            secondary_label: None,
+                            should_be_replaced_with_positional_argument: true,
+                        },
+                    );
+                }
+            }
+        }
     }
 }
 
