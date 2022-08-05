@@ -600,7 +600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there are multiple arms, make sure they all agree on
         // what the type of the binding `x` ought to be.
         if var_id != pat.hir_id {
-            self.check_binding_alt_eq_ty(pat.span, var_id, local_ty, ti);
+            self.check_binding_alt_eq_ty(ba, pat.span, var_id, local_ty, ti);
         }
 
         if let Some(p) = sub {
@@ -610,7 +610,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         local_ty
     }
 
-    fn check_binding_alt_eq_ty(&self, span: Span, var_id: HirId, ty: Ty<'tcx>, ti: TopInfo<'tcx>) {
+    fn check_binding_alt_eq_ty(
+        &self,
+        ba: hir::BindingAnnotation,
+        span: Span,
+        var_id: HirId,
+        ty: Ty<'tcx>,
+        ti: TopInfo<'tcx>,
+    ) {
         let var_ty = self.local_ty(span, var_id).decl_ty;
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, var_ty, ty, ti) {
             let hir = self.tcx.hir();
@@ -628,9 +635,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
             let pre = if in_match { "in the same arm, " } else { "" };
             err.note(&format!("{}a binding must have the same type in all alternatives", pre));
-            // FIXME: check if `var_ty` and `ty` can be made the same type by adding or removing
-            // `ref` or `&` to the pattern.
+            self.suggest_adding_missing_ref_or_removing_ref(
+                &mut err,
+                span,
+                var_ty,
+                self.resolve_vars_with_obligations(ty),
+                ba,
+            );
             err.emit();
+        }
+    }
+
+    fn suggest_adding_missing_ref_or_removing_ref(
+        &self,
+        err: &mut Diagnostic,
+        span: Span,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        ba: hir::BindingAnnotation,
+    ) {
+        match (expected.kind(), actual.kind(), ba) {
+            (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::Unannotated)
+                if self.can_eq(self.param_env, *inner_ty, actual).is_ok() =>
+            {
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    "consider adding `ref`",
+                    "ref ",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::Ref)
+                if self.can_eq(self.param_env, expected, *inner_ty).is_ok() =>
+            {
+                err.span_suggestion_verbose(
+                    span.with_hi(span.lo() + BytePos(4)),
+                    "consider removing `ref`",
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => (),
         }
     }
 
