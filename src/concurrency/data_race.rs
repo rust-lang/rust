@@ -49,7 +49,7 @@ use std::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::{mir, ty::layout::TyAndLayout};
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 
 use crate::*;
 
@@ -463,6 +463,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         this.write_scalar_atomic(value.into(), &value_place, atomic)
     }
 
+    /// Checks that an atomic access is legal at the given place.
+    fn atomic_access_check(&self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
+        Ok(())
+    }
+
     /// Perform an atomic read operation at the memory location.
     fn read_scalar_atomic(
         &self,
@@ -470,6 +486,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         let this = self.eval_context_ref();
+        this.atomic_access_check(place)?;
         // This will read from the last store in the modification order of this location. In case
         // weak memory emulation is enabled, this may not be the store we will pick to actually read from and return.
         // This is fine with StackedBorrow and race checks because they don't concern metadata on
@@ -490,6 +507,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(dest)?;
+
         this.validate_overlapping_atomic(dest)?;
         this.allow_data_races_mut(move |this| this.write_scalar(val, &dest.into()))?;
         this.validate_atomic_store(dest, atomic)?;
@@ -511,6 +530,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
@@ -540,6 +560,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
@@ -561,6 +582,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
@@ -604,6 +626,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Immediate<Provenance>> {
         use rand::Rng as _;
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
@@ -1016,6 +1039,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
+            assert!(!data_race.ongoing_action_data_race_free.get(), "cannot nest allow_data_races");
             data_race.ongoing_action_data_race_free.set(true);
         }
         let result = op(this);
@@ -1035,6 +1059,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> R {
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.machine.data_race {
+            assert!(!data_race.ongoing_action_data_race_free.get(), "cannot nest allow_data_races");
             data_race.ongoing_action_data_race_free.set(true);
         }
         let result = op(this);
