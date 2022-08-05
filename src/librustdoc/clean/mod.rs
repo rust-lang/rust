@@ -1016,55 +1016,53 @@ fn clean_poly_trait_ref<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, Item> for hir::TraitItem<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let local_did = self.def_id.to_def_id();
-        cx.with_param_env(local_did, |cx| {
-            let inner = match self.kind {
-                hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(
-                    clean_ty(ty, cx),
-                    ConstantKind::Local { def_id: local_did, body: default },
-                ),
-                hir::TraitItemKind::Const(ty, None) => TyAssocConstItem(clean_ty(ty, cx)),
-                hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    let m = clean_function(cx, sig, self.generics, body);
-                    MethodItem(m, None)
-                }
-                hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
-                    let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        // NOTE: generics must be cleaned before args
-                        let generics = self.generics.clean(cx);
-                        let args = clean_args_from_types_and_names(cx, sig.decl.inputs, names);
-                        let decl = clean_fn_decl_with_args(cx, sig.decl, args);
-                        (generics, decl)
-                    });
-                    TyMethodItem(Box::new(Function { decl, generics }))
-                }
-                hir::TraitItemKind::Type(bounds, Some(default)) => {
-                    let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
-                    let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
-                    let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, default), cx, None);
-                    AssocTypeItem(
-                        Box::new(Typedef {
-                            type_: clean_ty(default, cx),
-                            generics,
-                            item_type: Some(item_type),
-                        }),
-                        bounds,
-                    )
-                }
-                hir::TraitItemKind::Type(bounds, None) => {
-                    let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
-                    let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
-                    TyAssocTypeItem(Box::new(generics), bounds)
-                }
-            };
-            let what_rustc_thinks =
-                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
-            Item { visibility: Inherited, ..what_rustc_thinks }
-        })
-    }
+fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+    let local_did = trait_item.def_id.to_def_id();
+    cx.with_param_env(local_did, |cx| {
+        let inner = match trait_item.kind {
+            hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(
+                clean_ty(ty, cx),
+                ConstantKind::Local { def_id: local_did, body: default },
+            ),
+            hir::TraitItemKind::Const(ty, None) => TyAssocConstItem(clean_ty(ty, cx)),
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
+                let m = clean_function(cx, sig, trait_item.generics, body);
+                MethodItem(m, None)
+            }
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
+                let (generics, decl) = enter_impl_trait(cx, |cx| {
+                    // NOTE: generics must be cleaned before args
+                    let generics = trait_item.generics.clean(cx);
+                    let args = clean_args_from_types_and_names(cx, sig.decl.inputs, names);
+                    let decl = clean_fn_decl_with_args(cx, sig.decl, args);
+                    (generics, decl)
+                });
+                TyMethodItem(Box::new(Function { decl, generics }))
+            }
+            hir::TraitItemKind::Type(bounds, Some(default)) => {
+                let generics = enter_impl_trait(cx, |cx| trait_item.generics.clean(cx));
+                let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
+                let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, default), cx, None);
+                AssocTypeItem(
+                    Box::new(Typedef {
+                        type_: clean_ty(default, cx),
+                        generics,
+                        item_type: Some(item_type),
+                    }),
+                    bounds,
+                )
+            }
+            hir::TraitItemKind::Type(bounds, None) => {
+                let generics = enter_impl_trait(cx, |cx| trait_item.generics.clean(cx));
+                let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
+                TyAssocTypeItem(Box::new(generics), bounds)
+            }
+        };
+        let what_rustc_thinks =
+            Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx);
+        // Trait items always inherit the trait's visibility -- we don't want to show `pub`.
+        Item { visibility: Inherited, ..what_rustc_thinks }
+    })
 }
 
 impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
@@ -1954,8 +1952,10 @@ fn clean_maybe_renamed_item<'tcx>(
                 })
             }
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
-                let items =
-                    item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
+                let items = item_ids
+                    .iter()
+                    .map(|ti| clean_trait_item(cx.tcx.hir().trait_item(ti.id), cx))
+                    .collect();
 
                 TraitItem(Trait {
                     def_id,
