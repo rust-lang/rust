@@ -1761,13 +1761,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .filter_map(|seg| seg.args.as_ref())
                             .flat_map(|a| a.args.iter())
                         {
-                            if let hir::GenericArg::Type(hir_ty) = &arg {
-                                let ty = self.resolve_vars_if_possible(
-                                    self.typeck_results.borrow().node_type(hir_ty.hir_id),
-                                );
-                                if ty == predicate.self_ty() {
-                                    error.obligation.cause.span = hir_ty.span;
-                                }
+                            if let hir::GenericArg::Type(hir_ty) = &arg
+                                && let Some(ty) =
+                                    self.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
+                                && self.resolve_vars_if_possible(ty) == predicate.self_ty()
+                            {
+                                error.obligation.cause.span = hir_ty.span;
+                                break;
                             }
                         }
                     }
