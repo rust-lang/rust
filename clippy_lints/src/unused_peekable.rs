@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{match_type, peel_mid_ty_refs_is_mutable};
-use clippy_utils::{fn_def_id, path_to_local_id, paths, peel_ref_operators};
+use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, paths, peel_ref_operators};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Block, Expr, ExprKind, HirId, Local, Node, PatKind, PathSegment, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -42,12 +42,7 @@ declare_clippy_lint! {
     "creating a peekable iterator without using any of its methods"
 }
 
-#[derive(Default)]
-pub struct UnusedPeekable {
-    visited: Vec<HirId>,
-}
-
-impl_lint_pass!(UnusedPeekable => [UNUSED_PEEKABLE]);
+declare_lint_pass!(UnusedPeekable => [UNUSED_PEEKABLE]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
@@ -62,15 +57,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
         for (idx, stmt) in block.stmts.iter().enumerate() {
             if !stmt.span.from_expansion()
                 && let StmtKind::Local(local) = stmt.kind
-                && !self.visited.contains(&local.pat.hir_id)
-                && let PatKind::Binding(_, _, ident, _) = local.pat.kind
+                && let PatKind::Binding(_, binding, ident, _) = local.pat.kind
                 && let Some(init) = local.init
                 && !init.span.from_expansion()
                 && let Some(ty) = cx.typeck_results().expr_ty_opt(init)
                 && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
                 && match_type(cx, ty, &paths::PEEKABLE)
             {
-                let mut vis = PeekableVisitor::new(cx, local.pat.hir_id);
+                let mut vis = PeekableVisitor::new(cx, binding);
 
                 if idx + 1 == block.stmts.len() && block.expr.is_none() {
                     return;
@@ -117,6 +111,10 @@ impl<'a, 'tcx> PeekableVisitor<'a, 'tcx> {
 
 impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'_ Expr<'_>) {
+        if self.found_peek_call {
+            return;
+        }
+
         if path_to_local_id(ex, self.expected_hir_id) {
             for (_, node) in self.cx.tcx.hir().parent_iter(ex.hir_id) {
                 match node {
@@ -138,50 +136,58 @@ impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
                                     return;
                                 }
 
-                                for arg in args.iter().map(|arg| peel_ref_operators(self.cx, arg)) {
-                                    if let ExprKind::Path(_) = arg.kind
-                                        && let Some(ty) = self
-                                            .cx
-                                            .typeck_results()
-                                            .expr_ty_opt(arg)
-                                            .map(Ty::peel_refs)
-                                        && match_type(self.cx, ty, &paths::PEEKABLE)
-                                    {
-                                        self.found_peek_call = true;
-                                        return;
-                                    }
-                                }
-                            },
-                            // Peekable::peek()
-                            ExprKind::MethodCall(PathSegment { ident: method_name, .. }, [arg, ..], _) => {
-                                let arg = peel_ref_operators(self.cx, arg);
-                                let method_name = method_name.name.as_str();
-
-                                if (method_name == "peek"
-                                    || method_name == "peek_mut"
-                                    || method_name == "next_if"
-                                    || method_name == "next_if_eq")
-                                    && let ExprKind::Path(_) = arg.kind
-                                    && let Some(ty) = self.cx.typeck_results().expr_ty_opt(arg).map(Ty::peel_refs)
-                                    && match_type(self.cx, ty, &paths::PEEKABLE)
-                                {
+                                if args.iter().any(|arg| {
+                                    matches!(arg.kind, ExprKind::Path(_)) && arg_is_mut_peekable(self.cx, arg)
+                                }) {
                                     self.found_peek_call = true;
                                     return;
                                 }
                             },
-                            // Don't bother if moved into a struct
-                            ExprKind::Struct(..) => {
+                            // Catch anything taking a Peekable mutably
+                            ExprKind::MethodCall(
+                                PathSegment {
+                                    ident: method_name_ident,
+                                    ..
+                                },
+                                [self_arg, remaining_args @ ..],
+                                _,
+                            ) => {
+                                let method_name = method_name_ident.name.as_str();
+
+                                // `Peekable` methods
+                                if matches!(method_name, "peek" | "peek_mut" | "next_if" | "next_if_eq")
+                                    && arg_is_mut_peekable(self.cx, self_arg)
+                                {
+                                    self.found_peek_call = true;
+                                    return;
+                                }
+
+                                // foo.some_method() excluding Iterator methods
+                                if remaining_args.iter().any(|arg| arg_is_mut_peekable(self.cx, arg))
+                                    && !is_trait_method(self.cx, expr, sym::Iterator)
+                                {
+                                    self.found_peek_call = true;
+                                    return;
+                                }
+
+                                // foo.by_ref(), keep checking for `peek`
+                                if method_name == "by_ref" {
+                                    continue;
+                                }
+
+                                return;
+                            },
+                            ExprKind::AddrOf(_, Mutability::Mut, _) | ExprKind::Unary(..) | ExprKind::DropTemps(_) => {
+                            },
+                            ExprKind::AddrOf(_, Mutability::Not, _) => return,
+                            _ => {
                                 self.found_peek_call = true;
                                 return;
                             },
-                            _ => {},
                         }
                     },
                     Node::Local(Local { init: Some(init), .. }) => {
-                        if let Some(ty) = self.cx.typeck_results().expr_ty_opt(init)
-                            && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
-                            && match_type(self.cx, ty, &paths::PEEKABLE)
-                        {
+                        if arg_is_mut_peekable(self.cx, init) {
                             self.found_peek_call = true;
                             return;
                         }
@@ -204,5 +210,16 @@ impl<'tcx> Visitor<'_> for PeekableVisitor<'_, 'tcx> {
         }
 
         walk_expr(self, ex);
+    }
+}
+
+fn arg_is_mut_peekable(cx: &LateContext<'_>, arg: &Expr<'_>) -> bool {
+    if let Some(ty) = cx.typeck_results().expr_ty_opt(arg)
+        && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
+        && match_type(cx, ty, &paths::PEEKABLE)
+    {
+        true
+    } else {
+        false
     }
 }

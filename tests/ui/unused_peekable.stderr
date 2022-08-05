@@ -40,12 +40,28 @@ LL |     let mut peekable_using_iterator_method = std::iter::empty::<u32>().peek
    = help: consider removing the call to `peekable`
 
 error: `peek` never called on `Peekable` iterator
-  --> $DIR/unused_peekable.rs:35:13
+  --> $DIR/unused_peekable.rs:37:9
+   |
+LL |     let passed_along_ref = std::iter::empty::<u32>().peekable();
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:42:9
+   |
+LL |     let _by_ref = by_ref_test.by_ref();
+   |         ^^^^^^^
+   |
+   = help: consider removing the call to `peekable`
+
+error: `peek` never called on `Peekable` iterator
+  --> $DIR/unused_peekable.rs:44:13
    |
 LL |     let mut peekable_in_for_loop = std::iter::empty::<u32>().peekable();
    |             ^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider removing the call to `peekable`
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 

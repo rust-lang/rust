@@ -32,6 +32,15 @@ fn invalid() {
     let mut peekable_using_iterator_method = std::iter::empty::<u32>().peekable();
     peekable_using_iterator_method.next();
 
+    // Passed by ref to another function
+    fn takes_ref(_peek: &Peekable<Empty<u32>>) {}
+    let passed_along_ref = std::iter::empty::<u32>().peekable();
+    takes_ref(&passed_along_ref);
+
+    // `by_ref` without `peek`
+    let mut by_ref_test = std::iter::empty::<u32>().peekable();
+    let _by_ref = by_ref_test.by_ref();
+
     let mut peekable_in_for_loop = std::iter::empty::<u32>().peekable();
     for x in peekable_in_for_loop {}
 }
@@ -42,6 +51,18 @@ fn valid() {
     // Passed to another function
     let passed_along = std::iter::empty::<u32>().peekable();
     takes_peekable(passed_along);
+
+    // Passed to another method
+    struct PeekableConsumer;
+    impl PeekableConsumer {
+        fn consume(&self, _: Peekable<Empty<u32>>) {}
+        fn consume_mut_ref(&self, _: &mut Peekable<Empty<u32>>) {}
+    }
+
+    let peekable_consumer = PeekableConsumer;
+    let mut passed_along_to_method = std::iter::empty::<u32>().peekable();
+    peekable_consumer.consume_mut_ref(&mut passed_along_to_method);
+    peekable_consumer.consume(passed_along_to_method);
 
     // `peek` called in another block
     let mut peekable_in_block = std::iter::empty::<u32>().peekable();
@@ -110,6 +131,10 @@ fn valid() {
 
     let struct_test = std::iter::empty::<u32>().peekable();
     PeekableWrapper { f: struct_test };
+
+    // `by_ref` before `peek`
+    let mut by_ref_test = std::iter::empty::<u32>().peekable();
+    let peeked_val = by_ref_test.by_ref().peek();
 
     // `peek` called in another block as the last expression
     let mut peekable_last_expr = std::iter::empty::<u32>().peekable();
