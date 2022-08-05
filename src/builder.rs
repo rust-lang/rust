@@ -279,6 +279,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
         let func_name = format!("{:?}", func_ptr);
         let previous_arg_count = args.len();
+        let orig_args = args;
         let args = llvm::adjust_intrinsic_arguments(&self, gcc_func, args.into(), &func_name);
         let args_adjusted = args.len() != previous_arg_count;
         let args = self.check_ptr_call("call", func_ptr, &*args);
@@ -292,7 +293,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let return_value = self.cx.context.new_call_through_ptr(None, func_ptr, &args);
-            let return_value = llvm::adjust_intrinsic_return_value(&self, return_value, &func_name, &args, args_adjusted);
+            let return_value = llvm::adjust_intrinsic_return_value(&self, return_value, &func_name, &args, args_adjusted, orig_args);
             let result = current_func.new_local(None, return_value.get_type(), &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
             self.block.add_assignment(None, result, return_value);
             result.to_rvalue()

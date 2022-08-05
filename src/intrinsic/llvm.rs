@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use gccjit::{Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
+use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::{context::CodegenCx, builder::Builder};
 
@@ -277,6 +278,15 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
                 *arg3 = builder.context.new_unary_op(None, UnaryOp::Minus, arg3.get_type(), *arg3);
                 args = new_args.into();
             },
+            "__builtin_ia32_ldmxcsr" => {
+                // The builtin __builtin_ia32_ldmxcsr takes an integer value while llvm.x86.sse.ldmxcsr takes a pointer,
+                // so dereference the pointer.
+                let mut new_args = args.to_vec();
+                let uint_ptr_type = builder.uint_type.make_pointer();
+                let arg1 = builder.context.new_cast(None, args[0], uint_ptr_type);
+                new_args[0] = arg1.dereference(None).to_rvalue();
+                args = new_args.into();
+            },
             _ => (),
         }
     }
@@ -284,7 +294,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
     args
 }
 
-pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc, 'tcx>, mut return_value: RValue<'gcc>, func_name: &str, args: &[RValue<'gcc>], args_adjusted: bool) -> RValue<'gcc> {
+pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc, 'tcx>, mut return_value: RValue<'gcc>, func_name: &str, args: &[RValue<'gcc>], args_adjusted: bool, orig_args: &[RValue<'gcc>]) -> RValue<'gcc> {
     match func_name {
         "__builtin_ia32_vfmaddss3_round" | "__builtin_ia32_vfmaddsd3_round" => {
             #[cfg(feature="master")]
@@ -305,6 +315,18 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc,
                 let struct_type = builder.context.new_struct_type(None, "addcarryResult", &[field1, field2]);
                 return_value = builder.context.new_struct_constructor(None, struct_type.as_type(), None, &[return_value, last_arg.dereference(None).to_rvalue()]);
             }
+        },
+        "__builtin_ia32_stmxcsr" => {
+            // The builtin __builtin_ia32_stmxcsr returns a value while llvm.x86.sse.stmxcsr writes
+            // the result in its pointer argument.
+            // We removed the argument since __builtin_ia32_stmxcsr takes no arguments, so we need
+            // to get back the original argument to get the pointer we need to write the result to.
+            let uint_ptr_type = builder.uint_type.make_pointer();
+            let ptr = builder.context.new_cast(None, orig_args[0], uint_ptr_type);
+            builder.llbb().add_assignment(None, ptr.dereference(None), return_value);
+            // The return value was assigned to the result pointer above. In order to not call the
+            // builtin twice, we overwrite the return value with a dummy value.
+            return_value = builder.context.new_rvalue_zero(builder.int_type);
         },
         _ => (),
     }
