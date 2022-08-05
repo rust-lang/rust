@@ -156,7 +156,7 @@ impl<'tcx> Clean<'tcx, Option<GenericBound>> for hir::GenericBound<'tcx> {
                     return None;
                 }
 
-                GenericBound::TraitBound(t.clean(cx), modifier)
+                GenericBound::TraitBound(clean_poly_trait_ref(t, cx), modifier)
             }
         })
     }
@@ -1001,17 +1001,18 @@ fn clean_trait_ref<'tcx>(trait_ref: &hir::TraitRef<'tcx>, cx: &mut DocContext<'t
     path
 }
 
-impl<'tcx> Clean<'tcx, PolyTrait> for hir::PolyTraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> PolyTrait {
-        PolyTrait {
-            trait_: clean_trait_ref(&self.trait_ref, cx),
-            generic_params: self
-                .bound_generic_params
-                .iter()
-                .filter(|p| !is_elided_lifetime(p))
-                .map(|x| clean_generic_param(cx, None, x))
-                .collect(),
-        }
+fn clean_poly_trait_ref<'tcx>(
+    poly_trait_ref: &hir::PolyTraitRef<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> PolyTrait {
+    PolyTrait {
+        trait_: clean_trait_ref(&poly_trait_ref.trait_ref, cx),
+        generic_params: poly_trait_ref
+            .bound_generic_params
+            .iter()
+            .filter(|p| !is_elided_lifetime(p))
+            .map(|x| clean_generic_param(cx, None, x))
+            .collect(),
     }
 }
 
@@ -1515,7 +1516,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, ref lifetime, _) => {
-            let bounds = bounds.iter().map(|bound| bound.clean(cx)).collect();
+            let bounds = bounds.iter().map(|bound| clean_poly_trait_ref(bound, cx)).collect();
             let lifetime =
                 if !lifetime.is_elided() { Some(clean_lifetime(*lifetime, cx)) } else { None };
             DynTrait(bounds, lifetime)
