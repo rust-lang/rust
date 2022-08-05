@@ -1,5 +1,4 @@
 use std::ffi::OsStr;
-use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -10,6 +9,8 @@ use std::sync::LazyLock as Lazy;
 use itertools::Itertools;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
 use crate::clean::Crate;
@@ -563,36 +564,18 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             types: Vec<String>,
         }
 
-        impl Implementor {
-            fn to_js_string(&self) -> impl fmt::Display + '_ {
-                fn single_quote_string(s: &str) -> String {
-                    let mut result = String::with_capacity(s.len() + 2);
-                    result.push_str("'");
-                    for c in s.chars() {
-                        if c == '"' {
-                            result.push_str("\"");
-                        } else {
-                            result.extend(c.escape_default());
-                        }
-                    }
-                    result.push_str("'");
-                    result
+        impl Serialize for Implementor {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element(&self.text)?;
+                if self.synthetic {
+                    seq.serialize_element(&1)?;
+                    seq.serialize_element(&self.types)?;
                 }
-                crate::html::format::display_fn(|f| {
-                    let text_esc = single_quote_string(&self.text);
-                    if self.synthetic {
-                        let types = crate::html::format::comma_sep(
-                            self.types.iter().map(|type_| single_quote_string(type_)),
-                            false,
-                        );
-                        // use `1` to represent a synthetic, because it's fewer bytes than `true`
-                        write!(f, "[{text_esc},1,[{types}]]")
-                    } else {
-                        // The types list is only used for synthetic impls.
-                        // If this changes, `main.js` and `write_shared.rs` both need changed.
-                        write!(f, "[{text_esc}]")
-                    }
-                })
+                seq.end()
             }
         }
 
@@ -626,12 +609,9 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         }
 
         let implementors = format!(
-            r#""{}":[{}]"#,
+            r#""{}":{}"#,
             krate.name(cx.tcx()),
-            crate::html::format::comma_sep(
-                implementors.iter().map(Implementor::to_js_string),
-                false
-            )
+            serde_json::to_string(&implementors).expect("failed serde conversion"),
         );
 
         let mut mydst = dst.clone();
