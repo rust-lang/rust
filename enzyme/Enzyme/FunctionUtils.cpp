@@ -310,30 +310,12 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
                                     IntegerType::get(AI->getContext(), 64),
                                     AI->getAlignment()))}));
 
-#if LLVM_VERSION_MAJOR >= 14
-    if (ConstantInt *size = dyn_cast<ConstantInt>(CI->getOperand(0))) {
-      CI->addDereferenceableRetAttr(size->getLimitedValue());
-#if !defined(FLANG) && !defined(ROCM)
-      AttrBuilder B(CI->getContext());
-#else
-      AttrBuilder B;
-#endif
-      B.addDereferenceableOrNullAttr(size->getLimitedValue());
-      CI->setAttributes(
-          CI->getAttributes().addRetAttributes(CI->getContext(), B));
-    }
-    CI->addAttributeAtIndex(AttributeList::ReturnIndex, Attribute::NoAlias);
-    CI->addAttributeAtIndex(AttributeList::ReturnIndex, Attribute::NonNull);
-#else
-    if (ConstantInt *size = dyn_cast<ConstantInt>(CI->getOperand(0))) {
-      CI->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
-                                 size->getLimitedValue());
-      CI->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
-                                       size->getLimitedValue());
-    }
-    CI->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-    CI->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
-#endif
+    auto PT0 = cast<PointerType>(rep->getType());
+    auto PT1 = cast<PointerType>(AI->getType());
+    if (PT0->getAddressSpace() != PT1->getAddressSpace())
+      rep = B.CreateAddrSpaceCast(rep,
+                                  PointerType::get(PT0->getPointerElementType(),
+                                                   PT1->getAddressSpace()));
     assert(rep->getType() == AI->getType());
     AI->replaceAllUsesWith(rep);
     AI->eraseFromParent();
