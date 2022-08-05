@@ -1,3 +1,4 @@
+use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -54,4 +55,8 @@ pub(crate) fn copy_dir_recursively(from: &Path, to: &Path) {
             fs::copy(from.join(&filename), to.join(&filename)).unwrap();
         }
     }
+}
+
+pub(crate) fn is_ci() -> bool {
+    env::var("CI").as_ref().map(|val| &**val) == Ok("true")
 }

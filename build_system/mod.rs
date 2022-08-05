@@ -2,6 +2,8 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
+use self::utils::is_ci;
+
 mod build_backend;
 mod build_sysroot;
 mod config;
@@ -47,6 +49,11 @@ pub fn main() {
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
     // The target dir is expected in the default location. Guard against the user changing it.
     env::set_var("CARGO_TARGET_DIR", "target");
+
+    if is_ci() {
+        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
+        env::set_var("CARGO_BUILD_INCREMENTAL", "false");
+    }
 
     let mut args = env::args().skip(1);
     let command = match args.next().as_deref() {
