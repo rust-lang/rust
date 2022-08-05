@@ -40,6 +40,26 @@ pub trait IntoDiagnosticArg {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
 }
 
+pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
+
+impl IntoDiagnosticArg for DiagnosticArgFromDisplay<'_> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.0.to_string().into_diagnostic_arg()
+    }
+}
+
+impl<'a> From<&'a dyn fmt::Display> for DiagnosticArgFromDisplay<'a> {
+    fn from(t: &'a dyn fmt::Display) -> Self {
+        DiagnosticArgFromDisplay(t)
+    }
+}
+
+impl<'a, T: fmt::Display> From<&'a T> for DiagnosticArgFromDisplay<'a> {
+    fn from(t: &'a T) -> Self {
+        DiagnosticArgFromDisplay(t)
+    }
+}
+
 macro_rules! into_diagnostic_arg_using_display {
     ($( $ty:ty ),+ $(,)?) => {
         $(
