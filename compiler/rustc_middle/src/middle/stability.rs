@@ -421,18 +421,18 @@ impl<'tcx> TyCtxt<'tcx> {
             return EvalResult::Allow;
         }
 
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !def_id.is_local();
+        if !cross_crate {
+            return EvalResult::Allow;
+        }
+
         let stability = self.lookup_stability(def_id);
         debug!(
             "stability: \
                 inspecting def_id={:?} span={:?} of stability={:?}",
             def_id, span, stability
         );
-
-        // Only the cross-crate scenario matters when checking unstable APIs
-        let cross_crate = !def_id.is_local();
-        if !cross_crate {
-            return EvalResult::Allow;
-        }
 
         // Issue #38412: private items lack stability markers.
         if skip_stability_check_due_to_privacy(self, def_id) {
@@ -508,16 +508,16 @@ impl<'tcx> TyCtxt<'tcx> {
             return EvalResult::Allow;
         }
 
-        let stability = self.lookup_default_body_stability(def_id);
-        debug!(
-            "body stability: inspecting def_id={def_id:?} span={span:?} of stability={stability:?}"
-        );
-
         // Only the cross-crate scenario matters when checking unstable APIs
         let cross_crate = !def_id.is_local();
         if !cross_crate {
             return EvalResult::Allow;
         }
+
+        let stability = self.lookup_default_body_stability(def_id);
+        debug!(
+            "body stability: inspecting def_id={def_id:?} span={span:?} of stability={stability:?}"
+        );
 
         // Issue #38412: private items lack stability markers.
         if skip_stability_check_due_to_privacy(self, def_id) {
