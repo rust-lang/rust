@@ -18,7 +18,7 @@
 use std::ops::Generator;
 
 const FOO_SIZE: usize = 1024;
-struct Foo([u8; FOO_SIZE]);
+struct Foo(#[allow(unused_tuple_struct_fields)] [u8; FOO_SIZE]);
 
 impl Drop for Foo {
     fn drop(&mut self) {}

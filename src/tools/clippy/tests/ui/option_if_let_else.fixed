@@ -1,6 +1,7 @@
 // run-rustfix
 #![warn(clippy::option_if_let_else)]
 #![allow(
+    unused_tuple_struct_fields,
     clippy::redundant_closure,
     clippy::ref_option_ref,
     clippy::equatable_if_let,

@@ -10,8 +10,8 @@ use std::sync::Arc;
 trait Trait { fn dummy(&self) { } }
 trait Mirror { type Image; }
 impl<T> Mirror for T { type Image = T; }
-struct ParamTypeStruct<T>(T);
-struct AssocTypeStruct<T>(<T as Mirror>::Image);
+struct ParamTypeStruct<T>(#[allow(unused_tuple_struct_fields)] T);
+struct AssocTypeStruct<T>(#[allow(unused_tuple_struct_fields)] <T as Mirror>::Image);
 #[repr(transparent)]
 union MaybeUninitUnion<T: Copy> {
     _value: T,
@@ -46,7 +46,7 @@ fn main() {
     struct Foo {
         _a: Box<isize>
     }
-    struct Bar(Box<isize>);
+    struct Bar(#[allow(unused_tuple_struct_fields)] Box<isize>);
 
     // Should apply through structs
     assert_eq!(size_of::<Foo>(), size_of::<Option<Foo>>());

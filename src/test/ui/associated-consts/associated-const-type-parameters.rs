@@ -17,7 +17,7 @@ impl Foo for Def {
     const X: i32 = 97;
 }
 
-struct Proxy<T>(T);
+struct Proxy<T>(#[allow(unused_tuple_struct_fields)] T);
 
 impl<T: Foo> Foo for Proxy<T> {
     const X: i32 = T::X;

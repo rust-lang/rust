@@ -15,7 +15,7 @@ trait Parser {
     }
 }
 
-struct Token<T>(T::Item) where T: Iterator;
+struct Token<T>(#[allow(unused_tuple_struct_fields)] T::Item) where T: Iterator;
 
 impl<T> Parser for Token<T> where T: Iterator {
     type Input = T;
@@ -25,7 +25,7 @@ impl<T> Parser for Token<T> where T: Iterator {
     }
 }
 
-struct Chain<L, R>(L, R);
+struct Chain<L, R>(#[allow(unused_tuple_struct_fields)] L, #[allow(unused_tuple_struct_fields)] R);
 
 impl<L, R> Parser for Chain<L, R> where L: Parser, R: Parser<Input = L::Input> {
     type Input = L::Input;
