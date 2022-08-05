@@ -3519,7 +3519,7 @@ impl Methods {
                 ("sort_unstable_by", [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
-                ("replace", [_, _]) => collapsible_str_replace::check(cx, expr, recv, args),
+                ("replace", [_, _]) => collapsible_str_replace::check(cx, expr, name, recv, args),
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);

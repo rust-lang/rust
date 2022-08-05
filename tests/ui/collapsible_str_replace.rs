@@ -10,12 +10,27 @@ fn main() {
     let p = 'p';
     let s = 's';
     let u = 'u';
+    let l = "l";
 
     // LINT CASES
     // If the first argument to a single `str::replace` call is a slice and none of the chars
     // are variables, recommend `collapsible_str_replace`
     let replacement = misspelled.replace(&['s', 'u', 'p'], "l");
     println!("{replacement}");
+
+    let replacement = misspelled.replace(&['s', 'u', 'p'], l);
+    println!("{replacement}");
+
+    // If multiple `str::replace` calls contain slices and none of the chars are variables,
+    // recommend `collapsible_str_replace`
+    let replacement = misspelled.replace(&['s', 'u'], "l").replace(&['u', 'p'], "l");
+    println!("{replacement}");
+
+    let replacement = misspelled.replace('s', "l").replace(&['u', 'p'], "l");
+    println!("{replacement}");
+
+    let replacement = misspelled.replace(&['s', 'u'], "l").replace('p', "l");
+    println!("replacement");
 
     // If there are consecutive calls to `str::replace` and none of the chars are variables,
     // recommend `collapsible_str_replace`
@@ -38,18 +53,6 @@ fn main() {
     let replacement = misspelled.replace(&get_filter(), "l");
 
     // NO LINT TIL IMPROVEMENT
-    // If multiple `str::replace` calls contain slices and none of the chars are variables,
-    // the first iteration does not recommend `collapsible_str_replace`
-    let replacement = misspelled.replace(&['s', 'u', 'p'], "l").replace(&['s', 'p'], "l");
-    println!("{replacement}");
-
-    // If a mixture of `str::replace` calls with slice and char arguments are used for `from` arg,
-    // the first iteration does not recommend `collapsible_str_replace`
-    let replacement = misspelled.replace(&['s', 'u'], "l").replace('p', "l");
-    println!("replacement");
-
-    let replacement = misspelled.replace('p', "l").replace(&['s', 'u'], "l");
-
     // The first iteration of `collapsible_str_replace` will not create lint if the first argument to
     // a single `str::replace` call is a slice and one or more of its chars are variables
     let replacement = misspelled.replace(&['s', u, 'p'], "l");
