@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -563,7 +564,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         }
 
         impl Implementor {
-            fn to_js_string(&self) -> String {
+            fn to_js_string(&self) -> impl fmt::Display + '_ {
                 fn single_quote_string(s: &str) -> String {
                     let mut result = String::with_capacity(s.len() + 2);
                     result.push_str("'");
@@ -577,16 +578,21 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                     result.push_str("'");
                     result
                 }
-                let text_esc = single_quote_string(&self.text);
-                if self.synthetic {
-                    let types = self.types.iter().map(|type_| single_quote_string(type_)).join(",");
-                    // use `1` to represent a synthetic, because it's fewer bytes than `true`
-                    format!("[{text_esc},1,[{types}]]")
-                } else {
-                    // The types list is only used for synthetic impls.
-                    // If this changes, `main.js` and `write_shared.rs` both need changed.
-                    format!("[{text_esc}]")
-                }
+                crate::html::format::display_fn(|f| {
+                    let text_esc = single_quote_string(&self.text);
+                    if self.synthetic {
+                        let types = crate::html::format::comma_sep(
+                            self.types.iter().map(|type_| single_quote_string(type_)),
+                            false,
+                        );
+                        // use `1` to represent a synthetic, because it's fewer bytes than `true`
+                        write!(f, "[{text_esc},1,[{types}]]")
+                    } else {
+                        // The types list is only used for synthetic impls.
+                        // If this changes, `main.js` and `write_shared.rs` both need changed.
+                        write!(f, "[{text_esc}]")
+                    }
+                })
             }
         }
 
@@ -622,7 +628,10 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         let implementors = format!(
             r#""{}":[{}]"#,
             krate.name(cx.tcx()),
-            implementors.iter().map(Implementor::to_js_string).join(",")
+            crate::html::format::comma_sep(
+                implementors.iter().map(Implementor::to_js_string),
+                false
+            )
         );
 
         let mut mydst = dst.clone();
