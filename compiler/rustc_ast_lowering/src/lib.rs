@@ -126,6 +126,8 @@ struct LoweringContext<'a, 'hir> {
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
 
+    in_scope_generics: Vec<LocalDefId>,
+
     /// NodeIds that are lowered inside the current HIR owner.
     node_id_to_local_id: FxHashMap<NodeId, hir::ItemLocalId>,
 
@@ -611,11 +613,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn with_remapping<R>(
         &mut self,
         remap: FxHashMap<LocalDefId, LocalDefId>,
+        in_scope_generics: &[LocalDefId],
         f: impl FnOnce(&mut Self) -> R,
     ) -> R {
+        let original_len = self.in_scope_generics.len();
+        self.in_scope_generics
+            .extend(in_scope_generics.iter().filter(|in_scope| !remap.contains_key(in_scope)));
         self.resolver.generics_def_id_map.push(remap);
         let res = f(self);
         self.resolver.generics_def_id_map.pop();
+        self.in_scope_generics.truncate(original_len);
         res
     }
 
@@ -1590,7 +1597,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!(?new_remapping);
 
             // Install the remapping from old to new (if any):
-            lctx.with_remapping(new_remapping, |lctx| {
+            lctx.with_remapping(new_remapping, &[], |lctx| {
                 // This creates HIR lifetime definitions as `hir::GenericParam`, in the given
                 // example `type TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection
                 // containing `&['x]`.
@@ -1746,8 +1753,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             lctx.create_generic_defs(opaque_ty_def_id, &ast_generics.params, &mut new_remapping);
             debug!(?new_remapping);
 
+            let in_scope_generics: Vec<_> =
+                ast_generics.params.iter().map(|param| lctx.local_def_id(param.id)).collect();
+
             // Install the remapping from old to new (if any):
-            lctx.with_remapping(new_remapping, |lctx| {
+            lctx.with_remapping(new_remapping, &in_scope_generics, |lctx| {
                 // This creates HIR lifetime definitions as `hir::GenericParam`, in the given
                 // example `type TestReturn<'a, T, 'x> = impl Debug + 'x`, it creates a collection
                 // containing `&['x]`.
@@ -1801,6 +1811,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let mut predicates: Vec<_> = ast_generics
                     .params
                     .iter()
+                    .filter(|param| {
+                        matches!(
+                            param.kind,
+                            GenericParamKind::Const { .. } | GenericParamKind::Type { .. }
+                        )
+                    })
                     .filter_map(|param| {
                         lctx.lower_generic_bound_predicate(
                             param.ident,
@@ -2215,7 +2231,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!(?new_remapping);
 
             // Install the remapping from old to new (if any):
-            this.with_remapping(new_remapping, |this| {
+            this.with_remapping(new_remapping, &[], |this| {
                 // We have to be careful to get elision right here. The
                 // idea is that we create a lifetime parameter for each
                 // lifetime in the return type.  So, given a return type
@@ -2387,9 +2403,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let name = match res {
             LifetimeRes::Param { param, .. } => {
                 let p_name = ParamName::Plain(ident);
-                let param = self.resolver.get_remapped_def_id(param);
-
-                hir::LifetimeName::Param(param, p_name)
+                if self.in_scope_generics.contains(&param) {
+                    hir::LifetimeName::Static
+                } else {
+                    let param = self.resolver.get_remapped_def_id(param);
+                    hir::LifetimeName::Param(param, p_name)
+                }
             }
             LifetimeRes::Fresh { param, .. } => {
                 debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
