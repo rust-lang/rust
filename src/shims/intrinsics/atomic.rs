@@ -67,8 +67,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             ["load", ord] => this.atomic_load(args, dest, read_ord(ord)?)?,
             ["store", ord] => this.atomic_store(args, write_ord(ord)?)?,
 
-            ["fence", ord] => this.atomic_fence(args, fence_ord(ord)?)?,
-            ["singlethreadfence", ord] => this.compiler_fence(args, fence_ord(ord)?)?,
+            ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord)?)?,
+            ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord)?)?,
 
             ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord)?)?,
             ["cxchg", ord1, ord2] =>
@@ -117,7 +117,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
+}
 
+impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
+trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn atomic_load(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
@@ -153,7 +156,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn compiler_fence(
+    fn compiler_fence_intrinsic(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicFenceOrd,
@@ -164,14 +167,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn atomic_fence(
+    fn atomic_fence_intrinsic(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let [] = check_arg_count(args)?;
-        this.validate_atomic_fence(atomic)?;
+        this.atomic_fence(atomic)?;
         Ok(())
     }
 
