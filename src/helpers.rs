@@ -609,20 +609,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// The inverse of `io_error_to_errnum`.
-    fn errnum_to_io_error(
+    #[allow(clippy::needless_return)]
+    fn try_errnum_to_io_error(
         &self,
         errnum: Scalar<Provenance>,
-    ) -> InterpResult<'tcx, std::io::ErrorKind> {
+    ) -> InterpResult<'tcx, Option<std::io::ErrorKind>> {
         let this = self.eval_context_ref();
         let target = &this.tcx.sess.target;
         if target.families.iter().any(|f| f == "unix") {
             let errnum = errnum.to_i32()?;
             for &(name, kind) in UNIX_IO_ERROR_TABLE {
                 if errnum == this.eval_libc_i32(name)? {
-                    return Ok(kind);
+                    return Ok(Some(kind));
                 }
             }
-            throw_unsup_format!("raw errnum {:?} cannot be translated into io::Error", errnum)
+            // Our table is as complete as the mapping in std, so we are okay with saying "that's a
+            // strange one" here.
+            return Ok(None);
         } else {
             throw_unsup_format!(
                 "converting errnum into io::Error is unsupported for OS {}",
