@@ -1,7 +1,9 @@
-// compile-flags: -O
+// revisions: O Os
+//[Os] compile-flags: -Copt-level=s
+//[O] compile-flags: -O
 #![crate_type = "lib"]
 
-// CHECK: @func2 = {{.*}}alias{{.*}}@func1
+// CHECK: @func{{2|1}} = {{.*}}alias{{.*}}@func{{1|2}}
 
 #[no_mangle]
 pub fn func1(c: char) -> bool {
