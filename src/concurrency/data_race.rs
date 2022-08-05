@@ -46,6 +46,7 @@ use std::{
     mem,
 };
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::{mir, ty::layout::TyAndLayout};
@@ -476,6 +477,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             align,
             CheckInAllocMsg::MemoryAccessTest,
         )?;
+        // Ensure the allocation is mutable. Even failing (read-only) compare_exchange need mutable
+        // memory on many targets (i.e., they segfault if taht memory is mapped read-only), and
+        // atomic loads can be implemented via compare_exchange on some targets. See
+        // <https://github.com/rust-lang/miri/issues/2463>.
+        // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
+        // access will happen later.
+        let (alloc_id, _offset, _prov) =
+            this.ptr_try_get_alloc_id(place.ptr).expect("there are no zero-sized atomic accesses");
+        if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
+            throw_ub_format!("atomic operations cannot be performed on read-only memory");
+        }
         Ok(())
     }
 

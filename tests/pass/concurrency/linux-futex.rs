@@ -130,7 +130,7 @@ fn wait_absolute_timeout() {
 fn wait_wake() {
     let start = Instant::now();
 
-    static FUTEX: i32 = 0;
+    static mut FUTEX: i32 = 0;
 
     let t = thread::spawn(move || {
         thread::sleep(Duration::from_millis(200));
@@ -167,7 +167,7 @@ fn wait_wake() {
 fn wait_wake_bitset() {
     let start = Instant::now();
 
-    static FUTEX: i32 = 0;
+    static mut FUTEX: i32 = 0;
 
     let t = thread::spawn(move || {
         thread::sleep(Duration::from_millis(200));
@@ -277,8 +277,8 @@ fn concurrent_wait_wake() {
 
     // Make sure we got the interesting case (of having woken a thread) at least once, but not *each* time.
     let woken = WOKEN.load(Ordering::Relaxed);
-    assert!(woken > 0 && woken < rounds);
     //eprintln!("waking happened {woken} times");
+    assert!(woken > 0 && woken < rounds);
 }
 
 fn main() {
