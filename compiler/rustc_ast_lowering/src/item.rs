@@ -80,7 +80,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             generator_kind: None,
             task_context: None,
             current_item: None,
-            captured_lifetimes: None,
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
@@ -1350,12 +1349,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         predicates.extend(generics.params.iter().filter_map(|param| {
-            let bounds = self.lower_param_bounds(&param.bounds, itctx);
             self.lower_generic_bound_predicate(
                 param.ident,
                 param.id,
                 &param.kind,
-                bounds,
+                &param.bounds,
+                itctx,
                 PredicateOrigin::GenericParam,
             )
         }));
@@ -1403,13 +1402,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ident: Ident,
         id: NodeId,
         kind: &GenericParamKind,
-        bounds: &'hir [hir::GenericBound<'hir>],
+        bounds: &[GenericBound],
+        itctx: ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
         // Do not create a clause if we do not have anything inside it.
         if bounds.is_empty() {
             return None;
         }
+
+        let bounds = self.lower_param_bounds(bounds, itctx);
+
         let ident = self.lower_ident(ident);
         let param_span = ident.span;
         let span = bounds
@@ -1450,11 +1453,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             GenericParamKind::Lifetime => {
                 let ident_span = self.lower_span(ident.span);
                 let ident = self.lower_ident(ident);
-                let res = self.resolver.get_lifetime_res(id).unwrap_or_else(|| {
-                    panic!("Missing resolution for lifetime {:?} at {:?}", id, ident.span)
-                });
                 let lt_id = self.next_node_id();
-                let lifetime = self.new_named_lifetime_with_res(lt_id, ident_span, ident, res);
+                let lifetime = self.new_named_lifetime(id, lt_id, ident_span, ident);
                 Some(hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     lifetime,
                     span,

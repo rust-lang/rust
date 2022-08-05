@@ -64,7 +64,7 @@ impl fmt::Debug for Label {
 
 /// A "Lifetime" is an annotation of the scope in which variable
 /// can be used, e.g. `'a` in `&'a i32`.
-#[derive(Clone, Encodable, Decodable, Copy)]
+#[derive(Clone, Encodable, Decodable, Copy, PartialEq, Eq)]
 pub struct Lifetime {
     pub id: NodeId,
     pub ident: Ident,
