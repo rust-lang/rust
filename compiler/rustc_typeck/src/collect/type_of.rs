@@ -801,6 +801,9 @@ fn infer_placeholder_type<'a>(
     match tcx.sess.diagnostic().steal_diagnostic(span, StashKey::ItemNoType) {
         Some(mut err) => {
             if !ty.references_error() {
+                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic)
+                let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
                 // FIXME(eddyb) this looks like it should be functionality on `Diagnostic`.
@@ -816,7 +819,7 @@ fn infer_placeholder_type<'a>(
                     err.span_suggestion(
                         span,
                         &format!("provide a type for the {item}", item = kind),
-                        format!("{}: {}", item_ident, sugg_ty),
+                        format!("{colon} {sugg_ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {

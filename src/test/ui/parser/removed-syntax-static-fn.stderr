@@ -16,10 +16,10 @@ LL | }
    | - the item list ends here
 
 error: missing type for `static` item
-  --> $DIR/removed-syntax-static-fn.rs:4:12
+  --> $DIR/removed-syntax-static-fn.rs:4:14
    |
 LL |     static fn f() {}
-   |            ^^ help: provide a type for the item: `r#fn: <type>`
+   |              ^ help: provide a type for the item: `: <type>`
 
 error: aborting due to 3 previous errors
 
