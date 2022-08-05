@@ -50,7 +50,7 @@ Stabilized APIs
 - [`Path::try_exists`]
 - [`Ref::filter_map`]
 - [`RefMut::filter_map`]
-- [`NonNull::<[T]>::len`]
+- [`NonNull::<[T]>::len`][`NonNull::<slice>::len`]
 - [`ToOwned::clone_into`]
 - [`Ipv6Addr::to_ipv4_mapped`]
 - [`unix::io::AsFd`]
