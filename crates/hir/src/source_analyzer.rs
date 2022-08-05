@@ -25,8 +25,11 @@ use hir_def::{
     Lookup, ModuleDefId, VariantId,
 };
 use hir_expand::{
-    builtin_fn_macro::BuiltinFnLikeExpander, hygiene::Hygiene, name, name::AsName, HirFileId,
-    InFile,
+    builtin_fn_macro::BuiltinFnLikeExpander,
+    hygiene::Hygiene,
+    name,
+    name::{AsName, Name},
+    HirFileId, InFile,
 };
 use hir_ty::{
     diagnostics::{
@@ -34,7 +37,7 @@ use hir_ty::{
         UnsafeExpr,
     },
     method_resolution::{self, lang_names_for_bin_op},
-    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, TyExt, TyKind,
+    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
     TyLoweringContext,
 };
 use itertools::Itertools;
@@ -266,8 +269,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
     ) -> Option<FunctionId> {
-        let expr_id = self.expr_id(db, &await_expr.expr()?.into())?;
-        let ty = self.infer.as_ref()?.type_of_expr.get(expr_id)?;
+        let ty = self.ty_of_expr(db, &await_expr.expr()?.into())?;
 
         let op_fn = db
             .lang_item(self.resolver.krate(), hir_expand::name![poll].to_smol_str())?
@@ -287,12 +289,9 @@ impl SourceAnalyzer {
             ast::UnaryOp::Not => name![not],
             ast::UnaryOp::Neg => name![neg],
         };
-        let expr_id = self.expr_id(db, &prefix_expr.expr()?.into())?;
-        let ty = self.infer.as_ref()?.type_of_expr.get(expr_id)?;
+        let ty = self.ty_of_expr(db, &prefix_expr.expr()?.into())?;
 
-        let trait_ =
-            db.lang_item(self.resolver.krate(), lang_item_name.to_smol_str())?.as_trait()?;
-        let op_fn = db.trait_data(trait_).method_by_name(&lang_item_name)?;
+        let op_fn = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
@@ -303,16 +302,12 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         index_expr: &ast::IndexExpr,
     ) -> Option<FunctionId> {
-        let base_expr_id = self.expr_id(db, &index_expr.base()?.into())?;
-        let index_expr_id = self.expr_id(db, &index_expr.index()?.into())?;
-        let base_ty = self.infer.as_ref()?.type_of_expr.get(base_expr_id)?;
-        let index_ty = self.infer.as_ref()?.type_of_expr.get(index_expr_id)?;
+        let base_ty = self.ty_of_expr(db, &index_expr.base()?.into())?;
+        let index_ty = self.ty_of_expr(db, &index_expr.index()?.into())?;
 
         let lang_item_name = name![index];
 
-        let trait_ =
-            db.lang_item(self.resolver.krate(), lang_item_name.to_smol_str())?.as_trait()?;
-        let op_fn = db.trait_data(trait_).method_by_name(&lang_item_name)?;
+        let op_fn = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn)
             .push(base_ty.clone())
             .push(index_ty.clone())
@@ -326,15 +321,11 @@ impl SourceAnalyzer {
         binop_expr: &ast::BinExpr,
     ) -> Option<FunctionId> {
         let op = binop_expr.op_kind()?;
-        let lhs_expr_id = self.expr_id(db, &binop_expr.lhs()?.into())?;
-        let rhs_expr_id = self.expr_id(db, &binop_expr.rhs()?.into())?;
-        let lhs = self.infer.as_ref()?.type_of_expr.get(lhs_expr_id)?;
-        let rhs = self.infer.as_ref()?.type_of_expr.get(rhs_expr_id)?;
+        let lhs = self.ty_of_expr(db, &binop_expr.lhs()?.into())?;
+        let rhs = self.ty_of_expr(db, &binop_expr.rhs()?.into())?;
 
-        let op_fn = lang_names_for_bin_op(op).and_then(|(name, lang_item)| {
-            db.trait_data(db.lang_item(self.resolver.krate(), lang_item.to_smol_str())?.as_trait()?)
-                .method_by_name(&name)
-        })?;
+        let op_fn = lang_names_for_bin_op(op)
+            .and_then(|(name, lang_item)| self.lang_trait_fn(db, &lang_item, &name))?;
         let substs =
             hir_ty::TyBuilder::subst_for_def(db, op_fn).push(lhs.clone()).push(rhs.clone()).build();
 
@@ -346,8 +337,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         try_expr: &ast::TryExpr,
     ) -> Option<FunctionId> {
-        let expr_id = self.expr_id(db, &try_expr.expr()?.into())?;
-        let ty = self.infer.as_ref()?.type_of_expr.get(expr_id)?;
+        let ty = self.ty_of_expr(db, &try_expr.expr()?.into())?;
 
         let op_fn =
             db.lang_item(self.resolver.krate(), name![branch].to_smol_str())?.as_function()?;
@@ -771,6 +761,20 @@ impl SourceAnalyzer {
         substs: &Substitution,
     ) -> FunctionId {
         self.resolve_impl_method(db, func, substs).unwrap_or(func)
+    }
+
+    fn lang_trait_fn(
+        &self,
+        db: &dyn HirDatabase,
+        lang_trait: &Name,
+        method_name: &Name,
+    ) -> Option<FunctionId> {
+        db.trait_data(db.lang_item(self.resolver.krate(), lang_trait.to_smol_str())?.as_trait()?)
+            .method_by_name(method_name)
+    }
+
+    fn ty_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<&Ty> {
+        self.infer.as_ref()?.type_of_expr.get(self.expr_id(db, &expr)?)
     }
 }
 
