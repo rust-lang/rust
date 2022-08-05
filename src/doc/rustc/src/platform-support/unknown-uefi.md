@@ -19,8 +19,8 @@ Available targets:
 ## Requirements
 
 All UEFI targets can be used as `no-std` environments via cross-compilation.
-Support for `std` is missing, but actively worked on. `alloc` is supported if
-an allocator is provided by the user. No host tools are supported.
+Support for `std` is present, but incomplete and extreamly new. `alloc` is supported if
+an allocator is provided by the user or if using std. No host tools are supported.
 
 The UEFI environment resembles the environment for Microsoft Windows, with some
 minor differences. Therefore, cross-compiling for UEFI works with the same
@@ -174,10 +174,10 @@ pub extern "C" fn main(_h: *mut core::ffi::c_void, _st: *mut core::ffi::c_void) 
 }
 ```
 
-## Example: Hello World
 
+## Example: Hello World
 This is an example UEFI application that prints "Hello World!", then waits for
-key input before it exits. It serves as base example how to write UEFI
+key input before it exits. It serves as base example how to write UEFI 
 applications without any helper modules other than the standalone UEFI protocol
 definitions provided by the `r-efi` crate.
 
@@ -230,3 +230,137 @@ pub extern "C" fn main(_h: efi::Handle, st: *mut efi::SystemTable) -> efi::Statu
     efi::Status::SUCCESS
 }
 ```
+
+## Rust std for UEFI
+This section contains information on how to use std on UEFI. It will
+continuously evolve, at least untill everything is merged upstream.
+
+### Build std
+The building std part is pretty much the same as the official [docs](https://rustc-dev-guide.rust-lang.org/getting-started.html).
+The linker that should be used is `rust-lld`. Here is a sample `config.toml`:
+```toml
+[rust]
+lld = true
+
+[target.x86_64-unknown-uefi]
+linker = "rust-lld"
+```
+Then just build using `x.py`:
+```sh
+./x.py build --target x86_64-unknown-uefi
+```
+
+### Std Requirements
+The current std has a few basic requirements to function:
+1. Memory Allocation Services (`EFI_BOOT_SERVICES.AllocatePool()` and
+   `EFI_BOOT_SERVICES.FreePool()`) are available.
+If the above requirement is satisfied, the Rust code will reach `main`.
+Now we will discuss what the different modules of std use in UEFI.
+
+#### alloc
+- Implemented using `EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`.
+- Passes all the tests.
+- Some Quirks:
+  - Currently uses `EfiLoaderData` as the `EFI_ALLOCATE_POOL->PoolType`.
+#### args
+- Implemented using `EFI_LOADED_IMAGE_PROTOCOL`.
+#### cmath
+- Provided by compiler-builtins.
+#### env
+- Just some global consants.
+#### fs
+- Uses `EFI_SIMPLE_FILE SYSTEM_PROTOCOL` and `EFI_FILE_PROTOCOL`.
+- Any path that is valid for `EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL.ConvertTextToDevicePath()` can be used. In case of path without prefix, it assumes the prefix of the volume the image was loaded from.
+- Unsupported: These functions simply return `Result::Err`.
+  - `File::duplicate`
+  - `readlink`
+  - `symlink`
+  - `link`
+  - `canonicalize`
+#### locks
+- Uses `unsupported/locks`.
+- They should work for a platform without threads according to docs.
+#### net
+- This protocol was mostly implemented for running Tests using `remote-test-server`. Thus, it is kind of incomplete.
+- Only works for IPv4.
+- Uses `EFI_TCP4_PROTOCOL`.
+- Might be best to not use this outside of tests.
+#### os
+- `current_exe` uses `EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL` and `EFI_DEVICE_PATH_TO_TEXT_PROTOCOL.ConvertDevicePathToText()`.
+- `getenv` uses `EFI_RUNTIME_SERVICES->GetVariable`.
+- Unsupported: These functions simply return `Result::Err`.
+  - `chdir`
+  - `join_paths`
+- Unimplemented: These functions panic.
+  - `split_paths`
+  - `env`
+#### os_str
+- Uses WTF-8 from windows.
+#### path
+- Uses `EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL` and `EFI_DEVICE_PATH_TO_TEXT_PROTOCOL.ConvertDevicePathToText()`
+#### pipe
+- It uses a custom protocol. Works well but isn't well tested.
+#### process
+- This protocol was mostly implemented for running Tests using `remote-test-server`. Thus, it is kind of incomplete.
+- Any path that is valid for `EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL.ConvertTextToDevicePath()` can be used. In case of path without prefix, it assumes the prefix of the volume the image was loaded from.
+- Has a few quirks
+  - `Command::spawn` is blocking. It calls, `EFI_BOOT_SERVICES.LoadImage()` and `EFI_BOOT_SERVICES.StartImage()`.
+  - `Process::drop` calls `EFI_BOOT_SERVICES.UnloadImage()`.
+#### stdio
+- Uses `EFI_SYSTEM_TABLE->ConIn`, `EFI_SYSTEM_TABLE->ConOut` and `EFI_SYSTEM_TABLE->StdErr`.
+- Has a few quirks
+  - Changes `LF` to `CRLF` when printing to Stdout and Stderr.
+  - Reading from Stdin is not buffered.
+#### thread
+- Only `thread::sleep` implemented using `EFI_BOOT_SERVICES.Stall()`
+#### thread_local_key
+- Unimplemented for UEFI.
+- `panics`
+#### time
+- Completely implemented
+- Uses `EFI_RUNTIME_SERVICES->GetTime()` for SystemTime.
+- Uses `EFI_TIMESTAMP_PROTOCOL` or TSC registor or `EFI_RUNTIME_SERVICES->GetTime()` in that order of availability.
+- `panics` if used `SystemTime` or `Instant` are called in environments where `GetTime()` is not available.
+
+### Example: With std
+The following code is a valid UEFI application returning immediately upon
+execution with an exit code of 0. In case of panic, `panic=abort` is used. This
+will call `EFI_BOOT_SERVICES.Exit()` with status `EFI_ABORTED`.
+
+Currently, the std support has not been merged upstream. Hence, std must be
+built from the source at [`tiano/rust`](https://github.com/tianocore/rust/tree/uefi-master) from the `uefi-master` branch.
+
+This example can be compiled as binary crate via `cargo` using the toolchain
+compiled from the above source (named custom):
+
+```sh
+cargo +custom build --target x86_64-unknown-uefi
+```
+
+```rust,ignore
+pub fn main() {}
+```
+
+## Example: Hello World With std
+The following code is a valid UEFI application showing stdio in UEFI. It also
+uses `alloc` type `String`.
+
+Currently, the std support has not been merged upstream. Hence, std must be
+built from the source at [`tiano/rust`](https://github.com/tianocore/rust/tree/uefi-master) from the `uefi-master` branch.
+
+This example can be compiled as binary crate via `cargo` using the toolchain
+compiled from the above source (named custom):
+
+```sh
+cargo +custom build --target x86_64-unknown-uefi
+```
+
+```rust,ignore
+pub fn main() {
+  println!("Enter Name: ");
+  let mut s = String::new();
+  io::stdin().read_line(&mut s).expect("Did not enter a correct string");
+  println!("Hello World from {}", s);
+}
+```
+

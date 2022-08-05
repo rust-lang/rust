@@ -1,5 +1,4 @@
 // run-pass
-// ignore-uefi causes Page Fault Exception
 #![allow(overflowing_literals)]
 
 #![feature(test)]

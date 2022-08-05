@@ -90,7 +90,6 @@ pub fn env() -> Env {
     panic!("not supported on this platform")
 }
 
-// FIXME: Use GetVariable() method
 pub fn getenv(key: &OsStr) -> Option<OsString> {
     uefi_vars::get_variable(key)
 }
