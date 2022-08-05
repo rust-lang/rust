@@ -7,5 +7,5 @@ impl Option {
 pub mod task {}
 
 extern "C" {
-    pub fn main() -> std::ffi::c_int;
+    pub fn main() -> std::os::raw::c_int;
 }

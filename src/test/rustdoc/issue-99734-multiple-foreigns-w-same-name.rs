@@ -12,5 +12,5 @@ pub use issue_99734_aux::*;
 // @count foo/index.html '//a[@class="fn"][@title="foo::main fn"]' 1
 
 extern "C" {
-    pub fn main() -> std::ffi::c_int;
+    pub fn main() -> std::os::raw::c_int;
 }
