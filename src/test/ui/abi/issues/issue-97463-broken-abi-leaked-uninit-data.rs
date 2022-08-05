@@ -1,4 +1,5 @@
 // run-pass
+// ignore-wasm
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 
