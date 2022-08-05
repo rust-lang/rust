@@ -51,19 +51,24 @@ pub(crate) trait Clean<'tcx, T> {
 impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
         let mut items: Vec<Item> = vec![];
-        items.extend(
-            self.foreigns
-                .iter()
-                .map(|(item, renamed)| clean_maybe_renamed_foreign_item(cx, item, *renamed)),
-        );
-        items.extend(self.mods.iter().map(|x| x.clean(cx)));
+        let mut inserted = FxHashSet::default();
+        items.extend(self.foreigns.iter().map(|(item, renamed)| {
+            let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+            if let Some(name) = item.name {
+                inserted.insert((item.type_(), name));
+            }
+            item
+        }));
+        items.extend(self.mods.iter().map(|x| {
+            inserted.insert((ItemType::Module, x.name));
+            x.clean(cx)
+        }));
 
         // Split up imports from all other items.
         //
         // This covers the case where somebody does an import which should pull in an item,
         // but there's already an item with the same namespace and same name. Rust gives
         // priority to the not-imported one, so we should, too.
-        let mut inserted = FxHashSet::default();
         items.extend(self.items.iter().flat_map(|(item, renamed)| {
             // First, lower everything other than imports.
             if matches!(item.kind, hir::ItemKind::Use(..)) {
