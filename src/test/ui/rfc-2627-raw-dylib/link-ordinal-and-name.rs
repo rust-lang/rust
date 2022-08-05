@@ -7,6 +7,10 @@ extern "C" {
     #[link_ordinal(42)]
     //~^ ERROR cannot use `#[link_name]` with `#[link_ordinal]`
     fn foo();
+    #[link_name="foo"]
+    #[link_ordinal(5)]
+    //~^ ERROR cannot use `#[link_name]` with `#[link_ordinal]`
+    static mut imported_variable: i32;
 }
 
 fn main() {}

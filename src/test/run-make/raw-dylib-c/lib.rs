@@ -12,12 +12,20 @@ extern {
 
 pub fn library_function() {
     #[link(name = "extern_1", kind = "raw-dylib")]
-    extern { fn extern_fn_2(); }
+    extern {
+        fn extern_fn_2();
+        fn print_extern_variable();
+        static mut extern_variable: i32;
+    }
 
     unsafe {
         extern_fn_1();
         extern_fn_2();
         extern_fn_3();
+        extern_variable = 42;
+        print_extern_variable();
+        extern_variable = -42;
+        print_extern_variable();
     }
 }
 
