@@ -362,13 +362,68 @@ pub trait DoubleEndedIterator: Iterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
+    #[inline]
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
     }
+    #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
         (**self).advance_back_by(n)
     }
+    #[inline]
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
+    }
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        ByRefRFold::try_rfold(self, init, f)
+    }
+    #[inline]
+    fn rfold<B, F>(mut self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+        ByRefRFold::try_rfold(&mut self, init, ok(f)).unwrap()
+    }
+}
+
+trait ByRefRFold: DoubleEndedIterator {
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>;
+}
+
+impl<'a, I: DoubleEndedIterator + ?Sized> ByRefRFold for &'a mut I {
+    #[inline]
+    default fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+}
+
+impl<'a, I: DoubleEndedIterator + Sized> ByRefRFold for &'a mut I {
+    #[inline]
+    default fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        (**self).try_rfold(init, f)
     }
 }

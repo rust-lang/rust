@@ -2076,11 +2076,12 @@ pub trait Iterator {
     /// assert!(a[i..].iter().all(|&n| n % 2 == 1)); // odds
     /// ```
     #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "62543")]
-    fn partition_in_place<'a, T: 'a, P>(mut self, ref mut predicate: P) -> usize
+    fn partition_in_place<'a, T: 'a, P>(mut self, mut predicate: P) -> usize
     where
         Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
         P: FnMut(&T) -> bool,
     {
+        let predicate = &mut predicate;
         // FIXME: should we worry about the count overflowing? The only way to have more than
         // `usize::MAX` mutable references is with ZSTs, which aren't useful to partition...
 
@@ -3824,13 +3825,68 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn next(&mut self) -> Option<I::Item> {
         (**self).next()
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
+    #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         (**self).advance_by(n)
     }
+    #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        ByRefFold::try_fold(self, init, f)
+    }
+    #[inline]
+    fn fold<B, F>(mut self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+        ByRefFold::try_fold(&mut self, init, ok(f)).unwrap()
+    }
+}
+
+trait ByRefFold: Iterator {
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>;
+}
+
+impl<'a, I: Iterator + ?Sized> ByRefFold for &'a mut I {
+    #[inline]
+    default fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+}
+
+impl<'a, I: Iterator + Sized> ByRefFold for &'a mut I {
+    #[inline]
+    default fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        (**self).try_fold(init, f)
     }
 }

@@ -254,6 +254,7 @@ mod impls {
     where
         F: Fn<A>,
     {
+        #[inline]
         extern "rust-call" fn call(&self, args: A) -> F::Output {
             (**self).call(args)
         }
@@ -264,6 +265,7 @@ mod impls {
     where
         F: Fn<A>,
     {
+        #[inline]
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (**self).call(args)
         }
@@ -276,6 +278,7 @@ mod impls {
     {
         type Output = F::Output;
 
+        #[inline]
         extern "rust-call" fn call_once(self, args: A) -> F::Output {
             (*self).call(args)
         }
@@ -286,6 +289,7 @@ mod impls {
     where
         F: FnMut<A>,
     {
+        #[inline]
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (*self).call_mut(args)
         }
@@ -297,6 +301,7 @@ mod impls {
         F: FnMut<A>,
     {
         type Output = F::Output;
+        #[inline]
         extern "rust-call" fn call_once(self, args: A) -> F::Output {
             (*self).call_mut(args)
         }
