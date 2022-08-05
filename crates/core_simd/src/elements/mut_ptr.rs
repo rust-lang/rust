@@ -81,8 +81,7 @@ where
 
     #[inline]
     fn as_const(self) -> Self::ConstPtr {
-        unimplemented!()
-        //self.cast()
+        self.cast_ptr()
     }
 
     #[inline]
@@ -107,11 +106,13 @@ where
 
     #[inline]
     fn expose_addr(self) -> Self::Usize {
+        // Safety: `self` is a pointer vector
         unsafe { intrinsics::simd_expose_addr(self) }
     }
 
     #[inline]
     fn from_exposed_addr(addr: Self::Usize) -> Self {
+        // Safety: `self` is a pointer vector
         unsafe { intrinsics::simd_from_exposed_addr(addr) }
     }
 

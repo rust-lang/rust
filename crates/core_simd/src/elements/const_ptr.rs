@@ -86,7 +86,7 @@ where
 
     #[inline]
     fn as_mut(self) -> Self::MutPtr {
-        unsafe { intrinsics::simd_cast_ptr(self) }
+        self.cast_ptr()
     }
 
     #[inline]
@@ -111,11 +111,13 @@ where
 
     #[inline]
     fn expose_addr(self) -> Self::Usize {
+        // Safety: `self` is a pointer vector
         unsafe { intrinsics::simd_expose_addr(self) }
     }
 
     #[inline]
     fn from_exposed_addr(addr: Self::Usize) -> Self {
+        // Safety: `self` is a pointer vector
         unsafe { intrinsics::simd_from_exposed_addr(addr) }
     }
 
