@@ -7,7 +7,7 @@ macro_rules! create_strings_from_macro {
     ($some_str:expr) => {
         let _: String = $some_str.into();
         let _ = $some_str.to_string();
-    }
+    };
 }
 
 fn main() {

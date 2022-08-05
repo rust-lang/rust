@@ -12,6 +12,7 @@ fn main() {
     ref_str_argument("");
 
     // should be linted
+    #[allow(clippy::manual_empty_string_creations)]
     ref_str_argument("");
 
     // should not be linted

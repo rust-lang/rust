@@ -155,7 +155,7 @@ fn to_camel_case(name: &str) -> String {
     name.split('_')
         .map(|s| {
             if s.is_empty() {
-                String::from("")
+                String::new()
             } else {
                 [&s[0..1].to_uppercase(), &s[1..]].concat()
             }

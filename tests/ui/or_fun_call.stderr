@@ -66,11 +66,11 @@ error: use of `unwrap_or` followed by a function call
 LL |     without_default.unwrap_or(Foo::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(Foo::new)`
 
-error: use of `unwrap_or` followed by a function call
+error: use of `unwrap_or` followed by a call to `new`
   --> $DIR/or_fun_call.rs:94:21
    |
-LL |     let _ = stringy.unwrap_or("".to_owned());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
+LL |     let _ = stringy.unwrap_or(String::new());
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
   --> $DIR/or_fun_call.rs:102:21
