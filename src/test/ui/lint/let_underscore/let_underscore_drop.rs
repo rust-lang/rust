@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -W let_underscore_drop
+#![warn(let_underscore_drop)]
 
 struct NontrivialDrop;
 
