@@ -1617,9 +1617,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
             // HACK: pick the first `did` as the `did` of the trait object. Someone
             // might want to implement "native" support for marker-trait-only
             // trait objects.
-            let mut dids = obj.principal_def_id().into_iter().chain(obj.auto_traits());
-            let did = dids
-                .next()
+            let mut dids = obj.auto_traits();
+            let did = obj
+                .principal_def_id()
+                .or_else(|| dids.next())
                 .unwrap_or_else(|| panic!("found trait object `{:?}` with no traits?", this));
             let substs = match obj.principal() {
                 Some(principal) => principal.skip_binder().substs,
@@ -1630,15 +1631,14 @@ pub(crate) fn clean_middle_ty<'tcx>(
             inline::record_extern_fqn(cx, did, ItemType::Trait);
 
             let lifetime = clean_middle_region(*reg);
-            let mut bounds = vec![];
-
-            for did in dids {
-                let empty = cx.tcx.intern_substs(&[]);
-                let path = external_path(cx, did, false, vec![], empty);
-                inline::record_extern_fqn(cx, did, ItemType::Trait);
-                let bound = PolyTrait { trait_: path, generic_params: Vec::new() };
-                bounds.push(bound);
-            }
+            let mut bounds = dids
+                .map(|did| {
+                    let empty = cx.tcx.intern_substs(&[]);
+                    let path = external_path(cx, did, false, vec![], empty);
+                    inline::record_extern_fqn(cx, did, ItemType::Trait);
+                    PolyTrait { trait_: path, generic_params: Vec::new() }
+                })
+                .collect::<Vec<_>>();
 
             let bindings = obj
                 .projection_bounds()
