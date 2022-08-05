@@ -726,6 +726,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     #[instrument(level = "trace", skip(self))]
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
+        let res = res.map_def_id(|def_id| {
+            if let Some(local_def_id) = def_id.as_local() {
+                self.resolver.get_remapped_def_id(local_def_id).to_def_id()
+            } else {
+                def_id
+            }
+        });
+        trace!(?res, "from remapping");
+
         let res: Result<Res, ()> = res.apply_id(|id| {
             let owner = self.current_hir_id_owner;
             let local_id = self.node_id_to_local_id.get(&id).copied().ok_or(())?;

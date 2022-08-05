@@ -650,6 +650,19 @@ impl<Id> Res<Id> {
         }
     }
 
+    pub fn map_def_id(self, mut map: impl FnMut(DefId) -> DefId) -> Res<Id> {
+        match self {
+            Res::Def(kind, id) => Res::Def(kind, map(id)),
+            Res::SelfCtor(id) => Res::SelfCtor(id),
+            Res::PrimTy(id) => Res::PrimTy(id),
+            Res::Local(id) => Res::Local(id),
+            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::ToolMod => Res::ToolMod,
+            Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
+            Res::Err => Res::Err,
+        }
+    }
+
     pub fn apply_id<R, E>(self, mut map: impl FnMut(Id) -> Result<R, E>) -> Result<Res<R>, E> {
         Ok(match self {
             Res::Def(kind, id) => Res::Def(kind, id),
