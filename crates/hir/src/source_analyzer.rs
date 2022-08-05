@@ -261,7 +261,7 @@ impl SourceAnalyzer {
         Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, &substs))
     }
 
-    pub fn resolve_await_to_poll(
+    pub(crate) fn resolve_await_to_poll(
         &self,
         db: &dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
@@ -277,7 +277,7 @@ impl SourceAnalyzer {
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
 
-    pub fn resolve_prefix_expr(
+    pub(crate) fn resolve_prefix_expr(
         &self,
         db: &dyn HirDatabase,
         prefix_expr: &ast::PrefixExpr,
@@ -298,7 +298,7 @@ impl SourceAnalyzer {
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
 
-    pub fn resolve_index_expr(
+    pub(crate) fn resolve_index_expr(
         &self,
         db: &dyn HirDatabase,
         index_expr: &ast::IndexExpr,
@@ -320,7 +320,7 @@ impl SourceAnalyzer {
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
 
-    pub fn resolve_bin_expr(
+    pub(crate) fn resolve_bin_expr(
         &self,
         db: &dyn HirDatabase,
         binop_expr: &ast::BinExpr,
@@ -341,7 +341,7 @@ impl SourceAnalyzer {
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
 
-    pub fn resolve_try_expr(
+    pub(crate) fn resolve_try_expr(
         &self,
         db: &dyn HirDatabase,
         try_expr: &ast::TryExpr,
