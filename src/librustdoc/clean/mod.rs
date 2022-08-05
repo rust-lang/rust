@@ -1640,9 +1640,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 bounds.push(bound);
             }
 
-            let mut bindings = vec![];
-            for pb in obj.projection_bounds() {
-                bindings.push(TypeBinding {
+            let bindings = obj
+                .projection_bounds()
+                .map(|pb| TypeBinding {
                     assoc: projection_to_path_segment(
                         pb.skip_binder()
                             .lift_to_tcx(cx.tcx)
@@ -1656,8 +1656,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
                     kind: TypeBindingKind::Equality {
                         term: clean_middle_term(pb.skip_binder().term, cx),
                     },
-                });
-            }
+                })
+                .collect();
 
             let path = external_path(cx, did, false, bindings, substs);
             bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
