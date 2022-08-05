@@ -325,6 +325,9 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", &path);
         }
 
+        // Disable zstd to avoid a dependency on libzstd.so.
+        cfg.define("LLVM_ENABLE_ZSTD", "OFF");
+
         if target != "aarch64-apple-darwin" && !target.contains("windows") {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
