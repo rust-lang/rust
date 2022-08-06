@@ -2334,7 +2334,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // This place is not really used because this destination place
         // should never be used to take values at the end of the failure
         // block.
-        let dummy_place = Place { local: RETURN_PLACE, projection: ty::List::empty() };
+        let dummy_place = self.temp(self.tcx.types.never, else_block.span);
         let failure_block;
         unpack!(
             failure_block = self.ast_block(

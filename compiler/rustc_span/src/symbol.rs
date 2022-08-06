@@ -1170,6 +1170,7 @@ symbols! {
         repr_packed,
         repr_simd,
         repr_transparent,
+        require,
         residual,
         result,
         rhs,
