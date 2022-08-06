@@ -22,9 +22,6 @@ fn usage() {
     eprintln!(
         "  ./y.rs test [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
     );
-    eprintln!(
-        "  ./y.rs abi-checker [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
-    );
 }
 
 macro_rules! arg_error {
@@ -39,7 +36,6 @@ macro_rules! arg_error {
 enum Command {
     Build,
     Test,
-    AbiChecker,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -71,7 +67,6 @@ pub fn main() {
         }
         Some("build") => Command::Build,
         Some("test") => Command::Test,
-        Some("abi-checker") => Command::AbiChecker,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
         None => {
@@ -147,9 +142,8 @@ pub fn main() {
                 &host_triple,
                 &target_triple,
             );
-        }
-        Command::Build => {
-            build_sysroot::build_sysroot(
+
+            abi_checker::run(
                 channel,
                 sysroot_kind,
                 &target_dir,
@@ -158,8 +152,8 @@ pub fn main() {
                 &target_triple,
             );
         }
-        Command::AbiChecker => {
-            abi_checker::run(
+        Command::Build => {
+            build_sysroot::build_sysroot(
                 channel,
                 sysroot_kind,
                 &target_dir,

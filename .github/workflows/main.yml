@@ -105,11 +105,6 @@ jobs:
 
         ./y.rs test
 
-
-    - name: Run abi-checker
-      if: matrix.env.TARGET_TRIPLE == ''
-      run: ./y.rs abi-checker
-
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz build
 

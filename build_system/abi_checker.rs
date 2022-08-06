@@ -1,4 +1,5 @@
 use super::build_sysroot;
+use super::config;
 use super::utils::spawn_and_wait_with_input;
 use build_system::SysrootKind;
 use std::env;
@@ -13,10 +14,15 @@ pub(crate) fn run(
     host_triple: &str,
     target_triple: &str,
 ) {
-    assert_eq!(
-        host_triple, target_triple,
-        "abi-checker not supported on cross-compilation scenarios"
-    );
+    if !config::get_bool("testsuite.abi-checker") {
+        eprintln!("[SKIP] abi-checker");
+        return;
+    }
+
+    if host_triple != target_triple {
+        eprintln!("[SKIP] abi-checker (cross-compilation not supported)");
+        return;
+    }
 
     eprintln!("Building sysroot for abi-checker");
     build_sysroot::build_sysroot(
