@@ -527,6 +527,9 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             bug!("Cannot decode Span without Session.")
         };
 
+        // Index of the file in the corresponding crate's list of encoded files.
+        let metadata_index = usize::decode(decoder);
+
         // There are two possibilities here:
         // 1. This is a 'local span', which is located inside a `SourceFile`
         // that came from this crate. In this case, we use the source map data
@@ -587,27 +590,9 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             foreign_data.imported_source_files(sess)
         };
 
-        let source_file = {
-            // Optimize for the case that most spans within a translated item
-            // originate from the same source_file.
-            let last_source_file = &imported_source_files[decoder.last_source_file_index];
-
-            if lo >= last_source_file.original_start_pos && lo <= last_source_file.original_end_pos
-            {
-                last_source_file
-            } else {
-                let index = imported_source_files
-                    .binary_search_by_key(&lo, |source_file| source_file.original_start_pos)
-                    .unwrap_or_else(|index| index - 1);
-
-                // Don't try to cache the index for foreign spans,
-                // as this would require a map from CrateNums to indices
-                if tag == TAG_VALID_SPAN_LOCAL {
-                    decoder.last_source_file_index = index;
-                }
-                &imported_source_files[index]
-            }
-        };
+        // Optimize for the case that most spans within a translated item
+        // originate from the same source_file.
+        let source_file = &imported_source_files[metadata_index];
 
         // Make sure our binary search above is correct.
         debug_assert!(
@@ -1545,7 +1530,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map
-                .map(|source_file_to_import| {
+                .enumerate()
+                .map(|(source_file_index, source_file_to_import)| {
                     // We can't reuse an existing SourceFile, so allocate a new one
                     // containing the information we need.
                     let rustc_span::SourceFile {
@@ -1605,6 +1591,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         normalized_pos,
                         start_pos,
                         end_pos,
+                        source_file_index
+                            .try_into()
+                            .expect("cannot import more than U32_MAX files"),
                     );
                     debug!(
                         "CrateMetaData::imported_source_files alloc \

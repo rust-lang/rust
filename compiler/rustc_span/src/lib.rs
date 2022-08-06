@@ -1098,6 +1098,8 @@ pub enum ExternalSource {
         original_start_pos: BytePos,
         /// The end of this SourceFile within the source_map of its original crate.
         original_end_pos: BytePos,
+        /// Index of the file inside metadata.
+        metadata_index: u32,
     },
 }
 

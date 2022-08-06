@@ -252,6 +252,7 @@ fn t10() {
         normalized_pos,
         start_pos,
         end_pos,
+        0,
     );
 
     assert!(

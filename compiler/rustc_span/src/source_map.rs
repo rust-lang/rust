@@ -337,6 +337,7 @@ impl SourceMap {
         mut file_local_normalized_pos: Vec<NormalizedPos>,
         original_start_pos: BytePos,
         original_end_pos: BytePos,
+        metadata_index: u32,
     ) -> Lrc<SourceFile> {
         let start_pos = self
             .allocate_address_space(source_len)
@@ -383,6 +384,7 @@ impl SourceMap {
                 kind: ExternalSourceKind::AbsentOk,
                 original_start_pos,
                 original_end_pos,
+                metadata_index,
             }),
             start_pos,
             end_pos,
