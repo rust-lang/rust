@@ -351,9 +351,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         ty_to_bounds
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
-                if let Some(data) = ty_to_fn.get(&ty) {
-                    let (poly_trait, output) =
-                        (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned().map(Box::new));
+                if let Some((Some(ref poly_trait), ref output)) = ty_to_fn.get(&ty) {
                     let mut new_path = poly_trait.trait_.clone();
                     let last_segment = new_path.segments.pop().expect("segments were empty");
 
@@ -371,8 +369,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         GenericArgs::Parenthesized { inputs, output } => (inputs, output),
                     };
 
+                    let output = output.as_ref().cloned().map(Box::new);
                     if old_output.is_some() && old_output != output {
-                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, data.1);
+                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, output);
                     }
 
                     let new_params = GenericArgs::Parenthesized { inputs: old_input, output };
@@ -382,7 +381,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         .push(PathSegment { name: last_segment.name, args: new_params });
 
                     bounds.insert(GenericBound::TraitBound(
-                        PolyTrait { trait_: new_path, generic_params: poly_trait.generic_params },
+                        PolyTrait {
+                            trait_: new_path,
+                            generic_params: poly_trait.generic_params.clone(),
+                        },
                         hir::TraitBoundModifier::None,
                     ));
                 }
