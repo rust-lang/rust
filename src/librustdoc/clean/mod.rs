@@ -307,26 +307,27 @@ fn clean_where_predicate<'tcx>(
     })
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        let bound_predicate = self.kind();
-        match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(pred) => {
-                clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
-            }
-            ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
-            ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
-            ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
-            ty::PredicateKind::ConstEvaluatable(..) => None,
-            ty::PredicateKind::WellFormed(..) => None,
-
-            ty::PredicateKind::Subtype(..)
-            | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::ObjectSafe(..)
-            | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
+pub(crate) fn clean_predicate<'tcx>(
+    predicate: ty::Predicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    let bound_predicate = predicate.kind();
+    match bound_predicate.skip_binder() {
+        ty::PredicateKind::Trait(pred) => {
+            clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
         }
+        ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
+        ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
+        ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
+        ty::PredicateKind::ConstEvaluatable(..) => None,
+        ty::PredicateKind::WellFormed(..) => None,
+
+        ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::Coerce(..)
+        | ty::PredicateKind::ObjectSafe(..)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
     }
 }
 
@@ -707,7 +708,7 @@ fn clean_ty_generics<'tcx>(
 
             if let Some(param_idx) = param_idx {
                 if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
-                    let p: WherePredicate = p.clean(cx)?;
+                    let p: WherePredicate = clean_predicate(*p, cx)?;
 
                     b.extend(
                         p.get_bounds()
@@ -764,7 +765,7 @@ fn clean_ty_generics<'tcx>(
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
     let mut where_predicates =
-        where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
+        where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect::<Vec<_>>();
 
     // Type parameters have a Sized bound by default unless removed with
     // ?Sized. Scan through the predicates and mark any type parameter with
