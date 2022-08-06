@@ -18,11 +18,11 @@ fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
     if success {
         // If the function succeeds, the return value is the number of characters stored in the target buffer,
         // not including the terminating null character.
-        u32::try_from(len).unwrap()
+        u32::try_from(len.checked_sub(1).unwrap()).unwrap()
     } else {
         // If the target buffer was not large enough to hold the data, the return value is the buffer size, in characters,
         // required to hold the string and its terminating null character.
-        u32::try_from(len.checked_add(1).unwrap()).unwrap()
+        u32::try_from(len).unwrap()
     }
 }
 

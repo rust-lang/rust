@@ -88,7 +88,7 @@ fn test_posix_realpath_errors() {
     assert_eq!(e.kind(), ErrorKind::NotFound);
 }
 
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux"))]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
     use std::io::Write;
@@ -452,7 +452,7 @@ fn test_posix_mkstemp() {
 }
 
 fn main() {
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux"))]
     test_posix_fadvise();
 
     test_posix_gettimeofday();

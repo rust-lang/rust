@@ -117,6 +117,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     dest,
                 )?;
             }
+            "_NSGetExecutablePath" => {
+                let [buf, bufsize] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.check_no_isolation("`_NSGetExecutablePath`")?;
+
+                let buf_ptr = this.read_pointer(buf)?;
+                let bufsize = this.deref_operand(bufsize)?;
+
+                // Using the host current_exe is a bit off, but consistent with Linux
+                // (where stdlib reads /proc/self/exe).
+                let path = std::env::current_exe().unwrap();
+                let (written, size_needed) = this.write_path_to_c_str(
+                    &path,
+                    buf_ptr,
+                    this.read_scalar(&bufsize.into())?.to_u32()?.into(),
+                )?;
+
+                if written {
+                    this.write_null(dest)?;
+                } else {
+                    this.write_scalar(
+                        Scalar::from_u32(size_needed.try_into().unwrap()),
+                        &bufsize.into(),
+                    )?;
+                    this.write_int(-1, dest)?;
+                }
+            }
 
             // Thread-local storage
             "_tlv_atexit" => {

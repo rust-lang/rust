@@ -92,7 +92,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// the Unix APIs usually handle. This function returns `Ok((false, length))` without trying
     /// to write if `size` is not large enough to fit the contents of `os_string` plus a null
     /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
-    /// string length returned does not include the null terminator.
+    /// string length returned does include the null terminator.
     fn write_os_str_to_c_str(
         &mut self,
         os_str: &OsStr,
@@ -103,7 +103,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
         let string_length = u64::try_from(bytes.len()).unwrap();
-        if size <= string_length {
+        let string_length = string_length.checked_add(1).unwrap();
+        if size < string_length {
             return Ok((false, string_length));
         }
         self.eval_context_mut()
@@ -115,7 +116,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// the Windows APIs usually handle. This function returns `Ok((false, length))` without trying
     /// to write if `size` is not large enough to fit the contents of `os_string` plus a null
     /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
-    /// string length returned does not include the null terminator.
+    /// string length returned does include the null terminator. Length is measured in units of
+    /// `u16.`
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
@@ -157,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             alloc
                 .write_scalar(alloc_range(size2 * offset, size2), Scalar::from_u16(wchar).into())?;
         }
-        Ok((true, string_length - 1))
+        Ok((true, string_length))
     }
 
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of bytes.

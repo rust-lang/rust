@@ -1,4 +1,4 @@
-//@only-target-linux: home_dir is only supported on Linux
+//@ignore-target-windows: home_dir is not supported on Windows
 //@compile-flags: -Zmiri-disable-isolation
 use std::env;
 

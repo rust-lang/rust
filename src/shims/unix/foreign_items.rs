@@ -553,6 +553,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_int(super::UID, dest)?;
             }
 
+            "getpwuid_r" if this.frame_in_std() => {
+                let [uid, pwd, buf, buflen, result] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                this.check_no_isolation("`getpwuid_r`")?;
+
+                let uid = this.read_scalar(uid)?.to_u32()?;
+                let pwd = this.deref_operand(pwd)?;
+                let buf = this.read_pointer(buf)?;
+                let buflen = this.read_scalar(buflen)?.to_machine_usize(this)?;
+                let result = this.deref_operand(result)?;
+
+                // Must be for "us".
+                if uid != crate::shims::unix::UID {
+                    throw_unsup_format!("`getpwuid_r` on other users is not supported");
+                }
+
+                // Reset all fields to `uninit` to make sure nobody reads them.
+                // (This is a std-only shim so we are okay with such hacks.)
+                this.write_uninit(&pwd.into())?;
+
+                // We only set the home_dir field.
+                #[allow(deprecated)]
+                let home_dir = std::env::home_dir().unwrap();
+                let (written, _) = this.write_path_to_c_str(&home_dir, buf, buflen)?;
+                let pw_dir = this.mplace_field_named(&pwd, "pw_dir")?;
+                this.write_pointer(buf, &pw_dir.into())?;
+
+                if written {
+                    this.write_pointer(pwd.ptr, &result.into())?;
+                    this.write_null(dest)?;
+                } else {
+                    this.write_null(&result.into())?;
+                    this.write_scalar(this.eval_libc("ERANGE")?, dest)?;
+                }
+            }
+
             // Platform-specific shims
             _ => {
                 match this.tcx.sess.target.os.as_ref() {
