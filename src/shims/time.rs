@@ -210,7 +210,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Ok(-1);
             }
         };
-        let timeout_time = Time::Monotonic(Instant::now().checked_add(duration).unwrap());
+        // If adding the duration overflows, let's just sleep for an hour. Waking up early is always acceptable.
+        let timeout_time = Instant::now()
+            .checked_add(duration)
+            .unwrap_or_else(|| Instant::now().checked_add(Duration::from_secs(3600)).unwrap());
+        let timeout_time = Time::Monotonic(timeout_time);
 
         let active_thread = this.get_active_thread();
         this.block_thread(active_thread);
