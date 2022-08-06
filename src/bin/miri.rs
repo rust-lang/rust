@@ -1,5 +1,9 @@
 #![feature(rustc_private, stmt_expr_attributes)]
-#![allow(clippy::manual_range_contains, clippy::useless_format)]
+#![allow(
+    clippy::manual_range_contains,
+    clippy::useless_format,
+    clippy::field_reassign_with_default
+)]
 
 extern crate rustc_data_structures;
 extern crate rustc_driver;
