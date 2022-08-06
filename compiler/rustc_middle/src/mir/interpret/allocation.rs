@@ -211,6 +211,7 @@ impl<Prov> Allocation<Prov> {
         let size = Size::from_bytes(slice.len());
         // TODO come up with a cleaner way to align the box based on the alignment parameter
         let count128 = (slice.len() / 16) + 1;
+        // println!("ALIGN: {:?}, {:?}", (align.bytes())+1, count128);
         let mut vec128: Vec<u128> = Vec::with_capacity(count128);
         // TODO avoid excess initialization
         vec128.resize(count128, 0);
@@ -289,6 +290,7 @@ impl Allocation {
     ) -> Result<Allocation<Prov, Extra>, Err> {
         // Compute new pointer provenance, which also adjusts the bytes.
         // Realign the pointer
+        // println!("adjusting: {:?}, {:?}", self.align, self.bytes.len());
         let count128 = (self.bytes.len() / 16) + 1;
         let mut vec128: Vec<u128> = Vec::with_capacity(count128);
         vec128.resize(count128, 0);

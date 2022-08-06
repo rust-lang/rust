@@ -447,7 +447,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(align) = align {
                     if M::force_int_for_alignment_check(self) {
                         // `force_int_for_alignment_check` can only be true if `OFFSET_IS_ADDR` is true.
-                        check_offset_align(ptr.addr().bytes(), align)?;
+                        // TODO do a proper check here
+                        // now, addr().bytes() will not give the size of the allocation, it'll be the address
+                        // check_offset_align(ptr.addr().bytes(), align)?;
                     } else {
                         // Check allocation alignment and offset alignment.
                         if alloc_align.bytes() < align.bytes() {
