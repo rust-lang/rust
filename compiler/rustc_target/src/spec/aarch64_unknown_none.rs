@@ -6,11 +6,11 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use super::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         features: "+strict-align,+neon,+fp-armv8".into(),
         relocation_model: RelocModel::Static,

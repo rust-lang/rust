@@ -23,8 +23,8 @@ use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_span::DebuggerVisualizerFile;
 use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
-use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
+use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy};
+use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, Target};
 
 use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
@@ -748,8 +748,7 @@ fn link_natively<'a>(
         // then it should not default to linking executables as pie. Different
         // versions of gcc seem to use different quotes in the error message so
         // don't check for them.
-        if sess.target.linker_is_gnu
-            && flavor != LinkerFlavor::Ld
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && out.contains("-no-pie")
             && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-no-pie")
@@ -767,8 +766,7 @@ fn link_natively<'a>(
 
         // Detect '-static-pie' used with an older version of gcc or clang not supporting it.
         // Fallback from '-static-pie' to '-static' in that case.
-        if sess.target.linker_is_gnu
-            && flavor != LinkerFlavor::Ld
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
             && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
@@ -903,7 +901,7 @@ fn link_natively<'a>(
                 // install the Visual Studio build tools.
                 if let Some(code) = prog.status.code() {
                     if sess.target.is_like_msvc
-                        && flavor == LinkerFlavor::Msvc
+                        && flavor == LinkerFlavor::Msvc(Lld::No)
                         // Respect the command line override
                         && sess.opts.cg.linker.is_none()
                         // Match exactly "link.exe"
@@ -1187,7 +1185,10 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             // only the linker flavor is known; use the default linker for the selected flavor
             (None, Some(flavor)) => Some((
                 PathBuf::from(match flavor {
-                    LinkerFlavor::Gcc => {
+                    LinkerFlavor::Gnu(Cc::Yes, _)
+                    | LinkerFlavor::Darwin(Cc::Yes, _)
+                    | LinkerFlavor::WasmLld(Cc::Yes)
+                    | LinkerFlavor::Unix(Cc::Yes) => {
                         if cfg!(any(target_os = "solaris", target_os = "illumos")) {
                             // On historical Solaris systems, "cc" may have
                             // been Sun Studio, which is not flag-compatible
@@ -1200,9 +1201,14 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                             "cc"
                         }
                     }
-                    LinkerFlavor::Ld => "ld",
-                    LinkerFlavor::Lld(_) => "lld",
-                    LinkerFlavor::Msvc => "link.exe",
+                    LinkerFlavor::Gnu(_, Lld::Yes)
+                    | LinkerFlavor::Darwin(_, Lld::Yes)
+                    | LinkerFlavor::WasmLld(..)
+                    | LinkerFlavor::Msvc(Lld::Yes) => "lld",
+                    LinkerFlavor::Gnu(..) | LinkerFlavor::Darwin(..) | LinkerFlavor::Unix(..) => {
+                        "ld"
+                    }
+                    LinkerFlavor::Msvc(..) => "link.exe",
                     LinkerFlavor::EmCc => {
                         if cfg!(windows) {
                             "emcc.bat"
@@ -1227,15 +1233,20 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     || stem == "clang"
                     || stem.ends_with("-clang")
                 {
-                    LinkerFlavor::Gcc
+                    LinkerFlavor::from_cli(LinkerFlavorCli::Gcc, &sess.target)
                 } else if stem == "wasm-ld" || stem.ends_with("-wasm-ld") {
-                    LinkerFlavor::Lld(LldFlavor::Wasm)
-                } else if stem == "ld" || stem == "ld.lld" || stem.ends_with("-ld") {
-                    LinkerFlavor::Ld
-                } else if stem == "link" || stem == "lld-link" {
-                    LinkerFlavor::Msvc
+                    LinkerFlavor::WasmLld(Cc::No)
+                } else if stem == "ld" || stem.ends_with("-ld") {
+                    LinkerFlavor::from_cli(LinkerFlavorCli::Ld, &sess.target)
+                } else if stem == "ld.lld" {
+                    LinkerFlavor::Gnu(Cc::No, Lld::Yes)
+                } else if stem == "link" {
+                    LinkerFlavor::Msvc(Lld::No)
+                } else if stem == "lld-link" {
+                    LinkerFlavor::Msvc(Lld::Yes)
                 } else if stem == "lld" || stem == "rust-lld" {
-                    LinkerFlavor::Lld(sess.target.lld_flavor)
+                    let lld_flavor = sess.target.linker_flavor.lld_flavor();
+                    LinkerFlavor::from_cli(LinkerFlavorCli::Lld(lld_flavor), &sess.target)
                 } else {
                     // fall back to the value in the target spec
                     sess.target.linker_flavor
@@ -1249,7 +1260,8 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    let linker_flavor = sess.opts.cg.linker_flavor.map(LinkerFlavor::from_cli);
+    let linker_flavor =
+        sess.opts.cg.linker_flavor.map(|flavor| LinkerFlavor::from_cli(flavor, &sess.target));
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor) {
         return ret;
     }
@@ -1320,7 +1332,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
                     let verbatim = lib.verbatim.unwrap_or(false);
                     if sess.target.is_like_msvc {
                         Some(format!("{}{}", name, if verbatim { "" } else { ".lib" }))
-                    } else if sess.target.linker_is_gnu {
+                    } else if sess.target.linker_flavor.is_gnu() {
                         Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
                     } else {
                         Some(format!("-l{}", name))
@@ -1607,7 +1619,7 @@ fn add_pre_link_objects(
     let empty = Default::default();
     let objects = if self_contained {
         &opts.pre_link_objects_self_contained
-    } else if !(sess.target.os == "fuchsia" && flavor == LinkerFlavor::Gcc) {
+    } else if !(sess.target.os == "fuchsia" && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))) {
         &opts.pre_link_objects
     } else {
         &empty
@@ -1647,7 +1659,7 @@ fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor)
 fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_type: CrateType) {
     match (crate_type, &sess.target.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
-            if !sess.target.linker_is_gnu {
+            if !sess.target.linker_flavor.is_gnu() {
                 sess.fatal("can only use link script when linking with GNU-like linker");
             }
 
@@ -1890,7 +1902,7 @@ fn add_rpath_args(
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.has_rpath,
             is_like_osx: sess.target.is_like_osx,
-            linker_is_gnu: sess.target.linker_is_gnu,
+            linker_is_gnu: sess.target.linker_flavor.is_gnu(),
         };
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
@@ -2104,7 +2116,7 @@ fn add_order_independent_options(
 
     if sess.target.os == "fuchsia"
         && crate_type == CrateType::Executable
-        && flavor != LinkerFlavor::Gcc
+        && !matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
     {
         let prefix = if sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
             "asan/"
@@ -2717,12 +2729,12 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
         || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "macos")
-        || (flavor != LinkerFlavor::Gcc && flavor != LinkerFlavor::Lld(LldFlavor::Ld64))
+        || !matches!(flavor, LinkerFlavor::Darwin(..))
     {
         return;
     }
 
-    if os == "macos" && flavor != LinkerFlavor::Lld(LldFlavor::Ld64) {
+    if os == "macos" && !matches!(flavor, LinkerFlavor::Darwin(Cc::No, _)) {
         return;
     }
 
@@ -2756,10 +2768,10 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     };
 
     match flavor {
-        LinkerFlavor::Gcc => {
+        LinkerFlavor::Darwin(Cc::Yes, _) => {
             cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
         }
-        LinkerFlavor::Lld(LldFlavor::Ld64) => {
+        LinkerFlavor::Darwin(Cc::No, _) => {
             cmd.args(&["-syslibroot", &sdk_root]);
         }
         _ => unreachable!(),
@@ -2822,7 +2834,10 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
 
 fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(ld_impl) = sess.opts.unstable_opts.gcc_ld {
-        if let LinkerFlavor::Gcc = flavor {
+        if let LinkerFlavor::Gnu(Cc::Yes, _)
+        | LinkerFlavor::Darwin(Cc::Yes, _)
+        | LinkerFlavor::WasmLld(Cc::Yes) = flavor
+        {
             match ld_impl {
                 LdImpl::Lld => {
                     // Implement the "self-contained" part of -Zgcc-ld
@@ -2837,7 +2852,7 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
                     // Implement the "linker flavor" part of -Zgcc-ld
                     // by asking cc to use some kind of lld.
                     cmd.arg("-fuse-ld=lld");
-                    if sess.target.lld_flavor != LldFlavor::Ld {
+                    if !flavor.is_gnu() {
                         // Tell clang to use a non-default LLD flavor.
                         // Gcc doesn't understand the target option, but we currently assume
                         // that gcc is not used for Apple and Wasm targets (#97402).

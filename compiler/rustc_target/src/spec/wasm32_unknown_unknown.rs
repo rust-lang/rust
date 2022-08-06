@@ -10,14 +10,12 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use super::wasm_base;
-use super::{LinkerFlavor, LldFlavor, Target};
+use super::{wasm_base, Cc, LinkerFlavor, Target};
 use crate::spec::abi::Abi;
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
     options.os = "unknown".into();
-    options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
 
     // This is a default for backwards-compatibility with the original
     // definition of this target oh-so-long-ago. Once the "wasm" ABI is
@@ -30,7 +28,7 @@ pub fn target() -> Target {
     options.default_adjusted_cabi = Some(Abi::Wasm);
 
     options.add_pre_link_args(
-        LinkerFlavor::Lld(LldFlavor::Wasm),
+        LinkerFlavor::WasmLld(Cc::No),
         &[
             // For now this target just never has an entry symbol no matter the output
             // type, so unconditionally pass this.
@@ -44,7 +42,7 @@ pub fn target() -> Target {
         ],
     );
     options.add_pre_link_args(
-        LinkerFlavor::Gcc,
+        LinkerFlavor::WasmLld(Cc::Yes),
         &[
             // Make sure clang uses LLD as its linker and is configured appropriately
             // otherwise

@@ -1,11 +1,11 @@
-use crate::spec::{FramePointer, LinkerFlavor, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     // ld64 only understand i386 and not i686
     let mut base = super::apple_base::opts("macos", "i386", "");
     base.cpu = "yonah".into();
     base.max_atomic_width = Some(64);
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
+    base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
     base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
     base.stack_probes = StackProbeType::X86;
     base.frame_pointer = FramePointer::Always;

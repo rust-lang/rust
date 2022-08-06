@@ -90,17 +90,73 @@ mod windows_msvc_base;
 mod windows_uwp_gnu_base;
 mod windows_uwp_msvc_base;
 
+/// Linker is called through a C/C++ compiler.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum Cc {
+    Yes,
+    No,
+}
+
+/// Linker is LLD.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum Lld {
+    Yes,
+    No,
+}
+
+/// All linkers have some kinds of command line interfaces and rustc needs to know which commands
+/// to use with each of them. So we cluster all such interfaces into a (somewhat arbitrary) number
+/// of classes that we call "linker flavors".
+///
+/// Technically, it's not even necessary, we can nearly always infer the flavor from linker name
+/// and target properties like `is_like_windows`/`is_like_osx`/etc. However, the PRs originally
+/// introducing `-Clinker-flavor` (#40018 and friends) were aiming to reduce this kind of inference
+/// and provide something certain and explicitly specified instead, and that design goal is still
+/// relevant now.
+///
+/// The second goal is to keep the number of flavors to the minimum if possible.
+/// LLD somewhat forces our hand here because that linker is self-sufficent only if its executable
+/// (`argv[0]`) is named in specific way, otherwise it doesn't work and requires a
+/// `-flavor LLD_FLAVOR` argument to choose which logic to use. Our shipped `rust-lld` in
+/// particular is not named in such specific way, so it needs the flavor option, so we make our
+/// linker flavors sufficiently fine-grained to satisfy LLD without inferring its flavor from other
+/// target properties, in accordance with the first design goal.
+///
+/// The first component of the flavor is tightly coupled with the compilation target,
+/// while the `Cc` and `Lld` flags can vary withing the same target.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
-    Gcc,
-    Ld,
-    Lld(LldFlavor),
-    Msvc,
+    /// Unix-like linker with GNU extensions (both naked and compiler-wrapped forms).
+    /// Besides similar "default" Linux/BSD linkers this also includes Windows/GNU linker,
+    /// which is somewhat different because it doesn't produce ELFs.
+    Gnu(Cc, Lld),
+    /// Unix-like linker for Apple targets (both naked and compiler-wrapped forms).
+    /// Extracted from the "umbrella" `Unix` flavor due to its corresponding LLD flavor.
+    Darwin(Cc, Lld),
+    /// Unix-like linker for Wasm targets (both naked and compiler-wrapped forms).
+    /// Extracted from the "umbrella" `Unix` flavor due to its corresponding LLD flavor.
+    /// Non-LLD version does not exist, so the lld flag is currently hardcoded here.
+    WasmLld(Cc),
+    /// Basic Unix-like linker for "any other Unix" targets (Solaris/illumos, L4Re, MSP430, etc),
+    /// possibly with non-GNU extensions (both naked and compiler-wrapped forms).
+    /// LLD doesn't support any of these.
+    Unix(Cc),
+    /// MSVC-style linker for Windows and UEFI, LLD supports it.
+    Msvc(Lld),
+    /// Emscripten Compiler Frontend, a wrapper around `WasmLld(Cc::Yes)` that has a different
+    /// interface and produces some additional JavaScript output.
     EmCc,
+    // Below: other linker-like tools with unique interfaces for exotic targets.
+    /// Linker tool for BPF.
     Bpf,
+    /// Linker tool for Nvidia PTX.
     Ptx,
 }
 
+/// Linker flavors available externally through command line (`-Clinker-flavor`)
+/// or json target specifications.
+/// FIXME: This set has accumulated historically, bring it more in line with the internal
+/// linker flavors (`LinkerFlavor`).
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavorCli {
     Gcc,
@@ -148,12 +204,32 @@ impl ToJson for LldFlavor {
 }
 
 impl LinkerFlavor {
-    pub fn from_cli(cli: LinkerFlavorCli) -> LinkerFlavor {
+    pub fn from_cli(cli: LinkerFlavorCli, target: &TargetOptions) -> LinkerFlavor {
+        Self::from_cli_impl(cli, target.linker_flavor.lld_flavor(), target.linker_flavor.is_gnu())
+    }
+
+    /// The passed CLI flavor is preferred over other args coming from the default target spec,
+    /// so this function can produce a flavor that is incompatible with the current target.
+    /// FIXME: Produce errors when `-Clinker-flavor` is set to something incompatible
+    /// with the current target.
+    fn from_cli_impl(cli: LinkerFlavorCli, lld_flavor: LldFlavor, is_gnu: bool) -> LinkerFlavor {
         match cli {
-            LinkerFlavorCli::Gcc => LinkerFlavor::Gcc,
-            LinkerFlavorCli::Ld => LinkerFlavor::Ld,
-            LinkerFlavorCli::Lld(lld_flavor) => LinkerFlavor::Lld(lld_flavor),
-            LinkerFlavorCli::Msvc => LinkerFlavor::Msvc,
+            LinkerFlavorCli::Gcc => match lld_flavor {
+                LldFlavor::Ld if is_gnu => LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+                LldFlavor::Ld64 => LinkerFlavor::Darwin(Cc::Yes, Lld::No),
+                LldFlavor::Wasm => LinkerFlavor::WasmLld(Cc::Yes),
+                LldFlavor::Ld | LldFlavor::Link => LinkerFlavor::Unix(Cc::Yes),
+            },
+            LinkerFlavorCli::Ld => match lld_flavor {
+                LldFlavor::Ld if is_gnu => LinkerFlavor::Gnu(Cc::No, Lld::No),
+                LldFlavor::Ld64 => LinkerFlavor::Darwin(Cc::No, Lld::No),
+                LldFlavor::Ld | LldFlavor::Wasm | LldFlavor::Link => LinkerFlavor::Unix(Cc::No),
+            },
+            LinkerFlavorCli::Lld(LldFlavor::Ld) => LinkerFlavor::Gnu(Cc::No, Lld::Yes),
+            LinkerFlavorCli::Lld(LldFlavor::Ld64) => LinkerFlavor::Darwin(Cc::No, Lld::Yes),
+            LinkerFlavorCli::Lld(LldFlavor::Wasm) => LinkerFlavor::WasmLld(Cc::No),
+            LinkerFlavorCli::Lld(LldFlavor::Link) => LinkerFlavor::Msvc(Lld::Yes),
+            LinkerFlavorCli::Msvc => LinkerFlavor::Msvc(Lld::No),
             LinkerFlavorCli::Em => LinkerFlavor::EmCc,
             LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
             LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
@@ -162,14 +238,39 @@ impl LinkerFlavor {
 
     fn to_cli(self) -> LinkerFlavorCli {
         match self {
-            LinkerFlavor::Gcc => LinkerFlavorCli::Gcc,
-            LinkerFlavor::Ld => LinkerFlavorCli::Ld,
-            LinkerFlavor::Lld(lld_flavor) => LinkerFlavorCli::Lld(lld_flavor),
-            LinkerFlavor::Msvc => LinkerFlavorCli::Msvc,
+            LinkerFlavor::Gnu(Cc::Yes, _)
+            | LinkerFlavor::Darwin(Cc::Yes, _)
+            | LinkerFlavor::WasmLld(Cc::Yes)
+            | LinkerFlavor::Unix(Cc::Yes) => LinkerFlavorCli::Gcc,
+            LinkerFlavor::Gnu(_, Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Ld),
+            LinkerFlavor::Darwin(_, Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Ld64),
+            LinkerFlavor::WasmLld(..) => LinkerFlavorCli::Lld(LldFlavor::Wasm),
+            LinkerFlavor::Gnu(..) | LinkerFlavor::Darwin(..) | LinkerFlavor::Unix(..) => {
+                LinkerFlavorCli::Ld
+            }
+            LinkerFlavor::Msvc(Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Link),
+            LinkerFlavor::Msvc(..) => LinkerFlavorCli::Msvc,
             LinkerFlavor::EmCc => LinkerFlavorCli::Em,
             LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
             LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
         }
+    }
+
+    pub fn lld_flavor(self) -> LldFlavor {
+        match self {
+            LinkerFlavor::Gnu(..)
+            | LinkerFlavor::Unix(..)
+            | LinkerFlavor::EmCc
+            | LinkerFlavor::Bpf
+            | LinkerFlavor::Ptx => LldFlavor::Ld,
+            LinkerFlavor::Darwin(..) => LldFlavor::Ld64,
+            LinkerFlavor::WasmLld(..) => LldFlavor::Wasm,
+            LinkerFlavor::Msvc(..) => LldFlavor::Link,
+        }
+    }
+
+    pub fn is_gnu(self) -> bool {
+        matches!(self, LinkerFlavor::Gnu(..))
     }
 }
 
@@ -1258,16 +1359,11 @@ pub struct TargetOptions {
     /// Linker to invoke
     pub linker: Option<StaticCow<str>>,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
-    /// on the command line. Defaults to `LinkerFlavor::Gcc`.
+    /// on the command line. Defaults to `LinkerFlavor::Gnu(Cc::Yes, Lld::No)`.
     pub linker_flavor: LinkerFlavor,
     linker_flavor_json: LinkerFlavorCli,
-    /// LLD flavor used if `lld` (or `rust-lld`) is specified as a linker
-    /// without clarifying its flavor in any way.
-    /// FIXME: Merge this into `LinkerFlavor`.
-    pub lld_flavor: LldFlavor,
-    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
-    /// FIXME: Merge this into `LinkerFlavor`.
-    pub linker_is_gnu: bool,
+    lld_flavor_json: LldFlavor,
+    linker_is_gnu_json: bool,
 
     /// Objects to link before and after all other object code.
     pub pre_link_objects: CrtObjects,
@@ -1300,7 +1396,7 @@ pub struct TargetOptions {
 
     /// Optional link script applied to `dylib` and `executable` crate types.
     /// This is a string containing the script, not a path. Can only be applied
-    /// to linkers where `linker_is_gnu` is true.
+    /// to linkers where linker flavor matches `LinkerFlavor::Gnu(..)`.
     pub link_script: Option<StaticCow<str>>,
     /// Environment variables to be set for the linker invocation.
     pub link_env: StaticCow<[(StaticCow<str>, StaticCow<str>)]>,
@@ -1575,20 +1671,36 @@ pub struct TargetOptions {
 
 /// Add arguments for the given flavor and also for its "twin" flavors
 /// that have a compatible command line interface.
-fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'static str]) {
-    let mut insert = |flavor| {
-        link_args.entry(flavor).or_default().extend(args.iter().copied().map(Cow::Borrowed))
-    };
+fn add_link_args_iter(
+    link_args: &mut LinkArgs,
+    flavor: LinkerFlavor,
+    args: impl Iterator<Item = StaticCow<str>> + Clone,
+) {
+    let mut insert = |flavor| link_args.entry(flavor).or_default().extend(args.clone());
     insert(flavor);
     match flavor {
-        LinkerFlavor::Ld => insert(LinkerFlavor::Lld(LldFlavor::Ld)),
-        LinkerFlavor::Msvc => insert(LinkerFlavor::Lld(LldFlavor::Link)),
-        LinkerFlavor::Lld(LldFlavor::Ld64) | LinkerFlavor::Lld(LldFlavor::Wasm) => {}
-        LinkerFlavor::Lld(lld_flavor) => {
-            panic!("add_link_args: use non-LLD flavor for {:?}", lld_flavor)
+        LinkerFlavor::Gnu(cc, lld) => {
+            assert_eq!(lld, Lld::No);
+            insert(LinkerFlavor::Gnu(cc, Lld::Yes));
         }
-        LinkerFlavor::Gcc | LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => {}
+        LinkerFlavor::Darwin(cc, lld) => {
+            assert_eq!(lld, Lld::No);
+            insert(LinkerFlavor::Darwin(cc, Lld::Yes));
+        }
+        LinkerFlavor::Msvc(lld) => {
+            assert_eq!(lld, Lld::No);
+            insert(LinkerFlavor::Msvc(Lld::Yes));
+        }
+        LinkerFlavor::WasmLld(..)
+        | LinkerFlavor::Unix(..)
+        | LinkerFlavor::EmCc
+        | LinkerFlavor::Bpf
+        | LinkerFlavor::Ptx => {}
     }
+}
+
+fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'static str]) {
+    add_link_args_iter(link_args, flavor, args.iter().copied().map(Cow::Borrowed))
 }
 
 impl TargetOptions {
@@ -1607,7 +1719,11 @@ impl TargetOptions {
     }
 
     fn update_from_cli(&mut self) {
-        self.linker_flavor = LinkerFlavor::from_cli(self.linker_flavor_json);
+        self.linker_flavor = LinkerFlavor::from_cli_impl(
+            self.linker_flavor_json,
+            self.lld_flavor_json,
+            self.linker_is_gnu_json,
+        );
         for (args, args_json) in [
             (&mut self.pre_link_args, &self.pre_link_args_json),
             (&mut self.late_link_args, &self.late_link_args_json),
@@ -1615,15 +1731,28 @@ impl TargetOptions {
             (&mut self.late_link_args_static, &self.late_link_args_static_json),
             (&mut self.post_link_args, &self.post_link_args_json),
         ] {
-            *args = args_json
-                .iter()
-                .map(|(flavor, args)| (LinkerFlavor::from_cli(*flavor), args.clone()))
-                .collect();
+            args.clear();
+            for (flavor, args_json) in args_json {
+                // Cannot use `from_cli` due to borrow checker.
+                let linker_flavor = LinkerFlavor::from_cli_impl(
+                    *flavor,
+                    self.lld_flavor_json,
+                    self.linker_is_gnu_json,
+                );
+                match linker_flavor {
+                    LinkerFlavor::Gnu(_, Lld::Yes)
+                    | LinkerFlavor::Darwin(_, Lld::Yes)
+                    | LinkerFlavor::Msvc(Lld::Yes) => {}
+                    _ => add_link_args_iter(args, linker_flavor, args_json.iter().cloned()),
+                }
+            }
         }
     }
 
     fn update_to_cli(&mut self) {
         self.linker_flavor_json = self.linker_flavor.to_cli();
+        self.lld_flavor_json = self.linker_flavor.lld_flavor();
+        self.linker_is_gnu_json = self.linker_flavor.is_gnu();
         for (args, args_json) in [
             (&self.pre_link_args, &mut self.pre_link_args_json),
             (&self.late_link_args, &mut self.late_link_args_json),
@@ -1650,10 +1779,10 @@ impl Default for TargetOptions {
             abi: "".into(),
             vendor: "unknown".into(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
-            linker_flavor: LinkerFlavor::Gcc,
+            linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             linker_flavor_json: LinkerFlavorCli::Gcc,
-            lld_flavor: LldFlavor::Ld,
-            linker_is_gnu: true,
+            lld_flavor_json: LldFlavor::Ld,
+            linker_is_gnu_json: true,
             link_script: None,
             asm_args: cvs![],
             cpu: "generic".into(),
@@ -1922,6 +2051,12 @@ impl Target {
                     base.$key_name = s;
                 }
             } );
+            ($key_name:ident = $json_name:expr, bool) => ( {
+                let name = $json_name;
+                if let Some(s) = obj.remove(name).and_then(|b| b.as_bool()) {
+                    base.$key_name = s;
+                }
+            } );
             ($key_name:ident, u64) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.remove(&name).and_then(|j| Json::as_u64(&j)) {
@@ -2093,9 +2228,9 @@ impl Target {
                         .map(|s| s.to_string().into());
                 }
             } );
-            ($key_name:ident, LldFlavor) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
+            ($key_name:ident = $json_name:expr, LldFlavor) => ( {
+                let name = $json_name;
+                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
                     if let Some(flavor) = LldFlavor::from_str(&s) {
                         base.$key_name = flavor;
                     } else {
@@ -2289,8 +2424,8 @@ impl Target {
         key!(vendor);
         key!(linker, optional);
         key!(linker_flavor_json = "linker-flavor", LinkerFlavor)?;
-        key!(lld_flavor, LldFlavor)?;
-        key!(linker_is_gnu, bool);
+        key!(lld_flavor_json = "lld-flavor", LldFlavor)?;
+        key!(linker_is_gnu_json = "linker-is-gnu", bool);
         key!(pre_link_objects = "pre-link-objects", link_objects);
         key!(post_link_objects = "post-link-objects", link_objects);
         key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
@@ -2539,8 +2674,8 @@ impl ToJson for Target {
         target_option_val!(vendor);
         target_option_val!(linker);
         target_option_val!(linker_flavor_json, "linker-flavor");
-        target_option_val!(lld_flavor);
-        target_option_val!(linker_is_gnu);
+        target_option_val!(lld_flavor_json, "lld-flavor");
+        target_option_val!(linker_is_gnu_json, "linker-is-gnu");
         target_option_val!(pre_link_objects);
         target_option_val!(post_link_objects);
         target_option_val!(pre_link_objects_self_contained, "pre-link-objects-fallback");

@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
@@ -6,7 +6,7 @@ pub fn target() -> Target {
     // https://developer.android.com/ndk/guides/abis.html#86-64
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt".into();
     base.max_atomic_width = Some(64);
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m64"]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.stack_probes = StackProbeType::X86;
 
     Target {
