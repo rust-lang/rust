@@ -282,9 +282,8 @@ environment variable. We first document the most relevant and most commonly used
   verbose. `hide` hides the warning entirely.
 * `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from the host so that it
   cannot be accessed by the program. Can be used multiple times to exclude several variables. The
-  `TERM` environment variable is excluded by default to [speed up the test
-  harness](https://github.com/rust-lang/miri/issues/1702). This has no effect unless
-  `-Zmiri-disable-isolation` is also set.
+  `TERM` environment variable is excluded by default in Windows to prevent the libtest harness from
+  accessing the file system. This has no effect unless `-Zmiri-disable-isolation` is also set.
 * `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
   be used multiple times to forward several variables. This takes precedence over
   `-Zmiri-env-exclude`: if a variable is both forwarded and exluced, it *will* get forwarded. This
