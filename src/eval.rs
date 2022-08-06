@@ -1,7 +1,7 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
 use std::collections::HashSet;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::iter;
 use std::panic::{self, AssertUnwindSafe};
 use std::thread;
@@ -72,6 +72,9 @@ pub enum BacktraceStyle {
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
+    /// The host environment snapshot to use as basis for what is provided to the interpreted program.
+    /// (This is still subject to isolation as well as `excluded_env_vars` and `forwarded_env_vars`.)
+    pub env: Vec<(OsString, OsString)>,
     /// Determine if validity checking is enabled.
     pub validate: bool,
     /// Determines if Stacked Borrows is enabled.
@@ -130,6 +133,7 @@ pub struct MiriConfig {
 impl Default for MiriConfig {
     fn default() -> MiriConfig {
         MiriConfig {
+            env: vec![],
             validate: true,
             stacked_borrows: true,
             check_alignment: AlignmentCheck::Int,

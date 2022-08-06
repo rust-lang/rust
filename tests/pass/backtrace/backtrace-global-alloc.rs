@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
+//@rustc-env: RUST_BACKTRACE=1
 
 #![feature(backtrace)]
 
