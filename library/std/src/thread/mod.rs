@@ -203,8 +203,18 @@ pub use self::local::{AccessError, LocalKey};
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(target_thread_local)]
+#[cfg(not(test))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(target_thread_local)]
+#[cfg(test)] // when building for tests, use real std's key
+pub use realstd::thread::__FastLocalKeyInner;
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(target_thread_local)]
+#[cfg(test)]
+pub use self::local::fast::Key as __FastLocalKeyInnerUnused; // we import this anyway to silence 'unused' warnings
+
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::local::os::Key as __OsLocalKeyInner;
