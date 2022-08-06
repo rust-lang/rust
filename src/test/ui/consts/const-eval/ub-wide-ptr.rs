@@ -145,11 +145,9 @@ const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = unsafe { mem::transmute::<_, &bool
 
 // # raw trait object
 const RAW_TRAIT_OBJ_VTABLE_NULL: *const dyn Trait = unsafe { mem::transmute((&92u8, 0usize)) };
-//~^ ERROR evaluation of constant value failed
-//~| null pointer
+//~^ ERROR it is undefined behavior to use this value
 const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
-//~^ ERROR evaluation of constant value failed
-//~| does not point to a vtable
+//~^ ERROR it is undefined behavior to use this value
 const RAW_TRAIT_OBJ_CONTENT_INVALID: *const dyn Trait = unsafe { mem::transmute::<_, &bool>(&3u8) } as *const dyn Trait; // ok because raw
 
 // Const eval fails for these, so they need to be statics to error.
