@@ -207,12 +207,6 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
     )
 }
 
-impl<'tcx> Clean<'tcx, GenericBound> for ty::PolyTraitRef<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericBound {
-        clean_poly_trait_ref_with_bindings(cx, *self, &[])
-    }
-}
-
 fn clean_lifetime<'tcx>(lifetime: hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
     let def = cx.tcx.named_region(lifetime.hir_id);
     if let Some(
@@ -349,7 +343,7 @@ fn clean_poly_trait_predicate<'tcx>(
     let poly_trait_ref = pred.map_bound(|pred| pred.trait_ref);
     Some(WherePredicate::BoundPredicate {
         ty: clean_middle_ty(poly_trait_ref.skip_binder().self_ty(), cx, None),
-        bounds: vec![poly_trait_ref.clean(cx)],
+        bounds: vec![clean_poly_trait_ref_with_bindings(cx, poly_trait_ref, &[])],
         bound_params: Vec::new(),
     })
 }
