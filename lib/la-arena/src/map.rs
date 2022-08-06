@@ -49,11 +49,14 @@ impl<T, V> ArenaMap<Idx<T>, V> {
     }
 
     /// Inserts a value associated with a given arena index into the map.
-    pub fn insert(&mut self, idx: Idx<T>, t: V) {
+    ///
+    /// If the map did not have this index present, None is returned.
+    /// Otherwise, the value is updated, and the old value is returned.
+    pub fn insert(&mut self, idx: Idx<T>, t: V) -> Option<V> {
         let idx = Self::to_idx(idx);
 
         self.v.resize_with((idx + 1).max(self.v.len()), || None);
-        self.v[idx] = Some(t);
+        self.v[idx].replace(t)
     }
 
     /// Returns a reference to the value associated with the provided index
