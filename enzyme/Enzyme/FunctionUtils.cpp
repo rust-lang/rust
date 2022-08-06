@@ -265,6 +265,116 @@ static inline bool OnlyUsedInOMP(AllocaInst *AI) {
   return true;
 }
 
+void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
+  SmallVector<std::tuple<Value *, Value *, Instruction *>, 1> Todo;
+  for (auto U : AI->users()) {
+    Todo.push_back(
+        std::make_tuple((Value *)rep, (Value *)AI, cast<Instruction>(U)));
+  }
+  SmallVector<Instruction *, 1> toErase;
+  if (auto I = dyn_cast<Instruction>(AI))
+    toErase.push_back(I);
+  while (Todo.size()) {
+    auto cur = Todo.back();
+    Todo.pop_back();
+    Value *rep = std::get<0>(cur);
+    Value *prev = std::get<1>(cur);
+    Value *inst = std::get<2>(cur);
+    if (auto ASC = dyn_cast<AddrSpaceCastInst>(inst)) {
+      auto AS = cast<PointerType>(rep->getType())->getAddressSpace();
+      if (AS == ASC->getDestAddressSpace()) {
+        ASC->replaceAllUsesWith(rep);
+        continue;
+      }
+      ASC->setOperand(0, rep);
+      continue;
+    }
+    if (auto CI = dyn_cast<CastInst>(inst)) {
+      if (!CI->getType()->isPointerTy()) {
+        CI->setOperand(0, rep);
+        continue;
+      }
+      IRBuilder<> B(CI);
+      auto nCI = cast<CastInst>(B.CreateCast(
+          CI->getOpcode(), rep,
+          PointerType::get(
+              CI->getType()->getPointerElementType(),
+              cast<PointerType>(rep->getType())->getAddressSpace())));
+      nCI->takeName(CI);
+      for (auto U : CI->users()) {
+        Todo.push_back(
+            std::make_tuple((Value *)nCI, (Value *)CI, cast<Instruction>(U)));
+      }
+      continue;
+    }
+    if (auto GEP = dyn_cast<GetElementPtrInst>(inst)) {
+      IRBuilder<> B(GEP);
+      SmallVector<Value *, 1> ind(GEP->indices());
+#if LLVM_VERSION_MAJOR > 7
+      auto nGEP = cast<GetElementPtrInst>(
+          B.CreateGEP(GEP->getSourceElementType(), rep, ind));
+#else
+      auto nGEP = cast<GetElementPtrInst>(B.CreateGEP(rep, ind));
+#endif
+      nGEP->takeName(GEP);
+      for (auto U : GEP->users()) {
+        Todo.push_back(
+            std::make_tuple((Value *)nGEP, (Value *)GEP, cast<Instruction>(U)));
+      }
+      toErase.push_back(GEP);
+      continue;
+    }
+    if (auto LI = dyn_cast<LoadInst>(inst)) {
+      LI->setOperand(0, rep);
+      continue;
+    }
+    if (auto SI = dyn_cast<StoreInst>(inst)) {
+      if (SI->getPointerOperand() == prev) {
+        SI->setOperand(1, rep);
+        continue;
+      }
+    }
+    if (auto MS = dyn_cast<MemSetInst>(inst)) {
+      IRBuilder<> B(MS);
+
+      Value *nargs[] = {rep, MS->getArgOperand(1), MS->getArgOperand(2),
+                        MS->getArgOperand(3)};
+
+      Type *tys[] = {nargs[0]->getType(), nargs[2]->getType()};
+
+      auto nMS = cast<CallInst>(B.CreateCall(
+          Intrinsic::getDeclaration(MS->getParent()->getParent()->getParent(),
+                                    Intrinsic::memset, tys),
+          nargs));
+      nMS->copyIRFlags(MS);
+      toErase.push_back(MS);
+      continue;
+    }
+    if (auto CI = dyn_cast<CallInst>(inst)) {
+      if (auto F = CI->getCalledFunction()) {
+        if (F->getName() == "julia.write_barrier" && legal) {
+          toErase.push_back(CI);
+          continue;
+        }
+      }
+    }
+    if (legal) {
+      IRBuilder<> B(cast<Instruction>(rep)->getNextNode());
+      rep = B.CreateAddrSpaceCast(
+          rep, PointerType::get(
+                   rep->getType()->getPointerElementType(),
+                   cast<PointerType>(prev->getType())->getAddressSpace()));
+      prev->replaceAllUsesWith(rep);
+      continue;
+    }
+    llvm::errs() << " rep: " << *rep << " prev: " << *prev << " inst: " << *inst
+                 << "\n";
+    llvm_unreachable("Illegal address space propagation");
+  }
+  for (auto I : llvm::reverse(toErase))
+    I->eraseFromParent();
+}
+
 /// Convert necessary stack allocations into mallocs for use in the reverse
 /// pass. Specifically if we're not topLevel all allocations must be upgraded
 /// Even if topLevel any allocations that aren't in the entry block (and
@@ -312,13 +422,13 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
 
     auto PT0 = cast<PointerType>(rep->getType());
     auto PT1 = cast<PointerType>(AI->getType());
-    if (PT0->getAddressSpace() != PT1->getAddressSpace())
-      rep = B.CreateAddrSpaceCast(rep,
-                                  PointerType::get(PT0->getPointerElementType(),
-                                                   PT1->getAddressSpace()));
-    assert(rep->getType() == AI->getType());
-    AI->replaceAllUsesWith(rep);
-    AI->eraseFromParent();
+    if (PT0->getAddressSpace() != PT1->getAddressSpace()) {
+      RecursivelyReplaceAddressSpace(AI, rep, /*legal*/ false);
+    } else {
+      assert(rep->getType() == AI->getType());
+      AI->replaceAllUsesWith(rep);
+      AI->eraseFromParent();
+    }
   }
 }
 

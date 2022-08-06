@@ -10379,8 +10379,7 @@ public:
                                                      Attribute::NonNull);
 #endif
 
-                  if (called->getName() == "malloc" ||
-                      called->getName() == "_Znwm") {
+                  if (funcName == "malloc" || funcName == "_Znwm") {
                     if (auto ci = dyn_cast<ConstantInt>(args[0])) {
                       unsigned derefBytes = ci->getLimitedValue();
                       CallInst *cal =
@@ -10438,18 +10437,37 @@ public:
                     bb, anti, getIndex(orig, CacheType::Shadow));
               else {
                 if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
-                  AllocaInst *replacement = bb.CreateAlloca(
-                      Type::getInt8Ty(orig->getContext()), args[0]);
+                  Value *Size;
+                  if (funcName == "malloc")
+                    Size = args[0];
+                  else if (funcName == "julia.gc_alloc_obj")
+                    Size = args[1];
+                  else
+                    llvm_unreachable("Unknown allocation to upgrade");
+                  Value *replacement = bb.CreateAlloca(
+                      Type::getInt8Ty(orig->getContext()), Size);
                   replacement->takeName(anti);
                   auto Alignment = cast<ConstantInt>(cast<ConstantAsMetadata>(
                                                          MD->getOperand(0))
                                                          ->getValue())
                                        ->getLimitedValue();
 #if LLVM_VERSION_MAJOR >= 10
-                  replacement->setAlignment(Align(Alignment));
+                  cast<AllocaInst>(replacement)->setAlignment(Align(Alignment));
 #else
-                  replacement->setAlignment(Alignment);
+                  cast<AllocaInst>(replacement)->setAlignment(Alignment);
 #endif
+                  if (!anti->getType()->getPointerElementType()->isIntegerTy(8))
+                    replacement = bb.CreatePointerCast(
+                        replacement,
+                        PointerType::getUnqual(
+                            anti->getType()->getPointerElementType()));
+
+                  if (int AS =
+                          cast<PointerType>(anti->getType())->getAddressSpace())
+                    replacement = bb.CreateAddrSpaceCast(
+                        replacement,
+                        PointerType::get(
+                            anti->getType()->getPointerElementType(), AS));
 
                   gutils->replaceAWithB(cast<Instruction>(anti), replacement);
                   gutils->erase(cast<Instruction>(anti));
@@ -10583,23 +10601,43 @@ public:
             // allocation where possible.
             if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
               IRBuilder<> B(newCall);
-              if (auto CI = dyn_cast<ConstantInt>(orig->getArgOperand(0))) {
+
+              Value *Size;
+              if (funcName == "malloc")
+                Size = orig->getArgOperand(0);
+              else if (funcName == "julia.gc_alloc_obj")
+                Size = orig->getArgOperand(1);
+              else
+                llvm_unreachable("Unknown allocation to upgrade");
+              Size = gutils->getNewFromOriginal(Size);
+
+              if (auto CI = dyn_cast<ConstantInt>(Size)) {
                 B.SetInsertPoint(gutils->inversionAllocs);
               }
-
               auto rule = [&]() {
-                auto replacement = B.CreateAlloca(
-                    Type::getInt8Ty(orig->getContext()),
-                    gutils->getNewFromOriginal(orig->getArgOperand(0)));
+                Value *replacement =
+                    B.CreateAlloca(Type::getInt8Ty(orig->getContext()), Size);
                 auto Alignment =
                     cast<ConstantInt>(
                         cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
                         ->getLimitedValue();
 #if LLVM_VERSION_MAJOR >= 10
-                replacement->setAlignment(Align(Alignment));
+                cast<AllocaInst>(replacement)->setAlignment(Align(Alignment));
 #else
-                replacement->setAlignment(Alignment);
+                cast<AllocaInst>(replacement)->setAlignment(Alignment);
 #endif
+                if (!orig->getType()->getPointerElementType()->isIntegerTy(8))
+                  replacement = B.CreatePointerCast(
+                      replacement,
+                      PointerType::getUnqual(
+                          orig->getType()->getPointerElementType()));
+
+                if (int AS =
+                        cast<PointerType>(orig->getType())->getAddressSpace())
+                  replacement = B.CreateAddrSpaceCast(
+                      replacement,
+                      PointerType::get(orig->getType()->getPointerElementType(),
+                                       AS));
                 return replacement;
               };
 

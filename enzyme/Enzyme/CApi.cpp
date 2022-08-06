@@ -600,6 +600,11 @@ void EnzymeSetMustCache(LLVMValueRef inst1) {
   I1->setMetadata("enzyme_mustcache", MDNode::get(I1->getContext(), {}));
 }
 
+uint8_t EnzymeHasFromStack(LLVMValueRef inst1) {
+  Instruction *I1 = cast<Instruction>(unwrap(inst1));
+  return hasMetadata(I1, "enzyme_fromstack") != 0;
+}
+
 void EnzymeReplaceFunctionImplementation(LLVMModuleRef M) {
   ReplaceFunctionImplementation(*unwrap(M));
 }

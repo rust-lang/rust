@@ -346,6 +346,9 @@ static inline void calculateUnusedStores(
   }
 }
 
+void RecursivelyReplaceAddressSpace(llvm::Value *AI, llvm::Value *rep,
+                                    bool legal);
+
 void ReplaceFunctionImplementation(llvm::Module &M);
 
 /// Is the use of value val as an argument of call CI potentially captured
