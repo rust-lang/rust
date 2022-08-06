@@ -419,9 +419,9 @@ enum EntryKind {
     Generator,
     Trait,
     Impl,
-    AssocFn(LazyValue<AssocFnData>),
-    AssocType(AssocContainer),
-    AssocConst(AssocContainer),
+    AssocFn { container: ty::AssocItemContainer, has_self: bool },
+    AssocType(ty::AssocItemContainer),
+    AssocConst(ty::AssocItemContainer),
     TraitAlias,
 }
 
@@ -432,47 +432,6 @@ struct VariantData {
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<DefIndex>,
     is_non_exhaustive: bool,
-}
-
-/// Describes whether the container of an associated item
-/// is a trait or an impl and whether, in a trait, it has
-/// a default, or an in impl, whether it's marked "default".
-#[derive(Copy, Clone, TyEncodable, TyDecodable)]
-enum AssocContainer {
-    TraitRequired,
-    TraitWithDefault,
-    ImplDefault,
-    ImplFinal,
-}
-
-impl AssocContainer {
-    fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
-        match *self {
-            AssocContainer::TraitRequired | AssocContainer::TraitWithDefault => {
-                ty::TraitContainer(def_id)
-            }
-
-            AssocContainer::ImplDefault | AssocContainer::ImplFinal => ty::ImplContainer(def_id),
-        }
-    }
-
-    fn defaultness(&self) -> hir::Defaultness {
-        match *self {
-            AssocContainer::TraitRequired => hir::Defaultness::Default { has_value: false },
-
-            AssocContainer::TraitWithDefault | AssocContainer::ImplDefault => {
-                hir::Defaultness::Default { has_value: true }
-            }
-
-            AssocContainer::ImplFinal => hir::Defaultness::Final,
-        }
-    }
-}
-
-#[derive(MetadataEncodable, MetadataDecodable)]
-struct AssocFnData {
-    container: AssocContainer,
-    has_self: bool,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -492,7 +451,6 @@ pub fn provide(providers: &mut Providers) {
 
 trivially_parameterized_over_tcx! {
     VariantData,
-    AssocFnData,
     EntryKind,
     RawDefId,
     TraitImpls,

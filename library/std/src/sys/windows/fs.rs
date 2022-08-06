@@ -83,6 +83,12 @@ pub struct FilePermissions {
     attrs: c::DWORD,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {
+    accessed: Option<c::FILETIME>,
+    modified: Option<c::FILETIME>,
+}
+
 #[derive(Debug)]
 pub struct DirBuilder;
 
@@ -536,6 +542,21 @@ impl File {
         })?;
         Ok(())
     }
+
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        let is_zero = |t: c::FILETIME| t.dwLowDateTime == 0 && t.dwHighDateTime == 0;
+        if times.accessed.map_or(false, is_zero) || times.modified.map_or(false, is_zero) {
+            return Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "Cannot set file timestamp to 0",
+            ));
+        }
+        cvt(unsafe {
+            c::SetFileTime(self.as_handle(), None, times.accessed.as_ref(), times.modified.as_ref())
+        })?;
+        Ok(())
+    }
+
     /// Get only basic file information such as attributes and file times.
     fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
         unsafe {
@@ -903,6 +924,16 @@ impl FilePermissions {
     }
 }
 
+impl FileTimes {
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = Some(t.into_inner());
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = Some(t.into_inner());
+    }
+}
+
 impl FileType {
     fn new(attrs: c::DWORD, reparse_tag: c::DWORD) -> FileType {
         FileType { attributes: attrs, reparse_tag }
@@ -1035,11 +1066,13 @@ fn remove_dir_all_iterative(f: &File, delete: fn(&File) -> io::Result<()>) -> io
         unsafe { mem::ManuallyDrop::new(File::from_raw_handle(f.as_raw_handle())) }
     }
 
+    let mut restart = true;
     while let Some(dir) = dirlist.last() {
         let dir = copy_handle(dir);
 
         // Fill the buffer and iterate the entries.
-        let more_data = dir.fill_dir_buff(&mut buffer, false)?;
+        let more_data = dir.fill_dir_buff(&mut buffer, restart)?;
+        restart = false;
         for (name, is_directory) in buffer.iter() {
             if is_directory {
                 let child_dir = open_link_no_reparse(

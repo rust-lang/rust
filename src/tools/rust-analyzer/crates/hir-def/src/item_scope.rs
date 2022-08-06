@@ -5,6 +5,7 @@ use std::collections::hash_map::Entry;
 
 use base_db::CrateId;
 use hir_expand::{name::Name, AstId, MacroCallId};
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -97,15 +98,14 @@ pub(crate) enum BuiltinShadowMode {
 impl ItemScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, PerNs)> + 'a {
         // FIXME: shadowing
-        let keys: FxHashSet<_> = self
-            .types
+        self.types
             .keys()
             .chain(self.values.keys())
             .chain(self.macros.keys())
             .chain(self.unresolved.iter())
-            .collect();
-
-        keys.into_iter().map(move |name| (name, self.get(name)))
+            .sorted()
+            .unique()
+            .map(move |name| (name, self.get(name)))
     }
 
     pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {

@@ -402,7 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(dtor) => dtor.did,
         };
 
-        let impl_def_id = self.associated_item(dtor).container.id();
+        let impl_def_id = self.parent(dtor);
         let impl_generics = self.generics_of(impl_def_id);
 
         // We have a destructor - all the parameters that are not
@@ -679,6 +679,24 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn bound_const_param_default(self, def_id: DefId) -> ty::EarlyBinder<ty::Const<'tcx>> {
         ty::EarlyBinder(self.const_param_default(def_id))
+    }
+
+    pub fn bound_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
+        ty::EarlyBinder(self.predicates_of(def_id))
+    }
+
+    pub fn bound_explicit_predicates_of(
+        self,
+        def_id: DefId,
+    ) -> ty::EarlyBinder<ty::generics::GenericPredicates<'tcx>> {
+        ty::EarlyBinder(self.explicit_predicates_of(def_id))
+    }
+
+    pub fn bound_impl_subject(self, def_id: DefId) -> ty::EarlyBinder<ty::ImplSubject<'tcx>> {
+        ty::EarlyBinder(self.impl_subject(def_id))
     }
 }
 

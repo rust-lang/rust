@@ -13,8 +13,10 @@ LL | trait Chromosome: Chromosome {
 note: cycle used when collecting item types in top-level module
   --> $DIR/cycle-trait-supertrait-direct.rs:3:1
    |
-LL | trait Chromosome: Chromosome {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / trait Chromosome: Chromosome {
+LL | |
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 

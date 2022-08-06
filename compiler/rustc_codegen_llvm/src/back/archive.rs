@@ -10,7 +10,7 @@ use std::str;
 
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
-use rustc_codegen_ssa::back::archive::ArchiveBuilder;
+use rustc_codegen_ssa::back::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
 
@@ -18,7 +18,6 @@ use rustc_session::Session;
 #[must_use = "must call build() to finish building the archive"]
 pub struct LlvmArchiveBuilder<'a> {
     sess: &'a Session,
-    dst: PathBuf,
     additions: Vec<Addition>,
 }
 
@@ -54,16 +53,11 @@ fn llvm_machine_type(cpu: &str) -> LLVMMachineType {
 }
 
 impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
-    /// Creates a new static archive, ready for modifying the archive specified
-    /// by `config`.
-    fn new(sess: &'a Session, output: &Path) -> LlvmArchiveBuilder<'a> {
-        LlvmArchiveBuilder { sess, dst: output.to_path_buf(), additions: Vec::new() }
-    }
-
-    fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
-    where
-        F: FnMut(&str) -> bool + 'static,
-    {
+    fn add_archive(
+        &mut self,
+        archive: &Path,
+        skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> io::Result<()> {
         let archive_ro = match ArchiveRO::open(archive) {
             Ok(ar) => ar,
             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
@@ -88,18 +82,23 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
-    fn build(mut self) -> bool {
-        match self.build_with_llvm() {
+    fn build(mut self: Box<Self>, output: &Path) -> bool {
+        match self.build_with_llvm(output) {
             Ok(any_members) => any_members,
             Err(e) => self.sess.fatal(&format!("failed to build archive: {}", e)),
         }
     }
+}
 
-    fn sess(&self) -> &Session {
-        self.sess
+pub struct LlvmArchiveBuilderBuilder;
+
+impl ArchiveBuilderBuilder for LlvmArchiveBuilderBuilder {
+    fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a> {
+        Box::new(LlvmArchiveBuilder { sess, additions: Vec::new() })
     }
 
     fn create_dll_import_lib(
+        &self,
         sess: &Session,
         lib_name: &str,
         dll_imports: &[DllImport],
@@ -241,7 +240,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 }
 
 impl<'a> LlvmArchiveBuilder<'a> {
-    fn build_with_llvm(&mut self) -> io::Result<bool> {
+    fn build_with_llvm(&mut self, output: &Path) -> io::Result<bool> {
         let kind = &*self.sess.target.archive_format;
         let kind = kind.parse::<ArchiveKind>().map_err(|_| kind).unwrap_or_else(|kind| {
             self.sess.fatal(&format!("Don't know how to build archive of type: {}", kind))
@@ -251,7 +250,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let mut strings = Vec::new();
         let mut members = Vec::new();
 
-        let dst = CString::new(self.dst.to_str().unwrap())?;
+        let dst = CString::new(output.to_str().unwrap())?;
 
         unsafe {
             for addition in &mut additions {

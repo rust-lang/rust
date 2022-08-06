@@ -568,10 +568,10 @@ impl FromWithTcx<clean::Trait> for Trait {
     }
 }
 
-impl FromWithTcx<clean::Impl> for Impl {
-    fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
+impl FromWithTcx<Box<clean::Impl>> for Impl {
+    fn from_tcx(impl_: Box<clean::Impl>, tcx: TyCtxt<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
-        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
+        let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = *impl_;
         // FIXME: should `trait_` be a clean::Path equivalent in JSON?
         let trait_ = trait_.map(|path| clean::Type::Path { path }.into_tcx(tcx));
         // FIXME: use something like ImplKind in JSON?
@@ -602,11 +602,11 @@ impl FromWithTcx<clean::Impl> for Impl {
 }
 
 pub(crate) fn from_function(
-    function: clean::Function,
+    function: Box<clean::Function>,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Function {
-    let clean::Function { decl, generics } = function;
+    let clean::Function { decl, generics } = *function;
     Function {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
@@ -615,12 +615,12 @@ pub(crate) fn from_function(
 }
 
 pub(crate) fn from_function_method(
-    function: clean::Function,
+    function: Box<clean::Function>,
     has_body: bool,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Method {
-    let clean::Function { decl, generics } = function;
+    let clean::Function { decl, generics } = *function;
     Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
@@ -721,9 +721,9 @@ pub(crate) fn from_macro_kind(kind: rustc_span::hygiene::MacroKind) -> MacroKind
     }
 }
 
-impl FromWithTcx<clean::Typedef> for Typedef {
-    fn from_tcx(typedef: clean::Typedef, tcx: TyCtxt<'_>) -> Self {
-        let clean::Typedef { type_, generics, item_type: _ } = typedef;
+impl FromWithTcx<Box<clean::Typedef>> for Typedef {
+    fn from_tcx(typedef: Box<clean::Typedef>, tcx: TyCtxt<'_>) -> Self {
+        let clean::Typedef { type_, generics, item_type: _ } = *typedef;
         Typedef { type_: type_.into_tcx(tcx), generics: generics.into_tcx(tcx) }
     }
 }

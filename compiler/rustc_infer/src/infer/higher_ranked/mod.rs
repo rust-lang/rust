@@ -4,6 +4,7 @@
 use super::combine::CombineFields;
 use super::{HigherRankedType, InferCtxt};
 use crate::infer::CombinedSnapshot;
+use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Binder, TypeFoldable};
 
@@ -16,7 +17,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     ///
     /// This is implemented by first entering a new universe.
     /// We then replace all bound variables in `sup` with placeholders,
-    /// and all bound variables in `sup` with inference vars.
+    /// and all bound variables in `sub` with inference vars.
     /// We can then just relate the two resulting types as normal.
     ///
     /// Note: this is a subtle algorithm. For a full explanation, please see
@@ -79,31 +80,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let next_universe = self.create_next_universe();
 
-        let fld_r = |br: ty::BoundRegion| {
-            self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
-                universe: next_universe,
-                name: br.kind,
-            }))
-        };
-
-        let fld_t = |bound_ty: ty::BoundTy| {
-            self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
-                universe: next_universe,
-                name: bound_ty.var,
-            }))
-        };
-
-        let fld_c = |bound_var: ty::BoundVar, ty| {
-            self.tcx.mk_const(ty::ConstS {
-                kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+        let delegate = FnMutDelegate {
+            regions: |br: ty::BoundRegion| {
+                self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                     universe: next_universe,
-                    name: ty::BoundConst { var: bound_var, ty },
-                }),
-                ty,
-            })
+                    name: br.kind,
+                }))
+            },
+            types: |bound_ty: ty::BoundTy| {
+                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                    universe: next_universe,
+                    name: bound_ty.var,
+                }))
+            },
+            consts: |bound_var: ty::BoundVar, ty| {
+                self.tcx.mk_const(ty::ConstS {
+                    kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
+                        universe: next_universe,
+                        name: bound_var,
+                    }),
+                    ty,
+                })
+            },
         };
 
-        let result = self.tcx.replace_bound_vars_uncached(binder, fld_r, fld_t, fld_c);
+        let result = self.tcx.replace_bound_vars_uncached(binder, delegate);
         debug!(?next_universe, ?result);
         result
     }

@@ -152,7 +152,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_panic(&self, expr_str: &str, panic_path: Path) -> P<Expr> {
         let escaped_expr_str = escape_to_fmt(expr_str);
         let initial = [
-            TokenTree::token(
+            TokenTree::token_alone(
                 token::Literal(token::Lit {
                     kind: token::LitKind::Str,
                     symbol: Symbol::intern(&if self.fmt_string.is_empty() {
@@ -167,12 +167,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 }),
                 self.span,
             ),
-            TokenTree::token(token::Comma, self.span),
+            TokenTree::token_alone(token::Comma, self.span),
         ];
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
-                TokenTree::token(token::Ident(cap.ident.name, false), cap.ident.span),
-                TokenTree::token(token::Comma, self.span),
+                TokenTree::token_alone(token::Ident(cap.ident.name, false), cap.ident.span),
+                TokenTree::token_alone(token::Comma, self.span),
             ]
         });
         self.cx.expr(

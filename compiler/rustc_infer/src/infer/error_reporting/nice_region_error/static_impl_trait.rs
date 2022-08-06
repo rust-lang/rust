@@ -76,10 +76,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             "...is used and required to live as long as `'static` here \
                              because of an implicit lifetime bound on the {}",
                             match ctxt.assoc_item.container {
-                                AssocItemContainer::TraitContainer(id) =>
-                                    format!("`impl` of `{}`", tcx.def_path_str(id)),
-                                AssocItemContainer::ImplContainer(_) =>
-                                    "inherent `impl`".to_string(),
+                                AssocItemContainer::TraitContainer => {
+                                    let id = ctxt.assoc_item.container_id(tcx);
+                                    format!("`impl` of `{}`", tcx.def_path_str(id))
+                                }
+                                AssocItemContainer::ImplContainer => "inherent `impl`".to_string(),
                             },
                         ),
                     );

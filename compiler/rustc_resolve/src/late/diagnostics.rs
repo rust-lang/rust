@@ -136,12 +136,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn def_span(&self, def_id: DefId) -> Option<Span> {
         match def_id.krate {
             LOCAL_CRATE => self.r.opt_span(def_id),
-            _ => Some(
-                self.r
-                    .session
-                    .source_map()
-                    .guess_head_span(self.r.cstore().get_span_untracked(def_id, self.r.session)),
-            ),
+            _ => Some(self.r.cstore().get_span_untracked(def_id, self.r.session)),
         }
     }
 

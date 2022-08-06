@@ -1788,6 +1788,12 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T> Send for ChunksMut<'_, T> where T: Send {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T> Sync for ChunksMut<'_, T> where T: Sync {}
+
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
 /// time), starting at the beginning of the slice.
 ///
@@ -2113,6 +2119,12 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {}
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExactMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
+
+#[stable(feature = "chunks_exact", since = "1.31.0")]
+unsafe impl<T> Send for ChunksExactMut<'_, T> where T: Send {}
+
+#[stable(feature = "chunks_exact", since = "1.31.0")]
+unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 
 /// A windowed iterator over a slice in overlapping chunks (`N` elements at a
 /// time), starting at the beginning of the slice
@@ -2835,6 +2847,12 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
+#[stable(feature = "rchunks", since = "1.31.0")]
+unsafe impl<T> Send for RChunksMut<'_, T> where T: Send {}
+
+#[stable(feature = "rchunks", since = "1.31.0")]
+unsafe impl<T> Sync for RChunksMut<'_, T> where T: Sync {}
+
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
 /// time), starting at the end of the slice.
 ///
@@ -3167,6 +3185,12 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {}
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExactMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
+
+#[stable(feature = "rchunks", since = "1.31.0")]
+unsafe impl<T> Send for RChunksExactMut<'_, T> where T: Send {}
+
+#[stable(feature = "rchunks", since = "1.31.0")]
+unsafe impl<T> Sync for RChunksExactMut<'_, T> where T: Sync {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]

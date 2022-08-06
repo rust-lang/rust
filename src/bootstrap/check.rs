@@ -140,7 +140,13 @@ impl Step for Std {
             cargo_subcommand(builder.kind),
         );
 
-        cargo.arg("--all-targets");
+        // If we're not in stage 0, tests and examples will fail to compile
+        // from `core` definitions being loaded from two different `libcore`
+        // .rmeta and .rlib files.
+        if compiler.stage == 0 {
+            cargo.arg("--all-targets");
+        }
+
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         // Explicitly pass -p for all dependencies krates -- this will force cargo

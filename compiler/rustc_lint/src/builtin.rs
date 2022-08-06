@@ -1364,7 +1364,6 @@ impl UnreachablePub {
         cx: &LateContext<'_>,
         what: &str,
         def_id: LocalDefId,
-        span: Span,
         vis_span: Span,
         exportable: bool,
     ) {
@@ -1373,7 +1372,7 @@ impl UnreachablePub {
             if vis_span.from_expansion() {
                 applicability = Applicability::MaybeIncorrect;
             }
-            let def_span = cx.tcx.sess.source_map().guess_head_span(span);
+            let def_span = cx.tcx.def_span(def_id);
             cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
                 let mut err = lint.build(fluent::lint::builtin_unreachable_pub);
                 err.set_arg("what", what);
@@ -1399,36 +1398,22 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
             return;
         }
-        self.perform_lint(cx, "item", item.def_id, item.span, item.vis_span, true);
+        self.perform_lint(cx, "item", item.def_id, item.vis_span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
-        self.perform_lint(
-            cx,
-            "item",
-            foreign_item.def_id,
-            foreign_item.span,
-            foreign_item.vis_span,
-            true,
-        );
+        self.perform_lint(cx, "item", foreign_item.def_id, foreign_item.vis_span, true);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let def_id = cx.tcx.hir().local_def_id(field.hir_id);
-        self.perform_lint(cx, "field", def_id, field.span, field.vis_span, false);
+        self.perform_lint(cx, "field", def_id, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // Only lint inherent impl items.
         if cx.tcx.associated_item(impl_item.def_id).trait_item_def_id.is_none() {
-            self.perform_lint(
-                cx,
-                "item",
-                impl_item.def_id,
-                impl_item.span,
-                impl_item.vis_span,
-                false,
-            );
+            self.perform_lint(cx, "item", impl_item.def_id, impl_item.vis_span, false);
         }
     }
 }
@@ -1974,7 +1959,7 @@ impl KeywordIdents {
         for tt in tokens.into_trees() {
             match tt {
                 // Only report non-raw idents.
-                TokenTree::Token(token) => {
+                TokenTree::Token(token, _) => {
                     if let Some((ident, false)) = token.ident() {
                         self.check_ident_token(cx, UnderMacro(true), ident);
                     }

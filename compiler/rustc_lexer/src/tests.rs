@@ -2,42 +2,39 @@ use super::*;
 
 use expect_test::{expect, Expect};
 
-fn check_raw_str(s: &str, expected_hashes: u8, expected_err: Option<RawStrError>) {
+fn check_raw_str(s: &str, expected: Result<u8, RawStrError>) {
     let s = &format!("r{}", s);
     let mut cursor = Cursor::new(s);
     cursor.bump();
-    let (n_hashes, err) = cursor.raw_double_quoted_string(0);
-    assert_eq!(n_hashes, expected_hashes);
-    assert_eq!(err, expected_err);
+    let res = cursor.raw_double_quoted_string(0);
+    assert_eq!(res, expected);
 }
 
 #[test]
 fn test_naked_raw_str() {
-    check_raw_str(r#""abc""#, 0, None);
+    check_raw_str(r#""abc""#, Ok(0));
 }
 
 #[test]
 fn test_raw_no_start() {
-    check_raw_str(r##""abc"#"##, 0, None);
+    check_raw_str(r##""abc"#"##, Ok(0));
 }
 
 #[test]
 fn test_too_many_terminators() {
     // this error is handled in the parser later
-    check_raw_str(r###"#"abc"##"###, 1, None);
+    check_raw_str(r###"#"abc"##"###, Ok(1));
 }
 
 #[test]
 fn test_unterminated() {
     check_raw_str(
         r#"#"abc"#,
-        1,
-        Some(RawStrError::NoTerminator { expected: 1, found: 0, possible_terminator_offset: None }),
+        Err(RawStrError::NoTerminator { expected: 1, found: 0, possible_terminator_offset: None }),
     );
     check_raw_str(
         r###"##"abc"#"###,
-        2,
-        Some(RawStrError::NoTerminator {
+        Err(RawStrError::NoTerminator {
             expected: 2,
             found: 1,
             possible_terminator_offset: Some(7),
@@ -46,14 +43,13 @@ fn test_unterminated() {
     // We're looking for "# not just any #
     check_raw_str(
         r###"##"abc#"###,
-        2,
-        Some(RawStrError::NoTerminator { expected: 2, found: 0, possible_terminator_offset: None }),
+        Err(RawStrError::NoTerminator { expected: 2, found: 0, possible_terminator_offset: None }),
     )
 }
 
 #[test]
 fn test_invalid_start() {
-    check_raw_str(r##"#~"abc"#"##, 1, Some(RawStrError::InvalidStarter { bad_char: '~' }));
+    check_raw_str(r##"#~"abc"#"##, Err(RawStrError::InvalidStarter { bad_char: '~' }));
 }
 
 #[test]
@@ -61,26 +57,24 @@ fn test_unterminated_no_pound() {
     // https://github.com/rust-lang/rust/issues/70677
     check_raw_str(
         r#"""#,
-        0,
-        Some(RawStrError::NoTerminator { expected: 0, found: 0, possible_terminator_offset: None }),
+        Err(RawStrError::NoTerminator { expected: 0, found: 0, possible_terminator_offset: None }),
     );
 }
 
 #[test]
 fn test_too_many_hashes() {
     let max_count = u8::MAX;
-    let mut hashes: String = "#".repeat(max_count.into());
+    let hashes1 = "#".repeat(max_count as usize);
+    let hashes2 = "#".repeat(max_count as usize + 1);
+    let middle = "\"abc\"";
+    let s1 = [&hashes1, middle, &hashes1].join("");
+    let s2 = [&hashes2, middle, &hashes2].join("");
 
-    // Valid number of hashes (255 = 2^8 - 1 = u8::MAX), but invalid string.
-    check_raw_str(&hashes, max_count, Some(RawStrError::InvalidStarter { bad_char: '\u{0}' }));
+    // Valid number of hashes (255 = 2^8 - 1 = u8::MAX).
+    check_raw_str(&s1, Ok(255));
 
     // One more hash sign (256 = 2^8) becomes too many.
-    hashes.push('#');
-    check_raw_str(
-        &hashes,
-        0,
-        Some(RawStrError::TooManyDelimiters { found: usize::from(max_count) + 1 }),
-    );
+    check_raw_str(&s2, Err(RawStrError::TooManyDelimiters { found: u32::from(max_count) + 1 }));
 }
 
 #[test]
@@ -251,7 +245,7 @@ fn raw_string() {
     check_lexing(
         "r###\"\"#a\\b\x00c\"\"###",
         expect![[r#"
-            Token { kind: Literal { kind: RawStr { n_hashes: 3, err: None }, suffix_start: 17 }, len: 17 }
+            Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 17 }, len: 17 }
         "#]],
     )
 }
@@ -295,9 +289,9 @@ br###"raw"###suffix
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 3 }
             Token { kind: Whitespace, len: 1 }
-            Token { kind: Literal { kind: RawStr { n_hashes: 3, err: None }, suffix_start: 12 }, len: 18 }
+            Token { kind: Literal { kind: RawStr { n_hashes: Some(3) }, suffix_start: 12 }, len: 18 }
             Token { kind: Whitespace, len: 1 }
-            Token { kind: Literal { kind: RawByteStr { n_hashes: 3, err: None }, suffix_start: 13 }, len: 19 }
+            Token { kind: Literal { kind: RawByteStr { n_hashes: Some(3) }, suffix_start: 13 }, len: 19 }
             Token { kind: Whitespace, len: 1 }
         "#]],
     )

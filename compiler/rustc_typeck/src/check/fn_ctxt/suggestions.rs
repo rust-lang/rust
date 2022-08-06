@@ -839,8 +839,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && results.type_dependent_def_id(expr.hir_id).map_or(
                 false,
                 |did| {
-                    self.tcx.associated_item(did).container
-                        == ty::AssocItemContainer::TraitContainer(clone_trait_did)
+                    let assoc_item = self.tcx.associated_item(did);
+                    assoc_item.container == ty::AssocItemContainer::TraitContainer
+                        && assoc_item.container_id(self.tcx) == clone_trait_did
                 },
             )
             // If that clone call hasn't already dereferenced the self type (i.e. don't give this

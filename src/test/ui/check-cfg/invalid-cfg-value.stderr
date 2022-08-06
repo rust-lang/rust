@@ -5,7 +5,15 @@ LL | #[cfg(feature = "sedre")]
    |       ^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
-   = note: expected values for `feature` are: full, rand, serde
+   = note: expected values for `feature` are: full, serde
 
-warning: 1 warning emitted
+warning: unexpected `cfg` condition value
+  --> $DIR/invalid-cfg-value.rs:14:7
+   |
+LL | #[cfg(feature = "rand")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: full, serde
+
+warning: 2 warnings emitted
 

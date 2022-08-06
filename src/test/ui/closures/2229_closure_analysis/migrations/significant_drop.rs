@@ -13,7 +13,7 @@ impl Drop for Foo {
 }
 
 #[derive(Debug)]
-struct ConstainsDropField(Foo, Foo);
+struct ConstainsDropField(Foo, #[allow(unused_tuple_struct_fields)] Foo);
 
 // `t` needs Drop because one of its elements needs drop,
 // therefore precise capture might affect drop ordering

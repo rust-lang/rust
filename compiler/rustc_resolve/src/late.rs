@@ -1644,14 +1644,30 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 continue;
             }
 
-            let missing = match source {
-                PathSource::Trait(..) | PathSource::TraitItem(..) | PathSource::Type => true,
+            let node_ids = self.r.next_node_ids(expected_lifetimes);
+            self.record_lifetime_res(
+                segment_id,
+                LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
+                LifetimeElisionCandidate::Ignore,
+            );
+
+            let inferred = match source {
+                PathSource::Trait(..) | PathSource::TraitItem(..) | PathSource::Type => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct
-                | PathSource::TupleStruct(..) => false,
+                | PathSource::TupleStruct(..) => true,
             };
-            if !missing && !segment.has_generic_args {
+            if inferred {
+                // Do not create a parameter for patterns and expressions: type checking can infer
+                // the appropriate lifetime for us.
+                for id in node_ids {
+                    self.record_lifetime_res(
+                        id,
+                        LifetimeRes::Infer,
+                        LifetimeElisionCandidate::Named,
+                    );
+                }
                 continue;
             }
 
@@ -1665,25 +1681,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 segment.ident.span.find_ancestor_inside(path_span).unwrap_or(path_span)
             };
             let ident = Ident::new(kw::UnderscoreLifetime, elided_lifetime_span);
-
-            let node_ids = self.r.next_node_ids(expected_lifetimes);
-            self.record_lifetime_res(
-                segment_id,
-                LifetimeRes::ElidedAnchor { start: node_ids.start, end: node_ids.end },
-                LifetimeElisionCandidate::Ignore,
-            );
-
-            if !missing {
-                // Do not create a parameter for patterns and expressions.
-                for id in node_ids {
-                    self.record_lifetime_res(
-                        id,
-                        LifetimeRes::Infer,
-                        LifetimeElisionCandidate::Named,
-                    );
-                }
-                continue;
-            }
 
             let missing_lifetime = MissingLifetime {
                 id: node_ids.start,

@@ -53,7 +53,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
 #[derive(Clone, Copy)]
 enum ItemLike<'tcx> {
     Item(&'tcx Item<'tcx>),
-    ForeignItem(&'tcx ForeignItem<'tcx>),
+    ForeignItem,
 }
 
 struct CheckAttrVisitor<'tcx> {
@@ -209,7 +209,14 @@ impl CheckAttrVisitor<'_> {
         }
 
         // FIXME(@lcnr): this doesn't belong here.
-        if matches!(target, Target::Closure | Target::Fn | Target::Method(_) | Target::ForeignFn) {
+        if matches!(
+            target,
+            Target::Closure
+                | Target::Fn
+                | Target::Method(_)
+                | Target::ForeignFn
+                | Target::ForeignStatic
+        ) {
             self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
@@ -596,8 +603,6 @@ impl CheckAttrVisitor<'_> {
 
         let span = meta.span();
         if let Some(location) = match target {
-            Target::Impl => Some("implementation block"),
-            Target::ForeignMod => Some("extern block"),
             Target::AssocTy => {
                 let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
                 let containing_item = self.tcx.hir().expect_item(parent_hir_id);
@@ -619,7 +624,34 @@ impl CheckAttrVisitor<'_> {
             }
             // we check the validity of params elsewhere
             Target::Param => return false,
-            _ => None,
+            Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::ForeignMod
+            | Target::Closure
+            | Target::Impl => Some(target.name()),
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Fn
+            | Target::Mod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::OpaqueTy
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Method(..)
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(..)
+            | Target::MacroDef => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return false;
@@ -1995,12 +2027,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
-        self.check_attributes(
-            f_item.hir_id(),
-            f_item.span,
-            target,
-            Some(ItemLike::ForeignItem(f_item)),
-        );
+        self.check_attributes(f_item.hir_id(), f_item.span, target, Some(ItemLike::ForeignItem));
         intravisit::walk_foreign_item(self, f_item)
     }
 

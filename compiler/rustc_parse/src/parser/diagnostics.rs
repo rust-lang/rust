@@ -560,7 +560,8 @@ impl<'a> Parser<'a> {
                     || (sm.is_multiline(
                         self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo())
                     ) && t == &token::Pound)
-            }) {
+            }) && !expected.contains(&TokenType::Token(token::Comma))
+            {
                 // Missing semicolon typo. This is triggered if the next token could either start a
                 // new statement or is a block close. For example:
                 //
@@ -600,6 +601,17 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
+
+        if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
+            if symbol.as_str() == "public" {
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    "write `pub` instead of `public` to make the item public",
+                    "pub",
+                    appl,
+                );
+            }
+        }
 
         // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
         // there are unclosed angle brackets

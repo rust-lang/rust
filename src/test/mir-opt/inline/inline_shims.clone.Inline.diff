@@ -21,10 +21,6 @@
 +         _0 = (*_2);                      // scope 1 at $SRC_DIR/core/src/clone.rs:LL:COL
           StorageDead(_2);                 // scope 0 at $DIR/inline-shims.rs:+1:13: +1:14
           return;                          // scope 0 at $DIR/inline-shims.rs:+2:2: +2:2
-+     }
-+ 
-+     bb1 (cleanup): {
-+         resume;                          // scope 0 at $DIR/inline-shims.rs:+0:1: +2:2
       }
   }
   

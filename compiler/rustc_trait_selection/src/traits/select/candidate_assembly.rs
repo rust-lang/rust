@@ -8,7 +8,7 @@
 use hir::LangItem;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::traits::TraitEngine;
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -305,6 +305,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if lang_items.destruct_trait() == Some(def_id) {
                 self.assemble_const_destruct_candidates(obligation, &mut candidates);
+            } else if lang_items.transmute_trait() == Some(def_id) {
+                // User-defined transmutability impls are permitted.
+                self.assemble_candidates_from_impls(obligation, &mut candidates);
+                self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -702,8 +706,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn need_migrate_deref_output_trait_object(
         &mut self,
         ty: Ty<'tcx>,
-        cause: &traits::ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        cause: &ObligationCause<'tcx>,
     ) -> Option<(Ty<'tcx>, DefId)> {
         let tcx = self.tcx();
         if tcx.features().trait_upcasting {
@@ -725,24 +729,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return None;
         }
 
-        let mut fulfillcx = traits::FulfillmentContext::new_in_snapshot();
-        let normalized_ty = fulfillcx.normalize_projection_type(
-            &self.infcx,
+        let ty = traits::normalize_projection_type(
+            self,
             param_env,
             ty::ProjectionTy {
                 item_def_id: tcx.lang_items().deref_target()?,
                 substs: trait_ref.substs,
             },
             cause.clone(),
-        );
+            0,
+            // We're *intentionally* throwing these away,
+            // since we don't actually use them.
+            &mut vec![],
+        )
+        .ty()
+        .unwrap();
 
-        let ty::Dynamic(data, ..) = normalized_ty.kind() else {
-            return None;
-        };
-
-        let def_id = data.principal_def_id()?;
-
-        return Some((normalized_ty, def_id));
+        if let ty::Dynamic(data, ..) = ty.kind() {
+            Some((ty, data.principal_def_id()?))
+        } else {
+            None
+        }
     }
 
     /// Searches for unsizing that might apply to `obligation`.
@@ -805,8 +812,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let Some((deref_output_ty, deref_output_trait_did)) = self
                             .need_migrate_deref_output_trait_object(
                                 source,
-                                &obligation.cause,
                                 obligation.param_env,
+                                &obligation.cause,
                             )
                         {
                             if deref_output_trait_did == target_trait_did {
@@ -871,6 +878,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             _ => {}
         };
+    }
+
+    #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]
+    fn assemble_candidates_for_transmutability(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        if obligation.has_param_types_or_consts() {
+            return;
+        }
+
+        if obligation.has_infer_types_or_consts() {
+            candidates.ambiguous = true;
+            return;
+        }
+
+        candidates.vec.push(TransmutabilityCandidate);
     }
 
     #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]

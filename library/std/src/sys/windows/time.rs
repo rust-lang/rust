@@ -2,6 +2,7 @@ use crate::cmp::Ordering;
 use crate::fmt;
 use crate::mem;
 use crate::sys::c;
+use crate::sys_common::IntoInner;
 use crate::time::Duration;
 
 use core::hash::{Hash, Hasher};
@@ -133,6 +134,12 @@ impl fmt::Debug for SystemTime {
 impl From<c::FILETIME> for SystemTime {
     fn from(t: c::FILETIME) -> SystemTime {
         SystemTime { t }
+    }
+}
+
+impl IntoInner<c::FILETIME> for SystemTime {
+    fn into_inner(self) -> c::FILETIME {
+        self.t
     }
 }
 

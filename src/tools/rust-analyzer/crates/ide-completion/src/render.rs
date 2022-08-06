@@ -1271,8 +1271,8 @@ fn main() {
                 st S []
                 st &mut S [type]
                 st S []
-                fn main() []
                 fn foo(…) []
+                fn main() []
             "#]],
         );
         check_relevance(
@@ -1288,8 +1288,8 @@ fn main() {
                 lc s [type+name+local]
                 st S [type]
                 st S []
-                fn main() []
                 fn foo(…) []
+                fn main() []
             "#]],
         );
         check_relevance(
@@ -1305,8 +1305,8 @@ fn main() {
                 lc ssss [type+local]
                 st S [type]
                 st S []
-                fn main() []
                 fn foo(…) []
+                fn main() []
             "#]],
         );
     }
@@ -1342,12 +1342,11 @@ fn main() {
                 lc &t [type+local]
                 st S []
                 st &S [type]
-                st T []
                 st S []
-                fn main() []
+                st T []
                 fn foo(…) []
+                fn main() []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1389,12 +1388,11 @@ fn main() {
                 lc &mut t [type+local]
                 st S []
                 st &mut S [type]
-                st T []
                 st S []
-                fn main() []
+                st T []
                 fn foo(…) []
+                fn main() []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1485,14 +1483,13 @@ fn main() {
             expect![[r#"
                 st S []
                 st &S [type]
-                st T []
                 st S []
-                fn main() []
+                st T []
                 fn bar() []
                 fn &bar() [type]
                 fn foo(…) []
+                fn main() []
                 md core []
-                tt Sized []
             "#]],
         )
     }
@@ -1636,8 +1633,8 @@ fn foo() {
                 ev Foo::B [type_could_unify]
                 fn foo() []
                 en Foo []
-                fn baz() []
                 fn bar() []
+                fn baz() []
             "#]],
         );
     }
@@ -1727,9 +1724,9 @@ fn f() {
 }
 "#,
             expect![[r#"
-                md std []
                 st Buffer []
                 fn f() []
+                md std []
                 tt BufRead (use std::io::BufRead) [requires_import]
                 st BufReader (use std::io::BufReader) [requires_import]
                 st BufWriter (use std::io::BufWriter) [requires_import]

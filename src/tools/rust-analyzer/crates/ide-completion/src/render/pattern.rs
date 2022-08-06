@@ -6,7 +6,7 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    context::{ParamContext, ParamKind, PatternContext},
+    context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
     render::{
         variant::{format_literal_label, visible_fields},
         RenderContext,
@@ -42,6 +42,7 @@ pub(crate) fn render_struct_pat(
 pub(crate) fn render_variant_pat(
     ctx: RenderContext<'_>,
     pattern_ctx: &PatternContext,
+    path_ctx: Option<&PathCompletionCtx>,
     variant: hir::Variant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
@@ -58,9 +59,23 @@ pub(crate) fn render_variant_pat(
             (name.to_smol_str(), name.escaped().to_smol_str())
         }
     };
-    let kind = variant.kind(ctx.db());
-    let label = format_literal_label(name.as_str(), kind);
-    let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
+
+    let (label, pat) = match path_ctx {
+        Some(PathCompletionCtx { has_call_parens: true, .. }) => (name, escaped_name.to_string()),
+        _ => {
+            let kind = variant.kind(ctx.db());
+            let label = format_literal_label(name.as_str(), kind);
+            let pat = render_pat(
+                &ctx,
+                pattern_ctx,
+                &escaped_name,
+                kind,
+                &visible_fields,
+                fields_omitted,
+            )?;
+            (label, pat)
+        }
+    };
 
     Some(build_completion(ctx, label, pat, variant))
 }

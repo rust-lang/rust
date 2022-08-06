@@ -772,7 +772,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             let mut nonconst_call_permission = false;
                             if let Some(callee_trait) = tcx.trait_of_item(callee)
                                 && tcx.has_attr(callee_trait, sym::const_trait)
-                                && Some(callee_trait) == tcx.trait_of_item(caller)
+                                && Some(callee_trait) == tcx.trait_of_item(caller.to_def_id())
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {

@@ -232,6 +232,10 @@ fn sanity_check_layout<'tcx>(
         assert!(layout.abi.is_uninhabited());
     }
 
+    if layout.size.bytes() % layout.align.abi.bytes() != 0 {
+        bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
+    }
+
     if cfg!(debug_assertions) {
         fn check_layout_abi<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) {
             match layout.abi() {
@@ -1231,11 +1235,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                             let offset = st[i].fields().offset(field_index) + niche.offset;
-                            let size = st[i].size();
+
+                            // Align the total size to the largest alignment.
+                            let size = st[i].size().align_to(align.abi);
 
                             let abi = if st.iter().all(|v| v.abi().is_uninhabited()) {
                                 Abi::Uninhabited
-                            } else {
+                            } else if align == st[i].align() && size == st[i].size() {
+                                // When the total alignment and size match, we can use the
+                                // same ABI as the scalar variant with the reserved niche.
                                 match st[i].abi() {
                                     Abi::Scalar(_) => Abi::Scalar(niche_scalar),
                                     Abi::ScalarPair(first, second) => {
@@ -1249,6 +1257,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     }
                                     _ => Abi::Aggregate { sized: true },
                                 }
+                            } else {
+                                Abi::Aggregate { sized: true }
                             };
 
                             let largest_niche = Niche::from_scalar(dl, offset, niche_scalar);

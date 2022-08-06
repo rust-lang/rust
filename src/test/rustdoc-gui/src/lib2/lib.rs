@@ -30,10 +30,13 @@ impl Foo {
     pub fn a_method(&self) {}
 }
 
+#[doc(cfg(feature = "foo-method"))]
+#[deprecated = "Whatever [`Foo::a_method`](#method.a_method)"]
 pub trait Trait {
     type X;
     const Y: u32;
 
+    #[deprecated = "Whatever [`Foo`](#tadam)"]
     fn foo() {}
 }
 

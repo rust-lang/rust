@@ -631,6 +631,32 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unused_tuple_struct_fields` lint detects fields of tuple structs
+    /// that are never read.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// #[warn(unused_tuple_struct_fields)]
+    /// struct S(i32, i32, i32);
+    /// let s = S(1, 2, 3);
+    /// let _ = (s.0, s.2);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Tuple struct fields that are never read anywhere may indicate a
+    /// mistake or unfinished code. To silence this warning, consider
+    /// removing the unused field(s) or, to preserve the numbering of the
+    /// remaining fields, change the unused field(s) to have unit type.
+    pub UNUSED_TUPLE_STRUCT_FIELDS,
+    Allow,
+    "detects tuple struct fields that are never read"
+}
+
+declare_lint! {
     /// The `unreachable_code` lint detects unreachable code paths.
     ///
     /// ### Example
@@ -3281,6 +3307,7 @@ declare_lint_pass! {
         UNSUPPORTED_CALLING_CONVENTIONS,
         BREAK_WITH_LABEL_AND_LOOP,
         UNUSED_ATTRIBUTES,
+        UNUSED_TUPLE_STRUCT_FIELDS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         DEREF_INTO_DYN_SUPERTRAIT,

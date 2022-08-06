@@ -48,7 +48,7 @@ pub use subst::*;
 pub use vtable::*;
 
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::ops::ControlFlow;
 use std::{fmt, str};
 
@@ -177,6 +177,11 @@ pub struct ResolverAstLowering {
     pub label_res_map: NodeMap<ast::NodeId>,
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
+    /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
+    /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
+    /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
+    /// field from the original parameter 'a to the new parameter 'a1.
+    pub generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
 
@@ -1182,20 +1187,11 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub name: T,
-}
-
-impl<'a, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.universe.hash_stable(hcx, hasher);
-        self.name.hash_stable(hcx, hasher);
-    }
 }
 
 pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
@@ -1209,7 +1205,7 @@ pub struct BoundConst<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
+pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 
 /// A `DefId` which, in case it is a const argument, is potentially bundled with
 /// the `DefId` of the generic parameter it instantiates.
@@ -1581,6 +1577,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
+#[derive(HashStable)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,
@@ -1595,18 +1592,6 @@ impl<'tcx, T> ParamEnvAnd<'tcx, T> {
     pub fn without_const(mut self) -> Self {
         self.param_env = self.param_env.without_const();
         self
-    }
-}
-
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ParamEnvAnd<'tcx, T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let ParamEnvAnd { ref param_env, ref value } = *self;
-
-        param_env.hash_stable(hcx, hasher);
-        value.hash_stable(hcx, hasher);
     }
 }
 
@@ -1724,6 +1709,59 @@ impl VariantDef {
     }
 }
 
+impl PartialEq for VariantDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `PartialEq` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` and `other` so that if the
+        // definition of `VariantDef` changes, a compile-error will be produced,
+        // reminding us to revisit this assumption.
+
+        let Self {
+            def_id: lhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = &self;
+
+        let Self {
+            def_id: rhs_def_id,
+            ctor_def_id: _,
+            name: _,
+            discr: _,
+            fields: _,
+            ctor_kind: _,
+            flags: _,
+        } = other;
+
+        lhs_def_id == rhs_def_id
+    }
+}
+
+impl Eq for VariantDef {}
+
+impl Hash for VariantDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `VariantDef` for each `def_id`, therefore
+        // it is fine to implement `Hash` only based on `def_id`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `VariantDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { def_id, ctor_def_id: _, name: _, discr: _, fields: _, ctor_kind: _, flags: _ } =
+            &self;
+
+        def_id.hash(s)
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub enum VariantDiscr {
     /// Explicit value for this variant, i.e., `X = 123`.
@@ -1742,6 +1780,42 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility,
+}
+
+impl PartialEq for FieldDef {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `PartialEq` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did: lhs_did, name: _, vis: _ } = &self;
+
+        let Self { did: rhs_did, name: _, vis: _ } = other;
+
+        lhs_did == rhs_did
+    }
+}
+
+impl Eq for FieldDef {}
+
+impl Hash for FieldDef {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // There should be only one `FieldDef` for each `did`, therefore it is
+        // fine to implement `Hash` only based on `did`.
+        //
+        // Below, we exhaustively destructure `self` so that if the definition
+        // of `FieldDef` changes, a compile-error will be produced, reminding
+        // us to revisit this assumption.
+
+        let Self { did, name: _, vis: _ } = &self;
+
+        did.hash(s)
+    }
 }
 
 bitflags! {
@@ -1965,7 +2039,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
+            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.
@@ -2211,13 +2285,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_ref(def_id).map(|tr| tr.def_id)
     }
 
+    /// If the given `DefId` describes an item belonging to a trait,
+    /// returns the `DefId` of the trait that the trait item belongs to;
+    /// otherwise, returns `None`.
+    pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            let parent = self.parent(def_id);
+            if let DefKind::Trait | DefKind::TraitAlias = self.def_kind(parent) {
+                return Some(parent);
+            }
+        }
+        None
+    }
+
     /// If the given `DefId` describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
-        self.opt_associated_item(def_id).and_then(|trait_item| match trait_item.container {
-            TraitContainer(_) => None,
-            ImplContainer(def_id) => Some(def_id),
-        })
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            let parent = self.parent(def_id);
+            if let DefKind::Impl = self.def_kind(parent) {
+                return Some(parent);
+            }
+        }
+        None
     }
 
     /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.

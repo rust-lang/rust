@@ -55,7 +55,7 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             first binding
 
 error[E0408]: variable `CONST1` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:30:23
+  --> $DIR/resolve-inconsistent-names.rs:31:23
    |
 LL |         (CONST1, _) | (_, Const2) => ()
    |          ------       ^^^^^^^^^^^ pattern doesn't bind `CONST1`
@@ -69,7 +69,7 @@ LL |     const CONST1: usize = 10;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0408]: variable `Const2` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:30:9
+  --> $DIR/resolve-inconsistent-names.rs:31:9
    |
 LL |         (CONST1, _) | (_, Const2) => ()
    |         ^^^^^^^^^^^       ------ variable not in all patterns
@@ -92,6 +92,11 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             first introduced with type `E` here
    |
    = note: in the same arm, a binding must have the same type in all alternatives
+help: consider removing `ref`
+   |
+LL -         (A, B) | (ref B, c) | (c, A) => ()
+LL +         (A, B) | (B, c) | (c, A) => ()
+   |
 
 error: aborting due to 9 previous errors
 

@@ -36,7 +36,7 @@ use crate::{
 //     pub struct Baz;
 // }
 //
-// use foo::{Baz, Bar};
+// use foo::{Bar, Baz};
 //
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
@@ -281,7 +281,7 @@ mod foo {
     pub fn f() {}
 }
 
-use foo::{Baz, Bar, f};
+use foo::{Bar, Baz, f};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -351,7 +351,7 @@ mod foo {
     pub fn f() {}
 }
 
-use foo::{Baz, Bar, f};
+use foo::{Bar, Baz, f};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -440,7 +440,7 @@ mod foo {
     }
 }
 
-use foo::{bar::{Baz, Bar, f}, baz::*};
+use foo::{bar::{Bar, Baz, f}, baz::*};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -561,7 +561,7 @@ mod foo {
 
 use foo::{
     bar::{*, f},
-    baz::{g, qux::{q, h}}
+    baz::{g, qux::{h, q}}
 };
 
 fn qux(bar: Bar, baz: Baz) {

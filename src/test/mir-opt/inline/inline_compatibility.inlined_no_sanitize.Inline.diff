@@ -19,10 +19,6 @@
           StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:+1:18: +1:19
           _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:+0:37: +2:2
           return;                          // scope 0 at $DIR/inline-compatibility.rs:+2:2: +2:2
-+     }
-+ 
-+     bb1 (cleanup): {
-+         resume;                          // scope 0 at $DIR/inline-compatibility.rs:+0:1: +2:2
       }
   }
   

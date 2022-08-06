@@ -6,7 +6,6 @@ use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -17,10 +16,9 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{
-    self, subst::Subst, suggest_constraining_type_params, EarlyBinder, PredicateKind, Ty,
-};
+use rustc_middle::ty::{self, subst::Subst, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Span, Symbol};
@@ -39,7 +37,7 @@ use crate::{
 
 use super::{
     explain_borrow::{BorrowExplanation, LaterUseKind},
-    IncludingDowncast, RegionName, RegionNameSource, UseSpans,
+    DescribePlaceOpt, RegionName, RegionNameSource, UseSpans,
 };
 
 #[derive(Debug)]
@@ -137,7 +135,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 partially_str,
-                self.describe_place_with_options(moved_place, IncludingDowncast(true)),
+                self.describe_place_with_options(
+                    moved_place,
+                    DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+                ),
             );
 
             let reinit_spans = maybe_reinitialized_locations
@@ -274,8 +275,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            let opt_name =
-                self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
+            let opt_name = self.describe_place_with_options(
+                place.as_ref(),
+                DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+            );
             let note_msg = match opt_name {
                 Some(ref name) => format!("`{}`", name),
                 None => "value".to_owned(),
@@ -341,21 +344,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let (name, desc) =
-            match self.describe_place_with_options(moved_place, IncludingDowncast(true)) {
-                Some(name) => (format!("`{name}`"), format!("`{name}` ")),
-                None => ("the variable".to_string(), String::new()),
-            };
-        let path = match self.describe_place_with_options(used_place, IncludingDowncast(true)) {
+        let (name, desc) = match self.describe_place_with_options(
+            moved_place,
+            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+        ) {
+            Some(name) => (format!("`{name}`"), format!("`{name}` ")),
+            None => ("the variable".to_string(), String::new()),
+        };
+        let path = match self.describe_place_with_options(
+            used_place,
+            DescribePlaceOpt { including_downcast: true, including_tuple_field: true },
+        ) {
             Some(name) => format!("`{name}`"),
             None => "value".to_string(),
         };
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
-        let hir_id = self.mir_hir_id();
         let map = self.infcx.tcx.hir();
-        let body_id = map.body_owned_by(hir_id);
+        let body_id = map.body_owned_by(self.mir_def_id());
         let body = map.body(body_id);
 
         let mut visitor = ConditionVisitor { spans: &spans, name: &name, errors: vec![] };
@@ -452,23 +459,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |predicates: &[(ty::Predicate<'tcx>, Span)], substs| {
-            predicates.iter().find_map(|(pred, _)| {
-                let pred = if let Some(substs) = substs {
-                    EarlyBinder(*pred).subst(tcx, substs).kind().skip_binder()
-                } else {
-                    pred.kind().skip_binder()
-                };
-                if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
+        let find_fn_kind_from_did =
+            |predicates: ty::EarlyBinder<&[(ty::Predicate<'tcx>, Span)]>, substs| {
+                predicates.0.iter().find_map(|(pred, _)| {
+                    let pred = if let Some(substs) = substs {
+                        predicates.rebind(*pred).subst(tcx, substs).kind().skip_binder()
+                    } else {
+                        pred.kind().skip_binder()
+                    };
+                    if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
                     if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
                         return Some(hir::Mutability::Not);
                     } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
                         return Some(hir::Mutability::Mut);
                     }
                 }
-                None
-            })
-        };
+                    None
+                })
+            };
 
         // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
@@ -476,11 +484,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // borrowed variants in a function body when we see a move error.
         let borrow_level = match ty.kind() {
             ty::Param(_) => find_fn_kind_from_did(
-                tcx.explicit_predicates_of(self.mir_def_id().to_def_id()).predicates,
+                tcx.bound_explicit_predicates_of(self.mir_def_id().to_def_id())
+                    .map_bound(|p| p.predicates),
                 None,
             ),
             ty::Opaque(did, substs) => {
-                find_fn_kind_from_did(tcx.explicit_item_bounds(*did), Some(*substs))
+                find_fn_kind_from_did(tcx.bound_explicit_item_bounds(*did), Some(*substs))
             }
             ty::Closure(_, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),
@@ -2224,7 +2233,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let ty = self.infcx.tcx.type_of(self.mir_def_id());
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
-                        self.mir_def_id().to_def_id(),
+                        self.mir_def_id(),
                         self.infcx.tcx.fn_sig(self.mir_def_id()),
                     ),
                     _ => None,
@@ -2268,8 +2277,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // Check if our `target` was captured by a closure.
                         if let Rvalue::Aggregate(
                             box AggregateKind::Closure(def_id, substs),
-                            operands,
-                        ) = rvalue
+                            ref operands,
+                        ) = *rvalue
                         {
                             for operand in operands {
                                 let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
@@ -2293,7 +2302,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
                                 annotated_closure =
-                                    self.annotate_fn_sig(*def_id, substs.as_closure().sig());
+                                    self.annotate_fn_sig(def_id, substs.as_closure().sig());
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \
@@ -2415,12 +2424,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// references.
     fn annotate_fn_sig(
         &self,
-        did: DefId,
+        did: LocalDefId,
         sig: ty::PolyFnSig<'tcx>,
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
-        let is_closure = self.infcx.tcx.is_closure(did);
-        let fn_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did.as_local()?);
+        let is_closure = self.infcx.tcx.is_closure(did.to_def_id());
+        let fn_hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking
@@ -2727,7 +2736,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 self.errors.push((
                                     e.span,
                                     format!(
-                                        "if the `for` loop runs 0 times, {} is not initialized ",
+                                        "if the `for` loop runs 0 times, {} is not initialized",
                                         self.name
                                     ),
                                 ));

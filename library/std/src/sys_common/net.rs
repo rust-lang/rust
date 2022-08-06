@@ -10,7 +10,7 @@ use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
 use crate::sys::net::netc as c;
 use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_void};
@@ -224,8 +224,8 @@ impl TcpStream {
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
 
-        let (addrp, len) = addr.into_inner();
-        cvt_r(|| unsafe { c::connect(sock.as_raw(), addrp, len) })?;
+        let (addr, len) = addr.into_inner();
+        cvt_r(|| unsafe { c::connect(sock.as_raw(), addr.as_ptr(), len) })?;
         Ok(TcpStream { inner: sock })
     }
 
@@ -395,8 +395,8 @@ impl TcpListener {
         setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
 
         // Bind our new socket
-        let (addrp, len) = addr.into_inner();
-        cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
 
         cfg_if::cfg_if! {
             if #[cfg(target_os = "horizon")] {
@@ -500,8 +500,8 @@ impl UdpSocket {
         init();
 
         let sock = Socket::new(addr, c::SOCK_DGRAM)?;
-        let (addrp, len) = addr.into_inner();
-        cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
         Ok(UdpSocket { inner: sock })
     }
 
@@ -531,14 +531,14 @@ impl UdpSocket {
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
-        let (dstp, dstlen) = dst.into_inner();
+        let (dst, dstlen) = dst.into_inner();
         let ret = cvt(unsafe {
             c::sendto(
                 self.inner.as_raw(),
                 buf.as_ptr() as *const c_void,
                 len,
                 MSG_NOSIGNAL,
-                dstp,
+                dst.as_ptr(),
                 dstlen,
             )
         })?;
@@ -621,7 +621,7 @@ impl UdpSocket {
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
-            ipv6mr_multiaddr: *multiaddr.as_inner(),
+            ipv6mr_multiaddr: multiaddr.into_inner(),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
@@ -637,7 +637,7 @@ impl UdpSocket {
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
-            ipv6mr_multiaddr: *multiaddr.as_inner(),
+            ipv6mr_multiaddr: multiaddr.into_inner(),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
@@ -677,8 +677,8 @@ impl UdpSocket {
     }
 
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
-        let (addrp, len) = addr?.into_inner();
-        cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addrp, len) }).map(drop)
+        let (addr, len) = addr?.into_inner();
+        cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
     }
 }
 
@@ -698,5 +698,40 @@ impl fmt::Debug for UdpSocket {
 
         let name = if cfg!(windows) { "socket" } else { "fd" };
         res.field(name, &self.inner.as_raw()).finish()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Converting SocketAddr to libc representation
+////////////////////////////////////////////////////////////////////////////////
+
+/// A type with the same memory layout as `c::sockaddr`. Used in converting Rust level
+/// SocketAddr* types into their system representation. The benefit of this specific
+/// type over using `c::sockaddr_storage` is that this type is exactly as large as it
+/// needs to be and not a lot larger. And it can be initialized more cleanly from Rust.
+#[repr(C)]
+pub(crate) union SocketAddrCRepr {
+    v4: c::sockaddr_in,
+    v6: c::sockaddr_in6,
+}
+
+impl SocketAddrCRepr {
+    pub fn as_ptr(&self) -> *const c::sockaddr {
+        self as *const _ as *const c::sockaddr
+    }
+}
+
+impl<'a> IntoInner<(SocketAddrCRepr, c::socklen_t)> for &'a SocketAddr {
+    fn into_inner(self) -> (SocketAddrCRepr, c::socklen_t) {
+        match *self {
+            SocketAddr::V4(ref a) => {
+                let sockaddr = SocketAddrCRepr { v4: a.into_inner() };
+                (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
+            }
+            SocketAddr::V6(ref a) => {
+                let sockaddr = SocketAddrCRepr { v6: a.into_inner() };
+                (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
+            }
+        }
     }
 }

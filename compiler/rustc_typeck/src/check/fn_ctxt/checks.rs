@@ -58,7 +58,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
-            InlineAsmCtxt::new_in_fn(self).check_asm(asm, enclosing_id);
+            InlineAsmCtxt::new_in_fn(self)
+                .check_asm(asm, self.tcx.hir().local_def_id_to_hir_id(enclosing_id));
         }
     }
 
@@ -1234,7 +1235,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Does the expected pattern type originate from an expression and what is the span?
         let (origin_expr, ty_span) = match (decl.ty, decl.init) {
             (Some(ty), _) => (false, Some(ty.span)), // Bias towards the explicit user type.
-            (_, Some(init)) => (true, Some(init.span)), // No explicit type; so use the scrutinee.
+            (_, Some(init)) => {
+                (true, Some(init.span.find_ancestor_inside(decl.span).unwrap_or(init.span)))
+            } // No explicit type; so use the scrutinee.
             _ => (false, None), // We have `let $pat;`, so the expected type is unconstrained.
         };
 
@@ -1758,13 +1761,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .filter_map(|seg| seg.args.as_ref())
                             .flat_map(|a| a.args.iter())
                         {
-                            if let hir::GenericArg::Type(hir_ty) = &arg {
-                                let ty = self.resolve_vars_if_possible(
-                                    self.typeck_results.borrow().node_type(hir_ty.hir_id),
-                                );
-                                if ty == predicate.self_ty() {
-                                    error.obligation.cause.span = hir_ty.span;
-                                }
+                            if let hir::GenericArg::Type(hir_ty) = &arg
+                                && let Some(ty) =
+                                    self.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
+                                && self.resolve_vars_if_possible(ty) == predicate.self_ty()
+                            {
+                                error.obligation.cause.span = hir_ty.span;
+                                break;
                             }
                         }
                     }

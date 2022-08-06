@@ -306,7 +306,9 @@ unsafe fn find_eh_action(context: *mut uw::_Unwind_Context) -> Result<EHAction, 
     let eh_context = EHContext {
         // The return address points 1 byte past the call instruction,
         // which could be in the next IP range in LSDA range table.
-        ip: if ip_before_instr != 0 { ip } else { ip - 1 },
+        //
+        // `ip = -1` has special meaning, so use wrapping sub to allow for that
+        ip: if ip_before_instr != 0 { ip } else { ip.wrapping_sub(1) },
         func_start: uw::_Unwind_GetRegionStart(context),
         get_text_start: &|| uw::_Unwind_GetTextRelBase(context),
         get_data_start: &|| uw::_Unwind_GetDataRelBase(context),

@@ -2,12 +2,13 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
 
+#[cfg(feature = "tracking")]
 use std::sync::atomic::AtomicUsize;
 
 /// Represents a struct used to enforce a numerical limit.
 pub struct Limit {
     upper_bound: usize,
-    #[allow(unused)]
+    #[cfg(feature = "tracking")]
     max: AtomicUsize,
 }
 
@@ -15,14 +16,22 @@ impl Limit {
     /// Creates a new limit.
     #[inline]
     pub const fn new(upper_bound: usize) -> Self {
-        Self { upper_bound, max: AtomicUsize::new(0) }
+        Self {
+            upper_bound,
+            #[cfg(feature = "tracking")]
+            max: AtomicUsize::new(0),
+        }
     }
 
     /// Creates a new limit.
     #[inline]
     #[cfg(feature = "tracking")]
     pub const fn new_tracking(upper_bound: usize) -> Self {
-        Self { upper_bound, max: AtomicUsize::new(1) }
+        Self {
+            upper_bound,
+            #[cfg(feature = "tracking")]
+            max: AtomicUsize::new(1),
+        }
     }
 
     /// Gets the underlying numeric limit.

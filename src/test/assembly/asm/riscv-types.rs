@@ -56,7 +56,7 @@ pub unsafe fn sym_fn() {
 // CHECK-LABEL: sym_static:
 // CHECK: #APP
 // CHECK: auipc t0, %pcrel_hi(extern_static)
-// CHECK: lb t0, %pcrel_lo(.Lpcrel_hi0)(t0)
+// CHECK: lb t0, %pcrel_lo(.Lpcrel_hi{{[0-9]+}})(t0)
 // CHECK: #NO_APP
 #[no_mangle]
 pub unsafe fn sym_static() {

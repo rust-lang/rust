@@ -29,6 +29,7 @@ use rustc_middle::ty::{
     ToPredicate, Ty, UserType,
 };
 use rustc_session::lint;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
@@ -114,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn record_deferred_call_resolution(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         r: DeferredCallResolution<'tcx>,
     ) {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
@@ -123,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn remove_deferred_call_resolutions(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
@@ -1089,13 +1090,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
-                let container = tcx.associated_item(def_id).container;
-                debug!(?def_id, ?container);
+                let assoc_item = tcx.associated_item(def_id);
+                let container = assoc_item.container;
+                let container_id = assoc_item.container_id(tcx);
+                debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)
+                    ty::TraitContainer => {
+                        callee::check_legal_trait_for_method_call(tcx, span, None, span, container_id)
                     }
-                    ty::ImplContainer(impl_def_id) => {
+                    ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
                             // can `T::assoc`. It this came from an
@@ -1103,7 +1106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
                             let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
-                            user_self_ty = Some(UserSelfTy { impl_def_id, self_ty });
+                            user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
                 }

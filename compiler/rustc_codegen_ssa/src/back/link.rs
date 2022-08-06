@@ -24,7 +24,7 @@ use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
-use super::archive::{find_library, ArchiveBuilder};
+use super::archive::{find_library, ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{create_rmeta_file, MetadataPosition};
@@ -56,8 +56,9 @@ pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
 
 /// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
-pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
+pub fn link_binary<'a>(
     sess: &'a Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     outputs: &OutputFilenames,
 ) -> Result<(), ErrorGuaranteed> {
@@ -101,21 +102,29 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
-                    link_rlib::<B>(
+                    info!("preparing rlib to {:?}", out_filename);
+                    link_rlib(
                         sess,
+                        archive_builder_builder,
                         codegen_results,
                         RlibFlavor::Normal,
-                        &out_filename,
                         &path,
                     )?
-                    .build();
+                    .build(&out_filename);
                 }
                 CrateType::Staticlib => {
-                    link_staticlib::<B>(sess, codegen_results, &out_filename, &path)?;
+                    link_staticlib(
+                        sess,
+                        archive_builder_builder,
+                        codegen_results,
+                        &out_filename,
+                        &path,
+                    )?;
                 }
                 _ => {
-                    link_natively::<B>(
+                    link_natively(
                         sess,
+                        archive_builder_builder,
                         crate_type,
                         &out_filename,
                         codegen_results,
@@ -245,18 +254,16 @@ pub fn each_linked_rlib(
 /// the object file of the crate, but it also contains all of the object files from native
 /// libraries. This is done by unzipping native libraries and inserting all of the contents into
 /// this archive.
-fn link_rlib<'a, B: ArchiveBuilder<'a>>(
+fn link_rlib<'a>(
     sess: &'a Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     flavor: RlibFlavor,
-    out_filename: &Path,
     tmpdir: &MaybeTempDir,
-) -> Result<B, ErrorGuaranteed> {
-    info!("preparing rlib to {:?}", out_filename);
-
+) -> Result<Box<dyn ArchiveBuilder<'a> + 'a>, ErrorGuaranteed> {
     let lib_search_paths = archive_search_paths(sess);
 
-    let mut ab = <B as ArchiveBuilder>::new(sess, out_filename);
+    let mut ab = archive_builder_builder.new_archive_builder(sess);
 
     let trailing_metadata = match flavor {
         RlibFlavor::Normal => {
@@ -336,12 +343,13 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             | NativeLibKind::Dylib { .. }
             | NativeLibKind::Framework { .. }
             | NativeLibKind::RawDylib
+            | NativeLibKind::LinkArg
             | NativeLibKind::Unspecified => continue,
         }
         if let Some(name) = lib.name {
             let location =
                 find_library(name.as_str(), lib.verbatim.unwrap_or(false), &lib_search_paths, sess);
-            ab.add_archive(&location, |_| false).unwrap_or_else(|e| {
+            ab.add_archive(&location, Box::new(|_| false)).unwrap_or_else(|e| {
                 sess.fatal(&format!(
                     "failed to add native library {}: {}",
                     location.to_string_lossy(),
@@ -354,7 +362,16 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     for (raw_dylib_name, raw_dylib_imports) in
         collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
     {
-        ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
+        let output_path = archive_builder_builder.create_dll_import_lib(
+            sess,
+            &raw_dylib_name,
+            &raw_dylib_imports,
+            tmpdir.as_ref(),
+        );
+
+        ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|e| {
+            sess.fatal(&format!("failed to add native library {}: {}", output_path.display(), e));
+        });
     }
 
     if let Some(trailing_metadata) = trailing_metadata {
@@ -445,14 +462,21 @@ fn collate_raw_dylibs(
 ///
 /// There's no need to include metadata in a static archive, so ensure to not link in the metadata
 /// object file (and also don't prepare the archive with a metadata file).
-fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
+fn link_staticlib<'a>(
     sess: &'a Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
 ) -> Result<(), ErrorGuaranteed> {
-    let mut ab =
-        link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir)?;
+    info!("preparing staticlib to {:?}", out_filename);
+    let mut ab = link_rlib(
+        sess,
+        archive_builder_builder,
+        codegen_results,
+        RlibFlavor::StaticlibBase,
+        tempdir,
+    )?;
     let mut all_native_libs = vec![];
 
     let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
@@ -486,26 +510,29 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         // might be also an extra name suffix
         let obj_start = name.as_str().to_owned();
 
-        ab.add_archive(path, move |fname: &str| {
-            // Ignore metadata files, no matter the name.
-            if fname == METADATA_FILENAME {
-                return true;
-            }
+        ab.add_archive(
+            path,
+            Box::new(move |fname: &str| {
+                // Ignore metadata files, no matter the name.
+                if fname == METADATA_FILENAME {
+                    return true;
+                }
 
-            // Don't include Rust objects if LTO is enabled
-            if lto && looks_like_rust_object_file(fname) {
-                return true;
-            }
+                // Don't include Rust objects if LTO is enabled
+                if lto && looks_like_rust_object_file(fname) {
+                    return true;
+                }
 
-            // Otherwise if this is *not* a rust object and we're skipping
-            // objects then skip this file
-            if skip_object_files && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
-                return true;
-            }
+                // Otherwise if this is *not* a rust object and we're skipping
+                // objects then skip this file
+                if skip_object_files && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
+                    return true;
+                }
 
-            // ok, don't skip this
-            false
-        })
+                // ok, don't skip this
+                false
+            }),
+        )
         .unwrap();
 
         all_native_libs.extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
@@ -514,7 +541,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         sess.fatal(&e);
     }
 
-    ab.build();
+    ab.build(out_filename);
 
     if !all_native_libs.is_empty() {
         if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
@@ -644,8 +671,9 @@ fn link_dwarf_object<'a>(
 ///
 /// This will invoke the system linker/cc to create the resulting file. This links to all upstream
 /// files as well.
-fn link_natively<'a, B: ArchiveBuilder<'a>>(
+fn link_natively<'a>(
     sess: &'a Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
     out_filename: &Path,
     codegen_results: &CodegenResults,
@@ -653,10 +681,11 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 ) -> Result<(), ErrorGuaranteed> {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
-    let mut cmd = linker_with_args::<B>(
+    let mut cmd = linker_with_args(
         &linker_path,
         flavor,
         sess,
+        archive_builder_builder,
         crate_type,
         tmpdir,
         out_filename,
@@ -1289,6 +1318,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
                 }
                 // These are included, no need to print them
                 NativeLibKind::Static { bundle: None | Some(true), .. }
+                | NativeLibKind::LinkArg
                 | NativeLibKind::RawDylib => None,
             }
         })
@@ -1842,10 +1872,11 @@ fn add_rpath_args(
 /// to the linking process as a whole.
 /// Order-independent options may still override each other in order-dependent fashion,
 /// e.g `--foo=yes --foo=no` may be equivalent to `--foo=no`.
-fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
+fn linker_with_args<'a>(
     path: &Path,
     flavor: LinkerFlavor,
     sess: &'a Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     crate_type: CrateType,
     tmpdir: &Path,
     out_filename: &Path,
@@ -1946,7 +1977,14 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // Upstream rust libraries and their non-bundled static libraries
-    add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
+    add_upstream_rust_crates(
+        cmd,
+        sess,
+        archive_builder_builder,
+        codegen_results,
+        crate_type,
+        tmpdir,
+    );
 
     // Upstream dynamic native libraries linked with `#[link]` attributes at and `-l`
     // command line options.
@@ -1961,7 +1999,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     for (raw_dylib_name, raw_dylib_imports) in
         collate_raw_dylibs(sess, &codegen_results.crate_info.used_libraries)?
     {
-        cmd.add_object(&B::create_dll_import_lib(
+        cmd.add_object(&archive_builder_builder.create_dll_import_lib(
             sess,
             &raw_dylib_name,
             &raw_dylib_imports,
@@ -2229,7 +2267,7 @@ fn add_local_native_libraries(
                     // be added explicitly if necessary, see the error in `fn link_rlib`) compiled
                     // as an executable due to `--test`. Use whole-archive implicitly, like before
                     // the introduction of native lib modifiers.
-                    || (bundle != Some(false) && sess.opts.test)
+                    || (whole_archive == None && bundle != Some(false) && sess.opts.test)
                 {
                     cmd.link_whole_staticlib(
                         name,
@@ -2243,6 +2281,9 @@ fn add_local_native_libraries(
             NativeLibKind::RawDylib => {
                 // Ignore RawDylib here, they are handled separately in linker_with_args().
             }
+            NativeLibKind::LinkArg => {
+                cmd.arg(name);
+            }
         }
     }
 }
@@ -2251,9 +2292,10 @@ fn add_local_native_libraries(
 ///
 /// Rust crates are not considered at all when creating an rlib output. All dependencies will be
 /// linked when producing the final output (instead of the intermediate rlib version).
-fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
+fn add_upstream_rust_crates<'a>(
     cmd: &mut dyn Linker,
     sess: &'a Session,
+    archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     crate_type: CrateType,
     tmpdir: &Path,
@@ -2342,7 +2384,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
-                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
+                add_static_crate(cmd, sess, archive_builder_builder, codegen_results, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
@@ -2352,7 +2394,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             }
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
+                add_static_crate(cmd, sess, archive_builder_builder, codegen_results, tmpdir, cnum);
 
                 // Link static native libs with "-bundle" modifier only if the crate they originate from
                 // is being linked statically to the current crate.  If it's linked dynamically
@@ -2380,19 +2422,34 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                             (lib.name, lib.kind, lib.verbatim)
                         };
 
-                        if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
-                            lib.kind
-                        {
-                            let verbatim = lib.verbatim.unwrap_or(false);
-                            if whole_archive == Some(true) {
+                        match lib.kind {
+                            NativeLibKind::Static {
+                                bundle: Some(false),
+                                whole_archive: Some(true),
+                            } => {
                                 cmd.link_whole_staticlib(
                                     name,
-                                    verbatim,
+                                    lib.verbatim.unwrap_or(false),
                                     search_path.get_or_init(|| archive_search_paths(sess)),
                                 );
-                            } else {
-                                cmd.link_staticlib(name, verbatim);
                             }
+                            NativeLibKind::Static {
+                                bundle: Some(false),
+                                whole_archive: Some(false) | None,
+                            } => {
+                                cmd.link_staticlib(name, lib.verbatim.unwrap_or(false));
+                            }
+                            NativeLibKind::LinkArg => {
+                                cmd.arg(name);
+                            }
+                            NativeLibKind::Dylib { .. }
+                            | NativeLibKind::Framework { .. }
+                            | NativeLibKind::Unspecified
+                            | NativeLibKind::RawDylib => {}
+                            NativeLibKind::Static {
+                                bundle: Some(true) | None,
+                                whole_archive: _,
+                            } => {}
                         }
                     }
                 }
@@ -2411,7 +2468,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
+        add_static_crate(cmd, sess, archive_builder_builder, codegen_results, tmpdir, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -2437,9 +2494,10 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // Note, however, that if we're not doing LTO we can just pass the rlib
     // blindly to the linker (fast) because it's fine if it's not actually
     // included as we're at the end of the dependency chain.
-    fn add_static_crate<'a, B: ArchiveBuilder<'a>>(
+    fn add_static_crate<'a>(
         cmd: &mut dyn Linker,
         sess: &'a Session,
+        archive_builder_builder: &dyn ArchiveBuilderBuilder,
         codegen_results: &CodegenResults,
         tmpdir: &Path,
         cnum: CrateNum,
@@ -2479,38 +2537,41 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             let is_builtins = sess.target.no_builtins
                 || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
-            let mut archive = <B as ArchiveBuilder>::new(sess, &dst);
-            if let Err(e) = archive.add_archive(cratepath, move |f| {
-                if f == METADATA_FILENAME {
-                    return true;
-                }
+            let mut archive = archive_builder_builder.new_archive_builder(sess);
+            if let Err(e) = archive.add_archive(
+                cratepath,
+                Box::new(move |f| {
+                    if f == METADATA_FILENAME {
+                        return true;
+                    }
 
-                let canonical = f.replace('-', "_");
+                    let canonical = f.replace('-', "_");
 
-                let is_rust_object =
-                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
+                    let is_rust_object =
+                        canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
 
-                // If we've been requested to skip all native object files
-                // (those not generated by the rust compiler) then we can skip
-                // this file. See above for why we may want to do this.
-                let skip_because_cfg_say_so = skip_native && !is_rust_object;
+                    // If we've been requested to skip all native object files
+                    // (those not generated by the rust compiler) then we can skip
+                    // this file. See above for why we may want to do this.
+                    let skip_because_cfg_say_so = skip_native && !is_rust_object;
 
-                // If we're performing LTO and this is a rust-generated object
-                // file, then we don't need the object file as it's part of the
-                // LTO module. Note that `#![no_builtins]` is excluded from LTO,
-                // though, so we let that object file slide.
-                let skip_because_lto =
-                    upstream_rust_objects_already_included && is_rust_object && is_builtins;
+                    // If we're performing LTO and this is a rust-generated object
+                    // file, then we don't need the object file as it's part of the
+                    // LTO module. Note that `#![no_builtins]` is excluded from LTO,
+                    // though, so we let that object file slide.
+                    let skip_because_lto =
+                        upstream_rust_objects_already_included && is_rust_object && is_builtins;
 
-                if skip_because_cfg_say_so || skip_because_lto {
-                    return true;
-                }
+                    if skip_because_cfg_say_so || skip_because_lto {
+                        return true;
+                    }
 
-                false
-            }) {
+                    false
+                }),
+            ) {
                 sess.fatal(&format!("failed to build archive from rlib: {}", e));
             }
-            if archive.build() {
+            if archive.build(&dst) {
                 link_upstream(&dst);
             }
         });
@@ -2583,7 +2644,7 @@ fn add_upstream_native_libraries(
                 // already included them in add_local_native_libraries and
                 // add_upstream_rust_crates
                 NativeLibKind::Static { .. } => {}
-                NativeLibKind::RawDylib => {}
+                NativeLibKind::RawDylib | NativeLibKind::LinkArg => {}
             }
         }
     }
@@ -2614,7 +2675,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
         || !matches!(os.as_ref(), "ios" | "tvos" | "watchos")
-        || flavor != LinkerFlavor::Gcc
+        || (flavor != LinkerFlavor::Gcc && flavor != LinkerFlavor::Lld(LldFlavor::Ld64))
     {
         return;
     }
@@ -2645,13 +2706,16 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
             return;
         }
     };
-    if llvm_target.contains("macabi") {
-        cmd.args(&["-target", llvm_target])
-    } else {
-        let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
-        cmd.args(&["-arch", arch_name])
+
+    match flavor {
+        LinkerFlavor::Gcc => {
+            cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+        }
+        LinkerFlavor::Lld(LldFlavor::Ld64) => {
+            cmd.args(&["-syslibroot", &sdk_root]);
+        }
+        _ => unreachable!(),
     }
-    cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {

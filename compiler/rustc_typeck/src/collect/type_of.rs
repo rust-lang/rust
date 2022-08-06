@@ -100,7 +100,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 ExprKind::MethodCall(segment, ..) | ExprKind::Path(QPath::TypeRelative(_, segment)),
             ..
         }) => {
-            let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
+            let body_owner = tcx.hir().enclosing_body_owner(hir_id);
             let tables = tcx.typeck(body_owner);
             // This may fail in case the method/path does not actually exist.
             // As there is no relevant param for `def_id`, we simply return
@@ -134,7 +134,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         | ExprKind::Struct(&QPath::Resolved(_, path), ..),
                     ..
                 }) => {
-                    let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
+                    let body_owner = tcx.hir().enclosing_body_owner(hir_id);
                     let _tables = tcx.typeck(body_owner);
                     &*path
                 }
@@ -801,6 +801,9 @@ fn infer_placeholder_type<'a>(
     match tcx.sess.diagnostic().steal_diagnostic(span, StashKey::ItemNoType) {
         Some(mut err) => {
             if !ty.references_error() {
+                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic)
+                let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
                 // FIXME(eddyb) this looks like it should be functionality on `Diagnostic`.
@@ -816,7 +819,7 @@ fn infer_placeholder_type<'a>(
                     err.span_suggestion(
                         span,
                         &format!("provide a type for the {item}", item = kind),
-                        format!("{}: {}", item_ident, sugg_ty),
+                        format!("{colon} {sugg_ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {

@@ -570,7 +570,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: FxHashMap<DefId, Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
+    pub closure_fake_reads: FxHashMap<LocalDefId, Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>>,
 
     /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
@@ -589,7 +589,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
-    pub closure_size_eval: FxHashMap<DefId, ClosureSizeProfileData<'tcx>>,
+    pub closure_size_eval: FxHashMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -811,7 +811,7 @@ impl<'tcx> TypeckResults<'tcx> {
     /// by the closure.
     pub fn closure_min_captures_flattened(
         &self,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
     ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
         self.closure_min_captures
             .get(&closure_def_id)
@@ -1459,11 +1459,11 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         format!(
-            "{}[{}]{}",
+            "{}[{:04x}]{}",
             crate_name,
             // Don't print the whole stable crate id. That's just
             // annoying in debug output.
-            &(format!("{:08x}", stable_crate_id.to_u64()))[..4],
+            stable_crate_id.to_u64() >> 8 * 6,
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
@@ -1668,8 +1668,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Checks if the bound region is in Impl Item.
     pub fn is_bound_region_in_impl_item(self, suitable_region_binding_scope: LocalDefId) -> bool {
-        let container_id =
-            self.associated_item(suitable_region_binding_scope.to_def_id()).container.id();
+        let container_id = self.parent(suitable_region_binding_scope.to_def_id());
         if self.impl_trait_ref(container_id).is_some() {
             // For now, we do not try to target impls of traits. This is
             // because this message is going to suggest that the user

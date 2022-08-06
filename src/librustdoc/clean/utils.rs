@@ -2,9 +2,9 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    clean_middle_const, clean_middle_ty, inline, Clean, Crate, ExternalCrate, Generic, GenericArg,
-    GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment, Primitive,
-    PrimitiveType, Type, TypeBinding, Visibility,
+    clean_middle_const, clean_middle_region, clean_middle_ty, inline, Clean, Crate, ExternalCrate,
+    Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment,
+    Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -86,7 +86,7 @@ pub(crate) fn substs_to_args<'tcx>(
         Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
     ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
         GenericArgKind::Lifetime(lt) => {
-            Some(GenericArg::Lifetime(lt.clean(cx).unwrap_or(Lifetime::elided())))
+            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
         }
         GenericArgKind::Type(_) if skip_first => {
             skip_first = false;
@@ -236,8 +236,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
-                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
+                print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(def.did))
             } else {
                 inline::print_inlined_const(cx.tcx, def.did)
             };

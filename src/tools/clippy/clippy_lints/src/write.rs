@@ -441,7 +441,7 @@ impl SimpleFormatArgs {
         };
 
         match arg.position {
-            ArgumentIs(n, _) | ArgumentImplicitlyIs(n) => {
+            ArgumentIs(n) | ArgumentImplicitlyIs(n) => {
                 if self.unnamed.len() <= n {
                     // Use a dummy span to mark all unseen arguments.
                     self.unnamed.resize_with(n, || vec![DUMMY_SP]);
@@ -462,7 +462,7 @@ impl SimpleFormatArgs {
                     }
                 }
             },
-            ArgumentNamed(n, _) => {
+            ArgumentNamed(n) => {
                 let n = Symbol::intern(n);
                 if let Some(x) = self.named.iter_mut().find(|x| x.0 == n) {
                     match x.1.as_slice() {

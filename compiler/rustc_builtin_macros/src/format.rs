@@ -16,6 +16,7 @@ use smallvec::SmallVec;
 
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
+use rustc_parse_format::Count;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 
@@ -57,26 +58,45 @@ struct PositionalNamedArg {
     replacement: Symbol,
     /// The span for the positional named argument (so the lint can point a message to it)
     positional_named_arg_span: Span,
+    has_formatting: bool,
 }
 
 impl PositionalNamedArg {
-    /// Determines what span to replace with the name of the named argument
-    fn get_span_to_replace(&self, cx: &Context<'_, '_>) -> Option<Span> {
+    /// Determines:
+    /// 1) span to be replaced with the name of the named argument and
+    /// 2) span to be underlined for error messages
+    fn get_positional_arg_spans(&self, cx: &Context<'_, '_>) -> (Option<Span>, Option<Span>) {
         if let Some(inner_span) = &self.inner_span_to_replace {
-            return Some(
-                cx.fmtsp.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end }),
-            );
+            let span =
+                cx.fmtsp.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end });
+            (Some(span), Some(span))
         } else if self.ty == PositionalNamedArgType::Arg {
-            // In the case of a named argument whose position is implicit, there will not be a span
-            // to replace. Instead, we insert the name after the `{`, which is the first character
-            // of arg_span.
-            return cx
-                .arg_spans
-                .get(self.cur_piece)
-                .map(|arg_span| arg_span.with_lo(arg_span.lo() + BytePos(1)).shrink_to_lo());
+            // In the case of a named argument whose position is implicit, if the argument *has*
+            // formatting, there will not be a span to replace. Instead, we insert the name after
+            // the `{`, which will be the first character of arg_span. If the argument does *not*
+            // have formatting, there may or may not be a span to replace. This is because
+            // whitespace is allowed in arguments without formatting (such as `format!("{  }", 1);`)
+            // but is not allowed in arguments with formatting (an error will be generated in cases
+            // like `format!("{ :1.1}", 1.0f32);`.
+            // For the message span, if there is formatting, we want to use the opening `{` and the
+            // next character, which will the `:` indicating the start of formatting. If there is
+            // not any formatting, we want to underline the entire span.
+            cx.arg_spans.get(self.cur_piece).map_or((None, None), |arg_span| {
+                if self.has_formatting {
+                    (
+                        Some(arg_span.with_lo(arg_span.lo() + BytePos(1)).shrink_to_lo()),
+                        Some(arg_span.with_hi(arg_span.lo() + BytePos(2))),
+                    )
+                } else {
+                    let replace_start = arg_span.lo() + BytePos(1);
+                    let replace_end = arg_span.hi() - BytePos(1);
+                    let to_replace = arg_span.with_lo(replace_start).with_hi(replace_end);
+                    (Some(to_replace), Some(*arg_span))
+                }
+            })
+        } else {
+            (None, None)
         }
-
-        None
     }
 }
 
@@ -117,10 +137,18 @@ impl PositionalNamedArgsLint {
         cur_piece: usize,
         inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
         names: &FxHashMap<Symbol, (usize, Span)>,
+        has_formatting: bool,
     ) {
         let start_of_named_args = total_args_length - names.len();
         if current_positional_arg >= start_of_named_args {
-            self.maybe_push(format_argument_index, ty, cur_piece, inner_span_to_replace, names)
+            self.maybe_push(
+                format_argument_index,
+                ty,
+                cur_piece,
+                inner_span_to_replace,
+                names,
+                has_formatting,
+            )
         }
     }
 
@@ -134,6 +162,7 @@ impl PositionalNamedArgsLint {
         cur_piece: usize,
         inner_span_to_replace: Option<rustc_parse_format::InnerSpan>,
         names: &FxHashMap<Symbol, (usize, Span)>,
+        has_formatting: bool,
     ) {
         let named_arg = names
             .iter()
@@ -156,6 +185,7 @@ impl PositionalNamedArgsLint {
                 inner_span_to_replace,
                 replacement,
                 positional_named_arg_span,
+                has_formatting,
             });
         }
     }
@@ -250,6 +280,11 @@ struct Context<'a, 'b> {
     unused_names_lint: PositionalNamedArgsLint,
 }
 
+pub struct FormatArg {
+    expr: P<ast::Expr>,
+    named: bool,
+}
+
 /// Parses the arguments from the given list of tokens, returning the diagnostic
 /// if there's a parse error so we can continue parsing other format!
 /// expressions.
@@ -263,8 +298,8 @@ fn parse_args<'a>(
     ecx: &mut ExtCtxt<'a>,
     sp: Span,
     tts: TokenStream,
-) -> PResult<'a, (P<ast::Expr>, Vec<P<ast::Expr>>, FxHashMap<Symbol, (usize, Span)>)> {
-    let mut args = Vec::<P<ast::Expr>>::new();
+) -> PResult<'a, (P<ast::Expr>, Vec<FormatArg>, FxHashMap<Symbol, (usize, Span)>)> {
+    let mut args = Vec::<FormatArg>::new();
     let mut names = FxHashMap::<Symbol, (usize, Span)>::default();
 
     let mut p = ecx.new_parser_from_tts(tts);
@@ -332,7 +367,7 @@ fn parse_args<'a>(
                 let e = p.parse_expr()?;
                 if let Some((prev, _)) = names.get(&ident.name) {
                     ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", ident))
-                        .span_label(args[*prev].span, "previously here")
+                        .span_label(args[*prev].expr.span, "previously here")
                         .span_label(e.span, "duplicate argument")
                         .emit();
                     continue;
@@ -344,7 +379,7 @@ fn parse_args<'a>(
                 // args. And remember the names.
                 let slot = args.len();
                 names.insert(ident.name, (slot, ident.span));
-                args.push(e);
+                args.push(FormatArg { expr: e, named: true });
             }
             _ => {
                 let e = p.parse_expr()?;
@@ -355,11 +390,11 @@ fn parse_args<'a>(
                     );
                     err.span_label(e.span, "positional arguments must be before named arguments");
                     for pos in names.values() {
-                        err.span_label(args[pos.0].span, "named argument");
+                        err.span_label(args[pos.0].expr.span, "named argument");
                     }
                     err.emit();
                 }
-                args.push(e);
+                args.push(FormatArg { expr: e, named: false });
             }
         }
     }
@@ -381,8 +416,8 @@ impl<'a, 'b> Context<'a, 'b> {
         match *p {
             parse::String(_) => {}
             parse::NextArgument(ref mut arg) => {
-                if let parse::ArgumentNamed(s, _) = arg.position {
-                    arg.position = parse::ArgumentIs(lookup(s), None);
+                if let parse::ArgumentNamed(s) = arg.position {
+                    arg.position = parse::ArgumentIs(lookup(s));
                 }
                 if let parse::CountIsName(s, _) = arg.format.width {
                     arg.format.width = parse::CountIsParam(lookup(s));
@@ -414,18 +449,22 @@ impl<'a, 'b> Context<'a, 'b> {
                     PositionalNamedArgType::Precision,
                 );
 
+                let has_precision = arg.format.precision != Count::CountImplied;
+                let has_width = arg.format.width != Count::CountImplied;
+
                 // argument second, if it's an implicit positional parameter
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
-                    parse::ArgumentIs(i, arg_end) => {
+                    parse::ArgumentIs(i) => {
                         self.unused_names_lint.maybe_add_positional_named_arg(
                             i,
                             self.args.len(),
                             i,
                             PositionalNamedArgType::Arg,
                             self.curpiece,
-                            arg_end,
+                            Some(arg.position_span),
                             &self.names,
+                            has_precision || has_width,
                         );
 
                         Exact(i)
@@ -439,11 +478,13 @@ impl<'a, 'b> Context<'a, 'b> {
                             self.curpiece,
                             None,
                             &self.names,
+                            has_precision || has_width,
                         );
                         Exact(i)
                     }
-                    parse::ArgumentNamed(s, span) => {
+                    parse::ArgumentNamed(s) => {
                         let symbol = Symbol::intern(s);
+                        let span = arg.position_span;
                         Named(symbol, InnerSpan::new(span.start, span.end))
                     }
                 };
@@ -529,6 +570,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.curpiece,
                     *inner_span,
                     &self.names,
+                    true,
                 );
                 self.verify_arg_type(Exact(i), Count);
             }
@@ -878,8 +920,9 @@ impl<'a, 'b> Context<'a, 'b> {
                         // track the current argument ourselves.
                         let i = self.curarg;
                         self.curarg += 1;
-                        parse::ArgumentIs(i, None)
+                        parse::ArgumentIs(i)
                     },
+                    position_span: arg.position_span,
                     format: parse::FormatSpec {
                         fill: arg.format.fill,
                         align: parse::AlignUnknown,
@@ -1150,24 +1193,22 @@ pub fn expand_format_args_nl<'cx>(
 
 fn create_lints_for_named_arguments_used_positionally(cx: &mut Context<'_, '_>) {
     for named_arg in &cx.unused_names_lint.positional_named_args {
-        let arg_span = named_arg.get_span_to_replace(cx);
+        let (position_sp_to_replace, position_sp_for_msg) = named_arg.get_positional_arg_spans(cx);
 
         let msg = format!("named argument `{}` is not used by name", named_arg.replacement);
-        let replacement = match named_arg.ty {
-            PositionalNamedArgType::Arg => named_arg.replacement.to_string(),
-            _ => named_arg.replacement.to_string() + "$",
-        };
 
         cx.ecx.buffered_early_lint.push(BufferedEarlyLint {
             span: MultiSpan::from_span(named_arg.positional_named_arg_span),
             msg: msg.clone(),
             node_id: ast::CRATE_NODE_ID,
             lint_id: LintId::of(&NAMED_ARGUMENTS_USED_POSITIONALLY),
-            diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally(
-                arg_span,
-                named_arg.positional_named_arg_span,
-                replacement,
-            ),
+            diagnostic: BuiltinLintDiagnostics::NamedArgumentUsedPositionally {
+                position_sp_to_replace,
+                position_sp_for_msg,
+                named_arg_sp: named_arg.positional_named_arg_span,
+                named_arg_name: named_arg.replacement.to_string(),
+                is_formatting_arg: named_arg.ty != PositionalNamedArgType::Arg,
+            },
         });
     }
 }
@@ -1178,7 +1219,7 @@ pub fn expand_preparsed_format_args(
     ecx: &mut ExtCtxt<'_>,
     sp: Span,
     efmt: P<ast::Expr>,
-    args: Vec<P<ast::Expr>>,
+    args: Vec<FormatArg>,
     names: FxHashMap<Symbol, (usize, Span)>,
     append_newline: bool,
 ) -> P<ast::Expr> {
@@ -1268,6 +1309,25 @@ pub fn expand_preparsed_format_args(
                 e.span_label(fmt_span.from_inner(InnerSpan::new(span.start, span.end)), label);
             }
         }
+        if err.should_be_replaced_with_positional_argument {
+            let captured_arg_span =
+                fmt_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
+            let positional_args = args.iter().filter(|arg| !arg.named).collect::<Vec<_>>();
+            if let Ok(arg) = ecx.source_map().span_to_snippet(captured_arg_span) {
+                let span = match positional_args.last() {
+                    Some(arg) => arg.expr.span,
+                    None => fmt_sp,
+                };
+                e.multipart_suggestion_verbose(
+                    "consider using a positional formatting argument instead",
+                    vec![
+                        (captured_arg_span, positional_args.len().to_string()),
+                        (span.shrink_to_hi(), format!(", {}", arg)),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
         e.emit();
         return DummyResult::raw_expr(sp, true);
     }
@@ -1282,7 +1342,7 @@ pub fn expand_preparsed_format_args(
 
     let mut cx = Context {
         ecx,
-        args,
+        args: args.into_iter().map(|arg| arg.expr).collect(),
         num_captured_args: 0,
         arg_types,
         arg_unique_types,

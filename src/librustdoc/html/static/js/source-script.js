@@ -12,6 +12,10 @@
 const rootPath = document.getElementById("rustdoc-vars").attributes["data-root-path"].value;
 let oldScrollPosition = 0;
 
+const NAME_OFFSET = 0;
+const DIRS_OFFSET = 1;
+const FILES_OFFSET = 2;
+
 function closeSidebarIfMobile() {
     if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
         updateLocalStorage("source-sidebar-show", "false");
@@ -24,15 +28,15 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 
     dirEntry.className = "dir-entry";
 
-    fullPath += elem["name"] + "/";
+    fullPath += elem[NAME_OFFSET] + "/";
 
-    summary.innerText = elem["name"];
+    summary.innerText = elem[NAME_OFFSET];
     dirEntry.appendChild(summary);
 
     const folders = document.createElement("div");
     folders.className = "folders";
-    if (elem.dirs) {
-        for (const dir of elem.dirs) {
+    if (elem[DIRS_OFFSET]) {
+        for (const dir of elem[DIRS_OFFSET]) {
             if (createDirEntry(dir, folders, fullPath, false)) {
                 dirEntry.open = true;
                 hasFoundFile = true;
@@ -43,8 +47,8 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
 
     const files = document.createElement("div");
     files.className = "files";
-    if (elem.files) {
-        for (const file_text of elem.files) {
+    if (elem[FILES_OFFSET]) {
+        for (const file_text of elem[FILES_OFFSET]) {
             const file = document.createElement("a");
             file.innerText = file_text;
             file.href = rootPath + "src/" + fullPath + file_text + ".html";
@@ -125,7 +129,7 @@ function createSourceSidebar() {
     title.innerText = "Files";
     sidebar.appendChild(title);
     Object.keys(sourcesIndex).forEach(key => {
-        sourcesIndex[key].name = key;
+        sourcesIndex[key][NAME_OFFSET] = key;
         hasFoundFile = createDirEntry(sourcesIndex[key], sidebar, "",
             hasFoundFile);
     });

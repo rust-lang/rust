@@ -396,6 +396,7 @@ enum UnusedDelimsCtx {
     LetScrutineeExpr,
     ArrayLenExpr,
     AnonConst,
+    MatchArmExpr,
 }
 
 impl From<UnusedDelimsCtx> for &'static str {
@@ -414,6 +415,7 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::BlockRetValue => "block return value",
             UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
+            UnusedDelimsCtx::MatchArmExpr => "match arm expression",
         }
     }
 }
@@ -804,6 +806,18 @@ impl EarlyLintPass for UnusedParens {
                     <Self as UnusedDelimLint>::check_expr(self, cx, e);
                 }
                 return;
+            }
+            ExprKind::Match(ref _expr, ref arm) => {
+                for a in arm {
+                    self.check_unused_delims_expr(
+                        cx,
+                        &a.body,
+                        UnusedDelimsCtx::MatchArmExpr,
+                        false,
+                        None,
+                        None,
+                    );
+                }
             }
             _ => {}
         }

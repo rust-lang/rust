@@ -523,6 +523,7 @@ impl<'tcx> Cx<'tcx> {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                     }
                 };
+                let def_id = def_id.expect_local();
 
                 let upvars = self
                     .typeck_results

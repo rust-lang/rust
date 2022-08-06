@@ -256,8 +256,11 @@ impl ModuleConfig {
             {
                 MergeFunctions::Disabled => false,
                 MergeFunctions::Trampolines | MergeFunctions::Aliases => {
-                    sess.opts.optimize == config::OptLevel::Default
-                        || sess.opts.optimize == config::OptLevel::Aggressive
+                    use config::OptLevel::*;
+                    match sess.opts.optimize {
+                        Aggressive | Default | SizeMin | Size => true,
+                        Less | No => false,
+                    }
                 }
             },
 

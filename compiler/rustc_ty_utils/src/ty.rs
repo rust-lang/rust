@@ -2,9 +2,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{
-    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
-};
+use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -33,8 +31,9 @@ fn sized_constraint_for_ty<'tcx>(
             let adt_tys = adt.sized_constraint(tcx);
             debug!("sized_constraint_for_ty({:?}) intermediate = {:?}", ty, adt_tys);
             adt_tys
+                .0
                 .iter()
-                .map(|ty| EarlyBinder(*ty).subst(tcx, substs))
+                .map(|ty| adt_tys.rebind(*ty).subst(tcx, substs))
                 .flat_map(|ty| sized_constraint_for_ty(tcx, adtdef, ty))
                 .collect()
         }
@@ -70,11 +69,13 @@ fn sized_constraint_for_ty<'tcx>(
 }
 
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    let item = tcx.hir().expect_item(def_id.expect_local());
-    if let hir::ItemKind::Impl(impl_) = &item.kind {
-        impl_.defaultness
-    } else {
-        bug!("`impl_defaultness` called on {:?}", item);
+    match tcx.hir().get_by_def_id(def_id.expect_local()) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
+        hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
+        | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
+        node => {
+            bug!("`impl_defaultness` called on {:?}", node);
+        }
     }
 }
 
@@ -207,9 +208,14 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         constness,
     );
 
-    let body_id = hir_id.map_or(hir::CRATE_HIR_ID, |id| {
-        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
-    });
+    let body_id =
+        local_did.and_then(|id| tcx.hir().maybe_body_owned_by(id).map(|body| body.hir_id));
+    let body_id = match body_id {
+        Some(id) => id,
+        None if hir_id.is_some() => hir_id.unwrap(),
+        _ => hir::CRATE_HIR_ID,
+    };
+
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }

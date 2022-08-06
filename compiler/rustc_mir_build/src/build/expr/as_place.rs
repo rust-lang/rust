@@ -3,7 +3,7 @@
 use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
@@ -58,7 +58,7 @@ pub(crate) enum PlaceBase {
         /// HirId of the upvar
         var_hir_id: LocalVarId,
         /// DefId of the closure
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         /// The trait closure implements, `Fn`, `FnMut`, `FnOnce`
         closure_kind: ty::ClosureKind,
     },
@@ -176,7 +176,7 @@ fn compute_capture_idx<'tcx>(
 fn find_capture_matching_projections<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     var_hir_id: LocalVarId,
-    closure_def_id: DefId,
+    closure_def_id: LocalDefId,
     projections: &[PlaceElem<'tcx>],
 ) -> Option<(usize, &'a ty::CapturedPlace<'tcx>)> {
     let closure_min_captures = typeck_results.closure_min_captures.get(&closure_def_id)?;
@@ -242,7 +242,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
             };
 
             // We won't be building MIR if the closure wasn't local
-            let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+            let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id);
             let closure_ty = typeck_results.node_type(closure_hir_id);
 
             let substs = match closure_ty.kind() {
@@ -626,11 +626,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_captured_upvar(
         &mut self,
         block: BasicBlock,
-        closure_expr_id: LocalDefId,
+        closure_def_id: LocalDefId,
         var_hir_id: LocalVarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let closure_ty =
-            self.typeck_results.node_type(self.tcx.hir().local_def_id_to_hir_id(closure_expr_id));
+            self.typeck_results.node_type(self.tcx.hir().local_def_id_to_hir_id(closure_def_id));
 
         let closure_kind = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
             self.infcx.closure_kind(closure_substs).unwrap()
@@ -639,11 +639,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ty::ClosureKind::FnOnce
         };
 
-        block.and(PlaceBuilder::from(PlaceBase::Upvar {
-            var_hir_id,
-            closure_def_id: closure_expr_id.to_def_id(),
-            closure_kind,
-        }))
+        block.and(PlaceBuilder::from(PlaceBase::Upvar { var_hir_id, closure_def_id, closure_kind }))
     }
 
     /// Lower an index expression

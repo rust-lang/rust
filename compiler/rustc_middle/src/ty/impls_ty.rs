@@ -101,46 +101,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ty::EarlyBoundRegion {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.def_id.hash_stable(hcx, hasher);
-        self.index.hash_stable(hcx, hasher);
-        self.name.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.index().hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::ConstVid<'tcx> {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.index.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
-        self.index().hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ty::Binder<'tcx, T>
-where
-    T: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.as_ref().skip_binder().hash_stable(hcx, hasher);
-        self.bound_vars().hash_stable(hcx, hasher);
-    }
-}
-
 // AllocIds get resolved to whatever they point to (to be stable)
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

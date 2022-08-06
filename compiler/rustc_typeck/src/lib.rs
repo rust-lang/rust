@@ -104,7 +104,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
-use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -112,11 +111,8 @@ use rustc_middle::util;
 use rustc_session::config::EntryFnType;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt as _,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use std::iter;
 
@@ -148,18 +144,15 @@ fn require_same_types<'tcx>(
 ) -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
-        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-        match infcx.at(cause, param_env).eq(expected, actual) {
-            Ok(InferOk { obligations, .. }) => {
-                fulfill_cx.register_predicate_obligations(infcx, obligations);
-            }
+        let errors = match infcx.at(cause, param_env).eq(expected, actual) {
+            Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(infcx, obligations),
             Err(err) => {
                 infcx.report_mismatched_types(cause, expected, actual, err).emit();
                 return false;
             }
-        }
+        };
 
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        match &errors[..] {
             [] => true,
             errors => {
                 infcx.report_fulfillment_errors(errors, None, false);
@@ -303,7 +296,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let expected_return_type;
-    if let Some(term_id) = tcx.lang_items().termination() {
+    if let Some(term_did) = tcx.lang_items().termination() {
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
         if !return_ty.bound_vars().is_empty() {
@@ -314,33 +307,17 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let return_ty = return_ty.skip_binder();
         tcx.infer_ctxt().enter(|infcx| {
+            // Main should have no WC, so empty param env is OK here.
+            let param_env = ty::ParamEnv::empty();
             let cause = traits::ObligationCause::new(
                 return_ty_span,
                 main_diagnostics_hir_id,
                 ObligationCauseCode::MainFunctionType,
             );
-            let mut fulfillment_cx = traits::FulfillmentContext::new();
-            // normalize any potential projections in the return type, then add
-            // any possible obligations to the fulfillment context.
-            // HACK(ThePuzzlemaker) this feels symptomatic of a problem within
-            // checking trait fulfillment, not this here. I'm not sure why it
-            // works in the example in `fn test()` given in #88609? This also
-            // probably isn't the best way to do this.
-            let InferOk { value: norm_return_ty, obligations } = infcx
-                .partially_normalize_associated_types_in(
-                    cause.clone(),
-                    ty::ParamEnv::empty(),
-                    return_ty,
-                );
-            fulfillment_cx.register_predicate_obligations(&infcx, obligations);
-            fulfillment_cx.register_bound(
-                &infcx,
-                ty::ParamEnv::empty(),
-                norm_return_ty,
-                term_id,
-                cause,
-            );
-            let errors = fulfillment_cx.select_all_or_error(&infcx);
+            let ocx = traits::ObligationCtxt::new(&infcx);
+            let norm_return_ty = ocx.normalize(cause.clone(), param_env, return_ty);
+            ocx.register_bound(cause, param_env, norm_return_ty, term_did);
+            let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
                 infcx.report_fulfillment_errors(&errors, None, false);
                 error = true;

@@ -4,7 +4,7 @@ error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed
 LL |     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
    |            ^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[doc(alias = "...")]` isn't allowed on extern block
+error: `#[doc(alias = "...")]` isn't allowed on foreign module
   --> $DIR/check-doc-alias-attr-location.rs:9:7
    |
 LL | #[doc(alias = "foo")]
@@ -28,5 +28,23 @@ error: `#[doc(alias = "...")]` isn't allowed on type alias in implementation blo
 LL |     #[doc(alias = "assoc")]
    |           ^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: `#[doc(alias = "...")]` isn't allowed on statement
+  --> $DIR/check-doc-alias-attr-location.rs:24:15
+   |
+LL |         #[doc(alias = "stmt")]
+   |               ^^^^^^^^^^^^^^
+
+error: `#[doc(alias = "...")]` isn't allowed on expression
+  --> $DIR/check-doc-alias-attr-location.rs:26:15
+   |
+LL |         #[doc(alias = "expr")]
+   |               ^^^^^^^^^^^^^^
+
+error: `#[doc(alias = "...")]` isn't allowed on match arm
+  --> $DIR/check-doc-alias-attr-location.rs:28:19
+   |
+LL |             #[doc(alias = "arm")]
+   |                   ^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 

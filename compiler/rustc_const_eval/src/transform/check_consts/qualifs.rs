@@ -5,12 +5,11 @@
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{
-    self, FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext,
+    self, ImplSource, Obligation, ObligationCause, SelectionContext,
 };
 
 use super::ConstCx;
@@ -189,15 +188,8 @@ impl Qualif for NeedsNonConstDrop {
                 return false;
             }
 
-            // If we successfully found one, then select all of the predicates
-            // implied by our const drop impl.
-            let mut fcx = FulfillmentContext::new();
-            for nested in impl_src.nested_obligations() {
-                fcx.register_predicate_obligation(&infcx, nested);
-            }
-
             // If we had any errors, then it's bad
-            !fcx.select_all_or_error(&infcx).is_empty()
+            !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
         })
     }
 

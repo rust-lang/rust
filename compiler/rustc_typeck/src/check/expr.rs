@@ -766,7 +766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // If this didn't hold, we would not have to report an error in
                 // the first place.
-                assert_ne!(hir::HirId::make_owner(encl_item_id), encl_body_owner_id);
+                assert_ne!(encl_item_id, encl_body_owner_id);
 
                 let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
                 let encl_body = self.tcx.hir().body(encl_body_id);
@@ -1003,8 +1003,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let else_diverges = self.diverges.get();
 
             let opt_suggest_box_span = self.opt_suggest_box_span(else_ty, orig_expected);
-            let if_cause =
-                self.if_cause(sp, then_expr, else_expr, then_ty, else_ty, opt_suggest_box_span);
+            let if_cause = self.if_cause(
+                sp,
+                cond_expr.span,
+                then_expr,
+                else_expr,
+                then_ty,
+                else_ty,
+                opt_suggest_box_span,
+            );
 
             coerce.coerce(self, &if_cause, else_expr, else_ty);
 
@@ -2648,6 +2655,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some((index_ty, element_ty)) => {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
+                    self.select_obligations_where_possible(false, |errors| {
+                        self.point_at_index_if_possible(errors, idx.span)
+                    });
                     element_ty
                 }
                 None => {
@@ -2688,6 +2698,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.ty_error()
                 }
             }
+        }
+    }
+
+    fn point_at_index_if_possible(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        span: Span,
+    ) {
+        for error in errors {
+            match error.obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Trait(predicate)
+                    if self.tcx.is_diagnostic_item(sym::SliceIndex, predicate.trait_ref.def_id) => {
+                }
+                _ => continue,
+            }
+            error.obligation.cause.span = span;
         }
     }
 

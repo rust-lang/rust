@@ -24,3 +24,4 @@ rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
+crossbeam-channel = "0.5.0"

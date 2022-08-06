@@ -39,8 +39,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let scrut_diverges = self.diverges.replace(Diverges::Maybe);
 
         // #55810: Type check patterns first so we get types for all bindings.
+        let scrut_span = scrut.span.find_ancestor_inside(expr.span).unwrap_or(scrut.span);
         for arm in arms {
-            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut.span), true);
+            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), true);
         }
 
         // Now typecheck the blocks.
@@ -292,6 +293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn if_cause(
         &self,
         span: Span,
+        cond_span: Span,
         then_expr: &'tcx hir::Expr<'tcx>,
         else_expr: &'tcx hir::Expr<'tcx>,
         then_ty: Ty<'tcx>,
@@ -356,8 +358,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             if block.expr.is_none() && block.stmts.is_empty()
                 && let Some(outer_span) = &mut outer_span
+                && let Some(cond_span) = cond_span.find_ancestor_inside(*outer_span)
             {
-                *outer_span = self.tcx.sess.source_map().guess_head_span(*outer_span);
+                *outer_span = outer_span.with_hi(cond_span.hi())
             }
 
             (self.find_block_span(block), block.hir_id)

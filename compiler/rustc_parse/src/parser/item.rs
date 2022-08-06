@@ -1179,10 +1179,11 @@ impl<'a> Parser<'a> {
 
         // Parse the type of a `const` or `static mut?` item.
         // That is, the `":" $ty` fragment.
-        let ty = if self.eat(&token::Colon) {
-            self.parse_ty()?
-        } else {
-            self.recover_missing_const_type(id, m)
+        let ty = match (self.eat(&token::Colon), self.check(&token::Eq) | self.check(&token::Semi))
+        {
+            // If there wasn't a `:` or the colon was followed by a `=` or `;` recover a missing type.
+            (true, false) => self.parse_ty()?,
+            (colon, _) => self.recover_missing_const_type(colon, m),
         };
 
         let expr = if self.eat(&token::Eq) { Some(self.parse_expr()?) } else { None };
@@ -1190,9 +1191,9 @@ impl<'a> Parser<'a> {
         Ok((id, ty, expr))
     }
 
-    /// We were supposed to parse `:` but the `:` was missing.
+    /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
     /// This means that the type is missing.
-    fn recover_missing_const_type(&mut self, id: Ident, m: Option<Mutability>) -> P<Ty> {
+    fn recover_missing_const_type(&mut self, colon_present: bool, m: Option<Mutability>) -> P<Ty> {
         // Construct the error and stash it away with the hope
         // that typeck will later enrich the error with a type.
         let kind = match m {
@@ -1200,22 +1201,48 @@ impl<'a> Parser<'a> {
             Some(Mutability::Not) => "static",
             None => "const",
         };
-        let mut err = self.struct_span_err(id.span, &format!("missing type for `{kind}` item"));
+
+        let colon = match colon_present {
+            true => "",
+            false => ":",
+        };
+
+        let span = self.prev_token.span.shrink_to_hi();
+        let mut err = self.struct_span_err(span, &format!("missing type for `{kind}` item"));
         err.span_suggestion(
-            id.span,
+            span,
             "provide a type for the item",
-            format!("{id}: <type>"),
+            format!("{colon} <type>"),
             Applicability::HasPlaceholders,
         );
-        err.stash(id.span, StashKey::ItemNoType);
+        err.stash(span, StashKey::ItemNoType);
 
         // The user intended that the type be inferred,
         // so treat this as if the user wrote e.g. `const A: _ = expr;`.
-        P(Ty { kind: TyKind::Infer, span: id.span, id: ast::DUMMY_NODE_ID, tokens: None })
+        P(Ty { kind: TyKind::Infer, span, id: ast::DUMMY_NODE_ID, tokens: None })
     }
 
     /// Parses an enum declaration.
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
+        if self.token.is_keyword(kw::Struct) {
+            let mut err = self.struct_span_err(
+                self.prev_token.span.to(self.token.span),
+                "`enum` and `struct` are mutually exclusive",
+            );
+            err.span_suggestion(
+                self.prev_token.span.to(self.token.span),
+                "replace `enum struct` with",
+                "enum",
+                Applicability::MachineApplicable,
+            );
+            if self.look_ahead(1, |t| t.is_ident()) {
+                self.bump();
+                err.emit();
+            } else {
+                return Err(err);
+            }
+        }
+
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
@@ -1664,8 +1691,8 @@ impl<'a> Parser<'a> {
             let body = self.parse_token_tree(); // `MacBody`
             // Convert `MacParams MacBody` into `{ MacParams => MacBody }`.
             let bspan = body.span();
-            let arrow = TokenTree::token(token::FatArrow, pspan.between(bspan)); // `=>`
-            let tokens = TokenStream::new(vec![params.into(), arrow.into(), body.into()]);
+            let arrow = TokenTree::token_alone(token::FatArrow, pspan.between(bspan)); // `=>`
+            let tokens = TokenStream::new(vec![params, arrow, body]);
             let dspan = DelimSpan::from_pair(pspan.shrink_to_lo(), bspan.shrink_to_hi());
             P(MacArgs::Delimited(dspan, MacDelimiter::Brace, tokens))
         } else {

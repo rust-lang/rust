@@ -85,9 +85,5 @@
       bb4: {
           return;                          // scope 0 at $DIR/simplify-arm.rs:+6:2: +6:2
       }
-  
-      bb5 (cleanup): {
-          resume;                          // scope 0 at $DIR/simplify-arm.rs:+0:1: +6:2
-      }
   }
   

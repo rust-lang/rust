@@ -413,12 +413,12 @@ rustc_queries! {
     }
 
     query symbols_for_closure_captures(
-        key: (LocalDefId, DefId)
+        key: (LocalDefId, LocalDefId)
     ) -> Vec<rustc_span::Symbol> {
         storage(ArenaCacheSelector<'tcx>)
         desc {
             |tcx| "symbols for captures of closure `{}` in `{}`",
-            tcx.def_path_str(key.1),
+            tcx.def_path_str(key.1.to_def_id()),
             tcx.def_path_str(key.0.to_def_id())
         }
     }
@@ -1144,14 +1144,6 @@ rustc_queries! {
     query impl_parent(def_id: DefId) -> Option<DefId> {
         desc { |tcx| "computing specialization parent impl of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
-        separate_provide_extern
-    }
-
-    /// Given an `associated_item`, find the trait it belongs to.
-    /// Return `None` if the `DefId` is not an associated item.
-    query trait_of_item(associated_item: DefId) -> Option<DefId> {
-        desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(associated_item) }
-        cache_on_disk_if { associated_item.is_local() }
         separate_provide_extern
     }
 

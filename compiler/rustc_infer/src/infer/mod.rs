@@ -8,7 +8,7 @@ pub use self::ValuePairs::*;
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
-use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
+use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine, TraitEngineExt};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -23,6 +23,7 @@ use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::traits::select;
 use rustc_middle::ty::abstract_const::{AbstractConst, FailureKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::fold::BoundVarReplacerDelegate;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
@@ -644,9 +645,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> T {
         let InferOk { value, obligations } = self;
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(infcx, obligation);
-        }
+        fulfill_cx.register_predicate_obligations(infcx, obligations);
         value
     }
 }
@@ -839,18 +838,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.in_snapshot.set(was_in_snapshot);
 
         self.inner.borrow_mut().commit(undo_snapshot);
-    }
-
-    /// Executes `f` and commit the bindings.
-    #[instrument(skip(self, f), level = "debug")]
-    pub fn commit_unconditionally<R, F>(&self, f: F) -> R
-    where
-        F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> R,
-    {
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        self.commit_from(snapshot);
-        r
     }
 
     /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`.
@@ -1324,6 +1311,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
+    ///
+    /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
+    /// first, or preferrably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// to do both of these operations together.
     pub fn resolve_regions_and_report_errors(
         &self,
         generic_param_scope: LocalDefId,
@@ -1564,32 +1555,56 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return inner;
         }
 
-        let mut region_map = FxHashMap::default();
-        let fld_r = |br: ty::BoundRegion| {
-            *region_map
-                .entry(br)
-                .or_insert_with(|| self.next_region_var(LateBoundRegion(span, br.kind, lbrct)))
-        };
+        struct ToFreshVars<'a, 'tcx> {
+            infcx: &'a InferCtxt<'a, 'tcx>,
+            span: Span,
+            lbrct: LateBoundRegionConversionTime,
+            map: FxHashMap<ty::BoundVar, ty::GenericArg<'tcx>>,
+        }
 
-        let mut ty_map = FxHashMap::default();
-        let fld_t = |bt: ty::BoundTy| {
-            *ty_map.entry(bt).or_insert_with(|| {
-                self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span,
-                })
-            })
-        };
-        let mut ct_map = FxHashMap::default();
-        let fld_c = |bc: ty::BoundVar, ty| {
-            *ct_map.entry(bc).or_insert_with(|| {
-                self.next_const_var(
-                    ty,
-                    ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
-                )
-            })
-        };
-        self.tcx.replace_bound_vars_uncached(value, fld_r, fld_t, fld_c)
+        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'_, 'tcx> {
+            fn replace_region(&mut self, br: ty::BoundRegion) -> ty::Region<'tcx> {
+                self.map
+                    .entry(br.var)
+                    .or_insert_with(|| {
+                        self.infcx
+                            .next_region_var(LateBoundRegion(self.span, br.kind, self.lbrct))
+                            .into()
+                    })
+                    .expect_region()
+            }
+            fn replace_ty(&mut self, bt: ty::BoundTy) -> Ty<'tcx> {
+                self.map
+                    .entry(bt.var)
+                    .or_insert_with(|| {
+                        self.infcx
+                            .next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span: self.span,
+                            })
+                            .into()
+                    })
+                    .expect_ty()
+            }
+            fn replace_const(&mut self, bv: ty::BoundVar, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+                self.map
+                    .entry(bv)
+                    .or_insert_with(|| {
+                        self.infcx
+                            .next_const_var(
+                                ty,
+                                ConstVariableOrigin {
+                                    kind: ConstVariableOriginKind::MiscVariable,
+                                    span: self.span,
+                                },
+                            )
+                            .into()
+                    })
+                    .expect_const()
+            }
+        }
+        let delegate = ToFreshVars { infcx: self, span, lbrct, map: Default::default() };
+        self.tcx.replace_bound_vars_uncached(value, delegate)
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.
@@ -2040,7 +2055,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
                     ty,
                     kind: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                         universe: ty::UniverseIndex::ROOT,
-                        name: ty::BoundConst { ty, var: ty::BoundVar::from_usize(idx) },
+                        name: ty::BoundVar::from_usize(idx),
                     }),
                 })
                 .into()

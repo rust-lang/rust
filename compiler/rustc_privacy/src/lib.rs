@@ -212,7 +212,7 @@ where
                 // `impl Pub<Priv> { pub fn my_method() {} }` is considered a private type,
                 // so we need to visit the self type additionally.
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
-                    if let ty::ImplContainer(impl_def_id) = assoc_item.container {
+                    if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
                         tcx.type_of(impl_def_id).visit_with(self)?;
                     }
                 }
@@ -734,11 +734,12 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.def_id, item_level).generics().predicates();
 
                     for trait_item_ref in trait_item_refs {
+                        let tcx = self.tcx;
                         let mut reach = self.reach(trait_item_ref.id.def_id, item_level);
                         reach.generics().predicates();
 
                         if trait_item_ref.kind == AssocItemKind::Type
-                            && !trait_item_ref.defaultness.has_value()
+                            && !tcx.impl_defaultness(trait_item_ref.id.def_id).has_value()
                         {
                             // No type to visit.
                         } else {
@@ -1078,11 +1079,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.emit_err(ItemIsPrivate {
-                span: self.span,
-                kind,
-                descr: descr.to_string(),
-            });
+            self.tcx.sess.emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
         }
         is_error
     }
@@ -1254,7 +1251,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 };
                 let kind = kind.descr(def_id);
                 let _ = match name {
-                    Some(name) => sess.emit_err(ItemIsPrivate { span, kind, descr: name }),
+                    Some(name) => {
+                        sess.emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
+                    }
                     None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
@@ -1722,7 +1721,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 self.tcx.def_span(self.item_def_id.to_def_id()),
                 FromPrivateDependencyInPublicInterface {
                     kind,
-                    descr: descr.to_string(),
+                    descr: descr.into(),
                     krate: self.tcx.crate_name(def_id.krate),
                 },
             );
@@ -1749,19 +1748,17 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
-            let descr = descr.to_string();
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
             {
-                let vis_span =
-                    self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
+                let vis_span = self.tcx.def_span(def_id);
                 if kind == "trait" {
                     self.tcx.sess.emit_err(InPublicInterfaceTraits {
                         span,
                         vis_descr,
                         kind,
-                        descr,
+                        descr: descr.into(),
                         vis_span,
                     });
                 } else {
@@ -1769,7 +1766,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         span,
                         vis_descr,
                         kind,
-                        descr,
+                        descr: descr.into(),
                         vis_span,
                     });
                 }
@@ -1778,7 +1775,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    PrivateInPublicLint { vis_descr, kind, descr },
+                    PrivateInPublicLint { vis_descr, kind, descr: descr.into() },
                 );
             }
         }
@@ -1840,14 +1837,13 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
         &self,
         def_id: LocalDefId,
         assoc_item_kind: AssocItemKind,
-        defaultness: hir::Defaultness,
         vis: ty::Visibility,
     ) {
         let mut check = self.check(def_id, vis);
 
         let (check_ty, is_assoc_ty) = match assoc_item_kind {
             AssocItemKind::Const | AssocItemKind::Fn { .. } => (true, false),
-            AssocItemKind::Type => (defaultness.has_value(), true),
+            AssocItemKind::Type => (self.tcx.impl_defaultness(def_id).has_value(), true),
         };
         check.in_assoc_ty = is_assoc_ty;
         check.generics().predicates();
@@ -1879,7 +1875,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
                         self.check_assoc_item(
                             trait_item_ref.id.def_id,
                             trait_item_ref.kind,
-                            trait_item_ref.defaultness,
                             item_visibility,
                         );
 
@@ -1952,7 +1947,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
                         self.check_assoc_item(
                             impl_item_ref.id.def_id,
                             impl_item_ref.kind,
-                            impl_item_ref.defaultness,
                             impl_item_vis,
                         );
                     }

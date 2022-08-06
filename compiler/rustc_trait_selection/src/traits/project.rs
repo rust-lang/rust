@@ -32,7 +32,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable};
-use rustc_middle::ty::{self, EarlyBinder, Term, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
 use std::collections::BTreeMap;
@@ -744,10 +744,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             }
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
-                let p = ty::PlaceholderConst {
-                    universe,
-                    name: ty::BoundConst { var: bound_const, ty: ct.ty() },
-                };
+                let p = ty::PlaceholderConst { universe, name: bound_const };
                 self.mapped_consts.insert(p, bound_const);
                 self.infcx
                     .tcx
@@ -1988,7 +1985,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         return Progress { term: tcx.ty_error().into(), obligations: nested };
     };
 
-    if !assoc_ty.item.defaultness.has_value() {
+    if !assoc_ty.item.defaultness(tcx).has_value() {
         // This means that the impl is missing a definition for the
         // associated type. This error will be reported by the type
         // checker method `check_impl_items_against_trait`, so here we
@@ -2008,16 +2005,16 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let substs = obligation.predicate.substs.rebase_onto(tcx, trait_def_id, substs);
     let substs =
         translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.defining_node);
-    let ty = tcx.type_of(assoc_ty.item.def_id);
+    let ty = tcx.bound_type_of(assoc_ty.item.def_id);
     let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
-    let term: ty::Term<'tcx> = if is_const {
+    let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
         let identity_substs =
             crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
         let kind = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, identity_substs));
-        tcx.mk_const(ty::ConstS { ty, kind }).into()
+        ty.map_bound(|ty| tcx.mk_const(ty::ConstS { ty, kind }).into())
     } else {
-        ty.into()
+        ty.map_bound(|ty| ty.into())
     };
     if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
         let err = tcx.ty_error_with_message(
@@ -2027,7 +2024,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err.into(), obligations: nested }
     } else {
         assoc_ty_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: EarlyBinder(term).subst(tcx, substs), obligations: nested }
+        Progress { term: term.subst(tcx, substs), obligations: nested }
     }
 }
 
@@ -2089,7 +2086,11 @@ fn assoc_def(
         return Ok(specialization_graph::LeafDef {
             item: *item,
             defining_node: impl_node,
-            finalizing_node: if item.defaultness.is_default() { None } else { Some(impl_node) },
+            finalizing_node: if item.defaultness(tcx).is_default() {
+                None
+            } else {
+                Some(impl_node)
+            },
         });
     }
 

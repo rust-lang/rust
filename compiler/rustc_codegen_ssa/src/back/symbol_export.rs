@@ -257,16 +257,18 @@ fn exported_symbols_provider_local<'tcx>(
         }));
     }
 
-    if tcx.sess.crate_types().contains(&CrateType::Dylib) {
+    if tcx.sess.crate_types().contains(&CrateType::Dylib)
+        || tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+    {
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
         symbols.push((
             exported_symbol,
             SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
+                level: SymbolExportLevel::C,
                 kind: SymbolExportKind::Data,
-                used: false,
+                used: true,
             },
         ));
     }

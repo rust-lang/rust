@@ -519,7 +519,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
-        let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner.to_def_id());
+        let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner);
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
 

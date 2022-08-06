@@ -3,7 +3,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree,
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
+use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
@@ -105,7 +105,7 @@ pub(super) fn transcribe<'a>(
     //
     // Thus, if we try to pop the `result_stack` and it is empty, we have reached the top-level
     // again, and we are done transcribing.
-    let mut result: Vec<TreeAndSpacing> = Vec::new();
+    let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
     let mut marker = Marker(cx.current_expansion.id, transparency);
 
@@ -123,7 +123,7 @@ pub(super) fn transcribe<'a>(
                 if repeat_idx < repeat_len {
                     *idx = 0;
                     if let Some(sep) = sep {
-                        result.push(TokenTree::Token(sep.clone()).into());
+                        result.push(TokenTree::Token(sep.clone(), Spacing::Alone));
                     }
                     continue;
                 }
@@ -150,7 +150,7 @@ pub(super) fn transcribe<'a>(
                     // Step back into the parent Delimited.
                     let tree = TokenTree::Delimited(span, delim, TokenStream::new(result));
                     result = result_stack.pop().unwrap();
-                    result.push(tree.into());
+                    result.push(tree);
                 }
             }
             continue;
@@ -227,15 +227,15 @@ pub(super) fn transcribe<'a>(
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
                             let token = tt.clone();
-                            result.push(token.into());
+                            result.push(token);
                         }
                         MatchedNonterminal(ref nt) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
-                            result.push(token.into());
+                            let token = TokenTree::token_alone(token::Interpolated(nt.clone()), sp);
+                            result.push(token);
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
@@ -250,8 +250,11 @@ pub(super) fn transcribe<'a>(
                     // with modified syntax context. (I believe this supports nested macros).
                     marker.visit_span(&mut sp);
                     marker.visit_ident(&mut original_ident);
-                    result.push(TokenTree::token(token::Dollar, sp).into());
-                    result.push(TokenTree::Token(Token::from_ast_ident(original_ident)).into());
+                    result.push(TokenTree::token_alone(token::Dollar, sp));
+                    result.push(TokenTree::Token(
+                        Token::from_ast_ident(original_ident),
+                        Spacing::Alone,
+                    ));
                 }
             }
 
@@ -281,8 +284,8 @@ pub(super) fn transcribe<'a>(
             mbe::TokenTree::Token(token) => {
                 let mut token = token.clone();
                 mut_visit::visit_token(&mut token, &mut marker);
-                let tt = TokenTree::Token(token);
-                result.push(tt.into());
+                let tt = TokenTree::Token(token, Spacing::Alone);
+                result.push(tt);
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
@@ -532,7 +535,7 @@ fn transcribe_metavar_expr<'a>(
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     marker: &mut Marker,
     repeats: &[(usize, usize)],
-    result: &mut Vec<TreeAndSpacing>,
+    result: &mut Vec<TokenTree>,
     sp: &DelimSpan,
 ) -> PResult<'a, ()> {
     let mut visited_span = || {
@@ -544,11 +547,11 @@ fn transcribe_metavar_expr<'a>(
         MetaVarExpr::Count(original_ident, depth_opt) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
             let count = count_repetitions(cx, depth_opt, matched, &repeats, sp)?;
-            let tt = TokenTree::token(
+            let tt = TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
                 visited_span(),
             );
-            result.push(tt.into());
+            result.push(tt);
         }
         MetaVarExpr::Ignore(original_ident) => {
             // Used to ensure that `original_ident` is present in the LHS
@@ -556,25 +559,19 @@ fn transcribe_metavar_expr<'a>(
         }
         MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
             Some((index, _)) => {
-                result.push(
-                    TokenTree::token(
-                        TokenKind::lit(token::Integer, sym::integer(*index), None),
-                        visited_span(),
-                    )
-                    .into(),
-                );
+                result.push(TokenTree::token_alone(
+                    TokenKind::lit(token::Integer, sym::integer(*index), None),
+                    visited_span(),
+                ));
             }
             None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
         },
         MetaVarExpr::Length(depth) => match repeats.iter().nth_back(depth) {
             Some((_, length)) => {
-                result.push(
-                    TokenTree::token(
-                        TokenKind::lit(token::Integer, sym::integer(*length), None),
-                        visited_span(),
-                    )
-                    .into(),
-                );
+                result.push(TokenTree::token_alone(
+                    TokenKind::lit(token::Integer, sym::integer(*length), None),
+                    visited_span(),
+                ));
             }
             None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "length")),
         },

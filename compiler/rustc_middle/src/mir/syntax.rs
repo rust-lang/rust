@@ -18,6 +18,7 @@ use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
 use rustc_ast::Mutability;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -340,8 +341,11 @@ pub enum FakeReadCause {
     /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
     /// FakeRead for that Place outside the closure, in such a case this option would be
     /// Some(closure_def_id).
-    /// Otherwise, the value of the optional DefId will be None.
-    ForMatchedPlace(Option<DefId>),
+    /// Otherwise, the value of the optional LocalDefId will be None.
+    //
+    // We can use LocaDefId here since fake read statements are removed
+    // before codegen in the `CleanupNonCodegenStatements` pass.
+    ForMatchedPlace(Option<LocalDefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
     /// in a match guard to ensure that its value hasn't change by the time
@@ -365,7 +369,7 @@ pub enum FakeReadCause {
     /// FakeRead for that Place outside the closure, in such a case this option would be
     /// Some(closure_def_id).
     /// Otherwise, the value of the optional DefId will be None.
-    ForLet(Option<DefId>),
+    ForLet(Option<LocalDefId>),
 
     /// If we have an index expression like
     ///
@@ -796,9 +800,6 @@ pub struct Place<'tcx> {
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Place<'_>, 16);
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ProjectionElem<V, T> {
@@ -862,11 +863,6 @@ pub enum ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-// This type is fairly frequently used, so we shouldn't unintentionally increase
-// its size.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PlaceElem<'_>, 24);
-
 ///////////////////////////////////////////////////////////////////////////
 // Operands
 
@@ -908,9 +904,6 @@ pub enum Operand<'tcx> {
     /// Constants are already semantically values, and remain unchanged.
     Constant(Box<Constant<'tcx>>),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Operand<'_>, 24);
 
 ///////////////////////////////////////////////////////////////////////////
 // Rvalues
@@ -1063,9 +1056,6 @@ pub enum Rvalue<'tcx> {
     CopyForDeref(Place<'tcx>),
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Rvalue<'_>, 40);
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
     /// An exposing pointer to address cast. A cast between a pointer and an integer type, or
@@ -1095,12 +1085,11 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
-    Closure(DefId, SubstsRef<'tcx>),
-    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
+    // Note: We can use LocalDefId since closures and generators a deaggregated
+    // before codegen.
+    Closure(LocalDefId, SubstsRef<'tcx>),
+    Generator(LocalDefId, SubstsRef<'tcx>, hir::Movability),
 }
-
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(AggregateKind<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum NullOp {
@@ -1164,4 +1153,16 @@ pub enum BinOp {
     Gt,
     /// The `ptr.offset` operator
     Offset,
+}
+
+// Some nodes are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(AggregateKind<'_>, 48);
+    static_assert_size!(Operand<'_>, 24);
+    static_assert_size!(Place<'_>, 16);
+    static_assert_size!(PlaceElem<'_>, 24);
+    static_assert_size!(Rvalue<'_>, 40);
 }

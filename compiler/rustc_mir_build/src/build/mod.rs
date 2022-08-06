@@ -672,7 +672,7 @@ where
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
-                        fn_def.did.to_def_id(),
+                        fn_def.did,
                         &arguments,
                         arg_scope,
                         &thir[expr],
@@ -895,7 +895,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn args_and_body(
         &mut self,
         mut block: BasicBlock,
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         arguments: &[ArgInfo<'tcx>],
         argument_scope: region::Scope,
         expr: &Expr<'tcx>,

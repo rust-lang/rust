@@ -92,9 +92,8 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
         let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
         let mut cursor = stream.into_trees();
 
-        while let Some((tree, spacing)) = cursor.next_with_spacing() {
-            let joint = spacing == Joint;
-            let Token { kind, span } = match tree {
+        while let Some(tree) = cursor.next() {
+            let (Token { kind, span }, joint) = match tree {
                 tokenstream::TokenTree::Delimited(span, delim, tts) => {
                     let delimiter = pm::Delimiter::from_internal(delim);
                     trees.push(TokenTree::Group(Group {
@@ -108,7 +107,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                     continue;
                 }
-                tokenstream::TokenTree::Token(token) => token,
+                tokenstream::TokenTree::Token(token, spacing) => (token, spacing == Joint),
             };
 
             let mut op = |s: &str| {
@@ -194,7 +193,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                     ]
                     .into_iter()
-                    .map(|kind| tokenstream::TokenTree::token(kind, span))
+                    .map(|kind| tokenstream::TokenTree::token_alone(kind, span))
                     .collect();
                     trees.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if attr_style == ast::AttrStyle::Inner {
@@ -246,16 +245,15 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
         let (ch, joint, span) = match tree {
             TokenTree::Punct(Punct { ch, joint, span }) => (ch, joint, span),
             TokenTree::Group(Group { delimiter, stream, span: DelimSpan { open, close, .. } }) => {
-                return tokenstream::TokenTree::Delimited(
+                return tokenstream::TokenStream::delimited(
                     tokenstream::DelimSpan { open, close },
                     delimiter.to_internal(),
                     stream.unwrap_or_default(),
-                )
-                .into();
+                );
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 rustc.sess().symbol_gallery.insert(sym, span);
-                return tokenstream::TokenTree::token(Ident(sym, is_raw), span).into();
+                return tokenstream::TokenStream::token_alone(Ident(sym, is_raw), span);
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Integer,
@@ -266,8 +264,8 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token(minus, span);
-                let b = tokenstream::TokenTree::token(integer, span);
+                let a = tokenstream::TokenTree::token_alone(minus, span);
+                let b = tokenstream::TokenTree::token_alone(integer, span);
                 return [a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
@@ -279,16 +277,15 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
                 let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token(minus, span);
-                let b = tokenstream::TokenTree::token(float, span);
+                let a = tokenstream::TokenTree::token_alone(minus, span);
+                let b = tokenstream::TokenTree::token_alone(float, span);
                 return [a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal { kind, symbol, suffix, span }) => {
-                return tokenstream::TokenTree::token(
+                return tokenstream::TokenStream::token_alone(
                     TokenKind::lit(kind.to_internal(), symbol, suffix),
                     span,
-                )
-                .into();
+                );
             }
         };
 
@@ -318,8 +315,11 @@ impl ToInternal<TokenStream> for (TokenTree<TokenStream, Span, Symbol>, &mut Rus
             _ => unreachable!(),
         };
 
-        let tree = tokenstream::TokenTree::token(kind, span);
-        TokenStream::new(vec![(tree, if joint { Joint } else { Alone })])
+        if joint {
+            tokenstream::TokenStream::token_joint(kind, span)
+        } else {
+            tokenstream::TokenStream::token_alone(kind, span)
+        }
     }
 }
 
@@ -486,12 +486,11 @@ impl server::TokenStream for Rustc<'_, '_> {
         // We don't use `TokenStream::from_ast` as the tokenstream currently cannot
         // be recovered in the general case.
         match &expr.kind {
-            ast::ExprKind::Lit(l) if l.token.kind == token::Bool => {
-                Ok(tokenstream::TokenTree::token(token::Ident(l.token.symbol, false), l.span)
-                    .into())
-            }
+            ast::ExprKind::Lit(l) if l.token.kind == token::Bool => Ok(
+                tokenstream::TokenStream::token_alone(token::Ident(l.token.symbol, false), l.span),
+            ),
             ast::ExprKind::Lit(l) => {
-                Ok(tokenstream::TokenTree::token(token::Literal(l.token), l.span).into())
+                Ok(tokenstream::TokenStream::token_alone(token::Literal(l.token), l.span))
             }
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(l) => match l.token {
@@ -499,8 +498,8 @@ impl server::TokenStream for Rustc<'_, '_> {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
-                            tokenstream::TokenTree::token(token::BinOp(token::Minus), e.span),
-                            tokenstream::TokenTree::token(token::Literal(l.token), l.span),
+                            tokenstream::TokenTree::token_alone(token::BinOp(token::Minus), e.span),
+                            tokenstream::TokenTree::token_alone(token::Literal(l.token), l.span),
                         ]))
                     }
                     _ => Err(()),

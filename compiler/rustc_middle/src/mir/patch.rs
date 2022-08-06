@@ -11,7 +11,8 @@ pub struct MirPatch<'tcx> {
     new_blocks: Vec<BasicBlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
     new_locals: Vec<LocalDecl<'tcx>>,
-    resume_block: BasicBlock,
+    resume_block: Option<BasicBlock>,
+    body_span: Span,
     next_local: usize,
 }
 
@@ -23,47 +24,36 @@ impl<'tcx> MirPatch<'tcx> {
             new_statements: vec![],
             new_locals: vec![],
             next_local: body.local_decls.len(),
-            resume_block: START_BLOCK,
+            resume_block: None,
+            body_span: body.span,
         };
 
-        // make sure the MIR we create has a resume block. It is
-        // completely legal to convert jumps to the resume block
-        // to jumps to None, but we occasionally have to add
-        // instructions just before that.
-
-        let mut resume_block = None;
-        let mut resume_stmt_block = None;
+        // Check if we already have a resume block
         for (bb, block) in body.basic_blocks().iter_enumerated() {
-            if let TerminatorKind::Resume = block.terminator().kind {
-                if !block.statements.is_empty() {
-                    assert!(resume_stmt_block.is_none());
-                    resume_stmt_block = Some(bb);
-                } else {
-                    resume_block = Some(bb);
-                }
+            if let TerminatorKind::Resume = block.terminator().kind && block.statements.is_empty() {
+                result.resume_block = Some(bb);
                 break;
             }
         }
-        let resume_block = resume_block.unwrap_or_else(|| {
-            result.new_block(BasicBlockData {
-                statements: vec![],
-                terminator: Some(Terminator {
-                    source_info: SourceInfo::outermost(body.span),
-                    kind: TerminatorKind::Resume,
-                }),
-                is_cleanup: true,
-            })
-        });
-        result.resume_block = resume_block;
-        if let Some(resume_stmt_block) = resume_stmt_block {
-            result
-                .patch_terminator(resume_stmt_block, TerminatorKind::Goto { target: resume_block });
-        }
+
         result
     }
 
-    pub fn resume_block(&self) -> BasicBlock {
-        self.resume_block
+    pub fn resume_block(&mut self) -> BasicBlock {
+        if let Some(bb) = self.resume_block {
+            return bb;
+        }
+
+        let bb = self.new_block(BasicBlockData {
+            statements: vec![],
+            terminator: Some(Terminator {
+                source_info: SourceInfo::outermost(self.body_span),
+                kind: TerminatorKind::Resume,
+            }),
+            is_cleanup: true,
+        });
+        self.resume_block = Some(bb);
+        bb
     }
 
     pub fn is_patched(&self, bb: BasicBlock) -> bool {
@@ -138,12 +128,17 @@ impl<'tcx> MirPatch<'tcx> {
             self.new_blocks.len(),
             body.basic_blocks().len()
         );
-        body.basic_blocks_mut().extend(self.new_blocks);
+        let bbs = if self.patch_map.is_empty() && self.new_blocks.is_empty() {
+            body.basic_blocks.as_mut_preserves_cfg()
+        } else {
+            body.basic_blocks.as_mut()
+        };
+        bbs.extend(self.new_blocks);
         body.local_decls.extend(self.new_locals);
         for (src, patch) in self.patch_map.into_iter_enumerated() {
             if let Some(patch) = patch {
                 debug!("MirPatch: patching block {:?}", src);
-                body[src].terminator_mut().kind = patch;
+                bbs[src].terminator_mut().kind = patch;
             }
         }
 

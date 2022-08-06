@@ -531,6 +531,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
 
                         self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);
+                        self.suggest_dereferencing_index(&obligation, &mut err, trait_predicate);
                         let mut suggested =
                             self.suggest_dereferences(&obligation, &mut err, trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, trait_predicate);
@@ -2128,7 +2129,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         ] = path.segments
                         && data.trait_ref.def_id == *trait_id
-                        && self.tcx.trait_of_item(item_id) == Some(*trait_id)
+                        && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
                         && !self.is_tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {

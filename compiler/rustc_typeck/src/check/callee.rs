@@ -5,7 +5,7 @@ use crate::type_error_struct;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{self, Namespace, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_infer::{
     infer,
     traits::{self, Obligation},
@@ -19,11 +19,13 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+
 use std::iter;
 
 /// Checks that it is legal to call methods of the trait corresponding
@@ -59,7 +61,7 @@ pub fn check_legal_trait_for_method_call(
 
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
-    DeferredClosure(DefId, ty::FnSig<'tcx>),
+    DeferredClosure(LocalDefId, ty::FnSig<'tcx>),
     /// E.g., enum variant constructors.
     Overloaded(MethodCallee<'tcx>),
 }
@@ -145,7 +147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             ty::Closure(def_id, substs) => {
-                assert_eq!(def_id.krate, LOCAL_CRATE);
+                let def_id = def_id.expect_local();
 
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
@@ -558,7 +560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
         // `fn_sig` is the *signature* of the closure being called. We
@@ -581,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             arg_exprs,
             fn_sig.c_variadic,
             TupleArgumentsFlag::TupleArguments,
-            Some(closure_def_id),
+            Some(closure_def_id.to_def_id()),
         );
 
         fn_sig.output()

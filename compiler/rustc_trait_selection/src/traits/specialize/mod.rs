@@ -14,7 +14,7 @@ use specialization_graph::GraphExt;
 
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
+use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, EmissionGuarantee, LintDiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -25,7 +25,7 @@ use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
 
 use super::util;
-use super::{FulfillmentContext, SelectionContext};
+use super::SelectionContext;
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
@@ -149,18 +149,19 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
-        // Normalize the trait reference. The WF rules ought to ensure
-        // that this always succeeds.
         let impl1_trait_ref = match traits::fully_normalize(
             &infcx,
-            FulfillmentContext::new(),
             ObligationCause::dummy(),
             penv,
             impl1_trait_ref,
         ) {
             Ok(impl1_trait_ref) => impl1_trait_ref,
-            Err(err) => {
-                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+            Err(_errors) => {
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(impl1_def_id),
+                    format!("failed to fully normalize {impl1_trait_ref}"),
+                );
+                impl1_trait_ref
             }
         };
 
@@ -207,11 +208,8 @@ fn fulfill_implication<'a, 'tcx>(
     // (which are packed up in penv)
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        let mut fulfill_cx = FulfillmentContext::new();
-        for oblig in obligations.chain(more_obligations) {
-            fulfill_cx.register_predicate_obligation(&infcx, oblig);
-        }
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        let errors = traits::fully_solve_obligations(&infcx, obligations.chain(more_obligations));
+        match &errors[..] {
             [] => {
                 debug!(
                     "fulfill_implication: an impl for {:?} specializes {:?}",

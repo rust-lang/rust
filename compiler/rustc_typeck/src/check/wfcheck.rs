@@ -15,8 +15,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, EarlyBinder, GenericParamDefKind, ToPredicate, Ty, TyCtxt,
-    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, AdtKind, DefIdTree, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -977,11 +977,14 @@ fn check_associated_item(
         let item = tcx.associated_item(item_id);
 
         let (mut implied_bounds, self_ty) = match item.container {
-            ty::TraitContainer(_) => (FxHashSet::default(), tcx.types.self_param),
-            ty::ImplContainer(def_id) => (
-                impl_implied_bounds(tcx, wfcx.param_env, def_id.expect_local(), span),
-                tcx.type_of(def_id),
-            ),
+            ty::TraitContainer => (FxHashSet::default(), tcx.types.self_param),
+            ty::ImplContainer => {
+                let def_id = item.container_id(tcx);
+                (
+                    impl_implied_bounds(tcx, wfcx.param_env, def_id.expect_local(), span),
+                    tcx.type_of(def_id),
+                )
+            }
         };
 
         match item.kind {
@@ -1004,10 +1007,10 @@ fn check_associated_item(
                 check_method_receiver(wfcx, hir_sig, item, self_ty);
             }
             ty::AssocKind::Type => {
-                if let ty::AssocItemContainer::TraitContainer(_) = item.container {
+                if let ty::AssocItemContainer::TraitContainer = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
-                if item.defaultness.has_value() {
+                if item.defaultness(tcx).has_value() {
                     let ty = tcx.type_of(item.def_id);
                     let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
@@ -1292,7 +1295,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
 
-    let predicates = tcx.predicates_of(def_id);
+    let predicates = tcx.bound_predicates_of(def_id.to_def_id());
     let generics = tcx.generics_of(def_id);
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
@@ -1389,6 +1392,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     // Now we build the substituted predicates.
     let default_obligations = predicates
+        .0
         .predicates
         .iter()
         .flat_map(|&(pred, sp)| {
@@ -1419,7 +1423,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = EarlyBinder(pred).subst(tcx, substs);
+            let substituted_pred = predicates.rebind(pred).subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
             if substituted_pred.has_param_types_or_consts()
@@ -1427,7 +1431,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                 || has_region
             {
                 None
-            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.0.predicates.iter().any(|&(p, _)| p == substituted_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
@@ -1453,7 +1457,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             traits::Obligation::new(cause, wfcx.param_env, pred)
         });
 
-    let predicates = predicates.instantiate_identity(tcx);
+    let predicates = predicates.0.instantiate_identity(tcx);
 
     let predicates = wfcx.normalize(span, None, predicates);
 

@@ -1114,7 +1114,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_fn_has_self_parameter(self, id: DefIndex) -> bool {
         match self.kind(id) {
-            EntryKind::AssocFn(data) => data.decode(self).has_self,
+            EntryKind::AssocFn { has_self, .. } => has_self,
             _ => false,
         }
     }
@@ -1134,28 +1134,21 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(self, id: DefIndex) -> ty::AssocItem {
-        let def_key = self.def_key(id);
-        let parent = self.local_def_id(def_key.parent.unwrap());
         let name = self.item_name(id);
 
         let (kind, container, has_self) = match self.kind(id) {
             EntryKind::AssocConst(container) => (ty::AssocKind::Const, container, false),
-            EntryKind::AssocFn(data) => {
-                let data = data.decode(self);
-                (ty::AssocKind::Fn, data.container, data.has_self)
-            }
+            EntryKind::AssocFn { container, has_self } => (ty::AssocKind::Fn, container, has_self),
             EntryKind::AssocType(container) => (ty::AssocKind::Type, container, false),
-            _ => bug!("cannot get associated-item of `{:?}`", def_key),
+            _ => bug!("cannot get associated-item of `{:?}`", id),
         };
 
         ty::AssocItem {
             name,
             kind,
-            vis: self.get_visibility(id),
-            defaultness: container.defaultness(),
             def_id: self.local_def_id(id),
             trait_item_def_id: self.get_trait_item_def_id(id),
-            container: container.with_def_id(parent),
+            container,
             fn_has_self_parameter: has_self,
         }
     }
@@ -1308,19 +1301,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         } else {
             &[]
         }
-    }
-
-    fn get_trait_of_item(self, id: DefIndex) -> Option<DefId> {
-        let def_key = self.def_key(id);
-        match def_key.disambiguated_data.data {
-            DefPathData::TypeNs(..) | DefPathData::ValueNs(..) => (),
-            // Not an associated item
-            _ => return None,
-        }
-        def_key.parent.and_then(|parent_index| match self.kind(parent_index) {
-            EntryKind::Trait | EntryKind::TraitAlias => Some(self.local_def_id(parent_index)),
-            _ => None,
-        })
     }
 
     fn get_native_libraries(self, sess: &'a Session) -> impl Iterator<Item = NativeLib> + 'a {

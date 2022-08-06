@@ -164,6 +164,14 @@ impl<'tcx> GenericArg<'tcx> {
         }
     }
 
+    /// Unpack the `GenericArg` as a region when it is known certainly to be a region.
+    pub fn expect_region(self) -> ty::Region<'tcx> {
+        match self.unpack() {
+            GenericArgKind::Lifetime(lt) => lt,
+            _ => bug!("expected a region, but found another kind"),
+        }
+    }
+
     /// Unpack the `GenericArg` as a type when it is known certainly to be a type.
     /// This is true in cases where `Substs` is used in places where the kinds are known
     /// to be limited (e.g. in tuples, where the only parameters are type parameters).

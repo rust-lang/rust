@@ -740,7 +740,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
 
             let emitter = EmitterWriter::new(
-                box io::sink(),
+                Box::new(io::sink()),
                 None,
                 None,
                 fallback_bundle,
@@ -751,7 +751,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
             );
 
-            let handler = Handler::with_emitter(false, None, box emitter);
+            let handler = Handler::with_emitter(false, None, Box::new(emitter));
             let sess = ParseSess::with_span_handler(handler, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
@@ -1222,7 +1222,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_ast(ast_attrs, None);
+        let attrs = Attributes::from_ast(ast_attrs);
         if let Some(doc) = attrs.collapsed_doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
