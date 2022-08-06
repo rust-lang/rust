@@ -287,29 +287,33 @@ pub fn write_to_file(filename: &Path, content: &str) {
     fs::rename(temp_filename, filename).unwrap();
 }
 
-pub fn get_cargo_metadata() -> Metadata {
-    // The `build.target-dir` config can be passed by `--config` flags, so forward them to
-    // `cargo metadata`.
-    let mut additional_options = Vec::new();
+// Computes the extra flags that need to be passed to cargo to make it behave like the current
+// cargo invocation.
+fn cargo_extra_flags() -> Vec<String> {
+    let mut flags = Vec::new();
     // `-Zunstable-options` is required by `--config`.
-    additional_options.push("-Zunstable-options".to_string());
+    flags.push("-Zunstable-options".to_string());
 
+    // Forward `--config` flags.
     let config_flag = "--config";
-    for arg in ArgSplitFlagValue::new(
-        env::args().skip(3), // skip the program name, "miri" and "run" / "test"
-        config_flag,
-    )
-    // Only look at `Ok`
-    .flatten()
-    {
-        additional_options.push(config_flag.to_string());
-        additional_options.push(arg);
+    for arg in ArgFlagValueIter::new(config_flag) {
+        flags.push(config_flag.to_string());
+        flags.push(arg);
     }
 
-    let metadata =
-        MetadataCommand::new().no_deps().other_options(additional_options).exec().unwrap();
+    // Forward `--manifest-path`.
+    let manifest_flag = "--manifest-path";
+    if let Some(manifest) = get_arg_flag_value(manifest_flag) {
+        flags.push(manifest_flag.to_string());
+        flags.push(manifest);
+    }
 
-    metadata
+    flags
+}
+
+pub fn get_cargo_metadata() -> Metadata {
+    // This will honor the `CARGO` env var the same way our `cargo()` does.
+    MetadataCommand::new().no_deps().other_options(cargo_extra_flags()).exec().unwrap()
 }
 
 /// Pulls all the crates in this workspace from the cargo metadata.

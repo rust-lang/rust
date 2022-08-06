@@ -117,6 +117,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     cmd.arg(cargo_cmd);
 
     // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
+    // (We want to *change* the target-dir value, so we must not forward it.)
     let mut target_dir = None;
     for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
         match arg {
