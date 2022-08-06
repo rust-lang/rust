@@ -30,6 +30,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
@@ -161,22 +162,20 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // this function's result remains infallible, we must confirm
         // that guess. While imperfect, I believe this is sound.
 
-        // The handling of regions in this area of the code is terrible,
-        // see issue #29149. We should be able to improve on this with
-        // NLL.
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
         let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
 
-        fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
+        // The handling of regions in this area of the code is terrible,
+        // see issue #29149. We should be able to improve on this with
+        // NLL.
+        let errors = fully_solve_bound(infcx, cause, param_env, ty, def_id);
 
         // Note: we only assume something is `Copy` if we can
         // *definitively* show that it implements `Copy`. Otherwise,
         // assume it is move; linear is always ok.
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        match &errors[..] {
             [] => {
                 debug!(
                     "type_known_to_meet_bound_modulo_regions: ty={:?} bound={} success",
@@ -222,15 +221,13 @@ fn do_normalize_predicates<'tcx>(
     // them here too, and we will remove this function when
     // we move over to lazy normalization *anyway*.
     tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-        let fulfill_cx = FulfillmentContext::new();
-        let predicates =
-            match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
-                Ok(predicates) => predicates,
-                Err(errors) => {
-                    let reported = infcx.report_fulfillment_errors(&errors, None, false);
-                    return Err(reported);
-                }
-            };
+        let predicates = match fully_normalize(&infcx, cause, elaborated_env, predicates) {
+            Ok(predicates) => predicates,
+            Err(errors) => {
+                let reported = infcx.report_fulfillment_errors(&errors, None, false);
+                return Err(reported);
+            }
+        };
 
         debug!("do_normalize_predictes: normalized predicates = {:?}", predicates);
 
@@ -381,9 +378,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     )
 }
 
+/// Normalize a type and process all resulting obligations, returning any errors
 pub fn fully_normalize<'a, 'tcx, T>(
     infcx: &InferCtxt<'a, 'tcx>,
-    mut fulfill_cx: FulfillmentContext<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     value: T,
@@ -399,8 +396,10 @@ where
         "fully_normalize: normalized_value={:?} obligations={:?}",
         normalized_value, obligations
     );
+
+    let mut fulfill_cx = FulfillmentContext::new();
     for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
+        fulfill_cx.register_predicate_obligation(infcx, obligation);
     }
 
     debug!("fully_normalize: select_all_or_error start");
@@ -412,6 +411,43 @@ where
     let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
     debug!("fully_normalize: resolved_value={:?}", resolved_value);
     Ok(resolved_value)
+}
+
+/// Process an obligation (and any nested obligations that come from it) to
+/// completion, returning any errors
+pub fn fully_solve_obligation<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    obligation: PredicateObligation<'tcx>,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_predicate_obligation(infcx, obligation);
+    engine.select_all_or_error(infcx)
+}
+
+/// Process a set of obligations (and any nested obligations that come from them)
+/// to completion
+pub fn fully_solve_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_predicate_obligations(infcx, obligations);
+    engine.select_all_or_error(infcx)
+}
+
+/// Process a bound (and any nested obligations that come from it) to completion.
+/// This is a convenience function for traits that have no generic arguments, such
+/// as auto traits, and builtin traits like Copy or Sized.
+pub fn fully_solve_bound<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    cause: ObligationCause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    bound: DefId,
+) -> Vec<FulfillmentError<'tcx>> {
+    let mut engine = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+    engine.register_bound(infcx, param_env, ty, bound, cause);
+    engine.select_all_or_error(infcx)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
@@ -428,20 +464,13 @@ pub fn impossible_predicates<'tcx>(
         infcx.set_tainted_by_errors();
 
         let param_env = ty::ParamEnv::reveal_all();
-        let mut selcx = SelectionContext::new(&infcx);
-        let mut fulfill_cx = FulfillmentContext::new();
-        let cause = ObligationCause::dummy();
-        let Normalized { value: predicates, obligations } =
-            normalize(&mut selcx, param_env, cause.clone(), predicates);
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
+        let ocx = ObligationCtxt::new(&infcx);
+        let predicates = ocx.normalize(ObligationCause::dummy(), param_env, predicates);
         for predicate in predicates {
-            let obligation = Obligation::new(cause.clone(), param_env, predicate);
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+            let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+            ocx.register_obligation(obligation);
         }
-
-        let errors = fulfill_cx.select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
 
         // Clean up after ourselves
         let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();

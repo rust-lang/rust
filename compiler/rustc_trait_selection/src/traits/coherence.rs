@@ -10,14 +10,14 @@ use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
-    PredicateObligations, SelectionContext, TraitEngineExt,
+    self, Normalized, Obligation, ObligationCause, PredicateObligation, PredicateObligations,
+    SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, TraitEngine};
+use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::subst::Subst;
@@ -302,7 +302,6 @@ fn negative_impl<'cx, 'tcx>(
         let impl_env = tcx.param_env(impl1_def_id);
         let subject1 = match traits::fully_normalize(
             &infcx,
-            FulfillmentContext::new(),
             ObligationCause::dummy(),
             impl_env,
             tcx.impl_subject(impl1_def_id),
@@ -385,16 +384,11 @@ fn resolve_negative_obligation<'cx, 'tcx>(
         return false;
     };
 
-    let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-    fulfillment_cx.register_predicate_obligation(infcx, o);
-
-    let errors = fulfillment_cx.select_all_or_error(infcx);
-
+    let errors = super::fully_solve_obligation(infcx, o);
     if !errors.is_empty() {
         return false;
     }
 
-    // FIXME -- also add "assumed to be well formed" types into the `outlives_env`
     let outlives_env = OutlivesEnvironment::new(param_env);
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
 

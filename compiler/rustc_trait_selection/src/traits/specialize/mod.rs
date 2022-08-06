@@ -14,9 +14,7 @@ use specialization_graph::GraphExt;
 
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{
-    self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine, TraitEngineExt,
-};
+use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, EmissionGuarantee, LintDiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -26,8 +24,8 @@ use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
 
+use super::util;
 use super::SelectionContext;
-use super::{util, FulfillmentContext};
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
@@ -153,7 +151,6 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     tcx.infer_ctxt().enter(|infcx| {
         let impl1_trait_ref = match traits::fully_normalize(
             &infcx,
-            FulfillmentContext::new(),
             ObligationCause::dummy(),
             penv,
             impl1_trait_ref,
@@ -211,11 +208,8 @@ fn fulfill_implication<'a, 'tcx>(
     // (which are packed up in penv)
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
-        for oblig in obligations.chain(more_obligations) {
-            fulfill_cx.register_predicate_obligation(&infcx, oblig);
-        }
-        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+        let errors = traits::fully_solve_obligations(&infcx, obligations.chain(more_obligations));
+        match &errors[..] {
             [] => {
                 debug!(
                     "fulfill_implication: an impl for {:?} specializes {:?}",

@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeV
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
 use rustc_trait_selection::traits::predicate_for_trait_def;
-use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
@@ -109,15 +109,13 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 // it is not immediately clear why Copy is not implemented for a field, since
                 // all we point at is the field itself.
                 tcx.infer_ctxt().ignoring_regions().enter(|infcx| {
-                    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(tcx);
-                    fulfill_cx.register_bound(
+                    for error in traits::fully_solve_bound(
                         &infcx,
+                        traits::ObligationCause::dummy_with_span(field_ty_span),
                         param_env,
                         ty,
                         tcx.lang_items().copy_trait().unwrap(),
-                        traits::ObligationCause::dummy_with_span(field_ty_span),
-                    );
-                    for error in fulfill_cx.select_all_or_error(&infcx) {
+                    ) {
                         let error_predicate = error.obligation.predicate;
                         // Only note if it's not the root obligation, otherwise it's trivial and
                         // should be self-explanatory (i.e. a field literally doesn't implement Copy).
@@ -315,24 +313,20 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                     ))
                     .emit();
                 } else {
-                    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-
-                    for field in coerced_fields {
-                        let predicate = predicate_for_trait_def(
-                            tcx,
-                            param_env,
-                            cause.clone(),
-                            dispatch_from_dyn_trait,
-                            0,
-                            field.ty(tcx, substs_a),
-                            &[field.ty(tcx, substs_b).into()],
-                        );
-
-                        fulfill_cx.register_predicate_obligation(&infcx, predicate);
-                    }
-
-                    // Check that all transitive obligations are satisfied.
-                    let errors = fulfill_cx.select_all_or_error(&infcx);
+                    let errors = traits::fully_solve_obligations(
+                        &infcx,
+                        coerced_fields.into_iter().map(|field| {
+                            predicate_for_trait_def(
+                                tcx,
+                                param_env,
+                                cause.clone(),
+                                dispatch_from_dyn_trait,
+                                0,
+                                field.ty(tcx, substs_a),
+                                &[field.ty(tcx, substs_b).into()],
+                            )
+                        }),
+                    );
                     if !errors.is_empty() {
                         infcx.report_fulfillment_errors(&errors, None, false);
                     }
@@ -573,8 +567,6 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             }
         };
 
-        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_hir_id);
         let predicate = predicate_for_trait_def(
@@ -586,10 +578,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             source,
             &[target.into()],
         );
-        fulfill_cx.register_predicate_obligation(&infcx, predicate);
-
-        // Check that all transitive obligations are satisfied.
-        let errors = fulfill_cx.select_all_or_error(&infcx);
+        let errors = traits::fully_solve_obligation(&infcx, predicate);
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
         }
