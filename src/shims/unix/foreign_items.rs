@@ -228,16 +228,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let name = this.read_scalar(name)?.to_i32()?;
 
-                let sysconfs = &[
-                    ("_SC_PAGESIZE", Scalar::from_int(PAGE_SIZE, this.pointer_size())),
-                    ("_SC_NPROCESSORS_CONF", Scalar::from_int(NUM_CPUS, this.pointer_size())),
-                    ("_SC_NPROCESSORS_ONLN", Scalar::from_int(NUM_CPUS, this.pointer_size())),
+                // FIXME: Which of these are POSIX, and which are GNU/Linux?
+                // At least the names seem to all also exist on macOS.
+                let sysconfs: &[(&str, fn(&MiriEvalContext<'_, '_>) -> Scalar<Provenance>)] = &[
+                    ("_SC_PAGESIZE", |this| Scalar::from_int(PAGE_SIZE, this.pointer_size())),
+                    ("_SC_NPROCESSORS_CONF", |this| Scalar::from_int(NUM_CPUS, this.pointer_size())),
+                    ("_SC_NPROCESSORS_ONLN", |this| Scalar::from_int(NUM_CPUS, this.pointer_size())),
+                    // 512 seems to be a reasonable default. The value is not critical, in
+                    // the sense that getpwuid_r takes and checks the buffer length.
+                    ("_SC_GETPW_R_SIZE_MAX", |this| Scalar::from_int(512, this.pointer_size()))
                 ];
                 let mut result = None;
                 for &(sysconf_name, value) in sysconfs {
                     let sysconf_name = this.eval_libc_i32(sysconf_name)?;
                     if sysconf_name == name {
-                        result = Some(value);
+                        result = Some(value(this));
                         break;
                     }
                 }
@@ -474,6 +479,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE")? };
                 this.write_int(ret, dest)?;
             }
+            "getpid" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
+                let result = this.getpid()?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
@@ -500,9 +510,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            // Querying system information
-            "pthread_attr_getstack" => {
-                // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here. Hence we can mostly ignore the input `attr_place`.
+            "pthread_attr_getstack"
+            if this.frame_in_std() => {
+                // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
+                // Hence we can mostly ignore the input `attr_place`.
                 let [attr_place, addr_place, size_place] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let _attr_place = this.deref_operand(attr_place)?;
@@ -535,10 +546,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
-            "getpid" => {
-                let [] = this.check_shim(abi, Abi::C { unwind: false}, link_name, args)?;
-                let result = this.getpid()?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+            "getuid"
+            if this.frame_in_std() => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                // FOr now, just pretend we always have this fixed UID.
+                this.write_int(super::UID, dest)?;
             }
 
             // Platform-specific shims
