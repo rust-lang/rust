@@ -75,10 +75,7 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
-        EscapeAscii {
-            inner: self.iter().flat_map(EscapeByte),
-            remaining: self.iter().map(|c| EscapeByte(c).len()).sum(),
-        }
+        EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
     }
 
     /// Returns a byte slice with leading ASCII whitespace bytes removed.
@@ -176,7 +173,6 @@ impl_fn_for_zst! {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct EscapeAscii<'a> {
     inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
-    remaining: usize,
 }
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
@@ -184,12 +180,7 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
     type Item = u8;
     #[inline]
     fn next(&mut self) -> Option<u8> {
-        self.remaining -= 1;
         self.inner.next()
-    }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.remaining, Some(self.remaining))
     }
     #[inline]
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
@@ -215,12 +206,9 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
     fn next_back(&mut self) -> Option<u8> {
-        self.remaining -= 1;
         self.inner.next_back()
     }
 }
-#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
-impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
