@@ -37,6 +37,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
+use std::cell::RefCell;
 use std::io;
 use std::iter::TrustedLen;
 use std::mem;
@@ -99,7 +100,7 @@ pub(crate) struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
+    source_map_import_info: RefCell<Vec<Option<ImportedSourceFile>>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
     def_path_hash_map: DefPathHashMapRef<'static>,
     /// Likewise for ExpnHash.
@@ -143,7 +144,8 @@ pub(crate) struct CrateMetadata {
 }
 
 /// Holds information about a rustc_span::SourceFile imported from another crate.
-/// See `imported_source_files()` for more information.
+/// See `imported_source_file()` for more information.
+#[derive(Clone)]
 struct ImportedSourceFile {
     /// This SourceFile's byte-offset within the source_map of its original crate
     original_start_pos: rustc_span::BytePos,
@@ -528,7 +530,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         };
 
         // Index of the file in the corresponding crate's list of encoded files.
-        let metadata_index = usize::decode(decoder);
+        let metadata_index = u32::decode(decoder);
 
         // There are two possibilities here:
         // 1. This is a 'local span', which is located inside a `SourceFile`
@@ -556,10 +558,10 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         // to be based on the *foreign* crate (e.g. crate C), not the crate
         // we are writing metadata for (e.g. crate B). This allows us to
         // treat the 'local' and 'foreign' cases almost identically during deserialization:
-        // we can call `imported_source_files` for the proper crate, and binary search
+        // we can call `imported_source_file` for the proper crate, and binary search
         // through the returned slice using our span.
-        let imported_source_files = if tag == TAG_VALID_SPAN_LOCAL {
-            decoder.cdata().imported_source_files(sess)
+        let source_file = if tag == TAG_VALID_SPAN_LOCAL {
+            decoder.cdata().imported_source_file(metadata_index, sess)
         } else {
             // When we encode a proc-macro crate, all `Span`s should be encoded
             // with `TAG_VALID_SPAN_LOCAL`
@@ -587,12 +589,8 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             decoder.last_source_file_index = 0;
 
             let foreign_data = decoder.cdata().cstore.get_crate_data(cnum);
-            foreign_data.imported_source_files(sess)
+            foreign_data.imported_source_file(metadata_index, sess)
         };
-
-        // Optimize for the case that most spans within a translated item
-        // originate from the same source_file.
-        let source_file = &imported_source_files[metadata_index];
 
         // Make sure our binary search above is correct.
         debug_assert!(
@@ -1438,7 +1436,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     ///
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
-    fn imported_source_files(self, sess: &Session) -> &'a [ImportedSourceFile] {
+    fn imported_source_file(self, source_file_index: u32, sess: &Session) -> ImportedSourceFile {
         fn filter<'a>(sess: &Session, path: Option<&'a Path>) -> Option<&'a Path> {
             path.filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
@@ -1526,94 +1524,97 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.cdata.source_map_import_info.get_or_init(|| {
-            let external_source_map = self.root.source_map.decode(self);
+        let mut import_info = self.cdata.source_map_import_info.borrow_mut();
+        for _ in import_info.len()..=(source_file_index as usize) {
+            import_info.push(None);
+        }
+        import_info[source_file_index as usize]
+            .get_or_insert_with(|| {
+                let source_file_to_import = self
+                    .root
+                    .source_map
+                    .get(self, source_file_index)
+                    .expect("missing source file")
+                    .decode(self);
 
-            external_source_map
-                .enumerate()
-                .map(|(source_file_index, source_file_to_import)| {
-                    // We can't reuse an existing SourceFile, so allocate a new one
-                    // containing the information we need.
-                    let rustc_span::SourceFile {
-                        mut name,
-                        src_hash,
-                        start_pos,
-                        end_pos,
-                        lines,
-                        multibyte_chars,
-                        non_narrow_chars,
-                        normalized_pos,
-                        name_hash,
-                        ..
-                    } = source_file_to_import;
+                // We can't reuse an existing SourceFile, so allocate a new one
+                // containing the information we need.
+                let rustc_span::SourceFile {
+                    mut name,
+                    src_hash,
+                    start_pos,
+                    end_pos,
+                    lines,
+                    multibyte_chars,
+                    non_narrow_chars,
+                    normalized_pos,
+                    name_hash,
+                    ..
+                } = source_file_to_import;
 
-                    // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
-                    // during rust bootstrapping by `remap-debuginfo = true`, and the user
-                    // wish to simulate that behaviour by -Z simulate-remapped-rust-src-base,
-                    // then we change `name` to a similar state as if the rust was bootstrapped
-                    // with `remap-debuginfo = true`.
-                    // This is useful for testing so that tests about the effects of
-                    // `try_to_translate_virtual_to_real` don't have to worry about how the
-                    // compiler is bootstrapped.
-                    if let Some(virtual_dir) =
-                        &sess.opts.unstable_opts.simulate_remapped_rust_src_base
-                    {
-                        if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
-                            if let rustc_span::FileName::Real(ref mut old_name) = name {
-                                if let rustc_span::RealFileName::LocalPath(local) = old_name {
-                                    if let Ok(rest) = local.strip_prefix(real_dir) {
-                                        *old_name = rustc_span::RealFileName::Remapped {
-                                            local_path: None,
-                                            virtual_name: virtual_dir.join(rest),
-                                        };
-                                    }
+                // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
+                // during rust bootstrapping by `remap-debuginfo = true`, and the user
+                // wish to simulate that behaviour by -Z simulate-remapped-rust-src-base,
+                // then we change `name` to a similar state as if the rust was bootstrapped
+                // with `remap-debuginfo = true`.
+                // This is useful for testing so that tests about the effects of
+                // `try_to_translate_virtual_to_real` don't have to worry about how the
+                // compiler is bootstrapped.
+                if let Some(virtual_dir) = &sess.opts.unstable_opts.simulate_remapped_rust_src_base
+                {
+                    if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
+                        if let rustc_span::FileName::Real(ref mut old_name) = name {
+                            if let rustc_span::RealFileName::LocalPath(local) = old_name {
+                                if let Ok(rest) = local.strip_prefix(real_dir) {
+                                    *old_name = rustc_span::RealFileName::Remapped {
+                                        local_path: None,
+                                        virtual_name: virtual_dir.join(rest),
+                                    };
                                 }
                             }
                         }
                     }
+                }
 
-                    // If this file's path has been remapped to `/rustc/$hash`,
-                    // we might be able to reverse that (also see comments above,
-                    // on `try_to_translate_virtual_to_real`).
-                    try_to_translate_virtual_to_real(&mut name);
+                // If this file's path has been remapped to `/rustc/$hash`,
+                // we might be able to reverse that (also see comments above,
+                // on `try_to_translate_virtual_to_real`).
+                try_to_translate_virtual_to_real(&mut name);
 
-                    let source_length = (end_pos - start_pos).to_usize();
+                let source_length = (end_pos - start_pos).to_usize();
 
-                    let local_version = sess.source_map().new_imported_source_file(
-                        name,
-                        src_hash,
-                        name_hash,
-                        source_length,
-                        self.cnum,
-                        lines,
-                        multibyte_chars,
-                        non_narrow_chars,
-                        normalized_pos,
-                        start_pos,
-                        end_pos,
-                        source_file_index
-                            .try_into()
-                            .expect("cannot import more than U32_MAX files"),
-                    );
-                    debug!(
-                        "CrateMetaData::imported_source_files alloc \
+                let local_version = sess.source_map().new_imported_source_file(
+                    name,
+                    src_hash,
+                    name_hash,
+                    source_length,
+                    self.cnum,
+                    lines,
+                    multibyte_chars,
+                    non_narrow_chars,
+                    normalized_pos,
+                    start_pos,
+                    end_pos,
+                    source_file_index,
+                );
+                debug!(
+                    "CrateMetaData::imported_source_files alloc \
                          source_file {:?} original (start_pos {:?} end_pos {:?}) \
                          translated (start_pos {:?} end_pos {:?})",
-                        local_version.name,
-                        start_pos,
-                        end_pos,
-                        local_version.start_pos,
-                        local_version.end_pos
-                    );
+                    local_version.name,
+                    start_pos,
+                    end_pos,
+                    local_version.start_pos,
+                    local_version.end_pos
+                );
 
-                    ImportedSourceFile {
-                        original_start_pos: start_pos,
-                        original_end_pos: end_pos,
-                        translated_source_file: local_version,
-                    }
-                })
-                .collect()
-        })
+                ImportedSourceFile {
+                    original_start_pos: start_pos,
+                    original_end_pos: end_pos,
+                    translated_source_file: local_version,
+                }
+            })
+            .clone()
     }
 
     fn get_generator_diagnostic_data(
@@ -1676,7 +1677,7 @@ impl CrateMetadata {
             trait_impls,
             incoherent_impls: Default::default(),
             raw_proc_macros,
-            source_map_import_info: OnceCell::new(),
+            source_map_import_info: RefCell::new(Vec::new()),
             def_path_hash_map,
             expn_hash_map: Default::default(),
             alloc_decoding_state,

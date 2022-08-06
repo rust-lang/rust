@@ -249,7 +249,7 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
-    source_map: LazyArray<rustc_span::SourceFile>,
+    source_map: LazyTable<u32, LazyValue<rustc_span::SourceFile>>,
 
     compiler_builtins: bool,
     needs_allocator: bool,

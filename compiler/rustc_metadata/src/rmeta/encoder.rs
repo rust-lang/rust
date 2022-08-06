@@ -272,7 +272,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
                     // Introduce a new scope so that we drop the 'lock()' temporary
                     match &*s.source_file_cache.0.external_src.lock() {
                         ExternalSource::Foreign { original_start_pos, metadata_index, .. } => {
-                            (*original_start_pos, *metadata_index as usize)
+                            (*original_start_pos, *metadata_index)
                         }
                         src => panic!("Unexpected external source {:?}", src),
                     }
@@ -286,6 +286,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
                 let source_files =
                     s.required_source_files.as_mut().expect("Already encoded SourceMap!");
                 let (source_file_index, _) = source_files.insert_full(s.source_file_cache.1);
+                let source_file_index: u32 =
+                    source_file_index.try_into().expect("cannot export more than U32_MAX files");
 
                 (TAG_VALID_SPAN_LOCAL, span.lo, span.hi, source_file_index)
             };
@@ -452,7 +454,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy(DefPathHashMapRef::BorrowedFromTcx(self.tcx.def_path_hash_to_def_index_map()))
     }
 
-    fn encode_source_map(&mut self) -> LazyArray<rustc_span::SourceFile> {
+    fn encode_source_map(&mut self) -> LazyTable<u32, LazyValue<rustc_span::SourceFile>> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
@@ -463,65 +465,64 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let working_directory = &self.tcx.sess.opts.working_dir;
 
+        let mut adapted = TableBuilder::default();
+
         // Only serialize `SourceFile`s that were used during the encoding of a `Span`.
         //
         // The order in which we encode source files is important here: the on-disk format for
         // `Span` contains the index of the corresponding `SourceFile`.
-        let adapted = required_source_files
-            .iter()
-            .map(|&source_file_index| &all_source_files[source_file_index])
-            .map(|source_file| {
-                // Don't serialize imported `SourceFile`s, unless we're in a proc-macro crate.
-                assert!(!source_file.is_imported() || self.is_proc_macro);
+        for (on_disk_index, &source_file_index) in required_source_files.iter().enumerate() {
+            let source_file = &all_source_files[source_file_index];
+            // Don't serialize imported `SourceFile`s, unless we're in a proc-macro crate.
+            assert!(!source_file.is_imported() || self.is_proc_macro);
 
-                // At export time we expand all source file paths to absolute paths because
-                // downstream compilation sessions can have a different compiler working
-                // directory, so relative paths from this or any other upstream crate
-                // won't be valid anymore.
-                //
-                // At this point we also erase the actual on-disk path and only keep
-                // the remapped version -- as is necessary for reproducible builds.
-                match source_file.name {
-                    FileName::Real(ref original_file_name) => {
-                        let adapted_file_name =
-                            source_map.path_mapping().to_embeddable_absolute_path(
-                                original_file_name.clone(),
-                                working_directory,
-                            );
+            // At export time we expand all source file paths to absolute paths because
+            // downstream compilation sessions can have a different compiler working
+            // directory, so relative paths from this or any other upstream crate
+            // won't be valid anymore.
+            //
+            // At this point we also erase the actual on-disk path and only keep
+            // the remapped version -- as is necessary for reproducible builds.
+            let mut source_file = match source_file.name {
+                FileName::Real(ref original_file_name) => {
+                    let adapted_file_name = source_map
+                        .path_mapping()
+                        .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
 
-                        if adapted_file_name != *original_file_name {
-                            let mut adapted: SourceFile = (**source_file).clone();
-                            adapted.name = FileName::Real(adapted_file_name);
-                            adapted.name_hash = {
-                                let mut hasher: StableHasher = StableHasher::new();
-                                adapted.name.hash(&mut hasher);
-                                hasher.finish::<u128>()
-                            };
-                            Lrc::new(adapted)
-                        } else {
-                            // Nothing to adapt
-                            source_file.clone()
-                        }
+                    if adapted_file_name != *original_file_name {
+                        let mut adapted: SourceFile = (**source_file).clone();
+                        adapted.name = FileName::Real(adapted_file_name);
+                        adapted.name_hash = {
+                            let mut hasher: StableHasher = StableHasher::new();
+                            adapted.name.hash(&mut hasher);
+                            hasher.finish::<u128>()
+                        };
+                        Lrc::new(adapted)
+                    } else {
+                        // Nothing to adapt
+                        source_file.clone()
                     }
-                    // expanded code, not from a file
-                    _ => source_file.clone(),
                 }
-            })
-            .map(|mut source_file| {
-                // We're serializing this `SourceFile` into our crate metadata,
-                // so mark it as coming from this crate.
-                // This also ensures that we don't try to deserialize the
-                // `CrateNum` for a proc-macro dependency - since proc macro
-                // dependencies aren't loaded when we deserialize a proc-macro,
-                // trying to remap the `CrateNum` would fail.
-                if self.is_proc_macro {
-                    Lrc::make_mut(&mut source_file).cnum = LOCAL_CRATE;
-                }
-                source_file
-            })
-            .collect::<Vec<_>>();
+                // expanded code, not from a file
+                _ => source_file.clone(),
+            };
 
-        self.lazy_array(adapted.iter().map(|rc| &**rc))
+            // We're serializing this `SourceFile` into our crate metadata,
+            // so mark it as coming from this crate.
+            // This also ensures that we don't try to deserialize the
+            // `CrateNum` for a proc-macro dependency - since proc macro
+            // dependencies aren't loaded when we deserialize a proc-macro,
+            // trying to remap the `CrateNum` would fail.
+            if self.is_proc_macro {
+                Lrc::make_mut(&mut source_file).cnum = LOCAL_CRATE;
+            }
+
+            let on_disk_index: u32 =
+                on_disk_index.try_into().expect("cannot export more than U32_MAX files");
+            adapted.set(on_disk_index, self.lazy(source_file));
+        }
+
+        adapted.encode(&mut self.opaque)
     }
 
     fn encode_crate_root(&mut self) -> LazyValue<CrateRoot> {
