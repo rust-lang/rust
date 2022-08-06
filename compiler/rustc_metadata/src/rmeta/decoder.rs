@@ -162,9 +162,6 @@ pub(super) struct DecodeContext<'a, 'tcx> {
     sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
 
-    // Cache the last used source_file for translating spans as an optimization.
-    last_source_file_index: usize,
-
     lazy_state: LazyState,
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
@@ -193,7 +190,6 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
             blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx,
-            last_source_file_index: 0,
             lazy_state: LazyState::NoNode,
             alloc_decoding_session: self
                 .cdata()
@@ -581,12 +577,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
                 "SpecializedDecoder<Span>::specialized_decode: loading source files from cnum {:?}",
                 cnum
             );
-
-            // Decoding 'foreign' spans should be rare enough that it's
-            // not worth it to maintain a per-CrateNum cache for `last_source_file_index`.
-            // We just set it to 0, to ensure that we don't try to access something out
-            // of bounds for our initial 'guess'
-            decoder.last_source_file_index = 0;
 
             let foreign_data = decoder.cdata().cstore.get_crate_data(cnum);
             foreign_data.imported_source_file(metadata_index, sess)
