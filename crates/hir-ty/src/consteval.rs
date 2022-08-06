@@ -339,7 +339,7 @@ pub fn eval_const(
                 ValueNs::GenericParam(_) => {
                     Err(ConstEvalError::NotSupported("const generic without substitution"))
                 }
-                ValueNs::EnumVariantId(id) => ctx.db.const_eval_variant(id), // TODO(ole): Assuming this is all that has to happen?
+                ValueNs::EnumVariantId(id) => ctx.db.const_eval_variant(id),
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
