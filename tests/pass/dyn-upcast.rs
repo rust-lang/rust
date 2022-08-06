@@ -6,6 +6,15 @@ fn main() {
     diamond();
     struct_();
     replace_vptr();
+    vtable_mismatch_nop_cast();
+}
+
+fn vtable_mismatch_nop_cast() {
+    let ptr: &dyn std::fmt::Display = &0;
+    // Even though the vtable is for the wrong trait, this cast doesn't actually change the needed
+    // vtable so it should still be allowed.
+    let ptr: *const (dyn std::fmt::Debug + Send + Sync) = unsafe { std::mem::transmute(ptr) };
+    let _ptr2 = ptr as *const dyn std::fmt::Debug;
 }
 
 fn basic() {
