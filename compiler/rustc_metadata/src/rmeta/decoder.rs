@@ -37,7 +37,6 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::cell::RefCell;
 use std::io;
 use std::iter::TrustedLen;
 use std::mem;
@@ -100,7 +99,7 @@ pub(crate) struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: RefCell<Vec<Option<ImportedSourceFile>>>,
+    source_map_import_info: Lock<Vec<Option<ImportedSourceFile>>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
     def_path_hash_map: DefPathHashMapRef<'static>,
     /// Likewise for ExpnHash.
@@ -1514,7 +1513,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        let mut import_info = self.cdata.source_map_import_info.borrow_mut();
+        let mut import_info = self.cdata.source_map_import_info.lock();
         for _ in import_info.len()..=(source_file_index as usize) {
             import_info.push(None);
         }
@@ -1667,7 +1666,7 @@ impl CrateMetadata {
             trait_impls,
             incoherent_impls: Default::default(),
             raw_proc_macros,
-            source_map_import_info: RefCell::new(Vec::new()),
+            source_map_import_info: Lock::new(Vec::new()),
             def_path_hash_map,
             expn_hash_map: Default::default(),
             alloc_decoding_state,
