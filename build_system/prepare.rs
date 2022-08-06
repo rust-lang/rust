@@ -15,6 +15,13 @@ pub(crate) fn prepare() {
     Command::new("cargo").arg("install").arg("hyperfine").spawn().unwrap().wait().unwrap();
 
     clone_repo_shallow_github(
+        "abi-checker",
+        "Gankra",
+        "abi-checker",
+        "7c1571da6e43f9a37347623e7d5c7d51be664a7b",
+    );
+
+    clone_repo_shallow_github(
         "rand",
         "rust-random",
         "rand",

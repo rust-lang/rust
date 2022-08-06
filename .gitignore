@@ -19,3 +19,4 @@ perf.data.old
 /regex
 /simple-raytracer
 /portable-simd
+/abi-checker
