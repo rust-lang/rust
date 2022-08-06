@@ -348,6 +348,67 @@ handleInactiveFunction(llvm::Module &M, llvm::GlobalVariable &g,
   globalsToErase.push_back(&g);
 }
 
+static void
+handleFunctionLike(llvm::Module &M, llvm::GlobalVariable &g,
+                   SmallVectorImpl<GlobalVariable *> &globalsToErase) {
+  if (g.hasInitializer()) {
+    if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
+      if (CA->getNumOperands() < 2) {
+        llvm::errs() << M << "\n";
+        llvm::errs() << "Use of "
+                     << "enzyme_function_like"
+                     << " must be a "
+                        "constant of size at least "
+                     << 2 << " " << g << "\n";
+        llvm_unreachable("enzyme_function_like");
+      }
+      Value *V = CA->getOperand(0);
+      Value *name = CA->getOperand(1);
+      while (auto CE = dyn_cast<ConstantExpr>(V)) {
+        V = CE->getOperand(0);
+      }
+      while (auto CE = dyn_cast<ConstantExpr>(name)) {
+        name = CE->getOperand(0);
+      }
+      StringRef nameVal;
+      if (auto GV = dyn_cast<GlobalVariable>(name))
+        if (GV->isConstant())
+          if (auto C = GV->getInitializer())
+            if (auto CA = dyn_cast<ConstantDataArray>(C))
+              if (CA->getType()->getElementType()->isIntegerTy(8) &&
+                  CA->isCString())
+                nameVal = CA->getAsCString();
+
+      if (nameVal == "") {
+        llvm::errs() << *name << "\n";
+        llvm::errs() << "Use of "
+                     << "enzyme_function_like"
+                     << "requires a non-empty function name"
+                     << "\n";
+        llvm_unreachable("enzyme_function_like");
+      }
+      if (auto F = dyn_cast<Function>(V)) {
+        F->addAttribute(AttributeList::FunctionIndex,
+                        Attribute::get(g.getContext(), "enzyme_math", nameVal));
+      } else {
+        llvm::errs() << M << "\n";
+        llvm::errs() << "Param of __enzyme_inactivefn must be a "
+                        "function"
+                     << g << "\n"
+                     << *V << "\n";
+        llvm_unreachable("__enzyme_inactivefn");
+      }
+    } else {
+      llvm::errs() << M << "\n";
+      llvm::errs() << "Use of __enzyme_inactivefn must be a "
+                      "constant function "
+                   << g << "\n";
+      llvm_unreachable("__enzyme_register_gradient");
+    }
+    globalsToErase.push_back(&g);
+  }
+}
+
 static void handleKnownFunctions(llvm::Function &F) {
   if (F.getName() == "MPI_Irecv" || F.getName() == "PMPI_Irecv") {
     F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
@@ -2337,6 +2398,8 @@ public:
             M, g, globalsToErase);
       } else if (g.getName().contains("__enzyme_inactivefn")) {
         handleInactiveFunction(M, g, globalsToErase);
+      } else if (g.getName().contains("__enzyme_function_like")) {
+        handleFunctionLike(M, g, globalsToErase);
       }
     }
     for (auto g : globalsToErase) {

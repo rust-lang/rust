@@ -29,7 +29,10 @@
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Module.h"
 
 #include "llvm/Pass.h"
 
@@ -87,6 +90,7 @@ public:
     }
     auto found = Implements.find(F.getName().str());
     if (found != Implements.end()) {
+      changed = true;
       if (Begin) {
         F.removeFnAttr(Attribute::AlwaysInline);
         F.addFnAttr(Attribute::NoInline);
@@ -96,12 +100,70 @@ public:
         F.addFnAttr("implements", found->second.second);
         F.addFnAttr("implements2", found->second.first);
         F.addFnAttr("enzyme_math", found->second.first);
-        changed = true;
       } else {
         F.addFnAttr(Attribute::AlwaysInline);
         F.removeFnAttr(Attribute::NoInline);
         F.setLinkage(Function::LinkageTypes::InternalLinkage);
       }
+    }
+    constexpr static const char gradient_handler_name[] =
+        "__enzyme_register_gradient";
+    constexpr static const char derivative_handler_name[] =
+        "__enzyme_register_derivative";
+    constexpr static const char splitderivative_handler_name[] =
+        "__enzyme_register_splitderivative";
+    for (GlobalVariable &g : F.getParent()->globals()) {
+      if (g.getName().contains(gradient_handler_name) ||
+          g.getName().contains(derivative_handler_name) ||
+          g.getName().contains(splitderivative_handler_name) ||
+          g.getName().contains("__enzyme_inactivefn") ||
+          g.getName().contains("__enzyme_function_like")) {
+        if (g.hasInitializer()) {
+          Value *V = g.getInitializer();
+          while (1) {
+            if (auto CE = dyn_cast<ConstantExpr>(V)) {
+              V = CE->getOperand(0);
+              continue;
+            }
+            if (auto CA = dyn_cast<ConstantAggregate>(V)) {
+              V = CA->getOperand(0);
+              continue;
+            }
+            break;
+          }
+          if (V == &F) {
+            changed = true;
+            if (Begin && !F.hasFnAttribute("prev_fixup")) {
+              F.addFnAttr("prev_fixup");
+              if (F.hasFnAttribute(Attribute::AlwaysInline))
+                F.addFnAttr("prev_always_inline");
+              if (F.hasFnAttribute(Attribute::NoInline))
+                F.addFnAttr("prev_no_inline");
+              F.addFnAttr("prev_linkage", std::to_string(F.getLinkage()));
+              F.setLinkage(Function::LinkageTypes::ExternalLinkage);
+              F.addFnAttr(Attribute::NoInline);
+              F.removeFnAttr(Attribute::AlwaysInline);
+            }
+            break;
+          }
+        }
+      }
+    }
+    if (!Begin && F.hasFnAttribute("prev_fixup")) {
+      changed = true;
+      F.removeFnAttr("prev_fixup");
+      if (F.hasFnAttribute("prev_always_inline")) {
+        F.addFnAttr(Attribute::AlwaysInline);
+        F.removeFnAttr("prev_always_inline");
+      }
+      if (F.hasFnAttribute("prev_no_inline")) {
+        F.removeFnAttr("prev_no_inline");
+      } else {
+        F.removeFnAttr(Attribute::NoInline);
+      }
+      int64_t val;
+      F.getFnAttribute("prev_linkage").getValueAsString().getAsInteger(10, val);
+      F.setLinkage((Function::LinkageTypes)val);
     }
     return changed;
   }
