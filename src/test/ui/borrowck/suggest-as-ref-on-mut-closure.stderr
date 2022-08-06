@@ -12,7 +12,7 @@ note: this function takes ownership of the receiver `self`, which moves `*cb`
    |
 LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
    |                            ^^^^
-help: consider calling `.as_ref()` to borrow the type's contents
+help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |
 LL |     cb.as_ref().map(|cb| cb());
    |        +++++++++

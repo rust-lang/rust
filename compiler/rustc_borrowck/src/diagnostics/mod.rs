@@ -1089,7 +1089,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     if is_option_or_result && maybe_reinitialized_locations_is_empty {
                         err.span_suggestion_verbose(
                             fn_call_span.shrink_to_lo(),
-                            "consider calling `.as_ref()` to borrow the type's contents",
+                            "consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents",
                             "as_ref().",
                             Applicability::MachineApplicable,
                         );

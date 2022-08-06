@@ -13,7 +13,7 @@ note: this function takes ownership of the receiver `self`, which moves `foo`
    |
 LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
    |                            ^^^^
-help: consider calling `.as_ref()` to borrow the type's contents
+help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |
 LL |     let _x: Option<Struct> = foo.as_ref().map(|s| bar(&s));
    |                                  +++++++++
