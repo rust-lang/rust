@@ -81,7 +81,7 @@ pub fn has_arg_flag(name: &str) -> bool {
 
 /// Determines how many times a `--flag` is present.
 pub fn num_arg_flag(name: &str) -> usize {
-    std::env::args().take_while(|val| val != "--").filter(|val| val == name).count()
+    env::args().take_while(|val| val != "--").filter(|val| val == name).count()
 }
 
 /// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
@@ -121,15 +121,15 @@ impl<I: Iterator<Item = String>> Iterator for ArgSplitFlagValue<'_, I> {
 }
 
 /// Yields all values of command line flag `name`.
-pub struct ArgFlagValueIter<'a>(ArgSplitFlagValue<'a, env::Args>);
+pub struct ArgFlagValueIter<'a, I>(ArgSplitFlagValue<'a, I>);
 
-impl<'a> ArgFlagValueIter<'a> {
-    pub fn new(name: &'a str) -> Self {
-        Self(ArgSplitFlagValue::new(env::args(), name))
+impl<'a, I: Iterator<Item = String>> ArgFlagValueIter<'a, I> {
+    pub fn new(args: I, name: &'a str) -> Self {
+        Self(ArgSplitFlagValue::new(args, name))
     }
 }
 
-impl Iterator for ArgFlagValueIter<'_> {
+impl<I: Iterator<Item = String>> Iterator for ArgFlagValueIter<'_, I> {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -141,9 +141,14 @@ impl Iterator for ArgFlagValueIter<'_> {
     }
 }
 
+/// Gets the values of a `--flag`.
+pub fn get_arg_flag_values<'a>(name: &'a str) -> impl Iterator<Item = String> + 'a {
+    ArgFlagValueIter::new(env::args(), name)
+}
+
 /// Gets the value of a `--flag`.
 pub fn get_arg_flag_value(name: &str) -> Option<String> {
-    ArgFlagValueIter::new(name).next()
+    get_arg_flag_values(name).next()
 }
 
 /// Escapes `s` in a way that is suitable for using it as a string literal in TOML syntax.
@@ -296,7 +301,7 @@ fn cargo_extra_flags() -> Vec<String> {
 
     // Forward `--config` flags.
     let config_flag = "--config";
-    for arg in ArgFlagValueIter::new(config_flag) {
+    for arg in get_arg_flag_values(config_flag) {
         flags.push(config_flag.to_string());
         flags.push(arg);
     }

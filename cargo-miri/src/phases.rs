@@ -310,17 +310,17 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             let mut cmd = miri();
 
             // Ensure --emit argument for a check-only build is present.
-            // We cannot use the usual helpers since we need to check specifically in `env.args`.
-            if let Some(i) = env.args.iter().position(|arg| arg.starts_with("--emit=")) {
+            if let Some(val) = ArgFlagValueIter::new(env.args.clone().into_iter(), "--emit").next()
+            {
                 // For `no_run` tests, rustdoc passes a `--emit` flag; make sure it has the right shape.
-                assert_eq!(env.args[i], "--emit=metadata");
+                assert_eq!(val, "metadata");
             } else {
                 // For all other kinds of tests, we can just add our flag.
                 cmd.arg("--emit=metadata");
             }
 
             // Alter the `-o` parameter so that it does not overwrite the JSON file we stored above.
-            let mut args = env.args.clone();
+            let mut args = env.args;
             for i in 0..args.len() {
                 if args[i] == "-o" {
                     args[i + 1].push_str(".miri");
@@ -344,7 +344,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         return;
     }
 
-    if runnable_crate && ArgFlagValueIter::new("--extern").any(|krate| krate == "proc_macro") {
+    if runnable_crate && get_arg_flag_values("--extern").any(|krate| krate == "proc_macro") {
         // This is a "runnable" `proc-macro` crate (unit tests). We do not support
         // interpreting that under Miri now, so we write a JSON file to (display a
         // helpful message and) skip it in the runner phase.
@@ -568,7 +568,7 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
 
     // Doctests of `proc-macro` crates (and their dependencies) are always built for the host,
     // so we are not able to run them in Miri.
-    if ArgFlagValueIter::new("--crate-type").any(|crate_type| crate_type == "proc-macro") {
+    if get_arg_flag_values("--crate-type").any(|crate_type| crate_type == "proc-macro") {
         eprintln!("Running doctests of `proc-macro` crates is not currently supported by Miri.");
         return;
     }
