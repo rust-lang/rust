@@ -1079,11 +1079,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.emit_err(ItemIsPrivate {
-                span: self.span,
-                kind,
-                descr: descr.to_string(),
-            });
+            self.tcx.sess.emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
         }
         is_error
     }
@@ -1255,7 +1251,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 };
                 let kind = kind.descr(def_id);
                 let _ = match name {
-                    Some(name) => sess.emit_err(ItemIsPrivate { span, kind, descr: name }),
+                    Some(name) => {
+                        sess.emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
+                    }
                     None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
@@ -1723,7 +1721,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 self.tcx.def_span(self.item_def_id.to_def_id()),
                 FromPrivateDependencyInPublicInterface {
                     kind,
-                    descr: descr.to_string(),
+                    descr: descr.into(),
                     krate: self.tcx.crate_name(def_id.krate),
                 },
             );
@@ -1750,7 +1748,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
             let span = self.tcx.def_span(self.item_def_id.to_def_id());
-            let descr = descr.to_string();
             if self.has_old_errors
                 || self.in_assoc_ty
                 || self.tcx.resolutions(()).has_pub_restricted
@@ -1761,7 +1758,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         span,
                         vis_descr,
                         kind,
-                        descr,
+                        descr: descr.into(),
                         vis_span,
                     });
                 } else {
@@ -1769,7 +1766,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         span,
                         vis_descr,
                         kind,
-                        descr,
+                        descr: descr.into(),
                         vis_span,
                     });
                 }
@@ -1778,7 +1775,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    PrivateInPublicLint { vis_descr, kind, descr },
+                    PrivateInPublicLint { vis_descr, kind, descr: descr.into() },
                 );
             }
         }
