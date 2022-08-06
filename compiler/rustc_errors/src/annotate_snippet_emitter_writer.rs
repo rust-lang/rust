@@ -183,7 +183,11 @@ impl AnnotateSnippetEmitterWriter {
                     annotation_type: annotation_type_for_level(*level),
                 }),
                 footer: vec![],
-                opt: FormatOptions { color: true, anonymized_line_numbers: self.ui_testing },
+                opt: FormatOptions {
+                    color: true,
+                    anonymized_line_numbers: self.ui_testing,
+                    margin: None,
+                },
                 slices: annotated_files
                     .iter()
                     .map(|(source, line_index, annotations)| {
