@@ -8,7 +8,8 @@ use syntax::{
 use SyntaxKind::WHITESPACE;
 
 use crate::{
-    assist_context::AssistBuilder, utils::next_prev, AssistContext, AssistId, AssistKind, Assists,
+    assist_context::SourceChangeBuilder, utils::next_prev, AssistContext, AssistId, AssistKind,
+    Assists,
 };
 
 // Assist: remove_unused_param
@@ -88,7 +89,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 
 fn process_usages(
     ctx: &AssistContext<'_>,
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     file_id: FileId,
     references: Vec<FileReference>,
     arg_to_remove: usize,

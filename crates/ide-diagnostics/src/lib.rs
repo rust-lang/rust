@@ -60,6 +60,7 @@ use hir::{diagnostics::AnyDiagnostic, InFile, Semantics};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::{FileId, FileRange, SourceDatabase},
+    imports::insert_use::InsertUseConfig,
     label::Label,
     source_change::SourceChange,
     FxHashSet, RootDatabase,
@@ -140,13 +141,37 @@ impl Default for ExprFillDefaultMode {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct DiagnosticsConfig {
     pub proc_macros_enabled: bool,
     pub proc_attr_macros_enabled: bool,
     pub disable_experimental: bool,
     pub disabled: FxHashSet<String>,
     pub expr_fill_default: ExprFillDefaultMode,
+    // FIXME: We may want to include a whole `AssistConfig` here
+    pub insert_use: InsertUseConfig,
+}
+
+impl DiagnosticsConfig {
+    pub fn test_sample() -> Self {
+        use hir::PrefixKind;
+        use ide_db::imports::insert_use::ImportGranularity;
+
+        Self {
+            proc_macros_enabled: Default::default(),
+            proc_attr_macros_enabled: Default::default(),
+            disable_experimental: Default::default(),
+            disabled: Default::default(),
+            expr_fill_default: Default::default(),
+            insert_use: InsertUseConfig {
+                granularity: ImportGranularity::Preserve,
+                enforce_granularity: false,
+                prefix_kind: PrefixKind::Plain,
+                group: false,
+                skip_glob_imports: false,
+            },
+        }
+    }
 }
 
 struct DiagnosticsContext<'a> {
@@ -173,10 +198,12 @@ pub fn diagnostics(
         }),
     );
 
-    for node in parse.tree().syntax().descendants() {
+    let parse = sema.parse(file_id);
+
+    for node in parse.syntax().descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
-        handlers::json_is_not_rust::json_in_items(&mut res, file_id, &node);
+        handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, &config);
     }
 
     let module = sema.to_module_def(file_id);
