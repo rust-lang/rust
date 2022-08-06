@@ -8,8 +8,8 @@
 //! make gcc/clang pass `-flavor <flavor>` as the first two arguments in the linker invocation
 //! and since Windows does not support symbolic links for files this wrapper is used in place of a
 //! symbolic link. It execs `../rust-lld -flavor <flavor>` by propagating the flavor argument
-//! passed to the wrapper as the first two arguments. On Windows it spawns a `..\rust-lld.exe`
-//! child process.
+//! obtained from the wrapper's name as the first two arguments.
+//! On Windows it spawns a `..\rust-lld.exe` child process.
 
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
@@ -53,29 +53,32 @@ fn get_rust_lld_path(current_exe_path: &Path) -> PathBuf {
     rust_lld_path
 }
 
+/// Extract LLD flavor name from the lld-wrapper executable name.
+fn get_lld_flavor(current_exe_path: &Path) -> Result<&'static str, String> {
+    let stem = current_exe_path.file_stem();
+    Ok(match stem.and_then(|s| s.to_str()) {
+        Some("ld.lld") => "gnu",
+        Some("ld64.lld") => "darwin",
+        Some("lld-link") => "link",
+        Some("wasm-ld") => "wasm",
+        _ => return Err(format!("{:?}", stem)),
+    })
+}
+
 /// Returns the command for invoking rust-lld with the correct flavor.
-/// LLD only accepts the flavor argument at the first two arguments, so move it there.
+/// LLD only accepts the flavor argument at the first two arguments, so pass it there.
 ///
 /// Exits on error.
 fn get_rust_lld_command(current_exe_path: &Path) -> process::Command {
     let rust_lld_path = get_rust_lld_path(current_exe_path);
     let mut command = process::Command::new(rust_lld_path);
 
-    let mut flavor = None;
-    let args = env::args_os()
-        .skip(1)
-        .filter(|arg| match arg.to_str().and_then(|s| s.strip_prefix("-rustc-lld-flavor=")) {
-            Some(suffix) => {
-                flavor = Some(suffix.to_string());
-                false
-            }
-            None => true,
-        })
-        .collect::<Vec<_>>();
+    let flavor =
+        get_lld_flavor(current_exe_path).unwrap_or_exit_with("executable has unexpected name");
 
     command.arg("-flavor");
-    command.arg(flavor.unwrap_or_exit_with("-rustc-lld-flavor=<flavor> is not passed"));
-    command.args(args);
+    command.arg(flavor);
+    command.args(env::args_os().skip(1));
     command
 }
 

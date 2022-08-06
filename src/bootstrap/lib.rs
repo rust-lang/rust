@@ -186,6 +186,9 @@ const LLVM_TOOLS: &[&str] = &[
     "opt",           // used to optimize LLVM bytecode
 ];
 
+/// LLD file names for all flavors.
+const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
+
 pub const VERSION: usize = 2;
 
 /// Extra --check-cfg to add when building

@@ -423,8 +423,11 @@ impl Step for Rustc {
                 let gcc_lld_src_dir = src_dir.join("gcc-ld");
                 let gcc_lld_dst_dir = dst_dir.join("gcc-ld");
                 t!(fs::create_dir(&gcc_lld_dst_dir));
-                let exe_name = exe("ld", compiler.host);
-                builder.copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
+                for name in crate::LLD_FILE_NAMES {
+                    let exe_name = exe(name, compiler.host);
+                    builder
+                        .copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
+                }
             }
 
             // Man pages
