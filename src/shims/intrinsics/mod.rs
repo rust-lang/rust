@@ -285,7 +285,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
                 let f2 = f32::from_bits(this.read_scalar(f2)?.to_u32()?);
-                this.write_scalar(Scalar::from_u32(f.powf(f2).to_bits()), dest)?;
+                let res = f.powf(f2);
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
 
             "powf64" => {
@@ -293,25 +294,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
-                this.write_scalar(Scalar::from_u64(f.powf(f2).to_bits()), dest)?;
+                let res = f.powf(f2);
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
 
             "fmaf32" => {
                 let [a, b, c] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f32()?;
-                let b = this.read_scalar(b)?.to_f32()?;
-                let c = this.read_scalar(c)?.to_f32()?;
-                let res = a.mul_add(b, c).value;
-                this.write_scalar(Scalar::from_f32(res), dest)?;
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/miri/issues/2468.
+                let a = f32::from_bits(this.read_scalar(a)?.to_u32()?);
+                let b = f32::from_bits(this.read_scalar(b)?.to_u32()?);
+                let c = f32::from_bits(this.read_scalar(c)?.to_u32()?);
+                let res = a.mul_add(b, c);
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
 
             "fmaf64" => {
                 let [a, b, c] = check_arg_count(args)?;
-                let a = this.read_scalar(a)?.to_f64()?;
-                let b = this.read_scalar(b)?.to_f64()?;
-                let c = this.read_scalar(c)?.to_f64()?;
-                let res = a.mul_add(b, c).value;
-                this.write_scalar(Scalar::from_f64(res), dest)?;
+                // FIXME: Using host floats, to work around https://github.com/rust-lang/miri/issues/2468.
+                let a = f64::from_bits(this.read_scalar(a)?.to_u64()?);
+                let b = f64::from_bits(this.read_scalar(b)?.to_u64()?);
+                let c = f64::from_bits(this.read_scalar(c)?.to_u64()?);
+                let res = a.mul_add(b, c);
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
 
             "powif32" => {
@@ -319,7 +323,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
                 let i = this.read_scalar(i)?.to_i32()?;
-                this.write_scalar(Scalar::from_u32(f.powi(i).to_bits()), dest)?;
+                let res = f.powi(i);
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
 
             "powif64" => {
@@ -327,7 +332,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
                 let i = this.read_scalar(i)?.to_i32()?;
-                this.write_scalar(Scalar::from_u64(f.powi(i).to_bits()), dest)?;
+                let res = f.powi(i);
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
 
             "float_to_int_unchecked" => {

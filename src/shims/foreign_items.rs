@@ -575,35 +575,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_machine_usize(u64::try_from(n).unwrap(), this), dest)?;
             }
 
-            // math functions
+            // math functions (note that there are also intrinsics for some other functions)
             #[rustfmt::skip]
             | "cbrtf"
             | "coshf"
             | "sinhf"
             | "tanf"
+            | "tanhf"
             | "acosf"
             | "asinf"
             | "atanf"
+            | "log1pf"
+            | "expm1f"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
-                let f = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
                     "sinhf" => f.sinh(),
                     "tanf" => f.tan(),
+                    "tanhf" => f.tanh(),
                     "acosf" => f.acos(),
                     "asinf" => f.asin(),
                     "atanf" => f.atan(),
+                    "log1pf" => f.ln_1p(),
+                    "expm1f" => f.exp_m1(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "_hypotf"
             | "hypotf"
             | "atan2f"
+            | "fdimf"
             => {
                 let [f1, f2] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // underscore case for windows, here and below
@@ -611,52 +618,63 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f1 = f32::from_bits(this.read_scalar(f1)?.to_u32()?);
                 let f2 = f32::from_bits(this.read_scalar(f2)?.to_u32()?);
-                let n = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "_hypotf" | "hypotf" => f1.hypot(f2),
                     "atan2f" => f1.atan2(f2),
+                    #[allow(deprecated)]
+                    "fdimf" => f1.abs_sub(f2),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "cbrt"
             | "cosh"
             | "sinh"
             | "tan"
+            | "tanh"
             | "acos"
             | "asin"
             | "atan"
+            | "log1p"
+            | "expm1"
             => {
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
-                let f = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "cbrt" => f.cbrt(),
                     "cosh" => f.cosh(),
                     "sinh" => f.sinh(),
                     "tan" => f.tan(),
+                    "tanh" => f.tanh(),
                     "acos" => f.acos(),
                     "asin" => f.asin(),
                     "atan" => f.atan(),
+                    "log1p" => f.ln_1p(),
+                    "expm1" => f.exp_m1(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "_hypot"
             | "hypot"
             | "atan2"
+            | "fdim"
             => {
                 let [f1, f2] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(f1)?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
-                let n = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "_hypot" | "hypot" => f1.hypot(f2),
                     "atan2" => f1.atan2(f2),
+                    #[allow(deprecated)]
+                    "fdim" => f1.abs_sub(f2),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "_ldexp"
@@ -668,7 +686,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let x = this.read_scalar(x)?.to_f64()?;
                 let exp = this.read_scalar(exp)?.to_i32()?;
 
-                // Saturating cast to i16. Even those are outside the valid exponent range to
+                // Saturating cast to i16. Even those are outside the valid exponent range so
                 // `scalbn` below will do its over/underflow handling.
                 let exp = if exp > i32::from(i16::MAX) {
                     i16::MAX

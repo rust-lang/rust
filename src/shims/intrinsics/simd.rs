@@ -238,14 +238,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let dest = this.mplace_index(&dest, i)?;
 
                     // Works for f32 and f64.
+                    // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
                     let ty::Float(float_ty) = dest.layout.ty.kind() else {
                         span_bug!(this.cur_span(), "{} operand is not a float", intrinsic_name)
                     };
                     let val = match float_ty {
-                        FloatTy::F32 =>
-                            Scalar::from_f32(a.to_f32()?.mul_add(b.to_f32()?, c.to_f32()?).value),
-                        FloatTy::F64 =>
-                            Scalar::from_f64(a.to_f64()?.mul_add(b.to_f64()?, c.to_f64()?).value),
+                        FloatTy::F32 => {
+                            let a = f32::from_bits(a.to_u32()?);
+                            let b = f32::from_bits(b.to_u32()?);
+                            let c = f32::from_bits(c.to_u32()?);
+                            let res = a.mul_add(b, c);
+                            Scalar::from_u32(res.to_bits())
+                        }
+                        FloatTy::F64 => {
+                            let a = f64::from_bits(a.to_u64()?);
+                            let b = f64::from_bits(b.to_u64()?);
+                            let c = f64::from_bits(c.to_u64()?);
+                            let res = a.mul_add(b, c);
+                            Scalar::from_u64(res.to_bits())
+                        }
                     };
                     this.write_scalar(val, &dest.into())?;
                 }

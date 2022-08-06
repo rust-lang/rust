@@ -18,6 +18,11 @@ fn simd_ops_f32() {
 
     assert_eq!(a.mul_add(b, a), (a * b) + a);
     assert_eq!(b.mul_add(b, a), (b * b) + a);
+    assert_eq!(a.mul_add(b, b), (a * b) + b);
+    assert_eq!(
+        f32x4::splat(-3.2).mul_add(b, f32x4::splat(f32::NEG_INFINITY)),
+        f32x4::splat(f32::NEG_INFINITY)
+    );
     assert_eq!((a * a).sqrt(), a);
     assert_eq!((b * b).sqrt(), b.abs());
 
@@ -67,6 +72,11 @@ fn simd_ops_f64() {
 
     assert_eq!(a.mul_add(b, a), (a * b) + a);
     assert_eq!(b.mul_add(b, a), (b * b) + a);
+    assert_eq!(a.mul_add(b, b), (a * b) + b);
+    assert_eq!(
+        f64x4::splat(-3.2).mul_add(b, f64x4::splat(f64::NEG_INFINITY)),
+        f64x4::splat(f64::NEG_INFINITY)
+    );
     assert_eq!((a * a).sqrt(), a);
     assert_eq!((b * b).sqrt(), b.abs());
 
