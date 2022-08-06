@@ -11,7 +11,7 @@ use hir_def::{
     path::ModPath,
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
     type_ref::ConstScalar,
-    ConstId, DefWithBodyId,
+    ConstId, DefWithBodyId, EnumVariantId,
 };
 use la_arena::{Arena, Idx};
 use stdx::never;
@@ -339,6 +339,7 @@ pub fn eval_const(
                 ValueNs::GenericParam(_) => {
                     Err(ConstEvalError::NotSupported("const generic without substitution"))
                 }
+                ValueNs::EnumVariantId(id) => ctx.db.const_eval_variant(id), // TODO(ole): Assuming this is all that has to happen?
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
@@ -412,6 +413,14 @@ pub(crate) fn const_eval_recover(
     Err(ConstEvalError::Loop)
 }
 
+pub(crate) fn const_eval_recover_variant(
+    _: &dyn HirDatabase,
+    _: &[String],
+    _: &EnumVariantId,
+) -> Result<ComputedExpr, ConstEvalError> {
+    Err(ConstEvalError::Loop)
+}
+
 pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
     const_id: ConstId,
@@ -431,6 +440,26 @@ pub(crate) fn const_eval_query(
         },
     );
     result
+}
+
+pub(crate) fn const_eval_query_variant(
+    db: &dyn HirDatabase,
+    variant_id: EnumVariantId,
+) -> Result<ComputedExpr, ConstEvalError> {
+    let def = variant_id.into();
+    let body = db.body(def);
+    let infer = &db.infer(def);
+    eval_const(
+        body.body_expr,
+        &mut ConstEvalCtx {
+            db,
+            owner: def,
+            exprs: &body.exprs,
+            pats: &body.pats,
+            local_data: HashMap::default(),
+            infer,
+        },
+    )
 }
 
 pub(crate) fn eval_to_const<'a>(

@@ -16,7 +16,7 @@ use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
-    db::DefDatabase,
+    db::{DefDatabase, InternDatabase},
     expr::{ExprId, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
@@ -133,6 +133,10 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
         }
         DefWithBodyId::StaticId(it) => {
             let loc = it.lookup(&db);
+            loc.source(&db).value.syntax().text_range().start()
+        }
+        DefWithBodyId::VariantId(it) => {
+            let loc = db.lookup_intern_enum(it.parent);
             loc.source(&db).value.syntax().text_range().start()
         }
     });
@@ -386,6 +390,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
         DefWithBodyId::StaticId(it) => {
             let loc = it.lookup(&db);
+            loc.source(&db).value.syntax().text_range().start()
+        }
+        DefWithBodyId::VariantId(it) => {
+            let loc = db.lookup_intern_enum(it.parent);
             loc.source(&db).value.syntax().text_range().start()
         }
     });

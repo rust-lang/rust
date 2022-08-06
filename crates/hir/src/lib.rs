@@ -73,7 +73,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, HasAttrs as _, HasDocComments, HasName},
+    ast::{self, Expr, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
 };
 
@@ -962,11 +962,16 @@ impl HasVisibility for Enum {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
-    pub(crate) parent: Enum,
-    pub(crate) id: LocalEnumVariantId,
+    pub parent: Enum,
+    pub id: LocalEnumVariantId,
 }
 
 impl Variant {
+    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
+        // TODO(ole): Handle missing exprs (+1 to the prev)
+        self.source(db)?.value.expr()
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.parent.module(db)
     }
@@ -1129,6 +1134,7 @@ pub enum DefWithBody {
     Function(Function),
     Static(Static),
     Const(Const),
+    Variant(Variant),
 }
 impl_from!(Function, Const, Static for DefWithBody);
 
@@ -1138,6 +1144,7 @@ impl DefWithBody {
             DefWithBody::Const(c) => c.module(db),
             DefWithBody::Function(f) => f.module(db),
             DefWithBody::Static(s) => s.module(db),
+            DefWithBody::Variant(v) => v.module(db),
         }
     }
 
@@ -1146,6 +1153,7 @@ impl DefWithBody {
             DefWithBody::Function(f) => Some(f.name(db)),
             DefWithBody::Static(s) => Some(s.name(db)),
             DefWithBody::Const(c) => c.name(db),
+            DefWithBody::Variant(v) => Some(v.name(db)),
         }
     }
 
@@ -1155,6 +1163,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
+            DefWithBody::Variant(it) => it.parent.ty(db),
         }
     }
 
@@ -1379,6 +1388,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.into(),
             DefWithBody::Static(it) => it.into(),
             DefWithBody::Const(it) => it.into(),
+            DefWithBody::Variant(it) => it.into(),
         };
         for diag in hir_ty::diagnostics::incorrect_case(db, krate, def.into()) {
             acc.push(diag.into())

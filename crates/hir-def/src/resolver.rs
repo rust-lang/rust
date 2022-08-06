@@ -839,6 +839,7 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::ConstId(c) => c.resolver(db),
             DefWithBodyId::FunctionId(f) => f.resolver(db),
             DefWithBodyId::StaticId(s) => s.resolver(db),
+            DefWithBodyId::VariantId(v) => v.parent.resolver(db),
         }
     }
 }
