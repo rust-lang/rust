@@ -70,7 +70,6 @@ impl<'tcx, 'a> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'tcx, 'a> {
                 build_ptr_tys(tcx, base_ty.boxed_ty(), self.unique_did, self.nonnull_did);
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
-            self.local_decls.push(LocalDecl::new(ptr_ty, source_info.span));
 
             self.patch.add_statement(location, StatementKind::StorageLive(ptr_local));
 
@@ -123,13 +122,6 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
                     let location = Location { block, statement_index: index };
                     visitor.visit_statement(statement, location);
                     index += 1;
-                }
-
-                if let Some(terminator) = terminator
-                && !matches!(terminator.kind, TerminatorKind::Yield{..})
-                {
-                    let location = Location { block, statement_index: index };
-                    visitor.visit_terminator(terminator, location);
                 }
 
                 let location = Location { block, statement_index: index };
