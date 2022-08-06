@@ -1,9 +1,8 @@
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::marker::PhantomData;
 use crate::num::NonZeroU16;
 use crate::os::uefi::{self, ffi::OsStringExt};
-use crate::ptr::NonNull;
+use crate::sys_common::ucs2::Ucs2Units;
 use crate::vec;
 use core::iter;
 
@@ -11,7 +10,6 @@ pub struct Args {
     parsed_args_list: vec::IntoIter<OsString>,
 }
 
-// Implement using EFI_LOADED_IMAGE_PROTOCOL
 pub fn args() -> Args {
     use r_efi::efi::protocols::loaded_image;
 
@@ -20,7 +18,7 @@ pub fn args() -> Args {
         Some(x) => {
             let lp_cmd_line = unsafe { (*x.as_ptr()).load_options as *const u16 };
             let parsed_args_list =
-                parse_lp_cmd_line(unsafe { WStrUnits::new(lp_cmd_line) }, || OsString::new());
+                parse_lp_cmd_line(unsafe { Ucs2Units::new(lp_cmd_line) }, || OsString::new());
 
             Args { parsed_args_list: parsed_args_list.into_iter() }
         }
@@ -41,7 +39,7 @@ pub fn args() -> Args {
 /// extensive test suite available at
 /// <https://github.com/ChrisDenton/winarg/tree/std>.
 fn parse_lp_cmd_line<'a, F: Fn() -> OsString>(
-    lp_cmd_line: Option<WStrUnits<'a>>,
+    lp_cmd_line: Option<Ucs2Units<'a>>,
     exe_name: F,
 ) -> Vec<OsString> {
     const BACKSLASH: NonZeroU16 = NonZeroU16::new(b'\\' as u16).unwrap();
@@ -167,58 +165,5 @@ impl DoubleEndedIterator for Args {
 impl ExactSizeIterator for Args {
     fn len(&self) -> usize {
         self.parsed_args_list.len()
-    }
-}
-
-/// A safe iterator over a LPWSTR
-/// (aka a pointer to a series of UTF-16 code units terminated by a NULL).
-struct WStrUnits<'a> {
-    // The pointer must never be null...
-    lpwstr: NonNull<u16>,
-    // ...and the memory it points to must be valid for this lifetime.
-    lifetime: PhantomData<&'a [u16]>,
-}
-
-impl WStrUnits<'_> {
-    /// Create the iterator. Returns `None` if `lpwstr` is null.
-    ///
-    /// SAFETY: `lpwstr` must point to a null-terminated wide string that lives
-    /// at least as long as the lifetime of this struct.
-    unsafe fn new(lpwstr: *const u16) -> Option<Self> {
-        Some(Self { lpwstr: NonNull::new(lpwstr as _)?, lifetime: PhantomData })
-    }
-
-    fn peek(&self) -> Option<NonZeroU16> {
-        // SAFETY: It's always safe to read the current item because we don't
-        // ever move out of the array's bounds.
-        unsafe { NonZeroU16::new(*self.lpwstr.as_ptr()) }
-    }
-
-    /// Advance the iterator while `predicate` returns true.
-    /// Returns the number of items it advanced by.
-    fn advance_while<P: FnMut(NonZeroU16) -> bool>(&mut self, mut predicate: P) -> usize {
-        let mut counter = 0;
-        while let Some(w) = self.peek() {
-            if !predicate(w) {
-                break;
-            }
-            counter += 1;
-            self.next();
-        }
-        counter
-    }
-}
-
-impl Iterator for WStrUnits<'_> {
-    // This can never return zero as that marks the end of the string.
-    type Item = NonZeroU16;
-    fn next(&mut self) -> Option<NonZeroU16> {
-        // SAFETY: If NULL is reached we immediately return.
-        // Therefore it's safe to advance the pointer after that.
-        unsafe {
-            let next = self.peek()?;
-            self.lpwstr = NonNull::new_unchecked(self.lpwstr.as_ptr().add(1));
-            Some(next)
-        }
     }
 }

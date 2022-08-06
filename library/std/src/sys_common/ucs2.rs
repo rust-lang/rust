@@ -14,7 +14,7 @@ use crate::str;
 #[repr(transparent)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub struct Ucs2Char {
-    value: u16,
+    value: NonZeroU16,
 }
 
 /// Format the code point as `U+` followed by four to six hexadecimal digits.
@@ -29,19 +29,23 @@ impl fmt::Debug for Ucs2Char {
 
 impl Ucs2Char {
     #[unstable(feature = "ucs2", issue = "none")]
-    pub const REPLACEMENT_CHARACTER: Ucs2Char = Ucs2Char { value: 0xfffdu16 };
+    pub const REPLACEMENT_CHARACTER: Ucs2Char =
+        Ucs2Char { value: NonZeroU16::new(0xfffdu16).unwrap() };
 
-    #[unstable(feature = "ucs2", issue = "none")]
-    pub const NULL_CHARACTER: Ucs2Char = Ucs2Char { value: 0 };
+    pub(crate) const CR: Self = Ucs2Char { value: NonZeroU16::new(0x000du16).unwrap() };
+    pub(crate) const LF: Self = Ucs2Char { value: NonZeroU16::new(0x000au16).unwrap() };
 
-    pub(crate) const CR: Self = Ucs2Char { value: 0x000du16 };
-    pub(crate) const LF: Self = Ucs2Char { value: 0x000au16 };
+    fn new(value: NonZeroU16) -> Self {
+        Self { value }
+    }
 
     #[unstable(feature = "ucs2", issue = "none")]
     #[inline]
-    // FIXME: Introduce Checks
-    pub fn from_u16(c: u16) -> Self {
-        Ucs2Char { value: c }
+    pub fn from_u16(c: u16) -> Option<Self> {
+        match NonZeroU16::try_from(c) {
+            Ok(x) => Some(Ucs2Char::new(x)),
+            Err(_) => None,
+        }
     }
 
     #[unstable(feature = "ucs2", issue = "none")]
@@ -50,17 +54,17 @@ impl Ucs2Char {
         ch.encode_utf8(&mut buf);
 
         match ch.len_utf8() {
-            1 => Some(Ucs2Char::from_u16(u16::from(buf[0]))),
+            1 => Ucs2Char::from_u16(u16::from(buf[0])),
             2 => {
                 let a = u16::from(buf[0] & 0b0001_1111);
                 let b = u16::from(buf[1] & 0b0011_1111);
-                Some(Ucs2Char::from_u16(a << 6 | b))
+                Ucs2Char::from_u16(a << 6 | b)
             }
             3 => {
                 let a = u16::from(buf[0] & 0b0000_1111);
                 let b = u16::from(buf[1] & 0b0011_1111);
                 let c = u16::from(buf[2] & 0b0011_1111);
-                Some(Ucs2Char::from_u16(a << 12 | b << 6 | c))
+                Ucs2Char::from_u16(a << 12 | b << 6 | c)
             }
             4 => None,
             _ => unreachable!(),
@@ -72,7 +76,7 @@ impl Ucs2Char {
     #[unstable(feature = "ucs2", issue = "none")]
     #[inline]
     pub fn len_utf8(&self) -> usize {
-        match self.value {
+        match u16::from(self.value) {
             0b0000_0000_0000_0000..0b0000_0000_0111_1111 => 1,
             0b0000_0000_0111_1111..0b0000_0111_1111_1111 => 2,
             _ => 3,
@@ -84,29 +88,29 @@ impl Ucs2Char {
 impl From<Ucs2Char> for u16 {
     #[inline]
     fn from(c: Ucs2Char) -> Self {
-        c.value
+        u16::from(c.value)
     }
 }
 
 #[unstable(feature = "ucs2", issue = "none")]
 impl From<Ucs2Char> for char {
     fn from(c: Ucs2Char) -> Self {
-        match c.value {
+        let val = u16::from(c);
+        match val {
             0b0000_0000_0000_0000..0b0000_0000_0111_1111 => {
                 // 1-byte
-
-                unsafe { char::from_u32_unchecked(u32::from(c.value)) }
+                unsafe { char::from_u32_unchecked(u32::from(val)) }
             }
             0b0000_0000_0111_1111..0b0000_0111_1111_1111 => {
                 // 2-byte
-                let high = ((c.value & 0b0000_0111_1100_0000) << 2) | 0b1100_0000_0000_0000;
-                let low = (c.value & 0b0000_0000_0011_1111) | 0b0000_0000_1000_0000;
+                let high = ((val & 0b0000_0111_1100_0000) << 2) | 0b1100_0000_0000_0000;
+                let low = (val & 0b0000_0000_0011_1111) | 0b0000_0000_1000_0000;
 
                 unsafe { char::from_u32_unchecked(u32::from(high | low)) }
             }
             _ => {
                 // 3-byte
-                let ch = c.value as u32;
+                let ch = u32::from(val);
                 let high = ((ch & 0b0000_0000_0000_0000_1111_0000_0000_0000) << 4)
                     | 0b0000_0000_1110_0000_0000_0000_0000_0000;
                 let mid = ((ch & 0b0000_0000_0000_0000_0000_1111_1100_0000) << 2)

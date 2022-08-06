@@ -104,7 +104,8 @@ impl io::Read for Stdin {
             Stdin::read_key_stroke(con_in)?
         };
 
-        let ch = ucs2::Ucs2Char::from_u16(ch);
+        let ch = ucs2::Ucs2Char::from_u16(ch)
+            .ok_or(io::Error::new(io::ErrorKind::InvalidInput, "Invalid Character Input"))?;
         Stdin::write_character(con_out, ch)?;
 
         let ch = char::from(ch);

@@ -11,11 +11,7 @@ pub trait OsStrExt: Sealed {
     /// Note: The returned string is NULL terminated.
     /// Note: The supplied should not contain NULL.
     fn to_ffi_string(&self) -> Vec<u16> {
-        let mut v: Vec<u16> = self
-            .to_ucs2()
-            .take_while(|x| *x != ucs2::Ucs2Char::NULL_CHARACTER)
-            .map(u16::from)
-            .collect();
+        let mut v: Vec<u16> = self.to_ucs2().map(u16::from).collect();
         v.push(0);
         v.shrink_to_fit();
         v
@@ -58,7 +54,10 @@ impl OsStringExt for OsString {
         let mut buf = String::with_capacity(ucs.len());
 
         for i in ucs {
-            let c = char::from(ucs2::Ucs2Char::from_u16(*i));
+            let c = match ucs2::Ucs2Char::from_u16(*i) {
+                None => char::REPLACEMENT_CHARACTER,
+                Some(x) => char::from(x),
+            };
             buf.push(c);
         }
 

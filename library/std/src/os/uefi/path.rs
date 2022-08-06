@@ -43,7 +43,9 @@ impl TryFrom<NonNull<device_path::Protocol>> for PathBuf {
             let mut len = 0;
             let mut path = String::new();
             for c in ucs2_iter {
-                let ch = char::from(ucs2::Ucs2Char::from_u16(u16::from(c)));
+                let ch = char::from(ucs2::Ucs2Char::from_u16(u16::from(c)).ok_or(
+                    io::Error::new(io::ErrorKind::InvalidData, "Invalid Device Path Text"),
+                )?);
                 path.push(ch);
                 len += 1;
             }

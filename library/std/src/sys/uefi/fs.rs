@@ -344,7 +344,7 @@ impl File {
         self.ptr.set_file_attr(perm.attr)
     }
 
-    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
         unsupported()
     }
 }
