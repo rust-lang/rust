@@ -10,3 +10,6 @@ mod linux;
 mod macos;
 
 pub use fs::{DirHandler, FileHandler};
+
+// Make up some constants.
+const UID: u32 = 1000;

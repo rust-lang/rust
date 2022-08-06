@@ -110,6 +110,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "GetSystemInfo" => {
+                // Also called from `page_size` crate.
                 let [system_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let system_info = this.deref_operand(system_info)?;

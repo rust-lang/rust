@@ -1091,31 +1091,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             ],
             &statxbuf,
         )?;
-        this.write_int_fields(
+        #[rustfmt::skip]
+        this.write_int_fields_named(
             &[
-                access_sec.into(),  // stx_atime.tv_sec
-                access_nsec.into(), // stx_atime.tv_nsec
+                ("tv_sec", access_sec.into()),
+                ("tv_nsec", access_nsec.into()),
             ],
             &this.mplace_field_named(&statxbuf, "stx_atime")?,
         )?;
-        this.write_int_fields(
+        #[rustfmt::skip]
+        this.write_int_fields_named(
             &[
-                created_sec.into(),  // stx_btime.tv_sec
-                created_nsec.into(), // stx_btime.tv_nsec
+                ("tv_sec", created_sec.into()),
+                ("tv_nsec", created_nsec.into()),
             ],
             &this.mplace_field_named(&statxbuf, "stx_btime")?,
         )?;
-        this.write_int_fields(
+        #[rustfmt::skip]
+        this.write_int_fields_named(
             &[
-                0.into(), // stx_ctime.tv_sec
-                0.into(), // stx_ctime.tv_nsec
+                ("tv_sec", 0.into()),
+                ("tv_nsec", 0.into()),
             ],
             &this.mplace_field_named(&statxbuf, "stx_ctime")?,
         )?;
-        this.write_int_fields(
+        #[rustfmt::skip]
+        this.write_int_fields_named(
             &[
-                modified_sec.into(),  // stx_mtime.tv_sec
-                modified_nsec.into(), // stx_mtime.tv_nsec
+                ("tv_sec", modified_sec.into()),
+                ("tv_nsec", modified_nsec.into()),
             ],
             &this.mplace_field_named(&statxbuf, "stx_mtime")?,
         )?;
@@ -1302,12 +1306,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                this.write_int_fields(
+                this.write_int_fields_named(
                     &[
-                        ino.into(),       // d_ino
-                        0,                // d_off
-                        size.into(),      // d_reclen
-                        file_type.into(), // d_type
+                        ("d_ino", ino.into()),
+                        ("d_off", 0),
+                        ("d_reclen", size.into()),
+                        ("d_type", file_type.into()),
                     ],
                     &MPlaceTy::from_aligned_ptr(entry, dirent64_layout),
                 )?;
@@ -1398,13 +1402,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                this.write_int_fields(
+                this.write_int_fields_named(
                     &[
-                        ino.into(),           // d_ino
-                        0,                    // d_seekoff
-                        0,                    // d_reclen
-                        file_name_len.into(), // d_namlen
-                        file_type.into(),     // d_type
+                        ("d_ino", ino.into()),
+                        ("d_seekoff", 0),
+                        ("d_reclen", 0),
+                        ("d_namlen", file_name_len.into()),
+                        ("d_type", file_type.into()),
                     ],
                     &entry_place,
                 )?;
