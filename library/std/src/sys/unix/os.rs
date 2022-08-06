@@ -586,6 +586,9 @@ pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
         if cfg!(target_os = "android") {
             PathBuf::from("/data/local/tmp")
+        } else if cfg!(target_vendor = "apple") {
+            // on Apple devices, /tmp is a symlink
+            PathBuf::from("/private/tmp")
         } else {
             PathBuf::from("/tmp")
         }
