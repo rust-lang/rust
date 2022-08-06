@@ -3,6 +3,7 @@
 
 #![feature(rustc_private)]
 #![feature(io_error_more)]
+#![feature(io_error_uncategorized)]
 
 use std::ffi::CString;
 use std::fs::{
@@ -26,6 +27,7 @@ fn main() {
     test_directory();
     test_canonicalize();
     test_dup_stdout_stderr();
+    test_from_raw_os_error();
 
     // These all require unix, if the test is changed to no longer `ignore-windows`, move these to a unix test
     test_file_open_unix_allow_two_args();
@@ -433,4 +435,12 @@ fn test_dup_stdout_stderr() {
         libc::write(new_stdout, bytes.as_ptr() as *const libc::c_void, bytes.len());
         libc::write(new_stderr, bytes.as_ptr() as *const libc::c_void, bytes.len());
     }
+}
+
+fn test_from_raw_os_error() {
+    let code = 6; // not a code that std or Miri know
+    let error = Error::from_raw_os_error(code);
+    assert!(matches!(error.kind(), ErrorKind::Uncategorized));
+    // Make sure we can also format this.
+    format!("{error:?}");
 }

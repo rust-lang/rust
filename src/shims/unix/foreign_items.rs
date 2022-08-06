@@ -465,8 +465,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_scalar(buflen)?.to_machine_usize(this)?;
 
-                let error = this.errnum_to_io_error(errnum)?;
-                let formatted = error.to_string();
+                let error = this.try_errnum_to_io_error(errnum)?;
+                let formatted = match error {
+                    Some(err) => format!("{err}"),
+                    None => format!("<unknown errnum in strerror_r: {errnum}>"),
+                };
                 let (complete, _) = this.write_os_str_to_c_str(OsStr::new(&formatted), buf, buflen)?;
                 let ret = if complete { 0 } else { this.eval_libc_i32("ERANGE")? };
                 this.write_int(ret, dest)?;
