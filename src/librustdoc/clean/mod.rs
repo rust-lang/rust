@@ -266,44 +266,45 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
     }
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>> for hir::WherePredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        if !self.in_where_clause() {
-            return None;
-        }
-        Some(match *self {
-            hir::WherePredicate::BoundPredicate(ref wbp) => {
-                let bound_params = wbp
-                    .bound_generic_params
-                    .iter()
-                    .map(|param| {
-                        // Higher-ranked params must be lifetimes.
-                        // Higher-ranked lifetimes can't have bounds.
-                        assert_matches!(
-                            param,
-                            hir::GenericParam { kind: hir::GenericParamKind::Lifetime { .. }, .. }
-                        );
-                        Lifetime(param.name.ident().name)
-                    })
-                    .collect();
-                WherePredicate::BoundPredicate {
-                    ty: clean_ty(wbp.bounded_ty, cx),
-                    bounds: wbp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                    bound_params,
-                }
-            }
-
-            hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
-                lifetime: clean_lifetime(wrp.lifetime, cx),
-                bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-            },
-
-            hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
-                lhs: clean_ty(wrp.lhs_ty, cx),
-                rhs: clean_ty(wrp.rhs_ty, cx).into(),
-            },
-        })
+fn clean_where_predicate<'tcx>(
+    predicate: &hir::WherePredicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    if !predicate.in_where_clause() {
+        return None;
     }
+    Some(match *predicate {
+        hir::WherePredicate::BoundPredicate(ref wbp) => {
+            let bound_params = wbp
+                .bound_generic_params
+                .iter()
+                .map(|param| {
+                    // Higher-ranked params must be lifetimes.
+                    // Higher-ranked lifetimes can't have bounds.
+                    assert_matches!(
+                        param,
+                        hir::GenericParam { kind: hir::GenericParamKind::Lifetime { .. }, .. }
+                    );
+                    Lifetime(param.name.ident().name)
+                })
+                .collect();
+            WherePredicate::BoundPredicate {
+                ty: clean_ty(wbp.bounded_ty, cx),
+                bounds: wbp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+                bound_params,
+            }
+        }
+
+        hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
+            lifetime: clean_lifetime(wrp.lifetime, cx),
+            bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+        },
+
+        hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
+            lhs: clean_ty(wrp.lhs_ty, cx),
+            rhs: clean_ty(wrp.rhs_ty, cx).into(),
+        },
+    })
 }
 
 impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
@@ -601,7 +602,11 @@ impl<'tcx> Clean<'tcx, Generics> for hir::Generics<'tcx> {
 
         let mut generics = Generics {
             params,
-            where_predicates: self.predicates.iter().filter_map(|x| x.clean(cx)).collect(),
+            where_predicates: self
+                .predicates
+                .iter()
+                .filter_map(|x| clean_where_predicate(x, cx))
+                .collect(),
         };
 
         // Some duplicates are generated for ?Sized bounds between type params and where
