@@ -306,6 +306,11 @@ fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
 }
 
 fn main() {
+    // Snapshot a copy of the environment before `rustc` starts messing with it.
+    // (`install_ice_hook` might change `RUST_BACKTRACE`.)
+    let env_snapshot = env::vars_os().collect::<Vec<_>>();
+
+    // Earliest rustc setup.
     rustc_driver::install_ice_hook();
 
     // If the environment asks us to actually be rustc, then do that.
@@ -333,6 +338,8 @@ fn main() {
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut miri_config = miri::MiriConfig::default();
+    miri_config.env = env_snapshot;
+
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
 

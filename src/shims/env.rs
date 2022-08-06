@@ -49,11 +49,11 @@ impl<'tcx> EnvVars<'tcx> {
 
         // Skip the loop entirely if we don't want to forward anything.
         if ecx.machine.communicate() || !config.forwarded_env_vars.is_empty() {
-            for (name, value) in env::vars_os() {
+            for (name, value) in &config.env {
                 // Always forward what is in `forwarded_env_vars`; that list can take precedence over excluded_env_vars.
-                let forward = config.forwarded_env_vars.iter().any(|v| **v == name)
+                let forward = config.forwarded_env_vars.iter().any(|v| **v == *name)
                     || (ecx.machine.communicate()
-                        && !excluded_env_vars.iter().any(|v| **v == name));
+                        && !excluded_env_vars.iter().any(|v| **v == *name));
                 if forward {
                     let var_ptr = match target_os {
                         target if target_os_is_unix(target) =>
@@ -65,7 +65,7 @@ impl<'tcx> EnvVars<'tcx> {
                                 unsupported
                             ),
                     };
-                    ecx.machine.env_vars.map.insert(name, var_ptr);
+                    ecx.machine.env_vars.map.insert(name.clone(), var_ptr);
                 }
             }
         }
