@@ -22,7 +22,8 @@
     clippy::useless_format,
     clippy::derive_partial_eq_without_eq,
     clippy::derive_hash_xor_eq,
-    clippy::too_many_arguments
+    clippy::too_many_arguments,
+    clippy::type_complexity
 )]
 #![warn(
     rust_2018_idioms,
