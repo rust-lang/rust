@@ -1380,11 +1380,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let name_place = this.mplace_field(&entry_place, 5)?;
 
                 let file_name = dir_entry.file_name(); // not a Path as there are no separators!
-                let (name_fits, file_name_len) = this.write_os_str_to_c_str(
+                let (name_fits, file_name_buf_len) = this.write_os_str_to_c_str(
                     &file_name,
                     name_place.ptr,
                     name_place.layout.size.bytes(),
                 )?;
+                let file_name_len = file_name_buf_len.checked_sub(1).unwrap();
                 if !name_fits {
                     throw_unsup_format!(
                         "a directory entry had a name too large to fit in libc::dirent"
