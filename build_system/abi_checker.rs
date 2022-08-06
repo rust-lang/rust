@@ -37,31 +37,26 @@ pub(crate) fn run(
     let cg_clif_dylib_path = build_dir.join(if cfg!(windows) { "bin" } else { "lib" }).join(
         env::consts::DLL_PREFIX.to_string() + "rustc_codegen_cranelift" + env::consts::DLL_SUFFIX,
     );
-    println!("cg_clif_dylib_path: {}", cg_clif_dylib_path.display());
 
     let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
 
-    for pair in pairs {
-        eprintln!("[ABI-CHECKER] Running pair {pair}");
+    let mut cmd = Command::new("cargo");
+    cmd.arg("run");
+    cmd.arg("--target");
+    cmd.arg(target_triple);
+    cmd.arg("--");
+    cmd.arg("--pairs");
+    cmd.args(pairs);
+    cmd.arg("--add-rustc-codegen-backend");
+    cmd.arg(format!("cgclif:{}", cg_clif_dylib_path.display()));
 
-        let mut cmd = Command::new("cargo");
-        cmd.arg("run");
-        cmd.arg("--target");
-        cmd.arg(target_triple);
-        cmd.arg("--");
-        cmd.arg("--pairs");
-        cmd.arg(pair);
-        cmd.arg("--add-rustc-codegen-backend");
-        cmd.arg(format!("cgclif:{}", cg_clif_dylib_path.display()));
+    let output = spawn_and_wait_with_input(cmd, "".to_string());
 
-        let output = spawn_and_wait_with_input(cmd, "".to_string());
-
-        // TODO: The correct thing to do here is to check the exit code, but abi-checker
-        // currently doesn't return 0 on success, so check for the test fail count.
-        // See: https://github.com/Gankra/abi-checker/issues/10
-        let failed = !(output.contains("0 failed") && output.contains("0 completely failed"));
-        if failed {
-            panic!("abi-checker for pair {} failed!", pair);
-        }
+    // TODO: The correct thing to do here is to check the exit code, but abi-checker
+    // currently doesn't return 0 on success, so check for the test fail count.
+    // See: https://github.com/Gankra/abi-checker/issues/10
+    let failed = !(output.contains("0 failed") && output.contains("0 completely failed"));
+    if failed {
+        panic!("abi-checker failed!");
     }
 }
