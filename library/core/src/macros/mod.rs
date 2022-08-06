@@ -517,6 +517,30 @@ macro_rules! r#try {
 #[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
 #[allow_internal_unstable(autoref)]
 macro_rules! write {
+    // Retrocompat workaround to support two phased borrows:
+    // when `$dst` is made of chaining `.field` (or `.idx`) accesses to a local,
+    // it is guaranteed to be a *place* and thus there is no question of
+    // late-dropping anything inside it.
+    //
+    // Whilst this won't cover *all* the possible syntaxes for places (it
+    // won't handle places with `[…]`-indexing inside them (see
+    // https://github.com/rust-lang/rust/pull/100202#pullrequestreview-1064499226)
+    // qualified paths to `static mut`s, nor macro invocations), it ought to
+    // cover the vast majority of uses in practice, especially regarding
+    // retro-compatibility.
+    (
+        $dst_place:ident $(. $field_or_idx:tt)* ,
+        $($arg:tt)*
+    ) => ({
+        let result =
+            $dst_place $(. $field_or_idx )*
+                .write_fmt($crate::format_args!($($arg)*))
+        ;
+        result
+    });
+
+    // default case: early-dropped `format_args!($($args)*)` while keeping
+    // `$dst` late-dropped.
     ($dst:expr, $($arg:tt)*) => {
         match $crate::ops::autoref::autoref_mut!($dst) {
             mut _dst => {
@@ -560,6 +584,18 @@ macro_rules! writeln {
     ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
     };
+
+    (
+        $dst_place:ident $(. $field_or_idx:tt)* ,
+        $($arg:tt)*
+    ) => ({
+        let result =
+            $dst_place $(. $field_or_idx)*
+                .write_fmt($crate::format_args_nl!($($arg)*))
+        ;
+        result
+    });
+
     ($dst:expr, $($arg:tt)*) => {
         match $crate::ops::autoref::autoref_mut!($dst) {
             mut _dst => {

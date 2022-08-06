@@ -30,10 +30,10 @@ use super::*;
 
 macro_rules! p {
     (@$lit:literal) => {
-        write!(scoped_cx!(), $lit)?
+        scoped_cx!().write_fmt(format_args!($lit))?
     };
     (@write($($data:expr),+)) => {
-        write!(scoped_cx!(), $($data),+)?
+        scoped_cx!().write_fmt(format_args!($($data),+))?
     };
     (@print($x:expr)) => {
         scoped_cx!() = $x.print(scoped_cx!())?
