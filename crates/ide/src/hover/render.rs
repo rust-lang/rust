@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    db::HirDatabase, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo,
+    db::HirDatabase, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, StructKind, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -348,12 +348,12 @@ pub(super) fn definition(
         Definition::Module(it) => label_and_docs(db, it),
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),
-        Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
-            let body = it.eval(db);
-            match body {
-                Ok(x) => Some(format!("{}", x)),
-                Err(_) => it.value(db).map(|x| format!("{}", x)),
-            }
+        Definition::Variant(it) => label_value_and_docs(db, it, |&it| match it.kind(db) {
+            StructKind::Unit => match it.eval(db) {
+                Ok(x) => Some(format!("{}", x.enum_value().unwrap_or(x))),
+                Err(_) => it.value(db).map(|x| format!("{:?}", x)),
+            },
+            _ => None,
         }),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.eval(db);

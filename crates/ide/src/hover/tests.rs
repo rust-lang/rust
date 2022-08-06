@@ -3529,6 +3529,31 @@ impl<const LEN: usize> Foo<LEN$0> {}
 
 #[test]
 fn hover_const_eval_variant() {
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A = 4,
+    /// This is a doc
+    B$0 = E::A as u8 + 1,
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            B = 5
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
     // show hex for <10
     check(
         r#"
@@ -3586,7 +3611,7 @@ enum E {
 enum E {
     A = 1,
     /// This is a doc
-    B$0 = E::A + 1,
+    B$0 = E::A as u8 + 1,
 }
 "#,
         expect![[r#"
@@ -3598,6 +3623,32 @@ enum E {
 
             ```rust
             B = 2
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    // unspecified variant should increment by one
+    check(
+        r#"
+#[repr(u8)]
+enum E {
+    A = 4,
+    /// This is a doc
+    B$0,
+}
+"#,
+        expect![[r#"
+            *B*
+
+            ```rust
+            test::E
+            ```
+
+            ```rust
+            B = 5
             ```
 
             ---

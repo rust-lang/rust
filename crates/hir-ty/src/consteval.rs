@@ -7,14 +7,17 @@ use std::{
 
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData, IntTy, Scalar};
 use hir_def::{
+    builtin_type::BuiltinInt,
     expr::{ArithOp, BinaryOp, Expr, ExprId, Literal, Pat, PatId},
     path::ModPath,
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
+    src::HasChildSource,
     type_ref::ConstScalar,
-    ConstId, DefWithBodyId, EnumVariantId,
+    ConstId, DefWithBodyId, EnumVariantId, Lookup,
 };
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, RawIdx};
 use stdx::never;
+use syntax::ast::HasName;
 
 use crate::{
     db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
@@ -77,6 +80,7 @@ pub enum ConstEvalError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComputedExpr {
     Literal(Literal),
+    Enum(String, EnumVariantId, Literal),
     Tuple(Box<[ComputedExpr]>),
 }
 
@@ -104,6 +108,7 @@ impl Display for ComputedExpr {
                 Literal::String(x) => std::fmt::Debug::fmt(x, f),
                 Literal::ByteString(x) => std::fmt::Debug::fmt(x, f),
             },
+            ComputedExpr::Enum(name, _, _) => name.fmt(f),
             ComputedExpr::Tuple(t) => {
                 f.write_char('(')?;
                 for x in &**t {
@@ -112,6 +117,15 @@ impl Display for ComputedExpr {
                 }
                 f.write_char(')')
             }
+        }
+    }
+}
+
+impl ComputedExpr {
+    pub fn enum_value(&self) -> Option<ComputedExpr> {
+        match self {
+            ComputedExpr::Enum(_, _, lit) => Some(ComputedExpr::Literal(lit.clone())),
+            _ => None,
         }
     }
 }
@@ -148,17 +162,56 @@ fn is_valid(scalar: &Scalar, value: i128) -> bool {
     }
 }
 
+fn get_name(variant: EnumVariantId, ctx: &mut ConstEvalCtx<'_>) -> String {
+    let loc = variant.parent.lookup(ctx.db.upcast());
+    let children = variant.parent.child_source(ctx.db.upcast());
+    let item_tree = loc.id.item_tree(ctx.db.upcast());
+
+    let variant_name = children.value[variant.local_id].name();
+    let enum_name = item_tree[loc.id.value].name.to_string();
+    enum_name + "::" + &variant_name.unwrap().to_string()
+}
+
 pub fn eval_const(
     expr_id: ExprId,
     ctx: &mut ConstEvalCtx<'_>,
+    variant: Option<EnumVariantId>,
 ) -> Result<ComputedExpr, ConstEvalError> {
     let expr = &ctx.exprs[expr_id];
     match expr {
-        Expr::Missing => Err(ConstEvalError::IncompleteExpr),
+        Expr::Missing => match variant {
+            Some(variant) => {
+                let prev_idx: u32 = variant.local_id.into_raw().into();
+                let prev_idx = prev_idx.checked_sub(1).map(|idx| Idx::from_raw(RawIdx::from(idx)));
+                let value = match prev_idx {
+                    Some(prev) => {
+                        let prev_variant = EnumVariantId { local_id: prev, ..variant };
+                        1 + match ctx.db.const_eval_variant(prev_variant)? {
+                            ComputedExpr::Literal(Literal::Int(v, _)) => v,
+                            ComputedExpr::Literal(Literal::Uint(v, _)) => v
+                                .try_into()
+                                .map_err(|_| ConstEvalError::NotSupported("too big u128"))?,
+                            _ => {
+                                return Err(ConstEvalError::NotSupported(
+                                    "Enum can't contain this kind of value",
+                                ))
+                            }
+                        }
+                    }
+                    _ => 0,
+                };
+                Ok(ComputedExpr::Enum(
+                    get_name(variant, ctx),
+                    variant,
+                    Literal::Int(value + 1, Some(BuiltinInt::I128)),
+                ))
+            }
+            _ => Err(ConstEvalError::IncompleteExpr),
+        },
         Expr::Literal(l) => Ok(ComputedExpr::Literal(l.clone())),
         &Expr::UnaryOp { expr, op } => {
             let ty = &ctx.expr_ty(expr);
-            let ev = eval_const(expr, ctx)?;
+            let ev = eval_const(expr, ctx, None)?;
             match op {
                 hir_def::expr::UnaryOp::Deref => Err(ConstEvalError::NotSupported("deref")),
                 hir_def::expr::UnaryOp::Not => {
@@ -214,8 +267,8 @@ pub fn eval_const(
         }
         &Expr::BinaryOp { lhs, rhs, op } => {
             let ty = &ctx.expr_ty(lhs);
-            let lhs = eval_const(lhs, ctx)?;
-            let rhs = eval_const(rhs, ctx)?;
+            let lhs = eval_const(lhs, ctx, None)?;
+            let rhs = eval_const(rhs, ctx, None)?;
             let op = op.ok_or(ConstEvalError::IncompleteExpr)?;
             let v1 = match lhs {
                 ComputedExpr::Literal(Literal::Int(v, _)) => v,
@@ -276,7 +329,7 @@ pub fn eval_const(
                             }
                         };
                         let value = match initializer {
-                            Some(x) => eval_const(x, ctx)?,
+                            Some(x) => eval_const(x, ctx, None)?,
                             None => continue,
                         };
                         if !prev_values.contains_key(&pat_id) {
@@ -292,7 +345,7 @@ pub fn eval_const(
                 }
             }
             let r = match tail {
-                &Some(x) => eval_const(x, ctx),
+                &Some(x) => eval_const(x, ctx, None),
                 None => Ok(ComputedExpr::Tuple(Box::new([]))),
             };
             // clean up local data, so caller will receive the exact map that passed to us
@@ -339,10 +392,24 @@ pub fn eval_const(
                 ValueNs::GenericParam(_) => {
                     Err(ConstEvalError::NotSupported("const generic without substitution"))
                 }
-                ValueNs::EnumVariantId(id) => ctx.db.const_eval_variant(id),
+                ValueNs::EnumVariantId(id) => match ctx.db.const_eval_variant(id)? {
+                    ComputedExpr::Literal(lit) => {
+                        Ok(ComputedExpr::Enum(get_name(id, ctx), id, lit))
+                    }
+                    _ => Err(ConstEvalError::NotSupported(
+                        "Enums can't evalute to anything but numbers",
+                    )),
+                },
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
+        Expr::Cast { expr, .. } => match eval_const(*expr, ctx, None)? {
+            ComputedExpr::Enum(_, _, lit) => Ok(ComputedExpr::Literal(lit)),
+            expr => Err(ConstEvalError::NotSupported(Box::leak(Box::new(format!(
+                "Can't cast type: {:?}",
+                expr
+            ))))),
+        },
         _ => Err(ConstEvalError::NotSupported("This kind of expression")),
     }
 }
@@ -438,6 +505,7 @@ pub(crate) fn const_eval_query(
             local_data: HashMap::default(),
             infer,
         },
+        None,
     );
     result
 }
@@ -459,6 +527,7 @@ pub(crate) fn const_eval_query_variant(
             local_data: HashMap::default(),
             infer,
         },
+        Some(variant_id),
     )
 }
 
@@ -485,7 +554,7 @@ pub(crate) fn eval_to_const<'a>(
         local_data: HashMap::default(),
         infer: &ctx.result,
     };
-    let computed_expr = eval_const(expr, &mut ctx);
+    let computed_expr = eval_const(expr, &mut ctx, None);
     let const_scalar = match computed_expr {
         Ok(ComputedExpr::Literal(literal)) => literal.into(),
         _ => ConstScalar::Unknown,

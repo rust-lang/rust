@@ -28,8 +28,8 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, Path},
     src::{HasChildSource, HasSource},
-    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, MacroId, ModuleId,
-    UnresolvedMacro,
+    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, MacroId,
+    ModuleId, UnresolvedMacro,
 };
 
 pub use lower::LowerCtx;
