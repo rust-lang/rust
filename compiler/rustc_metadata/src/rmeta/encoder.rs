@@ -234,12 +234,16 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             s.source_file_cache =
                 (source_map.files()[source_file_index].clone(), source_file_index);
         }
+        let (ref source_file, source_file_index) = s.source_file_cache;
 
-        if !s.source_file_cache.0.contains(span.hi) {
+        if !source_file.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_PARTIAL_SPAN.encode(s);
         }
+
+        // Length is independent of the span provenance.
+        let len = span.hi - span.lo;
 
         // There are two possible cases here:
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
@@ -257,47 +261,44 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, lo, hi, metadata_index) =
-            if s.source_file_cache.0.is_imported() && !s.is_proc_macro {
-                // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
-                // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
-                // are relative to the source map information for the 'foreign' crate whose CrateNum
-                // we write into the metadata. This allows `imported_source_files` to binary
-                // search through the 'foreign' crate's source map information, using the
-                // deserialized 'lo' and 'hi' values directly.
-                //
-                // All of this logic ensures that the final result of deserialization is a 'normal'
-                // Span that can be used without any additional trouble.
-                let (external_start_pos, metadata_index) = {
-                    // Introduce a new scope so that we drop the 'lock()' temporary
-                    match &*s.source_file_cache.0.external_src.lock() {
-                        ExternalSource::Foreign { original_start_pos, metadata_index, .. } => {
-                            (*original_start_pos, *metadata_index)
-                        }
-                        src => panic!("Unexpected external source {:?}", src),
+        let (tag, lo, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
+            // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
+            // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
+            // are relative to the source map information for the 'foreign' crate whose CrateNum
+            // we write into the metadata. This allows `imported_source_files` to binary
+            // search through the 'foreign' crate's source map information, using the
+            // deserialized 'lo' and 'hi' values directly.
+            //
+            // All of this logic ensures that the final result of deserialization is a 'normal'
+            // Span that can be used without any additional trouble.
+            let (external_start_pos, metadata_index) = {
+                // Introduce a new scope so that we drop the 'lock()' temporary
+                match &*source_file.external_src.lock() {
+                    ExternalSource::Foreign { original_start_pos, metadata_index, .. } => {
+                        (*original_start_pos, *metadata_index)
                     }
-                };
-                let lo = (span.lo - s.source_file_cache.0.start_pos) + external_start_pos;
-                let hi = (span.hi - s.source_file_cache.0.start_pos) + external_start_pos;
-
-                (TAG_VALID_SPAN_FOREIGN, lo, hi, metadata_index)
-            } else {
-                // Record the fact that we need to encode the data for this `SourceFile`
-                let source_files =
-                    s.required_source_files.as_mut().expect("Already encoded SourceMap!");
-                let (source_file_index, _) = source_files.insert_full(s.source_file_cache.1);
-                let source_file_index: u32 =
-                    source_file_index.try_into().expect("cannot export more than U32_MAX files");
-
-                (TAG_VALID_SPAN_LOCAL, span.lo, span.hi, source_file_index)
+                    src => panic!("Unexpected external source {:?}", src),
+                }
             };
+            let lo = (span.lo - source_file.start_pos) + external_start_pos;
+
+            (TAG_VALID_SPAN_FOREIGN, lo, metadata_index)
+        } else {
+            // Record the fact that we need to encode the data for this `SourceFile`
+            let source_files =
+                s.required_source_files.as_mut().expect("Already encoded SourceMap!");
+            let (metadata_index, _) = source_files.insert_full(source_file_index);
+            let metadata_index: u32 =
+                metadata_index.try_into().expect("cannot export more than U32_MAX files");
+
+            (TAG_VALID_SPAN_LOCAL, span.lo, metadata_index)
+        };
 
         tag.encode(s);
         lo.encode(s);
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
-        let len = hi - lo;
         len.encode(s);
 
         // Encode the index of the `SourceFile` for the span, in order to make decoding faster.
