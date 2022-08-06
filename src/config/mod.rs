@@ -182,7 +182,7 @@ create_config! {
     make_backup: bool, false, false, "Backup changed files";
     print_misformatted_file_names: bool, false, true,
         "Prints the names of mismatched files that were formatted. Prints the names of \
-         files that would be formated when used with `--check` mode. ";
+         files that would be formatted when used with `--check` mode. ";
 }
 
 #[derive(Error, Debug)]

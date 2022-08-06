@@ -1,4 +1,4 @@
-// Test tuple litterals
+// Test tuple literals
 
 fn foo() {
     let a = (a, a, a, a, a);
