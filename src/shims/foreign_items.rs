@@ -588,7 +588,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
-                let f = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
                     "sinhf" => f.sinh(),
@@ -598,7 +598,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "atanf" => f.atan(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "_hypotf"
@@ -611,12 +611,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f1 = f32::from_bits(this.read_scalar(f1)?.to_u32()?);
                 let f2 = f32::from_bits(this.read_scalar(f2)?.to_u32()?);
-                let n = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "_hypotf" | "hypotf" => f1.hypot(f2),
                     "atan2f" => f1.atan2(f2),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u32(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "cbrt"
@@ -630,7 +630,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [f] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
-                let f = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "cbrt" => f.cbrt(),
                     "cosh" => f.cosh(),
                     "sinh" => f.sinh(),
@@ -640,7 +640,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "atan" => f.atan(),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "_hypot"
@@ -651,12 +651,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(f1)?.to_u64()?);
                 let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
-                let n = match link_name.as_str() {
+                let res = match link_name.as_str() {
                     "_hypot" | "hypot" => f1.hypot(f2),
                     "atan2" => f1.atan2(f2),
                     _ => bug!(),
                 };
-                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+                this.write_scalar(Scalar::from_u64(res.to_bits()), dest)?;
             }
             #[rustfmt::skip]
             | "_ldexp"
@@ -668,7 +668,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let x = this.read_scalar(x)?.to_f64()?;
                 let exp = this.read_scalar(exp)?.to_i32()?;
 
-                // Saturating cast to i16. Even those are outside the valid exponent range to
+                // Saturating cast to i16. Even those are outside the valid exponent range so
                 // `scalbn` below will do its over/underflow handling.
                 let exp = if exp > i32::from(i16::MAX) {
                     i16::MAX

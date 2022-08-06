@@ -60,6 +60,8 @@ pub fn main() {
     assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
     assert_approx_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
     assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
+    assert_eq!((-3.2f32).mul_add(2.4, f32::NEG_INFINITY), f32::NEG_INFINITY);
+    assert_eq!((-3.2f64).mul_add(2.4, f64::NEG_INFINITY), f64::NEG_INFINITY);
 
     assert_approx_eq!((-1.0f32).abs(), 1.0f32);
     assert_approx_eq!(34.2f64.abs(), 34.2f64);
