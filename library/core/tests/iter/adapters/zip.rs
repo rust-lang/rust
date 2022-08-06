@@ -233,6 +233,159 @@ fn test_zip_trusted_random_access_composition() {
 }
 
 #[test]
+fn test_zip_trusted_random_access_fold_rfold() {
+    let a = [0, 1, 2, 3, 4];
+    let b = [5, 6, 7, 8, 9, 10];
+
+    let sum = a.iter().copied().sum::<i32>() + b.iter().copied().take(a.len()).sum::<i32>();
+    let zip = || a.iter().copied().zip(b.iter().copied());
+    let fwd_sum = zip().fold(0, |a, (b, c)| a + b + c);
+    let bwd_sum = zip().rfold(0, |a, (b, c)| a + b + c);
+
+    assert_eq!(fwd_sum, sum);
+    assert_eq!(bwd_sum, sum);
+}
+
+#[test]
+fn test_zip_trusted_random_access_try_fold_try_rfold() {
+    let a = [0, 1, 2, 3, 4];
+    let b = [5, 6, 7, 8, 9, 10];
+
+    let sum = a.iter().copied().sum::<i32>() + b.iter().copied().take(a.len()).sum::<i32>();
+    let zip = || a.iter().copied().zip(b.iter().copied());
+    let mut zip_fwd = zip();
+    let mut zip_bwd = zip();
+
+    let fwd_sum: Result<i32, ()> = zip_fwd.try_fold(0, |a, (b, c)| Ok(a + b + c));
+    let bwd_sum: Result<i32, ()> = zip_bwd.try_rfold(0, |a, (b, c)| Ok(a + b + c));
+
+    assert_eq!(fwd_sum, Ok(sum));
+    assert_eq!(bwd_sum, Ok(sum));
+    assert_eq!(zip_fwd.next(), None);
+    assert_eq!(zip_fwd.next_back(), None);
+    assert_eq!(zip_bwd.next(), None);
+    assert_eq!(zip_bwd.next_back(), None);
+}
+
+#[test]
+fn test_zip_trusted_random_access_try_fold_try_rfold_resumable() {
+    let a = [0, 1, 2, 3, 4];
+    let b = [5, 6, 7, 8, 9, 10];
+
+    fn sum_countdown(mut count: usize) -> impl FnMut(i32, (i32, i32)) -> Result<i32, i32> {
+        move |a: i32, (b, c): (i32, i32)| {
+            if count == 0 {
+                Err(a)
+            } else {
+                count -= 1;
+                Ok(a + b + c)
+            }
+        }
+    }
+
+    let zip = || a.iter().copied().zip(b.iter().copied());
+    let mut zip_fwd = zip();
+    let mut zip_bwd = zip();
+
+    let fwd_sum = zip_fwd.try_fold(0, sum_countdown(2));
+    let bwd_sum = zip_bwd.try_rfold(0, sum_countdown(2));
+
+    assert_eq!(fwd_sum, Err(0 + 1 + 5 + 6));
+    assert_eq!(bwd_sum, Err(4 + 3 + 9 + 8));
+    {
+        let mut zip_fwd = zip_fwd.clone();
+        let mut zip_bwd = zip_bwd.clone();
+        assert_eq!(zip_fwd.next(), Some((3, 8)));
+        assert_eq!(zip_fwd.next(), Some((4, 9)));
+        assert_eq!(zip_fwd.next(), None);
+
+        assert_eq!(zip_bwd.next(), Some((0, 5)));
+        assert_eq!(zip_bwd.next(), Some((1, 6)));
+        assert_eq!(zip_bwd.next(), None);
+    }
+
+    assert_eq!(zip_fwd.next_back(), Some((4, 9)));
+    assert_eq!(zip_fwd.next_back(), Some((3, 8)));
+    assert_eq!(zip_fwd.next_back(), None);
+
+    assert_eq!(zip_bwd.next_back(), Some((1, 6)));
+    assert_eq!(zip_bwd.next_back(), Some((0, 5)));
+    assert_eq!(zip_bwd.next_back(), None);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn test_zip_trusted_random_access_try_fold_try_rfold_panic() {
+    use std::panic::catch_unwind;
+    use std::panic::AssertUnwindSafe;
+
+    let a = [0, 1, 2];
+    let b = [3, 4, 5, 6];
+
+    fn sum_countdown(mut count: usize) -> impl FnMut(i32, (i32, i32)) -> Result<i32, i32> {
+        move |a: i32, (b, c): (i32, i32)| {
+            if count == 0 {
+                panic!("bomb")
+            } else {
+                count -= 1;
+                Ok(a + b + c)
+            }
+        }
+    }
+
+    let zip = || a.iter().copied().zip(b.iter().copied());
+    let mut zip_fwd = zip();
+    let mut zip_bwd = zip();
+
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let _ = zip_fwd.try_fold(0, sum_countdown(1));
+    }));
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let _ = zip_bwd.try_rfold(0, sum_countdown(1));
+    }));
+
+    {
+        let mut zip_fwd = zip_fwd.clone();
+        let mut zip_bwd = zip_bwd.clone();
+        match zip_fwd.next() {
+            Some((a, b)) => {
+                assert!(a > 1);
+                assert!(b > 4);
+                assert_eq!(b - a, 3);
+            }
+            None => (),
+        };
+
+        match zip_bwd.next_back() {
+            Some((a, b)) => {
+                assert!(a < 1);
+                assert!(b < 4);
+                assert_eq!(b - a, 3);
+            }
+            None => (),
+        };
+    }
+
+    match zip_fwd.next_back() {
+        Some((a, b)) => {
+            assert!(a > 1);
+            assert!(b > 4);
+            assert_eq!(b - a, 3);
+        }
+        None => (),
+    };
+
+    match zip_bwd.next() {
+        Some((a, b)) => {
+            assert!(a < 1);
+            assert!(b < 4);
+            assert_eq!(b - a, 3);
+        }
+        None => (),
+    };
+}
+
+#[test]
 #[cfg(panic = "unwind")]
 fn test_zip_trusted_random_access_next_back_drop() {
     use std::panic::catch_unwind;

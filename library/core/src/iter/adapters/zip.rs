@@ -216,17 +216,6 @@ fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
 }
 
 #[inline]
-fn check_fold<AItem, B: Iterator, T, F: FnMut(T, (AItem, B::Item)) -> T>(
-    mut b: B,
-    mut f: F,
-) -> impl FnMut(T, AItem) -> T {
-    move |acc, x| match b.next() {
-        Some(y) => f(acc, (x, y)),
-        None => panic!("Iterator expected Some(item), found None."),
-    }
-}
-
-#[inline]
 fn check_rfold<AItem, B: DoubleEndedIterator, T, F: FnMut(T, (AItem, B::Item)) -> T>(
     mut b: B,
     mut f: F,
@@ -322,12 +311,7 @@ macro_rules! zip_impl_general_defaults {
         where
             F: FnMut(T, Self::Item) -> T,
         {
-            let (lower, upper) = Iterator::size_hint(&self);
-            if upper == Some(lower) {
-                self.a.fold(init, check_fold(self.b, f))
-            } else {
-                ZipImpl::try_fold(&mut self, init, ok(f)).unwrap()
-            }
+            ZipImpl::try_fold(&mut self, init, ok(f)).unwrap()
         }
 
         #[inline]
