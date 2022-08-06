@@ -1,7 +1,6 @@
 //! File symbol extraction.
 
 use base_db::FileRange;
-use hir_def::db::DefDatabase;
 use hir_def::{
     item_tree::ItemTreeNode, src::HasSource, AdtId, AssocItemId, AssocItemLoc, DefWithBodyId,
     HasModule, ImplId, ItemContainerId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
@@ -246,8 +245,8 @@ impl<'a> SymbolCollector<'a> {
                 id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
             ),
             DefWithBodyId::VariantId(id) => Some({
-                let up_db: &dyn DefDatabase = self.db.upcast();
-                up_db.lookup_intern_enum(id.parent).source(up_db).value.name()?.text().into()
+                let db = self.db.upcast();
+                id.parent.lookup(db).source(db).value.name()?.text().into()
             }),
         }
     }

@@ -967,11 +967,6 @@ pub struct Variant {
 }
 
 impl Variant {
-    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
-        // TODO(ole): Handle missing exprs (+1 to the prev)
-        self.source(db)?.value.expr()
-    }
-
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.parent.module(db)
     }
@@ -998,6 +993,15 @@ impl Variant {
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+    }
+
+    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
+        // TODO(ole): Handle missing exprs (+1 to the prev)
+        self.source(db)?.value.expr()
+    }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
+        db.const_eval_variant(self.into())
     }
 }
 
