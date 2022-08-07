@@ -336,7 +336,7 @@ impl SourceMap {
         mut file_local_non_narrow_chars: Vec<NonNarrowChar>,
         mut file_local_normalized_pos: Vec<NormalizedPos>,
         original_start_pos: BytePos,
-        original_end_pos: BytePos,
+        _original_end_pos: BytePos,
         metadata_index: u32,
     ) -> Lrc<SourceFile> {
         let start_pos = self
@@ -382,8 +382,6 @@ impl SourceMap {
             src_hash,
             external_src: Lock::new(ExternalSource::Foreign {
                 kind: ExternalSourceKind::AbsentOk,
-                original_start_pos,
-                original_end_pos,
                 metadata_index,
             }),
             start_pos,

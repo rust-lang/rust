@@ -235,15 +235,13 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
                 (source_map.files()[source_file_index].clone(), source_file_index);
         }
         let (ref source_file, source_file_index) = s.source_file_cache;
+        debug_assert!(source_file.contains(span.lo));
 
         if !source_file.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_PARTIAL_SPAN.encode(s);
         }
-
-        // Length is independent of the span provenance.
-        let len = span.hi - span.lo;
 
         // There are two possible cases here:
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
@@ -261,7 +259,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, lo, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
+        let (tag, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
             // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
             // are relative to the source map information for the 'foreign' crate whose CrateNum
@@ -271,18 +269,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             //
             // All of this logic ensures that the final result of deserialization is a 'normal'
             // Span that can be used without any additional trouble.
-            let (external_start_pos, metadata_index) = {
+            let metadata_index = {
                 // Introduce a new scope so that we drop the 'lock()' temporary
                 match &*source_file.external_src.lock() {
-                    ExternalSource::Foreign { original_start_pos, metadata_index, .. } => {
-                        (*original_start_pos, *metadata_index)
-                    }
+                    ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
                     src => panic!("Unexpected external source {:?}", src),
                 }
             };
-            let lo = (span.lo - source_file.start_pos) + external_start_pos;
 
-            (TAG_VALID_SPAN_FOREIGN, lo, metadata_index)
+            (TAG_VALID_SPAN_FOREIGN, metadata_index)
         } else {
             // Record the fact that we need to encode the data for this `SourceFile`
             let source_files =
@@ -291,14 +286,19 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
             let metadata_index: u32 =
                 metadata_index.try_into().expect("cannot export more than U32_MAX files");
 
-            (TAG_VALID_SPAN_LOCAL, span.lo, metadata_index)
+            (TAG_VALID_SPAN_LOCAL, metadata_index)
         };
 
-        tag.encode(s);
-        lo.encode(s);
+        // Encode the start position relative to the file start, so we profit more from the
+        // variable-length integer encoding.
+        let lo = span.lo - source_file.start_pos;
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
+        let len = span.hi - span.lo;
+
+        tag.encode(s);
+        lo.encode(s);
         len.encode(s);
 
         // Encode the index of the `SourceFile` for the span, in order to make decoding faster.

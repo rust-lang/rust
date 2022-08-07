@@ -581,28 +581,26 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             foreign_data.imported_source_file(metadata_index, sess)
         };
 
-        // Make sure our binary search above is correct.
+        // Make sure our span is well-formed.
         debug_assert!(
-            lo >= source_file.original_start_pos && lo <= source_file.original_end_pos,
-            "Bad binary search: lo={:?} source_file.original_start_pos={:?} source_file.original_end_pos={:?}",
+            lo + source_file.original_start_pos <= source_file.original_end_pos,
+            "Malformed encoded span: lo={:?} source_file.original_start_pos={:?} source_file.original_end_pos={:?}",
             lo,
             source_file.original_start_pos,
             source_file.original_end_pos
         );
 
-        // Make sure we correctly filtered out invalid spans during encoding
+        // Make sure we correctly filtered out invalid spans during encoding.
         debug_assert!(
-            hi >= source_file.original_start_pos && hi <= source_file.original_end_pos,
-            "Bad binary search: hi={:?} source_file.original_start_pos={:?} source_file.original_end_pos={:?}",
+            hi + source_file.original_start_pos <= source_file.original_end_pos,
+            "Malformed encoded span: hi={:?} source_file.original_start_pos={:?} source_file.original_end_pos={:?}",
             hi,
             source_file.original_start_pos,
             source_file.original_end_pos
         );
 
-        let lo =
-            (lo + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
-        let hi =
-            (hi + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
+        let lo = lo + source_file.translated_source_file.start_pos;
+        let hi = hi + source_file.translated_source_file.start_pos;
 
         // Do not try to decode parent for foreign spans.
         Span::new(lo, hi, ctxt, None)
