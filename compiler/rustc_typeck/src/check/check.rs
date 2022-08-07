@@ -1526,7 +1526,7 @@ fn detect_discriminant_duplicate<'tcx>(
             }
             None => {
                 // At this point we know this discriminant is a duplicate, and was not explicitly
-                // assigned by the user. Here we iterate backwards to fetch the hir for the last
+                // assigned by the user. Here we iterate backwards to fetch the HIR for the last
                 // explictly assigned discriminant, and letting the user know that this was the
                 // increment startpoint, and how many steps from there leading to the duplicate
                 if let Some((n, hir::Variant { span, ident, .. })) =
@@ -1549,12 +1549,12 @@ fn detect_discriminant_duplicate<'tcx>(
         err.span_label(span, format!("{display_discr} assigned here"));
     };
 
-    // Here we are looping through the discriminant vec, comparing each discriminant to oneanother.
-    // When a duplicate is detected, we instatiate an error and add a spanned note pointing to both
-    // initial and duplicate value. The duplicate discriminant is then discarded from the vec by swapping
-    // it with the last element and decrementing the vec.len by 1 (which is why we have to evaluate
-    // `discrs.len()` anew every iteration, and why this could be tricky to do in a functional style as
-    // we are mutating `discrs` on the fly).
+    // Here we are loop through the discriminants, comparing each discriminant to another.
+    // When a duplicate is detected, we instatiate an error and point to both
+    // initial and duplicate value. The duplicate discriminant is then discarded by swapping
+    // it with the last element and decrementing the `vec.len` (which is why we have to evaluate
+    // `discrs.len()` anew every iteration, and why this could be tricky to do in a functional
+    // style as we are mutating `discrs` on the fly).
     let mut i = 0;
     while i < discrs.len() {
         let hir_var_i_idx = discrs[i].0.index();
