@@ -1499,16 +1499,18 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
     check_transparent(tcx, sp, def);
 }
 
+/// Part of enum check, errors if two or more discriminants are equal
 fn detect_discriminant_duplicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut discrs: Vec<(VariantIdx, Discr<'tcx>)>,
     vs: &'tcx [hir::Variant<'tcx>],
     self_span: Span,
 ) {
-    let report = |var: &hir::Variant<'_>,
-                  dis: Discr<'tcx>,
+    // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate
+    let report = |dis: Discr<'tcx>,
                   idx: usize,
                   err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>| {
+        let var = &vs[idx];
         let (span, display_discr) = match var.disr_expr {
             Some(ref expr) => {
                 // In the case the discriminant is both a duplicate and overflowed, let the user know
@@ -1517,11 +1519,16 @@ fn detect_discriminant_duplicate<'tcx>(
                     && *lit_value != dis.val
                 {
                     (tcx.hir().span(expr.hir_id), format!("`{dis}` (overflowed from `{lit_value}`)"))
+                // Otherwise, format the value as-is
                 } else {
                     (tcx.hir().span(expr.hir_id), format!("`{dis}`"))
                 }
             }
             None => {
+                // At this point we know this discriminant is a duplicate, and was not explicitly
+                // assigned by the user. Here we iterate backwards to fetch the hir for the last
+                // explictly assigned discriminant, and letting the user know that this was the
+                // increment startpoint, and how many steps from there leading to the duplicate
                 if let Some((n, hir::Variant { span, ident, .. })) =
                     vs[..idx].iter().rev().enumerate().find(|v| v.1.disr_expr.is_some())
                 {
@@ -1542,16 +1549,20 @@ fn detect_discriminant_duplicate<'tcx>(
         err.span_label(span, format!("{display_discr} assigned here"));
     };
 
+    // Here we are looping through the discriminant vec, comparing each discriminant to oneanother.
+    // When a duplicate is detected, we instatiate an error and add a spanned note pointing to both
+    // initial and duplicate value. The duplicate discriminant is then discarded from the vec by swapping
+    // it with the last element and decrementing the vec.len by 1 (which is why we have to evaluate
+    // `discrs.len()` anew every iteration, and why this could be tricky to do in a functional style as
+    // we are mutating `discrs` on the fly).
     let mut i = 0;
     while i < discrs.len() {
         let hir_var_i_idx = discrs[i].0.index();
-        let hir_var_i = &vs[hir_var_i_idx];
         let mut error: Option<DiagnosticBuilder<'_, _>> = None;
 
         let mut o = i + 1;
         while o < discrs.len() {
             let hir_var_o_idx = discrs[o].0.index();
-            let hir_var_o = &vs[hir_var_o_idx];
 
             if discrs[i].1.val == discrs[o].1.val {
                 let err = error.get_or_insert_with(|| {
@@ -1563,13 +1574,14 @@ fn detect_discriminant_duplicate<'tcx>(
                         discrs[i].1,
                     );
 
-                    report(hir_var_i, discrs[i].1, hir_var_i_idx, &mut ret);
+                    report(discrs[i].1, hir_var_i_idx, &mut ret);
 
                     ret
                 });
 
-                report(hir_var_o, discrs[o].1, hir_var_o_idx, err);
+                report(discrs[o].1, hir_var_o_idx, err);
 
+                // Safe to unwrap here, as we wouldn't reach this point if `discrs` was empty
                 discrs[o] = *discrs.last().unwrap();
                 discrs.pop();
             } else {
