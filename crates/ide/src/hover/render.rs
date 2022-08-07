@@ -348,12 +348,15 @@ pub(super) fn definition(
         Definition::Module(it) => label_and_docs(db, it),
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),
-        Definition::Variant(it) => label_value_and_docs(db, it, |&it| match it.kind(db) {
-            StructKind::Unit => match it.eval(db) {
-                Ok(x) => Some(format!("{}", x.enum_value().unwrap_or(x))),
-                Err(_) => it.value(db).map(|x| format!("{:?}", x)),
-            },
-            _ => None,
+        Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
+            if it.parent.is_data_carrying(db) {
+                match it.eval(db) {
+                    Ok(x) => Some(format!("{}", x.enum_value().unwrap_or(x))),
+                    Err(_) => it.value(db).map(|x| format!("{:?}", x)),
+                }
+            } else {
+                None
+            }
         }),
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.eval(db);

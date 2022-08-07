@@ -28,8 +28,8 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, Path},
     src::{HasChildSource, HasSource},
-    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, MacroId,
-    ModuleId, UnresolvedMacro,
+    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, MacroId, ModuleId,
+    UnresolvedMacro,
 };
 
 pub use lower::LowerCtx;
@@ -328,7 +328,6 @@ impl Body {
                 let e = v.parent.lookup(db);
                 let src = v.parent.child_source(db);
                 let variant = &src.value[v.local_id];
-                // TODO(ole): Handle missing exprs (+1 to the prev)
                 (src.file_id, e.container, variant.expr())
             }
         };

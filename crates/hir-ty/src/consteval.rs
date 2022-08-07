@@ -203,7 +203,7 @@ pub fn eval_const(
                 Ok(ComputedExpr::Enum(
                     get_name(variant, ctx),
                     variant,
-                    Literal::Int(value + 1, Some(BuiltinInt::I128)),
+                    Literal::Int(value, Some(BuiltinInt::I128)),
                 ))
             }
             _ => Err(ConstEvalError::IncompleteExpr),

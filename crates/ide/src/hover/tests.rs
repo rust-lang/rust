@@ -698,6 +698,7 @@ fn hover_enum_variant() {
     check(
         r#"
 enum Option<T> {
+    Some(T)
     /// The None variant
     Non$0e
 }
