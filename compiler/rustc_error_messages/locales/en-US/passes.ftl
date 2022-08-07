@@ -262,3 +262,6 @@ passes-rustc-lint-opt-ty = `#[rustc_lint_opt_ty]` should be applied to a struct
 
 passes-rustc-lint-opt-deny-field-access = `#[rustc_lint_opt_deny_field_access]` should be applied to a field
     .label = not a field
+
+passes-link-ordinal = attribute should be applied to a foreign function or static
+    .label = not a foreign function or static

@@ -552,6 +552,13 @@ pub struct ConstTrait {
 }
 
 #[derive(SessionDiagnostic)]
+#[error(passes::link_ordinal)]
+pub struct LinkOrdinal {
+    #[primary_span]
+    pub attr_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
 #[error(passes::stability_promotable)]
 pub struct StabilityPromotable {
     #[primary_span]
