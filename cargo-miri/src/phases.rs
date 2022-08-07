@@ -119,7 +119,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Forward all arguments before `--` other than `--target-dir` and its value to Cargo.
     // (We want to *change* the target-dir value, so we must not forward it.)
     let mut target_dir = None;
-    for arg in ArgSplitFlagValue::new(&mut args, "--target-dir") {
+    for arg in ArgSplitFlagValue::from_string_iter(&mut args, "--target-dir") {
         match arg {
             Ok(value) => {
                 if target_dir.is_some() {
@@ -310,7 +310,8 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             let mut cmd = miri();
 
             // Ensure --emit argument for a check-only build is present.
-            if let Some(val) = ArgFlagValueIter::new(env.args.clone().into_iter(), "--emit").next()
+            if let Some(val) =
+                ArgFlagValueIter::from_str_iter(env.args.iter().map(|s| s as &str), "--emit").next()
             {
                 // For `no_run` tests, rustdoc passes a `--emit` flag; make sure it has the right shape.
                 assert_eq!(val, "metadata");

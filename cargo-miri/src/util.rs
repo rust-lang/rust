@@ -4,7 +4,6 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
-use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -12,6 +11,8 @@ use std::process::Command;
 use cargo_metadata::{Metadata, MetadataCommand};
 use rustc_version::VersionMeta;
 use serde::{Deserialize, Serialize};
+
+pub use crate::arg::*;
 
 /// The information to run a crate with the given environment.
 #[derive(Clone, Serialize, Deserialize)]
@@ -72,83 +73,6 @@ pub enum MiriCommand {
 pub fn show_error(msg: String) -> ! {
     eprintln!("fatal error: {}", msg);
     std::process::exit(1)
-}
-
-/// Determines whether a `--flag` is present.
-pub fn has_arg_flag(name: &str) -> bool {
-    num_arg_flag(name) > 0
-}
-
-/// Determines how many times a `--flag` is present.
-pub fn num_arg_flag(name: &str) -> usize {
-    env::args().take_while(|val| val != "--").filter(|val| val == name).count()
-}
-
-/// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
-/// the flag as `Err(arg)`. (The flag `name` itself is not yielded at all, only its values are.)
-pub struct ArgSplitFlagValue<'a, I> {
-    args: TakeWhile<I, fn(&String) -> bool>,
-    name: &'a str,
-}
-
-impl<'a, I: Iterator<Item = String>> ArgSplitFlagValue<'a, I> {
-    pub fn new(args: I, name: &'a str) -> Self {
-        Self {
-            // Stop searching at `--`.
-            args: args.take_while(|val| val != "--"),
-            name,
-        }
-    }
-}
-
-impl<I: Iterator<Item = String>> Iterator for ArgSplitFlagValue<'_, I> {
-    type Item = Result<String, String>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let arg = self.args.next()?;
-        if let Some(suffix) = arg.strip_prefix(self.name) {
-            // Strip leading `name`.
-            if suffix.is_empty() {
-                // This argument is exactly `name`; the next one is the value.
-                return self.args.next().map(Ok);
-            } else if let Some(suffix) = suffix.strip_prefix('=') {
-                // This argument is `name=value`; get the value.
-                return Some(Ok(suffix.to_owned()));
-            }
-        }
-        Some(Err(arg))
-    }
-}
-
-/// Yields all values of command line flag `name`.
-pub struct ArgFlagValueIter<'a, I>(ArgSplitFlagValue<'a, I>);
-
-impl<'a, I: Iterator<Item = String>> ArgFlagValueIter<'a, I> {
-    pub fn new(args: I, name: &'a str) -> Self {
-        Self(ArgSplitFlagValue::new(args, name))
-    }
-}
-
-impl<I: Iterator<Item = String>> Iterator for ArgFlagValueIter<'_, I> {
-    type Item = String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Ok(value) = self.0.next()? {
-                return Some(value);
-            }
-        }
-    }
-}
-
-/// Gets the values of a `--flag`.
-pub fn get_arg_flag_values<'a>(name: &'a str) -> impl Iterator<Item = String> + 'a {
-    ArgFlagValueIter::new(env::args(), name)
-}
-
-/// Gets the value of a `--flag`.
-pub fn get_arg_flag_value(name: &str) -> Option<String> {
-    get_arg_flag_values(name).next()
 }
 
 /// Escapes `s` in a way that is suitable for using it as a string literal in TOML syntax.
