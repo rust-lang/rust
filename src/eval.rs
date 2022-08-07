@@ -1,6 +1,5 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
-use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::iter;
 use std::panic::{self, AssertUnwindSafe};
@@ -8,6 +7,7 @@ use std::thread;
 
 use log::info;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
     self,
@@ -96,11 +96,11 @@ pub struct MiriConfig {
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
     /// The stacked borrows pointer ids to report about
-    pub tracked_pointer_tags: HashSet<SbTag>,
+    pub tracked_pointer_tags: FxHashSet<SbTag>,
     /// The stacked borrows call IDs to report about
-    pub tracked_call_ids: HashSet<CallId>,
+    pub tracked_call_ids: FxHashSet<CallId>,
     /// The allocation ids to report about.
-    pub tracked_alloc_ids: HashSet<AllocId>,
+    pub tracked_alloc_ids: FxHashSet<AllocId>,
     /// Determine if data race detection should be enabled
     pub data_race_detector: bool,
     /// Determine if weak memory emulation should be enabled. Requires data race detection to be enabled
@@ -144,9 +144,9 @@ impl Default for MiriConfig {
             forwarded_env_vars: vec![],
             args: vec![],
             seed: None,
-            tracked_pointer_tags: HashSet::default(),
-            tracked_call_ids: HashSet::default(),
-            tracked_alloc_ids: HashSet::default(),
+            tracked_pointer_tags: FxHashSet::default(),
+            tracked_call_ids: FxHashSet::default(),
+            tracked_alloc_ids: FxHashSet::default(),
             data_race_detector: true,
             weak_memory_emulation: true,
             track_outdated_loads: false,

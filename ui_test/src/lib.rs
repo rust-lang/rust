@@ -1,4 +1,9 @@
-#![allow(clippy::enum_variant_names, clippy::useless_format, clippy::too_many_arguments)]
+#![allow(
+    clippy::enum_variant_names,
+    clippy::useless_format,
+    clippy::too_many_arguments,
+    rustc::internal
+)]
 
 use std::collections::VecDeque;
 use std::ffi::OsString;

@@ -1,9 +1,10 @@
-use std::collections::{hash_map::Entry, HashMap, VecDeque};
+use std::collections::{hash_map::Entry, VecDeque};
 use std::num::NonZeroU32;
 use std::ops::Not;
 
 use log::trace;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::*;
@@ -77,7 +78,7 @@ struct RwLock {
     writer: Option<ThreadId>,
     /// The readers that currently own the lock and how many times they acquired
     /// the lock.
-    readers: HashMap<ThreadId, usize>,
+    readers: FxHashMap<ThreadId, usize>,
     /// The queue of writer threads waiting for this lock.
     writer_queue: VecDeque<ThreadId>,
     /// The queue of reader threads waiting for this lock.
@@ -153,7 +154,7 @@ pub(super) struct SynchronizationState {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
-    futexes: HashMap<u64, Futex>,
+    futexes: FxHashMap<u64, Futex>,
 }
 
 // Private extension trait for local helper methods

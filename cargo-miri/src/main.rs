@@ -1,5 +1,5 @@
 #![feature(let_else)]
-#![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq)]
+#![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq, rustc::internal)]
 
 mod arg;
 mod phases;

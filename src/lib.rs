@@ -23,7 +23,9 @@
     clippy::derive_partial_eq_without_eq,
     clippy::derive_hash_xor_eq,
     clippy::too_many_arguments,
-    clippy::type_complexity
+    clippy::type_complexity,
+    // We are not implementing queries here so it's fine
+    rustc::potential_query_instability
 )]
 #![warn(
     rust_2018_idioms,
