@@ -470,6 +470,7 @@ impl Constructor {
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
             (FloatRange(void), FloatRange(..)) => match *void {},
             (Str(void), Str(..)) => match *void {},
+            #[allow(unreachable_code)]
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
@@ -502,6 +503,7 @@ impl Constructor {
                 .iter()
                 .filter_map(|c| c.as_int_range())
                 .any(|other| range.is_covered_by(other)),
+            #[allow(unreachable_code)]
             Slice(slice) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_slice())

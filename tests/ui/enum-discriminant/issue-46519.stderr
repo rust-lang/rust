@@ -1,0 +1,12 @@
+warning: unreachable call
+  --> $DIR/issue-46519.rs:9:5
+   |
+LL |     FontLanguageOverride::system_font(SystemFont::new());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ----------------- this expression has type `SystemFont`, which is uninhabited
+   |     |
+   |     unreachable call
+   |
+   = note: `#[warn(unreachable_code)]` on by default
+
+warning: 1 warning emitted
+

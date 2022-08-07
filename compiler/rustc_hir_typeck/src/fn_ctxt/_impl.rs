@@ -40,6 +40,7 @@ use rustc_trait_selection::traits::{
     self, NormalizeExt, ObligationCauseCode, ObligationCtxt, StructurallyNormalizeExt,
 };
 
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::slice;
 
@@ -62,15 +63,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.diverges.set(Diverges::WarnedAlways);
 
+        if matches!(reason, DivergeReason::Uninhabited) {
+            if let Some(impl_of) = self.tcx.impl_of_method(self.body_id.to_def_id()) {
+                if self.tcx.has_attr(impl_of, sym::automatically_derived) {
+                    // Built-in derives are generated before typeck,
+                    // so they may contain unreachable code if there are uninhabited types
+                    return;
+                }
+            }
+        }
+
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
         let msg = format!("unreachable {}", kind);
         self.tcx().struct_span_lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, msg.clone(), |lint| {
             let label = match reason {
-                DivergeReason::AllArmsDiverge => {
-                    "any code following this `match` expression is unreachable, as all arms diverge"
-                }
-                DivergeReason::Other => "any code following this expression is unreachable",
+                DivergeReason::AllArmsDiverge =>
+                    Cow::Borrowed("any code following this `match` expression is unreachable, as all arms diverge"),
+                DivergeReason::Uninhabited => format!(
+                    "this expression has type `{}`, which is uninhabited",
+                    self.typeck_results.borrow().node_type(diverging_expr.hir_id)
+                ).into(),
+                DivergeReason::Other => Cow::Borrowed("any code following this expression is unreachable"),
             };
             lint.span_label(span, msg).span_label(diverging_expr.span, label)
         });
