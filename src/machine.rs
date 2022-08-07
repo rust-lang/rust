@@ -3,7 +3,6 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashSet;
 use std::fmt;
 use std::time::Instant;
 
@@ -11,7 +10,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_middle::{
@@ -19,7 +18,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-        Instance, TyCtxt, TypeAndMut,
+        Instance, Ty, TyCtxt, TypeAndMut,
     },
 };
 use rustc_span::def_id::{CrateNum, DefId};
@@ -335,7 +334,7 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// The allocation IDs to report when they are being allocated
     /// (helps for debugging memory leaks and use after free bugs).
-    tracked_alloc_ids: HashSet<AllocId>,
+    tracked_alloc_ids: FxHashSet<AllocId>,
 
     /// Controls whether alignment of memory accesses is being checked.
     pub(crate) check_alignment: AlignmentCheck,
@@ -613,7 +612,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         bin_op: mir::BinOp,
         left: &ImmTy<'tcx, Provenance>,
         right: &ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, ty::Ty<'tcx>)> {
+    ) -> InterpResult<'tcx, (Scalar<Provenance>, bool, Ty<'tcx>)> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 

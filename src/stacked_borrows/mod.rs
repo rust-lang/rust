@@ -13,11 +13,11 @@ use rustc_middle::mir::RetagKind;
 use rustc_middle::ty::{
     self,
     layout::{HasParamEnv, LayoutOf},
+    Ty,
 };
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
 use smallvec::SmallVec;
-use std::collections::HashSet;
 
 use crate::*;
 
@@ -100,9 +100,9 @@ pub struct GlobalStateInner {
     /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
     protected_tags: FxHashSet<SbTag>,
     /// The pointer ids to trace
-    tracked_pointer_tags: HashSet<SbTag>,
+    tracked_pointer_tags: FxHashSet<SbTag>,
     /// The call ids to trace
-    tracked_call_ids: HashSet<CallId>,
+    tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
     retag_fields: bool,
 }
@@ -154,8 +154,8 @@ impl fmt::Display for RefKind {
 /// Utilities for initialization and ID generation
 impl GlobalStateInner {
     pub fn new(
-        tracked_pointer_tags: HashSet<SbTag>,
-        tracked_call_ids: HashSet<CallId>,
+        tracked_pointer_tags: FxHashSet<SbTag>,
+        tracked_call_ids: FxHashSet<CallId>,
         retag_fields: bool,
     ) -> Self {
         GlobalStateInner {
@@ -1013,7 +1013,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Determine mutability and whether to add a protector.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
-        fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
+        fn qualify(ty: Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
             match ty.kind() {
                 // References are simple.
                 ty::Ref(_, _, Mutability::Mut) =>

@@ -7,7 +7,10 @@ use log::trace;
 
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf};
-use rustc_middle::{mir, ty, ty::FloatTy};
+use rustc_middle::{
+    mir,
+    ty::{self, FloatTy, Ty},
+};
 use rustc_target::abi::Integer;
 
 use crate::*;
@@ -377,7 +380,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn float_to_int_unchecked<F>(
         &self,
         f: F,
-        dest_ty: ty::Ty<'tcx>,
+        dest_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<Provenance>>
     where
         F: Float + Into<Scalar<Provenance>>,
