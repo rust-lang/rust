@@ -237,6 +237,8 @@ fn cargo_extra_flags() -> Vec<String> {
         flags.push(manifest);
     }
 
+    // Forwarding `--target-dir` would make sense, but `cargo metadata` does not support that flag.
+
     flags
 }
 
