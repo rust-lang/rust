@@ -124,6 +124,7 @@ mod erase_regions;
 mod generics;
 mod impls_ty;
 mod instance;
+mod layout_sanity_check;
 mod list;
 mod parameterized;
 mod rvalue_scopes;
