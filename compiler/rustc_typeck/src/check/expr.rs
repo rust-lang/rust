@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
 
-            let opt_suggest_box_span = self.opt_suggest_box_span(else_ty, orig_expected);
+            let opt_suggest_box_span = self.opt_suggest_box_span(then_ty, else_ty, orig_expected);
             let if_cause = self.if_cause(
                 sp,
                 cond_expr.span,

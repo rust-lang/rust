@@ -52,6 +52,16 @@ LL | |         1u32
 LL | |     }
    | |_____- `if` and `else` have incompatible types
    |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn qux() -> Box<dyn std::fmt::Display> {
+   |             ~~~~~~~                  +
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         Box::new(0i32)
+LL |     } else {
+LL ~         Box::new(1u32)
+   |
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |         1i32
@@ -114,6 +124,15 @@ LL | |         _ => 2u32,
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn dog() -> Box<dyn std::fmt::Display> {
+   |             ~~~~~~~                  +
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         0 => Box::new(0i32),
+LL ~         1 => Box::new(1u32),
+   |
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |         1 => 1i32,
@@ -130,6 +149,16 @@ LL | |         1u32
    | |         ^^^^ expected `i32`, found `u32`
 LL | |     }
    | |_____- `if` and `else` have incompatible types
+   |
+help: you could change the return type to be a boxed trait object
+   |
+LL | fn apt() -> Box<dyn std::fmt::Display> {
+   |             ~~~~~~~                  +
+help: if you change the return type to expect trait objects, box the returned expressions
+   |
+LL ~         Box::new(0i32)
+LL |     } else {
+LL ~         Box::new(1u32)
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
