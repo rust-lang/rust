@@ -752,11 +752,6 @@ passes_unnecessary_partial_stable_feature = the feature `{$feature}` has been pa
 
 passes_unnecessary_stable_feature = the feature `{$feature}` has been stable since {$since} and no longer requires an attribute to enable
 
-passes_unreachable_due_to_uninhabited = unreachable {$descr}
-    .label = unreachable {$descr}
-    .label_orig = any code following this expression is unreachable
-    .note = this expression has type `{$ty}`, which is uninhabited
-
 passes_unrecognized_field =
     unrecognized field name `{$name}`
 

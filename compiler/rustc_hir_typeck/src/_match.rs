@@ -249,7 +249,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// warn the user about the match arms being unreachable.
     fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm<'tcx>]) {
         for arm in arms {
-            self.warn_if_unreachable(arm.body.hir_id, arm.body.span, "arm");
+            if !arm.pat.is_never_pattern() {
+                self.warn_if_unreachable(arm.body.hir_id, arm.body.span, "arm");
+            }
         }
     }
 

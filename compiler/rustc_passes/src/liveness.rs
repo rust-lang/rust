@@ -94,7 +94,7 @@ use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
+use rustc_middle::ty::{self, RootVariableMinCaptureList, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{BytePos, Span};
@@ -119,8 +119,8 @@ rustc_index::newtype_index! {
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum LiveNodeKind {
     UpvarNode(Span),
-    ExprNode(Span, HirId),
-    VarDefNode(Span, HirId),
+    ExprNode(Span),
+    VarDefNode(Span),
     ClosureNode,
     ExitNode,
     ErrNode,
@@ -130,8 +130,8 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
     let sm = tcx.sess.source_map();
     match lnk {
         UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_diagnostic_string(s)),
-        ExprNode(s, _) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)),
-        VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
+        ExprNode(s) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)),
+        VarDefNode(s) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
         ClosureNode => "Closure node".to_owned(),
         ExitNode => "Exit node".to_owned(),
         ErrNode => "Error node".to_owned(),
@@ -331,7 +331,7 @@ impl<'tcx> IrMaps<'tcx> {
         let shorthand_field_ids = self.collect_shorthand_field_ids(pat);
 
         pat.each_binding(|_, hir_id, _, ident| {
-            self.add_live_node_for_node(hir_id, VarDefNode(ident.span, hir_id));
+            self.add_live_node_for_node(hir_id, VarDefNode(ident.span));
             self.add_variable(Local(LocalInfo {
                 id: hir_id,
                 name: ident.name,
@@ -345,7 +345,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     fn visit_local(&mut self, local: &'tcx hir::LetStmt<'tcx>) {
         self.add_from_pat(local.pat);
         if local.els.is_some() {
-            self.add_live_node_for_node(local.hir_id, ExprNode(local.span, local.hir_id));
+            self.add_live_node_for_node(local.hir_id, ExprNode(local.span));
         }
         intravisit::walk_local(self, local);
     }
@@ -377,13 +377,13 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
                 debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
                 if let Res::Local(_var_hir_id) = path.res {
-                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
                 }
             }
             hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
                 // breaks or continues)
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
 
                 // Make a live_node for each mentioned variable, with the span
                 // being the location that the variable is used. This results
@@ -409,15 +409,15 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Match(..)
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::Yield(..) => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
             }
 
             // Inline assembly may contain labels.
             hir::ExprKind::InlineAsm(asm) if asm.contains_label() => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
                 intravisit::walk_expr(self, expr);
             }
 
@@ -1297,52 +1297,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) {
-            return succ;
-        }
-        match self.ir.lnks[succ] {
-            LiveNodeKind::ExprNode(succ_span, succ_id) => {
-                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
-            }
-            LiveNodeKind::VarDefNode(succ_span, succ_id) => {
-                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
-            }
-            _ => {}
-        };
-        self.exit_ln
-    }
-
-    fn warn_about_unreachable<'desc>(
-        &mut self,
-        orig_span: Span,
-        orig_ty: Ty<'tcx>,
-        expr_span: Span,
-        expr_id: HirId,
-        descr: &'desc str,
-    ) {
-        if !orig_ty.is_never() {
-            // Unreachable code warnings are already emitted during type checking.
-            // However, during type checking, full type information is being
-            // calculated but not yet available, so the check for diverging
-            // expressions due to uninhabited result types is pretty crude and
-            // only checks whether ty.is_never(). Here, we have full type
-            // information available and can issue warnings for less obviously
-            // uninhabited types (e.g. empty enums). The check above is used so
-            // that we do not emit the same warning twice if the uninhabited type
-            // is indeed `!`.
-
-            self.ir.tcx.emit_node_span_lint(
-                lint::builtin::UNREACHABLE_CODE,
-                expr_id,
-                expr_span,
-                errors::UnreachableDueToUninhabited {
-                    expr: expr_span,
-                    orig: orig_span,
-                    descr,
-                    ty: orig_ty,
-                },
-            );
-        }
+        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) { succ } else { self.exit_ln }
     }
 }
 

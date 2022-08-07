@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::slice;
 
@@ -31,7 +32,7 @@ use rustc_session::lint;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_target::abi::FieldIdx;
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::traits::{
@@ -50,8 +51,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
-        let Diverges::Always(reason, orig_span) = self.diverges.get() else {
-            return;
+        let (reason, orig_span) = match self.diverges.get() {
+            Diverges::UninhabitedExpr(hir_id, orig_span) => {
+                (DivergeReason::UninhabitedExpr(hir_id), orig_span)
+            }
+            Diverges::Always(reason, orig_span) => (reason, orig_span),
+            Diverges::Maybe | Diverges::Warned | Diverges::WarnedAlways => return,
         };
 
         match span.desugaring_kind() {
@@ -73,20 +78,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        if matches!(reason, DivergeReason::UninhabitedExpr(_)) {
+            if let Some(impl_of) = self.tcx.impl_of_method(self.body_id.to_def_id()) {
+                if self.tcx.has_attr(impl_of, sym::automatically_derived) {
+                    // Built-in derives are generated before typeck,
+                    // so they may contain unreachable code if there are uninhabited types
+                    return;
+                }
+            }
+        }
+
         // Don't warn twice.
-        self.diverges.set(Diverges::WarnedAlways);
+        self.diverges.set(match self.diverges.get() {
+            Diverges::UninhabitedExpr(..) => Diverges::Warned,
+            Diverges::Always(..) => Diverges::WarnedAlways,
+            Diverges::Maybe | Diverges::Warned | Diverges::WarnedAlways => bug!(),
+        });
 
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
         let msg = format!("unreachable {kind}");
         self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
             lint.primary_message(msg.clone());
-            let custom_note = match reason {
+            let custom_note: Cow<'_, _> = match reason {
                 DivergeReason::AllArmsDiverge => {
                     "any code following this `match` expression is unreachable, as all arms diverge"
+                        .into()
                 }
-                DivergeReason::NeverPattern => "any code following a never pattern is unreachable",
-                DivergeReason::Other => "any code following this expression is unreachable",
+                DivergeReason::NeverPattern => {
+                    "any code following a never pattern is unreachable".into()
+                }
+                DivergeReason::UninhabitedExpr(hir_id) => format!(
+                    "this expression has type `{}`, which is uninhabited",
+                    self.typeck_results.borrow().node_type(hir_id)
+                )
+                .into(),
+                DivergeReason::Other => "any code following this expression is unreachable".into(),
             };
             lint.span_label(span, msg).span_label(orig_span, custom_note);
         })

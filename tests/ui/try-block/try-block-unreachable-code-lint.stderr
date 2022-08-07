@@ -1,5 +1,5 @@
 warning: unreachable expression
-  --> $DIR/try-block-unreachable-code-lint.rs:41:9
+  --> $DIR/try-block-unreachable-code-lint.rs:45:9
    |
 LL |           return;
    |           ------ any code following this expression is unreachable
@@ -18,15 +18,15 @@ LL | #![warn(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 warning: unreachable call
-  --> $DIR/try-block-unreachable-code-lint.rs:52:9
+  --> $DIR/try-block-unreachable-code-lint.rs:56:9
    |
-LL |         Err(return)
-   |         ^^^ ------ any code following this expression is unreachable
+LL |         make_err(return)
+   |         ^^^^^^^^ ------ any code following this expression is unreachable
    |         |
    |         unreachable call
 
 warning: unreachable expression
-  --> $DIR/try-block-unreachable-code-lint.rs:63:9
+  --> $DIR/try-block-unreachable-code-lint.rs:67:9
    |
 LL | /         loop {
 LL | |             err()?;

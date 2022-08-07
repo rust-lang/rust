@@ -38,8 +38,8 @@ async fn includes_never(crash: bool, x: u32) -> u32 {
     }
     #[allow(unused)]
     let bad = never();
-    result *= async { x + x }.await;
-    drop(bad);
+    result *= async { x + x }.await; //~ unreachable statement
+    drop(bad); //~ unreachable call
     result
 }
 
