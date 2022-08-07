@@ -15,7 +15,6 @@ fn wild_void(_: Void) -> u32 {}
 fn wild_let() -> u32 {
     let ptr: *const Void = std::ptr::null();
     unsafe {
-        //~^ ERROR: mismatched types
         let _ = *ptr;
     }
 }
@@ -35,8 +34,8 @@ fn binding_void(_x: Void) -> u32 {}
 fn binding_let() -> u32 {
     let ptr: *const Void = std::ptr::null();
     unsafe {
-        //~^ ERROR: mismatched types
         let _x = *ptr;
+        //~^ ERROR: cannot move
     }
 }
 

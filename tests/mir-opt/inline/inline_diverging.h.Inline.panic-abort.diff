@@ -3,45 +3,46 @@
   
   fn h() -> () {
       let mut _0: ();
-      let _1: (!, !);
-+     let mut _2: fn() -> ! {sleep};
+      let mut _1: !;
+      let _2: (!, !);
++     let mut _3: fn() -> ! {sleep};
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
-+         debug f => _2;
-+         let mut _3: &fn() -> ! {sleep};
-+         let _4: !;
-+         let mut _5: &fn() -> ! {sleep};
++         debug f => _3;
++         let mut _4: &fn() -> ! {sleep};
++         let _5: !;
++         let mut _6: &fn() -> ! {sleep};
 +         scope 2 {
-+             debug a => _4;
-+             let _6: !;
++             debug a => _5;
++             let _7: !;
 +             scope 3 {
-+                 debug b => _6;
++                 debug b => _7;
 +             }
 +         }
 +     }
   
       bb0: {
-          StorageLive(_1);
--         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind unreachable;
-+         StorageLive(_2);
-+         _2 = sleep;
-+         StorageLive(_4);
-+         StorageLive(_6);
+          StorageLive(_2);
+-         _2 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> unwind unreachable;
 +         StorageLive(_3);
-+         _3 = &_2;
-+         _4 = <fn() -> ! {sleep} as Fn<()>>::call(move _3, const ()) -> [return: bb1, unwind unreachable];
++         _3 = sleep;
++         StorageLive(_5);
++         StorageLive(_7);
++         StorageLive(_4);
++         _4 = &_3;
++         _5 = <fn() -> ! {sleep} as Fn<()>>::call(move _4, const ()) -> [return: bb1, unwind unreachable];
 +     }
 + 
 +     bb1: {
-+         StorageDead(_3);
-+         StorageLive(_5);
-+         _5 = &_2;
-+         _6 = <fn() -> ! {sleep} as Fn<()>>::call(move _5, const ()) -> [return: bb2, unwind unreachable];
++         StorageDead(_4);
++         StorageLive(_6);
++         _6 = &_3;
++         _7 = <fn() -> ! {sleep} as Fn<()>>::call(move _6, const ()) -> [return: bb2, unwind unreachable];
 +     }
 + 
 +     bb2: {
-+         StorageDead(_5);
-+         _1 = (_4, _6);
-+         drop(_2) -> [return: bb3, unwind unreachable];
++         StorageDead(_6);
++         _2 = (_5, _7);
++         drop(_3) -> [return: bb3, unwind unreachable];
 +     }
 + 
 +     bb3: {

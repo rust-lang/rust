@@ -49,6 +49,8 @@ pub struct FnCtxt<'a, 'tcx> {
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
 
+    pub(super) parent_module: DefId,
+
     /// If `Some`, this stores coercion information for returned
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
@@ -127,6 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
+            parent_module: root_ctxt.tcx.parent_module_from_def_id(body_id).to_def_id(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             coroutine_types: None,

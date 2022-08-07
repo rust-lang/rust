@@ -1,5 +1,6 @@
 //@ check-pass
-//@ compile-flags: -Zunpretty=expanded
+//@ revisions: check unpretty
+//@ [unpretty] compile-flags: -Zunpretty=expanded
 //@ edition:2021
 //
 // This test checks the code generated for all[*] the builtin derivable traits

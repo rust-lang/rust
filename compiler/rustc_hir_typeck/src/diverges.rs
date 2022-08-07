@@ -1,3 +1,4 @@
+use rustc_hir::HirId;
 use rustc_span::Span;
 
 use std::{cmp, ops};
@@ -72,5 +73,6 @@ impl Diverges {
 pub enum DivergeReason {
     AllArmsDiverge,
     NeverPattern,
+    UninhabitedExpr(HirId),
     Other,
 }

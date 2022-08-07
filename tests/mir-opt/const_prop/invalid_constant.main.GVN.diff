@@ -3,21 +3,22 @@
   
   fn main() -> () {
       let mut _0: ();
-      let _1: char;
-      let mut _2: main::InvalidChar;
-      let mut _4: E;
-      let mut _5: main::InvalidTag;
-      let mut _7: Empty;
-      let mut _8: main::NoVariants;
+      let mut _1: !;
+      let _2: char;
+      let mut _3: main::InvalidChar;
+      let mut _5: E;
+      let mut _6: main::InvalidTag;
+      let mut _8: Empty;
+      let mut _9: main::NoVariants;
       scope 1 {
-          debug _invalid_char => _1;
-          let _3: [E; 1];
+          debug _invalid_char => _2;
+          let _4: [E; 1];
           scope 2 {
-              debug _invalid_tag => _3;
-              let _6: [Empty; 1];
+              debug _invalid_tag => _4;
+              let _7: [Empty; 1];
               scope 3 {
                   debug _enum_without_variants => const [ZeroSized: Empty];
-                  let _9: main::Str<"���">;
+                  let _10: main::Str<"���">;
                   scope 4 {
                       debug _non_utf8_str => const Str::<"���">;
                   }
@@ -26,34 +27,33 @@
       }
   
       bb0: {
-          StorageLive(_1);
           StorageLive(_2);
-          _2 = InvalidChar { int: const 1114113_u32 };
-          _1 = (_2.1: char);
-          StorageDead(_2);
           StorageLive(_3);
+          _3 = InvalidChar { int: const 1114113_u32 };
+          _2 = (_3.1: char);
+          StorageDead(_3);
           StorageLive(_4);
           StorageLive(_5);
-          _5 = InvalidTag { int: const 4_u32 };
-          _4 = (_5.1: E);
-          _3 = [move _4];
-          StorageDead(_4);
+          StorageLive(_6);
+          _6 = InvalidTag { int: const 4_u32 };
+          _5 = (_6.1: E);
+          _4 = [move _5];
           StorageDead(_5);
+          StorageDead(_6);
           nop;
           nop;
-          StorageLive(_8);
-          _8 = NoVariants { int: const 0_u32 };
-          nop;
-          nop;
-          nop;
-          StorageDead(_8);
+          StorageLive(_9);
+          _9 = NoVariants { int: const 0_u32 };
           nop;
           nop;
           nop;
+          StorageDead(_9);
           nop;
-          StorageDead(_3);
-          StorageDead(_1);
-          return;
+          nop;
+          nop;
+          StorageDead(_4);
+          StorageDead(_2);
+          unreachable;
       }
   }
   

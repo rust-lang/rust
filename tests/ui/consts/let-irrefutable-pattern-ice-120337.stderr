@@ -1,0 +1,12 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/let-irrefutable-pattern-ice-120337.rs:5:19
+   |
+LL |   pub const C: () = {
+   |  ___________________^
+LL | |     let E::A(ref a) = unsafe { &(&U { u: () }).e};
+LL | | };
+   | |_^ entering unreachable code
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

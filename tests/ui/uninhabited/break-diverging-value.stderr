@@ -7,10 +7,10 @@ LL | fn loop_break_break() -> i32 {
    |    implicitly returns `()` as its body has no tail or `return` expression
 
 error[E0308]: mismatched types
-  --> $DIR/break-diverging-value.rs:25:25
+  --> $DIR/break-diverging-value.rs:55:33
    |
-LL | fn loop_break_void() -> i32 {
-   |    ---------------      ^^^ expected `i32`, found `()`
+LL | fn loop_break_private_void() -> i32 {
+   |    -----------------------      ^^^ expected `i32`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
