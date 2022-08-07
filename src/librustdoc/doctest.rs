@@ -1142,7 +1142,7 @@ impl Tester for Collector {
         if let Some(ref source_map) = self.source_map {
             let line = self.position.lo().to_usize();
             let line = source_map.lookup_char_pos(BytePos(line as u32)).line;
-            if line > 0 { line - 1 } else { line }
+            if line.to_usize() > 0 { line.to_usize() - 1 } else { line.to_usize() }
         } else {
             0
         }

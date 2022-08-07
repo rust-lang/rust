@@ -30,7 +30,7 @@ pub fn expand_line(
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    base::MacEager::expr(cx.expr_u32(topmost, loc.line as u32))
+    base::MacEager::expr(cx.expr_u32(topmost, loc.line.to_u32()))
 }
 
 /* column!(): expands to the current column number */

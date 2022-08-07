@@ -71,7 +71,7 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
-    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
+    pub(crate) use rustc_span::{FileNameDisplayPreference, Pos, Span};
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_middle::bug;

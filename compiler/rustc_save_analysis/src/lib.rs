@@ -83,8 +83,8 @@ impl<'tcx> SaveContext<'tcx> {
             file_name: start.file.name.prefer_remapped().to_string().into(),
             byte_start: span.lo().0,
             byte_end: span.hi().0,
-            line_start: Row::new_one_indexed(start.line as u32),
-            line_end: Row::new_one_indexed(end.line as u32),
+            line_start: Row::new_one_indexed(start.line.to_u32()),
+            line_end: Row::new_one_indexed(end.line.to_u32()),
             column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
             column_end: Column::new_one_indexed(end.col.0 as u32 + 1),
         }

@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
 use rustc_span::source_map::Span;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Pos, Symbol};
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
@@ -1290,7 +1290,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = tcx.const_caller_location((
                 Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
-                caller.line as u32,
+                caller.line.to_u32(),
                 caller.col_display as u32 + 1,
             ));
             OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())

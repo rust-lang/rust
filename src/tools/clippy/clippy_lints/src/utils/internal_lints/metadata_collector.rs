@@ -23,7 +23,7 @@ use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, Li
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Loc, Span, Symbol};
+use rustc_span::{sym, Loc, Pos, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
 use std::fmt;
@@ -474,7 +474,7 @@ impl SerializableSpan {
 
         Self {
             path: format!("{}", loc.file.name.prefer_remapped()),
-            line: loc.line,
+            line: loc.line.to_usize(),
         }
     }
 }

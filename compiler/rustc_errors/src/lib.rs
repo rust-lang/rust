@@ -284,14 +284,14 @@ impl CodeSuggestion {
                             count -= 1;
                         }
                         // push lines between the previous and current span (if any)
-                        for idx in prev_hi.line..(cur_lo.line - 1) {
+                        for idx in prev_hi.line.to_usize()..(cur_lo.line.to_usize() - 1) {
                             if let Some(line) = sf.get_line(idx) {
                                 buf.push_str(line.as_ref());
                                 buf.push('\n');
                                 highlights.push(std::mem::take(&mut line_highlight));
                             }
                         }
-                        if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
+                        if let Some(cur_line) = sf.get_line(cur_lo.line.to_usize() - 1) {
                             let end = match cur_line.char_indices().nth(cur_lo.col.to_usize()) {
                                 Some((i, _)) => i,
                                 None => cur_line.len(),
@@ -324,7 +324,7 @@ impl CodeSuggestion {
                         acc += len as isize - (cur_hi.col.0 - cur_lo.col.0) as isize;
                     }
                     prev_hi = cur_hi;
-                    prev_line = sf.get_line(prev_hi.line - 1);
+                    prev_line = sf.get_line(prev_hi.line.to_usize() - 1);
                     for line in part.snippet.split('\n').skip(1) {
                         acc = 0;
                         highlights.push(std::mem::take(&mut line_highlight));

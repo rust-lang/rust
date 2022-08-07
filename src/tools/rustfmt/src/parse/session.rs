@@ -7,7 +7,7 @@ use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
-    symbol, BytePos, Span,
+    symbol, BytePos, Pos, Span,
 };
 
 use crate::config::file_lines::LineRange;
@@ -233,7 +233,13 @@ impl ParseSess {
     }
 
     pub(crate) fn line_of_byte_pos(&self, pos: BytePos) -> usize {
-        self.parse_sess.source_map().lookup_char_pos(pos).line
+        //FIXME: this returns 1-based line number conveted into usize.
+        //Should it's base type be used instead?
+        self.parse_sess
+            .source_map()
+            .lookup_char_pos(pos)
+            .line
+            .to_usize()
     }
 
     // TODO(calebcartwright): Preemptive, currently unused addition

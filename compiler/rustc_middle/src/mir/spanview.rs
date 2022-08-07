@@ -165,7 +165,7 @@ where
     write!(
         w,
         r#"<div class="code" style="counter-reset: line {}"><span class="line">{}"#,
-        start.line - 1,
+        start.line.to_usize() - 1,
         indent_to_initial_start_col,
     )?;
     span_viewables.sort_unstable_by(|a, b| {
@@ -234,7 +234,13 @@ pub fn source_range_no_file<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
     let source_map = tcx.sess.source_map();
     let start = source_map.lookup_char_pos(span.lo());
     let end = source_map.lookup_char_pos(span.hi());
-    format!("{}:{}-{}:{}", start.line, start.col.to_usize() + 1, end.line, end.col.to_usize() + 1)
+    format!(
+        "{}:{}-{}:{}",
+        start.line.to_usize(),
+        start.col.to_usize() + 1,
+        end.line.to_usize(),
+        end.col.to_usize() + 1
+    )
 }
 
 pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {

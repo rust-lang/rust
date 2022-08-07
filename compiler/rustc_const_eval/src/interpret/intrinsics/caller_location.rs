@@ -5,7 +5,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::Subst;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Pos, Span, Symbol};
 
 use crate::interpret::{
     intrinsics::{InterpCx, Machine},
@@ -118,7 +118,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (
             Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
-            u32::try_from(caller.line).unwrap(),
+            caller.line.to_u32(),
             u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
         )
     }

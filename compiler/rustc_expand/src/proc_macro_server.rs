@@ -632,12 +632,14 @@ impl server::Span for Rustc<'_, '_> {
 
     fn start(&mut self, span: Self::Span) -> LineColumn {
         let loc = self.sess().source_map().lookup_char_pos(span.lo());
-        LineColumn { line: loc.line, column: loc.col.to_usize() }
+        //FIXME: LineColumn.column is 1-based, but loc.col is 0-based
+        LineColumn { line: loc.line.to_usize(), column: loc.col.to_usize() }
     }
 
     fn end(&mut self, span: Self::Span) -> LineColumn {
         let loc = self.sess().source_map().lookup_char_pos(span.hi());
-        LineColumn { line: loc.line, column: loc.col.to_usize() }
+        //FIXME: and here
+        LineColumn { line: loc.line.to_usize(), column: loc.col.to_usize() }
     }
 
     fn before(&mut self, span: Self::Span) -> Self::Span {

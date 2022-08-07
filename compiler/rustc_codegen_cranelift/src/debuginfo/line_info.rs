@@ -109,7 +109,7 @@ impl<'tcx> DebugContext<'tcx> {
         let entry = self.dwarf.unit.get_mut(entry_id);
 
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
-        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(loc.line as u64));
+        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(loc.line.to_usize() as u64));
         entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(loc.col.to_usize() as u64));
     }
 

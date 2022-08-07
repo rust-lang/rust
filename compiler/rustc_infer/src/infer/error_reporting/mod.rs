@@ -1658,7 +1658,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             format!(
                                 " (opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
-                                pos.line,
+                                pos.line.to_usize(),
                                 pos.col.to_usize() + 1,
                             )
                         }

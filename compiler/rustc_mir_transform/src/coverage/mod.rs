@@ -522,8 +522,8 @@ fn make_code_region(
     } else {
         source_file.lookup_file_pos(span.hi())
     };
-    let start_line = source_map.doctest_offset_line(&source_file.name, start_line);
-    let end_line = source_map.doctest_offset_line(&source_file.name, end_line);
+    let start_line = source_map.doctest_offset_line(&source_file.name, start_line.to_usize());
+    let end_line = source_map.doctest_offset_line(&source_file.name, end_line.to_usize());
     CodeRegion {
         file_name,
         start_line: start_line as u32,

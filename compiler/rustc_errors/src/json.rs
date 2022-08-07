@@ -22,7 +22,7 @@ use rustc_lint_defs::Applicability;
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::ExpnData;
-use rustc_span::Span;
+use rustc_span::{Pos, Span};
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -453,8 +453,8 @@ impl DiagnosticSpan {
             file_name: je.sm.filename_for_diagnostics(&start.file.name).to_string(),
             byte_start: start.file.original_relative_byte_pos(span.lo()).0,
             byte_end: start.file.original_relative_byte_pos(span.hi()).0,
-            line_start: start.line,
-            line_end: end.line,
+            line_start: start.line.to_usize(),
+            line_end: end.line.to_usize(),
             column_start: start.col.0 + 1,
             column_end: end.col.0 + 1,
             is_primary,

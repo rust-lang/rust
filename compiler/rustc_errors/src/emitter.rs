@@ -10,7 +10,7 @@
 use Destination::*;
 
 use rustc_span::source_map::SourceMap;
-use rustc_span::{FileLines, SourceFile, Span};
+use rustc_span::{FileLines, Pos, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
@@ -1293,14 +1293,14 @@ impl EmitterWriter {
         for primary_span in msp.primary_spans() {
             if will_be_emitted(*primary_span) {
                 let hi = sm.lookup_char_pos(primary_span.hi());
-                max = (hi.line).max(max);
+                max = (hi.line.to_usize()).max(max);
             }
         }
         if !self.short_message {
             for span_label in msp.span_labels() {
                 if will_be_emitted(span_label.span) {
                     let hi = sm.lookup_char_pos(span_label.span.hi());
-                    max = (hi.line).max(max);
+                    max = (hi.line.to_usize()).max(max);
                 }
             }
         }
@@ -1498,7 +1498,7 @@ impl EmitterWriter {
                         &format!(
                             "{}:{}:{}",
                             sm.filename_for_diagnostics(&loc.file.name),
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            sm.doctest_offset_line(&loc.file.name, loc.line.to_usize()),
                             loc.col.0 + 1,
                         ),
                         Style::LineAndColumn,
@@ -1512,7 +1512,7 @@ impl EmitterWriter {
                         &format!(
                             "{}:{}:{}: ",
                             sm.filename_for_diagnostics(&loc.file.name),
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            sm.doctest_offset_line(&loc.file.name, loc.line.to_usize()),
                             loc.col.0 + 1,
                         ),
                         Style::LineAndColumn,
@@ -1795,7 +1795,7 @@ impl EmitterWriter {
                         &format!(
                             "{}:{}:{}",
                             sm.filename_for_diagnostics(&loc.file.name),
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            sm.doctest_offset_line(&loc.file.name, loc.line.to_usize()),
                             loc.col.0 + 1,
                         ),
                         Style::LineAndColumn,
@@ -1832,27 +1832,27 @@ impl EmitterWriter {
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
                 let line_end = sm.lookup_char_pos(parts[0].span.hi()).line;
-                for line in line_start..=line_end {
+                for line in line_start.to_usize()..=line_end.to_usize() {
                     buffer.puts(
-                        row_num - 1 + line - line_start,
+                        row_num - 1 + line - line_start.to_usize(),
                         0,
                         &self.maybe_anonymized(line),
                         Style::LineNumber,
                     );
                     buffer.puts(
-                        row_num - 1 + line - line_start,
+                        row_num - 1 + line - line_start.to_usize(),
                         max_line_num_len + 1,
                         "- ",
                         Style::Removal,
                     );
                     buffer.puts(
-                        row_num - 1 + line - line_start,
+                        row_num - 1 + line - line_start.to_usize(),
                         max_line_num_len + 3,
                         &normalize_whitespace(&*file_lines.file.get_line(line - 1).unwrap()),
                         Style::Removal,
                     );
                 }
-                row_num += line_end - line_start;
+                row_num += line_end.to_usize() - line_start.to_usize();
             }
             let mut unhighlighted_lines = Vec::new();
             for (line_pos, (line, highlight_parts)) in lines.by_ref().zip(highlights).enumerate() {
@@ -1877,7 +1877,7 @@ impl EmitterWriter {
                             &Vec::new(),
                             p,
                             l,
-                            line_start,
+                            line_start.to_usize(),
                             show_code_change,
                             max_line_num_len,
                             &file_lines,
@@ -1902,7 +1902,7 @@ impl EmitterWriter {
                                 &Vec::new(),
                                 p,
                                 l,
-                                line_start,
+                                line_start.to_usize(),
                                 show_code_change,
                                 max_line_num_len,
                                 &file_lines,
@@ -1920,7 +1920,7 @@ impl EmitterWriter {
                                 &Vec::new(),
                                 p,
                                 l,
-                                line_start,
+                                line_start.to_usize(),
                                 show_code_change,
                                 max_line_num_len,
                                 &file_lines,
@@ -1936,7 +1936,7 @@ impl EmitterWriter {
                     highlight_parts,
                     line_pos,
                     line,
-                    line_start,
+                    line_start.to_usize(),
                     show_code_change,
                     max_line_num_len,
                     &file_lines,
@@ -2275,8 +2275,8 @@ impl FileWithAnnotatedLines {
                 if lo.line != hi.line {
                     let ml = MultilineAnnotation {
                         depth: 1,
-                        line_start: lo.line,
-                        line_end: hi.line,
+                        line_start: lo.line.to_usize(),
+                        line_end: hi.line.to_usize(),
                         start_col: lo.col_display,
                         end_col: hi.col_display,
                         is_primary: span_label.is_primary,
@@ -2298,7 +2298,7 @@ impl FileWithAnnotatedLines {
                             .map(|m| emitter.translate_message(m, args).to_string()),
                         annotation_type: AnnotationType::Singleline,
                     };
-                    add_annotation_to_file(&mut output, lo.file, lo.line, ann);
+                    add_annotation_to_file(&mut output, lo.file, lo.line.to_usize(), ann);
                 };
             }
         }

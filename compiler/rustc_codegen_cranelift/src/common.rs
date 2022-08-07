@@ -349,7 +349,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 rustc_span::symbol::Symbol::intern(
                     &caller.file.name.prefer_remapped().to_string_lossy(),
                 ),
-                caller.line as u32,
+                caller.line.to_u32(),
                 caller.col_display as u32 + 1,
             ));
             crate::constant::codegen_const_value(fx, const_loc, fx.tcx.caller_location_ty())

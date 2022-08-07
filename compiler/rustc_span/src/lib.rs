@@ -1692,31 +1692,31 @@ impl SourceFile {
 
     /// Looks up the file's (1-based) line number and (0-based `CharPos`) column offset, for a
     /// given `BytePos`.
-    pub fn lookup_file_pos(&self, pos: BytePos) -> (usize, CharPos) {
+    pub fn lookup_file_pos(&self, pos: BytePos) -> (LineNum, CharPos) {
         let chpos = self.bytepos_to_file_charpos(pos);
         match self.lookup_line(pos) {
             Some(a) => {
-                let line = a + 1; // Line numbers start at 1
+                let line = LineNum(u32::try_from(a).unwrap() + 1); // Line numbers start at 1
                 let linebpos = self.lines(|lines| lines[a]);
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
                 let col = chpos - linechpos;
                 debug!("byte pos {:?} is on the line at byte pos {:?}", pos, linebpos);
                 debug!("char pos {:?} is on the line at char pos {:?}", chpos, linechpos);
-                debug!("byte is on line: {}", line);
+                debug!("byte is on line: {}", line.to_usize());
                 assert!(chpos >= linechpos);
                 (line, col)
             }
-            None => (0, chpos),
+            None => (LineNum(0), chpos),
         }
     }
 
     /// Looks up the file's (1-based) line number, (0-based `CharPos`) column offset, and (0-based)
     /// column offset when displayed, for a given `BytePos`.
-    pub fn lookup_file_pos_with_col_display(&self, pos: BytePos) -> (usize, CharPos, usize) {
+    pub fn lookup_file_pos_with_col_display(&self, pos: BytePos) -> (LineNum, CharPos, usize) {
         let (line, col_or_chpos) = self.lookup_file_pos(pos);
-        if line > 0 {
+        if line.to_usize() > 0 {
             let col = col_or_chpos;
-            let linebpos = self.lines(|lines| lines[line - 1]);
+            let linebpos = self.lines(|lines| lines[line.to_usize() - 1]);
             let col_display = {
                 let start_width_idx = self
                     .non_narrow_chars
@@ -1745,7 +1745,7 @@ impl SourceFile {
                     self.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
                 chpos.0 - end_width_idx + non_narrow
             };
-            (0, chpos, col_display)
+            (LineNum(0), chpos, col_display)
         }
     }
 }
@@ -1912,6 +1912,12 @@ impl_pos! {
     /// values to `CharPos` values as necessary.
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
     pub struct CharPos(pub usize);
+
+    /// A Line number
+    ///
+    /// 1-based
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    pub struct LineNum(u32);
 }
 
 impl<S: Encoder> Encodable<S> for BytePos {
@@ -1936,7 +1942,7 @@ pub struct Loc {
     /// Information about the original source.
     pub file: Lrc<SourceFile>,
     /// The (1-based) line number.
-    pub line: usize,
+    pub line: LineNum,
     /// The (0-based) column offset.
     pub col: CharPos,
     /// The (0-based) column offset when displayed.

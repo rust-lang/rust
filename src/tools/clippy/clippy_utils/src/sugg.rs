@@ -657,7 +657,7 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().source_map().lookup_char_pos(span.lo());
     lo.file
-        .get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */)
+        .get_line(lo.line.to_usize() - 1 /* line numbers in `Loc` are 1-based */)
         .and_then(|line| {
             if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
                 // We can mix char and byte positions here because we only consider `[ \t]`.

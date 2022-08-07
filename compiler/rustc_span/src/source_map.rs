@@ -451,9 +451,9 @@ impl SourceMap {
         format!(
             "{}:{}:{}: {}:{}",
             lo.file.name.display(filename_display_pref),
-            lo.line,
+            lo.line.to_usize(),
             lo.col.to_usize() + 1,
-            hi.line,
+            hi.line.to_usize(),
             hi.col.to_usize() + 1,
         )
     }
@@ -477,8 +477,8 @@ impl SourceMap {
             return self.span_to_embeddable_string(sp);
         }
 
-        let lo_line = lo.line.saturating_sub(offset.line);
-        let hi_line = hi.line.saturating_sub(offset.line);
+        let lo_line = lo.line.to_usize().saturating_sub(offset.line.to_usize());
+        let hi_line = hi.line.to_usize().saturating_sub(offset.line.to_usize());
 
         format!(
             "{}:+{}:{}: +{}:{}",
@@ -546,7 +546,7 @@ impl SourceMap {
             return Ok(FileLines { file: lo.file, lines: Vec::new() });
         }
 
-        let mut lines = Vec::with_capacity(hi.line - lo.line + 1);
+        let mut lines = Vec::with_capacity(hi.line.to_usize() - lo.line.to_usize() + 1);
 
         // The span starts partway through the first line,
         // but after that it starts from offset 0.
@@ -559,8 +559,8 @@ impl SourceMap {
         //
         // FIXME: now that we handle DUMMY_SP up above, we should consider
         // asserting that the line numbers here are all indeed 1-based.
-        let hi_line = hi.line.saturating_sub(1);
-        for line_index in lo.line.saturating_sub(1)..hi_line {
+        let hi_line = hi.line.to_usize().saturating_sub(1);
+        for line_index in lo.line.to_usize().saturating_sub(1)..hi_line {
             let line_len = lo.file.get_line(line_index).map_or(0, |s| s.chars().count());
             lines.push(LineInfo { line_index, start_col, end_col: CharPos::from_usize(line_len) });
             start_col = CharPos::from_usize(0);

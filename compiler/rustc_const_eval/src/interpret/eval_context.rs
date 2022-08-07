@@ -270,7 +270,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
                     f,
                     " at {}:{}:{}",
                     sm.filename_for_diagnostics(&lo.file.name),
-                    lo.line,
+                    lo.line.to_usize(),
                     lo.col.to_usize() + 1
                 )?;
             }

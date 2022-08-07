@@ -77,8 +77,8 @@ impl JsonRenderer<'_> {
                     let lo = span.lo(self.sess());
                     Some(Span {
                         filename: local_path,
-                        begin: (lo.line, lo.col.to_usize()),
-                        end: (hi.line, hi.col.to_usize()),
+                        begin: (lo.line.to_usize(), lo.col.to_usize()),
+                        end: (hi.line.to_usize(), hi.col.to_usize()),
                     })
                 } else {
                     None
