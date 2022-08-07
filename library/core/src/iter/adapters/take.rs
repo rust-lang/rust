@@ -1,5 +1,9 @@
 use crate::cmp;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::adapters::zip::try_get_unchecked;
+use crate::iter::{
+    adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen, TrustedRandomAccess,
+    TrustedRandomAccessNoCoerce,
+};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
@@ -56,20 +60,7 @@ where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.n == 0 {
-            return (0, Some(0));
-        }
-
-        let (lower, upper) = self.iter.size_hint();
-
-        let lower = cmp::min(lower, self.n);
-
-        let upper = match upper {
-            Some(x) if x < self.n => Some(x),
-            _ => Some(self.n),
-        };
-
-        (lower, upper)
+        TakeSizeHint::size_hint(self)
     }
 
     #[inline]
@@ -126,6 +117,16 @@ where
                 ret
             }
         }
+    }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccessNoCoerce,
+    {
+        // SAFETY: the caller must uphold the contract for
+        // `Iterator::__iterator_get_unchecked`.
+        unsafe { try_get_unchecked(&mut self.iter, idx) }
     }
 }
 
@@ -242,3 +243,48 @@ impl<I> FusedIterator for Take<I> where I: FusedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccess for Take<I> where I: TrustedRandomAccess {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<I> TrustedRandomAccessNoCoerce for Take<I>
+where
+    I: TrustedRandomAccessNoCoerce,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+}
+
+trait TakeSizeHint: Iterator {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+impl<I: Iterator> TakeSizeHint for Take<I> {
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.n == 0 {
+            return (0, Some(0));
+        }
+
+        let (lower, upper) = self.iter.size_hint();
+
+        let lower = cmp::min(lower, self.n);
+
+        let upper = match upper {
+            Some(x) if x < self.n => Some(x),
+            _ => Some(self.n),
+        };
+
+        (lower, upper)
+    }
+}
+
+impl<I: TrustedLen> TakeSizeHint for Take<I> {
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = cmp::min(self.iter.size_hint().0, self.n);
+        (size, Some(size))
+    }
+}
