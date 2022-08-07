@@ -386,7 +386,7 @@ impl<'a> Printer<'a> {
                         self.print_type_ref(ret_ty);
                     }
                     (None, ClosureKind::Async) => {
-                        w!(self, " -> impl Future<Output = {{unknown}}>"); // FIXME(zachs18): {unknown} or ()?
+                        w!(self, " -> impl Future<Output = {{unknown}}>");
                     }
                     (None, _) => {}
                 }

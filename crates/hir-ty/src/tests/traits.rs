@@ -83,6 +83,46 @@ async fn test() {
 }
 
 #[test]
+fn infer_async_closure() {
+    check_types(
+        r#"
+//- minicore: future, option
+async fn test() {
+    let f = async move |x: i32| x + 42;
+    f;
+//  ^ |i32| -> impl Future<Output = i32>
+    let a = f(4);
+    a;
+//  ^ impl Future<Output = i32>
+    let x = a.await;
+    x;
+//  ^ i32
+    let f = async move || 42;
+    f;
+//  ^ || -> impl Future<Output = i32>
+    let a = f();
+    a;
+//  ^ impl Future<Output = i32>
+    let x = a.await;
+    x;
+//  ^ i32
+    let b = ((async move || {})()).await;
+    b;
+//  ^ ()
+    let c = async move || {
+        let y = None;
+        y
+    //  ^ Option<u64>
+    };
+    let _: Option<u64> = c().await;
+    c;
+//  ^ || -> impl Future<Output = Option<u64>>
+}
+"#,
+    );
+}
+
+#[test]
 fn auto_sized_async_block() {
     check_no_mismatches(
         r#"
