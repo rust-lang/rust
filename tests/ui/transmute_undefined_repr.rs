@@ -4,6 +4,7 @@
 use core::any::TypeId;
 use core::ffi::c_void;
 use core::mem::{size_of, transmute, MaybeUninit};
+use core::ptr::NonNull;
 
 fn value<T>() -> T {
     unimplemented!()
@@ -117,6 +118,9 @@ fn main() {
 
         let _: *const Ty2<u32, u32> = transmute(value::<*const Ty2C<u32, Ty2<u32, u32>>>()); // Err
         let _: *const Ty2C<u32, Ty2<u32, u32>> = transmute(value::<*const Ty2<u32, u32>>()); // Err
+
+        let _: NonNull<u8> = transmute(value::<NonNull<(String, String)>>()); // Ok
+        let _: NonNull<(String, String)> = transmute(value::<NonNull<u8>>()); // Ok
     }
 }
 
