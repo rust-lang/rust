@@ -174,7 +174,7 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        #[cfg(all(windows, target_pointer_width = "64"))]
+        #[cfg(all(any(windows, all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64"))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern "unadjusted" fn $name( $($argname: $ty),* ) $(-> $ret)? {
@@ -182,7 +182,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(windows, target_pointer_width = "64")))]
+        #[cfg(not(all(any(windows, all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
