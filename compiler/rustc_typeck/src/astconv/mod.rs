@@ -43,7 +43,7 @@ use rustc_trait_selection::traits::error_reporting::{
 };
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
 use std::slice;
 
@@ -1444,6 +1444,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Verify that `dummy_self` did not leak inside default type parameters.  This
                 // could not be done at path creation, since we need to see through trait aliases.
                 let mut missing_type_params = vec![];
+                let mut references_self = false;
                 let generics = tcx.generics_of(trait_ref.def_id);
                 let substs: Vec<_> = trait_ref
                     .substs
@@ -1451,12 +1452,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .enumerate()
                     .skip(1) // Remove `Self` for `ExistentialPredicate`.
                     .map(|(index, arg)| {
-                        if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                            && ty == dummy_self
-                        {
-                            let param = &generics.params[index];
-                            missing_type_params.push(param.name);
-                            tcx.ty_error().into()
+                        if let ty::GenericArgKind::Type(ty) = arg.unpack() {
+                            debug!(?ty);
+                            if ty == dummy_self {
+                                let param = &generics.params[index];
+                                missing_type_params.push(param.name);
+                                tcx.ty_error().into()
+                            } else if ty.walk().any(|arg| arg == dummy_self.into()) {
+                                references_self = true;
+                                tcx.ty_error().into()
+                            } else {
+                                arg
+                            }
                         } else {
                             arg
                         }
@@ -1475,6 +1482,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     span,
                     empty_generic_args,
                 );
+
+                if references_self {
+                    let def_id = i.bottom().0.def_id();
+                    let mut err = struct_span_err!(
+                        tcx.sess,
+                        i.bottom().1,
+                        E0038,
+                        "the {} `{}` cannot be made into an object",
+                        tcx.def_kind(def_id).descr(def_id),
+                        tcx.item_name(def_id),
+                    );
+                    err.note(
+                        rustc_middle::traits::ObjectSafetyViolation::SupertraitSelf(smallvec![])
+                            .error_msg(),
+                    );
+                    err.emit();
+                }
 
                 ty::ExistentialTraitRef { def_id: trait_ref.def_id, substs }
             })
