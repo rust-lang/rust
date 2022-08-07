@@ -62,15 +62,13 @@ impl Command {
 
     pub fn stdin(&mut self, stdin: Stdio) {
         match stdin {
-            Stdio::Inherit => {}
+            Stdio::Inherit => unimplemented!(),
             Stdio::Null => {
                 let mut key = self.program.clone();
                 key.push("_stdin");
                 self.env.set(&key, OsStr::new("null"));
             }
-            Stdio::MakePipe => {
-                todo!()
-            }
+            Stdio::MakePipe => unimplemented!(),
         }
     }
 
@@ -81,8 +79,7 @@ impl Command {
                     let mut key = current_exe.into_os_string();
                     key.push("_stdout");
                     if let Some(val) = crate::env::var_os(&key) {
-                        self.env.set(&key, &val);
-                        self.stderr_key = Some(val);
+                        self.stdout_key = Some(val);
                     }
                 }
             }
@@ -109,7 +106,6 @@ impl Command {
                     let mut key = current_exe.into_os_string();
                     key.push("_stderr");
                     if let Some(val) = crate::env::var_os(&key) {
-                        self.env.set(&key, &val);
                         self.stderr_key = Some(val);
                     }
                 }
@@ -182,8 +178,14 @@ impl Command {
         // Initially thought to implement start at wait. However, it seems like everything expectes
         // stdio output to be ready for reading before calling wait, which is not possible at least
         // in current implementation.
+        // Moving this to wait breaks output
         let r = cmd.start_image()?;
-        let proc = Process { status: r, env: self.env.clone() };
+        // Cleanup env
+        for (k, _) in self.env.iter() {
+            let _ = super::os::unsetenv(k);
+        }
+
+        let proc = Process { status: r };
 
         Ok((proc, stdio_pipe))
     }
@@ -270,7 +272,6 @@ impl From<u8> for ExitCode {
 
 pub struct Process {
     status: r_efi::efi::Status,
-    env: CommandEnv,
 }
 
 impl Process {
@@ -288,15 +289,6 @@ impl Process {
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         unsupported()
-    }
-}
-
-impl Drop for Process {
-    fn drop(&mut self) {
-        // Clenup env
-        for (k, _) in self.env.iter() {
-            let _ = super::os::unsetenv(k);
-        }
     }
 }
 
