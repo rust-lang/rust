@@ -375,9 +375,20 @@ impl<'a> Printer<'a> {
                     }
                 }
                 w!(self, "|");
-                if let Some(ret_ty) = ret_type {
-                    w!(self, " -> ");
-                    self.print_type_ref(ret_ty);
+                match (ret_type, closure_kind) {
+                    (Some(ret_ty), ClosureKind::Async) => {
+                        w!(self, " -> impl Future<Output = ");
+                        self.print_type_ref(ret_ty);
+                        w!(self, ">");
+                    }
+                    (Some(ret_ty), _) => {
+                        w!(self, " -> ");
+                        self.print_type_ref(ret_ty);
+                    }
+                    (None, ClosureKind::Async) => {
+                        w!(self, " -> impl Future<Output = {{unknown}}>"); // FIXME(zachs18): {unknown} or ()?
+                    }
+                    (None, _) => {}
                 }
                 self.whitespace();
                 self.print_expr(*body);

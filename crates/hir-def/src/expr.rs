@@ -245,6 +245,7 @@ pub enum Expr {
 pub enum ClosureKind {
     Closure,
     Generator(Movability),
+    Async,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
