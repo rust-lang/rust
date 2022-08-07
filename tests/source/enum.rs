@@ -36,7 +36,7 @@ enum StructLikeVariants {
     Normal(u32, String, ),
     StructLike { x: i32, // Test comment
         // Pre-comment
-        #[Attr50] y: SomeType, // Aanother Comment
+        #[Attr50] y: SomeType, // Another Comment
     }, SL { a: A }
 }
 

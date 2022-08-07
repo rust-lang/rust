@@ -1,8 +1,10 @@
 //! This module provides utilities for handling attributes on variants
-//! of `config_type` enum. Currently there are two types of attributes
-//! that could appear on the variants of `config_type` enum: `doc_hint`
-//! and `value`. Both comes in the form of name-value pair whose value
-//! is string literal.
+//! of `config_type` enum. Currently there are the following attributes
+//! that could appear on the variants of `config_type` enum:
+//!
+//! - `doc_hint`: name-value pair whose value is string literal
+//! - `value`: name-value pair whose value is string literal
+//! - `unstable_variant`: name only
 
 /// Returns the value of the first `doc_hint` attribute in the given slice or
 /// `None` if `doc_hint` attribute is not available.
@@ -27,6 +29,11 @@ pub fn find_config_value(attrs: &[syn::Attribute]) -> Option<String> {
     attrs.iter().filter_map(config_value).next()
 }
 
+/// Returns `true` if the there is at least one `unstable` attribute in the given slice.
+pub fn any_unstable_variant(attrs: &[syn::Attribute]) -> bool {
+    attrs.iter().any(is_unstable_variant)
+}
+
 /// Returns a string literal value if the given attribute is `value`
 /// attribute or `None` otherwise.
 pub fn config_value(attr: &syn::Attribute) -> Option<String> {
@@ -38,9 +45,21 @@ pub fn is_config_value(attr: &syn::Attribute) -> bool {
     is_attr_name_value(attr, "value")
 }
 
+/// Returns `true` if the given attribute is an `unstable` attribute.
+pub fn is_unstable_variant(attr: &syn::Attribute) -> bool {
+    is_attr_path(attr, "unstable_variant")
+}
+
 fn is_attr_name_value(attr: &syn::Attribute, name: &str) -> bool {
     attr.parse_meta().ok().map_or(false, |meta| match meta {
         syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }) if path.is_ident(name) => true,
+        _ => false,
+    })
+}
+
+fn is_attr_path(attr: &syn::Attribute, name: &str) -> bool {
+    attr.parse_meta().ok().map_or(false, |meta| match meta {
+        syn::Meta::Path(path) if path.is_ident(name) => true,
         _ => false,
     })
 }
