@@ -20,9 +20,11 @@ pub use crate::config::options::*;
 #[macro_use]
 pub(crate) mod config_type;
 #[macro_use]
+#[allow(unreachable_pub)]
 pub(crate) mod options;
 
 pub(crate) mod file_lines;
+#[allow(unreachable_pub)]
 pub(crate) mod lists;
 pub(crate) mod macro_names;
 
