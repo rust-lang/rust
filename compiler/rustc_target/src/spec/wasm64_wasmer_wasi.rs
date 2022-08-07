@@ -1,7 +1,7 @@
 //! 64-bit WebAssembly target with a full operating system based on WASI
 //!
 
-use super::wasm_base;
+use super::{wasm_base, TlsModel};
 use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
 
 pub fn target() -> Target {
@@ -21,6 +21,11 @@ pub fn target() -> Target {
 
     options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
     options.post_link_objects_fallback = crt_objects::post_wasi_fallback();
+
+    // WASI now supports multi-threading but not yet thread local support
+    options.singlethread = false;
+    options.tls_model = TlsModel::LocalExec;
+    options.has_thread_local = true;
 
     // Right now this is a bit of a workaround but we're currently saying that
     // the target by default has a static crt which we're taking as a signal
@@ -46,12 +51,13 @@ pub fn target() -> Target {
     //       work properly so more work is needed to finish this, otherwise this is very close to
     //       full networking support.
     // We need shared memory for multithreading
-    //lld_args.push("--shared-memory".into());
+    lld_args.push("--shared-memory".into());
+    lld_args.push("--no-check-features".into());
 
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time
     // wasm64 was designed.
-    options.features = "+bulk-memory,+mutable-globals,+sign-ext,+nontrapping-fptoint".into();
+    options.features = "+bulk-memory,+atomics,+mutable-globals,+sign-ext,+nontrapping-fptoint".into();
 
     Target {
         llvm_target: "wasm64-wasi".into(),

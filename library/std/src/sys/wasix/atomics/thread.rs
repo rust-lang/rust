@@ -1,4 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(dead_code, unused)]
 
 use crate::ffi::CStr;
 use crate::io;
@@ -9,47 +10,98 @@ use crate::time::Duration;
 
 use super::err2io;
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
+pub const DEFAULT_MIN_STACK_SIZE: usize = 1 * 1024 * 1024;
+
+const TLS_SIZE: usize = 64;
+const TLS_ALIGN: usize = 128;
+
+const PTHREAD_SELF_SIZE: usize = 1024;
 
 // Callback when a new thread is spawned
+// (making sure the function is never inlined means its use of the stack before
+//  its been initialized is minimized)
 #[no_mangle]
+#[inline(never)]
 pub extern "C" fn _start_thread(entry: u64) {
     let cb = unsafe {
         let cb = entry as *mut ThreadCallback;
         Box::from_raw(cb)
     };
 
+    // Set the thread to a new stack
+    unsafe {
+        libc::__wasilibc_set_stack_pointer(cb.stack.stack_pointer as *mut libc::c_void);
+    }
+    
+    // Now we can use stack_pointer safely
+    _start_thread_internal(cb);
+}
+
+// Callback when a new thread is spawned
+#[inline(never)]
+fn _start_thread_internal(cb: Box<ThreadCallback>) {
+    // Set the thread to a new stack
+    let stack_pointer = cb.stack.stack_ptr + cb.stack.stack_size;
+    unsafe {
+        let mut tls_ptr = cb.stack.tls_ptr;
+        if tls_ptr % cb.stack.tls_align != 0 {
+            tls_ptr += (cb.stack.tls_align - (tls_ptr % cb.stack.tls_align));
+        }
+        libc::__wasilibc_init_tls(tls_ptr as *mut libc::c_void);
+    }
+
     (cb.callback)();
+
+    // Push the stack back onto the pool
+    stack_pool_push(cb.stack);
 }
 
 // Callback when reactor work needs to be processed
+// (making sure the function is never inlined means its use of the stack before
+//  its been initialized is minimized)
 #[no_mangle]
+#[inline(never)]
 pub extern "C" fn _react(entry: u64) {
     let cb = unsafe {
         let cb = entry as *mut ReactorCallback;
         mem::ManuallyDrop::new(Box::from_raw(cb))
     };
+
+    // Set the thread to a new stack
+    unsafe {
+        libc::__wasilibc_set_stack_pointer(cb.stack.stack_pointer as *mut libc::c_void);
+    }
+
+    // Now we can use stack_pointer safely
+    _react_internal(cb);
+}
+
+#[inline(never)]
+fn _react_internal(cb: mem::ManuallyDrop<Box<ReactorCallback>>) {
+    unsafe {
+        let mut tls_ptr = cb.stack.tls_ptr;
+        if tls_ptr % cb.stack.tls_align != 0 {
+            tls_ptr += (cb.stack.tls_align - (tls_ptr % cb.stack.tls_align));
+        }
+        libc::__wasilibc_init_tls(tls_ptr as *mut libc::c_void);
+    }
+
+    // Invoke the callback
     (cb.callback)();
 }
 
 // Frees memory that was passed to the operating system by
 // the program
 #[no_mangle]
-pub extern "C" fn _free(buf_ptr: u64, buf_len: u64) {
-    unsafe {
-        let data = Vec::from_raw_parts(buf_ptr as *mut u8, buf_len as usize, buf_len as usize);
-        mem::drop(data);
-    }
+pub extern "C" fn _free(buf_ptr: u64, _buf_len: u64) {
+    unsafe { libc::free(buf_ptr as *mut libc::c_void) };
 }
 
 // Allocates memory that will be used to pass data from the
 // operating system back to this program
 #[no_mangle]
 pub extern "C" fn _malloc(len: u64) -> u64 {
-    let mut buf = Vec::with_capacity(len as usize);
-    let ptr: *mut u8 = buf.as_mut_ptr();
-    mem::forget(buf);
-    return ptr as u64;
+    unsafe { libc::malloc(len as usize) as u64 }
 }
 
 pub struct Thread
@@ -57,25 +109,96 @@ pub struct Thread
     handle: wasi::Tid,
 }
 
+struct ThreadStack
+{
+    stack_ptr: u64,
+    stack_size: u64,
+    stack_pointer: u64,
+    tls_ptr: u64,
+    tls_size: u64,
+    tls_align: u64,
+}
+
+impl Drop
+for ThreadStack
+{
+    fn drop(&mut self) {
+        _free(self.stack_ptr, self.stack_size);
+        _free(self.tls_ptr, self.tls_size);
+    }
+}
+
 #[repr(C)]
 pub struct ThreadCallback
 {
-    callback: Box<dyn FnOnce() + 'static>
+    // Callback that will be invoked
+    callback: Box<dyn FnOnce() + 'static>,
+    // Memory reserved for the call stack
+    stack: ThreadStack,
 }
 
 #[repr(C)]
-#[derive(Clone)]
 pub struct ReactorCallback
 {
-    callback: Arc<dyn Fn() + Send + Sync + 'static>
+    // Callback that will be invoked multiple times
+    callback: Box<dyn Fn() + Send + Sync + 'static>,
+    // Memory reserved for the call stack
+    stack: ThreadStack,
+}
+
+use crate::sync::Mutex;
+use crate::collections::VecDeque;
+use crate::lazy::SyncLazy;
+
+static STACK_POOL: SyncLazy<Mutex<VecDeque<ThreadStack>>> = SyncLazy::new(|| Default::default());
+
+// Takes (or creates) a thread stack from the shared pool
+fn stack_pool_pop(stack_size: usize) -> ThreadStack {
+    let mut guard = STACK_POOL.lock().unwrap();
+    match guard.pop_front() {
+        Some(a) => a,
+        None => {
+            // Create a new empty stack for the the thread
+            // (leave some space for the start function, as it may have some variables)
+            let stack_ptr = unsafe {
+                libc::malloc(stack_size) as u64
+            };
+            let stack_pointer =  stack_ptr + ((stack_size as u64) - 256);
+
+            let tls_size = unsafe { libc::__wasilibc_tls_size() as usize };
+            let tls_align = unsafe { libc::__wasilibc_tls_align() as usize };
+            let pthread_self_size = PTHREAD_SELF_SIZE as usize;
+            let tls_ptr = unsafe {
+                libc::malloc(tls_size + tls_align + pthread_self_size) as u64
+            };
+            ThreadStack {
+                stack_ptr,
+                stack_size: stack_size as u64,
+                stack_pointer,
+                tls_ptr,
+                tls_size: tls_size as u64,
+                tls_align: tls_align as u64,
+            }
+        }
+    }
+}
+
+fn stack_pool_push(stack: ThreadStack) {
+    let mut guard = STACK_POOL.lock().unwrap();
+    guard.push_front(stack);
 }
 
 impl Thread {
-    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread>
+    pub unsafe fn new(stack_size: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread>
     {
+        // Create the callback we will pass back to ourselves in a new thread
         let cb = Box::new(ThreadCallback {
-            callback: p
+            callback: p,
+            stack: stack_pool_pop(stack_size),
         });
+
+        // Invoke the thread_spawn callback (if it fails we need to clean up the
+        // allocated memory ourselves)
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ThreadCallback;
             wasi::thread_spawn(raw as u64, wasi::BOOL_FALSE)
@@ -93,7 +216,8 @@ impl Thread {
     where F: Fn() + Send + Sync + 'static
     {
         let cb = Box::new(ReactorCallback {
-            callback: Arc::new(p)
+            callback: Box::new(p),
+            stack: stack_pool_pop(DEFAULT_MIN_STACK_SIZE),
         });
         let handle = unsafe {
             let raw = Box::into_raw(cb) as *mut ReactorCallback;
@@ -185,5 +309,8 @@ pub mod guard {
     pub unsafe fn init() -> Option<Guard> {
         None
     }
+
+    pub unsafe fn current() -> Option<Guard> {
+        None
+    }
 }
-    

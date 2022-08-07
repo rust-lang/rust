@@ -47,6 +47,10 @@ pub mod locks {
 pub mod futex;
 #[path = "atomics/thread.rs"]
 pub mod thread;
+//#[path = "../unix/thread.rs"]
+//pub mod thread;
+#[path = "../unix/stack_overflow.rs"]
+pub mod stack_overflow;
 
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]

@@ -1354,6 +1354,7 @@ impl<'a> Linker for WasmLd<'a> {
         // others. Various bits and pieces of tooling use this, so be sure these
         // symbols make their way out of the linker as well.
         self.cmd.arg("--export=__heap_base");
+        self.cmd.arg("--export=__stack_pointer");
         self.cmd.arg("--export=__data_end");
     }
 
