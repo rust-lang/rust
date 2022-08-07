@@ -243,15 +243,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
-    fn access_local<'a>(
-        frame: &'a Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
-        local: Local,
-    ) -> InterpResult<'tcx, &'a interpret::Operand<Self::Provenance>> {
-        let l = &frame.locals[local];
-        // Applying restrictions here is meaningless since they can be circumvented via `force_allocation`.
-        l.access()
-    }
-
     fn access_local_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
         frame: usize,
