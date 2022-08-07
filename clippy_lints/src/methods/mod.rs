@@ -3519,7 +3519,10 @@ impl Methods {
                 ("sort_unstable_by", [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
                 },
-                ("replace", [_, _]) => collapsible_str_replace::check(cx, expr, name, recv, args),
+                ("replace" | "replacen", [arg1, arg2] | [arg1, arg2, _]) => {
+                    no_effect_replace::check(cx, expr, arg1, arg2);
+                    collapsible_str_replace::check(cx, expr, name, recv, args);
+                },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
                         suspicious_splitn::check(cx, name, expr, recv, count);
@@ -3584,9 +3587,6 @@ impl Methods {
                         unwrap_or_else_default::check(cx, expr, recv, u_arg);
                         unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                     },
-                },
-                ("replace" | "replacen", [arg1, arg2] | [arg1, arg2, _]) => {
-                    no_effect_replace::check(cx, expr, arg1, arg2);
                 },
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, [iter_recv], _) = recv.kind

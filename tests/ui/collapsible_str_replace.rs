@@ -49,6 +49,10 @@ fn main() {
     let replacement = misspelled.replace(s, "l");
     println!("{replacement}");
 
+    // If the consecutive `str::replace` calls have different `to` arguments, do not lint
+    let replacement = misspelled.replace('s', "l").replace('u', "p");
+    println!("{replacement}");
+
     // If the `from` argument is of kind other than a slice or a char, do not lint
     let replacement = misspelled.replace(&get_filter(), "l");
 
