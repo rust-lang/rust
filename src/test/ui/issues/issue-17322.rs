@@ -1,8 +1,6 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 use std::io::{self, Write};
 
 fn f(wr: &mut dyn Write) {
@@ -10,6 +8,6 @@ fn f(wr: &mut dyn Write) {
 }
 
 fn main() {
-    let mut wr = box io::stdout() as Box<dyn Write>;
+    let mut wr = Box::new(io::stdout()) as Box<dyn Write>;
     f(&mut wr);
 }

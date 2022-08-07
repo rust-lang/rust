@@ -1,5 +1,4 @@
 // run-pass
-#![feature(box_syntax)]
 
 struct StrWrap {
     s: String
@@ -48,7 +47,7 @@ impl<T: Eq> Matcher<T> for EqualTo<T> {
 }
 
 fn equal_to<T: Eq>(expected: T) -> Box<EqualTo<T>> {
-    box EqualTo { expected: expected }
+    Box::new(EqualTo { expected: expected })
 }
 
 pub fn main() {
