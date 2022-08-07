@@ -90,13 +90,13 @@ bench)
     # Make sure we have an up-to-date Miri installed
     "$0" install
     # Run the requested benchmarks
-    if [ -z "$@" ]; then
+    if [ -z "${1+exists}" ]; then
         BENCHES=( $(ls "$MIRIDIR/bench-cargo-miri" ) )
     else
         BENCHES=("$@")
     fi
     for BENCH in "${BENCHES[@]}"; do
-        hyperfine -w 1 -m 5 --shell=none "cargo +$TOOLCHAIN miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml"
+        hyperfine -w 1 -m 5 --shell=none "cargo +$TOOLCHAIN miri run --manifest-path $MIRIDIR/bench-cargo-miri/$BENCH/Cargo.toml"
     done
     exit 0
     ;;

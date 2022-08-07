@@ -54,8 +54,8 @@ function run_tests {
   unset RUSTC MIRI
   rm -rf .cargo
 
-  # Ensure that our benchmarks all work, on the host at least.
-  if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
+  # Ensure that our benchmarks all work, but only on Linux hosts.
+  if [ -z "${MIRI_TEST_TARGET+exists}" ] && [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ] ; then
     for BENCH in $(ls "bench-cargo-miri"); do
       cargo miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml
     done

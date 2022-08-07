@@ -1,6 +1,7 @@
 #![feature(let_else)]
 #![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq)]
 
+mod arg;
 mod phases;
 mod setup;
 mod util;

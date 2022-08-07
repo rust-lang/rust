@@ -4,7 +4,6 @@ use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
-use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -12,6 +11,8 @@ use std::process::Command;
 use cargo_metadata::{Metadata, MetadataCommand};
 use rustc_version::VersionMeta;
 use serde::{Deserialize, Serialize};
+
+pub use crate::arg::*;
 
 /// The information to run a crate with the given environment.
 #[derive(Clone, Serialize, Deserialize)]
@@ -72,78 +73,6 @@ pub enum MiriCommand {
 pub fn show_error(msg: String) -> ! {
     eprintln!("fatal error: {}", msg);
     std::process::exit(1)
-}
-
-/// Determines whether a `--flag` is present.
-pub fn has_arg_flag(name: &str) -> bool {
-    num_arg_flag(name) > 0
-}
-
-/// Determines how many times a `--flag` is present.
-pub fn num_arg_flag(name: &str) -> usize {
-    std::env::args().take_while(|val| val != "--").filter(|val| val == name).count()
-}
-
-/// Yields all values of command line flag `name` as `Ok(arg)`, and all other arguments except
-/// the flag as `Err(arg)`. (The flag `name` itself is not yielded at all, only its values are.)
-pub struct ArgSplitFlagValue<'a, I> {
-    args: TakeWhile<I, fn(&String) -> bool>,
-    name: &'a str,
-}
-
-impl<'a, I: Iterator<Item = String>> ArgSplitFlagValue<'a, I> {
-    pub fn new(args: I, name: &'a str) -> Self {
-        Self {
-            // Stop searching at `--`.
-            args: args.take_while(|val| val != "--"),
-            name,
-        }
-    }
-}
-
-impl<I: Iterator<Item = String>> Iterator for ArgSplitFlagValue<'_, I> {
-    type Item = Result<String, String>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let arg = self.args.next()?;
-        if let Some(suffix) = arg.strip_prefix(self.name) {
-            // Strip leading `name`.
-            if suffix.is_empty() {
-                // This argument is exactly `name`; the next one is the value.
-                return self.args.next().map(Ok);
-            } else if let Some(suffix) = suffix.strip_prefix('=') {
-                // This argument is `name=value`; get the value.
-                return Some(Ok(suffix.to_owned()));
-            }
-        }
-        Some(Err(arg))
-    }
-}
-
-/// Yields all values of command line flag `name`.
-pub struct ArgFlagValueIter<'a>(ArgSplitFlagValue<'a, env::Args>);
-
-impl<'a> ArgFlagValueIter<'a> {
-    pub fn new(name: &'a str) -> Self {
-        Self(ArgSplitFlagValue::new(env::args(), name))
-    }
-}
-
-impl Iterator for ArgFlagValueIter<'_> {
-    type Item = String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Ok(value) = self.0.next()? {
-                return Some(value);
-            }
-        }
-    }
-}
-
-/// Gets the value of a `--flag`.
-pub fn get_arg_flag_value(name: &str) -> Option<String> {
-    ArgFlagValueIter::new(name).next()
 }
 
 /// Escapes `s` in a way that is suitable for using it as a string literal in TOML syntax.
@@ -287,29 +216,33 @@ pub fn write_to_file(filename: &Path, content: &str) {
     fs::rename(temp_filename, filename).unwrap();
 }
 
-pub fn get_cargo_metadata() -> Metadata {
-    // The `build.target-dir` config can be passed by `--config` flags, so forward them to
-    // `cargo metadata`.
-    let mut additional_options = Vec::new();
+// Computes the extra flags that need to be passed to cargo to make it behave like the current
+// cargo invocation.
+fn cargo_extra_flags() -> Vec<String> {
+    let mut flags = Vec::new();
     // `-Zunstable-options` is required by `--config`.
-    additional_options.push("-Zunstable-options".to_string());
+    flags.push("-Zunstable-options".to_string());
 
+    // Forward `--config` flags.
     let config_flag = "--config";
-    for arg in ArgSplitFlagValue::new(
-        env::args().skip(3), // skip the program name, "miri" and "run" / "test"
-        config_flag,
-    )
-    // Only look at `Ok`
-    .flatten()
-    {
-        additional_options.push(config_flag.to_string());
-        additional_options.push(arg);
+    for arg in get_arg_flag_values(config_flag) {
+        flags.push(config_flag.to_string());
+        flags.push(arg);
     }
 
-    let metadata =
-        MetadataCommand::new().no_deps().other_options(additional_options).exec().unwrap();
+    // Forward `--manifest-path`.
+    let manifest_flag = "--manifest-path";
+    if let Some(manifest) = get_arg_flag_value(manifest_flag) {
+        flags.push(manifest_flag.to_string());
+        flags.push(manifest);
+    }
 
-    metadata
+    flags
+}
+
+pub fn get_cargo_metadata() -> Metadata {
+    // This will honor the `CARGO` env var the same way our `cargo()` does.
+    MetadataCommand::new().no_deps().other_options(cargo_extra_flags()).exec().unwrap()
 }
 
 /// Pulls all the crates in this workspace from the cargo metadata.
