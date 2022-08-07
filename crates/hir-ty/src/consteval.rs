@@ -121,15 +121,6 @@ impl Display for ComputedExpr {
     }
 }
 
-impl ComputedExpr {
-    pub fn enum_value(&self) -> Option<ComputedExpr> {
-        match self {
-            ComputedExpr::Enum(_, _, lit) => Some(ComputedExpr::Literal(lit.clone())),
-            _ => None,
-        }
-    }
-}
-
 fn scalar_max(scalar: &Scalar) -> i128 {
     match scalar {
         Scalar::Bool => 1,
@@ -200,11 +191,7 @@ pub fn eval_const(
                     }
                     _ => 0,
                 };
-                Ok(ComputedExpr::Enum(
-                    get_name(variant, ctx),
-                    variant,
-                    Literal::Int(value, Some(BuiltinInt::I128)),
-                ))
+                Ok(ComputedExpr::Literal(Literal::Int(value, Some(BuiltinInt::I128))))
             }
             _ => Err(ConstEvalError::IncompleteExpr),
         },
@@ -403,12 +390,9 @@ pub fn eval_const(
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
-        Expr::Cast { expr, .. } => match eval_const(*expr, ctx, None)? {
+        &Expr::Cast { expr, .. } => match eval_const(expr, ctx, None)? {
             ComputedExpr::Enum(_, _, lit) => Ok(ComputedExpr::Literal(lit)),
-            expr => Err(ConstEvalError::NotSupported(Box::leak(Box::new(format!(
-                "Can't cast type: {:?}",
-                expr
-            ))))),
+            _ => Err(ConstEvalError::NotSupported("Can't cast these types")),
         },
         _ => Err(ConstEvalError::NotSupported("This kind of expression")),
     }

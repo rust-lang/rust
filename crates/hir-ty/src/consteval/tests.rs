@@ -100,6 +100,20 @@ fn enums() {
     "#,
         6,
     );
+    check_number(
+        r#"
+    enum E { F1 = 1, F2, }
+    const GOAL: i32 = E::F2 as u8;
+    "#,
+        2,
+    );
+    check_number(
+        r#"
+    enum E { F1, }
+    const GOAL: i32 = E::F1 as u8;
+    "#,
+        0,
+    );
     let r = eval_goal(
         r#"
         enum E { A = 1, }
