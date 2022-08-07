@@ -4,12 +4,10 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 fn work(_: Box<isize>) {}
 fn foo<F:FnOnce()>(_: F) {}
 
 pub fn main() {
-  let a = box 1;
+  let a = Box::new(1);
   foo(move|| { foo(move|| { work(a) }) })
 }

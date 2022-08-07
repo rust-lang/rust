@@ -1,8 +1,7 @@
 // run-pass
-#![feature(box_syntax)]
 
 fn match_on_local() {
-    let mut foo: Option<Box<_>> = Some(box 5);
+    let mut foo: Option<Box<_>> = Some(Box::new(5));
     match foo {
         None => {},
         Some(x) => {
@@ -37,7 +36,7 @@ fn match_on_binding() {
 }
 
 fn match_on_upvar() {
-    let mut foo: Option<Box<_>> = Some(box 8);
+    let mut foo: Option<Box<_>> = Some(Box::new(8));
     let f = move|| {
         match foo {
             None => {},
@@ -52,7 +51,7 @@ fn match_on_upvar() {
 
 fn main() {
     match_on_local();
-    match_on_arg(Some(box 6));
+    match_on_arg(Some(Box::new(6)));
     match_on_binding();
     match_on_upvar();
 }

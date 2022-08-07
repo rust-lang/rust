@@ -1,5 +1,5 @@
 error[E0033]: type `Box<(dyn MyTrait + 'static)>` cannot be dereferenced
-  --> $DIR/issue-4972.rs:14:25
+  --> $DIR/issue-4972.rs:13:25
    |
 LL |         TraitWrapper::A(box ref map) => map,
    |                         ^^^^^^^^^^^ type `Box<(dyn MyTrait + 'static)>` cannot be dereferenced

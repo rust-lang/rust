@@ -1,8 +1,8 @@
 error[E0560]: struct `Foo` has no field named `nonexistent`
-  --> $DIR/issue-5439.rs:13:26
+  --> $DIR/issue-5439.rs:11:31
    |
-LL |         return box Foo { nonexistent: self, foo: i };
-   |                          ^^^^^^^^^^^ `Foo` does not have this field
+LL |         return Box::new(Foo { nonexistent: self, foo: i });
+   |                               ^^^^^^^^^^^ `Foo` does not have this field
    |
    = note: available fields are: `foo`
 

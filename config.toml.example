@@ -721,6 +721,10 @@ changelog-seen = 2
 # probably don't want to use this.
 #qemu-rootfs = <none> (path)
 
+# Skip building the `std` library for this target. Enabled by default for
+# target triples containing `-none`, `nvptx`, `switch`, or `-uefi`.
+#no-std = <platform-specific> (bool)
+
 # =============================================================================
 # Distribution options
 #

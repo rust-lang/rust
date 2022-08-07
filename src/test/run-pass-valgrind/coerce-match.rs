@@ -2,15 +2,18 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 pub fn main() {
-    let _: Box<[isize]> =
-        if true { let b: Box<_> = box [1, 2, 3]; b } else { let b: Box<_> = box [1]; b };
+    let _: Box<[isize]> = if true {
+        let b: Box<_> = Box::new([1, 2, 3]);
+        b
+    } else {
+        let b: Box<_> = Box::new([1]);
+        b
+    };
 
     let _: Box<[isize]> = match true {
-        true => { let b: Box<_> = box [1, 2, 3]; b }
-        false => { let b: Box<_> = box [1]; b }
+        true => { let b: Box<_> = Box::new([1, 2, 3]); b }
+        false => { let b: Box<_> = Box::new([1]); b }
     };
 
     // Check we don't get over-keen at propagating coercions in the case of casts.
