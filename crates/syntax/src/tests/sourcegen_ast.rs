@@ -410,24 +410,17 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
 
         impl SyntaxKind {
             pub fn is_keyword(self) -> bool {
-                match self {
-                    #(#all_keywords)|* => true,
-                    _ => false,
-                }
+                matches!(self, #(#all_keywords)|*)
             }
 
             pub fn is_punct(self) -> bool {
-                match self {
-                    #(#punctuation)|* => true,
-                    _ => false,
-                }
+
+                matches!(self, #(#punctuation)|*)
+
             }
 
             pub fn is_literal(self) -> bool {
-                match self {
-                    #(#literals)|* => true,
-                    _ => false,
-                }
+                matches!(self, #(#literals)|*)
             }
 
             pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
