@@ -112,12 +112,12 @@ fn f() {
 struct Foo;
 impl Foo {
     #[cfg(any())] pub fn f() {}
-  //*************************** weak: code is inactive due to #[cfg] directives
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives
 }
 
 trait Bar {
     #[cfg(any())] pub fn f() {}
-  //*************************** weak: code is inactive due to #[cfg] directives
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives
 }
 "#,
         );
