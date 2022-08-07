@@ -133,6 +133,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
         }
     }
     // Detect the target directory if it's not specified via `--target-dir`.
+    // (`cargo metadata` does not support `--target-dir`, that's why we have to handle this ourselves.)
     let target_dir = target_dir.get_or_insert_with(|| metadata.target_directory.clone());
     // Set `--target-dir` to `miri` inside the original target directory.
     target_dir.push("miri");
