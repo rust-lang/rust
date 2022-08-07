@@ -184,6 +184,13 @@ const std::map<std::string, size_t> MPIInactiveCommAllocators = {
     {"MPI_Comm_join", 1},
 };
 
+// Instructions which themselves are inactive
+// the returned value, however, may still be active
+const std::set<std::string> KnownInactiveFunctionInsts = {
+    "__dynamic_cast", "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base",
+    "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base", "jl_ptr_to_array",
+    "jl_ptr_to_array_1d"};
+
 const std::set<std::string> KnownInactiveFunctions = {
     "abort",
     "__assert_fail",
@@ -628,6 +635,10 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults const &TR,
       if (called->hasFnAttribute("enzyme_inactive")) {
         if (EnzymePrintActivity)
           llvm::errs() << "forced inactive " << *I << "\n";
+        InsertConstantInstruction(TR, I);
+        return true;
+      }
+      if (KnownInactiveFunctionInsts.count(called->getName().str())) {
         InsertConstantInstruction(TR, I);
         return true;
       }
@@ -1579,6 +1590,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
           if (KnownInactiveFunctions.count(F->getName().str()) ||
               MPIInactiveCommAllocators.find(F->getName().str()) !=
                   MPIInactiveCommAllocators.end()) {
+            return false;
+          }
+          if (KnownInactiveFunctionInsts.count(F->getName().str())) {
             return false;
           }
           if (isMemFreeLibMFunction(F->getName()) ||

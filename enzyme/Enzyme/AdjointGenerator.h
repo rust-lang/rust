@@ -9013,7 +9013,8 @@ public:
       // and shadow return recomputable from shadow arguments.
       if (funcName == "__dynamic_cast" ||
           funcName == "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base" ||
-          funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base") {
+          funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base" ||
+          funcName == "jl_ptr_to_array" || funcName == "jl_ptr_to_array_1d") {
         bool shouldCache = false;
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
@@ -9047,7 +9048,9 @@ public:
 #endif
                 {
                   if (gutils->isConstantValue(arg) ||
-                      (funcName == "__dynamic_cast" && i > 0))
+                      (funcName == "__dynamic_cast" && i > 0) ||
+                      (funcName == "jl_ptr_to_array_1d" && i != 1) ||
+                      (funcName == "jl_ptr_to_array" && i != 1))
                     args.push_back(gutils->getNewFromOriginal(arg));
                   else
                     args.push_back(gutils->invertPointerM(arg, BuilderZ));
@@ -11302,10 +11305,11 @@ public:
           newcalled = BuilderZ.CreateExtractValue(newcalled, {0});
         }
 
-        ErrorIfRuntimeInactive(BuilderZ, gutils->getNewFromOriginal(callval),
-                               newcalled,
-                               "Attempting to call an indirect active function "
-                               "whose runtime value is inactive");
+        ErrorIfRuntimeInactive(
+            BuilderZ, gutils->getNewFromOriginal(callval), newcalled,
+            "Attempting to call an indirect active function "
+            "whose runtime value is inactive",
+            gutils->getNewFromOriginal(orig->getDebugLoc()), orig);
 
         auto ft =
             cast<FunctionType>(callval->getType()->getPointerElementType());
@@ -11554,7 +11558,8 @@ public:
           ErrorIfRuntimeInactive(
               BuilderZ, gutils->getNewFromOriginal(callval), newcalled,
               "Attempting to call an indirect active function "
-              "whose runtime value is inactive");
+              "whose runtime value is inactive",
+              gutils->getNewFromOriginal(orig->getDebugLoc()), orig);
 
         auto ft =
             cast<FunctionType>(callval->getType()->getPointerElementType());

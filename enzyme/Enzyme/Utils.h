@@ -1045,5 +1045,6 @@ getOrInsertDifferentialWaitallSave(llvm::Module &M,
                                    llvm::PointerType *reqType);
 
 void ErrorIfRuntimeInactive(llvm::IRBuilder<> &B, llvm::Value *primal,
-                            llvm::Value *shadow, const char *Message);
+                            llvm::Value *shadow, const char *Message,
+                            llvm::DebugLoc &&loc, llvm::Instruction *orig);
 #endif
