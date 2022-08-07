@@ -997,14 +997,23 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         )?;
         // Ensure the allocation is mutable. Even failing (read-only) compare_exchange need mutable
         // memory on many targets (i.e., they segfault if taht memory is mapped read-only), and
-        // atomic loads can be implemented via compare_exchange on some targets. See
-        // <https://github.com/rust-lang/miri/issues/2463>.
+        // atomic loads can be implemented via compare_exchange on some targets. There could
+        // possibly be some very specific exceptions to this, see
+        // <https://github.com/rust-lang/miri/pull/2464#discussion_r939636130> for details.
         // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
         // access will happen later.
         let (alloc_id, _offset, _prov) =
             this.ptr_try_get_alloc_id(place.ptr).expect("there are no zero-sized atomic accesses");
         if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
-            throw_ub_format!("atomic operations cannot be performed on read-only memory");
+            // FIXME: make this prettier, once these messages have separate title/span/help messages.
+            throw_ub_format!(
+                "atomic operations cannot be performed on read-only memory\n\
+                many platforms require atomic read-modify-write instructions to be performed on writeable memory, even if the operation fails \
+                (and is hence nominally read-only)\n\
+                some platforms implement (some) atomic loads via compare-exchange, which means they do not work on read-only memory; \
+                it is possible that we could have an exception permitting this for specific kinds of loads\n\
+                please report an issue at <https://github.com/rust-lang/miri/issues> if this is a problem for you"
+            );
         }
         Ok(())
     }
