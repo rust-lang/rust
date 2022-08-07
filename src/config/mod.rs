@@ -422,7 +422,7 @@ mod test {
         use rustfmt_config_proc_macro::config_type;
 
         #[config_type]
-        pub enum PartiallyUnstableOption {
+        pub(crate) enum PartiallyUnstableOption {
             V1,
             V2,
             #[unstable_variant]
