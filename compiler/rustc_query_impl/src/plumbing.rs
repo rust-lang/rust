@@ -233,21 +233,11 @@ macro_rules! get_provider {
     };
 }
 
-macro_rules! opt_remap_env_constness {
-    ([][$name:ident]) => {};
-    ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
-        let $name = $name.without_const();
-    };
-    ([$other:tt $($modifiers:tt)*][$name:ident]) => {
-        opt_remap_env_constness!([$($modifiers)*][$name])
-    };
-}
-
 macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-
+        use rustc_middle::opt_remap_env_constness;
         define_queries_struct! {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)

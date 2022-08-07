@@ -162,6 +162,7 @@ macro_rules! separate_provide_extern_default {
     };
 }
 
+#[macro_export]
 macro_rules! opt_remap_env_constness {
     ([][$name:ident]) => {};
     ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
