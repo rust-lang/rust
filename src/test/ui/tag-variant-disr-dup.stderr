@@ -5,9 +5,9 @@ LL | enum Color {
    | ^^^^^^^^^^
 ...
 LL |     Black = 0x000000,
-   |             -------- first assignment of `0`
+   |             -------- `0` assigned here
 LL |     White = 0x000000,
-   |             -------- second assignment of `0`
+   |             -------- `0` assigned here
 
 error: aborting due to previous error
 

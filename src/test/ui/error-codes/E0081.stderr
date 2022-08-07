@@ -5,10 +5,10 @@ LL | enum Enum {
    | ^^^^^^^^^
 LL |
 LL |     P = 3,
-   |         - first assignment of `3`
+   |         - `3` assigned here
 LL |
 LL |     X = 3,
-   |         - second assignment of `3`
+   |         - `3` assigned here
 
 error[E0081]: discriminant value `1` assigned more than once
   --> $DIR/E0081.rs:11:1
@@ -17,10 +17,10 @@ LL | enum EnumOverflowRepr {
    | ^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |     P = 257,
-   |         --- first assignment of `1` (overflowed from `257`)
+   |         --- `1` (overflowed from `257`) assigned here
 LL |
 LL |     X = 513,
-   |         --- second assignment of `1` (overflowed from `513`)
+   |         --- `1` (overflowed from `513`) assigned here
 
 error[E0081]: discriminant value `-1` assigned more than once
   --> $DIR/E0081.rs:20:1
@@ -29,14 +29,35 @@ LL | enum NegDisEnum {
    | ^^^^^^^^^^^^^^^
 LL |
 LL |     First = -1,
-   |             -- first assignment of `-1`
+   |             -- `-1` assigned here
 LL |
 LL |     Second = -2,
-   |     ----------- assigned discriminant for `Last` was incremented from this discriminant
+   |     ----------- discriminant for `Last` incremented from this startpoint (`Second` + 1 variant later => `Last` = -1)
 LL |
 LL |     Last,
-   |     ---- second assignment of `-1`
+   |     ---- `-1` assigned here
 
-error: aborting due to 3 previous errors
+error[E0081]: discriminant value `0` assigned more than once
+  --> $DIR/E0081.rs:31:1
+   |
+LL | enum MultipleDuplicates {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     V0,
+   |     -- `0` assigned here
+LL |
+LL |     V1 = 0,
+   |          - `0` assigned here
+...
+LL |     V4 = 0,
+   |          - `0` assigned here
+LL |
+LL |     V5 = -2,
+   |     ------- discriminant for `V7` incremented from this startpoint (`V5` + 2 variant later => `V7` = 0)
+...
+LL |     V7,
+   |     -- `0` assigned here
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0081`.
