@@ -1499,18 +1499,19 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
     check_transparent(tcx, sp, def);
 }
 
-/// Part of enum check, errors if two or more discriminants are equal
+/// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are equal
 fn detect_discriminant_duplicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut discrs: Vec<(VariantIdx, Discr<'tcx>)>,
     vs: &'tcx [hir::Variant<'tcx>],
     self_span: Span,
 ) {
-    // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate
+    // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate.
+    // Here `idx` refers to the order of which the discriminant appears, and its index in `vs`
     let report = |dis: Discr<'tcx>,
                   idx: usize,
                   err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>| {
-        let var = &vs[idx];
+        let var = &vs[idx]; // HIR for the duplicate discriminant
         let (span, display_discr) = match var.disr_expr {
             Some(ref expr) => {
                 // In the case the discriminant is both a duplicate and overflowed, let the user know
@@ -1533,8 +1534,8 @@ fn detect_discriminant_duplicate<'tcx>(
                     vs[..idx].iter().rev().enumerate().find(|v| v.1.disr_expr.is_some())
                 {
                     let ve_ident = var.ident;
-                    let sp = if n > 1 { "variants" } else { "variant" };
                     let n = n + 1;
+                    let sp = if n > 1 { "variants" } else { "variant" };
 
                     err.span_label(
                         *span,
@@ -1549,7 +1550,7 @@ fn detect_discriminant_duplicate<'tcx>(
         err.span_label(span, format!("{display_discr} assigned here"));
     };
 
-    // Here we are loop through the discriminants, comparing each discriminant to another.
+    // Here we loop through the discriminants, comparing each discriminant to another.
     // When a duplicate is detected, we instatiate an error and point to both
     // initial and duplicate value. The duplicate discriminant is then discarded by swapping
     // it with the last element and decrementing the `vec.len` (which is why we have to evaluate
