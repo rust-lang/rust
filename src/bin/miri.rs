@@ -152,13 +152,13 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     }
 }
 
-fn show_error(msg: &str) -> ! {
+fn show_error(msg: &impl std::fmt::Display) -> ! {
     eprintln!("fatal error: {msg}");
     std::process::exit(1)
 }
 
 macro_rules! show_error {
-    ($($tt:tt)*) => { show_error(&format!($($tt)*)) };
+    ($($tt:tt)*) => { show_error(&format_args!($($tt)*)) };
 }
 
 fn init_early_loggers() {

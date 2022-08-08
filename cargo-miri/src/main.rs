@@ -11,7 +11,7 @@ mod version;
 
 use std::{env, iter};
 
-use crate::{phases::*, util::*};
+use crate::phases::*;
 
 fn main() {
     // Rustc does not support non-UTF-8 arguments so we make no attempt either.
