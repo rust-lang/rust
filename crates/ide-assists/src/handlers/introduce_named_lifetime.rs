@@ -5,7 +5,7 @@ use syntax::{
     AstNode, TextRange,
 };
 
-use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
 
 static ASSIST_NAME: &str = "introduce_named_lifetime";
 static ASSIST_LABEL: &str = "Introduce named lifetime";
@@ -140,7 +140,7 @@ enum NeedsLifetime {
 }
 
 impl NeedsLifetime {
-    fn make_mut(self, builder: &mut AssistBuilder) -> Self {
+    fn make_mut(self, builder: &mut SourceChangeBuilder) -> Self {
         match self {
             Self::SelfParam(it) => Self::SelfParam(builder.make_mut(it)),
             Self::RefType(it) => Self::RefType(builder.make_mut(it)),
