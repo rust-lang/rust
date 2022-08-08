@@ -1315,6 +1315,13 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         error: &MismatchedProjectionTypes<'tcx>,
     );
 
+    fn maybe_detailed_projection_msg(
+        &self,
+        pred: ty::ProjectionPredicate<'tcx>,
+        normalized_ty: ty::Term<'tcx>,
+        expected_ty: ty::Term<'tcx>,
+    ) -> Option<String>;
+
     fn fuzzy_match_tys(
         &self,
         a: Ty<'tcx>,
@@ -1542,23 +1549,19 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty,
                     data.term,
                 ) {
-                    values = Some(infer::ValuePairs::Terms(ExpectedFound::new(
-                        is_normalized_ty_expected,
-                        normalized_ty,
-                        data.term,
-                    )));
+                    values = Some((data, is_normalized_ty_expected, normalized_ty, data.term));
                     err_buf = error;
                     err = &err_buf;
                 }
             }
 
-            let mut diag = struct_span_err!(
-                self.tcx.sess,
-                obligation.cause.span,
-                E0271,
-                "type mismatch resolving `{}`",
-                predicate
-            );
+            let msg = values
+                .and_then(|(predicate, _, normalized_ty, expected_ty)| {
+                    self.maybe_detailed_projection_msg(predicate, normalized_ty, expected_ty)
+                })
+                .unwrap_or_else(|| format!("type mismatch resolving `{}`", predicate));
+            let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
+
             let secondary_span = match predicate.kind().skip_binder() {
                 ty::PredicateKind::Projection(proj) => self
                     .tcx
@@ -1596,7 +1599,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 &mut diag,
                 &obligation.cause,
                 secondary_span,
-                values,
+                values.map(|(_, is_normalized_ty_expected, normalized_ty, term)| {
+                    infer::ValuePairs::Terms(ExpectedFound::new(
+                        is_normalized_ty_expected,
+                        normalized_ty,
+                        term,
+                    ))
+                }),
                 err,
                 true,
                 false,
@@ -1604,6 +1613,33 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();
         });
+    }
+
+    fn maybe_detailed_projection_msg(
+        &self,
+        pred: ty::ProjectionPredicate<'tcx>,
+        normalized_ty: ty::Term<'tcx>,
+        expected_ty: ty::Term<'tcx>,
+    ) -> Option<String> {
+        let trait_def_id = pred.projection_ty.trait_def_id(self.tcx);
+        let self_ty = pred.projection_ty.self_ty();
+
+        if Some(pred.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output() {
+            Some(format!(
+                "expected `{self_ty}` to be a {fn_kind} that returns `{expected_ty}`, but it returns `{normalized_ty}`",
+                fn_kind = self_ty.prefix_string(self.tcx)
+            ))
+        } else if Some(trait_def_id) == self.tcx.lang_items().future_trait() {
+            Some(format!(
+                "expected `{self_ty}` to be a future that resolves to `{expected_ty}`, but it resolves to `{normalized_ty}`"
+            ))
+        } else if Some(trait_def_id) == self.tcx.get_diagnostic_item(sym::Iterator) {
+            Some(format!(
+                "expected `{self_ty}` to be an iterator that yields `{expected_ty}`, but it yields `{normalized_ty}`"
+            ))
+        } else {
+            None
+        }
     }
 
     fn fuzzy_match_tys(

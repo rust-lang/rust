@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
+error[E0271]: type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:38:19
    |
 LL |     let v = Unit2.m(
-   |                   ^ type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
+   |                   ^ type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
    |
 note: expected this to be `<_ as Ty<'_>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:21:14
@@ -22,7 +22,7 @@ LL |     where
 LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |                                                   ^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
 
-error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20] as FnOnce<((&'r u8,),)>>::Output == Unit3`
+error[E0271]: expected `[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]` to be a closure that returns `Unit3`, but it returns `Unit4`
   --> $DIR/issue-62203-hrtb-ice.rs:40:9
    |
 LL |       let v = Unit2.m(
@@ -30,11 +30,14 @@ LL |       let v = Unit2.m(
 LL |
 LL | /         L {
 LL | |
-LL | |             f : |x| { drop(x); Unit4 }
-LL | |         });
+LL | |             f: |x| {
+LL | |                 drop(x);
+LL | |                 Unit4
+LL | |             },
+LL | |         },
    | |_________^ expected struct `Unit3`, found struct `Unit4`
    |
-note: required because of the requirements on the impl of `for<'r> T0<'r, (&'r u8,)>` for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:20]>`
+note: required because of the requirements on the impl of `for<'r> T0<'r, (&'r u8,)>` for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16
    |
 LL | impl<'a, A, T> T0<'a, A> for L<T>

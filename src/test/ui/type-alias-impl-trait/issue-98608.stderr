@@ -1,7 +1,7 @@
-error[E0271]: type mismatch resolving `<fn() -> impl Sized {hi} as FnOnce<()>>::Output == Box<u8>`
-  --> $DIR/issue-98608.rs:4:39
+error[E0271]: expected `fn() -> impl Sized {hi}` to be a fn item that returns `Box<u8>`, but it returns `impl Sized`
+  --> $DIR/issue-98608.rs:6:39
    |
-LL | fn hi() -> impl Sized { std::ptr::null::<u8>() }
+LL | fn hi() -> impl Sized {
    |            ---------- the found opaque type
 ...
 LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
