@@ -835,7 +835,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub SIGNIFICANT_DROP_IN_SCRUTINEE,
-    suspicious,
+    nursery,
     "warns when a temporary of a type with a drop with a significant side-effect might have a surprising lifetime"
 }
 
