@@ -834,6 +834,7 @@ supported_targets! {
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc-unknown-linux-musl", powerpc_unknown_linux_musl),
+    ("powerpc-unknown-linux-muslspe", powerpc_unknown_linux_muslspe),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64-unknown-linux-musl", powerpc64_unknown_linux_musl),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),

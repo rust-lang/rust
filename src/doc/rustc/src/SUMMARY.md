@@ -27,6 +27,7 @@
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
+    - [powerpc-unknown-linux-muslspe](platform-support/powerpc-unknown-linux-muslspe.md)
     - [riscv32imac-unknown-xous-elf](platform-support/riscv32imac-unknown-xous-elf.md)
     - [*-pc-windows-gnullvm](platform-support/pc-windows-gnullvm.md)
     - [*-unknown-openbsd](platform-support/openbsd.md)

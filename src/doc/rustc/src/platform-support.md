@@ -266,6 +266,7 @@ target | std | host | notes
 `msp430-none-elf` | * |  | 16-bit MSP430 microcontrollers
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  |
+[`powerpc-unknown-linux-muslspe`](platform-support/powerpc-unknown-linux-muslspe.md) | ? |  | PowerPC SPE Linux
 `powerpc-unknown-netbsd` | ✓ | ✓ |
 `powerpc-unknown-openbsd` | ? |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
