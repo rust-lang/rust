@@ -300,6 +300,7 @@ impl InlineAsmReg {
         }
     }
 
+    #[allow(unreachable_code)]
     pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
         // FIXME: use direct symbol comparison for register names
         // Use `Symbol::as_str` instead of `Symbol::with` here because `has_feature` may access `Symbol`.
