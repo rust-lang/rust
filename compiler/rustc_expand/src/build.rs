@@ -252,6 +252,10 @@ impl<'a> ExtCtxt<'a> {
         self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
     }
 
+    pub fn expr_field(&self, span: Span, expr: P<Expr>, field: Ident) -> P<ast::Expr> {
+        self.expr(span, ast::ExprKind::Field(expr, field))
+    }
+
     pub fn expr_binary(
         &self,
         sp: Span,

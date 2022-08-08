@@ -117,20 +117,20 @@ LL |     format!("{} {}", 1, 2, foo=1, bar=2);
    |             multiple missing formatting specifiers
 
 error: duplicate argument named `foo`
-  --> $DIR/ifmt-bad-arg.rs:40:33
+  --> $DIR/ifmt-bad-arg.rs:40:29
    |
 LL |     format!("{foo}", foo=1, foo=2);
-   |                          -      ^ duplicate argument
-   |                          |
-   |                          previously here
+   |                      ---    ^^^ duplicate argument
+   |                      |
+   |                      previously here
 
 error: positional arguments cannot follow named arguments
   --> $DIR/ifmt-bad-arg.rs:41:35
    |
 LL |     format!("{foo} {} {}", foo=1, 2);
-   |                                -  ^ positional arguments must be before named arguments
-   |                                |
-   |                                named argument
+   |                            -----  ^ positional arguments must be before named arguments
+   |                            |
+   |                            named argument
 
 error: named argument never used
   --> $DIR/ifmt-bad-arg.rs:45:51
