@@ -157,6 +157,7 @@
 #![feature(const_slice_from_ref)]
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
+#![feature(const_cstr_methods)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
