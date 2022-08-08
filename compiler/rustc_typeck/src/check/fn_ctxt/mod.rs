@@ -26,6 +26,8 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
+/// The `FnCtxt` stores type-checking context needed to type-check function bodies,
+/// in contrast to [`ItemCtxt`], which is used to type-check item *signatures*.
 pub struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: hir::HirId,
 

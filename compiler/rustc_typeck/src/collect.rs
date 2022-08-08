@@ -94,7 +94,12 @@ pub fn provide(providers: &mut Providers) {
 ///////////////////////////////////////////////////////////////////////////
 
 /// Context specific to some particular item. This is what implements
-/// `AstConv`. It has information about the predicates that are defined
+/// `AstConv`.
+///
+/// `ItemCtxt` is primarily used to type-check item signatures, in contrast to [`FnCtxt`],
+/// which is used to type-check function bodies.
+///
+/// It has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
 /// process. So we can't just store a pointer to e.g., the AST or the
