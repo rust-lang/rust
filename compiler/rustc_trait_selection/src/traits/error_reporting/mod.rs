@@ -1626,16 +1626,16 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
         if Some(pred.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output() {
             Some(format!(
-                "expected `{self_ty}` to be a {fn_kind} that returns `{expected_ty}`, but it actually returns `{normalized_ty}`",
+                "expected `{self_ty}` to be a {fn_kind} that returns `{expected_ty}`, but it returns `{normalized_ty}`",
                 fn_kind = self_ty.prefix_string(self.tcx)
             ))
         } else if Some(trait_def_id) == self.tcx.lang_items().future_trait() {
             Some(format!(
-                "expected `{self_ty}` to be a future that yields `{expected_ty}`, but it actually yields `{normalized_ty}`"
+                "expected `{self_ty}` to be a future that resolves to `{expected_ty}`, but it resolves to `{normalized_ty}`"
             ))
         } else if Some(trait_def_id) == self.tcx.get_diagnostic_item(sym::Iterator) {
             Some(format!(
-                "expected `{self_ty}` to be an iterator of `{expected_ty}`, but it actually returns items of `{normalized_ty}`"
+                "expected `{self_ty}` to be an iterator that yields `{expected_ty}`, but it yields `{normalized_ty}`"
             ))
         } else {
             None

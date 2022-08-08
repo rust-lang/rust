@@ -38,9 +38,13 @@ fn main() {
     let v = Unit2.m(
         //~^ ERROR type mismatch
         L {
-        //~^ ERROR to be a closure that returns `Unit3`, but it actually returns `Unit4`
-            f : |x| { drop(x); Unit4 }
-        });
+            //~^ ERROR to be a closure that returns `Unit3`, but it returns `Unit4`
+            f: |x| {
+                drop(x);
+                Unit4
+            },
+        },
+    );
 }
 
 impl<'a> Ty<'a> for Unit2 {
