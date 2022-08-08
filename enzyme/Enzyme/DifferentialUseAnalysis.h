@@ -45,8 +45,17 @@ static inline bool is_use_directly_needed_in_reverse(
   if (oldUnreachable.count(user->getParent()))
     return false;
 
-  if (isa<LoadInst>(user) || isa<CastInst>(user) || isa<PHINode>(user) ||
+  if (isa<CastInst>(user) || isa<PHINode>(user) ||
       isa<GetElementPtrInst>(user)) {
+    return false;
+  }
+
+  if (isa<LoadInst>(user)) {
+    if (EnzymeRuntimeActivityCheck &&
+        TR.query(const_cast<llvm::Instruction *>(user))[{-1}].isFloat() &&
+        !gutils->isConstantInstruction(const_cast<llvm::Instruction *>(user))) {
+      return true;
+    }
     return false;
   }
 

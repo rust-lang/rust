@@ -26,10 +26,13 @@ define dso_local void @_Z7dsquarePdS_(double* %a0, double* %a1) {
 declare dso_local void @_Z17__enzyme_autodiffPviPdS0_(i8*, i32, double*, double*)
 
 ; CHECK: define internal void @diffe_Z6squarePi(i8* %i0, i8* %"i0'")
-; CHECK-NEXT:   %i2 = call noalias i8* @malloc(i64 16)
+; CHECK-NEXT:   %i2 = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
+; CHECK-NEXT:   %"i2'mi" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(16) dereferenceable_or_null(16) %"i2'mi", i8 0, i64 16, i1 false)
 ; CHECK-NEXT:   br label %invert
 
 ; CHECK: invert: 
-; CHECK-NEXT:   tail call void @free(i8* %i2)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"i2'mi")
+; CHECK-NEXT:   tail call void @free(i8* nonnull %i2)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

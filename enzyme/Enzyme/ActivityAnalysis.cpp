@@ -2435,9 +2435,10 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
     UseActivity UA = std::get<2>(pair);
 
     if (auto LI = dyn_cast<LoadInst>(a)) {
-      if (UA == UseActivity::OnlyStores || UA == UseActivity::AllStores)
+      if (UA == UseActivity::OnlyStores)
         continue;
-      if (UA == UseActivity::OnlyNonPointerStores) {
+      if (UA == UseActivity::OnlyNonPointerStores ||
+          UA == UseActivity::AllStores) {
         if (!TR.query(LI)[{-1}].isPossiblePointer())
           continue;
       }
@@ -2724,9 +2725,18 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
             continue;
 
           // Only need to care about store from
-          if ((UA == UseActivity::OnlyStores || UA == UseActivity::AllStores) &&
-              call->getArgOperand(0) != parent)
-            continue;
+          if (call->getArgOperand(0) != parent) {
+            if (UA == UseActivity::OnlyStores)
+              continue;
+            else if (UA == UseActivity::OnlyNonPointerStores ||
+                     UA == UseActivity::AllStores) {
+              // todo can change this to query either -1 (all mem) or 0..size
+              // (if size of copy is const)
+              if (!TR.query(call->getArgOperand(1))[{-1, -1}]
+                       .isPossiblePointer())
+                continue;
+            }
+          }
 
           bool shouldContinue = false;
           if (UA != UseActivity::AllStores)
