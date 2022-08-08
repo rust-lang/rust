@@ -6,7 +6,7 @@
 #[test]
 #[should_panic(expected = "creating inhabited type")]
 fn test() {
-    FontLanguageOverride::system_font(SystemFont::new());
+    FontLanguageOverride::system_font(SystemFont::new()); //~ unreachable call
 }
 
 pub enum FontLanguageOverride {
@@ -19,7 +19,7 @@ pub enum SystemFont {}
 
 impl FontLanguageOverride {
     fn system_font(f: SystemFont) -> Self {
-        FontLanguageOverride::System(f)
+        FontLanguageOverride::System(f) //~ unreachable call
     }
 }
 

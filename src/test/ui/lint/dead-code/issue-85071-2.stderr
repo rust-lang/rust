@@ -1,17 +1,12 @@
-warning: unreachable definition
-  --> $DIR/issue-85071-2.rs:20:9
+warning: unreachable statement
+  --> $DIR/issue-85071-2.rs:20:5
    |
 LL |     let x = s.f();
-   |             ----- any code following this expression is unreachable
+   |             ----- this expression has type `Foo`, which is uninhabited
 LL |
 LL |     let _y = x;
-   |         ^^ unreachable definition
+   |     ^^^^^^^^^^^ unreachable statement
    |
-note: this expression has type `Foo`, which is uninhabited
-  --> $DIR/issue-85071-2.rs:18:13
-   |
-LL |     let x = s.f();
-   |             ^^^^^
 note: the lint level is defined here
   --> $DIR/issue-85071-2.rs:7:26
    |

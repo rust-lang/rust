@@ -27,8 +27,11 @@ fn qux(x: Result<u32, Void>) -> Result<u32, i32> {
 }
 
 fn vom(x: Result<u32, Void>) -> Result<u32, i32> {
-    let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
-    //~^ WARN unreachable pattern
+    let y = (match x {
+        Ok(n) => Ok(n),
+        Err(e) => Err(e) //~  WARN unreachable call
+                         //~| WARN unreachable pattern
+    })?;
     Ok(y)
 }
 

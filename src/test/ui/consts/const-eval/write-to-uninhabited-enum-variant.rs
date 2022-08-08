@@ -19,10 +19,10 @@ fn bar() -> Option<Empty> {
 
 fn main() {
     if let Some(x) = bar() {
-        Test1::B(x);
+        Test1::B(x); //~ unreachable call
     }
 
     if let Some(x) = bar() {
-        Test2::B(x);
+        Test2::B(x); //~ unreachable call
     }
 }

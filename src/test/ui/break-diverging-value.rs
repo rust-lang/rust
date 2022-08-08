@@ -22,8 +22,8 @@ fn get_void() -> Void {
     panic!()
 }
 
-fn loop_break_void() -> i32 { //~ ERROR mismatched types
-    let loop_value = loop { break get_void() };
+fn loop_break_void() -> i32 {
+    let loop_value = loop { break get_void() }; // ok
 }
 
 fn get_never() -> ! {

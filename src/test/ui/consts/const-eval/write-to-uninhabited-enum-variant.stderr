@@ -1,0 +1,20 @@
+warning: unreachable call
+  --> $DIR/write-to-uninhabited-enum-variant.rs:22:9
+   |
+LL |         Test1::B(x);
+   |         ^^^^^^^^ - this expression has type `Empty`, which is uninhabited
+   |         |
+   |         unreachable call
+   |
+   = note: `#[warn(unreachable_code)]` on by default
+
+warning: unreachable call
+  --> $DIR/write-to-uninhabited-enum-variant.rs:26:9
+   |
+LL |         Test2::B(x);
+   |         ^^^^^^^^ - this expression has type `Empty`, which is uninhabited
+   |         |
+   |         unreachable call
+
+warning: 2 warnings emitted
+

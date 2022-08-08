@@ -12,7 +12,7 @@ union Foo {
     b: Never
 }
 
-fn foo(xs: [(Never, u32); 1]) -> u32 { xs[0].1 }
+fn foo(xs: [(Never, u32); 1]) -> u32 { xs[0].1 } //~ unreachable expression
 
 fn bar([(_, x)]: [(Never, u32); 1]) -> u32 { x }
 
