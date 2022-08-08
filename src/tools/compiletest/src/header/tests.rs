@@ -42,7 +42,6 @@ fn config() -> Config {
         "--suite=ui",
         "--compile-lib-path=",
         "--run-lib-path=",
-        "--rustc-path=",
         "--python=",
         "--jsondocck-path=",
         "--src-base=",
@@ -57,7 +56,9 @@ fn config() -> Config {
         "--target=x86_64-unknown-linux-gnu",
         "--channel=nightly",
     ];
-    let args = args.iter().map(ToString::to_string).collect();
+    let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
+    args.push("--rustc-path".to_string());
+    args.push(std::env::var("RUSTC").unwrap_or_else(|_| "rustc".to_string()));
     crate::parse_config(args)
 }
 
@@ -237,13 +238,20 @@ fn sanitizers() {
 
 #[test]
 fn asm_support() {
-    let mut config = config();
-
-    config.target = "avr-unknown-gnu-atmega328".to_owned();
-    assert!(check_ignore(&config, "// needs-asm-support"));
-
-    config.target = "i686-unknown-netbsd".to_owned();
-    assert!(!check_ignore(&config, "// needs-asm-support"));
+    let asms = [
+        ("avr-unknown-gnu-atmega328", false),
+        ("i686-unknown-netbsd", true),
+        ("riscv32gc-unknown-linux-gnu", true),
+        ("riscv64imac-unknown-none-elf", true),
+        ("x86_64-unknown-linux-gnu", true),
+        ("i686-unknown-netbsd", true),
+    ];
+    for (target, has_asm) in asms {
+        let mut config = config();
+        config.target = target.to_string();
+        assert_eq!(config.has_asm_support(), has_asm);
+        assert_eq!(check_ignore(&config, "// needs-asm-support"), !has_asm)
+    }
 }
 
 #[test]
@@ -280,4 +288,136 @@ fn test_extract_version_range() {
 fn test_duplicate_revisions() {
     let config = config();
     parse_rs(&config, "// revisions: rpass1 rpass1");
+}
+
+#[test]
+fn ignore_arch() {
+    let archs = [
+        ("x86_64-unknown-linux-gnu", "x86_64"),
+        ("i686-unknown-linux-gnu", "x86"),
+        ("nvptx64-nvidia-cuda", "nvptx64"),
+        ("asmjs-unknown-emscripten", "wasm32"),
+        ("asmjs-unknown-emscripten", "asmjs"),
+        ("thumbv7m-none-eabi", "thumb"),
+    ];
+    for (target, arch) in archs {
+        let mut config = config();
+        config.target = target.to_string();
+        assert!(config.matches_arch(arch), "{target} {arch}");
+        assert!(check_ignore(&config, &format!("// ignore-{arch}")));
+    }
+}
+
+#[test]
+fn matches_os() {
+    let oss = [
+        ("x86_64-unknown-linux-gnu", "linux"),
+        ("x86_64-fortanix-unknown-sgx", "unknown"),
+        ("wasm32-unknown-unknown", "unknown"),
+        ("x86_64-unknown-none", "none"),
+    ];
+    for (target, os) in oss {
+        let mut config = config();
+        config.target = target.to_string();
+        assert!(config.matches_os(os), "{target} {os}");
+        assert!(check_ignore(&config, &format!("// ignore-{os}")));
+    }
+}
+
+#[test]
+fn matches_env() {
+    let envs = [
+        ("x86_64-unknown-linux-gnu", "gnu"),
+        ("x86_64-fortanix-unknown-sgx", "sgx"),
+        ("arm-unknown-linux-musleabi", "musl"),
+    ];
+    for (target, env) in envs {
+        let mut config = config();
+        config.target = target.to_string();
+        assert!(config.matches_env(env), "{target} {env}");
+        assert!(check_ignore(&config, &format!("// ignore-{env}")));
+    }
+}
+
+#[test]
+fn matches_abi() {
+    let abis = [
+        ("aarch64-apple-ios-macabi", "macabi"),
+        ("x86_64-unknown-linux-gnux32", "x32"),
+        ("arm-unknown-linux-gnueabi", "eabi"),
+    ];
+    for (target, abi) in abis {
+        let mut config = config();
+        config.target = target.to_string();
+        assert!(config.matches_abi(abi), "{target} {abi}");
+        assert!(check_ignore(&config, &format!("// ignore-{abi}")));
+    }
+}
+
+#[test]
+fn is_big_endian() {
+    let endians = [
+        ("x86_64-unknown-linux-gnu", false),
+        ("bpfeb-unknown-none", true),
+        ("m68k-unknown-linux-gnu", true),
+        ("aarch64_be-unknown-linux-gnu", true),
+        ("powerpc64-unknown-linux-gnu", true),
+    ];
+    for (target, is_big) in endians {
+        let mut config = config();
+        config.target = target.to_string();
+        assert_eq!(config.is_big_endian(), is_big, "{target} {is_big}");
+        assert_eq!(check_ignore(&config, "// ignore-endian-big"), is_big);
+    }
+}
+
+#[test]
+fn pointer_width() {
+    let widths = [
+        ("x86_64-unknown-linux-gnu", 64),
+        ("i686-unknown-linux-gnu", 32),
+        ("arm64_32-apple-watchos", 32),
+        ("msp430-none-elf", 16),
+    ];
+    for (target, width) in widths {
+        let mut config = config();
+        config.target = target.to_string();
+        assert_eq!(config.get_pointer_width(), width, "{target} {width}");
+        assert_eq!(check_ignore(&config, "// ignore-16bit"), width == 16);
+        assert_eq!(check_ignore(&config, "// ignore-32bit"), width == 32);
+        assert_eq!(check_ignore(&config, "// ignore-64bit"), width == 64);
+    }
+}
+
+#[test]
+fn wasm_special() {
+    let ignores = [
+        ("wasm32-unknown-unknown", "emscripten", true),
+        ("wasm32-unknown-unknown", "wasm32", true),
+        ("wasm32-unknown-unknown", "wasm32-bare", true),
+        ("wasm32-unknown-unknown", "wasm64", false),
+        ("asmjs-unknown-emscripten", "emscripten", true),
+        ("asmjs-unknown-emscripten", "wasm32", true),
+        ("asmjs-unknown-emscripten", "wasm32-bare", false),
+        ("wasm32-unknown-emscripten", "emscripten", true),
+        ("wasm32-unknown-emscripten", "wasm32", true),
+        ("wasm32-unknown-emscripten", "wasm32-bare", false),
+        ("wasm32-wasi", "emscripten", false),
+        ("wasm32-wasi", "wasm32", true),
+        ("wasm32-wasi", "wasm32-bare", false),
+        ("wasm32-wasi", "wasi", true),
+        ("wasm64-unknown-unknown", "emscripten", false),
+        ("wasm64-unknown-unknown", "wasm32", false),
+        ("wasm64-unknown-unknown", "wasm32-bare", false),
+        ("wasm64-unknown-unknown", "wasm64", true),
+    ];
+    for (target, pattern, ignore) in ignores {
+        let mut config = config();
+        config.target = target.to_string();
+        assert_eq!(
+            check_ignore(&config, &format!("// ignore-{pattern}")),
+            ignore,
+            "{target} {pattern}"
+        );
+    }
 }
