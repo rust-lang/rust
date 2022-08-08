@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![feature(closure_lifetime_binder)]
 #![warn(clippy::explicit_auto_deref)]
 #![allow(
     dead_code,
@@ -255,4 +256,14 @@ fn main() {
     }
     let x = S7([0]);
     let _: &[u32] = &*x;
+
+    let c1 = |x: &Vec<&u32>| {};
+    let x = &&vec![&1u32];
+    c1(*x);
+    let _ = for<'a, 'b> |x: &'a &'a Vec<&'b u32>, b: bool| -> &'a Vec<&'b u32> {
+        if b {
+            return *x;
+        }
+        *x
+    };
 }

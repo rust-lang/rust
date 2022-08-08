@@ -15,7 +15,7 @@ use rustc_hir::{
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
+use rustc_middle::ty::{self, Binder, BoundVariableKind, List, Ty, TyCtxt, TypeVisitable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -651,7 +651,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
         }
         match parent {
             Node::Local(Local { ty: Some(ty), span, .. }) if span.ctxt() == ctxt => {
-                Some(binding_ty_auto_deref_stability(cx, ty, precedence))
+                Some(binding_ty_auto_deref_stability(cx, ty, precedence, List::empty()))
             },
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
@@ -703,13 +703,23 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                 ExprKind::Ret(_) => {
                     let owner_id = cx.tcx.hir().body_owner(cx.enclosing_body.unwrap());
                     Some(
-                        if let Node::Expr(Expr {
-                            kind: ExprKind::Closure(&Closure { fn_decl, .. }),
-                            ..
-                        }) = cx.tcx.hir().get(owner_id)
+                        if let Node::Expr(
+                            closure @ Expr {
+                                kind: ExprKind::Closure(&Closure { fn_decl, .. }),
+                                ..
+                            },
+                        ) = cx.tcx.hir().get(owner_id)
                         {
                             match fn_decl.output {
-                                FnRetTy::Return(ty) => binding_ty_auto_deref_stability(cx, ty, precedence),
+                                FnRetTy::Return(ty) => {
+                                    if let Some(sig) = expr_sig(cx, closure)
+                                        && let Some(output) = sig.output()
+                                    {
+                                        binding_ty_auto_deref_stability(cx, ty, precedence, output.bound_vars())
+                                    } else {
+                                        Position::Other(precedence)
+                                    }
+                                },
                                 FnRetTy::DefaultReturn(_) => Position::Other(precedence),
                             }
                         } else {
@@ -731,7 +741,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                     .map(|(hir_ty, ty)| match hir_ty {
                         // Type inference for closures can depend on how they're called. Only go by the explicit
                         // types here.
-                        Some(ty) => binding_ty_auto_deref_stability(cx, ty, precedence),
+                        Some(hir_ty) => binding_ty_auto_deref_stability(cx, hir_ty, precedence, ty.bound_vars()),
                         None => ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
                             .position_for_arg(),
                     }),
@@ -824,7 +834,12 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
 //
 // Here `y1` and `y2` would resolve to different types, so the type `&Box<_>` is not stable when
 // switching to auto-dereferencing.
-fn binding_ty_auto_deref_stability(cx: &LateContext<'_>, ty: &hir::Ty<'_>, precedence: i8) -> Position {
+fn binding_ty_auto_deref_stability<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: &'tcx hir::Ty<'_>,
+    precedence: i8,
+    binder_args: &'tcx List<BoundVariableKind>,
+) -> Position {
     let TyKind::Rptr(_, ty) = &ty.kind else {
         return Position::Other(precedence);
     };
@@ -856,31 +871,31 @@ fn binding_ty_auto_deref_stability(cx: &LateContext<'_>, ty: &hir::Ty<'_>, prece
                 } else {
                     Position::DerefStable(
                         precedence,
-                        cx
-                            .typeck_results()
-                            .node_type(ty.ty.hir_id)
+                        cx.tcx
+                            .erase_late_bound_regions(Binder::bind_with_vars(
+                                cx.typeck_results().node_type(ty.ty.hir_id),
+                                binder_args,
+                            ))
                             .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
                     )
                 }
             },
-            TyKind::Slice(_)
-            | TyKind::Array(..)
-            | TyKind::BareFn(_)
-            | TyKind::Never
+            TyKind::Slice(_) => Position::DerefStable(precedence, false),
+            TyKind::Array(..) | TyKind::Ptr(_) | TyKind::BareFn(_) => Position::DerefStable(precedence, true),
+            TyKind::Never
             | TyKind::Tup(_)
-            | TyKind::Ptr(_)
             | TyKind::Path(_) => Position::DerefStable(
                 precedence,
-                cx
-                .typeck_results()
-                .node_type(ty.ty.hir_id)
-                .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
+                cx.tcx
+                    .erase_late_bound_regions(Binder::bind_with_vars(
+                        cx.typeck_results().node_type(ty.ty.hir_id),
+                        binder_args,
+                    ))
+                    .is_sized(cx.tcx.at(DUMMY_SP), cx.param_env.without_caller_bounds()),
             ),
-            TyKind::OpaqueDef(..)
-            | TyKind::Infer
-            | TyKind::Typeof(..)
-            | TyKind::TraitObject(..)
-            | TyKind::Err => Position::ReborrowStable(precedence),
+            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
+                Position::ReborrowStable(precedence)
+            },
         };
     }
 }
