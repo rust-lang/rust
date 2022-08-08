@@ -70,9 +70,9 @@ fn mandatory_separator() {
             .is_err()
     );
     assert!(
-        !Opts::command()
+        Opts::command()
             .try_get_matches_from(&["test", "--", "--emit"])
-            .is_err()
+            .is_ok()
     );
 }
 
