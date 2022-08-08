@@ -8,7 +8,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(attrs::DEPRECATED_SEMVER),
     LintId::of(attrs::MISMATCHED_TARGET_OS),
     LintId::of(attrs::USELESS_ATTRIBUTE),
-    LintId::of(booleans::LOGIC_BUG),
+    LintId::of(booleans::OVERLY_COMPLEX_BOOL_EXPR),
     LintId::of(casts::CAST_REF_TO_MUT),
     LintId::of(casts::CAST_SLICE_DIFFERENT_SIZES),
     LintId::of(copies::IFS_SAME_COND),
