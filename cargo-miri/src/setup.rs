@@ -73,7 +73,7 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
         if std::env::var_os("XARGO_CHECK").is_some() {
             // The user manually gave us a xargo binary; don't do anything automatically.
-            show_error(format!("xargo is too old; please upgrade to the latest version"))
+            show_error!("xargo is too old; please upgrade to the latest version")
         }
         let mut cmd = cargo();
         cmd.args(&["install", "xargo"]);
@@ -97,10 +97,10 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
                 .output()
                 .expect("failed to determine sysroot");
             if !output.status.success() {
-                show_error(format!(
+                show_error!(
                     "Failed to determine sysroot; Miri said:\n{}",
                     String::from_utf8_lossy(&output.stderr).trim_end()
-                ));
+                );
             }
             let sysroot = std::str::from_utf8(&output.stdout).unwrap();
             let sysroot = Path::new(sysroot.trim_end_matches('\n'));
@@ -121,14 +121,14 @@ pub fn setup(subcommand: &MiriCommand, host: &str, target: &str) {
         }
     };
     if !rust_src.exists() {
-        show_error(format!("given Rust source directory `{}` does not exist.", rust_src.display()));
+        show_error!("given Rust source directory `{}` does not exist.", rust_src.display());
     }
     if rust_src.file_name().and_then(OsStr::to_str) != Some("library") {
-        show_error(format!(
+        show_error!(
             "given Rust source directory `{}` does not seem to be the `library` subdirectory of \
              a Rust source checkout.",
             rust_src.display()
-        ));
+        );
     }
 
     // Next, we need our own libstd. Prepare a xargo project for that purpose.
@@ -226,11 +226,9 @@ path = "lib.rs"
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
         if only_setup {
-            show_error(format!("failed to run xargo, see error details above"))
+            show_error!("failed to run xargo, see error details above")
         } else {
-            show_error(format!(
-                "failed to run xargo; run `cargo miri setup` to see the error details"
-            ))
+            show_error!("failed to run xargo; run `cargo miri setup` to see the error details")
         }
     }
 

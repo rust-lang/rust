@@ -77,15 +77,15 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // We cannot know which of those flags take arguments and which do not,
     // so we cannot detect subcommands later.
     let Some(subcommand) = args.next() else {
-        show_error(format!("`cargo miri` needs to be called with a subcommand (`run`, `test`)"));
+        show_error!("`cargo miri` needs to be called with a subcommand (`run`, `test`)");
     };
     let subcommand = match &*subcommand {
         "setup" => MiriCommand::Setup,
         "test" | "t" | "run" | "r" | "nextest" => MiriCommand::Forward(subcommand),
         _ =>
-            show_error(format!(
+            show_error!(
                 "`cargo miri` supports the following subcommands: `run`, `test`, `nextest`, and `setup`."
-            )),
+            ),
     };
     let verbose = num_arg_flag("-v");
 
@@ -123,7 +123,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
         match arg {
             Ok(value) => {
                 if target_dir.is_some() {
-                    show_error(format!("`--target-dir` is provided more than once"));
+                    show_error!("`--target-dir` is provided more than once");
                 }
                 target_dir = Some(value.into());
             }
@@ -456,16 +456,13 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
 
     let binary = binary_args.next().unwrap();
     let file = File::open(&binary)
-        .unwrap_or_else(|_| show_error(format!(
+        .unwrap_or_else(|_| show_error!(
             "file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary
-        )));
+        ));
     let file = BufReader::new(file);
 
     let info = serde_json::from_reader(file).unwrap_or_else(|_| {
-        show_error(format!(
-            "file {:?} contains outdated or invalid JSON; try `cargo clean`",
-            binary
-        ))
+        show_error!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)
     });
     let info = match info {
         CrateRunInfo::RunWith(info) => info,
@@ -562,7 +559,7 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
             // An existing --runtool flag indicates cargo is running in cross-target mode, which we don't support.
             // Note that this is only passed when cargo is run with the unstable -Zdoctest-xcompile flag;
             // otherwise, we won't be called as rustdoc at all.
-            show_error(format!("cross-interpreting doctests is not currently supported by Miri."));
+            show_error!("cross-interpreting doctests is not currently supported by Miri.");
         } else {
             cmd.arg(arg);
         }
