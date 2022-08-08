@@ -6,6 +6,7 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
     LintId::of(cognitive_complexity::COGNITIVE_COMPLEXITY),
     LintId::of(copies::BRANCHES_SHARING_CODE),
+    LintId::of(dereference::EXPLICIT_AUTO_DEREF),
     LintId::of(equatable_if_let::EQUATABLE_IF_LET),
     LintId::of(fallible_impl_from::FALLIBLE_IMPL_FROM),
     LintId::of(floating_point_arithmetic::IMPRECISE_FLOPS),
