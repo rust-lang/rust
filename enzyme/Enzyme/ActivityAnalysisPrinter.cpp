@@ -68,6 +68,10 @@ static llvm::cl::opt<std::string>
 static llvm::cl::opt<bool>
     InactiveArgs("activity-analysis-inactive-args", cl::init(false), cl::Hidden,
                  cl::desc("Whether all args are inactive"));
+
+static llvm::cl::opt<bool>
+    DuplicatedRet("activity-analysis-duplicated-ret", cl::init(false),
+                  cl::Hidden, cl::desc("Whether the return is duplicated"));
 namespace {
 
 class ActivityAnalysisPrinter : public FunctionPass {
@@ -146,6 +150,8 @@ public:
     DIFFE_TYPE ActiveReturns = F.getReturnType()->isFPOrFPVectorTy()
                                    ? DIFFE_TYPE::OUT_DIFF
                                    : DIFFE_TYPE::CONSTANT;
+    if (DuplicatedRet)
+      ActiveReturns = DIFFE_TYPE::DUP_ARG;
     SmallPtrSet<BasicBlock *, 4> notForAnalysis(getGuaranteedUnreachable(&F));
     ActivityAnalyzer ATA(PPC, PPC.FAM.getResult<AAManager>(F), notForAnalysis,
                          TLI, ConstantValues, ActiveValues, ActiveReturns);

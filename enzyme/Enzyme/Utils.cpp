@@ -1446,7 +1446,8 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     if (called && isMemFreeLibMFunction(called->getName())) {
       return false;
     }
-    if (called && called->getName() == "jl_array_copy")
+    if (called && (called->getName() == "jl_array_copy" ||
+                   called->getName() == "ijl_array_copy"))
       return false;
 
     // Isend only writes to inaccessible mem only
@@ -1603,7 +1604,8 @@ bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
     if (called && isMemFreeLibMFunction(called->getName())) {
       return false;
     }
-    if (called && called->getName() == "jl_array_copy")
+    if (called && (called->getName() == "jl_array_copy" ||
+                   called->getName() == "ijl_array_copy"))
       return false;
 
 #if LLVM_VERSION_MAJOR >= 11

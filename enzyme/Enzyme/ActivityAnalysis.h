@@ -196,8 +196,14 @@ public:
     // Only consider loads of memory
     OnlyLoads = 1,
 
-    // Ignore potentially active stores
-    OnlyStores = 2
+    // Only consider active stores into
+    OnlyStores = 2,
+
+    // Only consider active stores and pointer-style loads
+    OnlyNonPointerStores = 3,
+
+    // Only consider any (active or not) stores into
+    AllStores = 4
   };
   /// Is the value free of any active uses
   bool isValueInactiveFromUsers(TypeResults const &TR, llvm::Value *val,
