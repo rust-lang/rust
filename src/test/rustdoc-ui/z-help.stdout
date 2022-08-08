@@ -54,6 +54,7 @@
     -Z                        incremental-info=val -- print high-level information about incremental reuse (or the lack thereof) (default: no)
     -Z              incremental-relative-spans=val -- hash spans relative to their parent item for incr. comp. (default: no)
     -Z                  incremental-verify-ich=val -- verify incr. comp. hashes of green query instances (default: no)
+    -Z                             inline-llvm=val -- enable LLVM inlining (default: yes)
     -Z                              inline-mir=val -- enable MIR inlining (default: no)
     -Z                    inline-mir-threshold=val -- a default MIR inlining threshold (default: 50)
     -Z               inline-mir-hint-threshold=val -- inlining threshold for functions with inline hint (default: 100)
