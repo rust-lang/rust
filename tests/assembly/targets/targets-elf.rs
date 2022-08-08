@@ -345,6 +345,9 @@
 //@ revisions: powerpc_unknown_linux_musl
 //@ [powerpc_unknown_linux_musl] compile-flags: --target powerpc-unknown-linux-musl
 //@ [powerpc_unknown_linux_musl] needs-llvm-components: powerpc
+//@ revisions: powerpc_unknown_linux_muslspe
+//@ [powerpc_unknown_linux_muslspe] compile-flags: --target powerpc-unknown-linux-muslspe
+//@ [powerpc_unknown_linux_muslspe] needs-llvm-components: powerpc
 //@ revisions: powerpc_unknown_netbsd
 //@ [powerpc_unknown_netbsd] compile-flags: --target powerpc-unknown-netbsd
 //@ [powerpc_unknown_netbsd] needs-llvm-components: powerpc
