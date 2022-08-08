@@ -1,3 +1,5 @@
+// Regression test for #100143
+
 use std::iter::Peekable;
 
 pub struct Span<F: Fn(&i32)> {
