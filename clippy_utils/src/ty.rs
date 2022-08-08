@@ -572,7 +572,8 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
     }
 }
 
-fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+/// If the type is function like, get the signature for it.
+pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
     if ty.is_box() {
         return ty_sig(cx, ty.boxed_ty());
     }

@@ -228,5 +228,11 @@ error: deref which would be done by auto-deref
 LL |             return *x;
    |                    ^^ help: try this: `x`
 
-error: aborting due to 38 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:267:9
+   |
+LL |         *x
+   |         ^^ help: try this: `x`
+
+error: aborting due to 39 previous errors
 

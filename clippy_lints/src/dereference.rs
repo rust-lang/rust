@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, variant_of_res};
+use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, ty_sig, variant_of_res};
 use clippy_utils::{get_parent_expr, is_lint_allowed, path_to_local, walk_to_expr_usage};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
@@ -704,24 +704,13 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                     let owner_id = cx.tcx.hir().body_owner(cx.enclosing_body.unwrap());
                     Some(
                         if let Node::Expr(
-                            closure @ Expr {
-                                kind: ExprKind::Closure(&Closure { fn_decl, .. }),
+                            closure_expr @ Expr {
+                                kind: ExprKind::Closure(closure),
                                 ..
                             },
                         ) = cx.tcx.hir().get(owner_id)
                         {
-                            match fn_decl.output {
-                                FnRetTy::Return(ty) => {
-                                    if let Some(sig) = expr_sig(cx, closure)
-                                        && let Some(output) = sig.output()
-                                    {
-                                        binding_ty_auto_deref_stability(cx, ty, precedence, output.bound_vars())
-                                    } else {
-                                        Position::Other(precedence)
-                                    }
-                                },
-                                FnRetTy::DefaultReturn(_) => Position::Other(precedence),
-                            }
+                            closure_result_position(cx, closure, cx.typeck_results().expr_ty(closure_expr), precedence)
                         } else {
                             let output = cx
                                 .tcx
@@ -730,6 +719,12 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                         },
                     )
                 },
+                ExprKind::Closure(closure) => Some(closure_result_position(
+                    cx,
+                    closure,
+                    cx.typeck_results().expr_ty(parent),
+                    precedence,
+                )),
                 ExprKind::Call(func, _) if func.hir_id == child_id => {
                     (child_id == e.hir_id).then_some(Position::Callee)
                 },
@@ -823,6 +818,26 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
     })
     .unwrap_or(Position::Other(precedence));
     (position, adjustments)
+}
+
+fn closure_result_position<'tcx>(
+    cx: &LateContext<'tcx>,
+    closure: &'tcx Closure<'_>,
+    ty: Ty<'tcx>,
+    precedence: i8,
+) -> Position {
+    match closure.fn_decl.output {
+        FnRetTy::Return(hir_ty) => {
+            if let Some(sig) = ty_sig(cx, ty)
+                && let Some(output) = sig.output()
+            {
+                binding_ty_auto_deref_stability(cx, hir_ty, precedence, output.bound_vars())
+            } else {
+                Position::Other(precedence)
+            }
+        },
+        FnRetTy::DefaultReturn(_) => Position::Other(precedence),
+    }
 }
 
 // Checks the stability of auto-deref when assigned to a binding with the given explicit type.

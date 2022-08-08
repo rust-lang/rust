@@ -257,13 +257,13 @@ fn main() {
     let x = S7([0]);
     let _: &[u32] = &*x;
 
-    let c1 = |x: &Vec<&u32>| {};
+    let c1 = |_: &Vec<&u32>| {};
     let x = &&vec![&1u32];
     c1(x);
     let _ = for<'a, 'b> |x: &'a &'a Vec<&'b u32>, b: bool| -> &'a Vec<&'b u32> {
         if b {
             return x;
         }
-        *x
+        x
     };
 }
