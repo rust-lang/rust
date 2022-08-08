@@ -628,6 +628,10 @@ impl Step for Miri {
             cargo.env("MIRI_HOST_SYSROOT", sysroot);
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             cargo.env("MIRI", miri);
+            // propagate --bless
+            if builder.config.cmd.bless() {
+                cargo.env("MIRI_BLESS", "Gesundheit");
+            }
 
             cargo.arg("--").args(builder.config.cmd.test_args());
 
