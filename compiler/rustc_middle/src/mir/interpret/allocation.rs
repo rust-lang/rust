@@ -209,21 +209,18 @@ impl<Prov> Allocation<Prov> {
     ) -> Self {
         let slice: Cow<'a, [u8]> = slice.into();
         let size = Size::from_bytes(slice.len());
-        // TODO come up with a cleaner way to align the box based on the alignment parameter
-        let count128 = (slice.len() / 16) + 1;
-        // println!("ALIGN: {:?}, {:?}", (align.bytes())+1, count128);
-        let mut vec128: Vec<u128> = Vec::with_capacity(count128);
+        let align_usize: usize = align.bytes().try_into().unwrap();
+        let count_align = ((slice.len() / align_usize) + 1)*align_usize;
+        
+        let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
+        vec_align.resize(count_align, 0);
         // TODO avoid excess initialization
-        vec128.resize(count128, 0);
-        let (buf, _len, _capacity) = vec128.into_raw_parts();
-        assert!((buf as u64) % 16 == 0);
-        let vec8: Vec<u8> = unsafe {Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())};
-        assert!(vec8.as_ptr() as u64 % 16 == 0);
-        //let mut vec8: Vec<u8> = unsafe {Vec::from_raw_parts(buf as *mut u8, len * 16, capacity * 16)};
-        //vec8.truncate(size.bytes_usize());
-        let mut bytes = vec8.into_boxed_slice();
-        assert!(bytes.as_ptr() as u64 % 16 == 0);
-        bytes.copy_from_slice(&slice);
+        let (buf, _len, _capacity) = vec_align.into_raw_parts();
+        vec_align = unsafe {Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())};
+        
+        let mut bytes = vec_align.into_boxed_slice();
+        assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
+        bytes[..slice.len()].copy_from_slice(&slice);
         
         Self {
             bytes,
@@ -244,16 +241,16 @@ impl<Prov> Allocation<Prov> {
     ///
     /// If `panic_on_fail` is true, this will never return `Err`.
     pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
-        let count128 = (size.bytes_usize() / 16) + 1;
+        let align_usize: usize = align.bytes().try_into().unwrap();
+        let count_align = ((size.bytes_usize() / align_usize) + 1)*align_usize;
+
         // TODO this one is supposed to handle allocation failure, so do so.
-        let mut vec128: Vec<u128> = Vec::with_capacity(count128);
-        vec128.resize(count128, 0);
-        let (buf, _len, _capacity) = vec128.into_raw_parts();
-        assert!((buf as u64) % 16 == 0);
-        let vec8: Vec<u8> = unsafe {Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())};
-        assert!(vec8.as_ptr() as u64 % 16 == 0);
-        let bytes = vec8.into_boxed_slice();
-        assert!(bytes.as_ptr() as u64 % 16 == 0);
+        let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
+        vec_align.resize(count_align, 0);
+        let (buf, _len, _capacity) = vec_align.into_raw_parts();
+        vec_align = unsafe {Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())};
+        
+        let bytes = vec_align.into_boxed_slice();
         Ok(()).map_err(|_: ()| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
@@ -290,14 +287,15 @@ impl Allocation {
     ) -> Result<Allocation<Prov, Extra>, Err> {
         // Compute new pointer provenance, which also adjusts the bytes.
         // Realign the pointer
-        // println!("adjusting: {:?}, {:?}", self.align, self.bytes.len());
-        let count128 = (self.bytes.len() / 16) + 1;
-        let mut vec128: Vec<u128> = Vec::with_capacity(count128);
-        vec128.resize(count128, 0);
-        let (buf, _len, _capacity) = vec128.into_raw_parts();
-        let mut vec8: Vec<u8> = unsafe {Vec::from_raw_parts(buf as *mut u8, self.bytes.len(), self.bytes.len())};
-        vec8[..self.bytes.len()].copy_from_slice(&self.bytes);
-        let mut bytes = vec8.into_boxed_slice();
+        let align_usize: usize = self.align.bytes().try_into().unwrap();
+        let count_align = ((self.bytes.len() / align_usize) + 1)*align_usize;
+        
+        let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
+        vec_align.resize(count_align, 0);
+        assert!(vec_align.as_ptr() as u64 % self.align.bytes() == 0);
+
+        vec_align[..self.bytes.len()].copy_from_slice(&self.bytes);
+        let mut bytes = vec_align.into_boxed_slice();
         let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
         let endian = cx.data_layout().endian;
@@ -310,7 +308,8 @@ impl Allocation {
             write_target_uint(endian, ptr_bytes, ptr_offset.bytes().into()).unwrap();
             new_relocations.push((offset, ptr_prov));
         }
-        assert!(bytes.as_ptr() as u64 % 16 == 0);
+        assert!(bytes.as_ptr() as u64 % self.align.bytes() == 0);
+        
         // Create allocation.
         Ok(Allocation {
             bytes,
