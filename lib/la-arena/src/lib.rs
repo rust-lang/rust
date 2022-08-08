@@ -6,7 +6,6 @@
 use std::{
     fmt,
     hash::{Hash, Hasher},
-    iter::FromIterator,
     marker::PhantomData,
     ops::{Index, IndexMut, Range, RangeInclusive},
 };
