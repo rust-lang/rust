@@ -16,7 +16,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_middle_field, clean_middle_ty,
+    self, clean_fn_decl_from_did_and_sig, clean_impl_item, clean_middle_field, clean_middle_ty,
     clean_trait_ref_with_bindings, clean_ty, clean_ty_generics, clean_variant_def,
     clean_visibility, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
 };
@@ -416,7 +416,7 @@ pub(crate) fn build_impl(
                         true
                     }
                 })
-                .map(|item| item.clean(cx))
+                .map(|item| clean_impl_item(item, cx))
                 .collect::<Vec<_>>(),
             impl_.generics.clean(cx),
         ),

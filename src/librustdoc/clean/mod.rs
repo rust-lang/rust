@@ -1065,45 +1065,46 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     })
 }
 
-impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let local_did = self.def_id.to_def_id();
-        cx.with_param_env(local_did, |cx| {
-            let inner = match self.kind {
-                hir::ImplItemKind::Const(ty, expr) => {
-                    let default = ConstantKind::Local { def_id: local_did, body: expr };
-                    AssocConstItem(clean_ty(ty, cx), default)
-                }
-                hir::ImplItemKind::Fn(ref sig, body) => {
-                    let m = clean_function(cx, sig, self.generics, body);
-                    let defaultness = cx.tcx.impl_defaultness(self.def_id);
-                    MethodItem(m, Some(defaultness))
-                }
-                hir::ImplItemKind::TyAlias(hir_ty) => {
-                    let type_ = clean_ty(hir_ty, cx);
-                    let generics = self.generics.clean(cx);
-                    let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
-                    AssocTypeItem(
-                        Box::new(Typedef { type_, generics, item_type: Some(item_type) }),
-                        Vec::new(),
-                    )
-                }
-            };
-
-            let mut what_rustc_thinks =
-                Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-
-            let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(self.def_id));
-
-            // Trait impl items always inherit the impl's visibility --
-            // we don't want to show `pub`.
-            if impl_ref.is_some() {
-                what_rustc_thinks.visibility = Inherited;
+pub(crate) fn clean_impl_item<'tcx>(
+    impl_: &hir::ImplItem<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Item {
+    let local_did = impl_.def_id.to_def_id();
+    cx.with_param_env(local_did, |cx| {
+        let inner = match impl_.kind {
+            hir::ImplItemKind::Const(ty, expr) => {
+                let default = ConstantKind::Local { def_id: local_did, body: expr };
+                AssocConstItem(clean_ty(ty, cx), default)
             }
+            hir::ImplItemKind::Fn(ref sig, body) => {
+                let m = clean_function(cx, sig, impl_.generics, body);
+                let defaultness = cx.tcx.impl_defaultness(impl_.def_id);
+                MethodItem(m, Some(defaultness))
+            }
+            hir::ImplItemKind::TyAlias(hir_ty) => {
+                let type_ = clean_ty(hir_ty, cx);
+                let generics = impl_.generics.clean(cx);
+                let item_type = clean_middle_ty(hir_ty_to_ty(cx.tcx, hir_ty), cx, None);
+                AssocTypeItem(
+                    Box::new(Typedef { type_, generics, item_type: Some(item_type) }),
+                    Vec::new(),
+                )
+            }
+        };
 
-            what_rustc_thinks
-        })
-    }
+        let mut what_rustc_thinks =
+            Item::from_def_id_and_parts(local_did, Some(impl_.ident.name), inner, cx);
+
+        let impl_ref = cx.tcx.impl_trait_ref(cx.tcx.local_parent(impl_.def_id));
+
+        // Trait impl items always inherit the impl's visibility --
+        // we don't want to show `pub`.
+        if impl_ref.is_some() {
+            what_rustc_thinks.visibility = Inherited;
+        }
+
+        what_rustc_thinks
+    })
 }
 
 impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
@@ -1995,8 +1996,11 @@ fn clean_impl<'tcx>(
     let tcx = cx.tcx;
     let mut ret = Vec::new();
     let trait_ = impl_.of_trait.as_ref().map(|t| clean_trait_ref(t, cx));
-    let items =
-        impl_.items.iter().map(|ii| tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>();
+    let items = impl_
+        .items
+        .iter()
+        .map(|ii| clean_impl_item(tcx.hir().impl_item(ii.id), cx))
+        .collect::<Vec<_>>();
     let def_id = tcx.hir().local_def_id(hir_id);
 
     // If this impl block is an implementation of the Deref trait, then we
