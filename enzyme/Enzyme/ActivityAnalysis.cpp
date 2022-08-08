@@ -1423,7 +1423,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
                   InsertConstantValue(TR, Val);
                   return true;
                 }
-                if (LoadReval) {
+                if (LoadReval && UA != UseActivity::AllStores) {
                   ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
                 }
               }
@@ -1441,7 +1441,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
                   InsertConstantValue(TR, Val);
                   return true;
                 } else {
-                  if (LoadReval) {
+                  if (LoadReval && UA != UseActivity::AllStores) {
                     ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
                   }
                 }
@@ -1467,7 +1467,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
                     InsertConstantValue(TR, Val);
                     return true;
                   } else {
-                    if (LoadReval) {
+                    if (LoadReval && UA != UseActivity::AllStores) {
                       ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
                     }
                   }
@@ -1491,7 +1491,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
               InsertConstantValue(TR, Val);
               return true;
             }
-            if (LoadReval) {
+            if (LoadReval && UA != UseActivity::AllStores) {
               ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
             }
           }
@@ -1509,7 +1509,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults const &TR, Value *Val) {
               InsertConstantValue(TR, Val);
               return true;
             } else {
-              if (LoadReval) {
+              if (LoadReval && UA != UseActivity::AllStores) {
                 ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
               }
             }
@@ -2696,7 +2696,11 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
         }
         continue;
       }
+
       if (Function *F = getFunctionFromCall(call)) {
+        if (UA == UseActivity::AllStores &&
+            F->getName() == "julia.write_barrier")
+          continue;
         if (F->getIntrinsicID() == Intrinsic::memcpy ||
             F->getIntrinsicID() == Intrinsic::memmove) {
 
