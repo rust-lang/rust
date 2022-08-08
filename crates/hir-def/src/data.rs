@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, MacroCallId, MacroDefKind};
+use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, MacroCallId, MacroDefKind, InFile};
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -12,7 +12,7 @@ use crate::{
     db::DefDatabase,
     intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
-    nameres::{attr_resolution::ResolvedAttr, proc_macro::ProcMacroKind, DefMap},
+    nameres::{attr_resolution::ResolvedAttr, proc_macro::ProcMacroKind, DefMap, diagnostics::DefDiagnostic},
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -479,6 +479,13 @@ impl<'a> AssocItemCollector<'a> {
         'items: for &item in assoc_items {
             let attrs = item_tree.attrs(self.db, self.module_id.krate, ModItem::from(item).into());
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
+                self.def_map.push_diagnostic(DefDiagnostic::unconfigured_code(
+                    self.module_id.local_id,
+                    InFile::new(tree_id.file_id(), item.ast_id(&item_tree).upcast()),
+                    attrs.cfg().unwrap(),
+                    self.expander.cfg_options().clone()
+                ));
+                dbg!("Ignoring assoc item!");
                 continue;
             }
 
