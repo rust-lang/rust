@@ -11,6 +11,7 @@ use rustc_hir::*;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 
 use super::method_call;
 use super::COLLAPSIBLE_STR_REPLACE;
@@ -23,31 +24,20 @@ pub(super) fn check<'tcx>(
     args: &'tcx [hir::Expr<'tcx>],
 ) {
     match (name, args) {
-        ("replace", [from, to]) => {
+        ("replace", ..) => {
             // The receiver of the method call must be `str` type to lint `collapsible_str_replace`
             let original_recv = find_original_recv(recv);
             let original_recv_ty_kind = cx.typeck_results().expr_ty(original_recv).peel_refs().kind();
             let original_recv_is_str_kind = matches!(original_recv_ty_kind, ty::Str);
 
             if_chain! {
-                // Check for `str::replace` calls with char slice for linting
-                if original_recv_is_str_kind;
-                let from_ty_kind = cx.typeck_results().expr_ty(from).peel_refs().kind();
-                if let ty::Array(array_ty, _) = from_ty_kind;
-                if matches!(array_ty.kind(), ty::Char);
-                then {
-                    check_replace_call_with_char_slice(cx, from, to);
-                    return;
-                }
-            }
-
-            if_chain! {
                 if original_recv_is_str_kind;
                 if let Some(parent) = get_parent_expr(cx, expr);
-                if let Some((name, [..], _)) = method_call(parent);
+                if let Some((name, ..)) = method_call(parent);
 
                 then {
                     match name {
+                        // If the parent node is a `str::replace` call, we've already handled the lint, don't lint again
                         "replace" => return,
                         _ => {
                             check_consecutive_replace_calls(cx, expr);
@@ -59,7 +49,7 @@ pub(super) fn check<'tcx>(
 
             match method_call(recv) {
                 // Check if there's an earlier `str::replace` call
-                Some(("replace", [_, _, _], _)) => {
+                Some(("replace", ..)) => {
                     if original_recv_is_str_kind {
                         check_consecutive_replace_calls(cx, expr);
                         return;
@@ -72,55 +62,14 @@ pub(super) fn check<'tcx>(
     }
 }
 
-/// Check a `str::replace` call that contains a char slice as `from` argument for
-/// `collapsible_str_replace` lint.
-fn check_replace_call_with_char_slice<'tcx>(
-    cx: &LateContext<'tcx>,
-    from_arg: &'tcx hir::Expr<'tcx>,
-    to_arg: &'tcx hir::Expr<'tcx>,
-) {
-    let mut char_slice_has_no_variables = true;
-    let mut chars: Vec<String> = Vec::new();
-
-    // Go through the `from_arg` to collect all char literals
-    let _: Option<()> = for_each_expr(from_arg, |e| {
-        if let ExprKind::Lit(Spanned {
-            node: LitKind::Char(_), ..
-        }) = e.kind
-        {
-            chars.push(get_replace_call_char_arg_repr(e).unwrap());
-            ControlFlow::Continue(())
-        } else if let ExprKind::Path(..) = e.kind {
-            // If a variable is found in the char slice, no lint for first version of this lint
-            char_slice_has_no_variables = false;
-            ControlFlow::BREAK
-        } else {
-            ControlFlow::Continue(())
-        }
-    });
-
-    if char_slice_has_no_variables {
-        if let Some(to_arg_repr) = get_replace_call_char_arg_repr(to_arg) {
-            let app = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                COLLAPSIBLE_STR_REPLACE,
-                from_arg.span,
-                "used slice of chars in `str::replace` call",
-                "replace with",
-                format!("replace(|c| matches!(c, {}), {})", chars.join(" | "), to_arg_repr,),
-                app,
-            );
-        }
-    }
-}
-
 /// Check a chain of `str::replace` calls for `collapsible_str_replace` lint.
 fn check_consecutive_replace_calls<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
     if_chain! {
         if let Some(from_args) = get_replace_call_from_args_if_all_char_ty(cx, expr);
         if let Some(to_arg) = get_replace_call_unique_to_arg_repr(expr);
         then {
+            let earliest_replace_call_span = get_earliest_replace_call_span(expr);
+
             if replace_call_from_args_are_only_lit_chars(&from_args) {
                 let from_arg_reprs: Vec<String> = from_args.iter().map(|from_arg| {
                     get_replace_call_char_arg_repr(from_arg).unwrap()
@@ -130,7 +79,7 @@ fn check_consecutive_replace_calls<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir
                 span_lint_and_sugg(
                     cx,
                     COLLAPSIBLE_STR_REPLACE,
-                    expr.span,
+                    expr.span.with_lo(earliest_replace_call_span.lo()),
                     "used consecutive `str::replace` call",
                     "replace with",
                     format!(
@@ -150,7 +99,7 @@ fn check_consecutive_replace_calls<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir
                 span_lint_and_sugg(
                     cx,
                     COLLAPSIBLE_STR_REPLACE,
-                    expr.span,
+                    expr.span.with_lo(earliest_replace_call_span.lo()),
                     "used consecutive `str::replace` call",
                     "replace with",
                     format!(
@@ -293,6 +242,26 @@ fn get_replace_call_char_arg_repr<'tcx>(arg: &'tcx hir::Expr<'tcx>) -> Option<St
         },
         _ => None,
     }
+}
+
+fn get_earliest_replace_call_span<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> Span {
+    let mut earliest_replace_call_span = expr.span;
+
+    let _: Option<()> = for_each_expr(expr, |e| {
+        if let Some((name, [_, args @ ..], span)) = method_call(e) {
+            match (name, args) {
+                ("replace", [_, _]) => {
+                    earliest_replace_call_span = span;
+                    ControlFlow::Continue(())
+                },
+                _ => ControlFlow::BREAK,
+            }
+        } else {
+            ControlFlow::Continue(())
+        }
+    });
+
+    earliest_replace_call_span
 }
 
 /// Find the original receiver of a chain of `str::replace` method calls.
