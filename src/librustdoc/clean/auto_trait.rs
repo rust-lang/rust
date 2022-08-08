@@ -348,13 +348,13 @@ where
     fn make_final_bounds(
         &self,
         ty_to_bounds: FxHashMap<Type, FxHashSet<GenericBound>>,
-        ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
+        ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)>,
         lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<GenericBound>>,
     ) -> Vec<WherePredicate> {
         ty_to_bounds
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
-                if let Some((Some(ref poly_trait), ref output)) = ty_to_fn.get(&ty) {
+                if let Some((ref poly_trait, ref output)) = ty_to_fn.get(&ty) {
                     let mut new_path = poly_trait.trait_.clone();
                     let last_segment = new_path.segments.pop().expect("segments were empty");
 
@@ -473,7 +473,7 @@ where
         let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
         let mut ty_to_traits: FxHashMap<Type, FxHashSet<Path>> = Default::default();
 
-        let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = Default::default();
+        let mut ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)> = Default::default();
 
         for p in clean_where_predicates {
             let (orig_p, p) = (p, p.clean(self.cx));
@@ -537,8 +537,8 @@ where
                         if is_fn {
                             ty_to_fn
                                 .entry(ty.clone())
-                                .and_modify(|e| *e = (Some(poly_trait.clone()), e.1.clone()))
-                                .or_insert(((Some(poly_trait.clone())), None));
+                                .and_modify(|e| *e = (poly_trait.clone(), e.1.clone()))
+                                .or_insert(((poly_trait.clone()), None));
 
                             ty_to_bounds.entry(ty.clone()).or_default();
                         } else {
@@ -561,7 +561,13 @@ where
                                     .and_modify(|e| {
                                         *e = (e.0.clone(), Some(rhs.ty().unwrap().clone()))
                                     })
-                                    .or_insert((None, Some(rhs.ty().unwrap().clone())));
+                                    .or_insert((
+                                        PolyTrait {
+                                            trait_: trait_.clone(),
+                                            generic_params: Vec::new(),
+                                        },
+                                        Some(rhs.ty().unwrap().clone()),
+                                    ));
                                 continue;
                             }
 
