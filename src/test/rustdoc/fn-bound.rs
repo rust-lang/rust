@@ -4,10 +4,12 @@ pub struct Span<F: Fn(&i32)> {
     inner: Peekable<ConditionalIterator<F>>,
 }
 
-struct ConditionalIterator<F> {
+pub struct ConditionalIterator<F> {
     f: F,
 }
 
+
+// @has 'fn_bound/struct.ConditionalIterator.html' '//h3[@class="code-header in-band"]' 'impl<F: Fn(&i32)> Iterator for ConditionalIterator<F>'
 impl<F: Fn(&i32)> Iterator for ConditionalIterator<F> {
     type Item = ();
 
