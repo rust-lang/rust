@@ -128,9 +128,14 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
     *caller = malloccall;
   }
   if (ZeroMem) {
+    auto PT = cast<PointerType>(malloccall->getType());
+    Value *tozero = malloccall;
+    if (!PT->getElementType()->isIntegerTy(8))
+      tozero = Builder.CreatePointerCast(
+          tozero, PointerType::get(Type::getInt8Ty(PT->getContext()),
+                                   PT->getAddressSpace()));
     Value *args[] = {
-        malloccall,
-        ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
+        tozero, ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
         Builder.CreateMul(Align, Count, "", true, true),
         ConstantInt::getFalse(malloccall->getContext())};
     Type *tys[] = {args[0]->getType(), args[2]->getType()};

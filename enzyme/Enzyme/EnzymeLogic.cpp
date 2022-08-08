@@ -2312,10 +2312,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     report_fatal_error("function failed verification (2)");
   }
 
-  StructType *sty = cast<StructType>(gutils->newFunc->getReturnType());
-  SmallVector<Type *, 4> RetTypes(sty->elements().begin(),
-                                  sty->elements().end());
-
   SmallVector<Type *, 4> MallocTypes;
 
   for (auto a : gutils->getTapeValues()) {
@@ -2337,6 +2333,30 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       AugmentedCachedFunctions.find(tup)->second.fn->getNumUses() > 0 ||
       forceAnonymousTape;
   bool noTape = MallocTypes.size() == 0 && !forceAnonymousTape;
+
+  StructType *sty = cast<StructType>(gutils->newFunc->getReturnType());
+  SmallVector<Type *, 4> RetTypes(sty->elements().begin(),
+                                  sty->elements().end());
+  if (!noTape) {
+    if (recursive && !omp) {
+      auto size =
+          gutils->newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+              tapeType);
+      if (size != 0) {
+        auto i64 = Type::getInt64Ty(gutils->newFunc->getContext());
+        BasicBlock *BB = BasicBlock::Create(gutils->newFunc->getContext(),
+                                            "entry", gutils->newFunc);
+        IRBuilder<> B(BB);
+
+        CallInst *malloccall;
+        CreateAllocation(B, tapeType, ConstantInt::get(i64, 1), "tapemem",
+                         &malloccall, nullptr);
+        RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] =
+            malloccall->getType();
+        BB->eraseFromParent();
+      }
+    }
+  }
 
   int oldretIdx = -1;
   if (returnMapping.find(AugmentedStruct::Return) != returnMapping.end()) {
@@ -2367,8 +2387,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
     RetTypes.erase(RetTypes.begin() + tidx);
   } else if (recursive) {
-    assert(RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] ==
-           Type::getInt8PtrTy(nf->getContext()));
   } else {
     RetTypes[returnMapping.find(AugmentedStruct::Tape)->second] = tapeType;
   }
@@ -2440,7 +2458,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   IRBuilder<> ib(NewF->getEntryBlock().getFirstNonPHI());
 
-  Value *ret = noReturn ? nullptr : ib.CreateAlloca(RetType);
+  AllocaInst *ret = noReturn ? nullptr : ib.CreateAlloca(RetType);
   if (!noReturn && EnzymeZeroCache) {
     ib.CreateStore(Constant::getNullValue(RetType), ret);
   }
@@ -2455,10 +2473,9 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       if (size != 0) {
         CallInst *malloccall = nullptr;
         Instruction *zero = nullptr;
-        IRBuilder<> Builder(NewF->getEntryBlock().getFirstNonPHI());
-        tapeMemory = CreateAllocation(
-            Builder, tapeType, ConstantInt::get(i64, 1), "tapemem", &malloccall,
-            EnzymeZeroCache ? &zero : nullptr);
+        tapeMemory =
+            CreateAllocation(ib, tapeType, ConstantInt::get(i64, 1), "tapemem",
+                             &malloccall, EnzymeZeroCache ? &zero : nullptr);
         memory = malloccall;
       } else {
         memory =
@@ -3690,7 +3707,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       IRBuilder<> BuilderZ(gutils->inversionAllocs);
       if (!augmenteddata->tapeType->isEmptyTy()) {
         auto tapep = BuilderZ.CreatePointerCast(
-            additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
+            additionalValue,
+            PointerType::get(augmenteddata->tapeType,
+                             cast<PointerType>(additionalValue->getType())
+                                 ->getAddressSpace()));
 #if LLVM_VERSION_MAJOR > 7
         LoadInst *truetape =
             BuilderZ.CreateLoad(augmenteddata->tapeType, tapep, "truetape");
@@ -3701,7 +3721,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                               MDNode::get(truetape->getContext(), {}));
 
         if (!omp && gutils->FreeMemory) {
-          CreateDealloc(BuilderZ, tapep);
+          CreateDealloc(BuilderZ, additionalValue);
         }
         additionalValue = truetape;
       } else {

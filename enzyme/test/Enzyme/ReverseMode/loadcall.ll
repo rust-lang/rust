@@ -72,8 +72,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to double**
 ; CHECK-NEXT:   %[[callp:.+]] = load double*, double** %0{{(, align 8)?}}, !enzyme_mustcache !
-; CHECK-NEXT:   %[[t0:.+]] = bitcast double** %0 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[t0]])
+; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %"loaded'de" = alloca double
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"loaded'de"
 ; CHECK-NEXT:   br label %invertentry

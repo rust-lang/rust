@@ -379,11 +379,14 @@ void RecursivelyReplaceAddressSpace(Value *AI, Value *rep, bool legal) {
 /// pass. Specifically if we're not topLevel all allocations must be upgraded
 /// Even if topLevel any allocations that aren't in the entry block (and
 /// therefore may not be reachable in the reverse pass) must be upgraded.
-static inline void UpgradeAllocasToMallocs(Function *NewF,
-                                           DerivativeMode mode) {
+static inline void
+UpgradeAllocasToMallocs(Function *NewF, DerivativeMode mode,
+                        SmallPtrSetImpl<llvm::BasicBlock *> &Unreachable) {
   SmallVector<AllocaInst *, 4> ToConvert;
 
   for (auto &BB : *NewF) {
+    if (Unreachable.count(&BB))
+      continue;
     for (auto &I : BB) {
       if (auto AI = dyn_cast<AllocaInst>(&I)) {
         bool UsableEverywhere = AI->getParent() == &NewF->getEntryBlock();
@@ -1653,7 +1656,8 @@ Function *PreProcessCache::preprocessForClone(Function *F,
       mode == DerivativeMode::ReverseModeCombined) {
     // For subfunction calls upgrade stack allocations to mallocs
     // to ensure availability in the reverse pass
-    UpgradeAllocasToMallocs(NewF, mode);
+    auto unreachable = getGuaranteedUnreachable(NewF);
+    UpgradeAllocasToMallocs(NewF, mode, unreachable);
   }
 
   CanonicalizeLoops(NewF, FAM);
