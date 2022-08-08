@@ -98,7 +98,7 @@ mod clippy_ok {
         let _ = if true { 42 } else { 42 };
     }
 
-    #[expect(clippy::logic_bug)]
+    #[expect(clippy::overly_complex_bool_expr)]
     fn burger() {
         let a = false;
         let b = true;
@@ -127,7 +127,7 @@ mod clippy_warn {
         let _ = if true { 33 } else { 42 };
     }
 
-    #[expect(clippy::logic_bug)]
+    #[expect(clippy::overly_complex_bool_expr)]
     fn burger() {
         let a = false;
         let b = true;

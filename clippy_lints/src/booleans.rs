@@ -64,7 +64,7 @@ declare_clippy_lint! {
     /// if a {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
-    pub LOGIC_BUG,
+    pub OVERLY_COMPLEX_BOOL_EXPR,
     correctness,
     "boolean expressions that contain terminals which can be eliminated"
 }
@@ -72,7 +72,7 @@ declare_clippy_lint! {
 // For each pairs, both orders are considered.
 const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
-declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
+declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
 
 impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(
@@ -396,7 +396,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
                         span_lint_hir_and_then(
                             self.cx,
-                            LOGIC_BUG,
+                            OVERLY_COMPLEX_BOOL_EXPR,
                             e.hir_id,
                             e.span,
                             "this boolean expression contains a logic bug",
