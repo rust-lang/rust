@@ -442,38 +442,22 @@ fn make_token_stream(
         }
         token_and_spacing = iter.next();
     }
-    while let Some(FrameData { open_delim_sp, mut inner }) = stack.pop() {
-        // A former macro expansion could give us malformed tokens.
-        // In that case, manually close all open delimitors so downstream users
-        // don't ICE on them.
-        if let Some((delim, open_sp)) = open_delim_sp {
-            let dspan = DelimSpan::from_pair(open_sp, rustc_span::DUMMY_SP);
-            let stream = AttrTokenStream::new(inner);
-            let delimited = AttrTokenTree::Delimited(dspan, delim, stream);
-            stack
-                .last_mut()
-                .unwrap_or_else(|| panic!("Bottom token frame is missing for recovered token"))
+    let mut final_buf = stack.pop().expect("Missing final buf!");
+    if break_last_token {
+        let last_token = final_buf.inner.pop().unwrap();
+        if let AttrTokenTree::Token(last_token, spacing) = last_token {
+            let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
+
+            // An 'unglued' token is always two ASCII characters
+            let mut first_span = last_token.span.shrink_to_lo();
+            first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
+
+            final_buf
                 .inner
-                .push(delimited);
+                .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
         } else {
-            if break_last_token {
-                let last_token = inner.pop().unwrap();
-                if let AttrTokenTree::Token(last_token, spacing) = last_token {
-                    let unglued_first = last_token.kind.break_two_token_op().unwrap().0;
-
-                    // An 'unglued' token is always two ASCII characters
-                    let mut first_span = last_token.span.shrink_to_lo();
-                    first_span = first_span.with_hi(first_span.lo() + rustc_span::BytePos(1));
-
-                    inner
-                        .push(AttrTokenTree::Token(Token::new(unglued_first, first_span), spacing));
-                } else {
-                    panic!("Unexpected last token {:?}", last_token)
-                }
-            }
-            assert!(stack.is_empty(), "Stack should be empty: stack={:?}", stack);
-            return AttrTokenStream::new(inner);
+            panic!("Unexpected last token {:?}", last_token)
         }
     }
-    panic!("Missing final buf!")
+    AttrTokenStream::new(final_buf.inner)
 }

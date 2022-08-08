@@ -20,5 +20,11 @@ LL | values!(STRING(1) as (String) => cfg(test),);
    |
    = note: the usage of `values!` is likely invalid in item context
 
-error: aborting due to 2 previous errors
+error: expected one of `!` or `::`, found `<eof>`
+  --> $DIR/syntax-error-recovery.rs:15:9
+   |
+LL | values!(STRING(1) as (String) => cfg(test),);
+   |         ^^^^^^ expected one of `!` or `::`
+
+error: aborting due to 3 previous errors
 

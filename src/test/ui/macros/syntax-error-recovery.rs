@@ -13,5 +13,6 @@ macro_rules! values {
 //~| ERROR macro expansion ignores token `(String)` and any following
 
 values!(STRING(1) as (String) => cfg(test),);
+//~^ ERROR expected one of `!` or `::`, found `<eof>`
 
 fn main() {}
