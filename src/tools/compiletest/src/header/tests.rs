@@ -421,3 +421,23 @@ fn wasm_special() {
         );
     }
 }
+
+#[test]
+fn families() {
+    let families = [
+        ("x86_64-unknown-linux-gnu", "unix"),
+        ("x86_64-pc-windows-gnu", "windows"),
+        ("wasm32-unknown-unknown", "wasm"),
+        ("wasm32-unknown-emscripten", "wasm"),
+        ("wasm32-unknown-emscripten", "unix"),
+    ];
+    for (target, family) in families {
+        let mut config = config();
+        config.target = target.to_string();
+        assert!(config.matches_family(family));
+        let other = if family == "windows" { "unix" } else { "windows" };
+        assert!(!config.matches_family(other));
+        assert!(check_ignore(&config, &format!("// ignore-{family}")));
+        assert!(!check_ignore(&config, &format!("// ignore-{other}")));
+    }
+}

@@ -682,6 +682,7 @@ impl Config {
             self.matches_os(name) ||
             self.matches_env(name) ||
             self.matches_abi(name) ||
+            self.matches_family(name) ||
             self.target.ends_with(name) ||                      // target and env
             self.matches_arch(name) ||
             matches_wasm32_alias() ||

@@ -411,6 +411,10 @@ impl Config {
         self.target_cfg().abi == abi
     }
 
+    pub fn matches_family(&self, family: &str) -> bool {
+        self.target_cfg().families.iter().any(|f| f == family)
+    }
+
     pub fn is_big_endian(&self) -> bool {
         self.target_cfg().endian == Endian::Big
     }
@@ -436,6 +440,7 @@ pub struct TargetCfg {
     os: String,
     env: String,
     abi: String,
+    families: Vec<String>,
     pointer_width: u32,
     endian: Endian,
 }
@@ -470,6 +475,7 @@ impl TargetCfg {
         let mut os = None;
         let mut env = None;
         let mut abi = None;
+        let mut families = Vec::new();
         let mut pointer_width = None;
         let mut endian = None;
         for line in print_cfg.lines() {
@@ -480,6 +486,7 @@ impl TargetCfg {
                     "target_os" => os = Some(value),
                     "target_env" => env = Some(value),
                     "target_abi" => abi = Some(value),
+                    "target_family" => families.push(value.to_string()),
                     "target_pointer_width" => pointer_width = Some(value.parse().unwrap()),
                     "target_endian" => {
                         endian = Some(match value {
@@ -497,6 +504,7 @@ impl TargetCfg {
             os: os.unwrap().to_string(),
             env: env.unwrap().to_string(),
             abi: abi.unwrap().to_string(),
+            families,
             pointer_width: pointer_width.unwrap(),
             endian: endian.unwrap(),
         }
