@@ -2,9 +2,9 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
-    clean_middle_const, clean_middle_region, clean_middle_ty, inline, Clean, Crate, ExternalCrate,
-    Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path, PathSegment,
-    Primitive, PrimitiveType, Type, TypeBinding, Visibility,
+    clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
+    ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
+    PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -37,7 +37,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
-    let mut module = module.clean(cx);
+    let mut module = clean_doc_module(&module, cx);
 
     match *module.kind {
         ItemKind::ModuleItem(ref module) => {

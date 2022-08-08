@@ -48,75 +48,68 @@ pub(crate) trait Clean<'tcx, T> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> T;
 }
 
-impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let mut items: Vec<Item> = vec![];
-        let mut inserted = FxHashSet::default();
-        items.extend(self.foreigns.iter().map(|(item, renamed)| {
-            let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+    let mut items: Vec<Item> = vec![];
+    let mut inserted = FxHashSet::default();
+    items.extend(doc.foreigns.iter().map(|(item, renamed)| {
+        let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
+        if let Some(name) = item.name {
+            inserted.insert((item.type_(), name));
+        }
+        item
+    }));
+    items.extend(doc.mods.iter().map(|x| {
+        inserted.insert((ItemType::Module, x.name));
+        clean_doc_module(x, cx)
+    }));
+
+    // Split up imports from all other items.
+    //
+    // This covers the case where somebody does an import which should pull in an item,
+    // but there's already an item with the same namespace and same name. Rust gives
+    // priority to the not-imported one, so we should, too.
+    items.extend(doc.items.iter().flat_map(|(item, renamed)| {
+        // First, lower everything other than imports.
+        if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
+            return Vec::new();
+        }
+        let v = clean_maybe_renamed_item(cx, item, *renamed);
+        for item in &v {
             if let Some(name) = item.name {
                 inserted.insert((item.type_(), name));
             }
-            item
-        }));
-        items.extend(self.mods.iter().map(|x| {
-            inserted.insert((ItemType::Module, x.name));
-            x.clean(cx)
-        }));
+        }
+        v
+    }));
+    items.extend(doc.items.iter().flat_map(|(item, renamed)| {
+        // Now we actually lower the imports, skipping everything else.
+        if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
+            let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+            clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
+        } else {
+            // skip everything else
+            Vec::new()
+        }
+    }));
 
-        // Split up imports from all other items.
-        //
-        // This covers the case where somebody does an import which should pull in an item,
-        // but there's already an item with the same namespace and same name. Rust gives
-        // priority to the not-imported one, so we should, too.
-        items.extend(self.items.iter().flat_map(|(item, renamed)| {
-            // First, lower everything other than imports.
-            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
-                return Vec::new();
-            }
-            let v = clean_maybe_renamed_item(cx, item, *renamed);
-            for item in &v {
-                if let Some(name) = item.name {
-                    inserted.insert((item.type_(), name));
-                }
-            }
-            v
-        }));
-        items.extend(self.items.iter().flat_map(|(item, renamed)| {
-            // Now we actually lower the imports, skipping everything else.
-            if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-                let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
-                clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
-            } else {
-                // skip everything else
-                Vec::new()
-            }
-        }));
+    // determine if we should display the inner contents or
+    // the outer `mod` item for the source code.
 
-        // determine if we should display the inner contents or
-        // the outer `mod` item for the source code.
+    let span = Span::new({
+        let where_outer = doc.where_outer(cx.tcx);
+        let sm = cx.sess().source_map();
+        let outer = sm.lookup_char_pos(where_outer.lo());
+        let inner = sm.lookup_char_pos(doc.where_inner.lo());
+        if outer.file.start_pos == inner.file.start_pos {
+            // mod foo { ... }
+            where_outer
+        } else {
+            // mod foo; (and a separate SourceFile for the contents)
+            doc.where_inner
+        }
+    });
 
-        let span = Span::new({
-            let where_outer = self.where_outer(cx.tcx);
-            let sm = cx.sess().source_map();
-            let outer = sm.lookup_char_pos(where_outer.lo());
-            let inner = sm.lookup_char_pos(self.where_inner.lo());
-            if outer.file.start_pos == inner.file.start_pos {
-                // mod foo { ... }
-                where_outer
-            } else {
-                // mod foo; (and a separate SourceFile for the contents)
-                self.where_inner
-            }
-        });
-
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            ModuleItem(Module { items, span }),
-            cx,
-        )
-    }
+    Item::from_hir_id_and_parts(doc.id, Some(doc.name), ModuleItem(Module { items, span }), cx)
 }
 
 fn clean_generic_bound<'tcx>(
