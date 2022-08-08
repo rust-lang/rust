@@ -1316,8 +1316,6 @@ pub fn expand_preparsed_format_args(
         .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
         .collect();
 
-    let named_pos: FxHashSet<usize> = names.values().cloned().collect();
-
     let mut cx = Context {
         ecx,
         args,
@@ -1388,11 +1386,9 @@ pub fn expand_preparsed_format_args(
         .enumerate()
         .filter(|(i, ty)| ty.is_empty() && !cx.count_positions.contains_key(&i))
         .map(|(i, _)| {
-            let msg = if named_pos.contains(&i) {
-                // named argument
+            let msg = if cx.args[i].name.is_some() {
                 "named argument never used"
             } else {
-                // positional argument
                 "argument never used"
             };
             (cx.args[i].expr.span, msg)
