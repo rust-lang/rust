@@ -24,11 +24,16 @@ use rustc_session::Session;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
+/// The search pattern to look for. Used by `span_matches_pat`
 #[derive(Clone, Copy)]
 pub enum Pat {
+    /// A single string.
     Str(&'static str),
+    /// Any of the given strings.
     MultiStr(&'static [&'static str]),
+    /// The string representation of the symbol.
     Sym(Symbol),
+    /// Any decimal or hexadecimal digit depending on the location.
     Num,
 }
 
@@ -108,9 +113,9 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         ExprKind::Box(e) => (Pat::Str("box"), expr_search_pat(tcx, e).1),
         ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
         ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
-        ExprKind::Unary(UnOp::Deref, _) => (Pat::Str("*"), expr_search_pat(tcx, e).1),
-        ExprKind::Unary(UnOp::Not, _) => (Pat::Str("!"), expr_search_pat(tcx, e).1),
-        ExprKind::Unary(UnOp::Neg, _) => (Pat::Str("-"), expr_search_pat(tcx, e).1),
+        ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat(tcx, e).1),
+        ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat(tcx, e).1),
+        ExprKind::Unary(UnOp::Neg, e) => (Pat::Str("-"), expr_search_pat(tcx, e).1),
         ExprKind::Lit(ref lit) => lit_search_pat(&lit.node),
         ExprKind::Array(_) | ExprKind::Repeat(..) => (Pat::Str("["), Pat::Str("]")),
         ExprKind::Call(e, []) | ExprKind::MethodCall(_, [e], _) => (expr_search_pat(tcx, e).0, Pat::Str("(")),
@@ -154,6 +159,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         ExprKind::Continue(Destination { label: None, .. }) => (Pat::Str("continue"), Pat::Str("continue")),
         ExprKind::Continue(Destination { label: Some(name), .. }) => (Pat::Str("continue"), Pat::Sym(name.ident.name)),
         ExprKind::Ret(None) => (Pat::Str("return"), Pat::Str("return")),
+        ExprKind::Ret(Some(e)) => (Pat::Str("return"), expr_search_pat(tcx, e).1),
         ExprKind::Struct(path, _, _) => (qpath_search_pat(path).0, Pat::Str("}")),
         ExprKind::Yield(e, YieldSource::Yield) => (Pat::Str("yield"), expr_search_pat(tcx, e).1),
         _ => (Pat::Str(""), Pat::Str("")),
