@@ -144,7 +144,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(matches::MATCH_STR_CASE_MISMATCH),
     LintId::of(matches::NEEDLESS_MATCH),
     LintId::of(matches::REDUNDANT_PATTERN_MATCHING),
-    LintId::of(matches::SIGNIFICANT_DROP_IN_SCRUTINEE),
     LintId::of(matches::SINGLE_MATCH),
     LintId::of(matches::WILDCARD_IN_OR_PATTERNS),
     LintId::of(mem_replace::MEM_REPLACE_OPTION_WITH_NONE),
