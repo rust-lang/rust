@@ -103,6 +103,8 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
                 //       ^
                 // `let 0 .. =`
                 //           ^
+                // `let 0..: _ =`
+                //         ^
                 // (1.., _)
                 //     ^
                 // `Some(0 .. )`
@@ -111,9 +113,12 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
                 //             ^
                 // `[0..]`
                 //      ^
-                if p.at(T![=]) | p.at(T![')']) | p.at(T![,]) | p.at(T!['}']) | p.at(T![']']) {
+                if matches!(p.current(), T![=] | T![,] | T![:] | T![')'] | T!['}'] | T![']']) {
                     // test half_open_range_pat
-                    // fn f() { let 0 .. = 1u32; }
+                    // fn f() {
+                    //     let 0 .. = 1u32;
+                    //     let 0..: _ = 1u32;
+                    // }
                 } else {
                     atom_pat(p, recovery_set);
                 }
