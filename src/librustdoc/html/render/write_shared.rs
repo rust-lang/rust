@@ -3,7 +3,6 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
 use std::sync::LazyLock as Lazy;
 
 use itertools::Itertools;
@@ -233,10 +232,10 @@ pub(super) fn write_shared(
         themes.insert(theme.to_owned());
     }
 
-    if (*cx.shared).layout.logo.is_empty() {
+    if cx.shared.layout.logo.is_empty() {
         write_toolchain("rust-logo.svg", static_files::RUST_LOGO_SVG)?;
     }
-    if (*cx.shared).layout.favicon.is_empty() {
+    if cx.shared.layout.favicon.is_empty() {
         write_toolchain("favicon.svg", static_files::RUST_FAVICON_SVG)?;
         write_toolchain("favicon-16x16.png", static_files::RUST_FAVICON_PNG_16)?;
         write_toolchain("favicon-32x32.png", static_files::RUST_FAVICON_PNG_32)?;
@@ -254,7 +253,7 @@ pub(super) fn write_shared(
     write_minify("search.js", static_files::SEARCH_JS, cx, options)?;
     write_minify("settings.js", static_files::SETTINGS_JS, cx, options)?;
 
-    if cx.include_sources {
+    if cx.include_sources() {
         write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT, cx, options)?;
     }
 
@@ -414,7 +413,7 @@ pub(super) fn write_shared(
         }
     }
 
-    if cx.include_sources {
+    if cx.include_sources() {
         let mut hierarchy = Hierarchy::new(OsString::new());
         for source in cx
             .shared
@@ -499,12 +498,12 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         if let Some(index_page) = options.index_page.clone() {
             let mut md_opts = options.clone();
             md_opts.output = cx.dst.clone();
-            md_opts.external_html = (*cx.shared).layout.external_html.clone();
+            md_opts.external_html = cx.shared.layout.external_html.clone();
 
             crate::markdown::render(&index_page, md_opts, cx.shared.edition())
                 .map_err(|e| Error::new(e, &index_page))?;
         } else {
-            let shared = Rc::clone(&cx.shared);
+            let shared = &cx.shared;
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
                 title: "Index of crates",

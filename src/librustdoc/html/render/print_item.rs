@@ -13,7 +13,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
 use std::cmp::Ordering;
 use std::fmt;
-use std::rc::Rc;
 
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
@@ -73,12 +72,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
     len_before != buffer.len()
 }
 
-pub(super) fn print_item(
-    cx: &mut Context<'_>,
-    item: &clean::Item,
-    buf: &mut Buffer,
-    page: &Page<'_>,
-) {
+pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
     let typ = match *item.kind {
         clean::ModuleItem(_) => {
@@ -129,7 +123,7 @@ pub(super) fn print_item(
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     let src_href =
-        if cx.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
+        if cx.include_sources() && !item.is_primitive() { cx.src_href(item) } else { None };
 
     let path_components = if item.is_primitive() || item.is_keyword() {
         vec![]
@@ -205,7 +199,7 @@ fn toggle_close(w: &mut Buffer) {
     w.write_str("</details>");
 }
 
-fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
+fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     document(w, cx, item, None, HeadingOffset::H2);
 
     let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
@@ -495,7 +489,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
     tags
 }
 
-fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
     let header = it.fn_header(cx.tcx()).expect("printing a function which isn't a function");
     let constness = print_constness_with_space(&header.constness, it.const_stability(cx.tcx()));
     let unsafety = header.unsafety.print_with_space();
@@ -538,7 +532,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Trait) {
+fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
     let bounds = bounds(&t.bounds, false, cx);
     let required_types = t.items.iter().filter(|m| m.is_ty_associated_type()).collect::<Vec<_>>();
     let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
@@ -707,7 +701,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         )
     }
 
-    fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
+    fn trait_item(w: &mut Buffer, cx: &Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.unwrap();
         info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
@@ -826,8 +820,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // If there are methods directly on this trait object, render them here.
     render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All);
 
-    let cloned_shared = Rc::clone(&cx.shared);
-    let cache = &cloned_shared.cache;
+    let shared = &cx.shared;
+    let cache = &shared.cache;
     let mut extern_crates = FxHashSet::default();
     if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
@@ -1032,7 +1026,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     );
 }
 
-fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
+fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TraitAlias) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "trait-alias", |w| {
             render_attributes_in_pre(w, it, "");
@@ -1056,7 +1050,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &
     render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
+fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "opaque", |w| {
             render_attributes_in_pre(w, it, "");
@@ -1080,7 +1074,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &cl
     render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Typedef) {
+fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
         wrap_item(w, "typedef", |w| {
             render_attributes_in_pre(w, it, "");
@@ -1109,7 +1103,7 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
     document_type_layout(w, cx, def_id);
 }
 
-fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
+fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "union", |w| {
             render_attributes_in_pre(w, it, "");
@@ -1172,7 +1166,7 @@ fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]
     }
 }
 
-fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::Enum) {
+fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
     let count_variants = e.variants().count();
     wrap_into_docblock(w, |w| {
         wrap_item(w, "enum", |w| {
@@ -1332,14 +1326,14 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
     document_type_layout(w, cx, def_id);
 }
 
-fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
+fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
         highlight::render_macro_with_highlighting(&t.source, w);
     });
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
+fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
     wrap_into_docblock(w, |w| {
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
@@ -1371,7 +1365,7 @@ fn item_proc_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, m: &c
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     let def_id = it.item_id.expect_def_id();
     document(w, cx, it, None, HeadingOffset::H2);
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
@@ -1379,14 +1373,13 @@ fn item_primitive(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
     } else {
         // We handle the "reference" primitive type on its own because we only want to list
         // implementations on generic types.
-        let shared = Rc::clone(&cx.shared);
-        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&shared, it);
+        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&cx.shared, it);
 
         render_all_impls(w, cx, it, &concrete, &synthetic, &blanket_impl);
     }
 }
 
-fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &clean::Constant) {
+fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::Constant) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "const", |w| {
             render_attributes_in_code(w, it);
@@ -1435,7 +1428,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
+fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "struct", |w| {
             render_attributes_in_code(w, it);
@@ -1488,7 +1481,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     document_type_layout(w, cx, def_id);
 }
 
-fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Static) {
+fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "static", |w| {
             render_attributes_in_code(w, it);
@@ -1505,7 +1498,7 @@ fn item_static(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
-fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     wrap_into_docblock(w, |w| {
         wrap_item(w, "foreigntype", |w| {
             w.write_str("extern {\n");
@@ -1524,7 +1517,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
     render_assoc_items(w, cx, it, it.item_id.expect_def_id(), AssocItemRender::All)
 }
 
-fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     document(w, cx, it, None, HeadingOffset::H2)
 }
 
@@ -1622,7 +1615,7 @@ fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> O
 }
 
 fn render_implementor(
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     implementor: &Impl,
     trait_: &clean::Item,
     w: &mut Buffer,

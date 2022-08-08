@@ -16,7 +16,6 @@ use rustc_span::source_map::FileName;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");
@@ -104,7 +103,7 @@ struct SourceCollector<'a, 'tcx> {
 
 impl DocVisitor for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
-        if !self.cx.include_sources {
+        if !self.cx.include_sources() {
             return;
         }
 
@@ -126,7 +125,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx.include_sources = match self.emit_source(&filename, file_span) {
+            let include_sources = match self.emit_source(&filename, file_span) {
                 Ok(()) => true,
                 Err(e) => {
                     self.cx.shared.tcx.sess.span_err(
@@ -140,6 +139,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
                     false
                 }
             };
+            self.cx.set_include_sources(include_sources);
         }
 
         self.visit_item_recur(item)
@@ -178,7 +178,7 @@ impl SourceCollector<'_, '_> {
         // Remove the utf-8 BOM if any
         let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
-        let shared = Rc::clone(&self.cx.shared);
+        let shared = &self.cx.shared;
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from("../../");
@@ -210,7 +210,7 @@ impl SourceCollector<'_, '_> {
             &page,
             "",
             |buf: &mut _| {
-                let cx = &mut self.cx;
+                let cx = &self.cx;
                 print_src(
                     buf,
                     contents,

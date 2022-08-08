@@ -1,8 +1,7 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -38,10 +37,6 @@ use crate::try_err;
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
 /// how the current page is being rendered.
-///
-/// It is intended that this context is a lightweight object which can be fairly
-/// easily cloned because it is cloned per work-job (about once per item in the
-/// rustdoc tree).
 pub(crate) struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
@@ -49,30 +44,36 @@ pub(crate) struct Context<'tcx> {
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub(crate) dst: PathBuf,
+    /// Local context (per item)
+    ///
+    /// Before rendering an element a new Frame is added,
+    /// when rendering is finished: the Frame is removed.
+    /// An element's Frame is derived from its module.
+    /// This Vec contains the Frame hierarchy that leads to the current element.
+    ///
+    /// INVARIANT: must have at least 1 item
+    /// `before_item` must be called before rendering
+    pub(crate) local: Vec<ContextItemFrame>,
+    /// Shared context between items
+    pub(crate) shared: SharedContext<'tcx>,
+}
+
+/// Local state for each item
+pub(crate) struct ContextItemFrame {
     /// A flag, which when `true`, will render pages which redirect to the
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
-    pub(super) render_redirect_pages: bool,
+    pub(super) render_redirect_pages: Cell<bool>,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: FxHashMap<DefId, String>,
+    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
     /// The map used to ensure all generated 'id=' attributes are unique.
-    pub(super) id_map: IdMap,
-    /// Shared mutable state.
-    ///
-    /// Issue for improving the situation: [#82381][]
-    ///
-    /// [#82381]: https://github.com/rust-lang/rust/issues/82381
-    pub(crate) shared: Rc<SharedContext<'tcx>>,
+    pub(super) id_map: RefCell<IdMap>,
     /// This flag indicates whether source links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
-    pub(crate) include_sources: bool,
+    pub(super) include_sources: Cell<bool>,
 }
-
-// `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
-#[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 128);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -155,8 +156,40 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx.sess
     }
 
-    pub(super) fn derive_id(&mut self, id: String) -> String {
-        self.id_map.derive(id)
+    /// Get id_map from local context
+    pub(crate) fn id_map(&self) -> &RefCell<IdMap> {
+        &self.local.last().unwrap().id_map
+    }
+
+    /// Get deref_id_map from local context
+    pub(crate) fn deref_id_map(&self) -> &RefCell<FxHashMap<DefId, String>> {
+        &self.local.last().unwrap().deref_id_map
+    }
+
+    /// Get render_redirect_pages from local context
+    pub(crate) fn render_redirect_pages(&self) -> bool {
+        self.local.last().unwrap().render_redirect_pages.get()
+    }
+
+    /// Get include_sources from local context
+    pub(crate) fn include_sources(&self) -> bool {
+        self.local.last().unwrap().include_sources.get()
+    }
+
+    /// Update render_redirect_pages from local context
+    pub(crate) fn set_render_redirect_pages(&self, render_redirect_pages: bool) {
+        let frame = self.local.last().unwrap();
+        frame.render_redirect_pages.set(render_redirect_pages);
+    }
+
+    /// Update include_sources from local context
+    pub(crate) fn set_include_sources(&self, include_sources: bool) {
+        let frame = self.local.last().unwrap();
+        frame.include_sources.set(include_sources);
+    }
+
+    pub(super) fn derive_id(&self, id: String) -> String {
+        self.id_map().borrow_mut().derive(id)
     }
 
     /// String representation of how to get back to the root path of the 'doc/'
@@ -201,25 +234,25 @@ impl<'tcx> Context<'tcx> {
             tyname.as_str()
         };
 
-        if !self.render_redirect_pages {
-            let clone_shared = Rc::clone(&self.shared);
+        if !self.render_redirect_pages() {
+            let shared = &self.shared;
             let page = layout::Page {
                 css_class: tyname_s,
                 root_path: &self.root_path(),
-                static_root_path: clone_shared.static_root_path.as_deref(),
+                static_root_path: shared.static_root_path.as_deref(),
                 title: &title,
                 description: &desc,
                 keywords: &keywords,
-                resource_suffix: &clone_shared.resource_suffix,
+                resource_suffix: &shared.resource_suffix,
             };
             let mut page_buffer = Buffer::html();
             print_item(self, it, &mut page_buffer, &page);
             layout::render(
-                &clone_shared.layout,
+                &shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
                 move |buf: &mut Buffer| buf.push_buffer(page_buffer),
-                &clone_shared.style_files,
+                &shared.style_files,
             )
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id()) {
@@ -509,13 +542,15 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         scx.ensure_dir(&dst)?;
 
         let mut cx = Context {
+            local: vec![ContextItemFrame {
+                render_redirect_pages: Cell::new(false),
+                deref_id_map: RefCell::new(FxHashMap::default()),
+                id_map: RefCell::new(id_map),
+                include_sources: Cell::new(include_sources),
+            }],
             current: Vec::new(),
             dst,
-            render_redirect_pages: false,
-            id_map,
-            deref_id_map: FxHashMap::default(),
-            shared: Rc::new(scx),
-            include_sources,
+            shared: scx,
         };
 
         if emit_crate {
@@ -524,27 +559,15 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         if !no_emit_shared {
             // Build our search index
-            let index = build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
+            let index = build_index(&krate, &mut cx.shared.cache, tcx);
 
             // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
+            cx.shared.fs.set_sync_only(true);
             write_shared(&mut cx, &krate, index, &md_opts)?;
-            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+            cx.shared.fs.set_sync_only(false);
         }
 
         Ok((cx, krate))
-    }
-
-    fn make_child_renderer(&self) -> Self {
-        Self {
-            current: self.current.clone(),
-            dst: self.dst.clone(),
-            render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: FxHashMap::default(),
-            id_map: IdMap::new(),
-            shared: Rc::clone(&self.shared),
-            include_sources: self.include_sources,
-        }
     }
 
     fn after_krate(&mut self) -> Result<(), Error> {
@@ -557,7 +580,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !root_path.ends_with('/') {
             root_path.push('/');
         }
-        let shared = Rc::clone(&self.shared);
+        let shared = &self.shared;
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
@@ -628,7 +651,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &shared.layout,
                 &page,
                 "",
-                scrape_examples_help(&*shared),
+                scrape_examples_help(shared),
                 &shared.style_files,
             );
             shared.fs.write(scrape_examples_help_file, v)?;
@@ -644,11 +667,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
-        // No need for it anymore.
-        drop(shared);
-
         // Flush pending errors.
-        Rc::get_mut(&mut self.shared).unwrap().fs.close();
+        self.shared.fs.close();
         let nb_errors =
             self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(&err).emit()).count();
         if nb_errors > 0 {
@@ -659,6 +679,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     }
 
     fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error> {
+        let item_name = item.name.unwrap();
+        self.dst.push(&*item_name.as_str());
+        self.current.push(item_name);
+
+        // push an item frame for the module
+        self.before_item(item)?;
+
         // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
@@ -666,12 +693,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // External crates will provide links to these structures, so
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
-        if !self.render_redirect_pages {
-            self.render_redirect_pages = item.is_stripped();
+
+        if !self.render_redirect_pages() {
+            self.set_render_redirect_pages(item.is_stripped())
         }
-        let item_name = item.name.unwrap();
-        self.dst.push(&*item_name.as_str());
-        self.current.push(item_name);
 
         info!("Recursing into {}", self.dst.display());
 
@@ -684,7 +709,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
 
         // Render sidebar-items.js used throughout this module.
-        if !self.render_redirect_pages {
+        if !self.render_redirect_pages() {
             let (clean::StrippedItem(box clean::ModuleItem(ref module)) | clean::ModuleItem(ref module)) = *item.kind
             else { unreachable!() };
             let items = self.build_sidebar_items(module);
@@ -698,9 +723,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn mod_item_out(&mut self) -> Result<(), Error> {
         info!("Recursed; leaving {}", self.dst.display());
 
-        // Go back to where we were at
         self.dst.pop();
         self.current.pop();
+
+        // pop the last item frame
+        self.after_item()?;
+
         Ok(())
     }
 
@@ -712,8 +740,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         // External crates will provide links to these structures, so
         // these modules are recursed into, but not rendered normally
         // (a flag on the context).
-        if !self.render_redirect_pages {
-            self.render_redirect_pages = item.is_stripped();
+        if !self.render_redirect_pages() {
+            self.set_render_redirect_pages(item.is_stripped());
         }
 
         let buf = self.render_item(&item, false);
@@ -726,7 +754,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             let joint_dst = self.dst.join(file_name);
             self.shared.fs.write(joint_dst, buf)?;
 
-            if !self.render_redirect_pages {
+            if !self.render_redirect_pages() {
                 self.shared.all.borrow_mut().append(full_path(self, &item), &item_type);
             }
             // If the item is a macro, redirect from the old macro URL (with !)
@@ -751,6 +779,23 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
     fn cache(&self) -> &Cache {
         &self.shared.cache
+    }
+
+    fn before_item(&mut self, _item: &clean::Item) -> Result<(), Error> {
+        // push a new item frame
+        self.local.push(ContextItemFrame {
+            render_redirect_pages: Cell::new(self.render_redirect_pages()),
+            deref_id_map: RefCell::new(FxHashMap::default()),
+            id_map: RefCell::new(IdMap::new()),
+            include_sources: Cell::new(self.include_sources()),
+        });
+        Ok(())
+    }
+
+    fn after_item(&mut self) -> Result<(), Error> {
+        // pop the last frame
+        self.local.pop();
+        Ok(())
     }
 }
 

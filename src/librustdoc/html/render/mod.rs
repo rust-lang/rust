@@ -36,13 +36,13 @@ mod write_shared;
 pub(crate) use self::context::*;
 pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
 use std::fs;
 use std::iter::Peekable;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::str;
 use std::string::ToString;
 
@@ -368,7 +368,7 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
 
 fn document(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     item: &clean::Item,
     parent: Option<&clean::Item>,
     heading_offset: HeadingOffset,
@@ -387,18 +387,19 @@ fn document(
 /// Render md_text as markdown.
 fn render_markdown(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     md_text: &str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
 ) {
+    let mut ids = cx.id_map().borrow_mut();
     write!(
         w,
         "<div class=\"docblock\">{}</div>",
         Markdown {
             content: md_text,
             links: &links,
-            ids: &mut cx.id_map,
+            ids: &mut ids,
             error_codes: cx.shared.codes,
             edition: cx.shared.edition(),
             playground: &cx.shared.playground,
@@ -413,7 +414,7 @@ fn render_markdown(
 fn document_short(
     w: &mut Buffer,
     item: &clean::Item,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     link: AssocItemLink<'_>,
     parent: &clean::Item,
     show_def_docs: bool,
@@ -442,7 +443,7 @@ fn document_short(
 fn document_full_collapsible(
     w: &mut Buffer,
     item: &clean::Item,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     heading_offset: HeadingOffset,
 ) {
     document_full_inner(w, item, cx, true, heading_offset);
@@ -451,7 +452,7 @@ fn document_full_collapsible(
 fn document_full(
     w: &mut Buffer,
     item: &clean::Item,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     heading_offset: HeadingOffset,
 ) {
     document_full_inner(w, item, cx, false, heading_offset);
@@ -460,7 +461,7 @@ fn document_full(
 fn document_full_inner(
     w: &mut Buffer,
     item: &clean::Item,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     is_collapsible: bool,
     heading_offset: HeadingOffset,
 ) {
@@ -496,7 +497,7 @@ fn document_full_inner(
 /// * Required features (through the `doc_cfg` feature)
 fn document_item_info(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     item: &clean::Item,
     parent: Option<&clean::Item>,
 ) {
@@ -532,7 +533,7 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
 /// the item's documentation.
 fn short_item_info(
     item: &clean::Item,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     parent: Option<&clean::Item>,
 ) -> Vec<String> {
     let mut extra_info = vec![];
@@ -560,9 +561,10 @@ fn short_item_info(
 
         if let Some(note) = note {
             let note = note.as_str();
+            let mut ids = cx.id_map().borrow_mut();
             let html = MarkdownHtml(
                 note,
-                &mut cx.id_map,
+                &mut ids,
                 error_codes,
                 cx.shared.edition(),
                 &cx.shared.playground,
@@ -614,7 +616,7 @@ fn short_item_info(
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
 pub(crate) fn render_impls(
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     w: &mut Buffer,
     impls: &[&Impl],
     containing_item: &clean::Item,
@@ -1037,7 +1039,7 @@ fn write_impl_section_heading(w: &mut Buffer, title: &str, id: &str) {
 
 pub(crate) fn render_all_impls(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     containing_item: &clean::Item,
     concrete: &[&Impl],
     synthetic: &[&Impl],
@@ -1068,7 +1070,7 @@ pub(crate) fn render_all_impls(
 
 fn render_assoc_items(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
@@ -1080,14 +1082,14 @@ fn render_assoc_items(
 
 fn render_assoc_items_inner(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
     derefs: &mut FxHashSet<DefId>,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
-    let shared = Rc::clone(&cx.shared);
+    let shared = &cx.shared;
     let cache = &shared.cache;
     let Some(v) = cache.impls.get(&it) else { return };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
@@ -1102,7 +1104,7 @@ fn render_assoc_items_inner(
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
                 if let Some(def_id) = type_.def_id(cx.cache()) {
-                    cx.deref_id_map.insert(def_id, id.clone());
+                    cx.deref_id_map().borrow_mut().insert(def_id, id.clone());
                 }
                 write_impl_section_heading(
                     &mut tmp_buf,
@@ -1169,7 +1171,7 @@ fn render_assoc_items_inner(
 
 fn render_deref_methods(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
@@ -1315,7 +1317,7 @@ struct ImplRenderingParameters {
 
 fn render_impl(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     i: &Impl,
     parent: &clean::Item,
     link: AssocItemLink<'_>,
@@ -1324,7 +1326,7 @@ fn render_impl(
     aliases: &[String],
     rendering_params: ImplRenderingParameters,
 ) {
-    let shared = Rc::clone(&cx.shared);
+    let shared = &cx.shared;
     let cache = &shared.cache;
     let traits = &cache.traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
@@ -1338,7 +1340,7 @@ fn render_impl(
     fn doc_impl_item(
         boring: &mut Buffer,
         interesting: &mut Buffer,
-        cx: &mut Context<'_>,
+        cx: &Context<'_>,
         item: &clean::Item,
         parent: &clean::Item,
         containing_item: &clean::Item,
@@ -1563,7 +1565,7 @@ fn render_impl(
     fn render_default_items(
         boring: &mut Buffer,
         interesting: &mut Buffer,
-        cx: &mut Context<'_>,
+        cx: &Context<'_>,
         t: &clean::Trait,
         i: &clean::Impl,
         parent: &clean::Item,
@@ -1657,13 +1659,14 @@ fn render_impl(
                 </div>",
                 );
             }
+            let mut ids = cx.id_map().borrow_mut();
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
                 Markdown {
                     content: &*dox,
                     links: &i.impl_item.links(cx),
-                    ids: &mut cx.id_map,
+                    ids: &mut ids,
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
@@ -1727,7 +1730,7 @@ fn render_rightside(
 
 pub(crate) fn render_impl_summary(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     i: &Impl,
     parent: &clean::Item,
     containing_item: &clean::Item,
@@ -2135,10 +2138,15 @@ fn sidebar_deref_methods(
                 .flat_map(|i| get_methods(i.inner_impl(), true, used_links, deref_mut, cx.tcx()))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
-                let id = if let Some(target_def_id) = real_target.def_id(c) {
-                    cx.deref_id_map.get(&target_def_id).expect("Deref section without derived id")
+                let id: Cow<'_, str> = if let Some(target_def_id) = real_target.def_id(c) {
+                    let deref_id_map = cx.deref_id_map().borrow();
+                    let id: String = deref_id_map
+                        .get(&target_def_id)
+                        .expect("Deref section without derived id")
+                        .to_owned();
+                    Cow::Owned(id)
                 } else {
-                    "deref-methods"
+                    Cow::Borrowed("deref-methods")
                 };
                 let title = format!(
                     "Methods from {}&lt;Target={}&gt;",
@@ -2147,7 +2155,7 @@ fn sidebar_deref_methods(
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
-                print_sidebar_block(out, id, &title, ret.iter());
+                print_sidebar_block(out, id.as_ref(), &title, ret.iter());
             }
         }
 
@@ -2359,7 +2367,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 /// implementations that are on concrete or partially generic types, only keeping implementations
 /// of the form `impl<T> Trait for &T`.
 pub(crate) fn get_filtered_impls_for_reference<'a>(
-    shared: &'a Rc<SharedContext<'_>>,
+    shared: &'a SharedContext<'_>,
     it: &clean::Item,
 ) -> (Vec<&'a Impl>, Vec<&'a Impl>, Vec<&'a Impl>) {
     let def_id = it.item_id.expect_def_id();
@@ -2391,8 +2399,7 @@ fn sidebar_primitive(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
         sidebar_assoc_items(cx, &mut sidebar, it);
     } else {
-        let shared = Rc::clone(&cx.shared);
-        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&shared, it);
+        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&cx.shared, it);
 
         sidebar_render_assoc_items(
             cx,
@@ -2726,14 +2733,14 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item) {
+fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
     let tcx = cx.tcx();
     let def_id = item.item_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
     let Some(call_locations) = cx.shared.call_locations.get(&key) else { return };
 
     // Generate a unique ID so users can link to this section for a given method
-    let id = cx.id_map.derive("scraped-examples");
+    let id = cx.id_map().borrow_mut().derive("scraped-examples");
     write!(
         w,
         "<div class=\"docblock scraped-example-list\">\

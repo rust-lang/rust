@@ -1,7 +1,7 @@
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
 
-use crate::clean;
+use crate::clean::{self, Item};
 use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -27,11 +27,18 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
-    /// Make a new renderer to render a child of the item currently being rendered.
-    fn make_child_renderer(&self) -> Self;
-
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
     fn item(&mut self, item: clean::Item) -> Result<(), Error>;
+
+    /// Runs before rendering an item (not a module)
+    fn before_item(&mut self, _item: &clean::Item) -> Result<(), Error> {
+        Ok(())
+    }
+
+    /// Runs after rendering an item (not a module)
+    fn after_item(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 
     /// Renders a module (should not handle recursing into children).
     fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error>;
@@ -65,33 +72,66 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         return Ok(());
     }
 
-    // Render the crate documentation
-    let mut work = vec![(format_renderer.make_child_renderer(), krate.module)];
+    enum WorkUnit {
+        Module { item: Item, current_index: usize },
+        Single(Item),
+    }
+
+    let mut work_units: Vec<WorkUnit> =
+        vec![WorkUnit::Module { item: krate.module, current_index: 0 }];
 
     let unknown = Symbol::intern("<unknown item>");
-    while let Some((mut cx, item)) = work.pop() {
-        if item.is_mod() && T::RUN_ON_MODULE {
-            // modules are special because they add a namespace. We also need to
-            // recurse into the items of the module as well.
-            let _timer =
-                prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
+    while let Some(work_unit) = work_units.pop() {
+        match work_unit {
+            WorkUnit::Module { item, current_index } if T::RUN_ON_MODULE => {
+                let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) = item.kind.as_ref()
+                else { unreachable!() };
 
-            cx.mod_item_in(&item)?;
-            let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) = *item.kind
-            else { unreachable!() };
-            for it in module.items {
-                debug!("Adding {:?} to worklist", it.name);
-                work.push((cx.make_child_renderer(), it));
+                if current_index == 0 {
+                    // just enter the module
+                    format_renderer.mod_item_in(&item)?;
+                }
+
+                if current_index < module.items.len() {
+                    // get the next item
+                    let next_item = module.items[current_index].clone();
+
+                    // stay in the module
+                    work_units.push(WorkUnit::Module { item, current_index: current_index + 1 });
+
+                    // push the next item
+                    if next_item.is_mod() {
+                        work_units.push(WorkUnit::Module { item: next_item, current_index: 0 });
+                    } else {
+                        work_units.push(WorkUnit::Single(next_item));
+                    }
+                } else {
+                    // the last item of the module has been rendered
+                    // -> exit the module
+                    format_renderer.mod_item_out()?;
+                }
             }
-
-            cx.mod_item_out()?;
-        // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
-        // cases. Use an explicit match instead.
-        } else if item.name.is_some() && !item.is_extern_crate() {
-            prof.generic_activity_with_arg("render_item", item.name.unwrap_or(unknown).as_str())
-                .run(|| cx.item(item))?;
+            // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
+            // cases. Use an explicit match instead.
+            WorkUnit::Module { item, .. } | WorkUnit::Single(item)
+                if item.name.is_some() && !item.is_extern_crate() =>
+            {
+                // render the item
+                prof.generic_activity_with_arg(
+                    "render_item",
+                    item.name.unwrap_or(unknown).as_str(),
+                )
+                .run(|| {
+                    format_renderer.before_item(&item)?;
+                    let result = format_renderer.item(item)?;
+                    format_renderer.after_item()?;
+                    Ok(result)
+                })?;
+            }
+            _ => {}
         }
     }
+
     prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
         .run(|| format_renderer.after_krate())
 }
