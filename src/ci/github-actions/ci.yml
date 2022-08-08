@@ -281,16 +281,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-12
-            <<: *job-linux-xl
-            
-          - name: x86_64-gnu-tools
+          - name: x86_64-msvc-exfat
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
+              SCRIPT: python x.py --stage 0 test library/std --test-args test_exfat_please
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+            <<: *job-windows-xl
 
   auto:
     <<: *base-ci-job

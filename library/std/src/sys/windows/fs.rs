@@ -18,6 +18,9 @@ use crate::thread;
 use super::path::maybe_verbatim;
 use super::to_u16s;
 
+#[cfg(test)]
+mod tests;
+
 pub struct File {
     handle: Handle,
 }

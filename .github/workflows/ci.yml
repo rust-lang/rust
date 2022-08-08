@@ -40,16 +40,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: x86_64-gnu-llvm-12
-            os: ubuntu-20.04-xl
-            env: {}
-          - name: x86_64-gnu-tools
+          - name: x86_64-msvc-exfat
             env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-20.04-xl
+              SCRIPT: python x.py --stage 0 test library/std --test-args test_exfat_please
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc"
+            os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
