@@ -42,10 +42,11 @@ impl<'tcx> EnvVars<'tcx> {
         config: &MiriConfig,
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.os.as_ref();
-        // HACK: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
-        // This is (a) very slow and (b) does not work on Windows.
         let mut excluded_env_vars = config.excluded_env_vars.clone();
-        excluded_env_vars.push("TERM".to_owned());
+        if target_os == "windows" {
+            // HACK: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            excluded_env_vars.push("TERM".to_owned());
+        }
 
         // Skip the loop entirely if we don't want to forward anything.
         if ecx.machine.communicate() || !config.forwarded_env_vars.is_empty() {
