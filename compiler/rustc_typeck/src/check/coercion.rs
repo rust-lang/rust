@@ -1479,6 +1479,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
             }
             Err(coercion_error) => {
+                // Mark that we've failed to coerce the types here to suppress
+                // any superfluous errors we might encounter while trying to
+                // emit or provide suggestions on how to fix the initial error.
+                fcx.set_tainted_by_errors();
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
