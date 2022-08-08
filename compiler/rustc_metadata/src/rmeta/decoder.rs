@@ -1581,7 +1581,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     non_narrow_chars,
                     normalized_pos,
                     start_pos,
-                    end_pos,
                     source_file_index,
                 );
                 debug!(
