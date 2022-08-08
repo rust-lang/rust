@@ -138,6 +138,7 @@ pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
     visited: &mut FxHashSet<DefId>,
+    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
     if did.is_local() {
@@ -146,8 +147,17 @@ pub(crate) fn try_inline_glob(
 
     match res {
         Res::Def(DefKind::Mod, did) => {
-            let m = build_module(cx, did, visited);
-            Some(m.items)
+            let mut items = build_module_items(cx, did, visited, inlined_names);
+            items.drain_filter(|item| {
+                if let Some(name) = item.name {
+                    // If an item with the same type and name already exists,
+                    // it takes priority over the inlined stuff.
+                    !inlined_names.insert((item.type_(), name))
+                } else {
+                    false
+                }
+            });
+            Some(items)
         }
         // glob imports on things like enums aren't inlined even for local exports, so just bail
         _ => None,
@@ -517,6 +527,18 @@ fn build_module(
     did: DefId,
     visited: &mut FxHashSet<DefId>,
 ) -> clean::Module {
+    let items = build_module_items(cx, did, visited, &mut FxHashSet::default());
+
+    let span = clean::Span::new(cx.tcx.def_span(did));
+    clean::Module { items, span }
+}
+
+fn build_module_items(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    visited: &mut FxHashSet<DefId>,
+    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
+) -> Vec<clean::Item> {
     let mut items = Vec::new();
 
     // If we're re-exporting a re-export it may actually re-export something in
@@ -526,7 +548,13 @@ fn build_module(
         if item.vis.is_public() {
             let res = item.res.expect_non_local();
             if let Some(def_id) = res.mod_def_id() {
-                if did == def_id || !visited.insert(def_id) {
+                // If we're inlining a glob import, it's possible to have
+                // two distinct modules with the same name. We don't want to
+                // inline it, or mark any of its contents as visited.
+                if did == def_id
+                    || inlined_names.contains(&(ItemType::Module, item.ident.name))
+                    || !visited.insert(def_id)
+                {
                     continue;
                 }
             }
@@ -563,8 +591,7 @@ fn build_module(
         }
     }
 
-    let span = clean::Span::new(cx.tcx.def_span(did));
-    clean::Module { items, span }
+    items
 }
 
 pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {

@@ -71,7 +71,7 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
         // priority to the not-imported one, so we should, too.
         items.extend(self.items.iter().flat_map(|(item, renamed)| {
             // First, lower everything other than imports.
-            if matches!(item.kind, hir::ItemKind::Use(..)) {
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
                 return Vec::new();
             }
             let v = clean_maybe_renamed_item(cx, item, *renamed);
@@ -84,20 +84,13 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
         }));
         items.extend(self.items.iter().flat_map(|(item, renamed)| {
             // Now we actually lower the imports, skipping everything else.
-            if !matches!(item.kind, hir::ItemKind::Use(..)) {
-                return Vec::new();
+            if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
+                let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+                clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
+            } else {
+                // skip everything else
+                Vec::new()
             }
-            let mut v = clean_maybe_renamed_item(cx, item, *renamed);
-            v.drain_filter(|item| {
-                if let Some(name) = item.name {
-                    // If an item with the same type and name already exists,
-                    // it takes priority over the inlined stuff.
-                    !inserted.insert((item.type_(), name))
-                } else {
-                    false
-                }
-            });
-            v
         }));
 
         // determine if we should display the inner contents or
@@ -1992,7 +1985,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 return clean_extern_crate(item, name, orig_name, cx);
             }
             ItemKind::Use(path, kind) => {
-                return clean_use_statement(item, name, path, kind, cx);
+                return clean_use_statement(item, name, path, kind, cx, &mut FxHashSet::default());
             }
             _ => unreachable!("not yet converted"),
         };
@@ -2113,6 +2106,7 @@ fn clean_use_statement<'tcx>(
     path: &hir::Path<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,
+    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
@@ -2177,7 +2171,8 @@ fn clean_use_statement<'tcx>(
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
             let mut visited = FxHashSet::default();
-            if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited) {
+            if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited, inlined_names)
+            {
                 return items;
             }
         }
