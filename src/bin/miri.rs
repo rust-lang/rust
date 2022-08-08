@@ -152,9 +152,13 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     }
 }
 
-fn show_error(msg: String) -> ! {
-    eprintln!("fatal error: {}", msg);
+fn show_error(msg: &impl std::fmt::Display) -> ! {
+    eprintln!("fatal error: {msg}");
     std::process::exit(1)
+}
+
+macro_rules! show_error {
+    ($($tt:tt)*) => { show_error(&format_args!($($tt)*)) };
 }
 
 fn init_early_loggers() {
@@ -234,19 +238,19 @@ fn host_sysroot() -> Option<String> {
                 env::var_os("RUSTUP_TOOLCHAIN").or_else(|| env::var_os("MULTIRUST_TOOLCHAIN"))
             {
                 if toolchain_runtime != toolchain {
-                    show_error(format!(
+                    show_error!(
                         "This Miri got built with local toolchain `{toolchain}`, but now is being run under a different toolchain. \n\
                         Make sure to run Miri in the toolchain it got built with, e.g. via `cargo +{toolchain} miri`."
-                    ));
+                    )
                 }
             }
             format!("{}/toolchains/{}", home, toolchain)
         }
         _ => option_env!("RUST_SYSROOT")
             .unwrap_or_else(|| {
-                show_error(format!(
+                show_error!(
                     "To build Miri without rustup, set the `RUST_SYSROOT` env var at build time",
-                ))
+                )
             })
             .to_owned(),
     })
@@ -272,9 +276,9 @@ fn run_compiler(
             // Using the built-in default here would be plain wrong, so we *require*
             // the env var to make sure things make sense.
             Some(env::var("MIRI_SYSROOT").unwrap_or_else(|_| {
-                show_error(format!(
+                show_error!(
                     "Miri was invoked in 'target' mode without `MIRI_SYSROOT` or `--sysroot` being set"
-                ))
+                )
             }))
         } else {
             host_default_sysroot
@@ -379,7 +383,9 @@ fn main() {
             miri_config.check_abi = false;
         } else if arg == "-Zmiri-disable-isolation" {
             if matches!(isolation_enabled, Some(true)) {
-                panic!("-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error");
+                show_error!(
+                    "-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error"
+                );
             } else {
                 isolation_enabled = Some(false);
             }
@@ -390,7 +396,9 @@ fn main() {
             miri_config.track_outdated_loads = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-isolation-error=") {
             if matches!(isolation_enabled, Some(false)) {
-                panic!("-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation");
+                show_error!(
+                    "-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation"
+                );
             } else {
                 isolation_enabled = Some(true);
             }
@@ -402,7 +410,7 @@ fn main() {
                 "warn-nobacktrace" =>
                     miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
                 _ =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
                     ),
             };
@@ -426,11 +434,11 @@ fn main() {
             );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             if miri_config.seed.is_some() {
-                panic!("Cannot specify -Zmiri-seed multiple times!");
+                show_error!("Cannot specify -Zmiri-seed multiple times!");
             }
             let seed = u64::from_str_radix(param, 16)
-                        .unwrap_or_else(|_| panic!(
-                            "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and fit into a u64 (max 16 characters)"
+                        .unwrap_or_else(|_| show_error!(
+                            "-Zmiri-seed should only contain valid hex digits [0-9a-fA-F] and must fit into a u64 (max 16 characters)"
                         ));
             miri_config.seed = Some(seed);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-exclude=") {
@@ -441,7 +449,7 @@ fn main() {
             let ids: Vec<u64> = match parse_comma_list(param) {
                 Ok(ids) => ids,
                 Err(err) =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-track-pointer-tag requires a comma separated list of valid `u64` arguments: {}",
                         err
                     ),
@@ -450,14 +458,14 @@ fn main() {
                 if let Some(id) = id {
                     miri_config.tracked_pointer_tags.insert(id);
                 } else {
-                    panic!("-Zmiri-track-pointer-tag requires nonzero arguments");
+                    show_error!("-Zmiri-track-pointer-tag requires nonzero arguments");
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-call-id=") {
             let ids: Vec<u64> = match parse_comma_list(param) {
                 Ok(ids) => ids,
                 Err(err) =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-track-call-id requires a comma separated list of valid `u64` arguments: {}",
                         err
                     ),
@@ -466,14 +474,14 @@ fn main() {
                 if let Some(id) = id {
                     miri_config.tracked_call_ids.insert(id);
                 } else {
-                    panic!("-Zmiri-track-call-id requires a nonzero argument");
+                    show_error!("-Zmiri-track-call-id requires a nonzero argument");
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
             let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(param) {
                 Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
                 Err(err) =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-track-alloc-id requires a comma separated list of valid non-zero `u64` arguments: {}",
                         err
                     ),
@@ -483,11 +491,11 @@ fn main() {
             let rate = match param.parse::<f64>() {
                 Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
                 Ok(_) =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
                     ),
                 Err(err) =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
                         err
                     ),
@@ -496,9 +504,9 @@ fn main() {
         } else if let Some(param) = arg.strip_prefix("-Zmiri-preemption-rate=") {
             let rate = match param.parse::<f64>() {
                 Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
-                Ok(_) => panic!("-Zmiri-preemption-rate must be between `0.0` and `1.0`"),
+                Ok(_) => show_error!("-Zmiri-preemption-rate must be between `0.0` and `1.0`"),
                 Err(err) =>
-                    panic!(
+                    show_error!(
                         "-Zmiri-preemption-rate requires a `f64` between `0.0` and `1.0`: {}",
                         err
                     ),
@@ -510,7 +518,7 @@ fn main() {
         } else if let Some(param) = arg.strip_prefix("-Zmiri-report-progress=") {
             let interval = match param.parse::<u32>() {
                 Ok(i) => i,
-                Err(err) => panic!("-Zmiri-report-progress requires a `u32`: {}", err),
+                Err(err) => show_error!("-Zmiri-report-progress requires a `u32`: {}", err),
             };
             miri_config.report_progress = Some(interval);
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
@@ -520,7 +528,7 @@ fn main() {
                 "0" => BacktraceStyle::Off,
                 "1" => BacktraceStyle::Short,
                 "full" => BacktraceStyle::Full,
-                _ => panic!("-Zmiri-backtrace may only be 0, 1, or full"),
+                _ => show_error!("-Zmiri-backtrace may only be 0, 1, or full"),
             };
         } else {
             // Forward to rustc.

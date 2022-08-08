@@ -1,15 +1,17 @@
 #![feature(let_else)]
 #![allow(clippy::useless_format, clippy::derive_partial_eq_without_eq, rustc::internal)]
 
+#[macro_use]
+mod util;
+
 mod arg;
 mod phases;
 mod setup;
-mod util;
 mod version;
 
 use std::{env, iter};
 
-use crate::{phases::*, util::*};
+use crate::phases::*;
 
 fn main() {
     // Rustc does not support non-UTF-8 arguments so we make no attempt either.
@@ -73,9 +75,9 @@ fn main() {
     }
 
     let Some(first) = args.next() else {
-        show_error(format!(
+        show_error!(
             "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
-        ))
+        )
     };
     match first.as_str() {
         "miri" => phase_cargo_miri(args),

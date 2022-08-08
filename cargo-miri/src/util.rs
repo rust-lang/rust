@@ -14,6 +14,15 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::arg::*;
 
+pub fn show_error(msg: &impl std::fmt::Display) -> ! {
+    eprintln!("fatal error: {msg}");
+    std::process::exit(1)
+}
+
+macro_rules! show_error {
+    ($($tt:tt)*) => { crate::util::show_error(&format_args!($($tt)*)) };
+}
+
 /// The information to run a crate with the given environment.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CrateRunEnv {
@@ -55,10 +64,10 @@ pub enum CrateRunInfo {
 impl CrateRunInfo {
     pub fn store(&self, filename: &Path) {
         let file = File::create(filename)
-            .unwrap_or_else(|_| show_error(format!("cannot create `{}`", filename.display())));
+            .unwrap_or_else(|_| show_error!("cannot create `{}`", filename.display()));
         let file = BufWriter::new(file);
         serde_json::ser::to_writer(file, self)
-            .unwrap_or_else(|_| show_error(format!("cannot write to `{}`", filename.display())));
+            .unwrap_or_else(|_| show_error!("cannot write to `{}`", filename.display()));
     }
 }
 
@@ -68,11 +77,6 @@ pub enum MiriCommand {
     Setup,
     /// A command to be forwarded to cargo.
     Forward(String),
-}
-
-pub fn show_error(msg: String) -> ! {
-    eprintln!("fatal error: {}", msg);
-    std::process::exit(1)
 }
 
 /// Escapes `s` in a way that is suitable for using it as a string literal in TOML syntax.
@@ -187,15 +191,15 @@ pub fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
         match buf.trim().to_lowercase().as_ref() {
             // Proceed.
             "" | "y" | "yes" => {}
-            "n" | "no" => show_error(format!("aborting as per your request")),
-            a => show_error(format!("invalid answer `{}`", a)),
+            "n" | "no" => show_error!("aborting as per your request"),
+            a => show_error!("invalid answer `{}`", a),
         };
     } else {
         eprintln!("Running `{:?}` to {}.", cmd, text);
     }
 
     if cmd.status().unwrap_or_else(|_| panic!("failed to execute {:?}", cmd)).success().not() {
-        show_error(format!("failed to {}", text));
+        show_error!("failed to {}", text);
     }
 }
 
