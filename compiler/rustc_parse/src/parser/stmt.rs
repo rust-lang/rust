@@ -55,6 +55,19 @@ impl<'a> Parser<'a> {
             return Ok(Some(stmt.into_inner()));
         }
 
+        if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
+            self.bump();
+            let mut_let_span = lo.to(self.token.span);
+            self.struct_span_err(mut_let_span, "invalid variable declaration")
+                .span_suggestion(
+                    mut_let_span,
+                    "switch the order of `mut` and `let`",
+                    "let mut",
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+        }
+
         Ok(Some(if self.token.is_keyword(kw::Let) {
             self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
         } else if self.is_kw_followed_by_ident(kw::Mut) {
