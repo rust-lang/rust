@@ -15,28 +15,25 @@ fn main() {
     let l = "l";
 
     // LINT CASES
-    let _ = misspelled.replace('s', "l").replace('u', "l");
+    let _ = misspelled.replace(|c| matches!(c, 'u' | 's'), "l");
 
-    let _ = misspelled.replace('s', l).replace('u', l);
+    let _ = misspelled.replace(|c| matches!(c, 'u' | 's'), l);
 
-    let _ = misspelled.replace('s', "l").replace('u', "l").replace('p', "l");
+    let _ = misspelled.replace(|c| matches!(c, 'p' | 'u' | 's'), "l");
 
     let _ = misspelled
-        .replace('s', "l")
-        .replace('u', "l")
-        .replace('p', "l")
-        .replace('d', "l");
+        .replace(|c| matches!(c, 'd' | 'p' | 'u' | 's'), "l");
 
     // FALLBACK CASES
     // If there are consecutive calls to `str::replace` and all or any chars are variables,
     // recommend the fallback `misspelled.replace(&[s, u, p], "l")`
-    let _ = misspelled.replace(s, "l").replace('u', "l");
+    let _ = misspelled.replace(&['u' , s], "l");
 
-    let _ = misspelled.replace(s, "l").replace('u', "l").replace('p', "l");
+    let _ = misspelled.replace(&['p' , 'u' , s], "l");
 
-    let _ = misspelled.replace(s, "l").replace(u, "l").replace('p', "l");
+    let _ = misspelled.replace(&['p' , u , s], "l");
 
-    let _ = misspelled.replace(s, "l").replace(u, "l").replace(p, "l");
+    let _ = misspelled.replace(&[p , u , s], "l");
 
     // NO LINT CASES
     let _ = misspelled.replace('s', "l");

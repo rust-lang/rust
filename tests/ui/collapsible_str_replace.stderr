@@ -1,0 +1,56 @@
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:18:24
+   |
+LL |     let _ = misspelled.replace('s', "l").replace('u', "l");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(|c| matches!(c, 'u' | 's'), "l")`
+   |
+   = note: `-D clippy::collapsible-str-replace` implied by `-D warnings`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:20:24
+   |
+LL |     let _ = misspelled.replace('s', l).replace('u', l);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(|c| matches!(c, 'u' | 's'), l)`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:22:24
+   |
+LL |     let _ = misspelled.replace('s', "l").replace('u', "l").replace('p', "l");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(|c| matches!(c, 'p' | 'u' | 's'), "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:25:10
+   |
+LL |           .replace('s', "l")
+   |  __________^
+LL | |         .replace('u', "l")
+LL | |         .replace('p', "l")
+LL | |         .replace('d', "l");
+   | |__________________________^ help: replace with: `replace(|c| matches!(c, 'd' | 'p' | 'u' | 's'), "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:33:24
+   |
+LL |     let _ = misspelled.replace(s, "l").replace('u', "l");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(&['u' , s], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:35:24
+   |
+LL |     let _ = misspelled.replace(s, "l").replace('u', "l").replace('p', "l");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(&['p' , 'u' , s], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:37:24
+   |
+LL |     let _ = misspelled.replace(s, "l").replace(u, "l").replace('p', "l");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(&['p' , u , s], "l")`
+
+error: used consecutive `str::replace` call
+  --> $DIR/collapsible_str_replace.rs:39:24
+   |
+LL |     let _ = misspelled.replace(s, "l").replace(u, "l").replace(p, "l");
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `replace(&[p , u , s], "l")`
+
+error: aborting due to 8 previous errors
+

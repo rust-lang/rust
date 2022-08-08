@@ -152,11 +152,11 @@ declare_clippy_lint! {
     /// let hello = "hesuo worpd"
     ///     .replace('s', "l")
     ///     .replace("u", "l")
-    ///     .replace('p', "l")
+    ///     .replace('p', "l");
     /// ```
     /// Use instead:
     /// ```rust
-    /// let hello = "hesuo worpd".replace(|c| matches!(c, 's' | 'u' | 'p'), "l")
+    /// let hello = "hesuo worpd".replace(|c| matches!(c, 's' | 'u' | 'p'), "l");
     /// ```
     #[clippy::version = "1.64.0"]
     pub COLLAPSIBLE_STR_REPLACE,
@@ -3521,7 +3521,7 @@ impl Methods {
                 },
                 ("replace" | "replacen", [arg1, arg2] | [arg1, arg2, _]) => {
                     no_effect_replace::check(cx, expr, arg1, arg2);
-                    collapsible_str_replace::check(cx, expr, name, recv, args);
+                    collapsible_str_replace::check(cx, expr, name, recv);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {

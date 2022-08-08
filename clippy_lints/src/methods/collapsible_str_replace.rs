@@ -1,3 +1,5 @@
+// run-rustfix
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::visitors::for_each_expr;
@@ -7,7 +9,7 @@ use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::*;
+use rustc_hir::{ExprKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -21,44 +23,31 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     name: &str,
     recv: &'tcx hir::Expr<'tcx>,
-    args: &'tcx [hir::Expr<'tcx>],
 ) {
-    match (name, args) {
-        ("replace", ..) => {
-            // The receiver of the method call must be `str` type to lint `collapsible_str_replace`
-            let original_recv = find_original_recv(recv);
-            let original_recv_ty_kind = cx.typeck_results().expr_ty(original_recv).peel_refs().kind();
-            let original_recv_is_str_kind = matches!(original_recv_ty_kind, ty::Str);
+    if name == "replace" {
+        // The receiver of the method call must be `str` type to lint `collapsible_str_replace`
+        let original_recv = find_original_recv(recv);
+        let original_recv_ty_kind = cx.typeck_results().expr_ty(original_recv).peel_refs().kind();
+        let original_recv_is_str_kind = matches!(original_recv_ty_kind, ty::Str);
 
-            if_chain! {
-                if original_recv_is_str_kind;
-                if let Some(parent) = get_parent_expr(cx, expr);
-                if let Some((name, ..)) = method_call(parent);
+        if_chain! {
+            if original_recv_is_str_kind;
+            if let Some(parent) = get_parent_expr(cx, expr);
+            if let Some((name, ..)) = method_call(parent);
+            if name == "replace";
 
-                then {
-                    match name {
-                        // If the parent node is a `str::replace` call, we've already handled the lint, don't lint again
-                        "replace" => return,
-                        _ => {
-                            check_consecutive_replace_calls(cx, expr);
-                            return;
-                        },
-                    }
-                }
+            then {
+                // If the parent node is a `str::replace` call, we've already handled the lint, don't lint again
+                return;
             }
+        }
 
-            match method_call(recv) {
-                // Check if there's an earlier `str::replace` call
-                Some(("replace", ..)) => {
-                    if original_recv_is_str_kind {
-                        check_consecutive_replace_calls(cx, expr);
-                        return;
-                    }
-                },
-                _ => {},
+        if let Some(("replace", ..)) = method_call(recv) {
+            // Check if there's an earlier `str::replace` call
+            if original_recv_is_str_kind {
+                check_consecutive_replace_calls(cx, expr);
             }
-        },
-        _ => {},
+        }
     }
 }
 
@@ -116,7 +105,7 @@ fn check_consecutive_replace_calls<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir
 
 /// Check if all the `from` arguments of a chain of consecutive calls to `str::replace`
 /// are all of `ExprKind::Lit` types. If any is not, return false.
-fn replace_call_from_args_are_only_lit_chars<'tcx>(from_args: &Vec<&'tcx hir::Expr<'tcx>>) -> bool {
+fn replace_call_from_args_are_only_lit_chars<'tcx>(from_args: &[&'tcx hir::Expr<'tcx>]) -> bool {
     let mut only_lit_chars = true;
 
     for from_arg in from_args.iter() {
@@ -159,9 +148,9 @@ fn get_replace_call_from_args_if_all_char_ty<'tcx>(
 
     if all_from_args_are_chars {
         return Some(from_args);
-    } else {
-        return None;
     }
+
+    None
 }
 
 /// Return a unique String representation of the `to` argument used in a chain of `str::replace`
@@ -186,13 +175,13 @@ fn get_replace_call_unique_to_arg_repr<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> Opt
 
     // let mut to_arg_repr_set = FxHashSet::default();
     let mut to_arg_reprs = Vec::new();
-    for &to_arg in to_args.iter() {
+    for &to_arg in &to_args {
         if let Some(to_arg_repr) = get_replace_call_char_arg_repr(to_arg) {
             to_arg_reprs.push(to_arg_repr);
         }
     }
 
-    let to_arg_repr_set = FxHashSet::from_iter(to_arg_reprs.iter().cloned());
+    let to_arg_repr_set = to_arg_reprs.iter().cloned().collect::<FxHashSet<_>>();
     // Check if the set of `to` argument representations has more than one unique value
     if to_arg_repr_set.len() != 1 {
         return None;
