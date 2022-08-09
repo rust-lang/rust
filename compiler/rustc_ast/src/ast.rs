@@ -3030,22 +3030,23 @@ pub type ForeignItem = Item<ForeignItemKind>;
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(AssocItemKind, 72);
-    rustc_data_structures::static_assert_size!(Attribute, 152);
-    rustc_data_structures::static_assert_size!(Block, 48);
-    rustc_data_structures::static_assert_size!(Expr, 104);
-    rustc_data_structures::static_assert_size!(Fn, 192);
-    rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
-    rustc_data_structures::static_assert_size!(GenericBound, 88);
-    rustc_data_structures::static_assert_size!(Generics, 72);
-    rustc_data_structures::static_assert_size!(Impl, 200);
-    rustc_data_structures::static_assert_size!(Item, 200);
-    rustc_data_structures::static_assert_size!(ItemKind, 112);
-    rustc_data_structures::static_assert_size!(Lit, 48);
-    rustc_data_structures::static_assert_size!(Pat, 120);
-    rustc_data_structures::static_assert_size!(Path, 40);
-    rustc_data_structures::static_assert_size!(PathSegment, 24);
-    rustc_data_structures::static_assert_size!(Stmt, 32);
-    rustc_data_structures::static_assert_size!(Ty, 96);
+    static_assert_size!(AssocItemKind, 72);
+    static_assert_size!(Attribute, 152);
+    static_assert_size!(Block, 48);
+    static_assert_size!(Expr, 104);
+    static_assert_size!(Fn, 192);
+    static_assert_size!(ForeignItemKind, 72);
+    static_assert_size!(GenericBound, 88);
+    static_assert_size!(Generics, 72);
+    static_assert_size!(Impl, 200);
+    static_assert_size!(Item, 200);
+    static_assert_size!(ItemKind, 112);
+    static_assert_size!(Lit, 48);
+    static_assert_size!(Pat, 120);
+    static_assert_size!(Path, 40);
+    static_assert_size!(PathSegment, 24);
+    static_assert_size!(Stmt, 32);
+    static_assert_size!(Ty, 96);
 }

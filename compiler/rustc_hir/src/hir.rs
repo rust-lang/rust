@@ -3491,16 +3491,16 @@ impl<'hir> Node<'hir> {
 mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(Block<'static>, 48);
-    rustc_data_structures::static_assert_size!(Expr<'static>, 56);
-    rustc_data_structures::static_assert_size!(ForeignItem<'static>, 72);
-    rustc_data_structures::static_assert_size!(GenericBound<'_>, 48);
-    rustc_data_structures::static_assert_size!(Generics<'static>, 56);
-    rustc_data_structures::static_assert_size!(ImplItem<'static>, 88);
-    rustc_data_structures::static_assert_size!(Impl<'static>, 80);
-    rustc_data_structures::static_assert_size!(Item<'static>, 80);
-    rustc_data_structures::static_assert_size!(Pat<'static>, 88);
-    rustc_data_structures::static_assert_size!(QPath<'static>, 24);
-    rustc_data_structures::static_assert_size!(TraitItem<'static>, 96);
-    rustc_data_structures::static_assert_size!(Ty<'static>, 72);
+    static_assert_size!(Block<'static>, 48);
+    static_assert_size!(Expr<'static>, 56);
+    static_assert_size!(ForeignItem<'static>, 72);
+    static_assert_size!(GenericBound<'_>, 48);
+    static_assert_size!(Generics<'static>, 56);
+    static_assert_size!(ImplItem<'static>, 88);
+    static_assert_size!(Impl<'static>, 80);
+    static_assert_size!(Item<'static>, 80);
+    static_assert_size!(Pat<'static>, 88);
+    static_assert_size!(QPath<'static>, 24);
+    static_assert_size!(TraitItem<'static>, 96);
+    static_assert_size!(Ty<'static>, 72);
 }

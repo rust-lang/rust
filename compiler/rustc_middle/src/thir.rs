@@ -814,8 +814,8 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 mod size_asserts {
     use super::*;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(Block, 56);
-    rustc_data_structures::static_assert_size!(Expr<'_>, 104);
-    rustc_data_structures::static_assert_size!(Pat<'_>, 24);
-    rustc_data_structures::static_assert_size!(Stmt<'_>, 120);
+    static_assert_size!(Block, 56);
+    static_assert_size!(Expr<'_>, 104);
+    static_assert_size!(Pat<'_>, 24);
+    static_assert_size!(Stmt<'_>, 120);
 }
