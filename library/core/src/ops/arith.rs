@@ -938,6 +938,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "/")]
 #[doc(alias = "/=")]
+#[const_trait]
 pub trait DivAssign<Rhs = Self> {
     /// Performs the `/=` operation.
     ///
@@ -999,6 +1000,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 )]
 #[doc(alias = "%")]
 #[doc(alias = "%=")]
+#[const_trait]
 pub trait RemAssign<Rhs = Self> {
     /// Performs the `%=` operation.
     ///

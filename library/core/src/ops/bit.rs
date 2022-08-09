@@ -31,6 +31,7 @@
 #[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "!")]
+#[const_trait]
 pub trait Not {
     /// The resulting type after applying the `!` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -906,6 +907,7 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
     message = "no implementation for `{Self} <<= {Rhs}`",
     label = "no implementation for `{Self} <<= {Rhs}`"
 )]
+#[const_trait]
 pub trait ShlAssign<Rhs = Self> {
     /// Performs the `<<=` operation.
     ///
@@ -989,6 +991,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
     message = "no implementation for `{Self} >>= {Rhs}`",
     label = "no implementation for `{Self} >>= {Rhs}`"
 )]
+#[const_trait]
 pub trait ShrAssign<Rhs = Self> {
     /// Performs the `>>=` operation.
     ///
