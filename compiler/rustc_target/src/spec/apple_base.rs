@@ -1,8 +1,45 @@
 use std::{borrow::Cow, env};
 
-use crate::spec::{cvs, FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
+use crate::spec::{cvs, FramePointer, SplitDebuginfo, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor};
 
-pub fn opts(os: &'static str) -> TargetOptions {
+fn pre_link_args(os: &'static str, arch: &'static str, abi: &'static str) -> LinkArgs {
+    let mut args = LinkArgs::new();
+
+    let platform_name = match abi {
+        "sim" => format!("{}-simulator", os),
+        "macabi" => "mac-catalyst".to_string(),
+        _ => os.to_string(),
+    };
+
+    let platform_version = match os.as_ref() {
+        "ios" => ios_lld_platform_version(),
+        "tvos" => tvos_lld_platform_version(),
+        "watchos" => watchos_lld_platform_version(),
+        "macos" => macos_lld_platform_version(arch),
+        _ => unreachable!(),
+    };
+
+    if abi != "macabi" {
+        args.insert(LinkerFlavor::Gcc, vec!["-arch".into(), arch.into()]);
+    }
+
+    args.insert(
+        LinkerFlavor::Lld(LldFlavor::Ld64),
+        vec![
+            "-arch".into(),
+            arch.into(),
+            "-platform_version".into(),
+            platform_name.into(),
+            platform_version.clone().into(),
+            platform_version.into(),
+        ],
+    );
+
+    args
+}
+
+pub fn opts(os: &'static str, arch: &'static str, abi: &'static str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
     // either the linker will complain if it is used or the binary will end up
     // segfaulting at runtime when run on 10.6. Rust by default supports macOS
@@ -24,6 +61,7 @@ pub fn opts(os: &'static str) -> TargetOptions {
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
+        pre_link_args: pre_link_args(os, arch, abi),
         linker_is_gnu: false,
         families: cvs!["unix"],
         is_like_osx: true,
@@ -73,6 +111,11 @@ fn macos_deployment_target(arch: &str) -> (u32, u32) {
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
+fn macos_lld_platform_version(arch: &str) -> String {
+    let (major, minor) = macos_deployment_target(arch);
+    format!("{}.{}", major, minor)
+}
+
 pub fn macos_llvm_target(arch: &str) -> String {
     let (major, minor) = macos_deployment_target(arch);
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
@@ -109,7 +152,7 @@ pub fn ios_llvm_target(arch: &str) -> String {
     format!("{}-apple-ios{}.{}.0", arch, major, minor)
 }
 
-pub fn ios_lld_platform_version() -> String {
+fn ios_lld_platform_version() -> String {
     let (major, minor) = ios_deployment_target();
     format!("{}.{}", major, minor)
 }
@@ -123,7 +166,7 @@ fn tvos_deployment_target() -> (u32, u32) {
     deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((7, 0))
 }
 
-pub fn tvos_lld_platform_version() -> String {
+fn tvos_lld_platform_version() -> String {
     let (major, minor) = tvos_deployment_target();
     format!("{}.{}", major, minor)
 }
@@ -132,7 +175,7 @@ fn watchos_deployment_target() -> (u32, u32) {
     deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
 }
 
-pub fn watchos_lld_platform_version() -> String {
+fn watchos_lld_platform_version() -> String {
     let (major, minor) = watchos_deployment_target();
     format!("{}.{}", major, minor)
 }
