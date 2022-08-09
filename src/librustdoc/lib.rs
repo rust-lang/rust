@@ -69,7 +69,6 @@ extern crate test;
 #[cfg(feature = "jemalloc")]
 extern crate jemalloc_sys;
 
-use std::default::Default;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;

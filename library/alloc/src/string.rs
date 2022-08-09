@@ -45,9 +45,9 @@
 use core::error::Error;
 use core::fmt;
 use core::hash;
-use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
-use core::iter::{from_fn, FromIterator};
+use core::iter::from_fn;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]

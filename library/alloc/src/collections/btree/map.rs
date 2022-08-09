@@ -3,7 +3,7 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, FusedIterator};
+use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop};
 use core::ops::{Bound, Index, RangeBounds};
@@ -420,7 +420,6 @@ impl<'a, K: 'a, V: 'a> Default for IterMut<'a, K, V> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: IntoIterator::into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct IntoIter<
@@ -650,7 +649,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         // avoid moving the allocator
-        mem::drop(BTreeMap {
+        drop(BTreeMap {
             root: mem::replace(&mut self.root, None),
             length: mem::replace(&mut self.length, 0),
             alloc: self.alloc.clone(),

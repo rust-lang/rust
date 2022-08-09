@@ -2,7 +2,6 @@ use anyhow::{Context, Error};
 use curl::easy::Easy;
 use indexmap::IndexMap;
 use std::collections::HashMap;
-use std::convert::TryInto;
 
 const PATH: &str = "src/stage0.json";
 const COMPILER_COMPONENTS: &[&str] = &["rustc", "rust-std", "cargo"];

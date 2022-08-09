@@ -4,7 +4,7 @@ use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::{FromIterator, FusedIterator, Peekable};
+use core::iter::{FusedIterator, Peekable};
 use core::mem::ManuallyDrop;
 use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
@@ -30,7 +30,6 @@ use crate::alloc::{Allocator, Global};
 /// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
 /// logarithmic and amortized constant time per item returned.
 ///
-/// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 ///
@@ -147,7 +146,6 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: BTreeSet#method.into_iter
-/// [`IntoIterator`]: core::iter::IntoIterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<

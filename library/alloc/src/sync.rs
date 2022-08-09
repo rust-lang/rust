@@ -11,14 +11,13 @@
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
-use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::hint;
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::{PhantomData, Unpin, Unsize};
+use core::marker::{PhantomData, Unsize};
 #[cfg(not(no_global_oom_handling))]
 use core::mem::size_of_val;
 use core::mem::{self, align_of_val_raw};
@@ -188,8 +187,6 @@ macro_rules! acquire {
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [atomic]: core::sync::atomic
-/// [`Send`]: core::marker::Send
-/// [`Sync`]: core::marker::Sync
 /// [deref]: core::ops::Deref
 /// [downgrade]: Arc::downgrade
 /// [upgrade]: Weak::upgrade
@@ -1241,7 +1238,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Arc::from_raw(ptr)) };
+        unsafe { drop(Arc::from_raw(ptr)) };
     }
 
     #[inline]
@@ -1404,7 +1401,7 @@ impl<T> Arc<[T]> {
     ///
     /// Behavior is undefined should the size be wrong.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Arc<[T]> {
+    unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Arc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
         // into the new ArcInner will be dropped, then the memory freed.
@@ -2818,7 +2815,7 @@ impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_iter", since = "1.37.0")]
-impl<T> iter::FromIterator<T> for Arc<[T]> {
+impl<T> FromIterator<T> for Arc<[T]> {
     /// Takes each element in the `Iterator` and collects it into an `Arc<[T]>`.
     ///
     /// # Performance characteristics
@@ -2857,7 +2854,7 @@ impl<T> iter::FromIterator<T> for Arc<[T]> {
     /// let evens: Arc<[u8]> = (0..10).collect(); // Just a single allocation happens here.
     /// # assert_eq!(&*evens, &*(0..10).collect::<Vec<_>>());
     /// ```
-    fn from_iter<I: iter::IntoIterator<Item = T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         ToArcSlice::to_arc_slice(iter.into_iter())
     }
 }

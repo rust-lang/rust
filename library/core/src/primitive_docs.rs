@@ -577,7 +577,6 @@ impl Copy for () {
 /// [`is_null`]: pointer::is_null
 /// [`offset`]: pointer::offset
 #[doc = concat!("[`into_raw`]: ", include_str!("../primitive_docs/box_into_raw.md"))]
-/// [`drop`]: mem::drop
 /// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
@@ -1026,7 +1025,6 @@ mod prim_str {}
 /// * [`UnwindSafe`]
 /// * [`RefUnwindSafe`]
 ///
-/// [`Unpin`]: marker::Unpin
 /// [`UnwindSafe`]: panic::UnwindSafe
 /// [`RefUnwindSafe`]: panic::RefUnwindSafe
 ///
@@ -1404,10 +1402,6 @@ mod prim_ref {}
 /// Function pointers, like `fn(usize) -> bool`.
 ///
 /// *See also the traits [`Fn`], [`FnMut`], and [`FnOnce`].*
-///
-/// [`Fn`]: ops::Fn
-/// [`FnMut`]: ops::FnMut
-/// [`FnOnce`]: ops::FnOnce
 ///
 /// Function pointers are pointers that point to *code*, not data. They can be called
 /// just like functions. Like references, function pointers are, among other things, assumed to
