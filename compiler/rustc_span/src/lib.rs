@@ -1860,22 +1860,22 @@ macro_rules! impl_pos {
             impl Pos for $ident {
                 #[inline(always)]
                 fn from_usize(n: usize) -> $ident {
-                    $ident(n as $inner_ty)
+                    $ident(<$inner_ty>::try_from(n).unwrap())
                 }
 
                 #[inline(always)]
                 fn to_usize(&self) -> usize {
-                    self.0 as usize
+                    self.0.try_into().unwrap()
                 }
 
                 #[inline(always)]
                 fn from_u32(n: u32) -> $ident {
-                    $ident(n as $inner_ty)
+                    $ident(<$inner_ty>::try_from(n).unwrap())
                 }
 
                 #[inline(always)]
                 fn to_u32(&self) -> u32 {
-                    self.0 as u32
+                    self.0.try_into().unwrap()
                 }
             }
 
