@@ -520,6 +520,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
     /// The caller is responsible for calling the access hooks!
+    ///
+    /// You almost certainly want to use `get_ptr_alloc`/`get_ptr_alloc_mut` instead.
     fn get_alloc_raw(
         &self,
         id: AllocId,
@@ -587,6 +589,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Return the `extra` field of the given allocation.
     pub fn get_alloc_extra<'a>(&'a self, id: AllocId) -> InterpResult<'tcx, &'a M::AllocExtra> {
         Ok(&self.get_alloc_raw(id)?.extra)
+    }
+
+    /// Return the `mutability` field of the given allocation.
+    pub fn get_alloc_mutability<'a>(&'a self, id: AllocId) -> InterpResult<'tcx, Mutability> {
+        Ok(self.get_alloc_raw(id)?.mutability)
     }
 
     /// Gives raw mutable access to the `Allocation`, without bounds or alignment checks.
