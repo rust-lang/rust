@@ -1148,6 +1148,17 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
     LazyLock::new(|| {
         let hook = panic::take_hook();
         panic::set_hook(Box::new(|info| {
+            // If the error was caused by a broken pipe then this is not a bug.
+            // Write the error and return immediately. See #98700.
+            #[cfg(windows)]
+            if let Some(msg) = info.payload().downcast_ref::<String>() {
+                if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
+                {
+                    early_error_no_abort(ErrorOutputType::default(), &msg);
+                    return;
+                }
+            };
+
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
             (*DEFAULT_HOOK)(info);
 
