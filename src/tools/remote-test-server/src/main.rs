@@ -27,7 +27,6 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-#[cfg(not(target_os = "uefi"))]
 use std::thread;
 
 macro_rules! t {
@@ -48,6 +47,7 @@ struct Config {
     verbose: bool,
     sequential: bool,
     bind: SocketAddr,
+    staticlink: bool,
 }
 
 impl Config {
@@ -60,6 +60,7 @@ impl Config {
             } else {
                 ([10, 0, 2, 15], 12345).into()
             },
+            staticlink: false
         }
     }
 
@@ -80,6 +81,9 @@ impl Config {
                 "--help" | "-h" => {
                     show_help();
                     std::process::exit(0);
+                }
+                "--staticlink" => {
+                    config.staticlink = true;
                 }
                 arg => panic!("unknown argument: {}, use `--help` for known arguments", arg),
             }
@@ -262,33 +266,25 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     let exe = recv(&path, &mut reader);
     print_verbose(&format!("run {:#?}", exe), config);
 
-    // FIXME: Remove this in the future
-    #[cfg(target_os = "uefi")]
-    let exe = format!(
-        "{}/\\{}",
-        std::env::current_dir().unwrap().to_string_lossy(),
-        exe.to_string_lossy()
-    );
-
     let mut cmd = Command::new(&exe);
     cmd.args(args);
     cmd.envs(env);
-
-    // On windows, libraries are just searched in the executable directory,
-    // system directories, PWD, and PATH, in that order. PATH is the only one
-    // we can change for this.
-    let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
 
     // Support libraries were uploaded to `work` earlier, so make sure that's
     // in `LD_LIBRARY_PATH`. Also include our own current dir which may have
     // had some libs uploaded.
     let mut paths = vec![work.to_owned(), path.clone()];
-    if let Some(library_path) = env::var_os(library_path) {
-        paths.extend(env::split_paths(&library_path));
+
+    if !config.staticlink {
+        // On windows, libraries are just searched in the executable directory,
+        // system directories, PWD, and PATH, in that order. PATH is the only one
+        // we can change for this.
+        let library_path = if cfg!(windows) { "PATH" } else { "LD_LIBRARY_PATH" };
+        if let Some(library_path) = env::var_os(library_path) {
+            paths.extend(env::split_paths(&library_path));
+        }
+        cmd.env(library_path, env::join_paths(paths).unwrap());
     }
-    // Dynamic Linking not present in UEFI
-    #[cfg(not(target_os = "uefi"))]
-    cmd.env(library_path, env::join_paths(paths).unwrap());
 
     // Some tests assume RUST_TEST_TMPDIR exists
     cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
@@ -303,13 +299,14 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     let mut stderr = child.stderr.take().unwrap();
     let socket = Arc::new(Mutex::new(reader.into_inner()));
     let socket2 = socket.clone();
-    #[cfg(target_os = "uefi")]
-    my_copy(&mut stdout, 0, &*socket2);
-    #[cfg(not(target_os = "uefi"))]
-    let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
-    my_copy(&mut stderr, 1, &*socket);
-    #[cfg(not(target_os = "uefi"))]
-    thread.join().unwrap();
+    if config.sequential {
+        my_copy(&mut stdout, 0, &*socket2);
+        my_copy(&mut stderr, 1, &*socket);
+    } else {
+        let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
+        my_copy(&mut stderr, 1, &*socket);
+        thread.join().unwrap();
+    }
 
     // Finally send over the exit status.
     let status = t!(child.wait());

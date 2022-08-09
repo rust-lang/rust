@@ -233,7 +233,6 @@ dependencies = [
  "anyhow",
  "flate2",
  "hex 0.4.2",
- "num_cpus",
  "rayon",
  "serde",
  "serde_json",
@@ -1665,9 +1664,9 @@ dependencies = [
  "log",
  "pest",
  "pest_derive",
- "quick-error 2.0.0",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -1705,6 +1704,7 @@ checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
  "compiler_builtins",
  "libc",
+ "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
 
@@ -1766,7 +1766,7 @@ version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
 dependencies = [
- "quick-error 1.2.3",
+ "quick-error",
 ]
 
 [[package]]
@@ -1884,8 +1884,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ca8957e71f04a205cb162508f9326aea04676c8dfd0711220190d6b83664f3f"
 dependencies = [
  "bitmaps",
- "rand_core 0.6.2",
- "rand_xoshiro",
+ "rand_core 0.5.1",
+ "rand_xoshiro 0.4.0",
  "sized-chunks",
  "typenum",
  "version_check",
@@ -2794,9 +2794,9 @@ dependencies = [
 
 [[package]]
 name = "pin-project-lite"
-version = "0.2.8"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e280fbe77cc62c91527259e9442153f4688736748d24660126286329742b4c6c"
+checksum = "e0a7ae3ac2f1173085d398531c705756c94a4c56843785df85a60c1a0afac116"
 
 [[package]]
 name = "pin-utils"
@@ -2879,7 +2879,7 @@ version = "1.0.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94e2ef8dbfc347b10c094890f778ee2e36ca9bb4262e86dc99cd217e35f3470b"
 dependencies = [
- "unicode-xid",
+ "unicode-ident",
 ]
 
 [[package]]
@@ -2932,12 +2932,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
-name = "quick-error"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ac73b1112776fc109b2e61909bc46c7e1bf0d7f690ffb1676553acce16d5cda"
-
-[[package]]
 name = "quine-mc_cluskey"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2959,37 +2953,6 @@ source = "git+https://github.com/r-efi/r-efi#cfa10bdfe46f2f283d2a93f179c6feb699c
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
-]
-
-[[package]]
-name = "racer"
-version = "2.2.2"
-dependencies = [
- "bitflags",
- "derive_more",
- "env_logger 0.7.1",
- "humantime 2.0.1",
- "lazy_static",
- "lazycell",
- "log",
- "racer-cargo-metadata",
- "rls-span",
-]
-
-[[package]]
-name = "racer-cargo-metadata"
-version = "0.1.2"
-dependencies = [
- "racer-interner",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "racer-interner"
-version = "0.1.0"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -5024,7 +4987,7 @@ checksum = "3fcd952facd492f9be3ef0d0b7032a6e442ee9b361d4acc2b1d0c4aaa5f613a1"
 dependencies = [
  "proc-macro2",
  "quote",
- "unicode-xid",
+ "unicode-ident",
 ]
 
 [[package]]
@@ -5223,9 +5186,18 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "0.3.4"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "238ce071d267c5710f9d31451efec16c5ee22de34df17cc05e56cbc92e967117"
+checksum = "87cc5ceb3875bb20c2890005a4e226a4651264a5c75edb2421b52861a0a0cb50"
+dependencies = [
+ "tinyvec_macros",
+]
+
+[[package]]
+name = "tinyvec_macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
@@ -5279,9 +5251,9 @@ checksum = "aa7c7f42dea4b1b99439786f5633aeb9c14c1b53f75e282803c2ec2ad545873c"
 
 [[package]]
 name = "tracing"
-version = "0.1.29"
+version = "0.1.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "375a639232caf30edfc78e8d89b2d4c375515393e7af7e16f01cd96917fb2105"
+checksum = "8ce8c33a8d48bd45d624a6e523445fd21ec13d3653cd51f681abf67418f54eb8"
 dependencies = [
  "cfg-if 1.0.0",
  "pin-project-lite",
@@ -5291,9 +5263,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.22"
+version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11c75893af559bc8e10716548bdef5cb2b983f8e637db9d0e15126b61b484ee2"
+checksum = "4017f8f45139870ca7e672686113917c71c7a6e02d4924eda67186083c03081a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5302,11 +5274,12 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.21"
+version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f4ed65637b8390770814083d20756f87bfa2c21bf2f110babdc5438351746e4"
+checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
 dependencies = [
- "lazy_static",
+ "once_cell",
+ "valuable",
 ]
 
 [[package]]
@@ -5910,3 +5883,4 @@ dependencies = [
  "syn",
  "synstructure",
 ]
+
