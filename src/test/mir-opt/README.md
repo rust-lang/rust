@@ -14,6 +14,18 @@ presence of pointers in constants or other bit width dependent things. In that c
 
 to your test, causing separate files to be generated for 32bit and 64bit systems.
 
+## Unit testing
+
+If you are only testing the behavior of a particular mir-opt pass on some specific input (as is
+usually the case), you should add
+
+```
+// unit-test: PassName
+```
+
+to the top of the file. This makes sure that other passes don't run which means you'll get the input
+you expected and your test won't break when other code changes.
+
 ## Emit a diff of the mir for a specific optimization
 
 This is what you want most often when you want to see how an optimization changes the MIR.
