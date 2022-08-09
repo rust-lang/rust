@@ -17,6 +17,7 @@ pub(crate) const STRIP_PRIVATE: Pass = Pass {
 pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     // This stripper collects all *retained* nodes.
     let mut retained = ItemIdSet::default();
+    let is_json_output = cx.output_format.is_json() && !cx.show_coverage;
 
     // strip all private items
     {
@@ -24,12 +25,17 @@ pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) ->
             retained: &mut retained,
             access_levels: &cx.cache.access_levels,
             update_retained: true,
-            is_json_output: cx.output_format.is_json() && !cx.show_coverage,
+            is_json_output,
         };
         krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }
 
     // strip all impls referencing private items
-    let mut stripper = ImplStripper { retained: &retained, cache: &cx.cache };
+    let mut stripper = ImplStripper {
+        retained: &retained,
+        cache: &cx.cache,
+        is_json_output,
+        document_private: cx.render_options.document_private,
+    };
     stripper.fold_crate(krate)
 }
