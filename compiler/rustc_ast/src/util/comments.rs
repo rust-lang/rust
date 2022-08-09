@@ -225,7 +225,8 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                     let pos_in_file = start_bpos + BytePos(pos as u32);
                     let line_begin_in_file = source_file.line_begin_pos(pos_in_file);
                     let line_begin_pos = (line_begin_in_file - start_bpos).to_usize();
-                    let col = CharPos(text[line_begin_pos..pos].chars().count());
+                    // FIXME: maybe simpler way?
+                    let col = CharPos::from_usize(text[line_begin_pos..pos].chars().count());
 
                     let lines = split_block_comment_into_lines(token_text, col);
                     comments.push(Comment { style, lines, pos: pos_in_file })

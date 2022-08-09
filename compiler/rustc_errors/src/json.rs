@@ -455,8 +455,8 @@ impl DiagnosticSpan {
             byte_end: start.file.original_relative_byte_pos(span.hi()).0,
             line_start: start.line.to_usize(),
             line_end: end.line.to_usize(),
-            column_start: start.col.0 + 1,
-            column_end: end.col.0 + 1,
+            column_start: start.col.to_usize() + 1,
+            column_end: end.col.to_usize() + 1,
             is_primary,
             text: DiagnosticSpanLine::from_span(span, je),
             suggested_replacement: suggestion.map(|x| x.0.clone()),
@@ -535,8 +535,8 @@ impl DiagnosticSpanLine {
                         DiagnosticSpanLine::line_from_source_file(
                             sf,
                             line.line_index,
-                            line.start_col.0 + 1,
-                            line.end_col.0 + 1,
+                            line.start_col.to_usize() + 1,
+                            line.end_col.to_usize() + 1,
                         )
                     })
                     .collect()

@@ -512,11 +512,10 @@ fn make_code_region(
     let (end_line, end_col) = if span.hi() == span.lo() {
         let (end_line, mut end_col) = (start_line, start_col);
         // Extend an empty span by one character so the region will be counted.
-        let CharPos(char_pos) = start_col;
         if span.hi() == body_span.hi() {
-            start_col = CharPos(char_pos - 1);
+            start_col = start_col - CharPos::from_u32(1);
         } else {
-            end_col = CharPos(char_pos + 1);
+            end_col = start_col + CharPos::from_u32(1);
         }
         (end_line, end_col)
     } else {

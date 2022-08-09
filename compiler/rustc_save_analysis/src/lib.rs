@@ -85,8 +85,8 @@ impl<'tcx> SaveContext<'tcx> {
             byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line.to_u32()),
             line_end: Row::new_one_indexed(end.line.to_u32()),
-            column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
-            column_end: Column::new_one_indexed(end.col.0 as u32 + 1),
+            column_start: Column::new_one_indexed(start.col.to_u32() + 1),
+            column_end: Column::new_one_indexed(end.col.to_u32() + 1),
         }
     }
 

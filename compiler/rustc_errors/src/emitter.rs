@@ -1499,7 +1499,7 @@ impl EmitterWriter {
                             "{}:{}:{}",
                             sm.filename_for_diagnostics(&loc.file.name),
                             sm.doctest_offset_line(&loc.file.name, loc.line.to_usize()),
-                            loc.col.0 + 1,
+                            loc.col.to_usize() + 1,
                         ),
                         Style::LineAndColumn,
                     );
@@ -1513,7 +1513,7 @@ impl EmitterWriter {
                             "{}:{}:{}: ",
                             sm.filename_for_diagnostics(&loc.file.name),
                             sm.doctest_offset_line(&loc.file.name, loc.line.to_usize()),
-                            loc.col.0 + 1,
+                            loc.col.to_usize() + 1,
                         ),
                         Style::LineAndColumn,
                     );
@@ -1796,7 +1796,7 @@ impl EmitterWriter {
                             "{}:{}:{}",
                             sm.filename_for_diagnostics(&loc.file.name),
                             sm.doctest_offset_line(&loc.file.name, loc.line.to_usize()),
-                            loc.col.0 + 1,
+                            loc.col.to_usize() + 1,
                         ),
                         Style::LineAndColumn,
                     );

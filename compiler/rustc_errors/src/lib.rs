@@ -312,8 +312,8 @@ impl CodeSuggestion {
                         })
                         .sum();
                     line_highlight.push(SubstitutionHighlight {
-                        start: (cur_lo.col.0 as isize + acc) as usize,
-                        end: (cur_lo.col.0 as isize + acc + len) as usize,
+                        start: (cur_lo.col.to_usize() as isize + acc) as usize,
+                        end: (cur_lo.col.to_usize() as isize + acc + len) as usize,
                     });
                     buf.push_str(&part.snippet);
                     let cur_hi = sm.lookup_char_pos(part.span.hi());
@@ -321,7 +321,8 @@ impl CodeSuggestion {
                         // Account for the difference between the width of the current code and the
                         // snippet being suggested, so that the *later* suggestions are correctly
                         // aligned on the screen.
-                        acc += len as isize - (cur_hi.col.0 - cur_lo.col.0) as isize;
+                        acc +=
+                            len as isize - (cur_hi.col.to_usize() - cur_lo.col.to_usize()) as isize;
                     }
                     prev_hi = cur_hi;
                     prev_line = sf.get_line(prev_hi.line.to_usize() - 1);

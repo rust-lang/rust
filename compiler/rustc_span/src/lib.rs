@@ -1687,7 +1687,7 @@ impl SourceFile {
         }
 
         assert!(self.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
-        CharPos(bpos.to_usize() - self.start_pos.to_usize() - total_extra_bytes as usize)
+        CharPos(bpos.to_u32() - self.start_pos.to_u32() - total_extra_bytes)
     }
 
     /// Looks up the file's (1-based) line number and (0-based `CharPos`) column offset, for a
@@ -1712,7 +1712,7 @@ impl SourceFile {
 
     /// Looks up the file's (1-based) line number, (0-based `CharPos`) column offset, and (0-based)
     /// column offset when displayed, for a given `BytePos`.
-    pub fn lookup_file_pos_with_col_display(&self, pos: BytePos) -> (LineNum, CharPos, usize) {
+    pub fn lookup_file_pos_with_col_display(&self, pos: BytePos) -> (LineNum, CharPos, u32) {
         let (line, col_or_chpos) = self.lookup_file_pos(pos);
         if line.to_usize() > 0 {
             let col = col_or_chpos;
@@ -1731,7 +1731,8 @@ impl SourceFile {
                     .iter()
                     .map(|x| x.width())
                     .sum();
-                col.0 - special_chars + non_narrow
+                col.to_u32() - u32::try_from(special_chars).unwrap()
+                    + u32::try_from(non_narrow).unwrap()
             };
             (line, col, col_display)
         } else {
@@ -1743,7 +1744,8 @@ impl SourceFile {
                     .unwrap_or_else(|x| x);
                 let non_narrow: usize =
                     self.non_narrow_chars[0..end_width_idx].iter().map(|x| x.width()).sum();
-                chpos.0 - end_width_idx + non_narrow
+                chpos.to_u32() - u32::try_from(end_width_idx).unwrap()
+                    + u32::try_from(non_narrow).unwrap()
             };
             (LineNum(0), chpos, col_display)
         }
@@ -1911,7 +1913,7 @@ impl_pos! {
     /// is not equivalent to a character offset. The [`SourceMap`] will convert [`BytePos`]
     /// values to `CharPos` values as necessary.
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-    pub struct CharPos(pub usize);
+    pub struct CharPos(u32);
 
     /// A Line number
     ///

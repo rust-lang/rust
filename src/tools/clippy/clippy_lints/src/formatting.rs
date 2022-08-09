@@ -5,7 +5,7 @@ use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{Pos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -264,7 +264,7 @@ fn has_unary_equivalent(bin_op: BinOpKind) -> bool {
 }
 
 fn indentation(cx: &EarlyContext<'_>, span: Span) -> usize {
-    cx.sess().source_map().lookup_char_pos(span.lo()).col.0
+    cx.sess().source_map().lookup_char_pos(span.lo()).col.to_usize()
 }
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array

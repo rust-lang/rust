@@ -428,7 +428,7 @@ impl SourceMap {
     pub fn lookup_char_pos(&self, pos: BytePos) -> Loc {
         let sf = self.lookup_source_file(pos);
         let (line, col, col_display) = sf.lookup_file_pos_with_col_display(pos);
-        Loc { file: sf, line, col, col_display }
+        Loc { file: sf, line, col, col_display: col_display as usize }
     }
 
     // If the corresponding `SourceFile` is empty, does not return a line number.

@@ -661,7 +661,7 @@ fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
         .and_then(|line| {
             if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
                 // We can mix char and byte positions here because we only consider `[ \t]`.
-                if lo.col == CharPos(pos) {
+                if lo.col == CharPos::from_usize(pos) {
                     Some(line[..pos].into())
                 } else {
                     None
