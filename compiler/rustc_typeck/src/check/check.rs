@@ -18,6 +18,7 @@ use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_lint::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
@@ -1103,12 +1104,28 @@ fn check_impl_items_against_trait<'tcx>(
                 missing_items.push(tcx.associated_item(trait_item_id));
             }
 
-            if let Some(required_items) = &must_implement_one_of {
-                // true if this item is specifically implemented in this impl
-                let is_implemented_here = ancestors
-                    .leaf_def(tcx, trait_item_id)
-                    .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
+            // true if this item is specifically implemented in this impl
+            let is_implemented_here = ancestors
+                .leaf_def(tcx, trait_item_id)
+                .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
 
+            if !is_implemented_here {
+                match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
+                    EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
+                        tcx,
+                        full_impl_span,
+                        trait_item_id,
+                        feature,
+                        reason,
+                        issue,
+                    ),
+
+                    // Unmarked default bodies are considered stable (at least for now).
+                    EvalResult::Allow | EvalResult::Unmarked => {}
+                }
+            }
+
+            if let Some(required_items) = &must_implement_one_of {
                 if is_implemented_here {
                     let trait_item = tcx.associated_item(trait_item_id);
                     if required_items.contains(&trait_item.ident(tcx)) {

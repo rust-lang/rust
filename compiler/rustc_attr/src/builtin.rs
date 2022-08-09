@@ -131,6 +131,14 @@ impl ConstStability {
     }
 }
 
+/// Represents the `#[rustc_default_body_unstable]` attribute.
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub struct DefaultBodyStability {
+    pub level: StabilityLevel,
+    pub feature: Symbol,
+}
+
 /// The available stability levels.
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
@@ -214,7 +222,8 @@ pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>) {
+) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>, Option<(DefaultBodyStability, Span)>)
+{
     find_stability_generic(sess, attrs.iter(), item_sp)
 }
 
@@ -222,7 +231,7 @@ fn find_stability_generic<'a, I>(
     sess: &Session,
     attrs_iter: I,
     item_sp: Span,
-) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>)
+) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>, Option<(DefaultBodyStability, Span)>)
 where
     I: Iterator<Item = &'a Attribute>,
 {
@@ -230,6 +239,7 @@ where
 
     let mut stab: Option<(Stability, Span)> = None;
     let mut const_stab: Option<(ConstStability, Span)> = None;
+    let mut body_stab: Option<(DefaultBodyStability, Span)> = None;
     let mut promotable = false;
     let mut allowed_through_unstable_modules = false;
 
@@ -243,6 +253,7 @@ where
             sym::stable,
             sym::rustc_promotable,
             sym::rustc_allowed_through_unstable_modules,
+            sym::rustc_default_body_unstable,
         ]
         .iter()
         .any(|&s| attr.has_name(s))
@@ -280,7 +291,7 @@ where
 
             let meta_name = meta.name_or_empty();
             match meta_name {
-                sym::rustc_const_unstable | sym::unstable => {
+                sym::rustc_const_unstable | sym::rustc_default_body_unstable | sym::unstable => {
                     if meta_name == sym::unstable && stab.is_some() {
                         handle_errors(
                             &sess.parse_sess,
@@ -289,6 +300,13 @@ where
                         );
                         break;
                     } else if meta_name == sym::rustc_const_unstable && const_stab.is_some() {
+                        handle_errors(
+                            &sess.parse_sess,
+                            attr.span,
+                            AttrError::MultipleStabilityLevels,
+                        );
+                        break;
+                    } else if meta_name == sym::rustc_default_body_unstable && body_stab.is_some() {
                         handle_errors(
                             &sess.parse_sess,
                             attr.span,
@@ -405,11 +423,16 @@ where
                             };
                             if sym::unstable == meta_name {
                                 stab = Some((Stability { level, feature }, attr.span));
-                            } else {
+                            } else if sym::rustc_const_unstable == meta_name {
                                 const_stab = Some((
                                     ConstStability { level, feature, promotable: false },
                                     attr.span,
                                 ));
+                            } else if sym::rustc_default_body_unstable == meta_name {
+                                body_stab =
+                                    Some((DefaultBodyStability { level, feature }, attr.span));
+                            } else {
+                                unreachable!("Unknown stability attribute {meta_name}");
                             }
                         }
                         (None, _, _) => {
@@ -542,7 +565,7 @@ where
         }
     }
 
-    (stab, const_stab)
+    (stab, const_stab, body_stab)
 }
 
 pub fn find_crate_name(sess: &Session, attrs: &[Attribute]) -> Option<Symbol> {

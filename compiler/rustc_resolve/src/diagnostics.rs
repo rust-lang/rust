@@ -2544,12 +2544,15 @@ fn show_candidates(
                 Applicability::MaybeIncorrect,
             );
             if let [first, .., last] = &path[..] {
-                err.span_suggestion_verbose(
-                    first.ident.span.until(last.ident.span),
-                    &format!("if you import `{}`, refer to it directly", last.ident),
-                    "",
-                    Applicability::Unspecified,
-                );
+                let sp = first.ident.span.until(last.ident.span);
+                if sp.can_be_used_for_suggestions() {
+                    err.span_suggestion_verbose(
+                        sp,
+                        &format!("if you import `{}`, refer to it directly", last.ident),
+                        "",
+                        Applicability::Unspecified,
+                    );
+                }
             }
         } else {
             msg.push(':');

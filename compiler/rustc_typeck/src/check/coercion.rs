@@ -1589,11 +1589,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     ) {
         let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else { return;};
         let mut span: MultiSpan = vec![loop_span].into();
-        span.push_span_label(loop_span, "this might have zero elements to iterate on".to_string());
+        span.push_span_label(loop_span, "this might have zero elements to iterate on");
         for ret_expr in ret_exprs {
             span.push_span_label(
                 ret_expr.span,
-                "if the loop doesn't execute, this value would never get returned".to_string(),
+                "if the loop doesn't execute, this value would never get returned",
             );
         }
         err.span_note(

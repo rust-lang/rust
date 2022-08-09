@@ -1218,6 +1218,7 @@ symbols! {
         rustc_conversion_suggestion,
         rustc_deallocator,
         rustc_def_path,
+        rustc_default_body_unstable,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,

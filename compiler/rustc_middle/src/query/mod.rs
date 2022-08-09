@@ -1094,6 +1094,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query lookup_default_body_stability(def_id: DefId) -> Option<attr::DefaultBodyStability> {
+        desc { |tcx| "looking up default body stability of `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     query should_inherit_track_caller(def_id: DefId) -> bool {
         desc { |tcx| "computing should_inherit_track_caller of `{}`", tcx.def_path_str(def_id) }
     }
@@ -1948,6 +1953,14 @@ rustc_queries! {
         desc { |tcx|
             "impossible substituted predicates:`{}`",
             tcx.def_path_str(key.0)
+        }
+    }
+
+    query is_impossible_method(key: (DefId, DefId)) -> bool {
+        desc { |tcx|
+            "checking if {} is impossible to call within {}",
+            tcx.def_path_str(key.1),
+            tcx.def_path_str(key.0),
         }
     }
 

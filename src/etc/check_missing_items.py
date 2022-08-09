@@ -88,8 +88,8 @@ def check_type(ty):
                         for bound in binding["binding"]["constraint"]:
                             check_generic_bound(bound)
             elif "parenthesized" in args:
-                for ty in args["parenthesized"]["inputs"]:
-                    check_type(ty)
+                for input_ty in args["parenthesized"]["inputs"]:
+                    check_type(input_ty)
                 if args["parenthesized"]["output"]:
                     check_type(args["parenthesized"]["output"])
         if not valid_id(ty["inner"]["id"]):
