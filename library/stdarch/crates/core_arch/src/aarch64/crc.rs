@@ -10,6 +10,8 @@ extern "unadjusted" {
 use stdarch_test::assert_instr;
 
 /// CRC32 single round checksum for quad words (64 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32d)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32x))]
@@ -18,6 +20,8 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 }
 
 /// CRC32-C single round checksum for quad words (64 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32cd)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32cx))]

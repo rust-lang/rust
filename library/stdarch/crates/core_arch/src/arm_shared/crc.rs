@@ -24,6 +24,8 @@ extern "unadjusted" {
 use stdarch_test::assert_instr;
 
 /// CRC32 single round checksum for bytes (8 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32b)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
@@ -33,6 +35,8 @@ pub unsafe fn __crc32b(crc: u32, data: u8) -> u32 {
 }
 
 /// CRC32 single round checksum for half words (16 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32h)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
@@ -42,6 +46,8 @@ pub unsafe fn __crc32h(crc: u32, data: u16) -> u32 {
 }
 
 /// CRC32 single round checksum for words (32 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32w)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
@@ -51,6 +57,8 @@ pub unsafe fn __crc32w(crc: u32, data: u32) -> u32 {
 }
 
 /// CRC32-C single round checksum for bytes (8 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32cb)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
@@ -60,6 +68,8 @@ pub unsafe fn __crc32cb(crc: u32, data: u8) -> u32 {
 }
 
 /// CRC32-C single round checksum for half words (16 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32ch)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
@@ -69,6 +79,8 @@ pub unsafe fn __crc32ch(crc: u32, data: u16) -> u32 {
 }
 
 /// CRC32-C single round checksum for words (32 bits).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32cw)
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
