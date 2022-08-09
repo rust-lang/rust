@@ -62,6 +62,13 @@ impl<'a> Parser<'a> {
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
     {
+        // don't try to parse if too short or too long
+        if self.state.len() > kind.max_string_length()
+            || self.state.len() < kind.min_string_length()
+        {
+            return Err(AddrParseError(kind));
+        }
+
         let result = inner(self);
         if self.state.is_empty() { result } else { None }.ok_or(AddrParseError(kind))
     }
@@ -140,11 +147,6 @@ impl<'a> Parser<'a> {
 
     /// Read an IPv4 address.
     fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
-        // don't try to parse if too short or long
-        if self.state.len() < 7 || self.state.len() > 15 {
-            return None;
-        }
-
         self.read_atomically(|p| {
             let mut groups = [0; 4];
 
@@ -334,6 +336,26 @@ enum AddrKind {
     Socket,
     SocketV4,
     SocketV6,
+}
+
+impl AddrKind {
+    // the minimum length of a parsable string with this `AddrKind`
+    const fn min_string_length(&self) -> usize {
+        match self {
+            Self::Ip | Self::Ipv4 => 7,
+            // FIXME
+            _ => 0,
+        }
+    }
+
+    // the maximum length of a parsable string with this `AddrKind`
+    const fn max_string_length(&self) -> usize {
+        match self {
+            Self::Ipv4 => 15,
+            // FIXME
+            _ => usize::MAX,
+        }
+    }
 }
 
 /// An error which can be returned when parsing an IP address or a socket address.
