@@ -1,5 +1,0 @@
-[rust]
-lld = true
-
-[target.x86_64-unknown-uefi]
-linker = "rust-lld"

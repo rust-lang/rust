@@ -109,11 +109,44 @@ fn prepare_rootfs(target: &str, rootfs: &Path, server: &Path, rootfs_img: &Path)
     t!(fs::copy(server, rootfs.join("testd")));
 
     match target {
-        "arm-unknown-linux-gnueabihf" | "aarch64-unknown-linux-gnu" | "x86_64-unknown-uefi" => {
+        "arm-unknown-linux-gnueabihf" | "aarch64-unknown-linux-gnu" => {
             prepare_rootfs_cpio(rootfs, rootfs_img)
         }
+        "x86_64-unknown-uefi" | "i686-unknown-uefi" => prepare_rootfs_fat(rootfs, rootfs_img),
         "riscv64gc-unknown-linux-gnu" => prepare_rootfs_ext4(rootfs, rootfs_img),
         _ => panic!("{} is not supported", target),
+    }
+}
+
+fn prepare_rootfs_fat(rootfs: &Path, rootfs_img: &Path) {
+    // println!("Rootfs: {}", rootfs.to_string_lossy());
+    // println!("Rootfs Img: {}", rootfs_img.to_string_lossy());
+    let mut dd = Command::new("dd");
+    dd.arg("if=/dev/zero")
+        .arg(&format!("of={}", rootfs_img.to_string_lossy()))
+        .arg("bs=1M")
+        .arg("count=1024");
+    let mut dd_child = t!(dd.spawn());
+    assert!(t!(dd_child.wait()).success());
+
+    let mut mformat = Command::new("mformat");
+    mformat.arg("-i").arg(rootfs_img).arg("::");
+    let mut mformat_child = t!(mformat.spawn());
+    assert!(t!(mformat_child.wait()).success());
+
+    let mut mcopy = Command::new("mcopy");
+    mcopy.arg("-i").arg(rootfs_img);
+    add_files(&mut mcopy, rootfs);
+    mcopy.arg("::");
+    let mut mcopy_child = t!(mcopy.spawn());
+    assert!(t!(mcopy_child.wait()).success());
+
+    fn add_files(cmd: &mut Command, cur: &Path) {
+        for entry in t!(cur.read_dir()) {
+            let entry = t!(entry);
+            let path = entry.path();
+            cmd.arg(path);
+        }
     }
 }
 
@@ -239,25 +272,51 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
             let mut cmd = Command::new("qemu-system-x86_64");
             cmd.arg("-nographic")
                 .arg("-machine")
-                .arg("virt")
+                .arg("q35")
                 .arg("-m")
                 .arg("1024")
                 .arg("-drive")
-                .arg("if=pflash,format=raw,unit=0,file=/tmp/OVMF/OVMF_CODE.fd")
+                .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_CODE.fd,index=0")
                 .arg("-drive")
-                .arg("if=pflash,format=raw,unit=1,file=/tmp/OVMF/OVMF_VARS.fd")
+                .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_VARS.fd,index=1")
                 .arg("-drive")
-                .arg("format=raw,file=/tmp/OVMF/UefiShell.iso")
-                .arg("-append")
-                .arg("quiet console=ttyS0")
+                .arg("format=raw,file=/tmp/OVMF/UefiShell.iso,index=2")
                 .arg("-netdev")
                 .arg("user,id=net0,hostfwd=tcp::12345-:12345")
                 .arg("-device")
-                .arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00")
+                .arg("virtio-net-pci,netdev=net0,mac=00:00:00:00:00:00")
                 .arg("-drive")
-                .arg(&format!("file={},format=raw,media=disk", &rootfs_img.to_string_lossy()));
+                .arg(&format!(
+                    "file={},format=raw,media=disk,index=3",
+                    &rootfs_img.to_string_lossy()
+                ));
             t!(cmd.spawn());
         }
+        "i686-unknown-uefi" => {
+            let mut cmd = Command::new("qemu-system-i386");
+            cmd.arg("-nographic")
+                .arg("-machine")
+                .arg("q35")
+                .arg("-m")
+                .arg("1024")
+                .arg("-drive")
+                .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_CODE.fd,index=0")
+                .arg("-drive")
+                .arg("if=pflash,format=raw,file=/tmp/OVMF/OVMF_VARS.fd,index=1")
+                .arg("-drive")
+                .arg("format=raw,file=/tmp/OVMF/UefiShell.iso,index=2")
+                .arg("-netdev")
+                .arg("user,id=net0,hostfwd=tcp::12345-:12345")
+                .arg("-device")
+                .arg("virtio-net-pci,netdev=net0,mac=00:00:00:00:00:00")
+                .arg("-drive")
+                .arg(&format!(
+                    "file={},format=raw,media=disk,index=3",
+                    &rootfs_img.to_string_lossy()
+                ));
+            t!(cmd.spawn());
+        }
+
         _ => panic!("cannot start emulator for: {}", target),
     }
 }

@@ -16,9 +16,10 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-
       python3 \
       qemu-system \
       mtools \
+      gcc-multilib \
       xz-utils
 
-ENV ARCH=x86_64
+ENV ARCH=i686
 
 # Create rootfs
 WORKDIR /tmp
@@ -40,8 +41,8 @@ RUN curl -O https://ci-mirrors.rust-lang.org/rustc/vexpress-v2p-ca15-tc1.dtb
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS="${RUST_CONFIGURE_ARGS} --qemu-x86_64-uefi-rootfs=/tmp/rootfs --enable-lld --enable-ninja --set target.x86_64-unknown-uefi.linker=rust-lld"
+ENV RUST_CONFIGURE_ARGS="${RUST_CONFIGURE_ARGS} --qemu-i686-uefi-rootfs=/tmp/rootfs --enable-lld --enable-ninja --set target.i686-unknown-uefi.linker=rust-lld"
 ENV RUST_TEST_THREADS=1
-ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target x86_64-unknown-uefi --warnings warn -v
+ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target i686-unknown-uefi --warnings warn -v
 
 ENV NO_CHANGE_USER=1

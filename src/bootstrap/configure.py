@@ -146,7 +146,9 @@ v("qemu-aarch64-rootfs", "target.aarch64-unknown-linux-gnu.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
 v("qemu-riscv64-rootfs", "target.riscv64gc-unknown-linux-gnu.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
-v("qemu-uefi-rootfs", "target.x86_64-unknown-uefi.qemu-rootfs",
+v("qemu-x86_64-uefi-rootfs", "target.x86_64-unknown-uefi.qemu-rootfs",
+  "rootfs in qemu testing, you probably don't want to use this")
+v("qemu-i686-uefi-rootfs", "target.i686-unknown-uefi.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
 v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
