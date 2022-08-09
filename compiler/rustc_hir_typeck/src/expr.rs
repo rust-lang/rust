@@ -18,7 +18,7 @@ use crate::type_error_struct;
 use crate::CoroutineTypes;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
-    report_unexpected_variant_res, BreakableCtxt, Diverges, FnCtxt, Needs,
+    report_unexpected_variant_res, BreakableCtxt, DivergeReason, Diverges, FnCtxt, Needs,
     TupleArgumentsFlag::DontTupleArguments,
 };
 use rustc_ast as ast;
@@ -253,7 +253,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Any expression that produces a value of type `!` must have diverged
         if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            self.diverges
+                .set(self.diverges.get() | Diverges::Always(DivergeReason::Other, expr.span));
         }
 
         // Record the type, which applies it effects.
@@ -1432,7 +1433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })
                 });
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
-            assert_eq!(self.diverges.get(), Diverges::Maybe);
+            assert!(matches!(self.diverges.get(), Diverges::Maybe));
             for e in args {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
                 let cause = self.misc(e.span);

@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use crate::{CoroutineTypes, Diverges, FnCtxt};
+use crate::{CoroutineTypes, DivergeReason, Diverges, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::intravisit::Visitor;
@@ -76,10 +76,8 @@ pub(super) fn check_fn<'a, 'tcx>(
         let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
         if param.pat.is_never_pattern() {
-            fcx.function_diverges_because_of_empty_arguments.set(Diverges::Always {
-                span: param.pat.span,
-                custom_note: Some("any code following a never pattern is unreachable"),
-            });
+            fcx.function_diverges_because_of_empty_arguments
+                .set(Diverges::Always(DivergeReason::NeverPattern, param.pat.span));
         }
 
         // Check that argument is Sized.
