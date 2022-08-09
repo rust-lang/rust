@@ -867,11 +867,9 @@ where
 /////////////////////////////////////////////////////////////////////////////
 
 use std::borrow::Borrow;
-use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
-use std::convert::From;
+use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
-use std::marker::{Send, Sync};
 
 impl<O, T: ?Sized> Deref for OwningRef<O, T> {
     type Target = T;
@@ -1096,7 +1094,6 @@ where
 // std types integration and convenience type defs
 /////////////////////////////////////////////////////////////////////////////
 
-use std::boxed::Box;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use std::sync::Arc;

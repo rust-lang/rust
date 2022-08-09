@@ -7,7 +7,6 @@ use rustc_middle::thir::*;
 use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitable;
 use smallvec::SmallVec;
-use std::convert::TryInto;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn field_match_pairs<'pat>(

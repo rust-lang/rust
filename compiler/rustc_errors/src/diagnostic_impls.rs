@@ -59,7 +59,7 @@ into_diagnostic_arg_using_display!(
     i128,
     u128,
     std::io::Error,
-    std::boxed::Box<dyn std::error::Error>,
+    Box<dyn std::error::Error>,
     std::num::NonZeroU32,
     hir::Target,
     Edition,

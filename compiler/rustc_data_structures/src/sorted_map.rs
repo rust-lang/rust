@@ -1,7 +1,6 @@
 use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::iter::FromIterator;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 

@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use rustc_ast::Mutability;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;

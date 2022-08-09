@@ -1,6 +1,5 @@
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
 
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;

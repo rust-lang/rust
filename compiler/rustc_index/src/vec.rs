@@ -4,7 +4,6 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut, RangeBounds};
 use std::slice;

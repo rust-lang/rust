@@ -26,7 +26,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, FileName, RealFileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use std::default::Default;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;

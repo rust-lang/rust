@@ -45,7 +45,6 @@ use rustc_target::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;
-use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::fs;

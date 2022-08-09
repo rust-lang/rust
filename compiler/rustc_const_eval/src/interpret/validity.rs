@@ -4,7 +4,6 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
-use std::convert::TryFrom;
 use std::fmt::{Display, Write};
 use std::num::NonZeroUsize;
 

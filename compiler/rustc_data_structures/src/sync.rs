@@ -138,7 +138,7 @@ cfg_if! {
             }
         }
 
-        pub use std::iter::Iterator as ParallelIterator;
+        pub use Iterator as ParallelIterator;
 
         pub fn par_iter<T: IntoIterator>(t: T) -> T::IntoIter {
             t.into_iter()

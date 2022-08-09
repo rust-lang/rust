@@ -1,6 +1,5 @@
 use crate::stable_hasher;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 
 #[cfg(test)]

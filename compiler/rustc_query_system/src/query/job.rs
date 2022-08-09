@@ -22,8 +22,8 @@ use {
     rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
     rustc_span::DUMMY_SP,
-    std::iter::{self, FromIterator},
-    std::{mem, process},
+    std::iter,
+    std::process,
 };
 
 /// Represents a span and a query key.
@@ -247,7 +247,7 @@ impl QueryLatch {
             jobserver::release_thread();
             waiter.condvar.wait(&mut info);
             // Release the lock before we potentially block in `acquire_thread`
-            mem::drop(info);
+            drop(info);
             jobserver::acquire_thread();
         }
     }

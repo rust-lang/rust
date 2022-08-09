@@ -1,6 +1,6 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+use std::cmp::Ordering;
 use std::{fmt, hash};
 
 use crate::DebruijnIndex;

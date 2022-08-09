@@ -23,7 +23,6 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::char;
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{ControlFlow, Deref, DerefMut};
