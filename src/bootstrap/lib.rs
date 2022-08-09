@@ -1632,13 +1632,10 @@ fn chmod(_path: &Path, _perms: u32) {}
 /// If the test is running and code is an error code, it will cause a panic.
 fn detail_exit(code: i32) -> ! {
     // Successful exit
-    if code == 0 {
-        std::process::exit(0);
-    }
-    if cfg!(test) {
+    if cfg!(test) && code != 0 {
         panic!("status code: {}", code);
     } else {
-        std::panic::resume_unwind(Box::new(code));
+        std::process::exit(code);
     }
 }
 
