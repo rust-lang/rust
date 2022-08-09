@@ -1631,10 +1631,11 @@ fn chmod(_path: &Path, _perms: u32) {}
 /// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
 /// If the test is running and code is an error code, it will cause a panic.
 fn detail_exit(code: i32) -> ! {
-    // Successful exit
+    // if in test and code is an error code, panic with staus code provided
     if cfg!(test) && code != 0 {
         panic!("status code: {}", code);
     } else {
+        //otherwise,exit with provided status code
         std::process::exit(code);
     }
 }
