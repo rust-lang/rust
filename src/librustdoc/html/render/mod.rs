@@ -2677,7 +2677,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         let contents = match fs::read_to_string(&path) {
             Ok(contents) => contents,
             Err(err) => {
-                let span = item.span(tcx).inner();
+                let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
                 tcx.sess
                     .span_err(span, &format!("failed to read file {}: {}", path.display(), err));
                 return false;
