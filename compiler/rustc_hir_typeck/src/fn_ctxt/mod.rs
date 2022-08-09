@@ -110,7 +110,7 @@ pub struct FnCtxt<'a, 'tcx> {
     ///
     /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.
-    pub(super) diverges: Cell<Diverges>,
+    pub(super) diverges: Cell<Diverges<'tcx>>,
 
     /// Whether any child nodes have any type errors.
     pub(super) has_errors: Cell<bool>,

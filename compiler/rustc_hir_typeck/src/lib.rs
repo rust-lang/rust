@@ -44,7 +44,7 @@ mod rvalue_scopes;
 mod upvar;
 mod writeback;
 
-pub use diverges::Diverges;
+pub use diverges::{DivergeReason, Diverges};
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
 pub use inherited::{Inherited, InheritedBuilder};
