@@ -318,19 +318,11 @@ impl Duration {
     /// assert_eq!(duration.as_secs(), 5);
     /// ```
     ///
-    /// To determine the total number of seconds represented by the `Duration`,
-    /// use `as_secs` in combination with [`subsec_nanos`]:
+    /// To determine the total number of seconds represented by the `Duration`
+    /// including the fractional part, use [`as_secs_f64`] or [`as_secs_f32`]
     ///
-    /// ```
-    /// use std::time::Duration;
-    ///
-    /// let duration = Duration::new(5, 730023852);
-    ///
-    /// assert_eq!(5.730023852,
-    ///            duration.as_secs() as f64
-    ///            + duration.subsec_nanos() as f64 * 1e-9);
-    /// ```
-    ///
+    /// [`as_secs_f32`]: Duration::as_secs_f64
+    /// [`as_secs_f64`]: Duration::as_secs_f32
     /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
