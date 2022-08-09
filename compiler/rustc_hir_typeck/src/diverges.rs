@@ -71,5 +71,6 @@ impl Diverges<'_> {
 #[derive(Clone, Copy, Debug)]
 pub enum DivergeReason {
     AllArmsDiverge,
+    Uninhabited,
     Other,
 }

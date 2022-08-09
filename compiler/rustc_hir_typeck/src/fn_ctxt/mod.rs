@@ -48,6 +48,8 @@ pub struct FnCtxt<'a, 'tcx> {
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
 
+    pub(super) parent_module: DefId,
+
     /// Number of errors that had been reported when we started
     /// checking this function. On exit, if we find that *more* errors
     /// have been reported, we will skip regionck and other work that
@@ -138,6 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
+            parent_module: inh.tcx.parent_module(body_id).to_def_id(),
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
             in_tail_expr: false,

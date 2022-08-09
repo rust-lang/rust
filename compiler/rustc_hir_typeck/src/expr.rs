@@ -244,12 +244,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::MethodCall(segment, ..) => {
                 self.warn_if_unreachable(expr.hir_id, segment.ident.span, "call")
             }
+            // allow field access when the struct and the field are both uninhabited
+            ExprKind::Field(..)
+                if matches!(
+                    self.diverges.get(),
+                    Diverges::Always(DivergeReason::Uninhabited, _)
+                ) && self.tcx.is_ty_uninhabited_from(self.parent_module, ty, self.param_env) => {}
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
         // Any expression that produces a value of type `!` must have diverged
-        if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::Always(DivergeReason::Other, expr));
+        if !self.diverges.get().is_always() {
+            if ty.is_never() {
+                self.diverges.set(Diverges::Always(DivergeReason::Other, expr));
+            } else if expr_may_be_uninhabited(expr)
+                && self.tcx.is_ty_uninhabited_from(self.parent_module, ty, self.param_env)
+            {
+                self.diverges.set(Diverges::Always(DivergeReason::Uninhabited, expr));
+            }
         }
 
         // Record the type, which applies it effects.
@@ -2884,5 +2896,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.tcx.mk_unit()
         }
+    }
+}
+
+fn expr_may_be_uninhabited(expr: &hir::Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Call(..)
+        | ExprKind::MethodCall(..)
+        | ExprKind::Cast(..)
+        | ExprKind::Unary(hir::UnOp::Deref, _)
+        | ExprKind::Field(..)
+        | ExprKind::Path(..)
+        | ExprKind::Struct(..) => true,
+        ExprKind::Box(..)
+        | ExprKind::ConstBlock(..)
+        | ExprKind::Array(..)
+        | ExprKind::Tup(..)
+        | ExprKind::Binary(..)
+        | ExprKind::Unary(hir::UnOp::Neg | hir::UnOp::Not, _)
+        | ExprKind::Lit(..)
+        | ExprKind::Type(..)
+        | ExprKind::DropTemps(..)
+        | ExprKind::Let(..)
+        | ExprKind::If(..)
+        | ExprKind::Loop(..)
+        | ExprKind::Match(..)
+        | ExprKind::Closure(..)
+        | ExprKind::Block(..)
+        | ExprKind::Assign(..)
+        | ExprKind::AssignOp(..)
+        | ExprKind::Index(..)
+        | ExprKind::AddrOf(..)
+        | ExprKind::Break(..)
+        | ExprKind::Continue(..)
+        | ExprKind::Ret(..)
+        | ExprKind::InlineAsm(..)
+        | ExprKind::Repeat(..)
+        | ExprKind::Yield(..)
+        | ExprKind::Err => false,
     }
 }
