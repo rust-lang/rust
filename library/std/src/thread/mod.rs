@@ -203,7 +203,7 @@ pub use self::local::{AccessError, LocalKey};
 // where available, but both are needed.
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]

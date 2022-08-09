@@ -30,7 +30,7 @@ pub mod process;
 pub mod stdio;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
-#[path = "../unsupported/thread_local_key.rs"]
+#[path = "atomics/thread_local_key.rs"]
 pub mod thread_local_key;
 #[path = "../wasi/time.rs"]
 pub mod time;
@@ -47,8 +47,6 @@ pub mod locks {
 pub mod futex;
 #[path = "atomics/thread.rs"]
 pub mod thread;
-//#[path = "../unix/thread.rs"]
-//pub mod thread;
 #[path = "../unix/stack_overflow.rs"]
 pub mod stack_overflow;
 

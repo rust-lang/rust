@@ -188,9 +188,7 @@ macro_rules! __thread_local_inner {
             const INIT_EXPR: $t = $init;
 
             // If the platform has support for `#[thread_local]`, use it.
-            #[cfg(all(
-                target_thread_local,
-            ))]
+            #[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
             {
                 #[thread_local]
                 static mut VAL: $t = INIT_EXPR;
@@ -243,9 +241,7 @@ macro_rules! __thread_local_inner {
 
             // On platforms without `#[thread_local]` we fall back to the
             // same implementation as below for os thread locals.
-            #[cfg(all(
-                not(target_thread_local),
-            ))]
+            #[cfg(not(all(target_thread_local, not(target_vendor = "wasmer"))))]
             {
                 #[inline]
                 const fn __init() -> $t { INIT_EXPR }
@@ -305,15 +301,11 @@ macro_rules! __thread_local_inner {
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {
                 #[thread_local]
-                #[cfg(all(
-                    target_thread_local,
-                ))]
+                #[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
                 static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
                     $crate::thread::__FastLocalKeyInner::new();
 
-                #[cfg(all(
-                    not(target_thread_local),
-                ))]
+                #[cfg(not(all(target_thread_local, not(target_vendor = "wasmer"))))]
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
 
@@ -838,7 +830,7 @@ mod lazy {
 }
 
 #[doc(hidden)]
-#[cfg(target_thread_local)]
+#[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
 pub mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
