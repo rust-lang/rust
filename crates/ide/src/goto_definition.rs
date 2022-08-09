@@ -1,4 +1,4 @@
-use std::{convert::TryInto, mem::discriminant};
+use std::mem::discriminant;
 
 use crate::{doc_links::token_as_doc_comment, FilePosition, NavigationTarget, RangeInfo, TryToNav};
 use hir::{AsAssocItem, AssocItem, Semantics};

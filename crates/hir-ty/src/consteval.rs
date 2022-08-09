@@ -2,7 +2,6 @@
 
 use std::{
     collections::HashMap,
-    convert::TryInto,
     fmt::{Display, Write},
 };
 

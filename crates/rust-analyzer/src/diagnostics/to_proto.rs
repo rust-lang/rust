@@ -512,7 +512,7 @@ fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescript
 #[cfg(test)]
 #[cfg(not(windows))]
 mod tests {
-    use std::{convert::TryInto, path::Path};
+    use std::path::Path;
 
     use crate::{config::Config, global_state::GlobalState};
 
