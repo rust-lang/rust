@@ -104,7 +104,7 @@ pub struct FnCtxt<'a, 'tcx> {
     ///
     /// An expression represents dead code if, after checking it,
     /// the diverges flag is set to something other than `Maybe`.
-    pub(super) diverges: Cell<Diverges>,
+    pub(super) diverges: Cell<Diverges<'tcx>>,
 
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
