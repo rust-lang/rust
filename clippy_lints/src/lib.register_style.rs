@@ -100,6 +100,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(operators::ASSIGN_OP_PATTERN),
     LintId::of(operators::OP_REF),
     LintId::of(operators::PTR_EQ),
+    LintId::of(partialeq_to_none::PARTIALEQ_TO_NONE),
     LintId::of(ptr::CMP_NULL),
     LintId::of(ptr::PTR_ARG),
     LintId::of(question_mark::QUESTION_MARK),

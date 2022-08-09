@@ -17,7 +17,7 @@ fn main() {
     let c = Some(2);
     if !a.is_empty()
         && a.len() == 3
-        && c != None
+        && c.is_some()
         && !a.is_empty()
         && a.len() == 3
         && !a.is_empty()
