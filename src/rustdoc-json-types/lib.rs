@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 17;
+pub const FORMAT_VERSION: u32 = 18;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -133,7 +133,7 @@ pub struct DynTrait {
 /// A trait and potential HRTBs
 pub struct PolyTrait {
     #[serde(rename = "trait")]
-    pub trait_: Type,
+    pub trait_: Path,
     /// Used for Higher-Rank Trait Bounds (HRTBs)
     /// ```text
     /// dyn for<'a> Fn() -> &'a i32"
@@ -447,7 +447,7 @@ pub enum WherePredicate {
 pub enum GenericBound {
     TraitBound {
         #[serde(rename = "trait")]
-        trait_: Type,
+        trait_: Path,
         /// Used for Higher-Rank Trait Bounds (HRTBs)
         /// ```text
         /// where F: for<'a, 'b> Fn(&'a u8, &'b u8)
@@ -481,12 +481,7 @@ pub enum Term {
 #[serde(tag = "kind", content = "inner")]
 pub enum Type {
     /// Structs, enums, and traits
-    ResolvedPath {
-        name: String,
-        id: Id,
-        args: Option<Box<GenericArgs>>,
-        param_names: Vec<GenericBound>,
-    },
+    ResolvedPath(Path),
     DynTrait(DynTrait),
     /// Parameterized types
     Generic(String),
@@ -527,8 +522,22 @@ pub enum Type {
         args: Box<GenericArgs>,
         self_type: Box<Type>,
         #[serde(rename = "trait")]
-        trait_: Box<Type>,
+        trait_: Path,
     },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Path {
+    pub name: String,
+    pub id: Id,
+    /// Generic arguments to the type
+    /// ```test
+    /// std::borrow::Cow<'static, str>
+    ///                 ^^^^^^^^^^^^^^
+    ///                 |
+    ///                 this part
+    /// ```
+    pub args: Option<Box<GenericArgs>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -574,7 +583,7 @@ pub struct Impl {
     pub generics: Generics,
     pub provided_trait_methods: Vec<String>,
     #[serde(rename = "trait")]
-    pub trait_: Option<Type>,
+    pub trait_: Option<Path>,
     #[serde(rename = "for")]
     pub for_: Type,
     pub items: Vec<Id>,
