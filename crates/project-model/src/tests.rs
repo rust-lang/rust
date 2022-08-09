@@ -28,6 +28,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
         rustc: None,
         rustc_cfg: Vec::new(),
         cfg_overrides,
+        toolchain: None,
     };
     to_crate_graph(project_workspace)
 }

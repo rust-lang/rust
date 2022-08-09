@@ -12,6 +12,7 @@ use cargo_metadata::{camino::Utf8Path, Message};
 use la_arena::ArenaMap;
 use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
+use semver::Version;
 use serde::Deserialize;
 
 use crate::{cfg_flag::CfgFlag, CargoConfig, CargoWorkspace, Package};
@@ -38,7 +39,7 @@ pub(crate) struct BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    fn build_command(config: &CargoConfig) -> Command {
+    fn build_command(config: &CargoConfig, toolchain: &Option<Version>) -> Command {
         if let Some([program, args @ ..]) = config.run_build_script_command.as_deref() {
             let mut cmd = Command::new(program);
             cmd.args(args);
@@ -70,6 +71,15 @@ impl WorkspaceBuildScripts {
             }
         }
 
+        const RUST_1_62: Version = Version::new(1, 62, 0);
+
+        match toolchain {
+            Some(v) if v >= &RUST_1_62 => {
+                cmd.args(&["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
+            }
+            _ => (),
+        }
+
         cmd
     }
 
@@ -77,8 +87,9 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
+        toolchain: &Option<Version>,
     ) -> io::Result<WorkspaceBuildScripts> {
-        let mut cmd = Self::build_command(config);
+        let mut cmd = Self::build_command(config, toolchain);
 
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
