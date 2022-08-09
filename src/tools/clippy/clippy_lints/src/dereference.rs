@@ -127,7 +127,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub EXPLICIT_AUTO_DEREF,
-    complexity,
+    nursery,
     "dereferencing when the compiler would automatically dereference"
 }
 
