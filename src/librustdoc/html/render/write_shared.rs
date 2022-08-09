@@ -1,5 +1,4 @@
 use std::ffi::OsStr;
-use std::fmt::Write;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -10,7 +9,8 @@ use std::sync::LazyLock as Lazy;
 use itertools::Itertools;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use serde::Serialize;
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
 use crate::clean::Crate;
@@ -284,25 +284,43 @@ pub(super) fn write_shared(
         cx.write_shared(SharedResource::Unversioned { name }, contents, &options.emit)?;
     }
 
-    fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
+    /// Read a file and return all lines that match the `"{crate}":{data},` format,
+    /// and return a tuple `(Vec<DataString>, Vec<CrateNameString>)`.
+    ///
+    /// This forms the payload of files that look like this:
+    ///
+    /// ```javascript
+    /// var data = {
+    /// "{crate1}":{data},
+    /// "{crate2}":{data}
+    /// };
+    /// use_data(data);
+    /// ```
+    ///
+    /// The file needs to be formatted so that *only crate data lines start with `"`*.
+    fn collect(path: &Path, krate: &str) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
         let mut krates = Vec::new();
 
         if path.exists() {
-            let prefix = format!(r#"{}["{}"]"#, key, krate);
+            let prefix = format!("\"{}\"", krate);
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
-                if !line.starts_with(key) {
+                if !line.starts_with('"') {
                     continue;
                 }
                 if line.starts_with(&prefix) {
                     continue;
                 }
-                ret.push(line.to_string());
+                if line.ends_with(",") {
+                    ret.push(line[..line.len() - 1].to_string());
+                } else {
+                    // No comma (it's the case for the last added crate line)
+                    ret.push(line.to_string());
+                }
                 krates.push(
-                    line[key.len() + 2..]
-                        .split('"')
-                        .next()
+                    line.split('"')
+                        .find(|s| !s.is_empty())
                         .map(|s| s.to_owned())
                         .unwrap_or_else(String::new),
                 );
@@ -311,6 +329,20 @@ pub(super) fn write_shared(
         Ok((ret, krates))
     }
 
+    /// Read a file and return all lines that match the <code>"{crate}":{data},\</code> format,
+    /// and return a tuple `(Vec<DataString>, Vec<CrateNameString>)`.
+    ///
+    /// This forms the payload of files that look like this:
+    ///
+    /// ```javascript
+    /// var data = JSON.parse('{\
+    /// "{crate1}":{data},\
+    /// "{crate2}":{data}\
+    /// }');
+    /// use_data(data);
+    /// ```
+    ///
+    /// The file needs to be formatted so that *only crate data lines start with `"`*.
     fn collect_json(path: &Path, krate: &str) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
         let mut krates = Vec::new();
@@ -526,11 +558,25 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             },
         };
 
-        #[derive(Serialize)]
         struct Implementor {
             text: String,
             synthetic: bool,
             types: Vec<String>,
+        }
+
+        impl Serialize for Implementor {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element(&self.text)?;
+                if self.synthetic {
+                    seq.serialize_element(&1)?;
+                    seq.serialize_element(&self.types)?;
+                }
+                seq.end()
+            }
         }
 
         let implementors = imps
@@ -563,9 +609,9 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         }
 
         let implementors = format!(
-            r#"implementors["{}"] = {};"#,
+            r#""{}":{}"#,
             krate.name(cx.tcx()),
-            serde_json::to_string(&implementors).unwrap()
+            serde_json::to_string(&implementors).expect("failed serde conversion"),
         );
 
         let mut mydst = dst.clone();
@@ -576,16 +622,15 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         mydst.push(&format!("{}.{}.js", remote_item_type, remote_path[remote_path.len() - 1]));
 
         let (mut all_implementors, _) =
-            try_err!(collect(&mydst, krate.name(cx.tcx()).as_str(), "implementors"), &mydst);
+            try_err!(collect(&mydst, krate.name(cx.tcx()).as_str()), &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.
         all_implementors.sort();
 
-        let mut v = String::from("(function() {var implementors = {};\n");
-        for implementor in &all_implementors {
-            writeln!(v, "{}", *implementor).unwrap();
-        }
+        let mut v = String::from("(function() {var implementors = {\n");
+        v.push_str(&all_implementors.join(",\n"));
+        v.push_str("\n};");
         v.push_str(
             "if (window.register_implementors) {\
                  window.register_implementors(implementors);\

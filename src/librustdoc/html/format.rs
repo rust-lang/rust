@@ -152,7 +152,7 @@ impl Buffer {
     }
 }
 
-fn comma_sep<T: fmt::Display>(
+pub(crate) fn comma_sep<T: fmt::Display>(
     items: impl Iterator<Item = T>,
     space_after_comma: bool,
 ) -> impl fmt::Display {
