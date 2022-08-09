@@ -112,7 +112,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
@@ -122,13 +121,14 @@ use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, BytePos, Span};
+use rustc_span::{self, BytePos, Span, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::recursive_type_with_infinite_size_error;
 use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 use std::cell::RefCell;
+use std::num::NonZeroU32;
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
@@ -659,6 +659,37 @@ fn missing_items_must_implement_one_of_err(
         err.span_note(annotation_span, "required because of this annotation");
     }
 
+    err.emit();
+}
+
+fn default_body_is_unstable(
+    tcx: TyCtxt<'_>,
+    impl_span: Span,
+    item_did: DefId,
+    feature: Symbol,
+    reason: Option<Symbol>,
+    issue: Option<NonZeroU32>,
+) {
+    let missing_item_name = &tcx.associated_item(item_did).name;
+    let use_of_unstable_library_feature_note = match reason {
+        Some(r) => format!("use of unstable library feature '{feature}': {r}"),
+        None => format!("use of unstable library feature '{feature}'"),
+    };
+
+    let mut err = struct_span_err!(
+        tcx.sess,
+        impl_span,
+        E0046,
+        "not all trait items implemented, missing: `{missing_item_name}`",
+    );
+    err.note(format!("default implementation of `{missing_item_name}` is unstable"));
+    err.note(use_of_unstable_library_feature_note);
+    rustc_session::parse::add_feature_diagnostics_for_issue(
+        &mut err,
+        &tcx.sess.parse_sess,
+        feature,
+        rustc_feature::GateIssue::Library(issue),
+    );
     err.emit();
 }
 

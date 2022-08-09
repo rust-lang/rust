@@ -348,15 +348,13 @@ where
     fn make_final_bounds(
         &self,
         ty_to_bounds: FxHashMap<Type, FxHashSet<GenericBound>>,
-        ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
+        ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)>,
         lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<GenericBound>>,
     ) -> Vec<WherePredicate> {
         ty_to_bounds
             .into_iter()
             .flat_map(|(ty, mut bounds)| {
-                if let Some(data) = ty_to_fn.get(&ty) {
-                    let (poly_trait, output) =
-                        (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned().map(Box::new));
+                if let Some((ref poly_trait, ref output)) = ty_to_fn.get(&ty) {
                     let mut new_path = poly_trait.trait_.clone();
                     let last_segment = new_path.segments.pop().expect("segments were empty");
 
@@ -374,8 +372,9 @@ where
                         GenericArgs::Parenthesized { inputs, output } => (inputs, output),
                     };
 
+                    let output = output.as_ref().cloned().map(Box::new);
                     if old_output.is_some() && old_output != output {
-                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, data.1);
+                        panic!("Output mismatch for {:?} {:?} {:?}", ty, old_output, output);
                     }
 
                     let new_params = GenericArgs::Parenthesized { inputs: old_input, output };
@@ -385,7 +384,10 @@ where
                         .push(PathSegment { name: last_segment.name, args: new_params });
 
                     bounds.insert(GenericBound::TraitBound(
-                        PolyTrait { trait_: new_path, generic_params: poly_trait.generic_params },
+                        PolyTrait {
+                            trait_: new_path,
+                            generic_params: poly_trait.generic_params.clone(),
+                        },
                         hir::TraitBoundModifier::None,
                     ));
                 }
@@ -471,10 +473,10 @@ where
         let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
         let mut ty_to_traits: FxHashMap<Type, FxHashSet<Path>> = Default::default();
 
-        let mut ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)> = Default::default();
+        let mut ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)> = Default::default();
 
         for p in clean_where_predicates {
-            let (orig_p, p) = (p, p.clean(self.cx));
+            let (orig_p, p) = (p, clean_predicate(p, self.cx));
             if p.is_none() {
                 continue;
             }
@@ -535,8 +537,8 @@ where
                         if is_fn {
                             ty_to_fn
                                 .entry(ty.clone())
-                                .and_modify(|e| *e = (Some(poly_trait.clone()), e.1.clone()))
-                                .or_insert(((Some(poly_trait.clone())), None));
+                                .and_modify(|e| *e = (poly_trait.clone(), e.1.clone()))
+                                .or_insert(((poly_trait.clone()), None));
 
                             ty_to_bounds.entry(ty.clone()).or_default();
                         } else {
@@ -559,7 +561,13 @@ where
                                     .and_modify(|e| {
                                         *e = (e.0.clone(), Some(rhs.ty().unwrap().clone()))
                                     })
-                                    .or_insert((None, Some(rhs.ty().unwrap().clone())));
+                                    .or_insert((
+                                        PolyTrait {
+                                            trait_: trait_.clone(),
+                                            generic_params: Vec::new(),
+                                        },
+                                        Some(rhs.ty().unwrap().clone()),
+                                    ));
                                 continue;
                             }
 

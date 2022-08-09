@@ -19,7 +19,7 @@ impl<'tcx> MirPass<'tcx> for RevealAll {
         }
 
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-        RevealAllVisitor { tcx, param_env }.visit_body(body);
+        RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);
     }
 }
 

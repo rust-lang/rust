@@ -412,7 +412,7 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     if map.iter().any(Option::is_none) {
         // Update references to all vars and tmps now
         let mut updater = LocalUpdater { map, tcx };
-        updater.visit_body(body);
+        updater.visit_body_preserves_cfg(body);
 
         body.local_decls.shrink_to_fit();
     }
@@ -548,7 +548,7 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
     while modified {
         modified = false;
 
-        for data in body.basic_blocks_mut() {
+        for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
             data.statements.retain(|statement| {
                 let keep = match &statement.kind {

@@ -849,22 +849,22 @@ fn non_exhaustive_match<'p, 'tcx>(
             ));
         }
         [.., prev, last] if prev.span.eq_ctxt(last.span) => {
-            if let Ok(snippet) = sm.span_to_snippet(prev.span.between(last.span)) {
-                let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
-                    && last.span.eq_ctxt(last.body.span)
-                {
-                    ""
-                } else {
-                    ","
-                };
+            let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
+                && last.span.eq_ctxt(last.body.span)
+            {
+                ""
+            } else {
+                ","
+            };
+            let spacing = if sm.is_multiline(prev.span.between(last.span)) {
+                sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))
+            } else {
+                Some(" ".to_string())
+            };
+            if let Some(spacing) = spacing {
                 suggestion = Some((
                     last.span.shrink_to_hi(),
-                    format!(
-                        "{}{}{} => todo!()",
-                        comma,
-                        snippet.strip_prefix(',').unwrap_or(&snippet),
-                        pattern
-                    ),
+                    format!("{}{}{} => todo!()", comma, spacing, pattern),
                 ));
             }
         }

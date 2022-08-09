@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 16;
+pub const FORMAT_VERSION: u32 = 17;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -113,6 +113,35 @@ pub enum Visibility {
         parent: Id,
         path: String,
     },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct DynTrait {
+    /// All the traits implemented. One of them is the vtable, and the rest must be auto traits.
+    pub traits: Vec<PolyTrait>,
+    /// The lifetime of the whole dyn object
+    /// ```text
+    /// dyn Debug + 'static
+    ///             ^^^^^^^
+    ///             |
+    ///             this part
+    /// ```
+    pub lifetime: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A trait and potential HRTBs
+pub struct PolyTrait {
+    #[serde(rename = "trait")]
+    pub trait_: Type,
+    /// Used for Higher-Rank Trait Bounds (HRTBs)
+    /// ```text
+    /// dyn for<'a> Fn() -> &'a i32"
+    ///     ^^^^^^^
+    ///       |
+    ///       this part
+    /// ```
+    pub generic_params: Vec<GenericParamDef>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -395,7 +424,7 @@ pub enum WherePredicate {
         type_: Type,
         bounds: Vec<GenericBound>,
         /// Used for Higher-Rank Trait Bounds (HRTBs)
-        /// ```plain
+        /// ```text
         /// where for<'a> &'a T: Iterator,"
         ///       ^^^^^^^
         ///       |
@@ -420,7 +449,7 @@ pub enum GenericBound {
         #[serde(rename = "trait")]
         trait_: Type,
         /// Used for Higher-Rank Trait Bounds (HRTBs)
-        /// ```plain
+        /// ```text
         /// where F: for<'a, 'b> Fn(&'a u8, &'b u8)
         ///          ^^^^^^^^^^^
         ///          |
@@ -458,6 +487,7 @@ pub enum Type {
         args: Option<Box<GenericArgs>>,
         param_names: Vec<GenericBound>,
     },
+    DynTrait(DynTrait),
     /// Parameterized types
     Generic(String),
     /// Fixed-size numeric types (plus int/usize/float), char, arrays, slices, and tuples
@@ -505,7 +535,7 @@ pub enum Type {
 pub struct FunctionPointer {
     pub decl: FnDecl,
     /// Used for Higher-Rank Trait Bounds (HRTBs)
-    /// ```plain
+    /// ```text
     /// for<'c> fn(val: &'c i32) -> i32
     /// ^^^^^^^
     ///       |

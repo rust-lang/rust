@@ -71,7 +71,7 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
         // priority to the not-imported one, so we should, too.
         items.extend(self.items.iter().flat_map(|(item, renamed)| {
             // First, lower everything other than imports.
-            if matches!(item.kind, hir::ItemKind::Use(..)) {
+            if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
                 return Vec::new();
             }
             let v = clean_maybe_renamed_item(cx, item, *renamed);
@@ -84,20 +84,13 @@ impl<'tcx> Clean<'tcx, Item> for DocModule<'tcx> {
         }));
         items.extend(self.items.iter().flat_map(|(item, renamed)| {
             // Now we actually lower the imports, skipping everything else.
-            if !matches!(item.kind, hir::ItemKind::Use(..)) {
-                return Vec::new();
+            if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
+                let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+                clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
+            } else {
+                // skip everything else
+                Vec::new()
             }
-            let mut v = clean_maybe_renamed_item(cx, item, *renamed);
-            v.drain_filter(|item| {
-                if let Some(name) = item.name {
-                    // If an item with the same type and name already exists,
-                    // it takes priority over the inlined stuff.
-                    !inserted.insert((item.type_(), name))
-                } else {
-                    false
-                }
-            });
-            v
         }));
 
         // determine if we should display the inner contents or
@@ -266,66 +259,68 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
     }
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>> for hir::WherePredicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        if !self.in_where_clause() {
-            return None;
-        }
-        Some(match *self {
-            hir::WherePredicate::BoundPredicate(ref wbp) => {
-                let bound_params = wbp
-                    .bound_generic_params
-                    .iter()
-                    .map(|param| {
-                        // Higher-ranked params must be lifetimes.
-                        // Higher-ranked lifetimes can't have bounds.
-                        assert_matches!(
-                            param,
-                            hir::GenericParam { kind: hir::GenericParamKind::Lifetime { .. }, .. }
-                        );
-                        Lifetime(param.name.ident().name)
-                    })
-                    .collect();
-                WherePredicate::BoundPredicate {
-                    ty: clean_ty(wbp.bounded_ty, cx),
-                    bounds: wbp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                    bound_params,
-                }
-            }
-
-            hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
-                lifetime: clean_lifetime(wrp.lifetime, cx),
-                bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-            },
-
-            hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
-                lhs: clean_ty(wrp.lhs_ty, cx),
-                rhs: clean_ty(wrp.rhs_ty, cx).into(),
-            },
-        })
+fn clean_where_predicate<'tcx>(
+    predicate: &hir::WherePredicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    if !predicate.in_where_clause() {
+        return None;
     }
+    Some(match *predicate {
+        hir::WherePredicate::BoundPredicate(ref wbp) => {
+            let bound_params = wbp
+                .bound_generic_params
+                .iter()
+                .map(|param| {
+                    // Higher-ranked params must be lifetimes.
+                    // Higher-ranked lifetimes can't have bounds.
+                    assert_matches!(
+                        param,
+                        hir::GenericParam { kind: hir::GenericParamKind::Lifetime { .. }, .. }
+                    );
+                    Lifetime(param.name.ident().name)
+                })
+                .collect();
+            WherePredicate::BoundPredicate {
+                ty: clean_ty(wbp.bounded_ty, cx),
+                bounds: wbp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+                bound_params,
+            }
+        }
+
+        hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
+            lifetime: clean_lifetime(wrp.lifetime, cx),
+            bounds: wrp.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
+        },
+
+        hir::WherePredicate::EqPredicate(ref wrp) => WherePredicate::EqPredicate {
+            lhs: clean_ty(wrp.lhs_ty, cx),
+            rhs: clean_ty(wrp.rhs_ty, cx).into(),
+        },
+    })
 }
 
-impl<'tcx> Clean<'tcx, Option<WherePredicate>> for ty::Predicate<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Option<WherePredicate> {
-        let bound_predicate = self.kind();
-        match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(pred) => {
-                clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
-            }
-            ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
-            ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
-            ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
-            ty::PredicateKind::ConstEvaluatable(..) => None,
-            ty::PredicateKind::WellFormed(..) => None,
-
-            ty::PredicateKind::Subtype(..)
-            | ty::PredicateKind::Coerce(..)
-            | ty::PredicateKind::ObjectSafe(..)
-            | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
+pub(crate) fn clean_predicate<'tcx>(
+    predicate: ty::Predicate<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> Option<WherePredicate> {
+    let bound_predicate = predicate.kind();
+    match bound_predicate.skip_binder() {
+        ty::PredicateKind::Trait(pred) => {
+            clean_poly_trait_predicate(bound_predicate.rebind(pred), cx)
         }
+        ty::PredicateKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
+        ty::PredicateKind::TypeOutlives(pred) => clean_type_outlives_predicate(pred, cx),
+        ty::PredicateKind::Projection(pred) => Some(clean_projection_predicate(pred, cx)),
+        ty::PredicateKind::ConstEvaluatable(..) => None,
+        ty::PredicateKind::WellFormed(..) => None,
+
+        ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::Coerce(..)
+        | ty::PredicateKind::ObjectSafe(..)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::TypeWellFormedFromEnv(..) => panic!("not user writable"),
     }
 }
 
@@ -601,7 +596,11 @@ impl<'tcx> Clean<'tcx, Generics> for hir::Generics<'tcx> {
 
         let mut generics = Generics {
             params,
-            where_predicates: self.predicates.iter().filter_map(|x| x.clean(cx)).collect(),
+            where_predicates: self
+                .predicates
+                .iter()
+                .filter_map(|x| clean_where_predicate(x, cx))
+                .collect(),
         };
 
         // Some duplicates are generated for ?Sized bounds between type params and where
@@ -702,7 +701,7 @@ fn clean_ty_generics<'tcx>(
 
             if let Some(param_idx) = param_idx {
                 if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
-                    let p: WherePredicate = p.clean(cx)?;
+                    let p: WherePredicate = clean_predicate(*p, cx)?;
 
                     b.extend(
                         p.get_bounds()
@@ -759,7 +758,7 @@ fn clean_ty_generics<'tcx>(
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
     let mut where_predicates =
-        where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
+        where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect::<Vec<_>>();
 
     // Type parameters have a Sized bound by default unless removed with
     // ?Sized. Scan through the predicates and mark any type parameter with
@@ -1962,7 +1961,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 return clean_extern_crate(item, name, orig_name, cx);
             }
             ItemKind::Use(path, kind) => {
-                return clean_use_statement(item, name, path, kind, cx);
+                return clean_use_statement(item, name, path, kind, cx, &mut FxHashSet::default());
             }
             _ => unreachable!("not yet converted"),
         };
@@ -2083,6 +2082,7 @@ fn clean_use_statement<'tcx>(
     path: &hir::Path<'tcx>,
     kind: hir::UseKind,
     cx: &mut DocContext<'tcx>,
+    inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
@@ -2148,7 +2148,8 @@ fn clean_use_statement<'tcx>(
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
             let mut visited = FxHashSet::default();
-            if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited) {
+            if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited, inlined_names)
+            {
                 return items;
             }
         }

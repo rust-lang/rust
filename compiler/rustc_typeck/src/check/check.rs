@@ -18,6 +18,7 @@ use rustc_infer::infer::{DefiningAnchor, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_lint::builtin::REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
@@ -32,7 +33,6 @@ use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use rustc_ty_utils::representability::{self, Representability};
 
-use std::iter;
 use std::ops::ControlFlow;
 
 pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
@@ -1104,12 +1104,28 @@ fn check_impl_items_against_trait<'tcx>(
                 missing_items.push(tcx.associated_item(trait_item_id));
             }
 
-            if let Some(required_items) = &must_implement_one_of {
-                // true if this item is specifically implemented in this impl
-                let is_implemented_here = ancestors
-                    .leaf_def(tcx, trait_item_id)
-                    .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
+            // true if this item is specifically implemented in this impl
+            let is_implemented_here = ancestors
+                .leaf_def(tcx, trait_item_id)
+                .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
 
+            if !is_implemented_here {
+                match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
+                    EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
+                        tcx,
+                        full_impl_span,
+                        trait_item_id,
+                        feature,
+                        reason,
+                        issue,
+                    ),
+
+                    // Unmarked default bodies are considered stable (at least for now).
+                    EvalResult::Allow | EvalResult::Unmarked => {}
+                }
+            }
+
+            if let Some(required_items) = &must_implement_one_of {
                 if is_implemented_here {
                     let trait_item = tcx.associated_item(trait_item_id);
                     if required_items.contains(&trait_item.ident(tcx)) {
@@ -1494,76 +1510,109 @@ fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, vs: &'tcx [hir::Variant<'tcx>], def_id: L
         }
     }
 
-    let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
-    // This tracks the previous variant span (in the loop) incase we need it for diagnostics
-    let mut prev_variant_span: Span = DUMMY_SP;
-    for ((_, discr), v) in iter::zip(def.discriminants(tcx), vs) {
-        // Check for duplicate discriminant values
-        if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
-            let variant_did = def.variant(VariantIdx::new(i)).def_id;
-            let variant_i_hir_id = tcx.hir().local_def_id_to_hir_id(variant_did.expect_local());
-            let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
-            let i_span = match variant_i.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.hir_id),
-                None => tcx.def_span(variant_did),
-            };
-            let span = match v.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.hir_id),
-                None => v.span,
-            };
-            let display_discr = format_discriminant_overflow(tcx, v, discr);
-            let display_discr_i = format_discriminant_overflow(tcx, variant_i, disr_vals[i]);
-            let no_disr = v.disr_expr.is_none();
-            let mut err = struct_span_err!(
-                tcx.sess,
-                sp,
-                E0081,
-                "discriminant value `{}` assigned more than once",
-                discr,
-            );
-
-            err.span_label(i_span, format!("first assignment of {display_discr_i}"));
-            err.span_label(span, format!("second assignment of {display_discr}"));
-
-            if no_disr {
-                err.span_label(
-                    prev_variant_span,
-                    format!(
-                        "assigned discriminant for `{}` was incremented from this discriminant",
-                        v.ident
-                    ),
-                );
-            }
-            err.emit();
-        }
-
-        disr_vals.push(discr);
-        prev_variant_span = v.span;
-    }
+    detect_discriminant_duplicate(tcx, def.discriminants(tcx).collect(), vs, sp);
 
     check_representable(tcx, sp, def_id);
     check_transparent(tcx, sp, def);
 }
 
-/// In the case that a discriminant is both a duplicate and an overflowing literal,
-/// we insert both the assigned discriminant and the literal it overflowed from into the formatted
-/// output. Otherwise we format the discriminant normally.
-fn format_discriminant_overflow<'tcx>(
+/// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are equal
+fn detect_discriminant_duplicate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    variant: &hir::Variant<'_>,
-    dis: Discr<'tcx>,
-) -> String {
-    if let Some(expr) = &variant.disr_expr {
-        let body = &tcx.hir().body(expr.body).value;
-        if let hir::ExprKind::Lit(lit) = &body.kind
-            && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
-            && dis.val != *lit_value
-        {
-                    return format!("`{dis}` (overflowed from `{lit_value}`)");
-        }
-    }
+    mut discrs: Vec<(VariantIdx, Discr<'tcx>)>,
+    vs: &'tcx [hir::Variant<'tcx>],
+    self_span: Span,
+) {
+    // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate.
+    // Here `idx` refers to the order of which the discriminant appears, and its index in `vs`
+    let report = |dis: Discr<'tcx>,
+                  idx: usize,
+                  err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>| {
+        let var = &vs[idx]; // HIR for the duplicate discriminant
+        let (span, display_discr) = match var.disr_expr {
+            Some(ref expr) => {
+                // In the case the discriminant is both a duplicate and overflowed, let the user know
+                if let hir::ExprKind::Lit(lit) = &tcx.hir().body(expr.body).value.kind
+                    && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
+                    && *lit_value != dis.val
+                {
+                    (tcx.hir().span(expr.hir_id), format!("`{dis}` (overflowed from `{lit_value}`)"))
+                // Otherwise, format the value as-is
+                } else {
+                    (tcx.hir().span(expr.hir_id), format!("`{dis}`"))
+                }
+            }
+            None => {
+                // At this point we know this discriminant is a duplicate, and was not explicitly
+                // assigned by the user. Here we iterate backwards to fetch the HIR for the last
+                // explictly assigned discriminant, and letting the user know that this was the
+                // increment startpoint, and how many steps from there leading to the duplicate
+                if let Some((n, hir::Variant { span, ident, .. })) =
+                    vs[..idx].iter().rev().enumerate().find(|v| v.1.disr_expr.is_some())
+                {
+                    let ve_ident = var.ident;
+                    let n = n + 1;
+                    let sp = if n > 1 { "variants" } else { "variant" };
 
-    format!("`{dis}`")
+                    err.span_label(
+                        *span,
+                        format!("discriminant for `{ve_ident}` incremented from this startpoint (`{ident}` + {n} {sp} later => `{ve_ident}` = {dis})"),
+                    );
+                }
+
+                (vs[idx].span, format!("`{dis}`"))
+            }
+        };
+
+        err.span_label(span, format!("{display_discr} assigned here"));
+    };
+
+    // Here we loop through the discriminants, comparing each discriminant to another.
+    // When a duplicate is detected, we instatiate an error and point to both
+    // initial and duplicate value. The duplicate discriminant is then discarded by swapping
+    // it with the last element and decrementing the `vec.len` (which is why we have to evaluate
+    // `discrs.len()` anew every iteration, and why this could be tricky to do in a functional
+    // style as we are mutating `discrs` on the fly).
+    let mut i = 0;
+    while i < discrs.len() {
+        let hir_var_i_idx = discrs[i].0.index();
+        let mut error: Option<DiagnosticBuilder<'_, _>> = None;
+
+        let mut o = i + 1;
+        while o < discrs.len() {
+            let hir_var_o_idx = discrs[o].0.index();
+
+            if discrs[i].1.val == discrs[o].1.val {
+                let err = error.get_or_insert_with(|| {
+                    let mut ret = struct_span_err!(
+                        tcx.sess,
+                        self_span,
+                        E0081,
+                        "discriminant value `{}` assigned more than once",
+                        discrs[i].1,
+                    );
+
+                    report(discrs[i].1, hir_var_i_idx, &mut ret);
+
+                    ret
+                });
+
+                report(discrs[o].1, hir_var_o_idx, err);
+
+                // Safe to unwrap here, as we wouldn't reach this point if `discrs` was empty
+                discrs[o] = *discrs.last().unwrap();
+                discrs.pop();
+            } else {
+                o += 1;
+            }
+        }
+
+        if let Some(mut e) = error {
+            e.emit();
+        }
+
+        i += 1;
+    }
 }
 
 pub(super) fn check_type_params_are_used<'tcx>(

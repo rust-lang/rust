@@ -34,7 +34,10 @@ use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry};
+use rustc_middle::ty::{
+    self, DefIdTree, GenericParamDefKind, Subst, ToPredicate, Ty, TyCtxt, TypeSuperVisitable,
+    VtblEntry,
+};
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
 
@@ -503,6 +506,77 @@ fn subst_and_check_impossible_predicates<'tcx>(
     result
 }
 
+/// Checks whether a trait's method is impossible to call on a given impl.
+///
+/// This only considers predicates that reference the impl's generics, and not
+/// those that reference the method's generics.
+fn is_impossible_method<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (impl_def_id, trait_item_def_id): (DefId, DefId),
+) -> bool {
+    struct ReferencesOnlyParentGenerics<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        generics: &'tcx ty::Generics,
+        trait_item_def_id: DefId,
+    }
+    impl<'tcx> ty::TypeVisitor<'tcx> for ReferencesOnlyParentGenerics<'tcx> {
+        type BreakTy = ();
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            // If this is a parameter from the trait item's own generics, then bail
+            if let ty::Param(param) = t.kind()
+                && let param_def_id = self.generics.type_param(param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            t.super_visit_with(self)
+        }
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ReEarlyBound(param) = r.kind()
+                && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            r.super_visit_with(self)
+        }
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ConstKind::Param(param) = ct.kind()
+                && let param_def_id = self.generics.const_param(&param, self.tcx).def_id
+                && self.tcx.parent(param_def_id) == self.trait_item_def_id
+            {
+                return ControlFlow::BREAK;
+            }
+            ct.super_visit_with(self)
+        }
+    }
+
+    let generics = tcx.generics_of(trait_item_def_id);
+    let predicates = tcx.predicates_of(trait_item_def_id);
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_def_id).expect("expected impl to correspond to trait");
+    let param_env = tcx.param_env(impl_def_id);
+
+    let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
+    let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
+        if pred.visit_with(&mut visitor).is_continue() {
+            Some(Obligation::new(
+                ObligationCause::dummy_with_span(*span),
+                param_env,
+                ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
+            ))
+        } else {
+            None
+        }
+    });
+
+    tcx.infer_ctxt().ignoring_regions().enter(|ref infcx| {
+        let mut fulfill_ctxt = <dyn TraitEngine<'_>>::new(tcx);
+        fulfill_ctxt.register_predicate_obligations(infcx, predicates_for_trait);
+        !fulfill_ctxt.select_all_or_error(infcx).is_empty()
+    })
+}
+
 #[derive(Clone, Debug)]
 enum VtblSegment<'tcx> {
     MetadataDSA,
@@ -883,6 +957,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
         subst_and_check_impossible_predicates,
+        is_impossible_method,
         try_unify_abstract_consts: |tcx, param_env_and| {
             let (param_env, (a, b)) = param_env_and.into_parts();
             const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)
