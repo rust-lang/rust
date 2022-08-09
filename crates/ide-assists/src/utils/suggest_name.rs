@@ -55,6 +55,7 @@ const USELESS_METHODS: &[&str] = &[
     "iter",
     "into_iter",
     "iter_mut",
+    "into_future",
 ];
 
 pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {

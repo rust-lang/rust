@@ -269,6 +269,8 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
     ) -> Option<FunctionId> {
+        // FIXME This should be pointing to the poll of IntoFuture::Output's Future impl, but I
+        // don't know how to resolve the Output type so that we can query for its poll method.
         let ty = self.ty_of_expr(db, &await_expr.expr()?.into())?;
 
         let op_fn = db

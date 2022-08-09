@@ -2780,6 +2780,8 @@ impl Type {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
+        // FIXME: This should be checking for IntoFuture trait, but I don't know how to find the
+        // right TraitId in this crate.
         let std_future_trait = db
             .lang_item(self.env.krate, SmolStr::new_inline("future_trait"))
             .and_then(|it| it.as_trait());
