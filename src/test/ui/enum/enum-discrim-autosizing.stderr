@@ -5,10 +5,10 @@ LL | enum Eu64 {
    | ^^^^^^^^^
 LL |
 LL |     Au64 = 0,
-   |            - first assignment of `0`
+   |            - `0` assigned here
 LL |
 LL |     Bu64 = 0x8000_0000_0000_0000
-   |            --------------------- second assignment of `0` (overflowed from `9223372036854775808`)
+   |            --------------------- `0` (overflowed from `9223372036854775808`) assigned here
 
 error: aborting due to previous error
 

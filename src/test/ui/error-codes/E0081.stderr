@@ -5,10 +5,10 @@ LL | enum Enum {
    | ^^^^^^^^^
 LL |
 LL |     P = 3,
-   |         - first assignment of `3`
+   |         - `3` assigned here
 LL |
 LL |     X = 3,
-   |         - second assignment of `3`
+   |         - `3` assigned here
 
 error[E0081]: discriminant value `1` assigned more than once
   --> $DIR/E0081.rs:11:1
@@ -17,10 +17,10 @@ LL | enum EnumOverflowRepr {
    | ^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |     P = 257,
-   |         --- first assignment of `1` (overflowed from `257`)
+   |         --- `1` (overflowed from `257`) assigned here
 LL |
 LL |     X = 513,
-   |         --- second assignment of `1` (overflowed from `513`)
+   |         --- `1` (overflowed from `513`) assigned here
 
 error[E0081]: discriminant value `-1` assigned more than once
   --> $DIR/E0081.rs:20:1
@@ -29,14 +29,50 @@ LL | enum NegDisEnum {
    | ^^^^^^^^^^^^^^^
 LL |
 LL |     First = -1,
-   |             -- first assignment of `-1`
+   |             -- `-1` assigned here
 LL |
 LL |     Second = -2,
-   |     ----------- assigned discriminant for `Last` was incremented from this discriminant
+   |     ----------- discriminant for `Last` incremented from this startpoint (`Second` + 1 variant later => `Last` = -1)
 LL |
 LL |     Last,
-   |     ---- second assignment of `-1`
+   |     ---- `-1` assigned here
 
-error: aborting due to 3 previous errors
+error[E0081]: discriminant value `0` assigned more than once
+  --> $DIR/E0081.rs:30:1
+   |
+LL | enum MultipleDuplicates {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     V0,
+   |     -- `0` assigned here
+LL |
+LL |     V1 = 0,
+   |          - `0` assigned here
+...
+LL |     V4 = 0,
+   |          - `0` assigned here
+LL |
+LL |     V5 = -2,
+   |     ------- discriminant for `V7` incremented from this startpoint (`V5` + 2 variants later => `V7` = 0)
+...
+LL |     V7,
+   |     -- `0` assigned here
+
+error[E0081]: discriminant value `-2` assigned more than once
+  --> $DIR/E0081.rs:30:1
+   |
+LL | enum MultipleDuplicates {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     V5 = -2,
+   |          -- `-2` assigned here
+...
+LL |     V8 = -3,
+   |     ------- discriminant for `V9` incremented from this startpoint (`V8` + 1 variant later => `V9` = -2)
+LL |
+LL |     V9,
+   |     -- `-2` assigned here
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0081`.
