@@ -177,7 +177,7 @@ pub extern "C" fn main(_h: *mut core::ffi::c_void, _st: *mut core::ffi::c_void) 
 
 ## Example: Hello World
 This is an example UEFI application that prints "Hello World!", then waits for
-key input before it exits. It serves as base example how to write UEFI 
+key input before it exits. It serves as base example how to write UEFI
 applications without any helper modules other than the standalone UEFI protocol
 definitions provided by the `r-efi` crate.
 
@@ -337,7 +337,7 @@ compiled from the above source (named custom):
 cargo +custom build --target x86_64-unknown-uefi
 ```
 
-```rust,ignore
+```rust,ignore(platform-specific)
 pub fn main() {}
 ```
 
@@ -355,12 +355,11 @@ compiled from the above source (named custom):
 cargo +custom build --target x86_64-unknown-uefi
 ```
 
-```rust,ignore
+```rust,ignore(platform-specific)
 pub fn main() {
   println!("Enter Name: ");
   let mut s = String::new();
-  io::stdin().read_line(&mut s).expect("Did not enter a correct string");
+  std::io::stdin().read_line(&mut s).expect("Did not enter a correct string");
   println!("Hello World from {}", s);
 }
 ```
-

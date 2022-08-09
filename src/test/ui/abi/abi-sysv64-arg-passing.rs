@@ -319,7 +319,7 @@ mod tests {
         unsafe {
             let null = ptr::null();
             let q = QuadFloats { a: 10.2, b: 20.3, c: 30.4, d: 40.5 };
-            assert_eq!(get_c_exhaust_sysv64_ints(null, null, null, null, null, null, null, q), q.c,);
+            assert_eq!(get_c_exhaust_sysv64_ints(null, null, null, null, null, null, null, q), q.c);
         }
     }
 
