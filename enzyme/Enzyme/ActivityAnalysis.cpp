@@ -187,8 +187,12 @@ const std::map<std::string, size_t> MPIInactiveCommAllocators = {
 // Instructions which themselves are inactive
 // the returned value, however, may still be active
 const std::set<std::string> KnownInactiveFunctionInsts = {
-    "__dynamic_cast", "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base",
-    "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base", "jl_ptr_to_array",
+    "__dynamic_cast",
+    "_ZSt18_Rb_tree_decrementPKSt18_Rb_tree_node_base",
+    "_ZSt18_Rb_tree_incrementPKSt18_Rb_tree_node_base",
+    "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base",
+    "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base",
+    "jl_ptr_to_array",
     "jl_ptr_to_array_1d"};
 
 const std::set<std::string> KnownInactiveFunctions = {

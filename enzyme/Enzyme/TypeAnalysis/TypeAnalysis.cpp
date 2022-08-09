@@ -3717,6 +3717,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
     if (funcName == "__dynamic_cast" ||
+        funcName == "_ZSt18_Rb_tree_decrementPKSt18_Rb_tree_node_base" ||
+        funcName == "_ZSt18_Rb_tree_incrementPKSt18_Rb_tree_node_base" ||
         funcName == "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base" ||
         funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);

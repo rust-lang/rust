@@ -9012,6 +9012,8 @@ public:
       // if constant instruction and readonly (thus must be pointer return)
       // and shadow return recomputable from shadow arguments.
       if (funcName == "__dynamic_cast" ||
+          funcName == "_ZSt18_Rb_tree_decrementPKSt18_Rb_tree_node_base" ||
+          funcName == "_ZSt18_Rb_tree_incrementPKSt18_Rb_tree_node_base" ||
           funcName == "_ZSt18_Rb_tree_decrementPSt18_Rb_tree_node_base" ||
           funcName == "_ZSt18_Rb_tree_incrementPSt18_Rb_tree_node_base" ||
           funcName == "jl_ptr_to_array" || funcName == "jl_ptr_to_array_1d") {
