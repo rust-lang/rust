@@ -53,6 +53,7 @@ impl LocalSourcesCollector<'_, '_> {
     fn add_local_source(&mut self, item: &clean::Item) {
         let sess = self.tcx.sess;
         let span = item.span(self.tcx);
+        let Some(span) = span else { return };
         // skip all synthetic "files"
         if !is_real_and_local(span, sess) {
             return;
@@ -109,6 +110,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
 
         let tcx = self.cx.tcx();
         let span = item.span(tcx);
+        let Some(span) = span else { return };
         let sess = tcx.sess;
 
         // If we're not rendering sources, there's nothing to do.

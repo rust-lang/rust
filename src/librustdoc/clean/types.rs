@@ -415,29 +415,28 @@ impl Item {
             .unwrap_or(false)
     }
 
-    pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Span {
+    pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
         let kind = match &*self.kind {
             ItemKind::StrippedItem(k) => k,
             _ => &*self.kind,
         };
         match kind {
-            ItemKind::ModuleItem(Module { span, .. }) => *span,
-            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => Span::dummy(),
+            ItemKind::ModuleItem(Module { span, .. }) => Some(*span),
+            ItemKind::ImplItem(box Impl { kind: ImplKind::Auto, .. }) => None,
             ItemKind::ImplItem(box Impl { kind: ImplKind::Blanket(_), .. }) => {
                 if let ItemId::Blanket { impl_id, .. } = self.item_id {
-                    rustc_span(impl_id, tcx)
+                    Some(rustc_span(impl_id, tcx))
                 } else {
                     panic!("blanket impl item has non-blanket ID")
                 }
             }
-            _ => {
-                self.item_id.as_def_id().map(|did| rustc_span(did, tcx)).unwrap_or_else(Span::dummy)
-            }
+            _ => self.item_id.as_def_id().map(|did| rustc_span(did, tcx)),
         }
     }
 
     pub(crate) fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
-        crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span(tcx).inner())
+        crate::passes::span_of_attrs(&self.attrs)
+            .unwrap_or_else(|| self.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner()))
     }
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
@@ -2107,14 +2106,6 @@ impl Span {
 
     pub(crate) fn inner(&self) -> rustc_span::Span {
         self.0
-    }
-
-    pub(crate) fn dummy() -> Self {
-        Self(rustc_span::DUMMY_SP)
-    }
-
-    pub(crate) fn is_dummy(&self) -> bool {
-        self.0.is_dummy()
     }
 
     pub(crate) fn filename(&self, sess: &Session) -> FileName {
