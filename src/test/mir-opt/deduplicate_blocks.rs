@@ -1,3 +1,5 @@
+// unit-test: DeduplicateBlocks
+
 // EMIT_MIR deduplicate_blocks.is_line_doc_comment_2.DeduplicateBlocks.diff
 pub const fn is_line_doc_comment_2(s: &str) -> bool {
     match s.as_bytes() {

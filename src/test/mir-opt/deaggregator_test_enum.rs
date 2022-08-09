@@ -1,3 +1,5 @@
+// unit-test: Deaggregator
+
 enum Baz {
     Empty,
     Foo { x: usize },
