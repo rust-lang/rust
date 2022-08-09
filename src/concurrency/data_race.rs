@@ -46,10 +46,11 @@ use std::{
     mem,
 };
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::{mir, ty::layout::TyAndLayout};
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 
 use crate::*;
 
@@ -470,6 +471,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         let this = self.eval_context_ref();
+        this.atomic_access_check(place)?;
         // This will read from the last store in the modification order of this location. In case
         // weak memory emulation is enabled, this may not be the store we will pick to actually read from and return.
         // This is fine with StackedBorrow and race checks because they don't concern metadata on
@@ -490,6 +492,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(dest)?;
+
         this.validate_overlapping_atomic(dest)?;
         this.allow_data_races_mut(move |this| this.write_scalar(val, &dest.into()))?;
         this.validate_atomic_store(dest, atomic)?;
@@ -511,6 +515,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
@@ -540,6 +545,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Provenance>> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
@@ -561,6 +567,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
@@ -604,6 +611,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Immediate<Provenance>> {
         use rand::Rng as _;
         let this = self.eval_context_mut();
+        this.atomic_access_check(place)?;
 
         this.validate_overlapping_atomic(place)?;
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
@@ -647,80 +655,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         Ok(res)
     }
 
-    /// Update the data-race detector for an atomic read occurring at the
-    /// associated memory-place and on the current thread.
-    fn validate_atomic_load(
-        &self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        atomic: AtomicReadOrd,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        this.validate_overlapping_atomic(place)?;
-        this.validate_atomic_op(
-            place,
-            atomic,
-            "Atomic Load",
-            move |memory, clocks, index, atomic| {
-                if atomic == AtomicReadOrd::Relaxed {
-                    memory.load_relaxed(&mut *clocks, index)
-                } else {
-                    memory.load_acquire(&mut *clocks, index)
-                }
-            },
-        )
-    }
-
-    /// Update the data-race detector for an atomic write occurring at the
-    /// associated memory-place and on the current thread.
-    fn validate_atomic_store(
-        &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        atomic: AtomicWriteOrd,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.validate_overlapping_atomic(place)?;
-        this.validate_atomic_op(
-            place,
-            atomic,
-            "Atomic Store",
-            move |memory, clocks, index, atomic| {
-                if atomic == AtomicWriteOrd::Relaxed {
-                    memory.store_relaxed(clocks, index)
-                } else {
-                    memory.store_release(clocks, index)
-                }
-            },
-        )
-    }
-
-    /// Update the data-race detector for an atomic read-modify-write occurring
-    /// at the associated memory place and on the current thread.
-    fn validate_atomic_rmw(
-        &mut self,
-        place: &MPlaceTy<'tcx, Provenance>,
-        atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx> {
-        use AtomicRwOrd::*;
-        let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
-        let release = matches!(atomic, Release | AcqRel | SeqCst);
-        let this = self.eval_context_mut();
-        this.validate_overlapping_atomic(place)?;
-        this.validate_atomic_op(place, atomic, "Atomic RMW", move |memory, clocks, index, _| {
-            if acquire {
-                memory.load_acquire(clocks, index)?;
-            } else {
-                memory.load_relaxed(clocks, index)?;
-            }
-            if release {
-                memory.rmw_release(clocks, index)
-            } else {
-                memory.rmw_relaxed(clocks, index)
-            }
-        })
-    }
-
     /// Update the data-race detector for an atomic fence on the current thread.
-    fn validate_atomic_fence(&mut self, atomic: AtomicFenceOrd) -> InterpResult<'tcx> {
+    fn atomic_fence(&mut self, atomic: AtomicFenceOrd) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if let Some(data_race) = &mut this.machine.data_race {
             data_race.maybe_perform_sync_operation(&this.machine.threads, |index, mut clocks| {
@@ -1016,6 +952,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn allow_data_races_ref<R>(&self, op: impl FnOnce(&MiriEvalContext<'mir, 'tcx>) -> R) -> R {
         let this = self.eval_context_ref();
         if let Some(data_race) = &this.machine.data_race {
+            assert!(!data_race.ongoing_action_data_race_free.get(), "cannot nest allow_data_races");
             data_race.ongoing_action_data_race_free.set(true);
         }
         let result = op(this);
@@ -1035,6 +972,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> R {
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.machine.data_race {
+            assert!(!data_race.ongoing_action_data_race_free.get(), "cannot nest allow_data_races");
             data_race.ongoing_action_data_race_free.set(true);
         }
         let result = op(this);
@@ -1042,6 +980,114 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             data_race.ongoing_action_data_race_free.set(false);
         }
         result
+    }
+
+    /// Checks that an atomic access is legal at the given place.
+    fn atomic_access_check(&self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
+        // Ensure the allocation is mutable. Even failing (read-only) compare_exchange need mutable
+        // memory on many targets (i.e., they segfault if taht memory is mapped read-only), and
+        // atomic loads can be implemented via compare_exchange on some targets. There could
+        // possibly be some very specific exceptions to this, see
+        // <https://github.com/rust-lang/miri/pull/2464#discussion_r939636130> for details.
+        // We avoid `get_ptr_alloc` since we do *not* want to run the access hooks -- the actual
+        // access will happen later.
+        let (alloc_id, _offset, _prov) =
+            this.ptr_try_get_alloc_id(place.ptr).expect("there are no zero-sized atomic accesses");
+        if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
+            // FIXME: make this prettier, once these messages have separate title/span/help messages.
+            throw_ub_format!(
+                "atomic operations cannot be performed on read-only memory\n\
+                many platforms require atomic read-modify-write instructions to be performed on writeable memory, even if the operation fails \
+                (and is hence nominally read-only)\n\
+                some platforms implement (some) atomic loads via compare-exchange, which means they do not work on read-only memory; \
+                it is possible that we could have an exception permitting this for specific kinds of loads\n\
+                please report an issue at <https://github.com/rust-lang/miri/issues> if this is a problem for you"
+            );
+        }
+        Ok(())
+    }
+
+    /// Update the data-race detector for an atomic read occurring at the
+    /// associated memory-place and on the current thread.
+    fn validate_atomic_load(
+        &self,
+        place: &MPlaceTy<'tcx, Provenance>,
+        atomic: AtomicReadOrd,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        this.validate_overlapping_atomic(place)?;
+        this.validate_atomic_op(
+            place,
+            atomic,
+            "Atomic Load",
+            move |memory, clocks, index, atomic| {
+                if atomic == AtomicReadOrd::Relaxed {
+                    memory.load_relaxed(&mut *clocks, index)
+                } else {
+                    memory.load_acquire(&mut *clocks, index)
+                }
+            },
+        )
+    }
+
+    /// Update the data-race detector for an atomic write occurring at the
+    /// associated memory-place and on the current thread.
+    fn validate_atomic_store(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+        atomic: AtomicWriteOrd,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.validate_overlapping_atomic(place)?;
+        this.validate_atomic_op(
+            place,
+            atomic,
+            "Atomic Store",
+            move |memory, clocks, index, atomic| {
+                if atomic == AtomicWriteOrd::Relaxed {
+                    memory.store_relaxed(clocks, index)
+                } else {
+                    memory.store_release(clocks, index)
+                }
+            },
+        )
+    }
+
+    /// Update the data-race detector for an atomic read-modify-write occurring
+    /// at the associated memory place and on the current thread.
+    fn validate_atomic_rmw(
+        &mut self,
+        place: &MPlaceTy<'tcx, Provenance>,
+        atomic: AtomicRwOrd,
+    ) -> InterpResult<'tcx> {
+        use AtomicRwOrd::*;
+        let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
+        let release = matches!(atomic, Release | AcqRel | SeqCst);
+        let this = self.eval_context_mut();
+        this.validate_overlapping_atomic(place)?;
+        this.validate_atomic_op(place, atomic, "Atomic RMW", move |memory, clocks, index, _| {
+            if acquire {
+                memory.load_acquire(clocks, index)?;
+            } else {
+                memory.load_relaxed(clocks, index)?;
+            }
+            if release {
+                memory.rmw_release(clocks, index)
+            } else {
+                memory.rmw_relaxed(clocks, index)
+            }
+        })
     }
 
     /// Generic atomic operation implementation

@@ -1,5 +1,4 @@
 use rustc_middle::{mir, mir::BinOp, ty};
-use rustc_target::abi::Align;
 
 use crate::*;
 use helpers::check_arg_count;
@@ -68,8 +67,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             ["load", ord] => this.atomic_load(args, dest, read_ord(ord)?)?,
             ["store", ord] => this.atomic_store(args, write_ord(ord)?)?,
 
-            ["fence", ord] => this.atomic_fence(args, fence_ord(ord)?)?,
-            ["singlethreadfence", ord] => this.compiler_fence(args, fence_ord(ord)?)?,
+            ["fence", ord] => this.atomic_fence_intrinsic(args, fence_ord(ord)?)?,
+            ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord)?)?,
 
             ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord)?)?,
             ["cxchg", ord1, ord2] =>
@@ -118,7 +117,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
+}
 
+impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
+trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn atomic_load(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
@@ -130,20 +132,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let [place] = check_arg_count(args)?;
         let place = this.deref_operand(place)?;
 
-        // make sure it fits into a scalar; otherwise it cannot be atomic
+        // Perform atomic load.
         let val = this.read_scalar_atomic(&place, atomic)?;
-
-        // Check alignment requirements. Atomics must always be aligned to their size,
-        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-        // be 8-aligned).
-        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.check_ptr_access_align(
-            place.ptr,
-            place.layout.size,
-            align,
-            CheckInAllocMsg::MemoryAccessTest,
-        )?;
-        // Perform regular access.
+        // Perform regular store.
         this.write_scalar(val, dest)?;
         Ok(())
     }
@@ -157,25 +148,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let [place, val] = check_arg_count(args)?;
         let place = this.deref_operand(place)?;
-        let val = this.read_scalar(val)?; // make sure it fits into a scalar; otherwise it cannot be atomic
 
-        // Check alignment requirements. Atomics must always be aligned to their size,
-        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-        // be 8-aligned).
-        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.check_ptr_access_align(
-            place.ptr,
-            place.layout.size,
-            align,
-            CheckInAllocMsg::MemoryAccessTest,
-        )?;
-
+        // Perform regular load.
+        let val = this.read_scalar(val)?;
         // Perform atomic store
         this.write_scalar_atomic(val, &place, atomic)?;
         Ok(())
     }
 
-    fn compiler_fence(
+    fn compiler_fence_intrinsic(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicFenceOrd,
@@ -186,14 +167,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn atomic_fence(
+    fn atomic_fence_intrinsic(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let [] = check_arg_count(args)?;
-        this.validate_atomic_fence(atomic)?;
+        this.atomic_fence(atomic)?;
         Ok(())
     }
 
@@ -219,17 +200,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if rhs.layout.ty != place.layout.ty {
             span_bug!(this.cur_span(), "atomic arithmetic operation type mismatch");
         }
-
-        // Check alignment requirements. Atomics must always be aligned to their size,
-        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-        // be 8-aligned).
-        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.check_ptr_access_align(
-            place.ptr,
-            place.layout.size,
-            align,
-            CheckInAllocMsg::MemoryAccessTest,
-        )?;
 
         match atomic_op {
             AtomicOp::Min => {
@@ -262,17 +232,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let place = this.deref_operand(place)?;
         let new = this.read_scalar(new)?;
 
-        // Check alignment requirements. Atomics must always be aligned to their size,
-        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-        // be 8-aligned).
-        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.check_ptr_access_align(
-            place.ptr,
-            place.layout.size,
-            align,
-            CheckInAllocMsg::MemoryAccessTest,
-        )?;
-
         let old = this.atomic_exchange_scalar(&place, new, atomic)?;
         this.write_scalar(old, dest)?; // old value is returned
         Ok(())
@@ -292,17 +251,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let place = this.deref_operand(place)?;
         let expect_old = this.read_immediate(expect_old)?; // read as immediate for the sake of `binary_op()`
         let new = this.read_scalar(new)?;
-
-        // Check alignment requirements. Atomics must always be aligned to their size,
-        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-        // be 8-aligned).
-        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.check_ptr_access_align(
-            place.ptr,
-            place.layout.size,
-            align,
-            CheckInAllocMsg::MemoryAccessTest,
-        )?;
 
         let old = this.atomic_compare_exchange_scalar(
             &place,
