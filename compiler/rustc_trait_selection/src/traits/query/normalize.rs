@@ -194,7 +194,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         // wait to fold the substs.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
-        let mut res = (|| match *ty.kind() {
+        let res = (|| match *ty.kind() {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
@@ -266,7 +266,15 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 debug!("QueryNormalizer: result = {:#?}", result);
                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                 self.obligations.extend(obligations);
-                Ok(result.normalized_ty)
+
+                let res = result.normalized_ty;
+                // `tcx.normalize_projection_ty` may normalize to a type that still has
+                // unevaluated consts, so keep normalizing here if that's the case.
+                if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                    Ok(res.try_super_fold_with(self)?)
+                } else {
+                    Ok(res)
+                }
             }
 
             ty::Projection(data) => {
@@ -305,24 +313,26 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 debug!("QueryNormalizer: result = {:#?}", result);
                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
                 self.obligations.extend(obligations);
-                Ok(crate::traits::project::PlaceholderReplacer::replace_placeholders(
+
+                let res = crate::traits::project::PlaceholderReplacer::replace_placeholders(
                     infcx,
                     mapped_regions,
                     mapped_types,
                     mapped_consts,
                     &self.universes,
                     result.normalized_ty,
-                ))
+                );
+                // `tcx.normalize_projection_ty` may normalize to a type that still has
+                // unevaluated consts, so keep normalizing here if that's the case.
+                if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+                    Ok(res.try_super_fold_with(self)?)
+                } else {
+                    Ok(res)
+                }
             }
 
             _ => ty.try_super_fold_with(self),
         })()?;
-
-        // `tcx.normalize_projection_ty` may normalize to a type that still has
-        // unevaluated consts, so keep normalizing here if that's the case.
-        if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
-            res = res.try_super_fold_with(self)?;
-        }
 
         self.cache.insert(ty, res);
         Ok(res)
