@@ -14,7 +14,6 @@ mod m68k;
 mod mips;
 mod mips64;
 mod msp430;
-mod nvptx;
 mod nvptx64;
 mod powerpc;
 mod powerpc64;
@@ -702,7 +701,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "msp430" => msp430::compute_abi_info(self),
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
-            "nvptx" => nvptx::compute_abi_info(self),
             "nvptx64" => {
                 if cx.target_spec().adjust_abi(abi) == spec::abi::Abi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
