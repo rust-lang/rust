@@ -140,6 +140,11 @@ impl<'a> Parser<'a> {
 
     /// Read an IPv4 address.
     fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
+        // don't try to parse if too short or long
+        if self.state.len() < 7 || self.state.len() > 15 {
+            return None;
+        }
+
         self.read_atomically(|p| {
             let mut groups = [0; 4];
 
@@ -285,12 +290,7 @@ impl FromStr for IpAddr {
 impl FromStr for Ipv4Addr {
     type Err = AddrParseError;
     fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
-        // don't try to parse if too long or too short
-        if s.len() < 7 || s.len() > 15 {
-            Err(AddrParseError(AddrKind::Ipv4))
-        } else {
-            Parser::new(s).parse_with(|p| p.read_ipv4_addr(), AddrKind::Ipv4)
-        }
+        Parser::new(s).parse_with(|p| p.read_ipv4_addr(), AddrKind::Ipv4)
     }
 }
 
