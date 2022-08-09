@@ -7,7 +7,7 @@ use std::mem::MaybeUninit;
 
 struct Foo;
 
-#[allow(deprecated)]
+#[allow(deprecated, mem_uninitialized)]
 pub fn main() {
     unsafe {
         // `Foo` and `[Foo; 2]` are both zero sized and inhabited, so this is safe.

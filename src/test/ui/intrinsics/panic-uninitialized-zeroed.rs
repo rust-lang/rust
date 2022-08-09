@@ -9,7 +9,7 @@
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 
 #![feature(never_type, arbitrary_enum_discriminant)]
-#![allow(deprecated, invalid_value)]
+#![allow(deprecated, invalid_value, mem_uninitialized)]
 
 use std::{
     mem::{self, MaybeUninit, ManuallyDrop},

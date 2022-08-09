@@ -33,6 +33,7 @@ use crate::slice;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
+/// # #![cfg_attr(not(bootstrap), allow(mem_uninitialized))]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior! ⚠️
@@ -48,6 +49,7 @@ use crate::slice;
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
+/// # #![cfg_attr(not(bootstrap), allow(mem_uninitialized))]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior! ⚠️

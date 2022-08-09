@@ -1,0 +1,338 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: the type `!` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:79:16
+   |
+LL |             || mem::uninitialized::<!>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: the `!` type has no valid value
+
+Future breakage diagnostic:
+warning: the type `Foo` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:92:16
+   |
+LL |             || mem::uninitialized::<Foo>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: the `!` type has no valid value (in this struct field)
+  --> $DIR/panic-uninitialized-zeroed.rs:24:5
+   |
+LL |     y: !,
+   |     ^^^^
+
+Future breakage diagnostic:
+warning: the type `Bar` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:105:16
+   |
+LL |             || mem::uninitialized::<Bar>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: enums with no variants have no valid value
+
+Future breakage diagnostic:
+warning: the type `[Foo; 2]` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:118:16
+   |
+LL |             || mem::uninitialized::<[Foo; 2]>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: the `!` type has no valid value (in this struct field)
+  --> $DIR/panic-uninitialized-zeroed.rs:24:5
+   |
+LL |     y: !,
+   |     ^^^^
+
+Future breakage diagnostic:
+warning: the type `[Bar; 2]` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:131:16
+   |
+LL |             || mem::uninitialized::<[Bar; 2]>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: enums with no variants have no valid value
+
+Future breakage diagnostic:
+warning: the type `fn()` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:145:16
+   |
+LL |             || mem::uninitialized::<fn()>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: function pointers must be non-null
+
+Future breakage diagnostic:
+warning: the type `*const dyn std::marker::Send` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:154:16
+   |
+LL |             || mem::uninitialized::<*const dyn Send>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: the vtable of a wide raw pointer must be non-null
+
+Future breakage diagnostic:
+warning: the type `(std::ptr::NonNull<u32>, u32, u32)` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:163:16
+   |
+LL |             || mem::uninitialized::<(NonNull<u32>, u32, u32)>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: `std::ptr::NonNull<u32>` must be non-null
+
+Future breakage diagnostic:
+warning: the type `OneVariant_NonZero` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:175:16
+   |
+LL |             || mem::uninitialized::<OneVariant_NonZero>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/panic-uninitialized-zeroed.rs:33:1
+   |
+LL | enum OneVariant_NonZero {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+warning: the type `LR_NonZero` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:186:16
+   |
+LL |             || mem::uninitialized::<LR_NonZero>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/panic-uninitialized-zeroed.rs:53:1
+   |
+LL | enum LR_NonZero {
+   | ^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+warning: the type `std::mem::ManuallyDrop<LR_NonZero>` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:191:16
+   |
+LL |             || mem::uninitialized::<ManuallyDrop<LR_NonZero>>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/panic-uninitialized-zeroed.rs:53:1
+   |
+LL | enum LR_NonZero {
+   | ^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+warning: the type `NoNullVariant` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:197:16
+   |
+LL |             || mem::uninitialized::<NoNullVariant>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/panic-uninitialized-zeroed.rs:41:1
+   |
+LL | enum NoNullVariant {
+   | ^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+warning: the type `bool` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:210:16
+   |
+LL |             || mem::uninitialized::<bool>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: booleans must be either `true` or `false`
+
+Future breakage diagnostic:
+warning: the type `LR` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:215:16
+   |
+LL |             || mem::uninitialized::<LR>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/panic-uninitialized-zeroed.rs:48:1
+   |
+LL | enum LR {
+   | ^^^^^^^
+
+Future breakage diagnostic:
+warning: the type `std::mem::ManuallyDrop<LR>` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:220:16
+   |
+LL |             || mem::uninitialized::<ManuallyDrop<LR>>(),
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                this code causes undefined behavior when executed
+   |                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+note: enums have to be initialized to a variant
+  --> $DIR/panic-uninitialized-zeroed.rs:48:1
+   |
+LL | enum LR {
+   | ^^^^^^^
+
+Future breakage diagnostic:
+warning: the type `std::mem::MaybeUninit<bool>` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:233:20
+   |
+LL |         let _val = mem::uninitialized::<MaybeUninit<bool>>();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    |
+   |                    this code causes undefined behavior when executed
+   |                    help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: type might not be allowed to be left uninitialized
+
+Future breakage diagnostic:
+warning: the type `[std::ptr::NonNull<()>; 1]` does not definitely permit being left uninitialized
+  --> $DIR/panic-uninitialized-zeroed.rs:289:24
+   |
+LL |             let _val = mem::uninitialized::<[NonNull<()>; 1]>();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        this code causes undefined behavior when executed
+   |                        help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+note: the lint level is defined here
+  --> $DIR/panic-uninitialized-zeroed.rs:12:37
+   |
+LL | #![allow(deprecated, invalid_value, mem_uninitialized)]
+   |                                     ^^^^^^^^^^^^^^^^^
+   = note: for more information, see FIXME: fill this in
+   = note: `std::ptr::NonNull<()>` must be non-null
+

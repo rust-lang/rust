@@ -2,7 +2,7 @@
 // in a lint.
 
 #![feature(never_type, rustc_attrs)]
-#![allow(deprecated)]
+#![allow(deprecated, mem_uninitialized)]
 #![deny(invalid_value)]
 
 use std::mem::{self, MaybeUninit};
