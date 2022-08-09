@@ -1555,12 +1555,12 @@ impl<T: ?Sized> *mut T {
     /// if offset < x.len() - 1 {
     ///     let u16_ptr = ptr.add(offset).cast::<u16>();
     ///     *u16_ptr = 0;
+    ///
+    ///     assert!(x == [0, 0, 7, 8, 9] || x == [5, 0, 0, 8, 9]);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
     /// }
-    ///
-    /// assert!(x == [0, 0, 7, 8, 9] || x == [5, 0, 0, 8, 9]);
     /// # }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
