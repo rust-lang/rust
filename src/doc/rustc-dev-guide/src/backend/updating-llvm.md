@@ -43,7 +43,7 @@ the branch we're already using. The steps for this are:
 1. Make sure the bugfix is in upstream LLVM.
 2. Identify the branch that rustc is currently using. The `src/llvm-project`
    submodule is always pinned to a branch of the
-   [rust-lang/llvm-project](https://github.com/rust-lang/llvm-project) repository.
+   [rust-lang/llvm-project repository].
 3. Fork the rust-lang/llvm-project repository
 4. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`)
 5. Cherry-pick the upstream commit onto the branch
@@ -146,9 +146,6 @@ easiest to land [`llvm-wrapper`] compatibility as a PR before actually updating
 interested in trying out the new LLVM can benefit from work you've done to
 update the C++ bindings.
 
-[rust-lang/llvm-project repository]: https://github.com/rust-lang/llvm-project
-[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
-
 ### Caveats and gotchas
 
 Ideally the above instructions are pretty smooth, but here's some caveats to
@@ -161,8 +158,6 @@ keep in mind while going through them:
 * Creating branches is a privileged operation on GitHub, so you'll need someone
   with write access to create the branches for you most likely.
 
-[wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
-
 ## New LLVM Release Updates
 
 Updating to a new release of LLVM is very similar to the "feature updates"
@@ -172,7 +167,7 @@ section above is generally around branch naming. The sequence of events
 typically looks like:
 
 1. LLVM announces that its latest release version has branched. This will show
-   up as a branch in https://github.com/llvm/llvm-project typically named
+   up as a branch in the [llvm/llvm-project repository] typically named
    `release/$N.x` where `$N` is the version of LLVM that's being released.
 
 2. We then follow the "feature updates" section above to create a new branch of
@@ -192,3 +187,8 @@ typically looks like:
    to create a new branch in the rust-lang/llvm-project repository, this time
    with a new date. The commit history should look much cleaner as just a few
    Rust-specific commits stacked on top of stock LLVM's release branch.
+
+[rust-lang/llvm-project repository]: https://github.com/rust-lang/llvm-project
+[llvm/llvm-project repository]: https://github.com/llvm/llvm-project
+[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
+[wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
