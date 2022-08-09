@@ -194,7 +194,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         // wait to fold the substs.
 
         // Wrap this in a closure so we don't accidentally return from the outer function
-        let res = (|| match *ty.kind() {
+        let mut res = (|| match *ty.kind() {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
@@ -317,6 +317,13 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
             _ => ty.try_super_fold_with(self),
         })()?;
+
+        // `tcx.normalize_projection_ty` may normalize to a type that still has
+        // unevaluated consts, so keep normalizing here if that's the case.
+        if res != ty && res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) {
+            res = res.try_super_fold_with(self)?;
+        }
+
         self.cache.insert(ty, res);
         Ok(res)
     }
