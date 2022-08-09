@@ -106,6 +106,14 @@ impl AsRef<Path> for AbsPath {
     }
 }
 
+impl ToOwned for AbsPath {
+    type Owned = AbsPathBuf;
+
+    fn to_owned(&self) -> Self::Owned {
+        AbsPathBuf(self.0.to_owned())
+    }
+}
+
 impl<'a> TryFrom<&'a Path> for &'a AbsPath {
     type Error = &'a Path;
     fn try_from(path: &'a Path) -> Result<&'a AbsPath, &'a Path> {

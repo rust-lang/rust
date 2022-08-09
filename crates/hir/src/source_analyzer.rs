@@ -25,15 +25,20 @@ use hir_def::{
     Lookup, ModuleDefId, VariantId,
 };
 use hir_expand::{
-    builtin_fn_macro::BuiltinFnLikeExpander, hygiene::Hygiene, name::AsName, HirFileId, InFile,
+    builtin_fn_macro::BuiltinFnLikeExpander,
+    hygiene::Hygiene,
+    name,
+    name::{AsName, Name},
+    HirFileId, InFile,
 };
 use hir_ty::{
     diagnostics::{
         record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
         UnsafeExpr,
     },
-    method_resolution, Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution,
-    TyExt, TyKind, TyLoweringContext,
+    method_resolution::{self, lang_names_for_bin_op},
+    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
+    TyLoweringContext,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -255,8 +260,90 @@ impl SourceAnalyzer {
     ) -> Option<FunctionId> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let (f_in_trait, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
-        let f_in_impl = self.resolve_impl_method(db, f_in_trait, &substs);
-        f_in_impl.or(Some(f_in_trait))
+
+        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, &substs))
+    }
+
+    pub(crate) fn resolve_await_to_poll(
+        &self,
+        db: &dyn HirDatabase,
+        await_expr: &ast::AwaitExpr,
+    ) -> Option<FunctionId> {
+        let ty = self.ty_of_expr(db, &await_expr.expr()?.into())?;
+
+        let op_fn = db
+            .lang_item(self.resolver.krate(), hir_expand::name![poll].to_smol_str())?
+            .as_function()?;
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
+
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+    }
+
+    pub(crate) fn resolve_prefix_expr(
+        &self,
+        db: &dyn HirDatabase,
+        prefix_expr: &ast::PrefixExpr,
+    ) -> Option<FunctionId> {
+        let lang_item_name = match prefix_expr.op_kind()? {
+            ast::UnaryOp::Deref => name![deref],
+            ast::UnaryOp::Not => name![not],
+            ast::UnaryOp::Neg => name![neg],
+        };
+        let ty = self.ty_of_expr(db, &prefix_expr.expr()?.into())?;
+
+        let op_fn = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
+
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+    }
+
+    pub(crate) fn resolve_index_expr(
+        &self,
+        db: &dyn HirDatabase,
+        index_expr: &ast::IndexExpr,
+    ) -> Option<FunctionId> {
+        let base_ty = self.ty_of_expr(db, &index_expr.base()?.into())?;
+        let index_ty = self.ty_of_expr(db, &index_expr.index()?.into())?;
+
+        let lang_item_name = name![index];
+
+        let op_fn = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn)
+            .push(base_ty.clone())
+            .push(index_ty.clone())
+            .build();
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+    }
+
+    pub(crate) fn resolve_bin_expr(
+        &self,
+        db: &dyn HirDatabase,
+        binop_expr: &ast::BinExpr,
+    ) -> Option<FunctionId> {
+        let op = binop_expr.op_kind()?;
+        let lhs = self.ty_of_expr(db, &binop_expr.lhs()?.into())?;
+        let rhs = self.ty_of_expr(db, &binop_expr.rhs()?.into())?;
+
+        let op_fn = lang_names_for_bin_op(op)
+            .and_then(|(name, lang_item)| self.lang_trait_fn(db, &lang_item, &name))?;
+        let substs =
+            hir_ty::TyBuilder::subst_for_def(db, op_fn).push(lhs.clone()).push(rhs.clone()).build();
+
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+    }
+
+    pub(crate) fn resolve_try_expr(
+        &self,
+        db: &dyn HirDatabase,
+        try_expr: &ast::TryExpr,
+    ) -> Option<FunctionId> {
+        let ty = self.ty_of_expr(db, &try_expr.expr()?.into())?;
+
+        let op_fn =
+            db.lang_item(self.resolver.krate(), name![branch].to_smol_str())?.as_function()?;
+        let substs = hir_ty::TyBuilder::subst_for_def(db, op_fn).push(ty.clone()).build();
+
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
     }
 
     pub(crate) fn resolve_field(
@@ -665,6 +752,29 @@ impl SourceAnalyzer {
 
         let fun_data = db.function_data(func);
         method_resolution::lookup_impl_method(self_ty, db, trait_env, impled_trait, &fun_data.name)
+    }
+
+    fn resolve_impl_method_or_trait_def(
+        &self,
+        db: &dyn HirDatabase,
+        func: FunctionId,
+        substs: &Substitution,
+    ) -> FunctionId {
+        self.resolve_impl_method(db, func, substs).unwrap_or(func)
+    }
+
+    fn lang_trait_fn(
+        &self,
+        db: &dyn HirDatabase,
+        lang_trait: &Name,
+        method_name: &Name,
+    ) -> Option<FunctionId> {
+        db.trait_data(db.lang_item(self.resolver.krate(), lang_trait.to_smol_str())?.as_trait()?)
+            .method_by_name(method_name)
+    }
+
+    fn ty_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<&Ty> {
+        self.infer.as_ref()?.type_of_expr.get(self.expr_id(db, &expr)?)
     }
 }
 

@@ -2,13 +2,15 @@
 //! requests/replies and notifications back to the client.
 use std::{
     fmt,
+    ops::Deref,
     sync::Arc,
     time::{Duration, Instant},
 };
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide_db::base_db::{SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
+use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::{ChangeKind, FileId};
@@ -371,7 +373,7 @@ impl GlobalState {
                 let _p = profile::span("GlobalState::handle_event/flycheck");
                 loop {
                     match task {
-                        flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
+                        flycheck::Message::AddDiagnostic { id, workspace_root, diagnostic } => {
                             let snap = self.snapshot();
                             let diagnostics =
                                 crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
@@ -383,6 +385,7 @@ impl GlobalState {
                             for diag in diagnostics {
                                 match url_to_file_id(&self.vfs.read().0, &diag.url) {
                                     Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                                        id,
                                         file_id,
                                         diag.diagnostic,
                                         diag.fix,
@@ -400,7 +403,7 @@ impl GlobalState {
                         flycheck::Message::Progress { id, progress } => {
                             let (state, message) = match progress {
                                 flycheck::Progress::DidStart => {
-                                    self.diagnostics.clear_check();
+                                    self.diagnostics.clear_check(id);
                                     (Progress::Begin, None)
                                 }
                                 flycheck::Progress::DidCheckCrate(target) => {
@@ -444,7 +447,10 @@ impl GlobalState {
         let memdocs_added_or_removed = self.mem_docs.take_changes();
 
         if self.is_quiescent() {
-            if !was_quiescent {
+            if !was_quiescent
+                && !self.fetch_workspaces_queue.op_requested()
+                && !self.fetch_build_data_queue.op_requested()
+            {
                 for flycheck in &self.flycheck {
                     flycheck.update();
                 }
@@ -734,13 +740,76 @@ impl GlobalState {
                 Ok(())
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
-                for flycheck in &this.flycheck {
-                    flycheck.update();
+                let mut updated = false;
+                if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
+                    let (vfs, _) = &*this.vfs.read();
+                    if let Some(file_id) = vfs.file_id(&vfs_path) {
+                        let analysis = this.analysis_host.analysis();
+                        // Crates containing or depending on the saved file
+                        let crate_ids: Vec<_> = analysis
+                            .crate_for(file_id)?
+                            .into_iter()
+                            .flat_map(|id| {
+                                this.analysis_host
+                                    .raw_database()
+                                    .crate_graph()
+                                    .transitive_rev_deps(id)
+                            })
+                            .sorted()
+                            .unique()
+                            .collect();
+
+                        let crate_root_paths: Vec<_> = crate_ids
+                            .iter()
+                            .filter_map(|&crate_id| {
+                                analysis
+                                    .crate_root(crate_id)
+                                    .map(|file_id| {
+                                        vfs.file_path(file_id).as_path().map(ToOwned::to_owned)
+                                    })
+                                    .transpose()
+                            })
+                            .collect::<ide::Cancellable<_>>()?;
+                        let crate_root_paths: Vec<_> =
+                            crate_root_paths.iter().map(Deref::deref).collect();
+
+                        // Find all workspaces that have at least one target containing the saved file
+                        let workspace_ids =
+                            this.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
+                                project_model::ProjectWorkspace::Cargo { cargo, .. } => {
+                                    cargo.packages().any(|pkg| {
+                                        cargo[pkg].targets.iter().any(|&it| {
+                                            crate_root_paths.contains(&cargo[it].root.as_path())
+                                        })
+                                    })
+                                }
+                                project_model::ProjectWorkspace::Json { project, .. } => project
+                                    .crates()
+                                    .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
+                                project_model::ProjectWorkspace::DetachedFiles { .. } => false,
+                            });
+
+                        // Find and trigger corresponding flychecks
+                        for flycheck in &this.flycheck {
+                            for (id, _) in workspace_ids.clone() {
+                                if id == flycheck.id() {
+                                    updated = true;
+                                    flycheck.update();
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    if let Some(abs_path) = vfs_path.as_path() {
+                        if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
+                            this.fetch_workspaces_queue
+                                .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
+                        }
+                    }
                 }
-                if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
-                    if reload::should_refresh_for_change(&abs_path, ChangeKind::Modify) {
-                        this.fetch_workspaces_queue
-                            .request_op(format!("DidSaveTextDocument {}", abs_path.display()));
+                if !updated {
+                    for flycheck in &this.flycheck {
+                        flycheck.update();
                     }
                 }
                 Ok(())

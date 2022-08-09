@@ -12,7 +12,7 @@ use std::{
 };
 
 mod map;
-pub use map::ArenaMap;
+pub use map::{ArenaMap, Entry, OccupiedEntry, VacantEntry};
 
 /// The raw index of a value in an arena.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -206,6 +206,16 @@ impl<T> Arena<T> {
     /// ```
     pub const fn new() -> Arena<T> {
         Arena { data: Vec::new() }
+    }
+
+    /// Create a new empty arena with specific capacity.
+    ///
+    /// ```
+    /// let arena: la_arena::Arena<i32> = la_arena::Arena::with_capacity(42);
+    /// assert!(arena.is_empty());
+    /// ```
+    pub fn with_capacity(capacity: usize) -> Arena<T> {
+        Arena { data: Vec::with_capacity(capacity) }
     }
 
     /// Empties the arena, removing all contained values.

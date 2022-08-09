@@ -8,7 +8,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::lsp_ext;
 
-pub(crate) type CheckFixes = Arc<FxHashMap<FileId, Vec<Fix>>>;
+pub(crate) type CheckFixes = Arc<FxHashMap<usize, FxHashMap<FileId, Vec<Fix>>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsMapConfig {
@@ -22,7 +22,7 @@ pub(crate) struct DiagnosticCollection {
     // FIXME: should be FxHashMap<FileId, Vec<ra_id::Diagnostic>>
     pub(crate) native: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
     // FIXME: should be Vec<flycheck::Diagnostic>
-    pub(crate) check: FxHashMap<FileId, Vec<lsp_types::Diagnostic>>,
+    pub(crate) check: FxHashMap<usize, FxHashMap<FileId, Vec<lsp_types::Diagnostic>>>,
     pub(crate) check_fixes: CheckFixes,
     changes: FxHashSet<FileId>,
 }
@@ -35,9 +35,19 @@ pub(crate) struct Fix {
 }
 
 impl DiagnosticCollection {
-    pub(crate) fn clear_check(&mut self) {
+    pub(crate) fn clear_check(&mut self, flycheck_id: usize) {
+        if let Some(it) = Arc::make_mut(&mut self.check_fixes).get_mut(&flycheck_id) {
+            it.clear();
+        }
+        if let Some(it) = self.check.get_mut(&flycheck_id) {
+            self.changes.extend(it.drain().map(|(key, _value)| key));
+        }
+    }
+
+    pub(crate) fn clear_check_all(&mut self) {
         Arc::make_mut(&mut self.check_fixes).clear();
-        self.changes.extend(self.check.drain().map(|(key, _value)| key))
+        self.changes
+            .extend(self.check.values_mut().flat_map(|it| it.drain().map(|(key, _value)| key)))
     }
 
     pub(crate) fn clear_native_for(&mut self, file_id: FileId) {
@@ -47,11 +57,12 @@ impl DiagnosticCollection {
 
     pub(crate) fn add_check_diagnostic(
         &mut self,
+        flycheck_id: usize,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
         fix: Option<Fix>,
     ) {
-        let diagnostics = self.check.entry(file_id).or_default();
+        let diagnostics = self.check.entry(flycheck_id).or_default().entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
             if are_diagnostics_equal(existing_diagnostic, &diagnostic) {
                 return;
@@ -59,7 +70,7 @@ impl DiagnosticCollection {
         }
 
         let check_fixes = Arc::make_mut(&mut self.check_fixes);
-        check_fixes.entry(file_id).or_default().extend(fix);
+        check_fixes.entry(flycheck_id).or_default().entry(file_id).or_default().extend(fix);
         diagnostics.push(diagnostic);
         self.changes.insert(file_id);
     }
@@ -89,7 +100,8 @@ impl DiagnosticCollection {
         file_id: FileId,
     ) -> impl Iterator<Item = &lsp_types::Diagnostic> {
         let native = self.native.get(&file_id).into_iter().flatten();
-        let check = self.check.get(&file_id).into_iter().flatten();
+        let check =
+            self.check.values().filter_map(move |it| it.get(&file_id)).into_iter().flatten();
         native.chain(check)
     }
 
