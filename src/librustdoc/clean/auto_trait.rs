@@ -476,7 +476,7 @@ where
         let mut ty_to_fn: FxHashMap<Type, (PolyTrait, Option<Type>)> = Default::default();
 
         for p in clean_where_predicates {
-            let (orig_p, p) = (p, p.clean(self.cx));
+            let (orig_p, p) = (p, clean_predicate(p, self.cx));
             if p.is_none() {
                 continue;
             }

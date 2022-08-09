@@ -19,7 +19,7 @@ pub struct ExpandedMacro {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Expand macro recursively**
+// | VS Code | **rust-analyzer: Expand macro recursively**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif[]
@@ -32,7 +32,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         _ => 0,
     })?;
 
-    // due to how Rust Analyzer works internally, we need to special case derive attributes,
+    // due to how rust-analyzer works internally, we need to special case derive attributes,
     // otherwise they might not get found, e.g. here with the cursor at $0 `#[attr]` would expand:
     // ```
     // #[attr]

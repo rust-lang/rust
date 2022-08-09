@@ -6,8 +6,8 @@
 //! code here exercise this specific completion, and thus have a fast
 //! edit/compile/test cycle.
 //!
-//! Note that "Rust Analyzer: Run" action does not allow running a single test
-//! in release mode in VS Code. There's however "Rust Analyzer: Copy Run Command Line"
+//! Note that "rust-analyzer: Run" action does not allow running a single test
+//! in release mode in VS Code. There's however "rust-analyzer: Copy Run Command Line"
 //! which you can use to paste the command in terminal and add `--release` manually.
 
 use std::sync::Arc;
