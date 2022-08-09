@@ -66,12 +66,18 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         span: Span,
         loc: Option<WellFormedLoc>,
         arg: ty::GenericArg<'tcx>,
+        override_constness: Option<hir::Constness>,
     ) {
         let cause =
             traits::ObligationCause::new(span, self.body_id, ObligationCauseCode::WellFormed(loc));
+        let param_env = if let Some(constness) = override_constness {
+            self.param_env.with_constness(constness)
+        } else {
+            self.param_env
+        };
         self.ocx.register_obligation(traits::Obligation::new(
             cause,
-            self.param_env,
+            param_env,
             ty::Binder::dummy(ty::PredicateKind::WellFormed(arg)).to_predicate(self.tcx()),
         ));
     }
@@ -985,7 +991,7 @@ fn check_associated_item(
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(item.def_id);
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
-                wfcx.register_wf_obligation(span, loc, ty.into());
+                wfcx.register_wf_obligation(span, loc, ty.into(), None);
             }
             ty::AssocKind::Fn => {
                 let sig = tcx.fn_sig(item.def_id);
@@ -1006,7 +1012,7 @@ fn check_associated_item(
                 if item.defaultness(tcx).has_value() {
                     let ty = tcx.type_of(item.def_id);
                     let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
-                    wfcx.register_wf_obligation(span, loc, ty.into());
+                    wfcx.register_wf_obligation(span, loc, ty.into(), None);
                 }
             }
         }
@@ -1042,6 +1048,7 @@ fn check_type_defn<'tcx, F>(
                     field.span,
                     Some(WellFormedLoc::Ty(field.def_id)),
                     field.ty.into(),
+                    None,
                 )
             }
 
@@ -1191,7 +1198,12 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
             }
         }
 
-        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
+        wfcx.register_wf_obligation(
+            ty_span,
+            Some(WellFormedLoc::Ty(item_id)),
+            item_ty.into(),
+            None,
+        );
         if forbid_unsized {
             wfcx.register_bound(
                 traits::ObligationCause::new(ty_span, wfcx.body_id, traits::WellFormed(None)),
@@ -1260,6 +1272,7 @@ fn check_impl<'tcx>(
                     ast_self_ty.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner())),
                     self_ty.into(),
+                    None,
                 );
             }
         }
@@ -1300,7 +1313,12 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
                     if !ty.needs_subst() {
-                        wfcx.register_wf_obligation(tcx.def_span(param.def_id), None, ty.into());
+                        wfcx.register_wf_obligation(
+                            tcx.def_span(param.def_id),
+                            None,
+                            ty.into(),
+                            None,
+                        );
                     }
                 }
             }
@@ -1316,6 +1334,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                             tcx.def_span(param.def_id),
                             None,
                             default_ct.into(),
+                            None,
                         );
                     }
                 }
@@ -1496,10 +1515,17 @@ fn check_fn_or_method<'tcx>(
             ty.span,
             Some(WellFormedLoc::Param { function: def_id, param_idx: i.try_into().unwrap() }),
             input_ty.into(),
+            None,
         );
     }
 
-    wfcx.register_wf_obligation(hir_decl.output.span(), None, sig.output().into());
+    // override the env when checking the return type. `~const` bounds can be fulfilled with non-const implementations.
+    wfcx.register_wf_obligation(
+        hir_decl.output.span(),
+        None,
+        sig.output().into(),
+        Some(hir::Constness::NotConst),
+    );
 
     check_where_clauses(wfcx, span, def_id);
 }
