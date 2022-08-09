@@ -156,6 +156,7 @@ fn main() {
 
 #[test]
 fn functional_update_no_dot() {
+    cov_mark::check!(functional_update_field);
     // FIXME: This should filter out all completions that do not have the type `Foo`
     check(
         r#"

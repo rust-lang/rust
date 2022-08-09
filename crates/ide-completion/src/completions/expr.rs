@@ -231,7 +231,9 @@ pub(crate) fn complete_expr_path(
                             cov_mark::hit!(functional_update);
                             let missing_fields =
                                 ctx.sema.record_literal_missing_fields(record_expr);
-                            add_default_update(acc, ctx, ty, &missing_fields);
+                            if !missing_fields.is_empty() {
+                                add_default_update(acc, ctx, ty);
+                            }
                         }
                     };
                 }

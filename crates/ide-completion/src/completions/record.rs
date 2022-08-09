@@ -59,7 +59,11 @@ pub(crate) fn complete_record_expr_fields(
         }
         _ => {
             let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
-            add_default_update(acc, ctx, ty, &missing_fields);
+
+            if !missing_fields.is_empty() {
+                cov_mark::hit!(functional_update_field);
+                add_default_update(acc, ctx, ty);
+            }
             if dot_prefix {
                 cov_mark::hit!(functional_update_one_dot);
                 let mut item =
@@ -78,14 +82,14 @@ pub(crate) fn add_default_update(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     ty: Option<hir::TypeInfo>,
-    missing_fields: &[(hir::Field, hir::Type)],
 ) {
     let default_trait = ctx.famous_defs().core_default_Default();
-    let impl_default_trait = default_trait
+    let impls_default_trait = default_trait
         .zip(ty.as_ref())
         .map_or(false, |(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
-    if impl_default_trait && !missing_fields.is_empty() {
+    if impls_default_trait {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
+        // that is we should handle this like actually completing the default function
         let completion_text = "..Default::default()";
         let mut item = CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
         let completion_text =
