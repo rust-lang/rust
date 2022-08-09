@@ -53,10 +53,10 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             def_id, returned_local
         );
 
-        RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body(body);
+        RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body_preserves_cfg(body);
 
         // Clean up the `NOP`s we inserted for statements made useless by our renaming.
-        for block_data in body.basic_blocks_mut() {
+        for block_data in body.basic_blocks.as_mut_preserves_cfg() {
             block_data.statements.retain(|stmt| stmt.kind != mir::StatementKind::Nop);
         }
 

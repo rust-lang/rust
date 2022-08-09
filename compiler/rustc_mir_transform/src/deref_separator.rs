@@ -90,7 +90,7 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let patch = MirPatch::new(body);
     let mut checker = DerefChecker { tcx, patcher: patch, local_decls: body.local_decls.clone() };
 
-    for (bb, data) in body.basic_blocks_mut().iter_enumerated_mut() {
+    for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
         checker.visit_basic_block_data(bb, data);
     }
 
