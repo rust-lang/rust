@@ -15,8 +15,8 @@
 use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
 use rustc_hir::{
     intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
-    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, QPath, TraitItem, TraitItemKind,
-    UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
+    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, Node, QPath, TraitItem,
+    TraitItemKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -251,23 +251,20 @@ fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
 }
 
 fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirId) -> (Pat, Pat) {
-    let (start_pat, end_pat, visibility) = match kind {
-        FnKind::ItemFn(.., header) => (
-            fn_header_search_pat(*header),
-            Pat::Str(""),
-            tcx.visibility(tcx.hir().local_def_id(hir_id)),
-        ),
-        FnKind::Method(.., sig) => (
-            fn_header_search_pat(sig.header),
-            Pat::Str(""),
-            tcx.visibility(tcx.hir().local_def_id(hir_id)),
-        ),
+    let (start_pat, end_pat) = match kind {
+        FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
+        FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
         FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, &body.value).1),
     };
-    if visibility.is_public() {
-        (Pat::Str("pub"), end_pat)
-    } else {
+    let vis_span = match tcx.hir().get(hir_id) {
+        Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => Some(vis_span),
+        Node::TraitItem(_) => None,
+        _ => unreachable!(),
+    };
+    if matches!(vis_span, Some(span) if span.is_empty()) {
         (start_pat, end_pat)
+    } else {
+        (Pat::Str("pub"), end_pat)
     }
 }
 
