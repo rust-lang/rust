@@ -14,9 +14,9 @@
 
 use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
 use rustc_hir::{
-    Block, BlockCheckMode, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, Impl, ImplItem, ImplItemKind,
-    IsAuto, Item, ItemKind, LoopSource, MatchSource, QPath, TraitItem, TraitItemKind, UnOp, UnsafeSource, Unsafety,
-    Variant, VariantData, YieldSource,
+    intravisit::FnKind, Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId,
+    Impl, ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, Node, QPath, TraitItem,
+    TraitItemKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -250,6 +250,26 @@ fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
     }
 }
 
+fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirId) -> (Pat, Pat) {
+    let (start_pat, end_pat) = match kind {
+        FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
+        FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
+        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, &body.value).1),
+    };
+    let start_pat = match tcx.hir().get(hir_id) {
+        Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => {
+            if vis_span.is_empty() {
+                start_pat
+            } else {
+                Pat::Str("pub")
+            }
+        },
+        Node::TraitItem(_) => start_pat,
+        _ => Pat::Str(""),
+    };
+    (start_pat, end_pat)
+}
+
 pub trait WithSearchPat {
     type Context: LintContext;
     fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
@@ -276,6 +296,18 @@ impl_with_search_pat!(LateContext: TraitItem with trait_item_search_pat);
 impl_with_search_pat!(LateContext: ImplItem with impl_item_search_pat);
 impl_with_search_pat!(LateContext: FieldDef with field_def_search_pat);
 impl_with_search_pat!(LateContext: Variant with variant_search_pat);
+
+impl<'cx> WithSearchPat for (&FnKind<'cx>, &Body<'cx>, HirId, Span) {
+    type Context = LateContext<'cx>;
+
+    fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
+        fn_kind_pat(cx.tcx, self.0, self.1, self.2)
+    }
+
+    fn span(&self) -> Span {
+        self.3
+    }
+}
 
 /// Checks if the item likely came from a proc-macro.
 ///
