@@ -22,9 +22,11 @@ Compiling `rustc` is done in stages. Here's a diagram, adapted from Joshua Nelso
 [talk on bootstrapping][rustconf22-talk] at RustConf 2022, with detailed explanations below.
 
 The `A`, `B`, `C`, and `D` show the ordering of the stages of bootstrapping.
-<span style="background-color: lightblue">Blue</span> nodes are downloaded,
-<span style="background-color: yellow">yellow</span> nodes are built with the stage0 compiler, and
-<span style="background-color: lightgreen">green</span> nodes are built with the stage1 compiler.
+<span style="background-color: lightblue; color: black">Blue</span> nodes are downloaded,
+<span style="background-color: yellow; color: black">yellow</span> nodes are built with the
+stage0 compiler, and
+<span style="background-color: lightgreen; color: black">green</span> nodes are built with the
+stage1 compiler.
 
 [rustconf22-talk]: https://rustconf.com/schedule#bootstrapping-the-once-and-future-compiler
 
