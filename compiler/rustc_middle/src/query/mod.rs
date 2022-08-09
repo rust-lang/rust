@@ -1956,6 +1956,14 @@ rustc_queries! {
         }
     }
 
+    query is_impossible_method(key: (DefId, DefId)) -> bool {
+        desc { |tcx|
+            "checking if {} is impossible to call within {}",
+            tcx.def_path_str(key.1),
+            tcx.def_path_str(key.0),
+        }
+    }
+
     query method_autoderef_steps(
         goal: CanonicalTyGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
