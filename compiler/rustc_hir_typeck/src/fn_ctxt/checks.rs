@@ -42,8 +42,8 @@ use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::{
-    BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs, TupleArgumentsFlag, errors,
-    struct_span_code_err,
+    BreakableCtxt, DivergeReason, Diverges, Expectation, FnCtxt, LoweredTy, Needs,
+    TupleArgumentsFlag, errors, struct_span_code_err,
 };
 
 #[derive(Clone, Copy, Default)]
@@ -1761,10 +1761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
         self.check_decl(local.into());
         if local.pat.is_never_pattern() {
-            self.diverges.set(Diverges::Always {
-                span: local.pat.span,
-                custom_note: Some("any code following a never pattern is unreachable"),
-            });
+            self.diverges.set(Diverges::Always(DivergeReason::NeverPattern, local.pat.span));
         }
     }
 

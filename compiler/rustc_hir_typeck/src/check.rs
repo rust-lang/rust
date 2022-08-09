@@ -16,7 +16,7 @@ use tracing::{debug, instrument};
 
 use crate::coercion::CoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
-use crate::{CoroutineTypes, Diverges, FnCtxt};
+use crate::{CoroutineTypes, DivergeReason, Diverges, FnCtxt};
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
@@ -89,10 +89,8 @@ pub(super) fn check_fn<'a, 'tcx>(
         let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
         if param.pat.is_never_pattern() {
-            fcx.function_diverges_because_of_empty_arguments.set(Diverges::Always {
-                span: param.pat.span,
-                custom_note: Some("any code following a never pattern is unreachable"),
-            });
+            fcx.function_diverges_because_of_empty_arguments
+                .set(Diverges::Always(DivergeReason::NeverPattern, param.pat.span));
         }
 
         // Check that argument is Sized.

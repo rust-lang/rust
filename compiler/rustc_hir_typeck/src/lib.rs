@@ -61,7 +61,7 @@ use typeck_root_ctxt::TypeckRootCtxt;
 
 use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
-use crate::diverges::Diverges;
+use crate::diverges::{DivergeReason, Diverges};
 use crate::expectation::Expectation;
 use crate::fn_ctxt::LoweredTy;
 use crate::gather_locals::GatherLocalsVisitor;

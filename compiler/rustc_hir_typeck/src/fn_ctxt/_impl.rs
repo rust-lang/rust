@@ -42,13 +42,15 @@ use tracing::{debug, instrument};
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, rvalue_scopes};
+use crate::{
+    BreakableCtxt, DivergeReason, Diverges, Expectation, FnCtxt, LoweredTy, rvalue_scopes,
+};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
-        let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
+        let Diverges::Always(reason, orig_span) = self.diverges.get() else {
             return;
         };
 
@@ -79,10 +81,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let msg = format!("unreachable {kind}");
         self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
             lint.primary_message(msg.clone());
-            lint.span_label(span, msg).span_label(
-                orig_span,
-                custom_note.unwrap_or("any code following this expression is unreachable"),
-            );
+            let custom_note = match reason {
+                DivergeReason::AllArmsDiverge => {
+                    "any code following this `match` expression is unreachable, as all arms diverge"
+                }
+                DivergeReason::NeverPattern => "any code following a never pattern is unreachable",
+                DivergeReason::Other => "any code following this expression is unreachable",
+            };
+            lint.span_label(span, msg).span_label(orig_span, custom_note);
         })
     }
 
