@@ -90,7 +90,7 @@ pub(crate) fn moniker(
         .descend_into_macros(original_token.clone())
         .into_iter()
         .filter_map(|token| {
-            IdentClass::classify_token(sema, &token).map(IdentClass::definitions).map(|it| {
+            IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops).map(|it| {
                 it.into_iter().flat_map(|def| def_to_moniker(sema.db, def, current_crate))
             })
         })

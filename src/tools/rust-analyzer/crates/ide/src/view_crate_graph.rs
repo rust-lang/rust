@@ -16,7 +16,7 @@ use ide_db::{
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: View Crate Graph**
+// | VS Code | **rust-analyzer: View Crate Graph**
 // |===
 pub(crate) fn view_crate_graph(db: &RootDatabase, full: bool) -> Result<String, String> {
     let crate_graph = db.crate_graph();
