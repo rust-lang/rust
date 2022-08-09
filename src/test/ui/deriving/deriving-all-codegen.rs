@@ -1,6 +1,7 @@
 // check-pass
-// compile-flags: -Zunpretty=expanded
 // edition:2021
+// revisions: check unpretty
+// [unpretty] compile-flags: -Zunpretty=expanded
 //
 // This test checks the code generated for all[*] the builtin derivable traits
 // on a variety of structs and enums. It protects against accidental changes to
@@ -14,34 +15,33 @@
 // also require the `rustc_serialize` crate.
 
 #![crate_type = "lib"]
-#![allow(dead_code)]
-#![allow(deprecated)]
+#![warn(unused)] // test that lints are not triggerred in derived code
 
 // Empty struct.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct Empty;
+pub struct Empty;
 
 // A basic struct.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct Point {
+pub struct Point {
     x: u32,
     y: u32,
 }
 
 // A large struct.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct Big {
+pub struct Big {
     b1: u32, b2: u32, b3: u32, b4: u32, b5: u32, b6: u32, b7: u32, b8: u32,
 }
 
 // A struct with an unsized field. Some derives are not usable in this case.
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-struct Unsized([u32]);
+pub struct Unsized([u32]);
 
 // A packed tuple struct that impls `Copy`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(packed)]
-struct PackedCopy(u32);
+pub struct PackedCopy(u32);
 
 // A packed tuple struct that does not impl `Copy`. Note that the alignment of
 // the field must be 1 for this code to be valid. Otherwise it triggers an
@@ -50,28 +50,28 @@ struct PackedCopy(u32);
 // it's possible that this struct is not supposed to work, but for now it does.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(packed)]
-struct PackedNonCopy(u8);
+pub struct PackedNonCopy(u8);
 
 // An empty enum.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Enum0 {}
+pub enum Enum0 {}
 
 // A single-variant enum.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Enum1 {
+pub enum Enum1 {
     Single { x: u32 }
 }
 
 // A C-like, fieldless enum with a single variant.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Fieldless1 {
+pub enum Fieldless1 {
     #[default]
     A,
 }
 
 // A C-like, fieldless enum.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Fieldless {
+pub enum Fieldless {
     #[default]
     A,
     B,
@@ -80,7 +80,7 @@ enum Fieldless {
 
 // An enum with multiple fieldless and fielded variants.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Mixed {
+pub enum Mixed {
     #[default]
     P,
     Q,
@@ -91,7 +91,7 @@ enum Mixed {
 // An enum with no fieldless variants. Note that `Default` cannot be derived
 // for this enum.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Fielded {
+pub enum Fielded {
     X(u32),
     Y(bool),
     Z(Option<i32>),
@@ -103,4 +103,21 @@ pub union Union {
     pub b: bool,
     pub u: u32,
     pub i: i32,
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Void {}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct WithUninhabited {
+    x: u32,
+    v: Void,
+    y: u32,
+}
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EnumWithUninhabited {
+    A(u32),
+    B(Void),
+    C(u16),
 }

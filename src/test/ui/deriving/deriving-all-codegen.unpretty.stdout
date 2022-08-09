@@ -1,7 +1,8 @@
 #![feature(prelude_import)]
 // check-pass
-// compile-flags: -Zunpretty=expanded
 // edition:2021
+// revisions: check unpretty
+// [unpretty] compile-flags: -Zunpretty=expanded
 //
 // This test checks the code generated for all[*] the builtin derivable traits
 // on a variety of structs and enums. It protects against accidental changes to
@@ -15,15 +16,15 @@
 // also require the `rustc_serialize` crate.
 
 #![crate_type = "lib"]
-#![allow(dead_code)]
-#![allow(deprecated)]
+#![warn(unused)]
 #[prelude_import]
 use std::prelude::rust_2021::*;
 #[macro_use]
 extern crate std;
+// test that lints are not triggerred in derived code
 
 // Empty struct.
-struct Empty;
+pub struct Empty;
 #[automatically_derived]
 impl ::core::clone::Clone for Empty {
     #[inline]
@@ -79,7 +80,7 @@ impl ::core::cmp::Ord for Empty {
 }
 
 // A basic struct.
-struct Point {
+pub struct Point {
     x: u32,
     y: u32,
 }
@@ -162,7 +163,7 @@ impl ::core::cmp::Ord for Point {
 }
 
 // A large struct.
-struct Big {
+pub struct Big {
     b1: u32,
     b2: u32,
     b3: u32,
@@ -337,7 +338,7 @@ impl ::core::cmp::Ord for Big {
 }
 
 // A struct with an unsized field. Some derives are not usable in this case.
-struct Unsized([u32]);
+pub struct Unsized([u32]);
 #[automatically_derived]
 impl ::core::fmt::Debug for Unsized {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
@@ -387,7 +388,7 @@ impl ::core::cmp::Ord for Unsized {
 
 // A packed tuple struct that impls `Copy`.
 #[repr(packed)]
-struct PackedCopy(u32);
+pub struct PackedCopy(u32);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedCopy {
     #[inline]
@@ -458,7 +459,7 @@ impl ::core::cmp::Ord for PackedCopy {
 // derive Copy (error E0133)" at MIR building time. This is a weird case and
 // it's possible that this struct is not supposed to work, but for now it does.
 #[repr(packed)]
-struct PackedNonCopy(u8);
+pub struct PackedNonCopy(u8);
 #[automatically_derived]
 impl ::core::clone::Clone for PackedNonCopy {
     #[inline]
@@ -532,7 +533,7 @@ impl ::core::cmp::Ord for PackedNonCopy {
 }
 
 // An empty enum.
-enum Enum0 {}
+pub enum Enum0 {}
 #[automatically_derived]
 impl ::core::clone::Clone for Enum0 {
     #[inline]
@@ -587,7 +588,7 @@ impl ::core::cmp::Ord for Enum0 {
 }
 
 // A single-variant enum.
-enum Enum1 {
+pub enum Enum1 {
     Single {
         x: u32,
     },
@@ -667,7 +668,7 @@ impl ::core::cmp::Ord for Enum1 {
 }
 
 // A C-like, fieldless enum with a single variant.
-enum Fieldless1 {
+pub enum Fieldless1 {
 
     #[default]
     A,
@@ -725,7 +726,7 @@ impl ::core::cmp::Ord for Fieldless1 {
 }
 
 // A C-like, fieldless enum.
-enum Fieldless {
+pub enum Fieldless {
 
     #[default]
     A,
@@ -802,7 +803,7 @@ impl ::core::cmp::Ord for Fieldless {
 }
 
 // An enum with multiple fieldless and fielded variants.
-enum Mixed {
+pub enum Mixed {
 
     #[default]
     P,
@@ -946,7 +947,7 @@ impl ::core::cmp::Ord for Mixed {
 
 // An enum with no fieldless variants. Note that `Default` cannot be derived
 // for this enum.
-enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
+pub enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
 #[automatically_derived]
 impl ::core::clone::Clone for Fielded {
     #[inline]
@@ -1082,3 +1083,263 @@ impl ::core::clone::Clone for Union {
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Union { }
+
+pub enum Void {}
+#[automatically_derived]
+impl ::core::clone::Clone for Void {
+    #[inline]
+    fn clone(&self) -> Void { *self }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Void { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Void {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Void {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+impl ::core::marker::StructuralPartialEq for Void {}
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Void {
+    #[inline]
+    fn eq(&self, other: &Void) -> bool {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+impl ::core::marker::StructuralEq for Void {}
+#[automatically_derived]
+impl ::core::cmp::Eq for Void {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Void {
+    #[inline]
+    fn partial_cmp(&self, other: &Void)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Void {
+    #[inline]
+    fn cmp(&self, other: &Void) -> ::core::cmp::Ordering {
+        unsafe { ::core::intrinsics::unreachable() }
+    }
+}
+
+pub struct WithUninhabited {
+    x: u32,
+    v: Void,
+    y: u32,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for WithUninhabited {
+    #[inline]
+    fn clone(&self) -> WithUninhabited {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<Void>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for WithUninhabited { }
+#[automatically_derived]
+impl ::core::fmt::Debug for WithUninhabited {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_struct_field3_finish(f,
+            "WithUninhabited", "x", &&self.x, "v", &&self.v, "y", &&self.y)
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for WithUninhabited {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.x, state);
+        ::core::hash::Hash::hash(&self.v, state);
+        ::core::hash::Hash::hash(&self.y, state)
+    }
+}
+impl ::core::marker::StructuralPartialEq for WithUninhabited {}
+#[automatically_derived]
+impl ::core::cmp::PartialEq for WithUninhabited {
+    #[inline]
+    fn eq(&self, other: &WithUninhabited) -> bool {
+        self.x == other.x && self.v == other.v && self.y == other.y
+    }
+}
+impl ::core::marker::StructuralEq for WithUninhabited {}
+#[automatically_derived]
+impl ::core::cmp::Eq for WithUninhabited {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<Void>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for WithUninhabited {
+    #[inline]
+    fn partial_cmp(&self, other: &WithUninhabited)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&self.x, &other.x) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&self.v, &other.v)
+                    {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        => ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y),
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for WithUninhabited {
+    #[inline]
+    fn cmp(&self, other: &WithUninhabited) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&self.x, &other.x) {
+            ::core::cmp::Ordering::Equal =>
+                match ::core::cmp::Ord::cmp(&self.v, &other.v) {
+                    ::core::cmp::Ordering::Equal =>
+                        ::core::cmp::Ord::cmp(&self.y, &other.y),
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+pub enum EnumWithUninhabited { A(u32), B(Void), C(u16), }
+#[automatically_derived]
+impl ::core::clone::Clone for EnumWithUninhabited {
+    #[inline]
+    fn clone(&self) -> EnumWithUninhabited {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<Void>;
+        let _: ::core::clone::AssertParamIsClone<u16>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for EnumWithUninhabited { }
+#[automatically_derived]
+impl ::core::fmt::Debug for EnumWithUninhabited {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self {
+            EnumWithUninhabited::A(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "A",
+                    &__self_0),
+            EnumWithUninhabited::B(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "B",
+                    &__self_0),
+            EnumWithUninhabited::C(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "C",
+                    &__self_0),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for EnumWithUninhabited {
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_tag, state);
+        match self {
+            EnumWithUninhabited::A(__self_0) =>
+                ::core::hash::Hash::hash(__self_0, state),
+            EnumWithUninhabited::B(__self_0) =>
+                ::core::hash::Hash::hash(__self_0, state),
+            EnumWithUninhabited::C(__self_0) =>
+                ::core::hash::Hash::hash(__self_0, state),
+        }
+    }
+}
+impl ::core::marker::StructuralPartialEq for EnumWithUninhabited {}
+#[automatically_derived]
+impl ::core::cmp::PartialEq for EnumWithUninhabited {
+    #[inline]
+    fn eq(&self, other: &EnumWithUninhabited) -> bool {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        __self_tag == __arg1_tag &&
+            match (self, other) {
+                (EnumWithUninhabited::A(__self_0),
+                    EnumWithUninhabited::A(__arg1_0)) => *__self_0 == *__arg1_0,
+                (EnumWithUninhabited::B(__self_0),
+                    EnumWithUninhabited::B(__arg1_0)) => *__self_0 == *__arg1_0,
+                (EnumWithUninhabited::C(__self_0),
+                    EnumWithUninhabited::C(__arg1_0)) => *__self_0 == *__arg1_0,
+                _ => unsafe { ::core::intrinsics::unreachable() }
+            }
+    }
+}
+impl ::core::marker::StructuralEq for EnumWithUninhabited {}
+#[automatically_derived]
+impl ::core::cmp::Eq for EnumWithUninhabited {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<Void>;
+        let _: ::core::cmp::AssertParamIsEq<u16>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for EnumWithUninhabited {
+    #[inline]
+    fn partial_cmp(&self, other: &EnumWithUninhabited)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::PartialOrd::partial_cmp(&__self_tag, &__arg1_tag) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match (self, other) {
+                    (EnumWithUninhabited::A(__self_0),
+                        EnumWithUninhabited::A(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (EnumWithUninhabited::B(__self_0),
+                        EnumWithUninhabited::B(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    (EnumWithUninhabited::C(__self_0),
+                        EnumWithUninhabited::C(__arg1_0)) =>
+                        ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                },
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for EnumWithUninhabited {
+    #[inline]
+    fn cmp(&self, other: &EnumWithUninhabited) -> ::core::cmp::Ordering {
+        let __self_tag = ::core::intrinsics::discriminant_value(self);
+        let __arg1_tag = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::Ord::cmp(&__self_tag, &__arg1_tag) {
+            ::core::cmp::Ordering::Equal =>
+                match (self, other) {
+                    (EnumWithUninhabited::A(__self_0),
+                        EnumWithUninhabited::A(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (EnumWithUninhabited::B(__self_0),
+                        EnumWithUninhabited::B(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (EnumWithUninhabited::C(__self_0),
+                        EnumWithUninhabited::C(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                },
+            cmp => cmp,
+        }
+    }
+}
