@@ -2904,12 +2904,25 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults const &TR,
         }
         continue;
       }
-      if (UA != UseActivity::AllStores && ConstantInstructions.count(I) &&
-          (I->getType()->isVoidTy() || I->getType()->isTokenTy() ||
-           ConstantValues.count(I))) {
-        if (EnzymePrintActivity) {
-          llvm::errs() << "Value found constant inst use:" << *val << " user "
-                       << *I << "\n";
+      if (UA != UseActivity::AllStores && ConstantInstructions.count(I)) {
+        if (I->getType()->isVoidTy() || I->getType()->isTokenTy() ||
+            ConstantValues.count(I)) {
+          if (EnzymePrintActivity) {
+            llvm::errs() << "Value found constant inst use:" << *val << " user "
+                         << *I << "\n";
+          }
+          continue;
+        }
+        UseActivity NU = UA;
+        if (UA == UseActivity::OnlyLoads || UA == UseActivity::OnlyStores ||
+            UA == UseActivity::OnlyNonPointerStores) {
+          if (!isa<PHINode>(I) && !isa<CastInst>(I) &&
+              !isa<GetElementPtrInst>(I) && !isa<BinaryOperator>(I))
+            NU = UseActivity::None;
+        }
+
+        for (auto u : I->users()) {
+          todo.push_back(std::make_tuple(u, (Value *)I, NU));
         }
         continue;
       }
