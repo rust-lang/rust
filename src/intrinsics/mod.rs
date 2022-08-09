@@ -44,7 +44,7 @@ fn report_atomic_type_validation_error<'tcx>(
         ),
     );
     // Prevent verifier error
-    crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
+    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
@@ -849,8 +849,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
                         crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
-                        let ret_block = fx.get_block(destination.unwrap());
-                        fx.bcx.ins().jump(ret_block, &[]);
                         return;
                     } else {
                         fx.tcx
@@ -882,8 +880,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
                         // special case for compiler-builtins to avoid having to patch it
                         crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
-                        let ret_block = fx.get_block(destination.unwrap());
-                        fx.bcx.ins().jump(ret_block, &[]);
                         return;
                     } else {
                         fx.tcx

@@ -90,7 +90,8 @@ pub(crate) fn codegen_fn<'tcx>(
     if !crate::constant::check_constants(&mut fx) {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        crate::trap::trap_unreachable(&mut fx, "compilation should have been aborted");
+        // compilation should have been aborted
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
     } else if arg_uninhabited {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
@@ -457,17 +458,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                     template,
                     operands,
                     *options,
+                    *destination,
                 );
-
-                match *destination {
-                    Some(destination) => {
-                        let destination_block = fx.get_block(destination);
-                        fx.bcx.ins().jump(destination_block, &[]);
-                    }
-                    None => {
-                        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-                    }
-                }
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
                 // FIXME implement unwinding
@@ -711,9 +703,7 @@ fn codegen_stmt<'tcx>(
                 Rvalue::Discriminant(place) => {
                     let place = codegen_place(fx, place);
                     let value = place.to_cvalue(fx);
-                    let discr =
-                        crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
-                    lval.write_cvalue(fx, discr);
+                    crate::discriminant::codegen_get_discriminant(fx, lval, value, dest_layout);
                 }
                 Rvalue::Repeat(ref operand, times) => {
                     let operand = codegen_operand(fx, operand);

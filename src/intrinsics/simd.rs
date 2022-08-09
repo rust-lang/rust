@@ -14,7 +14,7 @@ fn report_simd_type_validation_error(
 ) {
     fx.tcx.sess.span_err(span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", intrinsic, ty));
     // Prevent verifier error
-    crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
+    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
@@ -157,7 +157,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                             ),
                         );
                         // Prevent verifier error
-                        crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
+                        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
                         return;
                     }
                 }
@@ -274,12 +274,17 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 idx_const
             } else {
                 fx.tcx.sess.span_warn(span, "Index argument for `simd_extract` is not a constant");
-                let res = crate::trap::trap_unimplemented_ret_value(
+                let trap_block = fx.bcx.create_block();
+                let dummy_block = fx.bcx.create_block();
+                let true_ = fx.bcx.ins().iconst(types::I8, 1);
+                fx.bcx.ins().brnz(true_, trap_block, &[]);
+                fx.bcx.ins().jump(dummy_block, &[]);
+                fx.bcx.switch_to_block(trap_block);
+                crate::trap::trap_unimplemented(
                     fx,
-                    ret.layout(),
                     "Index argument for `simd_extract` is not a constant",
                 );
-                ret.write_cvalue(fx, res);
+                fx.bcx.switch_to_block(dummy_block);
                 return;
             };
 

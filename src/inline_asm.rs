@@ -15,13 +15,13 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     template: &[InlineAsmTemplatePiece],
     operands: &[InlineAsmOperand<'tcx>],
     options: InlineAsmOptions,
+    destination: Option<mir::BasicBlock>,
 ) {
     // FIXME add .eh_frame unwind info directives
 
     if !template.is_empty() {
         if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
-            let true_ = fx.bcx.ins().iconst(types::I32, 1);
-            fx.bcx.ins().trapnz(true_, TrapCode::User(1));
+            fx.bcx.ins().trap(TrapCode::User(1));
             return;
         } else if template[0] == InlineAsmTemplatePiece::String("movq %rbx, ".to_string())
             && matches!(
@@ -101,12 +101,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
             ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
             edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
             return;
         } else if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") {
             // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
             crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
+            return;
         } else if fx.tcx.symbol_name(fx.instance).name == "__alloca" {
             crate::trap::trap_unimplemented(fx, "Alloca is not supported");
+            return;
         }
     }
 
@@ -175,6 +179,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     }
 
     call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
+
+    match destination {
+        Some(destination) => {
+            let destination_block = fx.get_block(destination);
+            fx.bcx.ins().jump(destination_block, &[]);
+        }
+        None => {
+            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        }
+    }
 }
 
 struct InlineAssemblyGenerator<'a, 'tcx> {
