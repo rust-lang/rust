@@ -18,7 +18,25 @@ rustc, then uses it to compile the new compiler.
 
 ## Stages of bootstrapping
 
-Compiling `rustc` is done in stages.
+Compiling `rustc` is done in stages. Here's a diagram, adapted from Joshua Nelson's
+[talk on bootstrapping][rustconf22-talk] at RustConf 2022, with detailed explanations below.
+The `A`, `B`, `C`, and `D` show the ordering of the stages of bootstrapping.
+
+[rustconf22-talk]: https://rustconf.com/schedule#bootstrapping-the-once-and-future-compiler
+
+```mermaid
+graph TD
+    s0c["stage0 compiler (1.63)"] -->|A| s0l("stage0 std (1.64)");
+    s0c & s0l --- stepb[ ]:::empty;
+    stepb -->|B| s0ca["stage0 compiler artifacts (1.64)"];
+    s0ca -->|copy| s1c["stage1 compiler (1.64)"];
+    s1c -->|C| s1l("stage1 std (1.64)");
+    s1c & s1l --- stepd[ ]:::empty;
+    stepd -->|D| s1ca["stage1 compiler artifacts (1.64)"];
+    s1ca -->|copy| s2c["stage2 compiler"];
+
+    classDef empty width:0px,height:0px;
+```
 
 ### Stage 0
 
