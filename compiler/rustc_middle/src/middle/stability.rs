@@ -5,7 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::NodeId;
-use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
+use rustc_attr::{self as attr, ConstStability, DefaultBodyStability, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
@@ -61,6 +61,7 @@ pub struct Index {
     /// are filled by the annotator.
     pub stab_map: FxHashMap<LocalDefId, Stability>,
     pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
+    pub default_body_stab_map: FxHashMap<LocalDefId, DefaultBodyStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
@@ -84,6 +85,10 @@ impl Index {
 
     pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
         self.const_stab_map.get(&def_id).copied()
+    }
+
+    pub fn local_default_body_stability(&self, def_id: LocalDefId) -> Option<DefaultBodyStability> {
+        self.default_body_stab_map.get(&def_id).copied()
     }
 
     pub fn local_deprecation_entry(&self, def_id: LocalDefId) -> Option<DeprecationEntry> {
@@ -416,18 +421,18 @@ impl<'tcx> TyCtxt<'tcx> {
             return EvalResult::Allow;
         }
 
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !def_id.is_local();
+        if !cross_crate {
+            return EvalResult::Allow;
+        }
+
         let stability = self.lookup_stability(def_id);
         debug!(
             "stability: \
                 inspecting def_id={:?} span={:?} of stability={:?}",
             def_id, span, stability
         );
-
-        // Only the cross-crate scenario matters when checking unstable APIs
-        let cross_crate = !def_id.is_local();
-        if !cross_crate {
-            return EvalResult::Allow;
-        }
 
         // Issue #38412: private items lack stability markers.
         if skip_stability_check_due_to_privacy(self, def_id) {
@@ -486,6 +491,62 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by the lint emitting logic above.
+                EvalResult::Allow
+            }
+            None => EvalResult::Unmarked,
+        }
+    }
+
+    /// Evaluates the default-impl stability of an item.
+    ///
+    /// Returns `EvalResult::Allow` if the item's default implementation is stable, or unstable but the corresponding
+    /// `#![feature]` has been provided. Returns `EvalResult::Deny` which describes the offending
+    /// unstable feature otherwise.
+    pub fn eval_default_body_stability(self, def_id: DefId, span: Span) -> EvalResult {
+        let is_staged_api = self.lookup_stability(def_id.krate.as_def_id()).is_some();
+        if !is_staged_api {
+            return EvalResult::Allow;
+        }
+
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !def_id.is_local();
+        if !cross_crate {
+            return EvalResult::Allow;
+        }
+
+        let stability = self.lookup_default_body_stability(def_id);
+        debug!(
+            "body stability: inspecting def_id={def_id:?} span={span:?} of stability={stability:?}"
+        );
+
+        // Issue #38412: private items lack stability markers.
+        if skip_stability_check_due_to_privacy(self, def_id) {
+            return EvalResult::Allow;
+        }
+
+        match stability {
+            Some(DefaultBodyStability {
+                level: attr::Unstable { reason, issue, is_soft, .. },
+                feature,
+            }) => {
+                if span.allows_unstable(feature) {
+                    debug!("body stability: skipping span={:?} since it is internal", span);
+                    return EvalResult::Allow;
+                }
+                if self.features().active(feature) {
+                    return EvalResult::Allow;
+                }
+
+                EvalResult::Deny {
+                    feature,
+                    reason: reason.to_opt_reason(),
+                    issue,
+                    suggestion: None,
+                    is_soft,
+                }
+            }
+            Some(_) => {
+                // Stable APIs are always ok to call
                 EvalResult::Allow
             }
             None => EvalResult::Unmarked,

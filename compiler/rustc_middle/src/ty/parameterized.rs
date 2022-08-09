@@ -64,6 +64,7 @@ trivially_parameterized_over_tcx! {
     rustc_ast::Attribute,
     rustc_ast::MacArgs,
     rustc_attr::ConstStability,
+    rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,
     rustc_attr::Stability,
     rustc_hir::Constness,

@@ -1,8 +1,9 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use attr::StabilityLevel;
-use rustc_attr::{self as attr, ConstStability, Stability, Unstable, UnstableReason};
+use rustc_attr::{
+    self as attr, ConstStability, Stability, StabilityLevel, Unstable, UnstableReason,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -161,7 +162,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             return;
         }
 
-        let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
+        let (stab, const_stab, body_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {
@@ -207,6 +208,13 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 )
                 .emit();
             }
+        }
+
+        if let Some((body_stab, _span)) = body_stab {
+            // FIXME: check that this item can have body stability
+
+            self.index.default_body_stab_map.insert(def_id, body_stab);
+            debug!(?self.index.default_body_stab_map);
         }
 
         let stab = stab.map(|(stab, span)| {
@@ -613,6 +621,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let mut index = Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
+        default_body_stab_map: Default::default(),
         depr_map: Default::default(),
         implications: Default::default(),
     };
@@ -673,6 +682,9 @@ pub(crate) fn provide(providers: &mut Providers) {
         stability_implications: |tcx, _| tcx.stability().implications.clone(),
         lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
+        lookup_default_body_stability: |tcx, id| {
+            tcx.stability().local_default_body_stability(id.expect_local())
+        },
         lookup_deprecation_entry: |tcx, id| {
             tcx.stability().local_deprecation_entry(id.expect_local())
         },
@@ -723,7 +735,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 let features = self.tcx.features();
                 if features.staged_api {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
-                    let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item.span);
+                    let (stab, const_stab, _) =
+                        attr::find_stability(&self.tcx.sess, attrs, item.span);
 
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

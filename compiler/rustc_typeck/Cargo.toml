@@ -30,3 +30,4 @@ rustc_ty_utils = { path = "../rustc_ty_utils" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_type_ir = { path = "../rustc_type_ir" }
+rustc_feature = { path = "../rustc_feature" }
