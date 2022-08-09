@@ -256,16 +256,18 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
         FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, &body.value).1),
     };
-    let vis_span = match tcx.hir().get(hir_id) {
-        Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => Some(vis_span),
-        Node::TraitItem(_) => None,
-        _ => unreachable!(),
+    let start_pat = match tcx.hir().get(hir_id) {
+        Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => {
+            if vis_span.is_empty() {
+                start_pat
+            } else {
+                Pat::Str("pub")
+            }
+        },
+        Node::TraitItem(_) => start_pat,
+        _ => Pat::Str(""),
     };
-    if matches!(vis_span, Some(span) if span.is_empty()) {
-        (start_pat, end_pat)
-    } else {
-        (Pat::Str("pub"), end_pat)
-    }
+    (start_pat, end_pat)
 }
 
 pub trait WithSearchPat {
