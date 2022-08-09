@@ -594,6 +594,29 @@ impl<'tcx> Predicate<'tcx> {
         }
         self
     }
+
+    /// Whether this projection can be soundly normalized.
+    ///
+    /// Wf predicates must not be normalized, as normalization
+    /// can remove required bounds which would cause us to
+    /// unsoundly accept some programs. See #91068.
+    #[inline]
+    pub fn allow_normalization(self) -> bool {
+        match self.kind().skip_binder() {
+            PredicateKind::WellFormed(_) => false,
+            PredicateKind::Trait(_)
+            | PredicateKind::RegionOutlives(_)
+            | PredicateKind::TypeOutlives(_)
+            | PredicateKind::Projection(_)
+            | PredicateKind::ObjectSafe(_)
+            | PredicateKind::ClosureKind(_, _, _)
+            | PredicateKind::Subtype(_)
+            | PredicateKind::Coerce(_)
+            | PredicateKind::ConstEvaluatable(_)
+            | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::TypeWellFormedFromEnv(_) => true,
+        }
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {

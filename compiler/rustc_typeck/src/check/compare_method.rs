@@ -264,8 +264,13 @@ fn compare_predicate_entailment<'tcx>(
 
         let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
+        // Next, add all inputs and output as well-formed tys. Importantly,
+        // we have to do this before normalization, since the normalized ty may
+        // not contain the input parameters. See issue #87748.
+        wf_tys.extend(trait_sig.inputs_and_output.iter());
         let trait_sig = ocx.normalize(norm_cause, param_env, trait_sig);
-        // Add the resulting inputs and output as well-formed.
+        // We also have to add the normalized trait signature
+        // as we don't normalize during implied bounds computation.
         wf_tys.extend(trait_sig.inputs_and_output.iter());
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::dummy(trait_sig));
 

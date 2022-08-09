@@ -351,4 +351,16 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             mir::ConstantKind::Val(_, _) => constant.try_super_fold_with(self)?,
         })
     }
+
+    #[inline]
+    fn try_fold_predicate(
+        &mut self,
+        p: ty::Predicate<'tcx>,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+        if p.allow_normalization() && needs_normalization(&p, self.param_env.reveal()) {
+            p.try_super_fold_with(self)
+        } else {
+            Ok(p)
+        }
+    }
 }

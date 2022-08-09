@@ -619,6 +619,15 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             constant.eval(self.selcx.tcx(), self.param_env)
         }
     }
+
+    #[inline]
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if p.allow_normalization() && needs_normalization(&p, self.param_env.reveal()) {
+            p.super_fold_with(self)
+        } else {
+            p
+        }
+    }
 }
 
 pub struct BoundVarReplacer<'me, 'tcx> {
