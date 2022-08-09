@@ -115,6 +115,32 @@ fn foo() {
     }
 
     #[test]
+    fn test_completion_await_impls_into_future() {
+        check(
+            r#"
+//- minicore: future
+use core::future::*;
+struct A {}
+impl IntoFuture for A {}
+fn foo(a: A) { a.$0 }
+"#,
+            expect![[r#"
+                kw await                  expr.await
+                me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
+                sn box                    Box::new(expr)
+                sn call                   function(expr)
+                sn dbg                    dbg!(expr)
+                sn dbgr                   dbg!(&expr)
+                sn let                    let
+                sn letm                   let mut
+                sn match                  match expr {}
+                sn ref                    &expr
+                sn refm                   &mut expr
+            "#]],
+        );
+    }
+
+    #[test]
     fn let_semi() {
         cov_mark::check!(let_semi);
         check_edit(
