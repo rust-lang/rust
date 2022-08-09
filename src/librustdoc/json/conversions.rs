@@ -685,24 +685,18 @@ impl FromWithTcx<clean::Variant> for Variant {
 impl FromWithTcx<clean::Import> for Import {
     fn from_tcx(import: clean::Import, tcx: TyCtxt<'_>) -> Self {
         use clean::ImportKind::*;
-        match import.kind {
-            Simple(s) => Import {
-                source: import.source.path.whole_name(),
-                name: s.to_string(),
-                id: import.source.did.map(ItemId::from).map(|i| from_item_id(i, tcx)),
-                glob: false,
-            },
-            Glob => Import {
-                source: import.source.path.whole_name(),
-                name: import
-                    .source
-                    .path
-                    .last_opt()
-                    .unwrap_or_else(|| Symbol::intern("*"))
-                    .to_string(),
-                id: import.source.did.map(ItemId::from).map(|i| from_item_id(i, tcx)),
-                glob: true,
-            },
+        let (name, glob) = match import.kind {
+            Simple(s) => (s.to_string(), false),
+            Glob => (
+                import.source.path.last_opt().unwrap_or_else(|| Symbol::intern("*")).to_string(),
+                true,
+            ),
+        };
+        Import {
+            source: import.source.path.whole_name(),
+            name,
+            id: import.source.did.map(ItemId::from).map(|i| from_item_id(i, tcx)),
+            glob,
         }
     }
 }
