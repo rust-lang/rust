@@ -1916,8 +1916,9 @@ impl<'a> Resolver<'a> {
             }
             PathResult::Module(ModuleOrUniformRoot::ExternPrelude)
             | PathResult::NonModule(..)
-            | PathResult::Failed { .. } => None,
-            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
+            | PathResult::Failed { .. }
+            | PathResult::Indeterminate => None,
+            PathResult::Module(..) => unreachable!(),
         }
     }
 
