@@ -150,7 +150,7 @@ fn main() {
              up-to-date. Each date should be updated (in the Markdown file where it appears) to \
              use the current month ({current_month}), or removed if the docs it annotates are not \
              expected to fall out of date quickly.",
-            current_month = current_month
+            current_month = today_chrono.format("%B %Y"),
         );
         println!();
         println!(
