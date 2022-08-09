@@ -476,7 +476,7 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
     }
     if (!isa<StructType>(GV->getValueType()) ||
         !cast<StructType>(GV->getValueType())->isOpaque()) {
-      auto globalSize = DL.getTypeSizeInBits(GV->getValueType()) / 8;
+      auto globalSize = (DL.getTypeSizeInBits(GV->getValueType()) + 7) / 8;
       // Since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any
       // Single byte object must be integral
       if (globalSize == 1) {
@@ -679,7 +679,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
 
     if (auto GV = dyn_cast<GlobalVariable>(Val)) {
       if (GV->getValueType()->isSized()) {
-        auto Size = DL.getTypeSizeInBits(GV->getValueType()) / 8;
+        auto Size = (DL.getTypeSizeInBits(GV->getValueType()) + 7) / 8;
         Data = analysis[Val].Lookup(Size, DL).Only(-1);
         Data.insert({-1}, BaseType::Pointer);
         analysis[Val] = Data;
@@ -1390,6 +1390,14 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
       updateAnalysis(&gep, TypeTree(BaseType::Integer).Only(-1), &gep);
       return;
     }
+  }
+
+  if (gep.indices().begin() == gep.indices().end()) {
+    if (direction & DOWN)
+      updateAnalysis(&gep, getAnalysis(gep.getPointerOperand()), &gep);
+    if (direction & UP)
+      updateAnalysis(gep.getPointerOperand(), getAnalysis(&gep), &gep);
+    return;
   }
 
   auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
