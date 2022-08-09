@@ -183,6 +183,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     type MemoryKind = !;
 
+    #[inline(always)]
+    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        // We do not check for alignment to avoid having to carry an `Align`
+        // in `ConstValue::ByRef`.
+        false
+    }
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        false // for now, we don't enforce validity
+    }
+
     fn load_mir(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _instance: ty::InstanceDef<'tcx>,
