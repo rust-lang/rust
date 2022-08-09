@@ -51,8 +51,14 @@ pub(super) fn mangle<'tcx>(
     // Erase regions because they may not be deterministic when hashed
     // and should not matter anyhow.
     let instance_ty = tcx.erase_regions(instance_ty);
+    // Also normalize the instance's substs, because we want to make
+    // sure that  we're fully evaluating any unevaluated consts that
+    // leak into this mangled name.
+    // FIXME(compiler-errors): Ideally, like the equivalent call in the
+    // v1 mangling shceme, this should not be needed.
+    let substs = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs);
 
-    let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
+    let hash = get_symbol_hash(tcx, instance.def, substs, instance_ty, instantiating_crate);
 
     let mut printer = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false };
     printer
@@ -60,7 +66,7 @@ pub(super) fn mangle<'tcx>(
             def_id,
             if let ty::InstanceDef::DropGlue(_, _) = instance.def {
                 // Add the name of the dropped type to the symbol name
-                &*instance.substs
+                &*substs
             } else {
                 &[]
             },
@@ -82,7 +88,8 @@ fn get_symbol_hash<'tcx>(
     tcx: TyCtxt<'tcx>,
 
     // instance this name will be for
-    instance: Instance<'tcx>,
+    instance: ty::InstanceDef<'tcx>,
+    substs: ty::SubstsRef<'tcx>,
 
     // type of the item, without any generic
     // parameters substituted; this is
@@ -93,7 +100,6 @@ fn get_symbol_hash<'tcx>(
     instantiating_crate: Option<CrateNum>,
 ) -> u64 {
     let def_id = instance.def_id();
-    let substs = instance.substs;
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
     tcx.with_stable_hashing_context(|mut hcx| {
@@ -131,7 +137,7 @@ fn get_symbol_hash<'tcx>(
                 // We want to avoid accidental collision between different types of instances.
                 // Especially, `VTableShim`s and `ReifyShim`s may overlap with their original
                 // instances without this.
-                discriminant(&instance.def).hash_stable(hcx, &mut hasher);
+                discriminant(&instance).hash_stable(hcx, &mut hasher);
             });
         });
 
