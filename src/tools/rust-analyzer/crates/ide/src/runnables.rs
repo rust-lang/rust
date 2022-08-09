@@ -116,7 +116,7 @@ impl Runnable {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Run**
+// | VS Code | **rust-analyzer: Run**
 // |===
 // image::https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif[]
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
@@ -202,7 +202,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Rust Analyzer: Peek related tests**
+// | VS Code | **rust-analyzer: Peek related tests**
 // |===
 pub(crate) fn related_tests(
     db: &RootDatabase,
@@ -373,11 +373,13 @@ pub(crate) fn runnable_impl(
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.type_arguments().peekable();
     let params = if ty_args.peek().is_some() {
-        format!("<{}>", ty_args.format_with(", ", |ty, cb| cb(&ty.display(sema.db))))
+        format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty.display(sema.db))))
     } else {
         String::new()
     };
-    let test_id = TestId::Path(format!("{}{}", adt_name, params));
+    let mut test_id = format!("{}{}", adt_name, params);
+    test_id.retain(|c| c != ' ');
+    let test_id = TestId::Path(test_id);
 
     Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::DocTest { test_id }, cfg })
 }
@@ -441,10 +443,11 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                         format_to!(
                             path,
                             "<{}>",
-                            ty_args.format_with(", ", |ty, cb| cb(&ty.display(db)))
+                            ty_args.format_with(",", |ty, cb| cb(&ty.display(db)))
                         );
                     }
                     format_to!(path, "::{}", def_name);
+                    path.retain(|c| c != ' ');
                     return Some(path);
                 }
             }
@@ -2067,13 +2070,23 @@ mod tests {
 $0
 struct Foo<T, U>;
 
+/// ```
+/// ```
 impl<T, U> Foo<T, U> {
     /// ```rust
     /// ````
     fn t() {}
 }
+
+/// ```
+/// ```
+impl Foo<Foo<(), ()>, ()> {
+    /// ```
+    /// ```
+    fn t() {}
+}
 "#,
-            &[DocTest],
+            &[DocTest, DocTest, DocTest, DocTest],
             expect![[r#"
                 [
                     Runnable {
@@ -2082,12 +2095,64 @@ impl<T, U> Foo<T, U> {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 47..85,
+                            full_range: 20..103,
+                            focus_range: 47..56,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<T,U>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 63..101,
                             name: "t",
                         },
                         kind: DocTest {
                             test_id: Path(
-                                "Foo<T, U>::t",
+                                "Foo<T,U>::t",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 105..188,
+                            focus_range: 126..146,
+                            name: "impl",
+                            kind: Impl,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<Foo<(),()>,()>",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 153..186,
+                            name: "t",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<Foo<(),()>,()>::t",
                             ),
                         },
                         cfg: None,

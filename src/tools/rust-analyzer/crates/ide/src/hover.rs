@@ -9,7 +9,7 @@ use either::Either;
 use hir::{HasSource, Semantics};
 use ide_db::{
     base_db::FileRange,
-    defs::{Definition, IdentClass},
+    defs::{Definition, IdentClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
     FxIndexSet, RootDatabase,
@@ -101,7 +101,10 @@ pub(crate) fn hover(
     let offset = range.start();
 
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
-        IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self] => 3,
+        IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self] => 4,
+        // index and prefix ops
+        T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
+        kind if kind.is_keyword() => 2,
         T!['('] | T![')'] => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
@@ -136,6 +139,11 @@ pub(crate) fn hover(
         .filter_map(|token| {
             let node = token.parent()?;
             let class = IdentClass::classify_token(sema, token)?;
+            if let IdentClass::Operator(OperatorClass::Await(_)) = class {
+                // It's better for us to fall back to the keyword hover here,
+                // rendering poll is very confusing
+                return None;
+            }
             Some(class.definitions().into_iter().zip(iter::once(node).cycle()))
         })
         .flatten()
@@ -232,10 +240,12 @@ fn hover_type_fallback(
     token: &SyntaxToken,
     original_token: &SyntaxToken,
 ) -> Option<RangeInfo<HoverResult>> {
-    let node = token
-        .parent_ancestors()
-        .take_while(|it| !ast::Item::can_cast(it.kind()))
-        .find(|n| ast::Expr::can_cast(n.kind()) || ast::Pat::can_cast(n.kind()))?;
+    let node =
+        token.parent_ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find(|n| {
+            ast::Expr::can_cast(n.kind())
+                || ast::Pat::can_cast(n.kind())
+                || ast::Type::can_cast(n.kind())
+        })?;
 
     let expr_or_pat = match_ast! {
         match node {

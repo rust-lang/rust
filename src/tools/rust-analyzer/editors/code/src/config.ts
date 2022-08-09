@@ -16,9 +16,13 @@ export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
 
     readonly rootSection = "rust-analyzer";
-    private readonly requiresWorkspaceReloadOpts = ["serverPath", "server"].map(
-        (opt) => `${this.rootSection}.${opt}`
-    );
+    private readonly requiresWorkspaceReloadOpts = [
+        "serverPath",
+        "server",
+        // FIXME: This shouldn't be here, changing this setting should reload
+        // `continueCommentsOnNewline` behavior without restart
+        "typing",
+    ].map((opt) => `${this.rootSection}.${opt}`);
     private readonly requiresReloadOpts = [
         "cargo",
         "procMacro",
@@ -138,6 +142,10 @@ export class Config {
 
     get restartServerOnConfigChange() {
         return this.get<boolean>("restartServerOnConfigChange");
+    }
+
+    get typingContinueCommentsOnNewline() {
+        return this.get<boolean>("typing.continueCommentsOnNewline");
     }
 
     get debug() {

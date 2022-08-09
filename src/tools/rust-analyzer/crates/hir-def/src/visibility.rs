@@ -224,7 +224,7 @@ pub(crate) fn field_visibilities_query(
     let resolver = variant_id.module(db).resolver(db);
     let mut res = ArenaMap::default();
     for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, field_data.visibility.resolve(db, &resolver))
+        res.insert(field_id, field_data.visibility.resolve(db, &resolver));
     }
     Arc::new(res)
 }
