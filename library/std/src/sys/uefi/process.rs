@@ -3,6 +3,7 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::num::NonZeroI32;
+use crate::os::uefi::io::status_to_io_error;
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
@@ -224,13 +225,13 @@ impl ExitStatus {
 
 impl fmt::Debug for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&super::common::status_to_io_error(self.0), f)
+        fmt::Debug::fmt(&status_to_io_error(self.0), f)
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&super::common::status_to_io_error(self.0), f)
+        fmt::Display::fmt(&status_to_io_error(self.0), f)
     }
 }
 
@@ -312,11 +313,13 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 }
 
 mod uefi_command {
+    use super::super::common;
     use crate::ffi::OsStr;
     use crate::io;
     use crate::mem::{ManuallyDrop, MaybeUninit};
     use crate::os::uefi;
     use crate::os::uefi::ffi::OsStrExt;
+    use crate::os::uefi::io::status_to_io_error;
     use crate::ptr::NonNull;
     use r_efi::protocols::loaded_image;
 
@@ -326,14 +329,10 @@ mod uefi_command {
 
     impl Command {
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
-            let boot_services = uefi::env::get_boot_services().ok_or(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Failed to acquire boot_services",
-            ))?;
-            let system_handle = uefi::env::get_system_handle().ok_or(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Failed to acquire System Handle",
-            ))?;
+            let boot_services =
+                uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
+            let system_handle =
+                uefi::env::get_system_handle().ok_or(common::SYSTEM_HANDLE_ERROR)?;
             let path = uefi::path::DevicePath::try_from(p)?;
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let r = unsafe {
@@ -347,21 +346,22 @@ mod uefi_command {
                 )
             };
             if r.is_error() {
-                Err(super::super::common::status_to_io_error(r))
+                Err(status_to_io_error(r))
             } else {
                 let child_handle = unsafe { child_handle.assume_init() };
                 match NonNull::new(child_handle) {
-                    None => Err(io::Error::new(io::ErrorKind::InvalidData, "Null Handle Received")),
+                    None => Err(io::error::const_io_error!(
+                        io::ErrorKind::InvalidData,
+                        "Null Handle Received"
+                    )),
                     Some(x) => Ok(Self { inner: x }),
                 }
             }
         }
 
         pub fn start_image(&self) -> io::Result<r_efi::efi::Status> {
-            let boot_services = uefi::env::get_boot_services().ok_or(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Failed to acquire boot_services",
-            ))?;
+            let boot_services =
+                uefi::env::get_boot_services().ok_or(common::BOOT_SERVICES_ERROR)?;
             let mut exit_data_size: MaybeUninit<usize> = MaybeUninit::uninit();
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
             let r = unsafe {
@@ -383,11 +383,13 @@ mod uefi_command {
 
         pub fn set_args(&self, args: &OsStr) -> io::Result<()> {
             let mut guid = loaded_image::PROTOCOL_GUID;
-            let protocol: NonNull<loaded_image::Protocol> =
-                uefi::env::get_handle_protocol(self.inner, &mut guid).ok_or(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    "Failed to acquire loaded image protocol for child handle",
-                ))?;
+            let protocol: NonNull<loaded_image::Protocol> = common::get_handle_protocol(
+                self.inner, &mut guid,
+            )
+            .ok_or(io::error::const_io_error!(
+                io::ErrorKind::Uncategorized,
+                "Failed to acquire loaded image protocol for child handle",
+            ))?;
             let mut args = ManuallyDrop::new(args.to_ffi_string());
             let args_size = (crate::mem::size_of::<u16>() * args.len()) as u32;
             unsafe {

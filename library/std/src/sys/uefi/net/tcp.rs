@@ -48,7 +48,10 @@ impl TcpProtocol {
                     }
                 }
 
-                Err(io::Error::new(io::ErrorKind::Other, "Failed to open any EFI_TCP6_PROTOCOL"))
+                Err(io::error::const_io_error!(
+                    io::ErrorKind::Other,
+                    "Failed to open any EFI_TCP6_PROTOCOL"
+                ))
             }
             SocketAddr::V6(_x) => {
                 todo!();
@@ -97,7 +100,10 @@ impl TcpProtocol {
                     }
                 }
 
-                Err(io::Error::new(io::ErrorKind::Other, "Failed to open any EFI_TCP6_PROTOCOL"))
+                Err(io::error::const_io_error!(
+                    io::ErrorKind::Other,
+                    "Failed to open any EFI_TCP6_PROTOCOL"
+                ))
             }
             SocketAddr::V6(_) => unsupported(),
         }

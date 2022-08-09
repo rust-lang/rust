@@ -1,10 +1,11 @@
-use super::unsupported;
+use super::{common, unsupported};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
+use crate::os::uefi::io::status_to_io_error;
 use crate::path::{self, PathBuf};
 
 pub fn errno() -> i32 {
@@ -13,7 +14,7 @@ pub fn errno() -> i32 {
 
 pub fn error_string(errno: i32) -> String {
     let r = r_efi::efi::Status::from_usize(errno as usize);
-    super::common::status_to_io_error(r).to_string()
+    status_to_io_error(r).to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -67,9 +68,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
     use r_efi::efi::protocols::{device_path, loaded_image_device_path};
 
     let mut protocol_guid = loaded_image_device_path::PROTOCOL_GUID;
-    match uefi::env::get_current_handle_protocol::<device_path::Protocol>(&mut protocol_guid) {
+    match common::get_current_handle_protocol::<device_path::Protocol>(&mut protocol_guid) {
         Some(x) => PathBuf::try_from(x),
-        None => Err(io::Error::new(
+        None => Err(io::error::const_io_error!(
             io::ErrorKind::Uncategorized,
             "Failed to Acquire EFI_LOADED_IMAGE_DEVICE_PATH_PROTOCOL",
         )),
@@ -145,6 +146,7 @@ pub(crate) mod uefi_vars {
     use crate::io;
     use crate::os::uefi;
     use crate::os::uefi::ffi::OsStrExt;
+    use crate::os::uefi::io::status_to_io_error;
 
     const ENVIRONMENT_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
         0x49bb4029,
@@ -160,10 +162,8 @@ pub(crate) mod uefi_vars {
     }
 
     fn set_variable_inner(key: &OsStr, val: &[u8], attr: u32) -> io::Result<()> {
-        let runtime_services = uefi::env::get_runtime_services().ok_or(io::Error::new(
-            io::ErrorKind::Uncategorized,
-            "Failed to Acquire Runtime Services",
-        ))?;
+        let runtime_services =
+            uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
         // Store a copy of data since it is technically possible to manipulate it from other
         // applications
         let mut val_copy = val.to_vec();
@@ -179,7 +179,7 @@ pub(crate) mod uefi_vars {
             )
         };
 
-        if r.is_error() { Err(common::status_to_io_error(r)) } else { Ok(()) }
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
     pub fn get_variable(key: &OsStr) -> Option<OsString> {

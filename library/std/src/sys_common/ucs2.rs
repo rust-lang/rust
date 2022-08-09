@@ -40,47 +40,24 @@ impl Ucs2Char {
     }
 
     #[unstable(feature = "ucs2", issue = "none")]
-    #[inline]
     pub fn from_u16(c: u16) -> Option<Self> {
-        match NonZeroU16::try_from(c) {
-            Ok(x) => Some(Ucs2Char::new(x)),
-            Err(_) => None,
+        match c {
+            // UEFI does not support surrogate characters.
+            0xd800..=0xdfff => None,
+            _ => Some(Self::new(NonZeroU16::new(c)?)),
         }
     }
 
     #[unstable(feature = "ucs2", issue = "none")]
     pub fn from_char(ch: char) -> Option<Self> {
-        let mut buf = [0u8; 4];
-        ch.encode_utf8(&mut buf);
-
-        match ch.len_utf8() {
-            1 => Ucs2Char::from_u16(u16::from(buf[0])),
-            2 => {
-                let a = u16::from(buf[0] & 0b0001_1111);
-                let b = u16::from(buf[1] & 0b0011_1111);
-                Ucs2Char::from_u16(a << 6 | b)
-            }
-            3 => {
-                let a = u16::from(buf[0] & 0b0000_1111);
-                let b = u16::from(buf[1] & 0b0011_1111);
-                let c = u16::from(buf[2] & 0b0011_1111);
-                Ucs2Char::from_u16(a << 12 | b << 6 | c)
-            }
-            4 => None,
-            _ => unreachable!(),
-        }
+        Ucs2Char::from_u16(u16::try_from(ch as u32).ok()?)
     }
 
     /// Get the number of bytes that will be needed to represent this character in UTF-8. It can be
     /// 1, 2 or 3
     #[unstable(feature = "ucs2", issue = "none")]
-    #[inline]
     pub fn len_utf8(&self) -> usize {
-        match u16::from(self.value) {
-            0b0000_0000_0000_0000..0b0000_0000_0111_1111 => 1,
-            0b0000_0000_0111_1111..0b0000_0111_1111_1111 => 2,
-            _ => 3,
-        }
+        char::from(*self).len_utf8()
     }
 }
 
@@ -95,32 +72,7 @@ impl From<Ucs2Char> for u16 {
 #[unstable(feature = "ucs2", issue = "none")]
 impl From<Ucs2Char> for char {
     fn from(c: Ucs2Char) -> Self {
-        let val = u16::from(c);
-        match val {
-            0b0000_0000_0000_0000..0b0000_0000_0111_1111 => {
-                // 1-byte
-                unsafe { char::from_u32_unchecked(u32::from(val)) }
-            }
-            0b0000_0000_0111_1111..0b0000_0111_1111_1111 => {
-                // 2-byte
-                let high = ((val & 0b0000_0111_1100_0000) << 2) | 0b1100_0000_0000_0000;
-                let low = (val & 0b0000_0000_0011_1111) | 0b0000_0000_1000_0000;
-
-                unsafe { char::from_u32_unchecked(u32::from(high | low)) }
-            }
-            _ => {
-                // 3-byte
-                let ch = u32::from(val);
-                let high = ((ch & 0b0000_0000_0000_0000_1111_0000_0000_0000) << 4)
-                    | 0b0000_0000_1110_0000_0000_0000_0000_0000;
-                let mid = ((ch & 0b0000_0000_0000_0000_0000_1111_1100_0000) << 2)
-                    | 0b0000_0000_0000_0000_1000_0000_0000_0000;
-                let low = (ch & 0b0000_0000_0000_0000_0000_0000_0011_1111)
-                    | 0b0000_0000_0000_0000_0000_0000_1000_0000;
-
-                unsafe { char::from_u32_unchecked(u32::from(high | mid | low)) }
-            }
-        }
+        unsafe { char::from_u32_unchecked(c.value.get() as u32) }
     }
 }
 

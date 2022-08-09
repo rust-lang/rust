@@ -48,9 +48,10 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
         // If no prefix, then use the current prefix
         None => match crate::env::current_dir() {
             Ok(x) => Ok(x.join(format!("\\{}", path.to_string_lossy()))),
-            Err(_) => {
-                Err(io::Error::new(io::ErrorKind::Other, "Failed to convert to absolute path"))
-            }
+            Err(_) => Err(io::error::const_io_error!(
+                io::ErrorKind::Other,
+                "Failed to convert to absolute path"
+            )),
         },
         // If Device Path Prefix present, then path should already be absolute
         Some(_) => Ok(path.to_path_buf()),

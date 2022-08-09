@@ -1,7 +1,8 @@
+use super::common;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::num::NonZeroU16;
-use crate::os::uefi::{self, ffi::OsStringExt};
+use crate::os::uefi::ffi::OsStringExt;
 use crate::sys_common::ucs2::Ucs2Units;
 use crate::vec;
 use core::iter;
@@ -14,7 +15,7 @@ pub fn args() -> Args {
     use r_efi::efi::protocols::loaded_image;
 
     let mut protocol_guid = loaded_image::PROTOCOL_GUID;
-    match uefi::env::get_current_handle_protocol::<loaded_image::Protocol>(&mut protocol_guid) {
+    match common::get_current_handle_protocol::<loaded_image::Protocol>(&mut protocol_guid) {
         Some(x) => {
             let lp_cmd_line = unsafe { (*x.as_ptr()).load_options as *const u16 };
             let parsed_args_list =

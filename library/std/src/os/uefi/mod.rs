@@ -4,7 +4,7 @@
 
 pub mod env;
 pub mod ffi;
+pub mod io;
 pub mod net;
 pub mod path;
 pub mod raw;
-pub mod thread;

@@ -255,7 +255,10 @@ impl File {
         let file = File { ptr: file_opened, path: full_path };
         if opts.create_new {
             if file.file_attr()?.size != 0 {
-                return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File already exists"));
+                return Err(io::error::const_io_error!(
+                    io::ErrorKind::AlreadyExists,
+                    "File already exists"
+                ));
             }
         } else if opts.truncate {
             file.truncate(0)?;
@@ -504,7 +507,7 @@ fn cascade_delete(file: uefi_fs::FileProtocol, path: &Path) -> io::Result<()> {
 }
 
 mod uefi_fs {
-    use super::super::common::status_to_io_error;
+    use super::super::common;
     use super::{DirEntry, FileAttr};
     use crate::default::Default;
     use crate::ffi::OsStr;
@@ -513,6 +516,7 @@ mod uefi_fs {
     use crate::mem::MaybeUninit;
     use crate::os::uefi;
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
+    use crate::os::uefi::io::status_to_io_error;
     use crate::os::uefi::raw::VariableSizeType;
     use crate::path::{Path, PathBuf};
     use crate::ptr::NonNull;
@@ -547,7 +551,10 @@ mod uefi_fs {
                             .collect();
                         vol.open(&new_path, open_mode, attr)
                     }
-                    _ => Err(io::Error::new(io::ErrorKind::InvalidFilename, "Invalid File Path")),
+                    _ => Err(io::error::const_io_error!(
+                        io::ErrorKind::InvalidFilename,
+                        "Invalid File Path"
+                    )),
                 },
             }
         }
@@ -556,14 +563,20 @@ mod uefi_fs {
             use r_efi::protocols::loaded_image;
 
             let mut loaded_image_guid = loaded_image::PROTOCOL_GUID;
-            let loaded_image_protocol = uefi::env::get_current_handle_protocol::<
-                loaded_image::Protocol,
-            >(&mut loaded_image_guid)
-            .ok_or(io::Error::new(io::ErrorKind::Other, "Error getting Loaded Image Protocol"))?;
+            let loaded_image_protocol =
+                common::get_current_handle_protocol::<loaded_image::Protocol>(
+                    &mut loaded_image_guid,
+                )
+                .ok_or(io::error::const_io_error!(
+                    io::ErrorKind::Other,
+                    "Error getting Loaded Image Protocol"
+                ))?;
 
             let device_handle = unsafe { (*loaded_image_protocol.as_ptr()).device_handle };
-            let device_handle = NonNull::new(device_handle)
-                .ok_or(io::Error::new(io::ErrorKind::Other, "Error getting Device Handle"))?;
+            let device_handle = NonNull::new(device_handle).ok_or(io::error::const_io_error!(
+                io::ErrorKind::Other,
+                "Error getting Device Handle"
+            ))?;
 
             Self::get_volume(device_handle)
         }
@@ -592,17 +605,20 @@ mod uefi_fs {
                     return Self::get_volume(handle);
                 }
             }
-            Err(io::Error::new(io::ErrorKind::NotFound, "Volume Not Found"))
+            Err(io::error::const_io_error!(io::ErrorKind::NotFound, "Volume Not Found"))
         }
 
         fn get_volume(device_handle: NonNull<crate::ffi::c_void>) -> io::Result<Self> {
             use r_efi::protocols::simple_file_system;
 
             let mut simple_file_guid = simple_file_system::PROTOCOL_GUID;
-            let simple_file_system_protocol = uefi::env::get_handle_protocol::<
+            let simple_file_system_protocol = common::get_handle_protocol::<
                 simple_file_system::Protocol,
             >(device_handle, &mut simple_file_guid)
-            .ok_or(io::Error::new(io::ErrorKind::Other, "Error getting Simple File System"))?;
+            .ok_or(io::error::const_io_error!(
+                io::ErrorKind::Other,
+                "Error getting Simple File System"
+            ))?;
 
             let mut file_protocol: MaybeUninit<*mut file::Protocol> = MaybeUninit::uninit();
             let r = unsafe {
@@ -615,7 +631,7 @@ mod uefi_fs {
                 Err(status_to_io_error(r))
             } else {
                 let p = NonNull::new(unsafe { file_protocol.assume_init() })
-                    .ok_or(io::Error::new(io::ErrorKind::Other, "Null Rootfs"))?;
+                    .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Rootfs"))?;
                 Ok(Self::new(p))
             }
         }
@@ -632,7 +648,7 @@ mod uefi_fs {
                 )
             }?;
             let p = NonNull::new(unsafe { file_opened.assume_init() })
-                .ok_or(io::Error::new(io::ErrorKind::Other, "File is Null"))?;
+                .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "File is Null"))?;
             Ok(FileProtocol::new(p))
         }
 

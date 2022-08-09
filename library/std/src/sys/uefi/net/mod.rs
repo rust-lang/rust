@@ -9,8 +9,8 @@ mod uefi_service_binding {
     use crate::io;
     use crate::mem::MaybeUninit;
     use crate::os::uefi;
+    use crate::os::uefi::io::status_to_io_error;
     use crate::ptr::NonNull;
-    use r_efi::efi::Status;
     use r_efi::protocols::service_binding;
 
     #[derive(Clone, Copy)]
@@ -39,22 +39,10 @@ mod uefi_service_binding {
             };
 
             if r.is_error() {
-                match r {
-                    Status::INVALID_PARAMETER => {
-                        Err(io::Error::new(io::ErrorKind::InvalidInput, "ChildHandle is NULL"))
-                    }
-                    Status::OUT_OF_RESOURCES => Err(io::Error::new(
-                        io::ErrorKind::OutOfMemory,
-                        "There are not enough resources available to create the child",
-                    )),
-                    _ => Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        format!("Unknown Error: {}", r.as_usize()),
-                    )),
-                }
+                Err(status_to_io_error(r))
             } else {
                 NonNull::new(unsafe { child_handle.assume_init() })
-                    .ok_or(io::Error::new(io::ErrorKind::Other, "Null Handle"))
+                    .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Handle"))
             }
         }
 
@@ -68,28 +56,7 @@ mod uefi_service_binding {
                 )
             };
 
-            if r.is_error() {
-                match r {
-                    Status::UNSUPPORTED => Err(io::Error::new(
-                        io::ErrorKind::Unsupported,
-                        "ChildHandle does not support the protocol that is being removed",
-                    )),
-                    Status::INVALID_PARAMETER => Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "ChildHandle is not a valid UEFI handle",
-                    )),
-                    Status::ACCESS_DENIED => Err(io::Error::new(
-                        io::ErrorKind::PermissionDenied,
-                        "The protocol could not be removed from the ChildHandle because its services are being used",
-                    )),
-                    _ => Err(io::Error::new(
-                        io::ErrorKind::Other,
-                        format!("Unknown Error: {}", r.as_usize()),
-                    )),
-                }
-            } else {
-                Ok(())
-            }
+            if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
         }
     }
 }

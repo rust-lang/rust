@@ -1,11 +1,12 @@
+use super::super::common;
 use super::uefi_service_binding::ServiceBinding;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::MaybeUninit;
 use crate::net::{Ipv4Addr, SocketAddrV4};
 use crate::os::uefi;
+use crate::os::uefi::io::status_to_io_error;
 use crate::os::uefi::raw::VariableSizeType;
 use crate::ptr::NonNull;
-use crate::sys::uefi::common::status_to_io_error;
 use r_efi::efi::Status;
 use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
 
@@ -62,7 +63,7 @@ impl Tcp4Protocol {
     }
 
     pub fn accept(&self) -> io::Result<Tcp4Protocol> {
-        let accept_event = uefi::thread::Event::create(
+        let accept_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
@@ -85,13 +86,13 @@ impl Tcp4Protocol {
             Err(status_to_io_error(r))
         } else {
             let child_handle = NonNull::new(listen_token.new_child_handle)
-                .ok_or(io::Error::new(io::ErrorKind::Other, "Null Child Handle"))?;
+                .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Child Handle"))?;
             Self::with_child_handle(self.service_binding, child_handle)
         }
     }
 
     pub fn connect(&self) -> io::Result<()> {
-        let connect_event = uefi::thread::Event::create(
+        let connect_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
@@ -108,7 +109,7 @@ impl Tcp4Protocol {
 
     pub fn transmit(&self, buf: &[u8]) -> io::Result<usize> {
         let buf_size = buf.len() as u32;
-        let transmit_event = uefi::thread::Event::create(
+        let transmit_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
@@ -156,7 +157,7 @@ impl Tcp4Protocol {
 
     pub fn transmit_vectored(&self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
         let buf_size = crate::mem::size_of_val(buf);
-        let transmit_event = uefi::thread::Event::create(
+        let transmit_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
@@ -206,7 +207,7 @@ impl Tcp4Protocol {
 
     pub fn receive(&self, buf: &mut [u8]) -> io::Result<usize> {
         let buf_size = buf.len() as u32;
-        let receive_event = uefi::thread::Event::create(
+        let receive_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
@@ -250,7 +251,7 @@ impl Tcp4Protocol {
     }
 
     pub fn receive_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let receive_event = uefi::thread::Event::create(
+        let receive_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),
@@ -301,7 +302,7 @@ impl Tcp4Protocol {
     pub fn close(&self, abort_on_close: bool) -> io::Result<()> {
         let protocol = self.protocol.as_ptr();
 
-        let close_event = uefi::thread::Event::create(
+        let close_event = common::Event::create(
             r_efi::efi::EVT_NOTIFY_WAIT,
             r_efi::efi::TPL_CALLBACK,
             Some(nop_notify4),

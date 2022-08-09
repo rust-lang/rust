@@ -6,7 +6,7 @@ use crate::io;
 use crate::mem::MaybeUninit;
 use crate::ptr::NonNull;
 use crate::sync::atomic::{AtomicPtr, Ordering};
-use r_efi::efi::{Guid, Handle, Status};
+use r_efi::efi::{Guid, Handle};
 use r_efi::system;
 
 static GLOBAL_SYSTEM_TABLE: AtomicPtr<SystemTable> = AtomicPtr::new(crate::ptr::null_mut());
@@ -48,35 +48,14 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
     NonNull::new(runtime_services)
 }
 
-/// Get the Protocol for current system handle.
-/// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
-pub(crate) fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
-    let system_handle = get_system_handle()?;
-    get_handle_protocol(system_handle, protocol_guid)
-}
-
-pub(crate) fn get_handle_protocol<T>(
-    handle: NonNull<c_void>,
-    protocol_guid: &mut Guid,
-) -> Option<NonNull<T>> {
-    let boot_services = get_boot_services()?;
-    let mut protocol: *mut c_void = crate::ptr::null_mut();
-
-    let r = unsafe {
-        ((*boot_services.as_ptr()).handle_protocol)(handle.as_ptr(), protocol_guid, &mut protocol)
-    };
-
-    if r.is_error() { None } else { NonNull::new(protocol.cast()) }
-}
-
 pub(crate) fn open_protocol<T>(
     handle: NonNull<c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
     let boot_services = get_boot_services()
-        .ok_or(io::Error::new(io::ErrorKind::Other, "Failed to get BootServices"))?;
+        .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Failed to get BootServices"))?;
     let system_handle = get_system_handle()
-        .ok_or(io::Error::new(io::ErrorKind::Other, "Failed to get System Handle"))?;
+        .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Failed to get System Handle"))?;
     let mut protocol: MaybeUninit<*mut T> = MaybeUninit::uninit();
 
     let r = unsafe {
@@ -91,27 +70,10 @@ pub(crate) fn open_protocol<T>(
     };
 
     if r.is_error() {
-        match r {
-            Status::INVALID_PARAMETER => {
-                Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-            }
-            Status::UNSUPPORTED => {
-                Err(io::Error::new(io::ErrorKind::Unsupported, "Handle does not support Protocol"))
-            }
-            Status::ACCESS_DENIED => {
-                Err(io::Error::new(io::ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"))
-            }
-            Status::ALREADY_STARTED => {
-                Err(io::Error::new(io::ErrorKind::Other, "EFI_ALREADY_STARTED"))
-            }
-            _ => Err(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                format!("Status: {}", r.as_usize()),
-            )),
-        }
+        Err(super::io::status_to_io_error(r))
     } else {
         NonNull::new(unsafe { protocol.assume_init() })
-            .ok_or(io::Error::new(io::ErrorKind::Other, "Null Protocol"))
+            .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Null Protocol"))
     }
 }
 
@@ -132,30 +94,13 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>>
             )
         };
 
-        if r.is_error() {
-            match r {
-                Status::NOT_FOUND => {
-                    Err(io::Error::new(io::ErrorKind::NotFound, "No handles match the search"))
-                }
-                Status::BUFFER_TOO_SMALL => Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "The BufferSize is too small for the result",
-                )),
-                Status::INVALID_PARAMETER => {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER"))
-                }
-                _ => Err(io::Error::new(
-                    io::ErrorKind::Uncategorized,
-                    format!("Status: {}", r.as_usize()),
-                )),
-            }
-        } else {
-            Ok(())
-        }
+        if r.is_error() { Err(super::io::status_to_io_error(r)) } else { Ok(()) }
     }
 
-    let boot_services = get_boot_services()
-        .ok_or(io::Error::new(io::ErrorKind::Other, "Unable to acquire boot services"))?;
+    let boot_services = get_boot_services().ok_or(io::error::const_io_error!(
+        io::ErrorKind::Other,
+        "Unable to acquire boot services"
+    ))?;
     let mut buf_len = 0usize;
 
     match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {

@@ -1,38 +1,117 @@
+use r_efi::efi::{EventNotify, Guid, Tpl};
+
 use crate::io;
+use crate::os::uefi;
+use crate::os::uefi::io::status_to_io_error;
+use crate::ptr::NonNull;
 
-pub(crate) fn status_to_io_error(s: r_efi::efi::Status) -> crate::io::Error {
-    use io::ErrorKind;
-    use r_efi::efi::Status;
+pub const BOOT_SERVICES_ERROR: io::Error =
+    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire Boot Services",);
+pub const RUNTIME_SERVICES_ERROR: io::Error =
+    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire Runtime Services",);
+pub const SYSTEM_TABLE_ERROR: io::Error =
+    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire System Table",);
+pub const SYSTEM_HANDLE_ERROR: io::Error =
+    io::error::const_io_error!(io::ErrorKind::Uncategorized, "Failed to acquire System Handle",);
 
-    match s {
-        Status::INVALID_PARAMETER => {
-            io::Error::new(ErrorKind::InvalidInput, "EFI_INVALID_PARAMETER")
+/// Get the Protocol for current system handle.
+/// Note: Some protocols need to be manually freed. It is the callers responsibility to do so.
+pub(crate) fn get_current_handle_protocol<T>(protocol_guid: &mut Guid) -> Option<NonNull<T>> {
+    let system_handle = uefi::env::get_system_handle()?;
+    get_handle_protocol(system_handle, protocol_guid)
+}
+
+pub(crate) fn get_handle_protocol<T>(
+    handle: NonNull<crate::ffi::c_void>,
+    protocol_guid: &mut Guid,
+) -> Option<NonNull<T>> {
+    let boot_services = uefi::env::get_boot_services()?;
+    let mut protocol: *mut crate::ffi::c_void = crate::ptr::null_mut();
+
+    let r = unsafe {
+        ((*boot_services.as_ptr()).handle_protocol)(handle.as_ptr(), protocol_guid, &mut protocol)
+    };
+
+    if r.is_error() { None } else { NonNull::new(protocol.cast()) }
+}
+
+#[repr(transparent)]
+pub(crate) struct Event {
+    inner: NonNull<crate::ffi::c_void>,
+}
+
+impl Event {
+    fn new(inner: NonNull<crate::ffi::c_void>) -> Self {
+        Self { inner }
+    }
+
+    fn from_raw_event(ptr: r_efi::efi::Event) -> Option<Self> {
+        Some(Self::new(NonNull::new(ptr)?))
+    }
+
+    pub(crate) fn create(
+        event_type: u32,
+        event_tpl: Tpl,
+        notify_function: Option<EventNotify>,
+        notify_context: Option<NonNull<crate::ffi::c_void>>,
+    ) -> io::Result<Self> {
+        let boot_services = uefi::env::get_boot_services().ok_or(io::error::const_io_error!(
+            io::ErrorKind::Other,
+            "Failed to Acquire Boot Services"
+        ))?;
+
+        let mut event: r_efi::efi::Event = crate::ptr::null_mut();
+        let notify_context = match notify_context {
+            None => crate::ptr::null_mut(),
+            Some(x) => x.as_ptr(),
+        };
+
+        let r = unsafe {
+            ((*boot_services.as_ptr()).create_event)(
+                event_type,
+                event_tpl,
+                notify_function,
+                notify_context,
+                &mut event,
+            )
+        };
+
+        if r.is_error() {
+            Err(status_to_io_error(r))
+        } else {
+            Self::from_raw_event(event)
+                .ok_or(io::error::const_io_error!(io::ErrorKind::Other, "Event is Null"))
         }
-        Status::UNSUPPORTED => io::Error::new(ErrorKind::Unsupported, "EFI_UNSUPPORTED"),
-        Status::BAD_BUFFER_SIZE => io::Error::new(ErrorKind::InvalidData, "EFI_BAD_BUFFER_SIZE"),
-        Status::INVALID_LANGUAGE => io::Error::new(ErrorKind::InvalidData, "EFI_INVALID_LANGUAGE"),
-        Status::CRC_ERROR => io::Error::new(ErrorKind::InvalidData, "EFI_CRC_ERROR"),
-        Status::BUFFER_TOO_SMALL => io::Error::new(ErrorKind::FileTooLarge, "EFI_BUFFER_TOO_SMALL"),
-        Status::NOT_READY => io::Error::new(ErrorKind::ResourceBusy, "EFI_NOT_READY"),
-        Status::WRITE_PROTECTED => {
-            io::Error::new(ErrorKind::ReadOnlyFilesystem, "EFI_WRITE_PROTECTED")
+    }
+
+    pub(crate) fn wait(&self) -> io::Result<()> {
+        let boot_services = uefi::env::get_boot_services().ok_or(io::error::const_io_error!(
+            io::ErrorKind::Other,
+            "Failed to Acquire Boot Services"
+        ))?;
+
+        let mut index = 0usize;
+        let r = unsafe {
+            ((*boot_services.as_ptr()).wait_for_event)(
+                1,
+                [self.as_raw_event()].as_mut_ptr(),
+                &mut index,
+            )
+        };
+
+        if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
+    }
+
+    pub(crate) fn as_raw_event(&self) -> r_efi::efi::Event {
+        self.inner.as_ptr()
+    }
+}
+
+impl Drop for Event {
+    fn drop(&mut self) {
+        if let Some(boot_services) = uefi::env::get_boot_services() {
+            // Always returns EFI_SUCCESS
+            let _ = unsafe { ((*boot_services.as_ptr()).close_event)(self.inner.as_ptr()) };
         }
-        Status::VOLUME_FULL => io::Error::new(ErrorKind::StorageFull, "EFI_VOLUME_FULL"),
-        Status::MEDIA_CHANGED => {
-            io::Error::new(ErrorKind::StaleNetworkFileHandle, "EFI_MEDIA_CHANGED")
-        }
-        Status::NOT_FOUND => io::Error::new(ErrorKind::NotFound, "EFI_NOT_FOUND"),
-        Status::ACCESS_DENIED => io::Error::new(ErrorKind::PermissionDenied, "EFI_ACCESS_DENIED"),
-        Status::SECURITY_VIOLATION => {
-            io::Error::new(ErrorKind::PermissionDenied, "EFI_SECURITY_VIOLATION")
-        }
-        Status::NO_RESPONSE => io::Error::new(ErrorKind::HostUnreachable, "EFI_NO_RESPONSE"),
-        Status::TIMEOUT => io::Error::new(ErrorKind::TimedOut, "EFI_TIMEOUT"),
-        Status::END_OF_FILE => io::Error::new(ErrorKind::UnexpectedEof, "EFI_END_OF_FILE"),
-        Status::IP_ADDRESS_CONFLICT => {
-            io::Error::new(ErrorKind::AddrInUse, "EFI_IP_ADDRESS_CONFLICT")
-        }
-        Status::HTTP_ERROR => io::Error::new(ErrorKind::NetworkUnreachable, "EFI_HTTP_ERROR"),
-        _ => io::Error::new(ErrorKind::Uncategorized, format!("Status: {}", s.as_usize())),
     }
 }

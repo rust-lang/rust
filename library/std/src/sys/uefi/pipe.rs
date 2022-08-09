@@ -49,9 +49,10 @@ pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> 
 // Impementation of Pipes using variables in UEFI. Might evolve into a Protocol or something in the
 // future
 pub(crate) mod uefi_pipe {
-    use super::super::common::status_to_io_error;
+    use super::super::common;
     use crate::io;
     use crate::os::uefi;
+    use crate::os::uefi::io::status_to_io_error;
 
     type Ucs2Key = Vec<u16>;
 
@@ -172,10 +173,8 @@ pub(crate) mod uefi_pipe {
             buf_size: *mut usize,
             buf: *mut crate::ffi::c_void,
         ) -> io::Result<()> {
-            let runtime_services = uefi::env::get_runtime_services().ok_or(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Failed to Acquire Runtime Services",
-            ))?;
+            let runtime_services =
+                uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
             let mut guid = PIPE_GUID;
             let r = unsafe {
                 ((*runtime_services.as_ptr()).get_variable)(
@@ -213,10 +212,8 @@ pub(crate) mod uefi_pipe {
             buf_len: usize,
             buf: *mut crate::ffi::c_void,
         ) -> io::Result<()> {
-            let runtime_services = uefi::env::get_runtime_services().ok_or(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Failed to Acquire Runtime Services",
-            ))?;
+            let runtime_services =
+                uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
             let mut guid = PIPE_GUID;
             let r = unsafe {
                 ((*runtime_services.as_ptr()).set_variable)(key, &mut guid, attr, buf_len, buf)

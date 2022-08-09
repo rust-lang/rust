@@ -44,7 +44,10 @@ impl TryFrom<NonNull<device_path::Protocol>> for PathBuf {
             let mut path = String::new();
             for c in ucs2_iter {
                 let ch = char::from(ucs2::Ucs2Char::from_u16(u16::from(c)).ok_or(
-                    io::Error::new(io::ErrorKind::InvalidData, "Invalid Device Path Text"),
+                    io::error::const_io_error!(
+                        io::ErrorKind::InvalidData,
+                        "Invalid Device Path Text"
+                    ),
                 )?);
                 path.push(ch);
                 len += 1;
@@ -58,7 +61,7 @@ impl TryFrom<NonNull<device_path::Protocol>> for PathBuf {
             }
             return Ok(PathBuf::from(path));
         }
-        Err(crate::io::Error::new(
+        Err(crate::io::error::const_io_error!(
             crate::io::ErrorKind::InvalidData,
             "Failed to Convert to text representation",
         ))
@@ -92,7 +95,7 @@ impl TryFrom<&OsStr> for DevicePath {
             };
             let device_path = match NonNull::new(device_path) {
                 None => {
-                    return Err(io::Error::new(
+                    return Err(io::error::const_io_error!(
                         io::ErrorKind::Uncategorized,
                         "Null DevicePath Returned",
                     ));
@@ -105,7 +108,7 @@ impl TryFrom<&OsStr> for DevicePath {
                     .unwrap();
             return Ok(DevicePath::new(device_path, layout));
         }
-        Err(crate::io::Error::new(
+        Err(crate::io::error::const_io_error!(
             crate::io::ErrorKind::InvalidData,
             "Failed to Convert to text representation",
         ))

@@ -14,25 +14,25 @@ use crate::sys_common::{AsInner, IntoInner};
 #[derive(Hash)]
 #[repr(transparent)]
 pub struct Buf {
-    pub inner: Vec<u8>,
+    pub inner: String,
 }
 
 #[repr(transparent)]
 pub struct Slice {
-    pub inner: [u8],
+    pub inner: str,
 }
 
 impl fmt::Debug for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is safe since Slice is always valid UTF-8
-        fmt::Debug::fmt(unsafe { str::from_utf8_unchecked(&self.inner) }, formatter)
+        fmt::Debug::fmt(&self.inner, formatter)
     }
 }
 
 impl fmt::Display for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This is safe since Slice is always valid UTF-8
-        fmt::Display::fmt(unsafe { str::from_utf8_unchecked(&self.inner) }, formatter)
+        fmt::Display::fmt(&self.inner, formatter)
     }
 }
 
@@ -60,26 +60,26 @@ impl Clone for Buf {
     }
 }
 
-impl IntoInner<Vec<u8>> for Buf {
-    fn into_inner(self) -> Vec<u8> {
+impl IntoInner<String> for Buf {
+    fn into_inner(self) -> String {
         self.inner
     }
 }
 
-impl AsInner<[u8]> for Buf {
-    fn as_inner(&self) -> &[u8] {
+impl AsInner<str> for Buf {
+    fn as_inner(&self) -> &str {
         &self.inner
     }
 }
 
 impl Buf {
     pub fn from_string(s: String) -> Buf {
-        Buf { inner: s.into_bytes() }
+        Buf { inner: s }
     }
 
     #[inline]
     pub fn with_capacity(capacity: usize) -> Buf {
-        Buf { inner: Vec::with_capacity(capacity) }
+        Buf { inner: String::with_capacity(capacity) }
     }
 
     #[inline]
@@ -124,38 +124,38 @@ impl Buf {
 
     #[inline]
     pub fn as_slice(&self) -> &Slice {
-        // SAFETY: Slice just wraps [u8],
-        // and &*self.inner is &[u8], therefore
-        // transmuting &[u8] to &Slice is safe.
+        // SAFETY: Slice just wraps str,
+        // and &*self.inner is &str, therefore
+        // transmuting &str to &Slice is safe.
         unsafe { mem::transmute(&*self.inner) }
     }
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut Slice {
-        // SAFETY: Slice just wraps [u8],
-        // and &mut *self.inner is &mut [u8], therefore
-        // transmuting &mut [u8] to &mut Slice is safe.
+        // SAFETY: Slice just wraps str,
+        // and &mut *self.inner is &mut str, therefore
+        // transmuting &mut str to &mut Slice is safe.
         unsafe { mem::transmute(&mut *self.inner) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {
         // This should never fail since OsString for UEFI is always valid UTF-8
-        unsafe { Ok(String::from_utf8_unchecked(self.inner)) }
+        Ok(self.inner)
     }
 
     pub fn push_slice(&mut self, s: &Slice) {
-        self.inner.extend_from_slice(&s.inner)
+        self.inner.push_str(&s.inner)
     }
 
     #[inline]
     pub fn into_box(self) -> Box<Slice> {
-        unsafe { mem::transmute(self.inner.into_boxed_slice()) }
+        unsafe { mem::transmute(self.inner.into_boxed_str()) }
     }
 
     #[inline]
     pub fn from_box(boxed: Box<Slice>) -> Buf {
-        let inner: Box<[u8]> = unsafe { mem::transmute(boxed) };
-        Buf { inner: inner.into_vec() }
+        let inner: Box<str> = unsafe { mem::transmute(boxed) };
+        Buf { inner: String::from(inner) }
     }
 
     #[inline]
@@ -171,26 +171,21 @@ impl Buf {
 
 impl Slice {
     #[inline]
-    fn from_u8_slice(s: &[u8]) -> &Slice {
-        unsafe { mem::transmute(s) }
-    }
-
-    #[inline]
     pub fn from_str(s: &str) -> &Slice {
-        Slice::from_u8_slice(s.as_bytes())
+        unsafe { mem::transmute(s) }
     }
 
     pub fn to_str(&self) -> Option<&str> {
         // This is safe since OsStr for UEFI is always valid UTF-8
-        unsafe { Some(str::from_utf8_unchecked(&self.inner)) }
+        Some(&self.inner)
     }
 
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
-        String::from_utf8_lossy(&self.inner)
+        Cow::from(&self.inner)
     }
 
     pub fn to_owned(&self) -> Buf {
-        Buf { inner: self.inner.to_vec() }
+        Buf { inner: self.inner.to_string() }
     }
 
     pub fn clone_into(&self, buf: &mut Buf) {
@@ -199,24 +194,24 @@ impl Slice {
 
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
-        let boxed: Box<[u8]> = self.inner.into();
+        let boxed: Box<str> = self.inner.into();
         unsafe { mem::transmute(boxed) }
     }
 
     pub fn empty_box() -> Box<Slice> {
-        let boxed: Box<[u8]> = Default::default();
+        let boxed: Box<str> = Default::default();
         unsafe { mem::transmute(boxed) }
     }
 
     #[inline]
     pub fn into_arc(&self) -> Arc<Slice> {
-        let arc: Arc<[u8]> = Arc::from(&self.inner);
+        let arc: Arc<str> = Arc::from(&self.inner);
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Slice) }
     }
 
     #[inline]
     pub fn into_rc(&self) -> Rc<Slice> {
-        let rc: Rc<[u8]> = Rc::from(&self.inner);
+        let rc: Rc<str> = Rc::from(&self.inner);
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
     }
 

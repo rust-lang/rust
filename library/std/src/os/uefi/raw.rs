@@ -21,11 +21,17 @@ impl<T> VariableSizeType<T> {
     }
 
     pub(crate) fn from_size(size: usize) -> io::Result<Self> {
-        let layout = Layout::from_size_align(size, Self::ALIGNMENT)
-            .map_err(|_| io::Error::new(io::ErrorKind::Uncategorized, "Invalid buffer size"))?;
+        let layout = Layout::from_size_align(size, Self::ALIGNMENT).map_err(|_| {
+            io::error::const_io_error!(io::ErrorKind::Uncategorized, "Invalid buffer size")
+        })?;
         let inner: NonNull<T> = Global
             .allocate(layout)
-            .map_err(|_| io::Error::new(io::ErrorKind::Uncategorized, "Failed to allocate Buffer"))?
+            .map_err(|_| {
+                io::error::const_io_error!(
+                    io::ErrorKind::Uncategorized,
+                    "Failed to allocate Buffer"
+                )
+            })?
             .cast();
         Ok(Self::new(inner, layout))
     }

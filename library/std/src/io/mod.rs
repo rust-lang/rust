@@ -287,7 +287,7 @@ pub(crate) use error::const_io_error;
 mod buffered;
 pub(crate) mod copy;
 mod cursor;
-mod error;
+pub(crate) mod error;
 mod impls;
 pub mod prelude;
 mod readbuf;
@@ -2406,11 +2406,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     }
 
     fn consume(&mut self, amt: usize) {
-        if !self.done_first {
-            self.first.consume(amt)
-        } else {
-            self.second.consume(amt)
-        }
+        if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
     }
 }
 
