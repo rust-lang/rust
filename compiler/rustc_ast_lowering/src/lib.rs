@@ -220,7 +220,7 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     }
 
     fn get_remapped_def_id(&self, mut local_def_id: LocalDefId) -> LocalDefId {
-        for map in &self.generics_def_id_map {
+        for map in self.generics_def_id_map.iter().rev() {
             if let Some(r) = map.get(&local_def_id) {
                 debug!("def_id_remapper: remapping from `{local_def_id:?}` to `{r:?}`");
                 local_def_id = *r;
