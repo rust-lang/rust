@@ -14,7 +14,6 @@
 #![feature(const_trait_impl)]
 #![feature(if_let_guard)]
 #![feature(label_break_value)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(slice_internals)]

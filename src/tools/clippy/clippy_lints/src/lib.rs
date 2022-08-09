@@ -4,7 +4,6 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(iter_intersperse)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(lint_reasons)]
 #![feature(never_type)]

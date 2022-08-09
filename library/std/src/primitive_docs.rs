@@ -996,7 +996,7 @@ impl<T> (T,) {}
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Clone> Clone for (T,) {
     fn clone(&self) -> Self {
@@ -1007,7 +1007,7 @@ impl<T: Clone> Clone for (T,) {
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on arbitrary-length tuples.
 impl<T: Copy> Copy for (T,) {
     // empty
@@ -1484,13 +1484,12 @@ mod prim_fn {}
 // Required to make auto trait impls render.
 // See src/librustdoc/passes/collect_trait_impls.rs:collect_trait_impls
 #[doc(hidden)]
-#[cfg(not(bootstrap))]
 impl<Ret, T> fn(T) -> Ret {}
 
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on function pointers with any number of arguments.
 impl<Ret, T> Clone for fn(T) -> Ret {
     fn clone(&self) -> Self {
@@ -1501,7 +1500,7 @@ impl<Ret, T> Clone for fn(T) -> Ret {
 // Fake impl that's only really used for docs.
 #[cfg(doc)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(fake_variadic))]
+#[doc(fake_variadic)]
 /// This trait is implemented on function pointers with any number of arguments.
 impl<Ret, T> Copy for fn(T) -> Ret {
     // empty

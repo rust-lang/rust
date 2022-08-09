@@ -10,7 +10,6 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(if_let_guard)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(iter_intersperse)]
 #![feature(let_else)]
 #![feature(never_type)]

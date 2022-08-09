@@ -39,7 +39,6 @@
 #![feature(extern_types)]
 #![feature(new_uninit)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]

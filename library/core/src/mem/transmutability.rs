@@ -4,7 +4,7 @@
 /// any value of type `Self` are safely transmutable into a value of type `Dst`, in a given `Context`,
 /// notwithstanding whatever safety checks you have asked the compiler to [`Assume`] are satisfied.
 #[unstable(feature = "transmutability", issue = "99571")]
-#[cfg_attr(not(bootstrap), lang = "transmute_trait")]
+#[lang = "transmute_trait"]
 #[rustc_on_unimplemented(
     message = "`{Src}` cannot be safely transmuted into `{Self}` in the defining scope of `{Context}`.",
     label = "`{Src}` cannot be safely transmuted into `{Self}` in the defining scope of `{Context}`."

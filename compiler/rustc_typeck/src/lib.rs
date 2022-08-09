@@ -65,7 +65,6 @@ This API is completely unstable and subject to change.
 #![feature(is_sorted)]
 #![feature(iter_intersperse)]
 #![feature(label_break_value)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]

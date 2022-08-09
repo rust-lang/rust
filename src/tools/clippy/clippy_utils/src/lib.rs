@@ -2,7 +2,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(lint_reasons)]
 #![feature(once_cell)]
 #![feature(rustc_private)]

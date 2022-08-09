@@ -18,7 +18,6 @@
 #![feature(control_flow_enum)]
 #![feature(extend_one)]
 #![feature(label_break_value)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
