@@ -1682,72 +1682,6 @@ where
     }
 }
 
-// impl Report<Box<dyn Error>> {
-//     fn backtrace(&self) -> Option<&Backtrace> {
-//         // have to grab the backtrace on the first error directly since that error may not be
-//         // 'static
-//         let backtrace = self.error.request_ref();
-//         let backtrace = backtrace.or_else(|| {
-//             self.error
-//                 .source()
-//                 .map(|source| source.chain().find_map(|source| source.request_ref()))
-//                 .flatten()
-//         });
-//         backtrace
-//     }
-
-//     /// Format the report as a single line.
-//     #[unstable(feature = "error_reporter", issue = "90172")]
-//     fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}", self.error)?;
-
-//         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
-
-//         for cause in sources {
-//             write!(f, ": {cause}")?;
-//         }
-
-//         Ok(())
-//     }
-
-//     /// Format the report as multiple lines, with each error cause on its own line.
-//     #[unstable(feature = "error_reporter", issue = "90172")]
-//     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         let error = &self.error;
-
-//         write!(f, "{error}")?;
-
-//         if let Some(cause) = error.source() {
-//             write!(f, "\n\nCaused by:")?;
-
-//             let multiple = cause.source().is_some();
-
-//             for (ind, error) in cause.chain().enumerate() {
-//                 writeln!(f)?;
-//                 let mut indented = Indented { inner: f };
-//                 if multiple {
-//                     write!(indented, "{ind: >4}: {error}")?;
-//                 } else {
-//                     write!(indented, "      {error}")?;
-//                 }
-//             }
-//         }
-
-//         if self.show_backtrace {
-//             let backtrace = self.backtrace();
-
-//             if let Some(backtrace) = backtrace {
-//                 let backtrace = backtrace.to_string();
-
-//                 f.write_str("\n\nStack backtrace:\n")?;
-//                 f.write_str(backtrace.trim_end())?;
-//             }
-//         }
-
-//         Ok(())
-//     }
-// }
-
 #[unstable(feature = "error_reporter", issue = "90172")]
 impl<E> From<E> for Report<E>
 where
@@ -1758,18 +1692,6 @@ where
     }
 }
 
-// FIXME(yaahc): replace Box<dyn Error> with a newtype
-// #[unstable(feature = "error_reporter", issue = "90172")]
-// impl<'a, E> From<E> for Report<Box<dyn Error + 'a>>
-// where
-//     E: Error + 'a,
-// {
-//     fn from(error: E) -> Self {
-//         let error = box error;
-//         Report { error, show_backtrace: false, pretty: false }
-//     }
-// }
-
 #[unstable(feature = "error_reporter", issue = "90172")]
 impl<E> fmt::Display for Report<E>
 where
@@ -1779,13 +1701,6 @@ where
         if self.pretty { self.fmt_multiline(f) } else { self.fmt_singleline(f) }
     }
 }
-
-// #[unstable(feature = "error_reporter", issue = "90172")]
-// impl fmt::Display for Report<Box<dyn Error>> {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         if self.pretty { self.fmt_multiline(f) } else { self.fmt_singleline(f) }
-//     }
-// }
 
 // This type intentionally outputs the same format for `Display` and `Debug`for
 // situations where you unwrap a `Report` or return it from main.
