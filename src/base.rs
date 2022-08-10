@@ -25,6 +25,7 @@ struct CodegenedFunction<'tcx> {
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx>,
+    cached_context: &mut Context,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
@@ -32,13 +33,15 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     let _inst_guard =
         crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
 
-    let codegened_func = codegen_fn(cx, module, instance);
+    let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
+    let codegened_func = codegen_fn(cx, cached_func, module, instance);
 
-    compile_fn(cx, module, codegened_func);
+    compile_fn(cx, cached_context, module, codegened_func);
 }
 
 fn codegen_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx>,
+    cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) -> CodegenedFunction<'tcx> {
@@ -61,11 +64,10 @@ fn codegen_fn<'tcx>(
     let sig = get_function_sig(tcx, module.isa().triple(), instance);
     let func_id = module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
 
-    cx.cached_context.clear();
-
     // Make the FunctionBuilder
     let mut func_ctx = FunctionBuilderContext::new();
-    let mut func = std::mem::replace(&mut cx.cached_context.func, Function::new());
+    let mut func = cached_func;
+    func.clear();
     func.name = ExternalName::user(0, func_id.as_u32());
     func.signature = sig;
     func.collect_debug_info();
@@ -140,6 +142,7 @@ fn codegen_fn<'tcx>(
 
 fn compile_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx>,
+    cached_context: &mut Context,
     module: &mut dyn Module,
     codegened_func: CodegenedFunction<'tcx>,
 ) {
@@ -148,7 +151,7 @@ fn compile_fn<'tcx>(
     let mut clif_comments = codegened_func.clif_comments;
 
     // Store function in context
-    let context = &mut cx.cached_context;
+    let context = cached_context;
     context.clear();
     context.func = codegened_func.func;
 

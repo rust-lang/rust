@@ -128,11 +128,17 @@ fn module_codegen(
         cgu_name,
     );
     super::predefine_mono_items(tcx, &mut module, &mono_items);
+    let mut cached_context = Context::new();
     for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
                 cx.tcx.sess.time("codegen fn", || {
-                    crate::base::codegen_and_compile_fn(&mut cx, &mut module, inst)
+                    crate::base::codegen_and_compile_fn(
+                        &mut cx,
+                        &mut cached_context,
+                        &mut module,
+                        inst,
+                    )
                 });
             }
             MonoItem::Static(def_id) => crate::constant::codegen_static(tcx, &mut module, def_id),
