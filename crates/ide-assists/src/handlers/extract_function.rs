@@ -1288,6 +1288,9 @@ fn last_impl_member(impl_node: &SyntaxNode) -> Option<SyntaxNode> {
 }
 
 fn is_trait_impl(node: &SyntaxNode) -> bool {
+    if !ast::Impl::can_cast(node.kind()) {
+        return false;
+    }
     match ast::Impl::cast(node.clone()) {
         Some(c) => c.trait_().is_some(),
         None => false,
@@ -1295,6 +1298,9 @@ fn is_trait_impl(node: &SyntaxNode) -> bool {
 }
 
 fn impl_type_name(impl_node: &SyntaxNode) -> Option<String> {
+    if !ast::Impl::can_cast(impl_node.kind()) {
+        return None;
+    }
     Some(ast::Impl::cast(impl_node.clone())?.self_ty()?.to_string())
 }
 
