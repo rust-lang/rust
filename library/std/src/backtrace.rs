@@ -9,12 +9,6 @@
 //! implementing `std::error::Error`) to get a causal chain of where an error
 //! was generated.
 //!
-//! > **Note**: this module is unstable and is designed in [RFC 2504], and you
-//! > can learn more about its status in the [tracking issue].
-//!
-//! [RFC 2504]: https://github.com/rust-lang/rfcs/blob/master/text/2504-fix-error.md
-//! [tracking issue]: https://github.com/rust-lang/rust/issues/53487
-//!
 //! ## Accuracy
 //!
 //! Backtraces are attempted to be as accurate as possible, but no guarantees
@@ -64,7 +58,7 @@
 //! `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` at runtime might not actually change
 //! how backtraces are captured.
 
-#![unstable(feature = "backtrace", issue = "53487")]
+#![stable(feature = "backtrace", since = "1.65.0")]
 
 #[cfg(test)]
 mod tests;
@@ -110,6 +104,7 @@ use crate::vec::Vec;
 /// previous point in time. In some instances the `Backtrace` type may
 /// internally be empty due to configuration. For more information see
 /// `Backtrace::capture`.
+#[stable(feature = "backtrace", since = "1.65.0")]
 #[must_use]
 pub struct Backtrace {
     inner: Inner,
@@ -117,6 +112,7 @@ pub struct Backtrace {
 
 /// The current status of a backtrace, indicating whether it was captured or
 /// whether it is empty for some other reason.
+#[stable(feature = "backtrace", since = "1.65.0")]
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
 pub enum BacktraceStatus {
@@ -174,6 +170,7 @@ enum BytesOrWide {
     Wide(Vec<u16>),
 }
 
+#[stable(feature = "backtrace", since = "1.65.0")]
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let capture = match &self.inner {
@@ -200,6 +197,7 @@ impl fmt::Debug for Backtrace {
     }
 }
 
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 impl fmt::Debug for BacktraceFrame {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut dbg = fmt.debug_list();
@@ -288,6 +286,7 @@ impl Backtrace {
     ///
     /// To forcibly capture a backtrace regardless of environment variables, use
     /// the `Backtrace::force_capture` function.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn capture() -> Backtrace {
         if !Backtrace::enabled() {
@@ -306,6 +305,7 @@ impl Backtrace {
     /// Note that capturing a backtrace can be an expensive operation on some
     /// platforms, so this should be used with caution in performance-sensitive
     /// parts of code.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
         Backtrace::create(Backtrace::force_capture as usize)
@@ -313,6 +313,8 @@ impl Backtrace {
 
     /// Forcibly captures a disabled backtrace, regardless of environment
     /// variable configuration.
+    #[stable(feature = "backtrace", since = "1.65.0")]
+    #[rustc_const_stable(feature = "backtrace", since = "1.65.0")]
     pub const fn disabled() -> Backtrace {
         Backtrace { inner: Inner::Disabled }
     }
@@ -356,6 +358,7 @@ impl Backtrace {
     /// Returns the status of this backtrace, indicating whether this backtrace
     /// request was unsupported, disabled, or a stack trace was actually
     /// captured.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     #[must_use]
     pub fn status(&self) -> BacktraceStatus {
         match self.inner {
@@ -375,6 +378,7 @@ impl<'a> Backtrace {
     }
 }
 
+#[stable(feature = "backtrace", since = "1.65.0")]
 impl fmt::Display for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let capture = match &self.inner {
