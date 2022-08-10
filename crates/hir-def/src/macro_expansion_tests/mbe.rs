@@ -885,7 +885,7 @@ macro_rules! m {
     ($t:ty) => ( fn bar() -> $ t {} )
 }
 
-fn bar() -> & 'a Baz<u8> {}
+fn bar() -> &'a Baz<u8> {}
 
 fn bar() -> extern "Rust"fn() -> Ret {}
 "#]],
@@ -1578,7 +1578,7 @@ macro_rules !register_methods {
             ($$($val: expr), *) = > {
                 struct Foo;
                 impl Foo {
-                    $(fn $method()-> & 'static[u32] {
+                    $(fn $method()-> &'static[u32] {
                         &[$$($$val), *]
                     }
                     )*
@@ -1591,10 +1591,10 @@ macro_rules !implement_methods {
     ($($val: expr), *) = > {
         struct Foo;
         impl Foo {
-            fn alpha()-> & 'static[u32] {
+            fn alpha()-> &'static[u32] {
                 &[$($val), *]
             }
-            fn beta()-> & 'static[u32] {
+            fn beta()-> &'static[u32] {
                 &[$($val), *]
             }
         }
@@ -1602,10 +1602,10 @@ macro_rules !implement_methods {
 }
 struct Foo;
 impl Foo {
-    fn alpha() -> & 'static[u32] {
+    fn alpha() -> &'static[u32] {
         &[1, 2, 3]
     }
-    fn beta() -> & 'static[u32] {
+    fn beta() -> &'static[u32] {
         &[1, 2, 3]
     }
 }
