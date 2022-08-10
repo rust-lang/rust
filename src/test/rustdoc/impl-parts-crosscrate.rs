@@ -12,9 +12,9 @@ pub struct Bar<T> { t: T }
 // full impl string.  Instead, just make sure something from each part
 // is mentioned.
 
-// @has implementors/rustdoc_impl_parts_crosscrate/trait.AnAutoTrait.js Bar
-// @has - Send
-// @has - !AnAutoTrait
-// @has - Copy
+// @hastext implementors/rustdoc_impl_parts_crosscrate/trait.AnAutoTrait.js Bar
+// @hastext - Send
+// @hastext - !AnAutoTrait
+// @hastext - Copy
 impl<T: Send> !rustdoc_impl_parts_crosscrate::AnAutoTrait for Bar<T>
     where T: Copy {}

@@ -15,11 +15,11 @@ mod mod1 {
 pub use mod1::*;
 
 // @has foo/index.html
-// @has - "mod1"
-// @has - "Mod1Public"
+// @hastext - "mod1"
+// @hastext - "Mod1Public"
 // @!has - "Mod1Private"
 // @!has - "mod2"
-// @has - "Mod2Public"
+// @hastext - "Mod2Public"
 // @!has - "Mod2Private"
 // @has foo/struct.Mod1Public.html
 // @!has foo/struct.Mod1Private.html
@@ -27,9 +27,9 @@ pub use mod1::*;
 // @!has foo/struct.Mod2Private.html
 
 // @has foo/mod1/index.html
-// @has - "mod2"
-// @has - "Mod1Public"
-// @has - "Mod1Private"
+// @hastext - "mod2"
+// @hastext - "Mod1Public"
+// @hastext - "Mod1Private"
 // @!has - "Mod2Public"
 // @!has - "Mod2Private"
 // @has foo/mod1/struct.Mod1Public.html
@@ -38,8 +38,8 @@ pub use mod1::*;
 // @!has foo/mod1/struct.Mod2Private.html
 
 // @has foo/mod1/mod2/index.html
-// @has - "Mod2Public"
-// @has - "Mod2Private"
+// @hastext - "Mod2Public"
+// @hastext - "Mod2Private"
 // @has foo/mod1/mod2/struct.Mod2Public.html
 // @has foo/mod1/mod2/struct.Mod2Private.html
 

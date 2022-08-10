@@ -7,7 +7,7 @@
 //!
 //! [link]: https://example.com
 
-// @has search-index.js 'This <em>summary</em> has a link and <code>code</code>.'
+// @hastext search-index.js 'This <em>summary</em> has a link and <code>code</code>.'
 // @!has - 'second paragraph'
 
 /// This `code` will be rendered in a code tag.
@@ -15,8 +15,8 @@
 /// This text should not be rendered.
 pub struct Sidebar;
 
-// @has search-index.js 'This <code>code</code> will be rendered in a code tag.'
-// @has summaries/sidebar-items.js 'This `code` will be rendered in a code tag.'
+// @hastext search-index.js 'This <code>code</code> will be rendered in a code tag.'
+// @hastext summaries/sidebar-items.js 'This `code` will be rendered in a code tag.'
 // @!has - 'text should not be rendered'
 
 /// ```text

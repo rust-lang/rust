@@ -8,6 +8,6 @@ pub trait Trait {
 // Make sure that the elided lifetime shows up
 
 // @has foo/type.T.html
-// @has - "pub type T = "
-// @has - "&lt;'_&gt;"
+// @hastext - "pub type T = "
+// @hastext - "&lt;'_&gt;"
 pub type T = fn(&<() as Trait>::Gat<'_>);
