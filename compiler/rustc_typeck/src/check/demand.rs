@@ -598,13 +598,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let self_ty = self.typeck_results.borrow().expr_ty(&method_expr[0]);
-        let self_ty = format!("{:?}", self_ty);
         let name = method_path.ident.name;
-        let is_as_ref_able = (self_ty.starts_with("&std::option::Option")
-            || self_ty.starts_with("&std::result::Result")
-            || self_ty.starts_with("std::option::Option")
-            || self_ty.starts_with("std::result::Result"))
-            && (name == sym::map || name == sym::and_then);
+        let is_as_ref_able = match self_ty.peel_refs().kind() {
+            ty::Adt(def, _) => {
+                (self.tcx.is_diagnostic_item(sym::Option, def.did())
+                    || self.tcx.is_diagnostic_item(sym::Result, def.did()))
+                    && (name == sym::map || name == sym::and_then)
+            }
+            _ => false,
+        };
         match (is_as_ref_able, self.sess().source_map().span_to_snippet(method_path.ident.span)) {
             (true, Ok(src)) => {
                 let suggestion = format!("as_ref().{}", src);
@@ -792,7 +794,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ if is_range_literal(expr) => true,
                             _ => false,
                         };
-                        let sugg_expr = if needs_parens { format!("({src})") } else { src };
 
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some((
@@ -820,6 +821,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
 
+                        let sugg_expr = if needs_parens { format!("({src})") } else { src };
                         return Some(match mutability {
                             hir::Mutability::Mut => (
                                 sp,
