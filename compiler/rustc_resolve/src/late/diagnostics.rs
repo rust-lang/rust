@@ -985,27 +985,45 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut Diagnostic, expr: &Expr| match expr.kind {
-            ExprKind::Field(_, ident) => {
+        let path_sep = |err: &mut Diagnostic, expr: &Expr, kind: DefKind| {
+            const MESSAGE: &str = "use the path separator to refer to an item";
+
+            let (lhs_span, rhs_span) = match &expr.kind {
+                ExprKind::Field(base, ident) => (base.span, ident.span),
+                ExprKind::MethodCall(_, receiver, _, span) => (receiver.span, *span),
+                _ => return false,
+            };
+
+            if lhs_span.eq_ctxt(rhs_span) {
                 err.span_suggestion(
-                    expr.span,
-                    "use the path separator to refer to an item",
-                    format!("{}::{}", path_str, ident),
+                    lhs_span.between(rhs_span),
+                    MESSAGE,
+                    "::",
                     Applicability::MaybeIncorrect,
                 );
                 true
-            }
-            ExprKind::MethodCall(ref segment, ..) => {
-                let span = expr.span.with_hi(segment.ident.span.hi());
-                err.span_suggestion(
-                    span,
-                    "use the path separator to refer to an item",
-                    format!("{}::{}", path_str, segment.ident),
+            } else if kind == DefKind::Struct
+            && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
+            && let Ok(snippet) = self.r.session.source_map().span_to_snippet(lhs_source_span)
+            {
+                // The LHS is a type that originates from a macro call.
+                // We have to add angle brackets around it.
+
+                err.span_suggestion_verbose(
+                    lhs_source_span.until(rhs_span),
+                    MESSAGE,
+                    format!("<{snippet}>::"),
                     Applicability::MaybeIncorrect,
                 );
                 true
+            } else {
+                // Either we were unable to obtain the source span / the snippet or
+                // the LHS originates from a macro call and it is not a type and thus
+                // there is no way to replace `.` with `::` and still somehow suggest
+                // valid Rust code.
+
+                false
             }
-            _ => false,
         };
 
         let find_span = |source: &PathSource<'_>, err: &mut Diagnostic| {
@@ -1027,7 +1045,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             match source {
                 PathSource::Expr(Some(
                     parent @ Expr { kind: ExprKind::Field(..) | ExprKind::MethodCall(..), .. },
-                )) if path_sep(err, &parent) => {}
+                )) if path_sep(err, &parent, DefKind::Struct) => {}
                 PathSource::Expr(
                     None
                     | Some(Expr {
@@ -1143,8 +1161,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
             }
-            (Res::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {
-                if !path_sep(err, &parent) {
+            (
+                Res::Def(kind @ (DefKind::Mod | DefKind::Trait), _),
+                PathSource::Expr(Some(parent)),
+            ) => {
+                if !path_sep(err, &parent, kind) {
                     return false;
                 }
             }
