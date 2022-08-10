@@ -108,8 +108,10 @@ fn test_bool_to_option() {
 fn test_bool_flip() {
     assert!(false.flip());
     assert!(!true.flip());
+}
 
-    // Test re-assignment
+#[test]
+fn test_bool_toggle() {
     let mut untrue = false;
 
     assert!(!untrue);
@@ -117,4 +119,15 @@ fn test_bool_flip() {
     untrue.toggle();
 
     assert!(untrue);
+}
+
+#[test]
+fn test_const_flip() {
+    const TRUE_CONST: bool = false.flip();
+    static TRUE_STATIC: bool = false.flip();
+
+    assert!(TRUE_CONST);
+
+
+    assert!(TRUE_STATIC);
 }
