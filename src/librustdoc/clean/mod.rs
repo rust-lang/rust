@@ -123,7 +123,7 @@ fn clean_generic_bound<'tcx>(
 
             let trait_ref = ty::TraitRef::identity(cx.tcx, def_id).skip_binder();
 
-            let generic_args = generic_args.clean(cx);
+            let generic_args = clean_generic_args(generic_args, cx);
             let GenericArgs::AngleBracketed { bindings, .. } = generic_args
             else {
                 bug!("clean: parenthesized `GenericBound::LangItemTrait`");
@@ -1826,39 +1826,44 @@ fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
     Path { res: path.res, segments: path.segments.iter().map(|x| x.clean(cx)).collect() }
 }
 
-impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericArgs {
-        if self.parenthesized {
-            let output = clean_ty(self.bindings[0].ty(), cx);
-            let output =
-                if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
-            let inputs = self.inputs().iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
-            GenericArgs::Parenthesized { inputs, output }
-        } else {
-            let args = self
-                .args
-                .iter()
-                .map(|arg| match arg {
-                    hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
-                        GenericArg::Lifetime(clean_lifetime(*lt, cx))
-                    }
-                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
-                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
-                })
-                .collect::<Vec<_>>()
-                .into();
-            let bindings =
-                self.bindings.iter().map(|x| clean_type_binding(x, cx)).collect::<Vec<_>>().into();
-            GenericArgs::AngleBracketed { args, bindings }
-        }
+fn clean_generic_args<'tcx>(
+    generic_args: &hir::GenericArgs<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> GenericArgs {
+    if generic_args.parenthesized {
+        let output = clean_ty(generic_args.bindings[0].ty(), cx);
+        let output = if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
+        let inputs =
+            generic_args.inputs().iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
+        GenericArgs::Parenthesized { inputs, output }
+    } else {
+        let args = generic_args
+            .args
+            .iter()
+            .map(|arg| match arg {
+                hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
+                    GenericArg::Lifetime(clean_lifetime(*lt, cx))
+                }
+                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
+                hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
+                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+            })
+            .collect::<Vec<_>>()
+            .into();
+        let bindings = generic_args
+            .bindings
+            .iter()
+            .map(|x| clean_type_binding(x, cx))
+            .collect::<Vec<_>>()
+            .into();
+        GenericArgs::AngleBracketed { args, bindings }
     }
 }
 
 impl<'tcx> Clean<'tcx, PathSegment> for hir::PathSegment<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> PathSegment {
-        PathSegment { name: self.ident.name, args: self.args().clean(cx) }
+        PathSegment { name: self.ident.name, args: clean_generic_args(self.args(), cx) }
     }
 }
 
@@ -2228,7 +2233,10 @@ fn clean_type_binding<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> TypeBinding {
     TypeBinding {
-        assoc: PathSegment { name: type_binding.ident.name, args: type_binding.gen_args.clean(cx) },
+        assoc: PathSegment {
+            name: type_binding.ident.name,
+            args: clean_generic_args(type_binding.gen_args, cx),
+        },
         kind: match type_binding.kind {
             hir::TypeBindingKind::Equality { ref term } => {
                 TypeBindingKind::Equality { term: clean_hir_term(term, cx) }
