@@ -206,7 +206,10 @@ pub trait Error: Debug + Display {
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'b> Provider for dyn Error + 'b {
+impl<E> Provider for E
+where
+    E: Error,
+{
     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
         self.provide(req)
     }
