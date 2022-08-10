@@ -16,7 +16,7 @@ use crate::{
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
+use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, Static, StmtKind};
 use rustc_ast::{Block, Fn, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId, Struct};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
@@ -712,8 +712,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(_, mt, _) => {
-                let res = Res::Def(DefKind::Static(mt), def_id);
+            ItemKind::Static(box Static { mutbl, .. }) => {
+                let res = Res::Def(DefKind::Static(mutbl), def_id);
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -918,7 +918,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let def_id = local_def_id.to_def_id();
         let (def_kind, ns) = match item.kind {
             ForeignItemKind::Fn(..) => (DefKind::Fn, ValueNS),
-            ForeignItemKind::Static(_, mt, _) => (DefKind::Static(mt), ValueNS),
+            ForeignItemKind::Static(box Static { mutbl, .. }) => (DefKind::Static(mutbl), ValueNS),
             ForeignItemKind::TyAlias(..) => (DefKind::ForeignTy, TypeNS),
             ForeignItemKind::MacCall(_) => unreachable!(),
         };

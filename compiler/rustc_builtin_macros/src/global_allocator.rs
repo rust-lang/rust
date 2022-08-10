@@ -5,7 +5,7 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
-use rustc_ast::{Fn, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
+use rustc_ast::{Fn, ItemKind, Mutability, Static, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -28,12 +28,16 @@ pub fn expand(
     // FIXME - if we get deref patterns, use them to reduce duplication here
     let (item, is_stmt, ty_span) = match &item {
         Annotatable::Item(item) => match item.kind {
-            ItemKind::Static(ref ty, ..) => (item, false, ecx.with_def_site_ctxt(ty.span)),
+            ItemKind::Static(box Static { ref ty, .. }) => {
+                (item, false, ecx.with_def_site_ctxt(ty.span))
+            }
             _ => return not_static(),
         },
         Annotatable::Stmt(stmt) => match &stmt.kind {
             StmtKind::Item(item_) => match item_.kind {
-                ItemKind::Static(ref ty, ..) => (item_, true, ecx.with_def_site_ctxt(ty.span)),
+                ItemKind::Static(box Static { ref ty, .. }) => {
+                    (item_, true, ecx.with_def_site_ctxt(ty.span))
+                }
                 _ => return not_static(),
             },
             _ => return not_static(),

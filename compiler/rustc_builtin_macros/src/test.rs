@@ -325,9 +325,9 @@ pub fn expand_test_or_bench(
                         field("testfn", test_fn), // }
                     ],
                 ), // }
-            )},
-        ),
-    ));
+            ),
+        })),
+    );
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;
         tc

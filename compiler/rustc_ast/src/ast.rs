@@ -2823,6 +2823,13 @@ pub struct TraitAlias {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Static {
+    pub ty: P<Ty>,
+    pub mutbl: Mutability,
+    pub expr: Option<P<Expr>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Const {
     pub defaultness: Defaultness,
     pub ty: P<Ty>,
@@ -2842,7 +2849,7 @@ pub enum ItemKind {
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    Static(Box<Static>),
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
@@ -3011,7 +3018,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
-    Static(P<Ty>, Mutability, Option<P<Expr>>),
+    Static(Box<Static>),
     /// An foreign function.
     Fn(Box<Fn>),
     /// An foreign type.
@@ -3023,7 +3030,7 @@ pub enum ForeignItemKind {
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
-            ForeignItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
+            ForeignItemKind::Static(static_) => ItemKind::Static(static_),
             ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -3036,7 +3043,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
+            ItemKind::Static(static_) => ForeignItemKind::Static(static_),
             ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),
@@ -3059,8 +3066,8 @@ mod size_asserts {
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(Fn, 192);
-    static_assert_size!(ForeignItem, 112);
-    static_assert_size!(ForeignItemKind, 24);
+    static_assert_size!(ForeignItem, 104);
+    static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);

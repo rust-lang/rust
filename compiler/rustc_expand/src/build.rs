@@ -592,7 +592,12 @@ impl<'a> ExtCtxt<'a> {
         mutbl: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, Some(expr)))
+        self.item(
+            span,
+            name,
+            Vec::new(),
+            ast::ItemKind::Static(Box::new(ast::Static { ty, mutbl, expr: Some(expr) })),
+        )
     }
 
     pub fn item_const(

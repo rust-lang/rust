@@ -234,9 +234,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
-            ItemKind::Static(ref t, m, ref e) => {
-                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
-                hir::ItemKind::Static(ty, m, body_id)
+            ItemKind::Static(box Static { ref ty, mutbl, ref expr }) => {
+                let (ty, body_id) = self.lower_const_item(ty, span, expr.as_deref());
+                hir::ItemKind::Static(ty, mutbl, body_id)
             }
             ItemKind::Const(box Const { ref ty, ref expr, .. }) => {
                 let (ty, body_id) = self.lower_const_item(ty, span, expr.as_deref());
@@ -657,10 +657,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
-                ForeignItemKind::Static(ref t, m, _) => {
+                ForeignItemKind::Static(box Static { ref ty, mutbl, .. }) => {
                     let ty =
-                        self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
-                    hir::ForeignItemKind::Static(ty, m)
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                    hir::ForeignItemKind::Static(ty, mutbl)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),

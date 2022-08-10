@@ -2235,7 +2235,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(box Const { ref ty, ref expr, .. }) => {
+            ItemKind::Static(box Static { ref ty, ref expr, .. })
+            | ItemKind::Const(box Const { ref ty, ref expr, .. }) => {
                 self.with_item_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);

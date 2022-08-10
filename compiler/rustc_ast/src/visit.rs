@@ -299,7 +299,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     match item.kind {
         ItemKind::ExternCrate(_) => {}
         ItemKind::Use(ref use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
-        ItemKind::Static(ref ty, _, ref expr)
+        ItemKind::Static(box Static { ref ty, mutbl: _, ref expr })
         | ItemKind::Const(box Const { ref ty, ref expr, .. }) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
@@ -560,7 +560,7 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
     match kind {
-        ForeignItemKind::Static(ty, _, expr) => {
+        ForeignItemKind::Static(box Static { ty, mutbl: _, expr }) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }

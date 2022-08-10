@@ -225,9 +225,9 @@ impl<'a> Parser<'a> {
         } else if self.is_static_global() {
             // STATIC ITEM
             self.bump(); // `static`
-            let m = self.parse_mutability();
-            let (ident, ty, expr) = self.parse_item_global(Some(m))?;
-            (ident, ItemKind::Static(ty, m, expr))
+            let mutbl = self.parse_mutability();
+            let (ident, ty, expr) = self.parse_item_global(Some(mutbl))?;
+            (ident, ItemKind::Static(Box::new(Static { ty, mutbl, expr })))
         } else if let Constness::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -822,7 +822,7 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(ty, _, expr) => {
+                        ItemKind::Static(box Static { ty, expr, .. }) => {
                             self.struct_span_err(span, "associated `static` items are not allowed")
                                 .emit();
                             AssocItemKind::Const(Box::new(Const {
@@ -1064,7 +1064,11 @@ impl<'a> Parser<'a> {
                     Err(kind) => match kind {
                         ItemKind::Const(box Const { ty, expr, .. }) => {
                             self.error_on_foreign_const(span, ident);
-                            ForeignItemKind::Static(ty, Mutability::Not, expr)
+                            ForeignItemKind::Static(Box::new(Static {
+                                ty,
+                                mutbl: Mutability::Not,
+                                expr,
+                            }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },

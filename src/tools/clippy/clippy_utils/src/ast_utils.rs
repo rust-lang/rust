@@ -253,7 +253,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     match (l, r) {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
-        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Static(box ast::Static { ty: lt, mutbl: lm, expr: le }),
+            Static(box ast::Static { ty: rt, mutbl: rm, expr: re })
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Const(box ast::Const { defaultness: ld, ty: lt, expr: le }),
             Const(box ast::Const { defaultness: rd, ty: rt, expr: re })
@@ -387,7 +390,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
 pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
-        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Static(box ast::Static { ty: lt, mutbl: lm, expr: le }),
+            Static(box ast::Static { ty: rt, mutbl: rm, expr: re })
+        ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,

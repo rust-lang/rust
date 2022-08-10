@@ -29,9 +29,9 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::ForeignItemKind::Static(ty, mutbl, body) => {
-                let def = ast::Defaultness::Final;
-                self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis, def);
+            ast::ForeignItemKind::Static(box ast::Static { ty, mutbl, expr }) => {
+                let defaultness = ast::Defaultness::Final;
+                self.print_item_const(ident, Some(*mutbl), ty, expr.as_deref(), vis, defaultness);
             }
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
@@ -156,7 +156,7 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(ref ty, mutbl, ref expr) => {
+            ast::ItemKind::Static(box ast::Static { ref ty, mutbl, ref expr }) => {
                 let defaultness = ast::Defaultness::Final;
                 self.print_item_const(
                     item.ident,

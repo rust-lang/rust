@@ -1800,8 +1800,8 @@ pub(crate) struct StaticParts<'a> {
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (defaultness, prefix, ty, mutability, expr) = match item.kind {
-            ast::ItemKind::Static(ref ty, mutability, ref expr) => {
-                (None, "static", ty, mutability, expr)
+            ast::ItemKind::Static(ref static_) => {
+                (None, "static", &static_.ty, static_.mutbl, &static_.expr)
             }
             ast::ItemKind::Const(ref const_) => {
                 (Some(const_.defaultness), "const", &const_.ty, ast::Mutability::Not, &const_.expr)
@@ -3204,11 +3204,11 @@ impl Rewrite for ast::ForeignItem {
                     .map(|(s, _, _)| format!("{};", s))
                 }
             }
-            ast::ForeignItemKind::Static(ref ty, mutability, _) => {
+            ast::ForeignItemKind::Static(ref static_) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function kw here.
                 let vis = format_visibility(context, &self.vis);
-                let mut_str = format_mutability(mutability);
+                let mut_str = format_mutability(static_.mutbl);
                 let prefix = format!(
                     "{}static {}{}:",
                     vis,
@@ -3219,7 +3219,7 @@ impl Rewrite for ast::ForeignItem {
                 rewrite_assign_rhs(
                     context,
                     prefix,
-                    &**ty,
+                    &*static_.ty,
                     &RhsAssignKind::Ty,
                     shape.sub_width(1)?,
                 )

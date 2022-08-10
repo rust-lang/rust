@@ -1334,7 +1334,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let msg = "free constant item without body";
                 self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
             }
-            ItemKind::Static(.., None) => {
+            ItemKind::Static(box Static { expr: None, .. }) => {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
@@ -1390,8 +1390,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::Static(_, _, body) => {
-                self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+            ForeignItemKind::Static(box Static { expr, .. }) => {
+                self.check_foreign_kind_bodyless(fi.ident, "static", expr.as_ref().map(|e| e.span));
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}
