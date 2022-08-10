@@ -148,6 +148,7 @@ struct LoweringArena {
     tys: TypedArena<Ty>,
     aba: TypedArena<AngleBracketedArgs>,
     ptr: TypedArena<PolyTraitRef>,
+    gs: TypedArena<Generics>,
 }
 
 trait ResolverAstLoweringExt {
@@ -289,6 +290,7 @@ enum ImplTraitContext<'b, 'itctx> {
         impl_trait_inputs: &'b Vec<&'itctx Ty>,
         /// In scope generics
         generics: &'itctx Generics,
+        parent_generics: Option<&'itctx Generics>,
     },
     /// Impl trait in type aliases.
     TypeAliasesOpaqueTy,
@@ -325,11 +327,12 @@ impl<'itctx> ImplTraitContext<'_, 'itctx> {
         use self::ImplTraitContext::*;
         match self {
             Universal { apit_nodes } => Universal { apit_nodes: *apit_nodes },
-            ReturnPositionOpaqueTy { origin, impl_trait_inputs, generics } => {
+            ReturnPositionOpaqueTy { origin, impl_trait_inputs, generics, parent_generics } => {
                 ReturnPositionOpaqueTy {
                     origin: *origin,
                     impl_trait_inputs: *impl_trait_inputs,
                     generics: *generics,
+                    parent_generics: *parent_generics,
                 }
             }
             TypeAliasesOpaqueTy => TypeAliasesOpaqueTy,
@@ -393,6 +396,21 @@ enum AstOwner<'a> {
     Item(&'a ast::Item),
     AssocItem(&'a ast::AssocItem, visit::AssocCtxt),
     ForeignItem(&'a ast::ForeignItem),
+}
+
+impl<'a> AstOwner<'a> {
+    fn item_generics(&self) -> ast::Generics {
+        match self {
+            Self::Item(Item {
+                kind:
+                    ItemKind::Trait(box Trait { generics, .. })
+                    | ItemKind::Impl(box Impl { generics, .. }),
+                ..
+            }) => generics.clone(),
+
+            _ => Generics::default(),
+        }
+    }
 }
 
 fn index_crate<'a>(
@@ -477,6 +495,7 @@ pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
         tys: TypedArena::default(),
         aba: TypedArena::default(),
         ptr: TypedArena::default(),
+        gs: TypedArena::default(),
     };
 
     for def_id in ast_index.indices() {
@@ -1445,6 +1464,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             span: DUMMY_SP,
                         },
                         None,
+                        None,
                     ),
                     param_names: self.lower_fn_params_to_names(&f.decl),
                 }))
@@ -1516,17 +1536,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         origin,
                         impl_trait_inputs,
                         generics,
+                        parent_generics,
                     } => {
                         if self.tcx.sess.features_untracked().return_position_impl_trait_v2 {
-                            self.lower_opaque_impl_trait_v2(
-                                span,
-                                origin,
-                                def_node_id,
-                                generics,
-                                impl_trait_inputs,
-                                bounds,
-                                itctx,
-                            )
+                            if let Some(parent_generics) = parent_generics {
+                                let generics =
+                                    self.lowering_arena.gs.alloc(generics.merge(parent_generics));
+                                self.lower_opaque_impl_trait_v2(
+                                    span,
+                                    origin,
+                                    def_node_id,
+                                    generics,
+                                    impl_trait_inputs,
+                                    bounds,
+                                    itctx,
+                                )
+                            } else {
+                                self.lower_opaque_impl_trait_v2(
+                                    span,
+                                    origin,
+                                    def_node_id,
+                                    generics,
+                                    impl_trait_inputs,
+                                    bounds,
+                                    itctx,
+                                )
+                            }
                         } else {
                             self.lower_opaque_impl_trait(span, origin, def_node_id, bounds, itctx)
                         }
@@ -2154,6 +2189,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         fn_node_id: Option<NodeId>,
         kind: FnDeclKind,
         generics: &Generics,
+        parent_generics: Option<&Generics>,
         make_ret_async: Option<NodeId>,
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
@@ -2205,6 +2241,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                                 impl_trait_inputs: &impl_trait_inputs,
                                 generics,
+                                parent_generics: parent_generics,
                             }
                         }
                         _ => ImplTraitContext::Disallowed(match kind {
@@ -2502,6 +2539,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                     impl_trait_inputs: &mut Vec::new(),
                     generics: &Generics::default(),
+                    parent_generics: None,
                 };
                 self.lower_ty(ty, context)
             }

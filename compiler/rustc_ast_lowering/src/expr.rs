@@ -850,7 +850,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // Lower outside new scope to preserve `is_in_loop_condition`.
         let fn_decl =
-            self.lower_fn_decl(decl, None, FnDeclKind::Closure, &Generics::default(), None);
+            self.lower_fn_decl(decl, None, FnDeclKind::Closure, &Generics::default(), None, None);
 
         let c = self.arena.alloc(hir::Closure {
             binder: binder_clause,
@@ -954,8 +954,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
-        let fn_decl =
-            self.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, &Generics::default(), None);
+        let fn_decl = self.lower_fn_decl(
+            &outer_decl,
+            None,
+            FnDeclKind::Closure,
+            &Generics::default(),
+            None,
+            None,
+        );
 
         let c = self.arena.alloc(hir::Closure {
             binder: binder_clause,

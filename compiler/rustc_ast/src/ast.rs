@@ -434,6 +434,27 @@ impl Default for Generics {
     }
 }
 
+impl Generics {
+    pub fn merge(&self, other: &Generics) -> Generics {
+        let mut params = Vec::with_capacity(self.params.len() + other.params.len());
+        params.extend(self.params.iter().cloned());
+        params.extend(other.params.iter().cloned());
+
+        let has_where_token =
+            self.where_clause.has_where_token || other.where_clause.has_where_token;
+        let mut predicates = Vec::with_capacity(
+            self.where_clause.predicates.len() + other.where_clause.predicates.len(),
+        );
+        predicates.extend(self.where_clause.predicates.iter().cloned());
+        predicates.extend(other.where_clause.predicates.iter().cloned());
+
+        let where_clause =
+            WhereClause { has_where_token, predicates, span: self.where_clause.span };
+
+        Generics { params, where_clause, span: self.span }
+    }
+}
+
 /// A where-clause in a definition.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct WhereClause {
