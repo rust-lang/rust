@@ -3032,11 +3032,13 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
+    static_assert_size!(AssocItem, 160);
     static_assert_size!(AssocItemKind, 72);
     static_assert_size!(Attribute, 152);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(Fn, 192);
+    static_assert_size!(ForeignItem, 160);
     static_assert_size!(ForeignItemKind, 72);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
