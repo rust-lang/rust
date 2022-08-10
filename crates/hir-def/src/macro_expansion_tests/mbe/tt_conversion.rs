@@ -78,7 +78,7 @@ m!(static bar: &'static str = "hello";);
 macro_rules! m {
     ($($t:tt)*) => { $($t)*}
 }
-static bar: & 'static str = "hello";
+static bar: &'static str = "hello";
 "#]],
     );
 }

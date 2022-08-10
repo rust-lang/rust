@@ -468,7 +468,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a . __ra_fixup}
+fn foo () {a .__ra_fixup}
 "#]],
         )
     }
@@ -478,11 +478,11 @@ fn foo () {a . __ra_fixup}
         check(
             r#"
 fn foo() {
-    a. ;
+    a.;
 }
 "#,
             expect![[r#"
-fn foo () {a . __ra_fixup ;}
+fn foo () {a .__ra_fixup ;}
 "#]],
         )
     }
@@ -492,12 +492,12 @@ fn foo () {a . __ra_fixup ;}
         check(
             r#"
 fn foo() {
-    a. ;
+    a.;
     bar();
 }
 "#,
             expect![[r#"
-fn foo () {a . __ra_fixup ; bar () ;}
+fn foo () {a .__ra_fixup ; bar () ;}
 "#]],
         )
     }
@@ -525,7 +525,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {let x = a . __ra_fixup ;}
+fn foo () {let x = a .__ra_fixup ;}
 "#]],
         )
     }
@@ -541,7 +541,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a . b ; bar () ;}
+fn foo () {a .b ; bar () ;}
 "#]],
         )
     }
