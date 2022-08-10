@@ -22,11 +22,11 @@ LL |         missing_message => "./missing-message.ftl",
    |
    = help: see additional errors emitted
 
-error: expected a message field for "missing-message"
+error: expected a message field for "missing_message"
  --> ./missing-message.ftl:1:1
   |
-1 | missing-message = 
-  | ^^^^^^^^^^^^^^^^^^
+1 | missing_message =
+  | ^^^^^^^^^^^^^^^^^
   |
 
 error: overrides existing message: `key`
