@@ -822,10 +822,10 @@ pub fn visit_polarity<T: MutVisitor>(polarity: &mut ImplPolarity, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_constness<T: MutVisitor>(constness: &mut Const, vis: &mut T) {
+pub fn visit_constness<T: MutVisitor>(constness: &mut Constness, vis: &mut T) {
     match constness {
-        Const::Yes(span) => vis.visit_span(span),
-        Const::No => {}
+        Constness::Yes(span) => vis.visit_span(span),
+        Constness::No => {}
     }
 }
 
@@ -1014,7 +1014,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Const(defaultness, ty, expr) => {
+        ItemKind::Const(box Const { defaultness, ty, expr }) => {
             visit_defaultness(defaultness, vis);
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
@@ -1101,7 +1101,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     visitor.visit_vis(vis);
     visit_attrs(attrs, visitor);
     match kind {
-        AssocItemKind::Const(defaultness, ty, expr) => {
+        AssocItemKind::Const(box Const { defaultness, ty, expr }) => {
             visit_defaultness(defaultness, visitor);
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));

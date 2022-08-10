@@ -228,7 +228,7 @@ impl<'a> Parser<'a> {
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
             (ident, ItemKind::Static(ty, m, expr))
-        } else if let Const::Yes(const_span) = self.parse_constness() {
+        } else if let Constness::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
                 // recover from `const impl`, suggest `impl const`
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.recover_const_mut(const_span);
                 let (ident, ty, expr) = self.parse_item_global(None)?;
-                (ident, ItemKind::Const(def(), ty, expr))
+                (ident, ItemKind::Const(Box::new(Const { defaultness: def(), ty, expr })))
             }
         } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
             // TRAIT ITEM
@@ -547,7 +547,7 @@ impl<'a> Parser<'a> {
         };
 
         let constness = self.parse_constness();
-        if let Const::Yes(span) = constness {
+        if let Constness::Yes(span) = constness {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
         }
 
@@ -822,10 +822,14 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(a, _, b) => {
+                        ItemKind::Static(ty, _, expr) => {
                             self.struct_span_err(span, "associated `static` items are not allowed")
                                 .emit();
-                            AssocItemKind::Const(Defaultness::Final, a, b)
+                            AssocItemKind::Const(Box::new(Const {
+                                defaultness: Defaultness::Final,
+                                ty,
+                                expr,
+                            }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`trait`s or `impl`s"),
                     },
@@ -1058,9 +1062,9 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(_, a, b) => {
+                        ItemKind::Const(box Const { ty, expr, .. }) => {
                             self.error_on_foreign_const(span, ident);
-                            ForeignItemKind::Static(a, Mutability::Not, b)
+                            ForeignItemKind::Static(ty, Mutability::Not, expr)
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
                     },
@@ -1152,7 +1156,7 @@ impl<'a> Parser<'a> {
 
         match impl_info.1 {
             ItemKind::Impl(box Impl { of_trait: Some(ref trai), ref mut constness, .. }) => {
-                *constness = Const::Yes(const_span);
+                *constness = Constness::Yes(const_span);
 
                 let before_trait = trai.path.span.shrink_to_lo();
                 let const_up_to_impl = const_span.with_hi(impl_span.lo());
@@ -2087,8 +2091,8 @@ impl<'a> Parser<'a> {
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(kw::Const) {
                         match constness {
-                            Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Const::No => Some(WrongKw::Misplaced(async_start_sp)),
+                            Constness::Yes(sp) => Some(WrongKw::Duplicated(sp)),
+                            Constness::No => Some(WrongKw::Misplaced(async_start_sp)),
                         }
                     } else if self.check_keyword(kw::Async) {
                         match asyncness {

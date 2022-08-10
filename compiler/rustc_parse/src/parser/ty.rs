@@ -528,7 +528,7 @@ impl<'a> Parser<'a> {
             self.parse_fn_front_matter(&inherited_vis)?;
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
-        if let ast::Const::Yes(span) = constness {
+        if let ast::Constness::Yes(span) = constness {
             // If we ever start to allow `const fn()`, then update
             // feature gating for `#![feature(const_extern_fn)]` to
             // cover it.

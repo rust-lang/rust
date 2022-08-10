@@ -83,18 +83,18 @@ pub(crate) fn format_async(is_async: &ast::Async) -> &'static str {
 }
 
 #[inline]
-pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
+pub(crate) fn format_constness(constness: ast::Constness) -> &'static str {
     match constness {
-        ast::Const::Yes(..) => "const ",
-        ast::Const::No => "",
+        ast::Constness::Yes(..) => "const ",
+        ast::Constness::No => "",
     }
 }
 
 #[inline]
-pub(crate) fn format_constness_right(constness: ast::Const) -> &'static str {
+pub(crate) fn format_constness_right(constness: ast::Constness) -> &'static str {
     match constness {
-        ast::Const::Yes(..) => " const",
-        ast::Const::No => "",
+        ast::Constness::Yes(..) => " const",
+        ast::Constness::No => "",
     }
 }
 

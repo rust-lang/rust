@@ -229,11 +229,11 @@ pub fn expand_test_or_bench(
             cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
         ],
         // const $ident: test::TestDescAndFn =
-        ast::ItemKind::Const(
-            ast::Defaultness::Final,
-            cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+        ast::ItemKind::Const(Box::new(ast::Const {
+            defaultness: ast::Defaultness::Final,
+            ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
             // test::TestDescAndFn {
-            Some(
+            expr: Some(
                 cx.expr_struct(
                     sp,
                     test_path("TestDescAndFn"),
@@ -325,9 +325,9 @@ pub fn expand_test_or_bench(
                         field("testfn", test_fn), // }
                     ],
                 ), // }
-            ),
+            )},
         ),
-    );
+    ));
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;
         tc

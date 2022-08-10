@@ -2235,7 +2235,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(_, ref ty, ref expr) => {
+            ItemKind::Static(ref ty, _, ref expr) | ItemKind::Const(box Const { ref ty, ref expr, .. }) => {
                 self.with_item_rib(|this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
@@ -2502,11 +2502,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         for item in trait_items {
             match &item.kind {
-                AssocItemKind::Const(_, ty, default) => {
+                AssocItemKind::Const(box Const { ty, expr, .. }) => {
                     self.visit_ty(ty);
                     // Only impose the restrictions of `ConstRibKind` for an
                     // actual constant expression in a provided default.
-                    if let Some(expr) = default {
+                    if let Some(expr) = expr {
                         // We allow arbitrary const expressions inside of associated consts,
                         // even if they are potentially not const evaluatable.
                         //
@@ -2666,7 +2666,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
         use crate::ResolutionError::*;
         match &item.kind {
-            AssocItemKind::Const(_, ty, default) => {
+            AssocItemKind::Const(box Const { expr, ty, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
                 // If this is a trait impl, ensure the const
                 // exists in trait
@@ -2680,7 +2680,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 );
 
                 self.visit_ty(ty);
-                if let Some(expr) = default {
+                if let Some(expr) = expr {
                     // We allow arbitrary const expressions inside of associated consts,
                     // even if they are potentially not const evaluatable.
                     //

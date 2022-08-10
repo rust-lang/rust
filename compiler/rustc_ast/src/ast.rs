@@ -2346,7 +2346,7 @@ impl Async {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 #[derive(HashStable_Generic)]
-pub enum Const {
+pub enum Constness {
     Yes(Span),
     No,
 }
@@ -2713,7 +2713,7 @@ impl Extern {
 pub struct FnHeader {
     pub unsafety: Unsafe,
     pub asyncness: Async,
-    pub constness: Const,
+    pub constness: Constness,
     pub ext: Extern,
 }
 
@@ -2723,7 +2723,7 @@ impl FnHeader {
         let Self { unsafety, asyncness, constness, ext } = self;
         matches!(unsafety, Unsafe::Yes(_))
             || asyncness.is_async()
-            || matches!(constness, Const::Yes(_))
+            || matches!(constness, Constness::Yes(_))
             || !matches!(ext, Extern::None)
     }
 }
@@ -2733,7 +2733,7 @@ impl Default for FnHeader {
         FnHeader {
             unsafety: Unsafe::No,
             asyncness: Async::No,
-            constness: Const::No,
+            constness: Constness::No,
             ext: Extern::None,
         }
     }
@@ -2788,7 +2788,7 @@ pub struct Impl {
     pub defaultness: Defaultness,
     pub unsafety: Unsafe,
     pub generics: Generics,
-    pub constness: Const,
+    pub constness: Constness,
     pub polarity: ImplPolarity,
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef>,
@@ -2823,6 +2823,13 @@ pub struct TraitAlias {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Const {
+    pub defaultness: Defaultness,
+    pub ty: P<Ty>,
+    pub expr: Option<P<Expr>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2839,7 +2846,7 @@ pub enum ItemKind {
     /// A constant item (`const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
-    Const(Defaultness, P<Ty>, Option<P<Expr>>),
+    Const(Box<Const>),
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
@@ -2955,7 +2962,7 @@ pub type AssocItem = Item<AssocItemKind>;
 pub enum AssocItemKind {
     /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
     /// If `def` is parsed, then the constant is provided, and otherwise required.
-    Const(Defaultness, P<Ty>, Option<P<Expr>>),
+    Const(Box<Const>),
     /// An associated function.
     Fn(Box<Fn>),
     /// An associated type.
@@ -2967,7 +2974,7 @@ pub enum AssocItemKind {
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(defaultness, ..)
+            Self::Const(box Const { defaultness, .. })
             | Self::Fn(box Fn { defaultness, .. })
             | Self::TyAlias(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) => Defaultness::Final,
@@ -2978,7 +2985,7 @@ impl AssocItemKind {
 impl From<AssocItemKind> for ItemKind {
     fn from(assoc_item_kind: AssocItemKind) -> ItemKind {
         match assoc_item_kind {
-            AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
+            AssocItemKind::Const(const_) => ItemKind::Const(const_),
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
@@ -2991,7 +2998,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
 
     fn try_from(item_kind: ItemKind) -> Result<AssocItemKind, ItemKind> {
         Ok(match item_kind {
-            ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
+            ItemKind::Const(const_) => AssocItemKind::Const(const_),
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
@@ -3046,8 +3053,8 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(AssocItem, 120);
-    static_assert_size!(AssocItemKind, 32);
+    static_assert_size!(AssocItem, 104);
+    static_assert_size!(AssocItemKind, 16);
     static_assert_size!(Attribute, 152);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
@@ -3057,8 +3064,8 @@ mod size_asserts {
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 120);
-    static_assert_size!(ItemKind, 32);
+    static_assert_size!(Item, 112);
+    static_assert_size!(ItemKind, 24);
     static_assert_size!(Lit, 48);
     static_assert_size!(Pat, 120);
     static_assert_size!(Path, 40);

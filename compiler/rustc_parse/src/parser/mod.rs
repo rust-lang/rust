@@ -25,7 +25,7 @@ use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, Extern};
+use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Constness, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacArgsEq, MacDelimiter, Mutability, StrLit};
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -1094,14 +1094,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses constness: `const` or nothing.
-    fn parse_constness(&mut self) -> Const {
+    fn parse_constness(&mut self) -> Constness {
         // Avoid const blocks to be parsed as const items
         if self.look_ahead(1, |t| t != &token::OpenDelim(Delimiter::Brace))
             && self.eat_keyword(kw::Const)
         {
-            Const::Yes(self.prev_token.uninterpolated_span())
+            Constness::Yes(self.prev_token.uninterpolated_span())
         } else {
-            Const::No
+            Constness::No
         }
     }
 

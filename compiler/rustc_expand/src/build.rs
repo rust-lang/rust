@@ -602,8 +602,13 @@ impl<'a> ExtCtxt<'a> {
         ty: P<ast::Ty>,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        let def = ast::Defaultness::Final;
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
+        let defaultness = ast::Defaultness::Final;
+        self.item(
+            span,
+            name,
+            Vec::new(),
+            ast::ItemKind::Const(Box::new(ast::Const { defaultness, ty, expr: Some(expr) })),
+        )
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {

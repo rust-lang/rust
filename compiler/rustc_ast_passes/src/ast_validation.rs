@@ -76,12 +76,14 @@ impl<'a> AstValidator<'a> {
     fn with_in_trait_impl(
         &mut self,
         is_in: bool,
-        constness: Option<Const>,
+        constness: Option<Constness>,
         f: impl FnOnce(&mut Self),
     ) {
         let old = mem::replace(&mut self.in_trait_impl, is_in);
-        let old_const =
-            mem::replace(&mut self.in_const_trait_impl, matches!(constness, Some(Const::Yes(_))));
+        let old_const = mem::replace(
+            &mut self.in_const_trait_impl,
+            matches!(constness, Some(Constness::Yes(_))),
+        );
         f(self);
         self.in_trait_impl = old;
         self.in_const_trait_impl = old_const;
@@ -324,8 +326,8 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_trait_fn_not_const(&self, constness: Const) {
-        if let Const::Yes(span) = constness {
+    fn check_trait_fn_not_const(&self, constness: Constness) {
+        if let Constness::Yes(span) = constness {
             struct_span_err!(
                 self.session,
                 span,
@@ -1136,7 +1138,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
-                    if let Const::Yes(_) = constness {
+                    if let Constness::Yes(_) = constness {
                         this.with_tilde_const_allowed(|this| this.visit_generics(generics));
                     } else {
                         this.visit_generics(generics);
@@ -1183,7 +1185,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with `default`")
                         .emit();
                 }
-                if let Const::Yes(span) = constness {
+                if let Constness::Yes(span) = constness {
                     error(span, "`const`")
                         .note("only trait implementations may be annotated with `const`")
                         .emit();
@@ -1327,8 +1329,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     _ => {}
                 }
             }
-            ItemKind::Const(def, .., None) => {
-                self.check_defaultness(item.span, def);
+            ItemKind::Const(box Const { defaultness, expr: None, .. }) => {
+                self.check_defaultness(item.span, defaultness);
                 let msg = "free constant item without body";
                 self.error_item_without_body(item.span, "constant", msg, " = <expr>;");
             }
@@ -1559,7 +1561,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions cannot both be `const async`
         if let Some(FnHeader {
-            constness: Const::Yes(cspan),
+            constness: Constness::Yes(cspan),
             asyncness: Async::Yes { span: aspan, .. },
             ..
         }) = fk.header()
@@ -1628,7 +1630,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         let tilde_const_allowed =
-            matches!(fk.header(), Some(FnHeader { constness: Const::Yes(_), .. }))
+            matches!(fk.header(), Some(FnHeader { constness: Constness::Yes(_), .. }))
                 || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)));
 
         self.with_tilde_const(tilde_const_allowed, |this| visit::walk_fn(this, fk, span));
@@ -1645,8 +1647,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
-                AssocItemKind::Const(_, _, body) => {
-                    self.check_impl_item_provided(item.span, body, "constant", " = <expr>;");
+                AssocItemKind::Const(box Const { expr, .. }) => {
+                    self.check_impl_item_provided(item.span, expr, "constant", " = <expr>;");
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
@@ -1701,7 +1703,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             AssocItemKind::Fn(box Fn { ref sig, ref generics, ref body, .. })
                 if self.in_const_trait_impl
                     || ctxt == AssocCtxt::Trait
-                    || matches!(sig.header.constness, Const::Yes(_)) =>
+                    || matches!(sig.header.constness, Constness::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);

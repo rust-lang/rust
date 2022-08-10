@@ -156,12 +156,26 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(ref ty, mutbl, ref body) => {
-                let def = ast::Defaultness::Final;
-                self.print_item_const(item.ident, Some(mutbl), ty, body.as_deref(), &item.vis, def);
+            ast::ItemKind::Static(ref ty, mutbl, ref expr) => {
+                let defaultness = ast::Defaultness::Final;
+                self.print_item_const(
+                    item.ident,
+                    Some(mutbl),
+                    ty,
+                    expr.as_deref(),
+                    &item.vis,
+                    defaultness,
+                );
             }
-            ast::ItemKind::Const(def, ref ty, ref body) => {
-                self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
+            ast::ItemKind::Const(box ast::Const { defaultness, ref ty, ref expr }) => {
+                self.print_item_const(
+                    item.ident,
+                    None,
+                    ty,
+                    expr.as_deref(),
+                    &item.vis,
+                    defaultness,
+                );
             }
             ast::ItemKind::Fn(box ast::Fn { defaultness, ref sig, ref generics, ref body }) => {
                 let body = body.as_deref();
@@ -511,8 +525,8 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Fn(box ast::Fn { defaultness, sig, generics, body }) => {
                 self.print_fn_full(sig, ident, generics, vis, *defaultness, body.as_deref(), attrs);
             }
-            ast::AssocItemKind::Const(def, ty, body) => {
-                self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
+            ast::AssocItemKind::Const(box ast::Const { defaultness, ty, expr }) => {
+                self.print_item_const(ident, None, ty, expr.as_deref(), vis, *defaultness);
             }
             ast::AssocItemKind::TyAlias(box ast::TyAlias {
                 defaultness,

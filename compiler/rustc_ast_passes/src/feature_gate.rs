@@ -58,10 +58,10 @@ struct PostExpansionVisitor<'a> {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    fn check_abi(&self, abi: ast::StrLit, constness: ast::Const) {
+    fn check_abi(&self, abi: ast::StrLit, constness: ast::Constness) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
-        if let ast::Const::Yes(_) = constness {
+        if let ast::Constness::Yes(_) = constness {
             match symbol_unescaped {
                 // Stable
                 sym::Rust | sym::C => {}
@@ -284,7 +284,7 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
-    fn check_extern(&self, ext: ast::Extern, constness: ast::Const) {
+    fn check_extern(&self, ext: ast::Extern, constness: ast::Constness) {
         if let ast::Extern::Explicit(abi, _) = ext {
             self.check_abi(abi, constness);
         }
@@ -433,7 +433,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match i.kind {
             ast::ItemKind::ForeignMod(ref foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi, ast::Const::No);
+                    self.check_abi(abi, ast::Constness::No);
                 }
             }
 
@@ -557,7 +557,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 // Function pointers cannot be `const`
-                self.check_extern(bare_fn_ty.ext, ast::Const::No);
+                self.check_extern(bare_fn_ty.ext, ast::Constness::No);
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");

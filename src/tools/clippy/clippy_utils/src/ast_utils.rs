@@ -254,7 +254,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
         (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
-        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Const(box ast::Const { defaultness: ld, ty: lt, expr: le }),
+            Const(box ast::Const { defaultness: rd, ty: rt, expr: re })
+        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -369,7 +372,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
                 && matches!(lp, ImplPolarity::Positive) == matches!(rp, ImplPolarity::Positive)
                 && eq_defaultness(*ld, *rd)
-                && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
+                && matches!(lc, ast::Constness::No) == matches!(rc, ast::Constness::No)
                 && eq_generics(lg, rg)
                 && both(lot, rot, |l, r| eq_path(&l.path, &r.path))
                 && eq_ty(lst, rst)
@@ -430,7 +433,10 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
 pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
     use AssocItemKind::*;
     match (l, r) {
-        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (
+            Const(box ast::Const { defaultness: ld, ty: lt, expr: le }),
+            Const(box ast::Const { defaultness: rd, ty: rt, expr: re })
+        ) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (
             Fn(box ast::Fn {
                 defaultness: ld,
@@ -506,7 +512,7 @@ pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
     matches!(l.unsafety, Unsafe::No) == matches!(r.unsafety, Unsafe::No)
         && l.asyncness.is_async() == r.asyncness.is_async()
-        && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
+        && matches!(l.constness, Constness::No) == matches!(r.constness, Constness::No)
         && eq_ext(&l.ext, &r.ext)
 }
 

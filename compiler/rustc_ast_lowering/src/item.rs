@@ -238,8 +238,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
                 hir::ItemKind::Static(ty, m, body_id)
             }
-            ItemKind::Const(_, ref t, ref e) => {
-                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+            ItemKind::Const(box Const { ref ty, ref expr, .. }) => {
+                let (ty, body_id) = self.lower_const_item(ty, span, expr.as_deref());
                 hir::ItemKind::Const(ty, body_id)
             }
             ItemKind::Fn(box Fn {
@@ -753,9 +753,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match i.kind {
-            AssocItemKind::Const(_, ref ty, ref default) => {
+            AssocItemKind::Const(box Const { ref ty, ref expr, .. }) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
-                let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
+                let body = expr.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
                 (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body), body.is_some())
             }
             AssocItemKind::Fn(box Fn { ref sig, ref generics, body: None, .. }) => {
@@ -849,7 +849,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
 
         let (generics, kind) = match &i.kind {
-            AssocItemKind::Const(_, ty, expr) => {
+            AssocItemKind::Const(box Const { ty, expr, .. }) => {
                 let ty = self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                 (
                     hir::Generics::empty(),
@@ -1271,10 +1271,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_constness(&mut self, c: Const) -> hir::Constness {
+    fn lower_constness(&mut self, c: Constness) -> hir::Constness {
         match c {
-            Const::Yes(_) => hir::Constness::Const,
-            Const::No => hir::Constness::NotConst,
+            Constness::Yes(_) => hir::Constness::Const,
+            Constness::No => hir::Constness::NotConst,
         }
     }
 

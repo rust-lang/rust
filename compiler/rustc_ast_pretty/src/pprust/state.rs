@@ -1754,10 +1754,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub(crate) fn print_constness(&mut self, s: ast::Const) {
+    pub(crate) fn print_constness(&mut self, s: ast::Constness) {
         match s {
-            ast::Const::No => {}
-            ast::Const::Yes(_) => self.word_nbsp("const"),
+            ast::Constness::No => {}
+            ast::Constness::Yes(_) => self.word_nbsp("const"),
         }
     }
 
