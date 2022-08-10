@@ -3,7 +3,6 @@ use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
 use rustc_ast::EnumDef;
-use rustc_ast::ForeignMod;
 use rustc_ast::NodeId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -184,8 +183,8 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
                 self.prev_level = orig_level;
             }
 
-            ast::ItemKind::ForeignMod(ForeignMod { ref items, .. }) => {
-                for nested in items {
+            ast::ItemKind::ForeignMod(ref foreign_mod) => {
+                for nested in foreign_mod.items.iter() {
                     if nested.vis.kind.is_pub() {
                         self.set_access_level(nested.id, access_level);
                     }

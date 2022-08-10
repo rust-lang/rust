@@ -2839,7 +2839,7 @@ pub enum ItemKind {
     /// An external module (`extern`).
     ///
     /// E.g., `extern {}` or `extern "C" {}`.
-    ForeignMod(ForeignMod),
+    ForeignMod(P<ForeignMod>),
     /// Module-level inline assembly (from `global_asm!()`).
     GlobalAsm(Box<InlineAsm>),
     /// A type alias (`type`).

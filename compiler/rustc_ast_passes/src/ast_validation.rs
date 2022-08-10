@@ -1234,16 +1234,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, unsafety, .. }) => {
+            ItemKind::ForeignMod(ref foreign_mod) => {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.invalid_visibility(
                     &item.vis,
                     Some("place qualifiers on individual foreign items instead"),
                 );
-                if let Unsafe::Yes(span) = unsafety {
+                if let Unsafe::Yes(span) = foreign_mod.unsafety {
                     self.err_handler().span_err(span, "extern block cannot be declared unsafe");
                 }
-                if abi.is_none() {
+                if foreign_mod.abi.is_none() {
                     self.maybe_lint_missing_abi(item.span, item.id);
                 }
                 visit::walk_item(self, item);

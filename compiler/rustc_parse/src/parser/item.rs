@@ -1039,11 +1039,11 @@ impl<'a> Parser<'a> {
             unsafety = Unsafe::Yes(self.token.span);
             self.eat_keyword(kw::Unsafe);
         }
-        let module = ast::ForeignMod {
+        let module = P(ast::ForeignMod {
             unsafety,
             abi,
             items: self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?,
-        };
+        });
         Ok((Ident::empty(), ItemKind::ForeignMod(module)))
     }
 
