@@ -337,6 +337,9 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
+
+        debug!("instantiate_into: predicates={:#?} substs={:#?}", instantiated.predicates, substs);
+
         instantiated
             .predicates
             .extend(self.predicates.iter().map(|(p, _)| EarlyBinder(*p).subst(tcx, substs)));
