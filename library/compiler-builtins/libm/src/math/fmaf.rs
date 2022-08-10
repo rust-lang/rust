@@ -29,8 +29,7 @@ use core::f32;
 use core::ptr::read_volatile;
 
 use super::fenv::{
-    feclearexcept, fegetround, feraiseexcept, fesetround, fetestexcept, FE_INEXACT, FE_TONEAREST,
-    FE_TOWARDZERO, FE_UNDERFLOW,
+    feclearexcept, fegetround, feraiseexcept, fetestexcept, FE_INEXACT, FE_TONEAREST, FE_UNDERFLOW,
 };
 
 /*
@@ -91,16 +90,28 @@ pub fn fmaf(x: f32, y: f32, mut z: f32) -> f32 {
      * If result is inexact, and exactly halfway between two float values,
      * we need to adjust the low-order bit in the direction of the error.
      */
-    fesetround(FE_TOWARDZERO);
-    // prevent `vxy + z` from being CSE'd with `xy + z` above
-    let vxy: f64 = unsafe { read_volatile(&xy) };
-    let mut adjusted_result: f64 = vxy + z as f64;
-    fesetround(FE_TONEAREST);
-    if result == adjusted_result {
-        ui = adjusted_result.to_bits();
+    let neg = ui >> 63 != 0;
+    let err = if neg == (z as f64 > xy) {
+        xy - result + z as f64
+    } else {
+        z as f64 - result + xy
+    };
+    if neg == (err < 0.0) {
         ui += 1;
-        adjusted_result = f64::from_bits(ui);
+    } else {
+        ui -= 1;
     }
-    z = adjusted_result as f32;
-    z
+    f64::from_bits(ui) as f32
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn issue_263() {
+        let a = f32::from_bits(1266679807);
+        let b = f32::from_bits(1300234242);
+        let c = f32::from_bits(1115553792);
+        let expected = f32::from_bits(1501560833);
+        assert_eq!(super::fmaf(a, b, c), expected);
+    }
 }
