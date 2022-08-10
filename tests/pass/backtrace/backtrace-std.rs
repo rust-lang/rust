@@ -1,8 +1,6 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@rustc-env: RUST_BACKTRACE=1
 
-#![feature(backtrace)]
-
 use std::backtrace::Backtrace;
 
 #[inline(never)]

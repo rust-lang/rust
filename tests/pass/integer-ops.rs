@@ -176,10 +176,12 @@ pub fn main() {
     // Logarithms
     macro_rules! test_log {
         ($type:ident, $max_log2:expr, $max_log10:expr) => {
-            assert_eq!($type::MIN.checked_log2(), None);
-            assert_eq!($type::MIN.checked_log10(), None);
-            assert_eq!($type::MAX.checked_log2(), Some($max_log2));
-            assert_eq!($type::MAX.checked_log10(), Some($max_log10));
+            assert_eq!($type::MIN.checked_ilog2(), None);
+            assert_eq!($type::MIN.checked_ilog10(), None);
+            assert_eq!($type::MAX.checked_ilog2(), Some($max_log2));
+            assert_eq!($type::MAX.checked_ilog10(), Some($max_log10));
+            assert_eq!($type::MAX.ilog2(), $max_log2);
+            assert_eq!($type::MAX.ilog10(), $max_log10);
         };
     }
 
@@ -195,9 +197,9 @@ pub fn main() {
     test_log!(u128, 127, 38);
 
     for i in (1..=i16::MAX).step_by(i8::MAX as usize) {
-        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
+        assert_eq!(i.checked_ilog(13), Some((i as f32).log(13.0) as u32));
     }
     for i in (1..=u16::MAX).step_by(i8::MAX as usize) {
-        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
+        assert_eq!(i.checked_ilog(13), Some((i as f32).log(13.0) as u32));
     }
 }
