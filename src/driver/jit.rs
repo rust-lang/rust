@@ -129,7 +129,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
                         cx.tcx.sess.time("codegen fn", || {
-                            crate::base::codegen_fn(&mut cx, &mut jit_module, inst)
+                            crate::base::codegen_and_compile_fn(&mut cx, &mut jit_module, inst)
                         });
                     }
                     CodegenMode::JitLazy => codegen_shim(&mut cx, &mut jit_module, inst),
@@ -259,7 +259,9 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
                 false,
                 Symbol::intern("dummy_cgu_name"),
             );
-            tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, jit_module, instance));
+            tcx.sess.time("codegen fn", || {
+                crate::base::codegen_and_compile_fn(&mut cx, jit_module, instance)
+            });
 
             assert!(cx.global_asm.is_empty());
             jit_module.finalize_definitions();

@@ -131,9 +131,9 @@ fn module_codegen(
     for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
-                cx.tcx
-                    .sess
-                    .time("codegen fn", || crate::base::codegen_fn(&mut cx, &mut module, inst));
+                cx.tcx.sess.time("codegen fn", || {
+                    crate::base::codegen_and_compile_fn(&mut cx, &mut module, inst)
+                });
             }
             MonoItem::Static(def_id) => crate::constant::codegen_static(tcx, &mut module, def_id),
             MonoItem::GlobalAsm(item_id) => {

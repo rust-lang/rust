@@ -5,6 +5,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::SymbolName;
 
 use indexmap::IndexSet;
 
@@ -12,16 +13,38 @@ use crate::constant::ConstantCx;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
-pub(crate) fn codegen_fn<'tcx>(
+struct CodegenedFunction<'tcx> {
+    instance: Instance<'tcx>,
+    symbol_name: SymbolName<'tcx>,
+    func_id: FuncId,
+    func: Function,
+    clif_comments: CommentWriter,
+    source_info_set: IndexSet<SourceInfo>,
+    local_map: IndexVec<mir::Local, CPlace<'tcx>>,
+}
+
+pub(crate) fn codegen_and_compile_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx>,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
     let tcx = cx.tcx;
-
     let _inst_guard =
         crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
+
+    let codegened_func = codegen_fn(cx, module, instance);
+
+    compile_fn(cx, module, codegened_func);
+}
+
+fn codegen_fn<'tcx>(
+    cx: &mut crate::CodegenCx<'tcx>,
+    module: &mut dyn Module,
+    instance: Instance<'tcx>,
+) -> CodegenedFunction<'tcx> {
     debug_assert!(!instance.substs.needs_infer());
+
+    let tcx = cx.tcx;
 
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
@@ -104,36 +127,30 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    compile_fn(
-        cx,
-        module,
+    CodegenedFunction {
         instance,
-        symbol_name.name,
+        symbol_name,
         func_id,
         func,
         clif_comments,
         source_info_set,
         local_map,
-    );
+    }
 }
 
 fn compile_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx>,
     module: &mut dyn Module,
-    instance: Instance<'tcx>,
-    symbol_name: &str,
-    func_id: FuncId,
-    func: Function,
-    mut clif_comments: CommentWriter,
-    source_info_set: IndexSet<SourceInfo>,
-    local_map: IndexVec<mir::Local, CPlace<'tcx>>,
+    codegened_func: CodegenedFunction<'tcx>,
 ) {
     let tcx = cx.tcx;
+
+    let mut clif_comments = codegened_func.clif_comments;
 
     // Store function in context
     let context = &mut cx.cached_context;
     context.clear();
-    context.func = func;
+    context.func = codegened_func.func;
 
     // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
     // instruction, which doesn't have an encoding.
@@ -150,7 +167,7 @@ fn compile_fn<'tcx>(
         crate::optimize::optimize_function(
             tcx,
             module.isa(),
-            instance,
+            codegened_func.instance,
             context,
             &mut clif_comments,
         );
@@ -186,7 +203,7 @@ fn compile_fn<'tcx>(
     // Define function
     tcx.sess.time("define function", || {
         context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
-        module.define_function(func_id, context).unwrap();
+        module.define_function(codegened_func.func_id, context).unwrap();
     });
 
     // Write optimized function to file for debugging
@@ -194,7 +211,7 @@ fn compile_fn<'tcx>(
         tcx,
         "opt",
         module.isa(),
-        instance,
+        codegened_func.instance,
         &context.func,
         &clif_comments,
     );
@@ -202,7 +219,7 @@ fn compile_fn<'tcx>(
     if let Some(disasm) = &context.mach_compile_result.as_ref().unwrap().disasm {
         crate::pretty_clif::write_ir_file(
             tcx,
-            || format!("{}.vcode", tcx.symbol_name(instance).name),
+            || format!("{}.vcode", tcx.symbol_name(codegened_func.instance).name),
             |file| file.write_all(disasm.as_bytes()),
         )
     }
@@ -214,16 +231,16 @@ fn compile_fn<'tcx>(
     tcx.sess.time("generate debug info", || {
         if let Some(debug_context) = debug_context {
             debug_context.define_function(
-                instance,
-                func_id,
-                symbol_name,
+                codegened_func.instance,
+                codegened_func.func_id,
+                codegened_func.symbol_name.name,
                 isa,
                 context,
-                &source_info_set,
-                local_map,
+                &codegened_func.source_info_set,
+                codegened_func.local_map,
             );
         }
-        unwind_context.add_function(func_id, &context, isa);
+        unwind_context.add_function(codegened_func.func_id, &context, isa);
     });
 }
 
