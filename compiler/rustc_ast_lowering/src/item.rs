@@ -324,15 +324,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::TyAlias(ty, generics)
             }
-            ItemKind::Enum(ref enum_definition, ref generics) => {
+            ItemKind::Enum(box Enum { ref variants, ref generics }) => {
                 let (generics, variants) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
-                        this.arena.alloc_from_iter(
-                            enum_definition.variants.iter().map(|x| this.lower_variant(x)),
-                        )
+                        this.arena.alloc_from_iter(variants.iter().map(|x| this.lower_variant(x)))
                     },
                 );
                 hir::ItemKind::Enum(hir::EnumDef { variants }, generics)

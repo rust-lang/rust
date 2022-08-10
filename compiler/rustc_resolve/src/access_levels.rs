@@ -2,7 +2,6 @@ use rustc_ast::ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 use rustc_ast::Crate;
-use rustc_ast::EnumDef;
 use rustc_ast::NodeId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -190,7 +189,7 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
                     }
                 }
             }
-            ast::ItemKind::Enum(EnumDef { ref variants }, _) => {
+            ast::ItemKind::Enum(box ast::Enum { ref variants, .. }) => {
                 for variant in variants {
                     let variant_level = self.set_access_level(variant.id, access_level);
                     if let Some(ctor_id) = variant.data.ctor_id() {

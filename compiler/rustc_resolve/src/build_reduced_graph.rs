@@ -735,7 +735,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
-            ItemKind::Enum(_, _) => {
+            ItemKind::Enum(..) => {
                 let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(DefKind::Enum, def_id, ident.name),

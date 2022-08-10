@@ -673,7 +673,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             if matches!(attr.style, AttrStyle::Inner)
                                 && matches!(
                                     item_inner.kind,
-                                    ItemKind::Mod(_, ref mod_kind) if 
+                                    ItemKind::Mod(_, ref mod_kind) if
                                         matches!(&**mod_kind, ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _)),
                                 ) =>
                         {

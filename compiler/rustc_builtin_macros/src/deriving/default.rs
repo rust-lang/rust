@@ -3,7 +3,6 @@ use crate::deriving::generic::*;
 
 use rustc_ast as ast;
 use rustc_ast::walk_list;
-use rustc_ast::EnumDef;
 use rustc_ast::VariantData;
 use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
@@ -43,7 +42,7 @@ pub fn expand_deriving_default(
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => default_enum_substructure(cx, trait_span, enum_def),
+                    StaticEnum(variants, _) => default_enum_substructure(cx, trait_span, variants),
                     _ => cx.span_bug(trait_span, "method in `derive(Default)`"),
                 }
             })),
@@ -86,9 +85,9 @@ fn default_struct_substructure(
 fn default_enum_substructure(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
-    enum_def: &EnumDef,
+    variants: &[ast::Variant],
 ) -> BlockOrExpr {
-    let expr = if let Ok(default_variant) = extract_default_variant(cx, enum_def, trait_span)
+    let expr = if let Ok(default_variant) = extract_default_variant(cx, variants, trait_span)
         && let Ok(_) = validate_default_attribute(cx, default_variant)
     {
         // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
@@ -104,11 +103,10 @@ fn default_enum_substructure(
 
 fn extract_default_variant<'a>(
     cx: &mut ExtCtxt<'_>,
-    enum_def: &'a EnumDef,
+    variants: &'a [ast::Variant],
     trait_span: Span,
-) -> Result<&'a rustc_ast::Variant, ()> {
-    let default_variants: SmallVec<[_; 1]> = enum_def
-        .variants
+) -> Result<&'a ast::Variant, ()> {
+    let default_variants: SmallVec<[_; 1]> = variants
         .iter()
         .filter(|variant| cx.sess.contains_name(&variant.attrs, kw::Default))
         .collect();
@@ -116,8 +114,7 @@ fn extract_default_variant<'a>(
     let variant = match default_variants.as_slice() {
         [variant] => variant,
         [] => {
-            let possible_defaults = enum_def
-                .variants
+            let possible_defaults = variants
                 .iter()
                 .filter(|variant| matches!(variant.data, VariantData::Unit(..)))
                 .filter(|variant| !cx.sess.contains_name(&variant.attrs, sym::non_exhaustive));
@@ -192,7 +189,7 @@ fn extract_default_variant<'a>(
 
 fn validate_default_attribute(
     cx: &mut ExtCtxt<'_>,
-    default_variant: &rustc_ast::Variant,
+    default_variant: &ast::Variant,
 ) -> Result<(), ()> {
     let attrs: SmallVec<[_; 1]> =
         cx.sess.filter_by_name(&default_variant.attrs, kw::Default).collect();
@@ -242,8 +239,8 @@ struct DetectNonVariantDefaultAttr<'a, 'b> {
     cx: &'a ExtCtxt<'b>,
 }
 
-impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
-    fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
+impl<'a, 'b> ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
+    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         if attr.has_name(kw::Default) {
             self.cx
                 .struct_span_err(
@@ -253,15 +250,15 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
                 .emit();
         }
 
-        rustc_ast::visit::walk_attribute(self, attr);
+        ast::visit::walk_attribute(self, attr);
     }
-    fn visit_variant(&mut self, v: &'a rustc_ast::Variant) {
+    fn visit_variant(&mut self, v: &'a ast::Variant) {
         self.visit_ident(v.ident);
         self.visit_vis(&v.vis);
         self.visit_variant_data(&v.data);
         walk_list!(self, visit_anon_const, &v.disr_expr);
         for attr in &v.attrs {
-            rustc_ast::visit::walk_attribute(self, attr);
+            ast::visit::walk_attribute(self, attr);
         }
     }
 }

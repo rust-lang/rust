@@ -305,7 +305,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && both(lt, rt, |l, r| eq_ty(l, r))
         },
-        (Enum(le, lg), Enum(re, rg)) => over(&le.variants, &re.variants, eq_variant) && eq_generics(lg, rg),
+        (
+            Enum(box ast::Enum { variants: lv, generics: lg }),
+            Enum(box ast::Enum { variants: rv, generics: rg })
+        ) => over(lv, rv, eq_variant) && eq_generics(lg, rg),
         (Struct(lv, lg), Struct(rv, rg)) | (Union(lv, lg), Union(rv, rg)) => {
             eq_variant_data(lv, rv) && eq_generics(lg, rg)
         },

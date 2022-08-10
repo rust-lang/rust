@@ -154,7 +154,7 @@
 //!
 //! StaticStruct(<ast::VariantData of B>, Unnamed(vec![<span of x>]))
 //!
-//! StaticEnum(<ast::EnumDef of C>,
+//! StaticEnum(<&[ast::Variants] of C>,
 //!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of i32>])),
 //!                 (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)]))])
 //! ```
@@ -167,7 +167,7 @@ use std::iter;
 use std::vec;
 
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, EnumDef, Expr, Generics, PatKind};
+use rustc_ast::{self as ast, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -280,7 +280,7 @@ pub enum SubstructureFields<'a> {
     StaticStruct(&'a ast::VariantData, StaticFields),
 
     /// A static method where `Self` is an enum.
-    StaticEnum(&'a ast::EnumDef, Vec<(Ident, Span, StaticFields)>),
+    StaticEnum(&'a [ast::Variant], Vec<(Ident, Span, StaticFields)>),
 }
 
 /// Combine the values of all the fields together. The last argument is
@@ -443,9 +443,9 @@ impl<'a> TraitDef<'a> {
                     false
                 });
                 let has_no_type_params = match item.kind {
-                    ast::ItemKind::Struct(_, ref generics)
-                    | ast::ItemKind::Enum(_, ref generics)
-                    | ast::ItemKind::Union(_, ref generics) => !generics
+                    ast::ItemKind::Struct(_, box ref generics)
+                    | ast::ItemKind::Enum(box ast::Enum { ref generics, .. })
+                    | ast::ItemKind::Union(_, box ref generics) => !generics
                         .params
                         .iter()
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
@@ -464,14 +464,14 @@ impl<'a> TraitDef<'a> {
                         is_packed,
                         always_copy,
                     ),
-                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
+                    ast::ItemKind::Enum(box ast::Enum { ref variants, ref generics }) => {
                         // We ignore `is_packed`/`always_copy` here, because
                         // `repr(packed)` enums cause an error later on.
                         //
                         // This can only cause further compilation errors
                         // downstream in blatantly illegal code, so it
                         // is fine.
-                        self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
+                        self.expand_enum_def(cx, variants, item.ident, generics, from_scratch)
                     }
                     ast::ItemKind::Union(ref struct_def, ref generics) => {
                         if self.supports_unions {
@@ -807,14 +807,14 @@ impl<'a> TraitDef<'a> {
     fn expand_enum_def(
         &self,
         cx: &mut ExtCtxt<'_>,
-        enum_def: &'a EnumDef,
+        variants: &'a [ast::Variant],
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
     ) -> P<ast::Item> {
         let mut field_tys = Vec::new();
 
-        for variant in &enum_def.variants {
+        for variant in variants {
             field_tys.extend(variant.data.fields().iter().map(|field| field.ty.clone()));
         }
 
@@ -829,7 +829,7 @@ impl<'a> TraitDef<'a> {
                     method_def.expand_static_enum_method_body(
                         cx,
                         self,
-                        enum_def,
+                        variants,
                         type_ident,
                         &nonselflike_args,
                     )
@@ -837,7 +837,7 @@ impl<'a> TraitDef<'a> {
                     method_def.expand_enum_method_body(
                         cx,
                         self,
-                        enum_def,
+                        variants,
                         type_ident,
                         selflike_args,
                         &nonselflike_args,
@@ -1145,13 +1145,12 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
-        enum_def: &'b EnumDef,
+        variants: &'b [ast::Variant],
         type_ident: Ident,
         selflike_args: Vec<P<Expr>>,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
         let span = trait_.span;
-        let variants = &enum_def.variants;
 
         // Traits that unify fieldless variants always use the tag(s).
         let uses_tags = self.unify_fieldless_variants;
@@ -1373,12 +1372,11 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
-        enum_def: &EnumDef,
+        variants: &[ast::Variant],
         type_ident: Ident,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
-        let summary = enum_def
-            .variants
+        let summary = variants
             .iter()
             .map(|v| {
                 let sp = v.span.with_ctxt(trait_.span.ctxt());
@@ -1391,7 +1389,7 @@ impl<'a> MethodDef<'a> {
             trait_,
             type_ident,
             nonselflike_args,
-            &StaticEnum(enum_def, summary),
+            &StaticEnum(variants, summary),
         )
     }
 }
@@ -1643,8 +1641,8 @@ where
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
         match item.kind {
-            ast::ItemKind::Enum(ref enum_def, _) => {
-                enum_def.variants.iter().all(|v| v.data.fields().is_empty())
+            ast::ItemKind::Enum(box ast::Enum { ref variants, .. }) => {
+                variants.iter().all(|v| v.data.fields().is_empty())
             }
             ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
             _ => false,

@@ -2164,9 +2164,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 );
             }
 
-            ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics) => {
+            ItemKind::Enum(box Enum { ref generics, .. })
+            | ItemKind::Struct(_, box ref generics)
+            | ItemKind::Union(_, box ref generics) => {
                 self.resolve_adt(item, generics);
             }
 
@@ -3943,7 +3943,7 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
             | ItemKind::Fn(box Fn { ref generics, .. })
-            | ItemKind::Enum(_, box ref generics)
+            | ItemKind::Enum(box Enum { ref generics, .. })
             | ItemKind::Struct(_, box ref generics)
             | ItemKind::Union(_, box ref generics)
             | ItemKind::Impl(box Impl { ref generics, .. })

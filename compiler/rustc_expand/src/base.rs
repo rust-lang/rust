@@ -1399,8 +1399,8 @@ pub fn parse_macro_name_and_helper_attrs(
 fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
     let name = item.ident.name;
     if name == sym::ProceduralMasqueradeDummyType {
-        if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
-            if let [variant] = &*enum_def.variants {
+        if let ast::ItemKind::Enum(box ast::Enum { ref variants, .. }) = &item.kind {
+            if let [variant] = variants.as_slice() {
                 if variant.ident.name == sym::Input {
                     sess.buffer_lint_with_diagnostic(
                         &PROC_MACRO_BACK_COMPAT,

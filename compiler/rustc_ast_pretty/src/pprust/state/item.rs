@@ -240,8 +240,8 @@ impl<'a> State<'a> {
                     defaultness,
                 );
             }
-            ast::ItemKind::Enum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);
+            ast::ItemKind::Enum(box ast::Enum { ref variants, ref generics }) => {
+                self.print_enum(variants, generics, item.ident, item.span, &item.vis);
             }
             ast::ItemKind::Struct(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
@@ -377,9 +377,9 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Item(item))
     }
 
-    fn print_enum_def(
+    fn print_enum(
         &mut self,
-        enum_definition: &ast::EnumDef,
+        variants: &[ast::Variant],
         generics: &ast::Generics,
         ident: Ident,
         span: rustc_span::Span,
@@ -390,7 +390,7 @@ impl<'a> State<'a> {
         self.print_generic_params(&generics.params);
         self.print_where_clause(&generics.where_clause);
         self.space();
-        self.print_variants(&enum_definition.variants, span)
+        self.print_variants(variants, span)
     }
 
     fn print_variants(&mut self, variants: &[ast::Variant], span: rustc_span::Span) {

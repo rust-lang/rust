@@ -411,7 +411,7 @@ impl<'a> FmtVisitor<'a> {
         &mut self,
         ident: symbol::Ident,
         vis: &ast::Visibility,
-        enum_def: &ast::EnumDef,
+        variants: &[ast::Variant],
         generics: &ast::Generics,
         span: Span,
     ) {
@@ -426,7 +426,7 @@ impl<'a> FmtVisitor<'a> {
             &self.get_context(),
             generics,
             self.config.brace_style(),
-            if enum_def.variants.is_empty() {
+            if variants.is_empty() {
                 BracePos::ForceSameLine
             } else {
                 BracePos::Auto
@@ -441,8 +441,8 @@ impl<'a> FmtVisitor<'a> {
 
         self.last_pos = body_start;
 
-        match self.format_variant_list(enum_def, body_start, span.hi()) {
-            Some(ref s) if enum_def.variants.is_empty() => self.push_str(s),
+        match self.format_variant_list(variants, body_start, span.hi()) {
+            Some(ref s) if variants.is_empty() => self.push_str(s),
             rw => {
                 self.push_rewrite(mk_sp(body_start, span.hi()), rw);
                 self.block_indent = self.block_indent.block_unindent(self.config);
@@ -453,11 +453,11 @@ impl<'a> FmtVisitor<'a> {
     // Format the body of an enum definition
     fn format_variant_list(
         &mut self,
-        enum_def: &ast::EnumDef,
+        variants: &[ast::Variant],
         body_lo: BytePos,
         body_hi: BytePos,
     ) -> Option<String> {
-        if enum_def.variants.is_empty() {
+        if variants.is_empty() {
             let mut buffer = String::with_capacity(128);
             // 1 = "}"
             let span = mk_sp(body_lo, body_hi - BytePos(1));
@@ -478,8 +478,7 @@ impl<'a> FmtVisitor<'a> {
         // If enum variants have discriminants, try to vertically align those,
         // provided the discrims are not shifted too much  to the right
         let align_threshold: usize = self.config.enum_discrim_align_threshold();
-        let discr_ident_lens: Vec<usize> = enum_def
-            .variants
+        let discr_ident_lens: Vec<usize> = variants
             .iter()
             .filter(|var| var.disr_expr.is_some())
             .map(|var| rewrite_ident(&self.get_context(), var.ident).len())
@@ -495,7 +494,7 @@ impl<'a> FmtVisitor<'a> {
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
                 self.snippet_provider,
-                enum_def.variants.iter(),
+                variants.iter(),
                 "}",
                 ",",
                 |f| {

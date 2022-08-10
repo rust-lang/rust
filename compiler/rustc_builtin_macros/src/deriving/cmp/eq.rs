@@ -79,8 +79,8 @@ fn cs_total_eq_assert(
         StaticStruct(vdata, ..) => {
             process_variant(vdata);
         }
-        StaticEnum(enum_def, ..) => {
-            for variant in &enum_def.variants {
+        StaticEnum(variants, ..) => {
+            for variant in variants {
                 process_variant(&variant.data);
             }
         }

@@ -2440,10 +2440,6 @@ pub struct ForeignMod {
     pub items: Vec<P<ForeignItem>>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct EnumDef {
-    pub variants: Vec<Variant>,
-}
 /// Enum variant.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Variant {
@@ -2809,6 +2805,12 @@ pub struct Fn {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Enum {
+    pub variants: Vec<Variant>,
+    pub generics: Generics,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2849,7 +2851,7 @@ pub enum ItemKind {
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
-    Enum(EnumDef, Box<Generics>),
+    Enum(Box<Enum>),
     /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
@@ -2915,7 +2917,7 @@ impl ItemKind {
         match self {
             Self::Fn(box Fn { generics, .. })
             | Self::TyAlias(box TyAlias { generics, .. })
-            | Self::Enum(_, box generics)
+            | Self::Enum(box Enum { generics, .. })
             | Self::Struct(_, box generics)
             | Self::Union(_, box generics)
             | Self::Trait(box Trait { generics, .. })

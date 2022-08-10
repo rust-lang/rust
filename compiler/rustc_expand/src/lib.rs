@@ -1,6 +1,7 @@
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
+#![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]

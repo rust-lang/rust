@@ -1250,8 +1250,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.extern_mod = old_item;
                 return; // Avoid visiting again.
             }
-            ItemKind::Enum(ref def, _) => {
-                for variant in &def.variants {
+            ItemKind::Enum(box Enum { ref variants, .. }) => {
+                for variant in variants {
                     self.invalid_visibility(&variant.vis, None);
                     for field in variant.data.fields() {
                         self.invalid_visibility(&field.vis, None);
@@ -1545,10 +1545,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_variant_data(&mut self, s: &'a VariantData) {
         self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
-    }
-
-    fn visit_enum_def(&mut self, enum_definition: &'a EnumDef) {
-        self.with_banned_assoc_ty_bound(|this| visit::walk_enum_def(this, enum_definition))
     }
 
     fn visit_fn(&mut self, fk: FnKind<'a>, span: Span, id: NodeId) {

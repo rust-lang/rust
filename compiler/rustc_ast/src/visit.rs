@@ -177,9 +177,6 @@ pub trait Visitor<'ast>: Sized {
     fn visit_field_def(&mut self, s: &'ast FieldDef) {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &'ast EnumDef) {
-        walk_enum_def(self, enum_definition)
-    }
     fn visit_variant(&mut self, v: &'ast Variant) {
         walk_variant(self, v)
     }
@@ -326,9 +323,9 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
             walk_list!(visitor, visit_ty, ty);
         }
-        ItemKind::Enum(ref enum_definition, ref generics) => {
+        ItemKind::Enum(box Enum { ref variants, ref generics }) => {
             visitor.visit_generics(generics);
-            visitor.visit_enum_def(enum_definition)
+            walk_list!(visitor, visit_variant, variants);
         }
         ItemKind::Impl(box Impl {
             defaultness: _,
@@ -369,10 +366,6 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
-}
-
-pub fn walk_enum_def<'a, V: Visitor<'a>>(visitor: &mut V, enum_definition: &'a EnumDef) {
-    walk_list!(visitor, visit_variant, &enum_definition.variants);
 }
 
 pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant)
