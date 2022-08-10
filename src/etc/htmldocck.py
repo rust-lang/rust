@@ -41,15 +41,15 @@ There are a number of supported commands:
   `PATH` is relative to the output directory. It can be given as `-`
   which repeats the most recently used `PATH`.
 
-* `@has-literal PATH PATTERN` and `@matches-literal PATH PATTERN` checks
+* `@hastext PATH PATTERN` and `@matchestext PATH PATTERN` checks
   for the occurrence of the given pattern `PATTERN` in the specified file.
   Only one occurrence of the pattern is enough.
 
-  For `@has-literal`, `PATTERN` is a whitespace-normalized (every consecutive
+  For `@hastext`, `PATTERN` is a whitespace-normalized (every consecutive
   whitespace being replaced by one single space character) string.
   The entire file is also whitespace-normalized including newlines.
 
-  For `@matches-literal`, `PATTERN` is a Python-supported regular expression.
+  For `@matchestext`, `PATTERN` is a Python-supported regular expression.
   The file remains intact but the regexp is matched without the `MULTILINE`
   and `IGNORECASE` options. You can still use a prefix `(?m)` or `(?i)`
   to override them, and `\A` and `\Z` for definitely matching
@@ -542,19 +542,19 @@ ERR_COUNT = 0
 def check_command(c, cache):
     try:
         cerr = ""
-        if c.cmd in ['has', 'has-literal', 'matches', 'matches-literal']:  # string test
+        if c.cmd in ['has', 'hastext', 'matches', 'matchestext']:  # string test
             regexp = c.cmd.startswith('matches')
-            if len(c.args) == 1 and not regexp and 'literal' not in c.cmd:  # @has <path> = file existence
+            if len(c.args) == 1 and not regexp and 'text' not in c.cmd:  # @has <path> = file existence
                 try:
                     cache.get_file(c.args[0])
                     ret = True
                 except FailedCheck as err:
                     cerr = str(err)
                     ret = False
-            elif len(c.args) == 2 and 'literal' in c.cmd:  # @has-literal/matches-literal <path> <pat> = string test
+            elif len(c.args) == 2 and 'text' in c.cmd:  # @hastext/matchestext <path> <pat> = string test
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
-            elif len(c.args) == 3 and 'literal' not in c.cmd:  # @has/matches <path> <pat> <match> = XML tree test
+            elif len(c.args) == 3 and 'text' not in c.cmd:  # @has/matches <path> <pat> <match> = XML tree test
                 cerr = "`XPATH PATTERN` did not match"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
