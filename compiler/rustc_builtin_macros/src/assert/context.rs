@@ -177,7 +177,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         });
         self.cx.expr(
             self.span,
-            ExprKind::MacCall(MacCall {
+            ExprKind::MacCall(P(MacCall {
                 path: panic_path,
                 args: P(MacArgs::Delimited(
                     DelimSpan::from_single(self.span),
@@ -185,7 +185,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     initial.into_iter().chain(captures).collect::<TokenStream>(),
                 )),
                 prior_type_ascription: None,
-            }),
+            })),
         )
     }
 

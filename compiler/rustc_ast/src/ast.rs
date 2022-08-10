@@ -771,7 +771,7 @@ pub enum PatKind {
     Paren(P<Pat>),
 
     /// A macro pattern; pre-expansion.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
@@ -981,7 +981,7 @@ pub enum StmtKind {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MacCallStmt {
-    pub mac: MacCall,
+    pub mac: P<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
     pub tokens: Option<LazyTokenStream>,
@@ -1439,7 +1439,7 @@ pub enum ExprKind {
     InlineAsm(P<InlineAsm>),
 
     /// A macro invocation; pre-expansion.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 
     /// A struct literal expression.
     ///
@@ -2042,7 +2042,7 @@ pub enum TyKind {
     /// Inferred type of a `self` or `&self` argument in a method.
     ImplicitSelf,
     /// A macro in the type position.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
     /// Placeholder for a kind that has failed to be defined.
     Err,
     /// Placeholder for a `va_list`.
@@ -2873,7 +2873,7 @@ pub enum ItemKind {
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 
     /// A macro definition.
     MacroDef(MacroDef),
@@ -2947,7 +2947,7 @@ pub enum AssocItemKind {
     /// An associated type.
     TyAlias(Box<TyAlias>),
     /// A macro expanding to associated items.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 impl AssocItemKind {
@@ -2996,7 +2996,7 @@ pub enum ForeignItemKind {
     /// An foreign type.
     TyAlias(Box<TyAlias>),
     /// A macro expanding to foreign items.
-    MacCall(MacCall),
+    MacCall(P<MacCall>),
 }
 
 impl From<ForeignItemKind> for ItemKind {
@@ -3032,19 +3032,19 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(AssocItem, 160);
-    static_assert_size!(AssocItemKind, 72);
+    static_assert_size!(AssocItem, 120);
+    static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 152);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(Fn, 192);
-    static_assert_size!(ForeignItem, 160);
-    static_assert_size!(ForeignItemKind, 72);
+    static_assert_size!(ForeignItem, 112);
+    static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 160);
-    static_assert_size!(ItemKind, 72);
+    static_assert_size!(Item, 152);
+    static_assert_size!(ItemKind, 64);
     static_assert_size!(Lit, 48);
     static_assert_size!(Pat, 120);
     static_assert_size!(Path, 40);

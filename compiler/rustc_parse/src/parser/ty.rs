@@ -598,11 +598,11 @@ impl<'a> Parser<'a> {
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
         if self.eat(&token::Not) {
             // Macro invocation in type position
-            Ok(TyKind::MacCall(MacCall {
+            Ok(TyKind::MacCall(P(MacCall {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
-            }))
+            })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds_path(Vec::new(), path, lo, true)
