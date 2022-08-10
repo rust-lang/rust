@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
-        let mod_kind = if self.eat(&token::Semi) {
+        let mod_kind = P(if self.eat(&token::Semi) {
             ModKind::Unloaded
         } else {
             self.expect(&token::OpenDelim(Delimiter::Brace))?;
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
                 self.parse_mod(&token::CloseDelim(Delimiter::Brace))?;
             attrs.append(&mut inner_attrs);
             ModKind::Loaded(items, Inline::Yes, inner_span)
-        };
+        });
         Ok((id, ItemKind::Mod(unsafety, mod_kind)))
     }
 

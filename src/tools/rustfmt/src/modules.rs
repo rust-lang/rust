@@ -156,7 +156,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     &module_item.item,
                     Module::new(
                         module_item.item.span,
-                        Some(Cow::Owned(sub_mod_kind.clone())),
+                        Some(Cow::Owned((**sub_mod_kind).clone())),
                         Cow::Owned(vec![]),
                         Cow::Owned(vec![]),
                     ),
@@ -183,7 +183,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     &item,
                     Module::new(
                         span,
-                        Some(Cow::Owned(sub_mod_kind.clone())),
+                        Some(Cow::Owned((**sub_mod_kind).clone())),
                         Cow::Owned(vec![]),
                         Cow::Owned(vec![]),
                     ),

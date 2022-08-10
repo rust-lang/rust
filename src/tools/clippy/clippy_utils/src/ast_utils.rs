@@ -273,7 +273,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (Mod(lu, lmk), Mod(ru, rmk)) => {
             lu == ru
-                && match (lmk, rmk) {
+                && match (&**lmk, &**rmk) {
                     (ModKind::Loaded(litems, linline, _), ModKind::Loaded(ritems, rinline, _)) => {
                         linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind))
                     },

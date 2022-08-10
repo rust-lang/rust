@@ -272,7 +272,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ItemKind::Fn(sig, generics, body_id)
                 })
             }
-            ItemKind::Mod(_, ref mod_kind) => match mod_kind {
+            ItemKind::Mod(_, ref mod_kind) => match &**mod_kind {
                 ModKind::Loaded(items, _, spans) => {
                     hir::ItemKind::Mod(self.lower_mod(items, spans))
                 }

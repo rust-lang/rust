@@ -114,9 +114,11 @@ fn track_uses(
     }
 
     match &item.kind {
-        ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) => {
-            check_mod(cx, items);
-        },
+        ItemKind::Mod(_, mod_kind) => {
+            if let ModKind::Loaded(ref items, ..) = **mod_kind {
+                check_mod(cx, items);
+            }
+        }
         ItemKind::MacroDef(MacroDef { macro_rules: true, .. }) => {
             macros.push(item.ident.name);
         },

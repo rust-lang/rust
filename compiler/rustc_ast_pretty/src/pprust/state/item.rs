@@ -183,7 +183,7 @@ impl<'a> State<'a> {
                 }));
                 self.print_ident(item.ident);
 
-                match mod_kind {
+                match &**mod_kind {
                     ModKind::Loaded(items, ..) => {
                         self.nbsp();
                         self.bopen();

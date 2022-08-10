@@ -673,10 +673,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             if matches!(attr.style, AttrStyle::Inner)
                                 && matches!(
                                     item_inner.kind,
-                                    ItemKind::Mod(
-                                        _,
-                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _),
-                                    )
+                                    ItemKind::Mod(_, ref mod_kind) if 
+                                        matches!(&**mod_kind, ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _)),
                                 ) =>
                         {
                             rustc_parse::fake_token_stream_for_item(
@@ -800,7 +798,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ItemKind::Mod(_, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
+                        if !matches!(&**mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
                     {
                         feature_err(
                             self.parse_sess,
@@ -1069,7 +1067,7 @@ impl InvocationCollectorNode for P<ast::Item> {
         };
 
         let ecx = &mut collector.cx;
-        let (file_path, dir_path, dir_ownership) = match mod_kind {
+        let (file_path, dir_path, dir_ownership) = match &**mod_kind {
             ModKind::Loaded(_, inline, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
@@ -1107,7 +1105,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, spans);
+                **mod_kind = ModKind::Loaded(items, Inline::No, spans);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,

@@ -311,7 +311,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
                 FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id)
         }
-        ItemKind::Mod(_unsafety, ref mod_kind) => match mod_kind {
+        ItemKind::Mod(_unsafety, ref mod_kind) => match &**mod_kind {
             ModKind::Loaded(items, _inline, _inner_span) => {
                 walk_list!(visitor, visit_item, items)
             }
