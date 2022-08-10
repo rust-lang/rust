@@ -24,7 +24,7 @@ If you want to use GDB to debug rustc, please set `config.toml` with options:
 [rust]
 debug = true
 debuginfo-level = 2 
-# WANRING: this will cost a lot of disk space (about 35GB) and compiling time.
+# WARNING: this will use a lot of disk space (about 35GB) and compile time.
 # Without debuginfo-level, you may also track the execution path, but lost
 # the symbol information for debugging.
 ```
