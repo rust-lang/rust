@@ -14,10 +14,10 @@ use rustc_span::{FileLines, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
+use crate::translation::Translate;
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticArg, DiagnosticId, DiagnosticMessage, FluentBundle,
-    Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight,
-    SuggestionStyle,
+    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, FluentBundle, Handler,
+    LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight, SuggestionStyle,
 };
 
 use rustc_lint_defs::pluralize;
@@ -200,7 +200,7 @@ impl Margin {
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
-pub trait Emitter {
+pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
     fn emit_diagnostic(&mut self, diag: &Diagnostic);
 
@@ -230,102 +230,6 @@ pub trait Emitter {
     }
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>>;
-
-    /// Return `FluentBundle` with localized diagnostics for the locale requested by the user. If no
-    /// language was requested by the user then this will be `None` and `fallback_fluent_bundle`
-    /// should be used.
-    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>>;
-
-    /// Return `FluentBundle` with localized diagnostics for the default locale of the compiler.
-    /// Used when the user has not requested a specific language or when a localized diagnostic is
-    /// unavailable for the requested locale.
-    fn fallback_fluent_bundle(&self) -> &FluentBundle;
-
-    /// Convert diagnostic arguments (a rustc internal type that exists to implement
-    /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
-    ///
-    /// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
-    /// passed around as a reference thereafter.
-    fn to_fluent_args<'arg>(&self, args: &[DiagnosticArg<'arg>]) -> FluentArgs<'arg> {
-        FromIterator::from_iter(args.to_vec().drain(..))
-    }
-
-    /// Convert `DiagnosticMessage`s to a string, performing translation if necessary.
-    fn translate_messages(
-        &self,
-        messages: &[(DiagnosticMessage, Style)],
-        args: &FluentArgs<'_>,
-    ) -> Cow<'_, str> {
-        Cow::Owned(
-            messages.iter().map(|(m, _)| self.translate_message(m, args)).collect::<String>(),
-        )
-    }
-
-    /// Convert a `DiagnosticMessage` to a string, performing translation if necessary.
-    fn translate_message<'a>(
-        &'a self,
-        message: &'a DiagnosticMessage,
-        args: &'a FluentArgs<'_>,
-    ) -> Cow<'_, str> {
-        trace!(?message, ?args);
-        let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) => return Cow::Borrowed(&msg),
-            DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
-        };
-
-        let translate_with_bundle = |bundle: &'a FluentBundle| -> Option<(Cow<'_, str>, Vec<_>)> {
-            let message = bundle.get_message(&identifier)?;
-            let value = match attr {
-                Some(attr) => message.get_attribute(attr)?.value(),
-                None => message.value()?,
-            };
-            debug!(?message, ?value);
-
-            let mut errs = vec![];
-            let translated = bundle.format_pattern(value, Some(&args), &mut errs);
-            debug!(?translated, ?errs);
-            Some((translated, errs))
-        };
-
-        self.fluent_bundle()
-            .and_then(|bundle| translate_with_bundle(bundle))
-            // If `translate_with_bundle` returns `None` with the primary bundle, this is likely
-            // just that the primary bundle doesn't contain the message being translated, so
-            // proceed to the fallback bundle.
-            //
-            // However, when errors are produced from translation, then that means the translation
-            // is broken (e.g. `{$foo}` exists in a translation but `foo` isn't provided).
-            //
-            // In debug builds, assert so that compiler devs can spot the broken translation and
-            // fix it..
-            .inspect(|(_, errs)| {
-                debug_assert!(
-                    errs.is_empty(),
-                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
-                    identifier,
-                    attr,
-                    args,
-                    errs
-                );
-            })
-            // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
-            // just hide it and try with the fallback bundle.
-            .filter(|(_, errs)| errs.is_empty())
-            .or_else(|| translate_with_bundle(self.fallback_fluent_bundle()))
-            .map(|(translated, errs)| {
-                // Always bail out for errors with the fallback bundle.
-                assert!(
-                    errs.is_empty(),
-                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
-                    identifier,
-                    attr,
-                    args,
-                    errs
-                );
-                translated
-            })
-            .expect("failed to find message in primary or fallback fluent bundles")
-    }
 
     /// Formats the substitutions of the primary_span
     ///
@@ -616,17 +520,19 @@ pub trait Emitter {
     }
 }
 
-impl Emitter for EmitterWriter {
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
-        self.sm.as_ref()
-    }
-
+impl Translate for EmitterWriter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         self.fluent_bundle.as_ref()
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
         &**self.fallback_bundle
+    }
+}
+
+impl Emitter for EmitterWriter {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+        self.sm.as_ref()
     }
 
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
@@ -672,17 +578,19 @@ pub struct SilentEmitter {
     pub fatal_note: Option<String>,
 }
 
-impl Emitter for SilentEmitter {
-    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
-        None
-    }
-
+impl Translate for SilentEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         None
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
         panic!("silent emitter attempted to translate message")
+    }
+}
+
+impl Emitter for SilentEmitter {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
+        None
     }
 
     fn emit_diagnostic(&mut self, d: &Diagnostic) {
