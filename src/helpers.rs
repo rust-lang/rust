@@ -803,7 +803,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Fall back to the instance of the function itself.
         let instance = instance.unwrap_or(frame.instance);
         // Now check if this is in the same crate as start_fn.
-        this.tcx.def_path(instance.def_id()).krate == this.tcx.def_path(start_fn).krate
+        // As a special exception we also allow unit tests from
+        // <https://github.com/rust-lang/miri-test-libstd/tree/master/std_miri_test> to call these
+        // shims.
+        let frame_crate = this.tcx.def_path(instance.def_id()).krate;
+        frame_crate == this.tcx.def_path(start_fn).krate
+            || this.tcx.crate_name(frame_crate).as_str() == "std_miri_test"
     }
 
     /// Handler that should be called when unsupported functionality is encountered.
