@@ -884,6 +884,21 @@ fn test_vis() {
 }
 
 #[test]
-fn test_restriction() {
+fn test_impl_restriction() {
     assert_eq!(stringify!(pub impl(crate) trait Foo {}), "pub impl(crate) trait Foo {}");
+    assert_eq!(stringify!(pub impl(in crate) trait Foo {}), "pub impl(in crate) trait Foo {}");
+    assert_eq!(stringify!(pub impl(super) trait Foo {}), "pub impl(super) trait Foo {}");
+    assert_eq!(stringify!(pub impl(in super) trait Foo {}), "pub impl(in super) trait Foo {}");
+    assert_eq!(stringify!(pub impl(self) trait Foo {}), "pub impl(self) trait Foo {}");
+    assert_eq!(stringify!(pub impl(in self) trait Foo {}), "pub impl(in self) trait Foo {}");
+}
+
+#[test]
+fn test_mut_restriction() {
+    assert_eq!(stringify!(pub mut(crate) struct Foo {}), "pub mut(crate) struct Foo {}");
+    assert_eq!(stringify!(pub mut(in crate) struct Foo {}), "pub mut(in crate) struct Foo {}");
+    assert_eq!(stringify!(pub mut(super) struct Foo {}), "pub mut(super) struct Foo {}");
+    assert_eq!(stringify!(pub mut(in super) struct Foo {}), "pub mut(in super) struct Foo {}");
+    assert_eq!(stringify!(pub mut(self) struct Foo {}), "pub mut(self) struct Foo {}");
+    assert_eq!(stringify!(pub mut(in self) struct Foo {}), "pub mut(in self) struct Foo {}");
 }
