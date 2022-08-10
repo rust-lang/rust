@@ -205,7 +205,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (
         Some(Mode::Std),
         "target_arch",
-        Some(&["asmjs", "spirv", "nvptx", "nvptx64", "le32", "xtensa"]),
+        // #[cfg(bootstrap)] loongarch64
+        Some(&["asmjs", "spirv", "nvptx", "nvptx64", "le32", "xtensa", "loongarch64"]),
     ),
     /* Extra names used by dependencies */
     // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
