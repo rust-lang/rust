@@ -16,9 +16,10 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item, clean_middle_field,
-    clean_middle_ty, clean_trait_ref_with_bindings, clean_ty, clean_ty_generics, clean_variant_def,
-    clean_visibility, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId, Type, Visibility,
+    self, clean_fn_decl_from_did_and_sig, clean_generics, clean_impl_item, clean_middle_assoc_item,
+    clean_middle_field, clean_middle_ty, clean_trait_ref_with_bindings, clean_ty,
+    clean_ty_generics, clean_variant_def, clean_visibility, utils, Attributes, AttributesExt,
+    ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -217,7 +218,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
             // which causes methods to have a `pub` prefix, which is invalid since items in traits
             // can not have a visibility prefix. Thus we override the visibility here manually.
             // See https://github.com/rust-lang/rust/issues/81274
-            clean::Item { visibility: Visibility::Inherited, ..item.clean(cx) }
+            clean::Item { visibility: Visibility::Inherited, ..clean_middle_assoc_item(item, cx) }
         })
         .collect();
 
@@ -452,7 +453,7 @@ pub(crate) fn build_impl(
                         item.visibility(tcx).is_public()
                     }
                 })
-                .map(|item| item.clean(cx))
+                .map(|item| clean_middle_assoc_item(item, cx))
                 .collect::<Vec<_>>(),
             clean::enter_impl_trait(cx, |cx| {
                 clean_ty_generics(cx, tcx.generics_of(did), predicates)
