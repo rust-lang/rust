@@ -11,6 +11,16 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
+
+    # Ensure that runners are able to execute git commands in the worktree,
+    # overriding the typical git protections. In our docker container we're running
+    # as root, while the user owning the checkout is not root.
+    # This is only necessary when we change the user, otherwise we should
+    # already be running with the right user.
+    #
+    # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
+    echo -e '[safe]\n\tdirectory = *' > /home/user/gitconfig
+
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
 fi
