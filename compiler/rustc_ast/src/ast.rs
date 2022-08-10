@@ -12,7 +12,7 @@
 //! - [`Stmt`] and [`StmtKind`]: An executable action that does not return a value.
 //! - [`FnDecl`], [`FnHeader`] and [`Param`]: Metadata associated with a function declaration.
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
-//! - [`EnumDef`] and [`Variant`]: Enum declaration.
+//! - [`Enum`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
 //! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.

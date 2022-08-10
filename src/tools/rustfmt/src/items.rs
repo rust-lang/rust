@@ -1803,9 +1803,13 @@ impl<'a> StaticParts<'a> {
             ast::ItemKind::Static(ref static_) => {
                 (None, "static", &static_.ty, static_.mutbl, &static_.expr)
             }
-            ast::ItemKind::Const(ref const_) => {
-                (Some(const_.defaultness), "const", &const_.ty, ast::Mutability::Not, &const_.expr)
-            }
+            ast::ItemKind::Const(ref const_) => (
+                Some(const_.defaultness),
+                "const",
+                &const_.ty,
+                ast::Mutability::Not,
+                &const_.expr,
+            ),
             _ => unreachable!(),
         };
         StaticParts {
@@ -1822,36 +1826,32 @@ impl<'a> StaticParts<'a> {
 
     pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
         match &ti.kind {
-            ast::AssocItemKind::Const(const_) => {
-                StaticParts {
-                    prefix: "const",
-                    vis: &ti.vis,
-                    ident: ti.ident,
-                    ty: &const_.ty,
-                    mutability: ast::Mutability::Not,
-                    expr_opt: const_.expr.as_ref(),
-                    defaultness: Some(const_.defaultness),
-                    span: ti.span,
-                }
-            }
+            ast::AssocItemKind::Const(const_) => StaticParts {
+                prefix: "const",
+                vis: &ti.vis,
+                ident: ti.ident,
+                ty: &const_.ty,
+                mutability: ast::Mutability::Not,
+                expr_opt: const_.expr.as_ref(),
+                defaultness: Some(const_.defaultness),
+                span: ti.span,
+            },
             _ => unreachable!(),
         }
     }
 
     pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
         match &ii.kind {
-            ast::AssocItemKind::Const(const_) => {
-                StaticParts {
-                    prefix: "const",
-                    vis: &ii.vis,
-                    ident: ii.ident,
-                    ty: &const_.ty,
-                    mutability: ast::Mutability::Not,
-                    expr_opt: const_.expr.as_ref(),
-                    defaultness: Some(const_.defaultness),
-                    span: ii.span,
-                }
-            }
+            ast::AssocItemKind::Const(const_) => StaticParts {
+                prefix: "const",
+                vis: &ii.vis,
+                ident: ii.ident,
+                ty: &const_.ty,
+                mutability: ast::Mutability::Not,
+                expr_opt: const_.expr.as_ref(),
+                defaultness: Some(const_.defaultness),
+                span: ii.span,
+            },
             _ => unreachable!(),
         }
     }
