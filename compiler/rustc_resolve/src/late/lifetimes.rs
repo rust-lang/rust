@@ -1046,20 +1046,31 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                     continue;
                                 }
                                 this.insert_lifetime(lt, Region::Static);
-                                this.tcx
-                                    .sess
-                                    .struct_span_warn(
-                                        lifetime.span,
-                                        &format!(
-                                            "unnecessary lifetime parameter `{}`",
-                                            lifetime.name.ident(),
-                                        ),
-                                    )
-                                    .help(&format!(
-                                        "you can use the `'static` lifetime directly, in place of `{}`",
-                                        lifetime.name.ident(),
-                                    ))
-                                    .emit();
+
+                                let hir_map = this.tcx.hir();
+                                let parent = hir_map.get_parent_node(lt.hir_id);
+
+                                match hir_map.get(parent) {
+                                    hir::Node::Item(&hir::Item { kind: hir::ItemKind::OpaqueTy(..), .. }) if this.tcx.sess.features_untracked().return_position_impl_trait_v2 => {
+                                        // do not warn
+                                    }
+                                    _ => {
+                                        this.tcx
+                                            .sess
+                                            .struct_span_warn(
+                                                lifetime.span,
+                                                &format!(
+                                                    "unnecessary lifetime parameter `{}`",
+                                                    lifetime.name.ident(),
+                                                ),
+                                            )
+                                            .help(&format!(
+                                                "you can use the `'static` lifetime directly, in place of `{}`",
+                                                lifetime.name.ident(),
+                                            ))
+                                            .emit();
+                                    }
+                                }
                             }
                         }
                     }
