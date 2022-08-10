@@ -72,9 +72,8 @@ impl Layout {
         Layout::from_size_valid_align(size, unsafe { ValidAlign::new_unchecked(align) })
     }
 
-    /// Internal helper constructor to skip revalidating alignment validity.
-    #[inline]
-    const fn from_size_valid_align(size: usize, align: ValidAlign) -> Result<Self, LayoutError> {
+    #[inline(always)]
+    const fn max_size_for_align(align: ValidAlign) -> usize {
         // (power-of-two implies align != 0.)
 
         // Rounded up size is:
@@ -89,7 +88,13 @@ impl Layout {
         //
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
-        if size > isize::MAX as usize - (align.as_nonzero().get() - 1) {
+        isize::MAX as usize - (align.as_usize() - 1)
+    }
+
+    /// Internal helper constructor to skip revalidating alignment validity.
+    #[inline]
+    const fn from_size_valid_align(size: usize, align: ValidAlign) -> Result<Self, LayoutError> {
+        if size > Self::max_size_for_align(align) {
             return Err(LayoutError);
         }
 
@@ -128,7 +133,7 @@ impl Layout {
                   without modifying the layout"]
     #[inline]
     pub const fn align(&self) -> usize {
-        self.align.as_nonzero().get()
+        self.align.as_usize()
     }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
@@ -410,13 +415,33 @@ impl Layout {
 
     /// Creates a layout describing the record for a `[T; n]`.
     ///
-    /// On arithmetic overflow, returns `LayoutError`.
+    /// On arithmetic overflow or when the total size would exceed
+    /// `isize::MAX`, returns `LayoutError`.
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
-        let array_size = mem::size_of::<T>().checked_mul(n).ok_or(LayoutError)?;
-        // The safe constructor is called here to enforce the isize size limit.
-        Layout::from_size_valid_align(array_size, ValidAlign::of::<T>())
+        // Reduce the amount of code we need to monomorphize per `T`.
+        return inner(mem::size_of::<T>(), ValidAlign::of::<T>(), n);
+
+        #[inline]
+        fn inner(element_size: usize, align: ValidAlign, n: usize) -> Result<Layout, LayoutError> {
+            // We need to check two things about the size:
+            //  - That the total size won't overflow a `usize`, and
+            //  - That the total size still fits in an `isize`.
+            // By using division we can check them both with a single threshold.
+            // That'd usually be a bad idea, but thankfully here the element size
+            // and alignment are constants, so the compiler will fold all of it.
+            if element_size != 0 && n > Layout::max_size_for_align(align) / element_size {
+                return Err(LayoutError);
+            }
+
+            let array_size = element_size * n;
+
+            // SAFETY: We just checked above that the `array_size` will not
+            // exceed `isize::MAX` even when rounded up to the alignment.
+            // And `ValidAlign` guarantees it's a power of two.
+            unsafe { Ok(Layout::from_size_align_unchecked(array_size, align.as_usize())) }
+        }
     }
 }
 
