@@ -599,6 +599,10 @@ where
 
             (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
                 infcx.commit_if_ok(|_| infcx.super_combine_tys(self, a, b)).or_else(|err| {
+                    self.tcx().sess.delay_span_bug(
+                        self.delegate.span(),
+                        "failure to relate an opaque to itself should result in an error later on",
+                    );
                     if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
                 })
             }
