@@ -387,6 +387,7 @@ impl CStr {
     #[rustc_const_stable(feature = "const_cstr_unchecked", since = "1.59.0")]
     #[rustc_allow_const_fn_unstable(const_eval_select)]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
+        #[inline]
         fn rt_impl(bytes: &[u8]) -> &CStr {
             // Chance at catching some UB at runtime with debug builds.
             debug_assert!(!bytes.is_empty() && bytes[bytes.len() - 1] == 0);
