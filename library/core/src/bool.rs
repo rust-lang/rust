@@ -50,6 +50,7 @@ impl bool {
     /// assert!(false.flip())
     /// asssert!(!true.flip())
     /// ```
+    #[unstable(feature = "flip_bool", reason = "recently added")]
     #[inline]
     pub const fn flip(&self) -> Self {
         !self
