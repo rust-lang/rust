@@ -1,3 +1,5 @@
+#![feature(toggle_bool)]
+#![feature(flip_bool)]
 #![feature(alloc_layout_extra)]
 #![feature(array_chunks)]
 #![feature(array_methods)]

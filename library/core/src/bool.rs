@@ -56,6 +56,7 @@ impl bool {
         !self
     }
 
+    /// Toggles the `bool` variable and mutates it
     #[unstable(feature = "toggle_bool", issue = "none", reason = "recently added")]
     #[inline]
     pub const fn toggle(&mut self) {
