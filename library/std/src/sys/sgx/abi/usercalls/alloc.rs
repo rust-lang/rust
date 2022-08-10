@@ -305,6 +305,34 @@ where
     }
 }
 
+// Split a memory region ptr..ptr + len into three parts:
+//   +--------+
+//   | small0 | Chunk smaller than 8 bytes
+//   +--------+
+//   |   big  | Chunk 8-byte aligned, and size a multiple of 8 bytes
+//   +--------+
+//   | small1 | Chunk smaller than 8 bytes
+//   +--------+
+fn region_as_aligned_chunks(ptr: *const u8, len: usize) -> (u8, usize, u8) {
+    let small0_size = (8 - ptr as usize % 8) as u8;
+    let small1_size = ((len - small0_size as usize) % 8) as u8;
+    let big_size = len - small0_size as usize - small1_size as usize;
+
+    (small0_size, big_size, small1_size)
+}
+
+unsafe fn copy_quadwords(src: *const u8, dst: *mut u8, len: usize) {
+    unsafe {
+        asm!(
+            "rep movsq (%rsi), (%rdi)",
+            inout("rcx") len / 8 => _,
+            inout("rdi") dst => _,
+            inout("rsi") src => _,
+            options(att_syntax, nostack, preserves_flags)
+        );
+    }
+}
+
 /// Copies `len` bytes of data from enclave pointer `src` to userspace `dst`
 ///
 /// This function mitigates stale data vulnerabilities by ensuring all writes to untrusted memory are either:
@@ -343,17 +371,6 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
         }
     }
 
-    unsafe fn copy_aligned_quadwords_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
-        unsafe {
-            asm!(
-                "rep movsq (%rsi), (%rdi)",
-                inout("rcx") len / 8 => _,
-                inout("rdi") dst => _,
-                inout("rsi") src => _,
-                options(att_syntax, nostack, preserves_flags)
-            );
-        }
-    }
     assert!(!src.is_null());
     assert!(!dst.is_null());
     assert!(is_enclave_range(src, len));
@@ -370,7 +387,7 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
     } else if len % 8 == 0 && dst as usize % 8 == 0 {
         // Copying 8-byte aligned quadwords: copy quad word per quad word
         unsafe {
-            copy_aligned_quadwords_to_userspace(src, dst, len);
+            copy_quadwords(src, dst, len);
         }
     } else {
         // Split copies into three parts:
@@ -381,20 +398,16 @@ pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize)
         //   +--------+
         //   | small1 | Chunk smaller than 8 bytes
         //   +--------+
+        let (small0_size, big_size, small1_size) = region_as_aligned_chunks(dst, len);
 
         unsafe {
             // Copy small0
-            let small0_size = (8 - dst as usize % 8) as u8;
-            let small0_src = src;
-            let small0_dst = dst;
-            copy_bytewise_to_userspace(small0_src as _, small0_dst, small0_size as _);
+            copy_bytewise_to_userspace(src, dst, small0_size as _);
 
             // Copy big
-            let small1_size = ((len - small0_size as usize) % 8) as u8;
-            let big_size = len - small0_size as usize - small1_size as usize;
             let big_src = src.offset(small0_size as _);
             let big_dst = dst.offset(small0_size as _);
-            copy_aligned_quadwords_to_userspace(big_src as _, big_dst, big_size);
+            copy_quadwords(big_src as _, big_dst, big_size);
 
             // Copy small1
             let small1_src = src.offset(big_size as isize + small0_size as isize);
