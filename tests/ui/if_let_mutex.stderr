@@ -25,5 +25,17 @@ LL | |     };
    |
    = help: move the lock call outside of the `if let ...` expression
 
-error: aborting due to 2 previous errors
+error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
+  --> $DIR/if_let_mutex.rs:43:5
+   |
+LL | /     if let Ok(i) = mutex.lock() {
+LL | |         do_stuff(i);
+LL | |     } else {
+LL | |         let _x = mutex.lock();
+LL | |     };
+   | |_____^
+   |
+   = help: move the lock call outside of the `if let ...` expression
+
+error: aborting due to 3 previous errors
 

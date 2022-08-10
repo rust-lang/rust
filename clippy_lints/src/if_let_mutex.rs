@@ -129,7 +129,7 @@ fn is_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Opt
     if_chain! {
         if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
         if path.ident.as_str() == "lock";
-        let ty = cx.typeck_results().expr_ty(self_arg);
+        let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
         if is_type_diagnostic_item(cx, ty, sym::Mutex);
         then {
             Some(self_arg)
