@@ -822,7 +822,8 @@ LLVMRustOptimizeWithNewPassManager(
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
-    bool InstrumentCoverage, bool InstrumentGCOV,
+    bool InstrumentCoverage, const char *InstrProfileOutput,
+    bool InstrumentGCOV,
     const char *PGOSampleUsePath, bool DebugInfoForProfiling,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
@@ -922,8 +923,11 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (InstrumentCoverage) {
     PipelineStartEPCallbacks.push_back(
-      [](ModulePassManager &MPM, OptimizationLevel Level) {
+      [InstrProfileOutput](ModulePassManager &MPM, OptimizationLevel Level) {
         InstrProfOptions Options;
+        if (InstrProfileOutput) {
+          Options.InstrProfileOutput = InstrProfileOutput;
+        }
         MPM.addPass(InstrProfiling(Options, false));
       }
     );

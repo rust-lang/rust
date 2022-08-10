@@ -423,6 +423,14 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
         .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
 }
 
+fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
+    if config.instrument_coverage {
+        Some(CString::new(format!("{}", PathBuf::from("default_%m_%p.profraw").display())).unwrap())
+    } else {
+        None
+    }
+}
+
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
@@ -438,6 +446,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     let pgo_use_path = get_pgo_use_path(config);
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+    let instr_profile_output_path = get_instr_profile_output_path(config);
     // Sanitizer instrumentation is only inserted during the pre-link optimization stage.
     let sanitizer_options = if !is_lto {
         Some(llvm::SanitizerOptions {
@@ -488,6 +497,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_coverage,
+        instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_gcov,
         pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.debug_info_for_profiling,
