@@ -321,8 +321,8 @@ impl Duration {
     /// To determine the total number of seconds represented by the `Duration`
     /// including the fractional part, use [`as_secs_f64`] or [`as_secs_f32`]
     ///
-    /// [`as_secs_f32`]: Duration::as_secs_f64
-    /// [`as_secs_f64`]: Duration::as_secs_f32
+    /// [`as_secs_f64`]: Duration::as_secs_f64
+    /// [`as_secs_f32`]: Duration::as_secs_f32
     /// [`subsec_nanos`]: Duration::subsec_nanos
     #[stable(feature = "duration", since = "1.3.0")]
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
