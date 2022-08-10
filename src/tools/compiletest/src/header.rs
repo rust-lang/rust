@@ -661,17 +661,36 @@ impl Config {
 
         let name = line[prefix.len() + 1..].split(&[':', ' '][..]).next().unwrap();
 
+        let matches_pointer_width = || {
+            name.strip_suffix("bit")
+                .and_then(|width| width.parse::<u32>().ok())
+                .map(|width| self.get_pointer_width() == width)
+                .unwrap_or(false)
+        };
+
+        // If something is ignored for emscripten, it likely also needs to be
+        // ignored for wasm32-unknown-unknown.
+        // `wasm32-bare` is an alias to refer to just wasm32-unknown-unknown
+        // (in contrast to `wasm32` which also matches non-bare targets like
+        // asmjs-unknown-emscripten).
+        let matches_wasm32_alias = || {
+            self.target == "wasm32-unknown-unknown" && matches!(name, "emscripten" | "wasm32-bare")
+        };
+
         let is_match = name == "test" ||
             self.target == name ||                              // triple
-            util::matches_os(&self.target, name) ||             // target
-            util::matches_env(&self.target, name) ||            // env
+            self.matches_os(name) ||
+            self.matches_env(name) ||
+            self.matches_abi(name) ||
+            self.matches_family(name) ||
             self.target.ends_with(name) ||                      // target and env
-            name == util::get_arch(&self.target) ||             // architecture
-            name == util::get_pointer_width(&self.target) ||    // pointer width
+            self.matches_arch(name) ||
+            matches_wasm32_alias() ||
+            matches_pointer_width() ||
             name == self.stage_id.split('-').next().unwrap() || // stage
             name == self.channel ||                             // channel
             (self.target != self.host && name == "cross-compile") ||
-            (name == "endian-big" && util::is_big_endian(&self.target)) ||
+            (name == "endian-big" && self.is_big_endian()) ||
             (self.remote_test_client.is_some() && name == "remote") ||
             match self.compare_mode {
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
@@ -869,7 +888,7 @@ pub fn make_test_description<R: Read>(
 
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
     let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
-    let has_asm_support = util::has_asm_support(&config.target);
+    let has_asm_support = config.has_asm_support();
     let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);

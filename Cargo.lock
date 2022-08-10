@@ -817,6 +817,7 @@ dependencies = [
  "getopts",
  "glob",
  "lazy_static",
+ "lazycell",
  "libc",
  "miow",
  "regex",

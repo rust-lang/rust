@@ -13,7 +13,6 @@ use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
 use crate::read2::read2_abbreviated;
-use crate::util::get_pointer_width;
 use crate::util::{logv, PathBufExt};
 use crate::ColorConfig;
 use regex::{Captures, Regex};
@@ -3127,7 +3126,7 @@ impl<'test> TestCx<'test> {
         output_kind: TestOutput,
         explicit_format: bool,
     ) -> usize {
-        let stderr_bits = format!("{}.stderr", get_pointer_width(&self.config.target));
+        let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
                 {
@@ -3402,7 +3401,7 @@ impl<'test> TestCx<'test> {
 
         let mut bit_width = String::new();
         if test_file_contents.lines().any(|l| l == "// EMIT_MIR_FOR_EACH_BIT_WIDTH") {
-            bit_width = format!(".{}", get_pointer_width(&self.config.target));
+            bit_width = format!(".{}bit", self.config.get_pointer_width());
         }
 
         if self.config.bless {

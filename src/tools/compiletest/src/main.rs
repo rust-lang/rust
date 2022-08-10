@@ -11,6 +11,7 @@ use crate::common::{
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
+use lazycell::LazyCell;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -299,6 +300,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         npm: matches.opt_str("npm"),
 
         force_rerun: matches.opt_present("force-rerun"),
+
+        target_cfg: LazyCell::new(),
     }
 }
 
@@ -441,7 +444,7 @@ fn configure_cdb(config: &Config) -> Option<Config> {
 fn configure_gdb(config: &Config) -> Option<Config> {
     config.gdb_version?;
 
-    if util::matches_env(&config.target, "msvc") {
+    if config.matches_env("msvc") {
         return None;
     }
 
