@@ -2849,15 +2849,15 @@ pub enum ItemKind {
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
-    Enum(EnumDef, Generics),
+    Enum(EnumDef, Box<Generics>),
     /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
-    Struct(VariantData, Generics),
+    Struct(VariantData, Box<Generics>),
     /// A union definition (`union`).
     ///
     /// E.g., `union Foo<A, B> { x: A, y: B }`.
-    Union(VariantData, Generics),
+    Union(VariantData, Box<Generics>),
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
@@ -2865,7 +2865,7 @@ pub enum ItemKind {
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
-    TraitAlias(Generics, GenericBounds),
+    TraitAlias(Box<Generics>, GenericBounds),
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
@@ -2915,11 +2915,11 @@ impl ItemKind {
         match self {
             Self::Fn(box Fn { generics, .. })
             | Self::TyAlias(box TyAlias { generics, .. })
-            | Self::Enum(_, generics)
-            | Self::Struct(_, generics)
-            | Self::Union(_, generics)
+            | Self::Enum(_, box generics)
+            | Self::Struct(_, box generics)
+            | Self::Union(_, box generics)
             | Self::Trait(box Trait { generics, .. })
-            | Self::TraitAlias(generics, _)
+            | Self::TraitAlias(box generics, _)
             | Self::Impl(box Impl { generics, .. }) => Some(generics),
             _ => None,
         }
@@ -3043,8 +3043,8 @@ mod size_asserts {
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 200);
-    static_assert_size!(ItemKind, 112);
+    static_assert_size!(Item, 176);
+    static_assert_size!(ItemKind, 88);
     static_assert_size!(Lit, 48);
     static_assert_size!(Pat, 120);
     static_assert_size!(Path, 40);

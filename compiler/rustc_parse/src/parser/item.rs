@@ -782,7 +782,7 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok((ident, ItemKind::TraitAlias(generics, bounds)))
+            Ok((ident, ItemKind::TraitAlias(Box::new(generics), bounds)))
         } else {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
@@ -1258,7 +1258,7 @@ impl<'a> Parser<'a> {
             })?;
 
         let enum_definition = EnumDef { variants: variants.into_iter().flatten().collect() };
-        Ok((id, ItemKind::Enum(enum_definition, generics)))
+        Ok((id, ItemKind::Enum(enum_definition, Box::new(generics))))
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
@@ -1359,7 +1359,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Struct(vdata, generics)))
+        Ok((class_name, ItemKind::Struct(vdata, Box::new(generics))))
     }
 
     /// Parses `union Foo { ... }`.
@@ -1385,7 +1385,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Union(vdata, generics)))
+        Ok((class_name, ItemKind::Union(vdata, Box::new(generics))))
     }
 
     fn parse_record_struct_body(

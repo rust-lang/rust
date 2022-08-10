@@ -3943,12 +3943,12 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
             | ItemKind::Fn(box Fn { ref generics, .. })
-            | ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics)
+            | ItemKind::Enum(_, box ref generics)
+            | ItemKind::Struct(_, box ref generics)
+            | ItemKind::Union(_, box ref generics)
             | ItemKind::Impl(box Impl { ref generics, .. })
             | ItemKind::Trait(box Trait { ref generics, .. })
-            | ItemKind::TraitAlias(ref generics, _) => {
+            | ItemKind::TraitAlias(box ref generics, _) => {
                 let def_id = self.r.local_def_id(item.id);
                 let count = generics
                     .params

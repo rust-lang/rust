@@ -33,8 +33,8 @@ pub fn expand_deriving_clone(
     let is_simple;
     match *item {
         Annotatable::Item(ref annitem) => match annitem.kind {
-            ItemKind::Struct(_, Generics { ref params, .. })
-            | ItemKind::Enum(_, Generics { ref params, .. }) => {
+            ItemKind::Struct(_, box Generics { ref params, .. })
+            | ItemKind::Enum(_, box Generics { ref params, .. }) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let has_derive_copy = cx.resolver.has_derive_copy(container_id);
                 if has_derive_copy
