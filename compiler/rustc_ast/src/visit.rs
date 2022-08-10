@@ -177,14 +177,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_field_def(&mut self, s: &'ast FieldDef) {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(
-        &mut self,
-        enum_definition: &'ast EnumDef,
-        generics: &'ast Generics,
-        item_id: NodeId,
-        _: Span,
-    ) {
-        walk_enum_def(self, enum_definition, generics, item_id)
+    fn visit_enum_def(&mut self, enum_definition: &'ast EnumDef) {
+        walk_enum_def(self, enum_definition)
     }
     fn visit_variant(&mut self, v: &'ast Variant) {
         walk_variant(self, v)
@@ -334,7 +328,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
+            visitor.visit_enum_def(enum_definition)
         }
         ItemKind::Impl(box Impl {
             defaultness: _,
@@ -377,12 +371,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
 
-pub fn walk_enum_def<'a, V: Visitor<'a>>(
-    visitor: &mut V,
-    enum_definition: &'a EnumDef,
-    _: &'a Generics,
-    _: NodeId,
-) {
+pub fn walk_enum_def<'a, V: Visitor<'a>>(visitor: &mut V, enum_definition: &'a EnumDef) {
     walk_list!(visitor, visit_variant, &enum_definition.variants);
 }
 

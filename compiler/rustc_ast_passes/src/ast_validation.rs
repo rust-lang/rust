@@ -1547,16 +1547,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
     }
 
-    fn visit_enum_def(
-        &mut self,
-        enum_definition: &'a EnumDef,
-        generics: &'a Generics,
-        item_id: NodeId,
-        _: Span,
-    ) {
-        self.with_banned_assoc_ty_bound(|this| {
-            visit::walk_enum_def(this, enum_definition, generics, item_id)
-        })
+    fn visit_enum_def(&mut self, enum_definition: &'a EnumDef) {
+        self.with_banned_assoc_ty_bound(|this| visit::walk_enum_def(this, enum_definition))
     }
 
     fn visit_fn(&mut self, fk: FnKind<'a>, span: Span, id: NodeId) {
