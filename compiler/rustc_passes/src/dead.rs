@@ -368,14 +368,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
-    fn visit_variant_data(
-        &mut self,
-        def: &'tcx hir::VariantData<'tcx>,
-        _: Symbol,
-        _: &hir::Generics<'_>,
-        _: hir::HirId,
-        _: rustc_span::Span,
-    ) {
+    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) {
         let tcx = self.tcx;
         let has_repr_c = self.repr_has_repr_c;
         let has_repr_simd = self.repr_has_repr_simd;

@@ -772,14 +772,9 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
         })
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'tcx hir::Variant<'tcx>,
-        g: &'tcx hir::Generics<'tcx>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
         self.with_lint_attrs(v.id, |builder| {
-            intravisit::walk_variant(builder, v, g, item_id);
+            intravisit::walk_variant(builder, v);
         })
     }
 

@@ -2066,14 +2066,9 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_expr(self, expr)
     }
 
-    fn visit_variant(
-        &mut self,
-        variant: &'tcx hir::Variant<'tcx>,
-        generics: &'tcx hir::Generics<'tcx>,
-        item_id: HirId,
-    ) {
+    fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) {
         self.check_attributes(variant.id, variant.span, Target::Variant, None);
-        intravisit::walk_variant(self, variant, generics, item_id)
+        intravisit::walk_variant(self, variant)
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
