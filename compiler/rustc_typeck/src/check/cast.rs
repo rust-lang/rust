@@ -601,7 +601,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 )
-                .note("cannot cast a non-exhaustive enum defined in another crate")
+                .note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
             }
         }

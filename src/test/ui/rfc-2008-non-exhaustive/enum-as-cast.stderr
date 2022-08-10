@@ -4,7 +4,7 @@ error[E0606]: casting `FieldLessWithNonExhaustiveVariant` as `u8` is invalid
 LL |     let d = e as u8;
    |             ^^^^^^^
    |
-   = note: cannot cast a non-exhaustive enum defined in another crate
+   = note: cannot cast an enum with a non-exhaustive variant when it's defined in another crate
 
 error: aborting due to previous error
 
