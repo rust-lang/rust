@@ -21,7 +21,7 @@ pub(crate) fn render_union_literal(
     let name = local_name.unwrap_or_else(|| un.name(ctx.db()));
 
     let (qualified_name, escaped_qualified_name) = match path {
-        Some(p) => (p.to_string(), p.escaped().to_string()),
+        Some(p) => (p.unescaped().to_string(), p.to_string()),
         None => (name.unescaped().to_string(), name.to_string()),
     };
 

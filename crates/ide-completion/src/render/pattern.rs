@@ -53,7 +53,7 @@ pub(crate) fn render_variant_pat(
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
 
     let (name, escaped_name) = match path {
-        Some(path) => (path.to_string().into(), path.escaped().to_string().into()),
+        Some(path) => (path.unescaped().to_string().into(), path.to_string().into()),
         None => {
             let name = local_name.unwrap_or_else(|| variant.name(ctx.db()));
             (name.unescaped().to_smol_str(), name.to_smol_str())
