@@ -335,16 +335,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Enum(hir::EnumDef { variants }, generics)
             }
-            ItemKind::Struct(ref struct_def, ref generics) => {
-                let (generics, struct_def) = self.lower_generics(
+            ItemKind::Struct(box Struct { ref vdata, ref generics }) => {
+                let (generics, vdata) = self.lower_generics(
                     generics,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_variant_data(hir_id, struct_def),
+                    |this| this.lower_variant_data(hir_id, vdata),
                 );
-                hir::ItemKind::Struct(struct_def, generics)
+                hir::ItemKind::Struct(vdata, generics)
             }
-            ItemKind::Union(ref vdata, ref generics) => {
+            ItemKind::Union(box Struct { ref vdata, ref generics }) => {
                 let (generics, vdata) = self.lower_generics(
                     generics,
                     id,
@@ -441,7 +441,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::Trait(is_auto, unsafety, generics, bounds, items)
             }
-            ItemKind::TraitAlias(ref generics, ref bounds) => {
+            ItemKind::TraitAlias(box TraitAlias { ref generics, ref bounds }) => {
                 let (generics, bounds) = self.lower_generics(
                     generics,
                     id,

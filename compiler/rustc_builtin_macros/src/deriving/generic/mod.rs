@@ -443,9 +443,9 @@ impl<'a> TraitDef<'a> {
                     false
                 });
                 let has_no_type_params = match item.kind {
-                    ast::ItemKind::Struct(_, box ref generics)
-                    | ast::ItemKind::Enum(box ast::Enum { ref generics, .. })
-                    | ast::ItemKind::Union(_, box ref generics) => !generics
+                    ast::ItemKind::Enum(box ast::Enum { ref generics, .. })
+                    | ast::ItemKind::Struct(box ast::Struct { ref generics, .. })
+                    | ast::ItemKind::Union(box ast::Struct { ref generics, .. }) => !generics
                         .params
                         .iter()
                         .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
@@ -455,15 +455,16 @@ impl<'a> TraitDef<'a> {
                 let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
 
                 let newitem = match item.kind {
-                    ast::ItemKind::Struct(ref struct_def, ref generics) => self.expand_struct_def(
-                        cx,
-                        &struct_def,
-                        item.ident,
-                        generics,
-                        from_scratch,
-                        is_packed,
-                        always_copy,
-                    ),
+                    ast::ItemKind::Struct(box ast::Struct { ref vdata, ref generics }) => self
+                        .expand_struct_def(
+                            cx,
+                            &vdata,
+                            item.ident,
+                            generics,
+                            from_scratch,
+                            is_packed,
+                            always_copy,
+                        ),
                     ast::ItemKind::Enum(box ast::Enum { ref variants, ref generics }) => {
                         // We ignore `is_packed`/`always_copy` here, because
                         // `repr(packed)` enums cause an error later on.
@@ -473,11 +474,11 @@ impl<'a> TraitDef<'a> {
                         // is fine.
                         self.expand_enum_def(cx, variants, item.ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(ref struct_def, ref generics) => {
+                    ast::ItemKind::Union(box ast::Struct { ref vdata, ref generics }) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
-                                &struct_def,
+                                &vdata,
                                 item.ident,
                                 generics,
                                 from_scratch,
@@ -751,7 +752,7 @@ impl<'a> TraitDef<'a> {
     fn expand_struct_def(
         &self,
         cx: &mut ExtCtxt<'_>,
-        struct_def: &'a VariantData,
+        vdata: &'a VariantData,
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
@@ -759,7 +760,7 @@ impl<'a> TraitDef<'a> {
         always_copy: bool,
     ) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> =
-            struct_def.fields().iter().map(|field| field.ty.clone()).collect();
+            vdata.fields().iter().map(|field| field.ty.clone()).collect();
 
         let methods = self
             .methods
@@ -772,7 +773,7 @@ impl<'a> TraitDef<'a> {
                     method_def.expand_static_struct_method_body(
                         cx,
                         self,
-                        struct_def,
+                        vdata,
                         type_ident,
                         &nonselflike_args,
                     )
@@ -780,7 +781,7 @@ impl<'a> TraitDef<'a> {
                     method_def.expand_struct_method_body(
                         cx,
                         self,
-                        struct_def,
+                        vdata,
                         type_ident,
                         &selflike_args,
                         &nonselflike_args,
@@ -1040,7 +1041,7 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
-        struct_def: &'b VariantData,
+        vdata: &'b VariantData,
         type_ident: Ident,
         selflike_args: &[P<Expr>],
         nonselflike_args: &[P<Expr>],
@@ -1056,17 +1057,17 @@ impl<'a> MethodDef<'a> {
                 trait_,
                 type_ident,
                 nonselflike_args,
-                &Struct(struct_def, selflike_fields),
+                &Struct(vdata, selflike_fields),
             )
         };
 
         if !is_packed {
             let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, false);
+                trait_.create_struct_field_access_fields(cx, selflike_args, vdata, false);
             mk_body(cx, selflike_fields)
         } else if always_copy {
             let selflike_fields =
-                trait_.create_struct_field_access_fields(cx, selflike_args, struct_def, true);
+                trait_.create_struct_field_access_fields(cx, selflike_args, vdata, true);
             mk_body(cx, selflike_fields)
         } else {
             // Neither packed nor copy. Need to use ref patterns.
@@ -1074,13 +1075,13 @@ impl<'a> MethodDef<'a> {
                 (0..selflike_args.len()).map(|i| format!("__self_{}", i)).collect();
             let addr_of = always_copy;
             let selflike_fields =
-                trait_.create_struct_pattern_fields(cx, struct_def, &prefixes, addr_of);
+                trait_.create_struct_pattern_fields(cx, vdata, &prefixes, addr_of);
             let mut body = mk_body(cx, selflike_fields);
 
             let struct_path = cx.path(span, vec![Ident::new(kw::SelfUpper, type_ident.span)]);
             let use_ref_pat = is_packed && !always_copy;
             let patterns =
-                trait_.create_struct_patterns(cx, struct_path, struct_def, &prefixes, use_ref_pat);
+                trait_.create_struct_patterns(cx, struct_path, vdata, &prefixes, use_ref_pat);
 
             // Do the let-destructuring.
             let mut stmts: Vec<_> = iter::zip(selflike_args, patterns)
@@ -1098,18 +1099,18 @@ impl<'a> MethodDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'_>,
-        struct_def: &VariantData,
+        vdata: &VariantData,
         type_ident: Ident,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
-        let summary = trait_.summarise_struct(cx, struct_def);
+        let summary = trait_.summarise_struct(cx, vdata);
 
         self.call_substructure_method(
             cx,
             trait_,
             type_ident,
             nonselflike_args,
-            &StaticStruct(struct_def, summary),
+            &StaticStruct(vdata, summary),
         )
     }
 
@@ -1396,10 +1397,10 @@ impl<'a> MethodDef<'a> {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
-    fn summarise_struct(&self, cx: &mut ExtCtxt<'_>, struct_def: &VariantData) -> StaticFields {
+    fn summarise_struct(&self, cx: &mut ExtCtxt<'_>, vdata: &VariantData) -> StaticFields {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
-        for field in struct_def.fields() {
+        for field in vdata.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
                 Some(ident) => named_idents.push((ident, sp)),
@@ -1407,7 +1408,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let is_tuple = matches!(struct_def, ast::VariantData::Tuple(..));
+        let is_tuple = matches!(vdata, ast::VariantData::Tuple(..));
         match (just_spans.is_empty(), named_idents.is_empty()) {
             (false, false) => {
                 cx.span_bug(self.span, "a struct with named and unnamed fields in generic `derive`")
@@ -1425,32 +1426,31 @@ impl<'a> TraitDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         struct_path: ast::Path,
-        struct_def: &'a VariantData,
+        vdata: &'a VariantData,
         prefixes: &[String],
         use_ref_pat: bool,
     ) -> Vec<P<ast::Pat>> {
         prefixes
             .iter()
             .map(|prefix| {
-                let pieces_iter =
-                    struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
-                        let sp = struct_field.span.with_ctxt(self.span.ctxt());
-                        let binding_mode = if use_ref_pat {
-                            ast::BindingMode::ByRef(ast::Mutability::Not)
-                        } else {
-                            ast::BindingMode::ByValue(ast::Mutability::Not)
-                        };
-                        let ident = self.mk_pattern_ident(prefix, i);
-                        let path = ident.with_span_pos(sp);
-                        (
-                            sp,
-                            struct_field.ident,
-                            cx.pat(path.span, PatKind::Ident(binding_mode, path, None)),
-                        )
-                    });
+                let pieces_iter = vdata.fields().iter().enumerate().map(|(i, struct_field)| {
+                    let sp = struct_field.span.with_ctxt(self.span.ctxt());
+                    let binding_mode = if use_ref_pat {
+                        ast::BindingMode::ByRef(ast::Mutability::Not)
+                    } else {
+                        ast::BindingMode::ByValue(ast::Mutability::Not)
+                    };
+                    let ident = self.mk_pattern_ident(prefix, i);
+                    let path = ident.with_span_pos(sp);
+                    (
+                        sp,
+                        struct_field.ident,
+                        cx.pat(path.span, PatKind::Ident(binding_mode, path, None)),
+                    )
+                });
 
                 let struct_path = struct_path.clone();
-                match *struct_def {
+                match *vdata {
                     VariantData::Struct(..) => {
                         let field_pats = pieces_iter
                             .map(|(sp, ident, pat)| {
@@ -1483,11 +1483,11 @@ impl<'a> TraitDef<'a> {
             .collect()
     }
 
-    fn create_fields<F>(&self, struct_def: &'a VariantData, mk_exprs: F) -> Vec<FieldInfo>
+    fn create_fields<F>(&self, vdata: &'a VariantData, mk_exprs: F) -> Vec<FieldInfo>
     where
         F: Fn(usize, &ast::FieldDef, Span) -> Vec<P<ast::Expr>>,
     {
-        struct_def
+        vdata
             .fields()
             .iter()
             .enumerate()
@@ -1515,11 +1515,11 @@ impl<'a> TraitDef<'a> {
     fn create_struct_pattern_fields(
         &self,
         cx: &mut ExtCtxt<'_>,
-        struct_def: &'a VariantData,
+        vdata: &'a VariantData,
         prefixes: &[String],
         addr_of: bool,
     ) -> Vec<FieldInfo> {
-        self.create_fields(struct_def, |i, _struct_field, sp| {
+        self.create_fields(vdata, |i, _struct_field, sp| {
             prefixes
                 .iter()
                 .map(|prefix| {
@@ -1535,10 +1535,10 @@ impl<'a> TraitDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         selflike_args: &[P<Expr>],
-        struct_def: &'a VariantData,
+        vdata: &'a VariantData,
         copy: bool,
     ) -> Vec<FieldInfo> {
-        self.create_fields(struct_def, |i, struct_field, sp| {
+        self.create_fields(vdata, |i, struct_field, sp| {
             selflike_args
                 .iter()
                 .map(|selflike_arg| {
@@ -1644,7 +1644,7 @@ pub fn is_type_without_fields(item: &Annotatable) -> bool {
             ast::ItemKind::Enum(box ast::Enum { ref variants, .. }) => {
                 variants.iter().all(|v| v.data.fields().is_empty())
             }
-            ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
+            ast::ItemKind::Struct(box ast::Struct { ref vdata, .. }) => vdata.fields().is_empty(),
             _ => false,
         }
     } else {

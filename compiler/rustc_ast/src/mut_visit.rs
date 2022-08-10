@@ -1052,8 +1052,9 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
             vis.visit_generics(generics);
         }
-        ItemKind::Struct(variant_data, generics) | ItemKind::Union(variant_data, generics) => {
-            vis.visit_variant_data(variant_data);
+        ItemKind::Struct(box Struct { vdata, generics })
+        | ItemKind::Union(box Struct { vdata, generics }) => {
+            vis.visit_variant_data(vdata);
             vis.visit_generics(generics);
         }
         ItemKind::Impl(box Impl {
@@ -1081,7 +1082,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             visit_bounds(bounds, vis);
             items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
         }
-        ItemKind::TraitAlias(generics, bounds) => {
+        ItemKind::TraitAlias(box TraitAlias { generics, bounds }) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
         }

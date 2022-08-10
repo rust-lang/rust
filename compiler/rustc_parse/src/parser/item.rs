@@ -782,7 +782,7 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok((ident, ItemKind::TraitAlias(Box::new(generics), bounds)))
+            Ok((ident, ItemKind::TraitAlias(Box::new(TraitAlias { generics, bounds }))))
         } else {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
@@ -1359,7 +1359,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Struct(vdata, Box::new(generics))))
+        Ok((class_name, ItemKind::Struct(Box::new(Struct { vdata, generics }))))
     }
 
     /// Parses `union Foo { ... }`.
@@ -1385,7 +1385,7 @@ impl<'a> Parser<'a> {
             return Err(err);
         };
 
-        Ok((class_name, ItemKind::Union(vdata, Box::new(generics))))
+        Ok((class_name, ItemKind::Union(Box::new(Struct { vdata, generics }))))
     }
 
     fn parse_record_struct_body(

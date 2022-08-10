@@ -309,7 +309,13 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             Enum(box ast::Enum { variants: lv, generics: lg }),
             Enum(box ast::Enum { variants: rv, generics: rg })
         ) => over(lv, rv, eq_variant) && eq_generics(lg, rg),
-        (Struct(lv, lg), Struct(rv, rg)) | (Union(lv, lg), Union(rv, rg)) => {
+        (
+            Struct(box ast::Struct { vdata: lv, generics: lg }),
+            Struct(box ast::Struct { vdata: rv, generics: rg })
+        ) | (
+            Union(box ast::Struct { vdata: lv, generics: lg }),
+            Union(box ast::Struct { vdata: rv, generics: rg })
+        ) => {
             eq_variant_data(lv, rv) && eq_generics(lg, rg)
         },
         (
@@ -334,7 +340,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
-        (TraitAlias(lg, lb), TraitAlias(rg, rb)) => eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
+        (
+            TraitAlias(box ast::TraitAlias { generics: lg, bounds: lb }),
+            TraitAlias(box ast::TraitAlias { generics: rg, bounds: rb })
+        ) => eq_generics(lg, rg) && over(lb, rb, eq_generic_bound),
         (
             Impl(box ast::Impl {
                 unsafety: lu,

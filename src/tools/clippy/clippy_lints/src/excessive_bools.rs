@@ -1,5 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_ast::ast::{AssocItemKind, Extern, Fn, FnSig, Impl, Item, ItemKind, Trait, Ty, TyKind};
+use rustc_ast::ast::{
+    AssocItemKind, Extern, Fn, FnSig, Impl, Item, ItemKind, Struct, Trait, Ty, TyKind
+};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
@@ -136,12 +138,12 @@ impl EarlyLintPass for ExcessiveBools {
             return;
         }
         match &item.kind {
-            ItemKind::Struct(variant_data, _) => {
+            ItemKind::Struct(box Struct { vdata, .. }) => {
                 if item.attrs.iter().any(|attr| attr.has_name(sym::repr)) {
                     return;
                 }
 
-                let struct_bools = variant_data
+                let struct_bools = vdata
                     .fields()
                     .iter()
                     .filter(|field| is_bool_ty(&field.ty))

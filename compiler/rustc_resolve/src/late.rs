@@ -2165,8 +2165,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ItemKind::Enum(box Enum { ref generics, .. })
-            | ItemKind::Struct(_, box ref generics)
-            | ItemKind::Union(_, box ref generics) => {
+            | ItemKind::Struct(box Struct { ref generics, .. })
+            | ItemKind::Union(box Struct { ref generics, .. }) => {
                 self.resolve_adt(item, generics);
             }
 
@@ -2206,7 +2206,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 );
             }
 
-            ItemKind::TraitAlias(ref generics, ref bounds) => {
+            ItemKind::TraitAlias(box TraitAlias { ref generics, ref bounds }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -3944,11 +3944,11 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_> {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
             | ItemKind::Fn(box Fn { ref generics, .. })
             | ItemKind::Enum(box Enum { ref generics, .. })
-            | ItemKind::Struct(_, box ref generics)
-            | ItemKind::Union(_, box ref generics)
+            | ItemKind::Struct(box Struct { ref generics, .. })
+            | ItemKind::Union(box Struct { ref generics, .. })
             | ItemKind::Impl(box Impl { ref generics, .. })
             | ItemKind::Trait(box Trait { ref generics, .. })
-            | ItemKind::TraitAlias(box ref generics, _) => {
+            | ItemKind::TraitAlias(box TraitAlias { ref generics, .. }) => {
                 let def_id = self.r.local_def_id(item.id);
                 let count = generics
                     .params

@@ -1,5 +1,5 @@
 use clippy_utils::{diagnostics::span_lint_and_then, source::snippet_opt};
-use rustc_ast::ast::{Item, ItemKind, VariantData};
+use rustc_ast::ast::{Item, ItemKind, Struct, VariantData};
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -32,9 +32,9 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let span_after_ident = item.span.with_lo(item.ident.span.hi());
 
-        if let ItemKind::Struct(var_data, _) = &item.kind
-            && has_brackets(var_data)
-            && has_no_fields(cx, var_data, span_after_ident) {
+        if let ItemKind::Struct(box Struct { vdata, .. }) = &item.kind
+            && has_brackets(vdata)
+            && has_no_fields(cx, vdata, span_after_ident) {
             span_lint_and_then(
                 cx,
                 EMPTY_STRUCTS_WITH_BRACKETS,
@@ -56,12 +56,12 @@ fn has_no_ident_token(braces_span_str: &str) -> bool {
     !rustc_lexer::tokenize(braces_span_str).any(|t| t.kind == TokenKind::Ident)
 }
 
-fn has_brackets(var_data: &VariantData) -> bool {
-    !matches!(var_data, VariantData::Unit(_))
+fn has_brackets(vdata: &VariantData) -> bool {
+    !matches!(vdata, VariantData::Unit(_))
 }
 
-fn has_no_fields(cx: &EarlyContext<'_>, var_data: &VariantData, braces_span: Span) -> bool {
-    if !var_data.fields().is_empty() {
+fn has_no_fields(cx: &EarlyContext<'_>, vdata: &VariantData, braces_span: Span) -> bool {
+    if !vdata.fields().is_empty() {
         return false;
     }
 

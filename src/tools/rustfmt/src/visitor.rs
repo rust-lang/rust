@@ -494,14 +494,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     let rw = self.with_context(|ctx| format_trait(ctx, item, block_indent));
                     self.push_rewrite(item.span, rw);
                 }
-                ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
+                ast::ItemKind::TraitAlias(ref trait_alias) => {
                     let shape = Shape::indented(self.block_indent, self.config);
                     let rw = format_trait_alias(
                         &self.get_context(),
                         item.ident,
                         &item.vis,
-                        generics,
-                        generic_bounds,
+                        &trait_alias.generics,
+                        &trait_alias.bounds,
                         shape,
                     );
                     self.push_rewrite(item.span, rw);

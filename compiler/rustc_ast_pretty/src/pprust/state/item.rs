@@ -243,13 +243,13 @@ impl<'a> State<'a> {
             ast::ItemKind::Enum(box ast::Enum { ref variants, ref generics }) => {
                 self.print_enum(variants, generics, item.ident, item.span, &item.vis);
             }
-            ast::ItemKind::Struct(ref struct_def, ref generics) => {
+            ast::ItemKind::Struct(box ast::Struct { ref vdata, ref generics }) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
-                self.print_struct(struct_def, generics, item.ident, item.span, true);
+                self.print_struct(vdata, generics, item.ident, item.span, true);
             }
-            ast::ItemKind::Union(ref struct_def, ref generics) => {
+            ast::ItemKind::Union(box ast::Struct { ref vdata, ref generics }) => {
                 self.head(visibility_qualified(&item.vis, "union"));
-                self.print_struct(struct_def, generics, item.ident, item.span, true);
+                self.print_struct(vdata, generics, item.ident, item.span, true);
             }
             ast::ItemKind::Impl(box ast::Impl {
                 unsafety,
@@ -337,7 +337,7 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty);
             }
-            ast::ItemKind::TraitAlias(ref generics, ref bounds) => {
+            ast::ItemKind::TraitAlias(box ast::TraitAlias { ref generics, ref bounds }) => {
                 self.head(visibility_qualified(&item.vis, "trait"));
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
@@ -455,7 +455,7 @@ impl<'a> State<'a> {
 
     fn print_struct(
         &mut self,
-        struct_def: &ast::VariantData,
+        variant_data: &ast::VariantData,
         generics: &ast::Generics,
         ident: Ident,
         span: rustc_span::Span,
@@ -463,11 +463,11 @@ impl<'a> State<'a> {
     ) {
         self.print_ident(ident);
         self.print_generic_params(&generics.params);
-        match struct_def {
+        match variant_data {
             ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
-                if let ast::VariantData::Tuple(..) = struct_def {
+                if let ast::VariantData::Tuple(..) = variant_data {
                     self.popen();
-                    self.commasep(Inconsistent, struct_def.fields(), |s, field| {
+                    self.commasep(Inconsistent, variant_data.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);

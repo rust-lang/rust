@@ -342,10 +342,10 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(self_ty);
             walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
         }
-        ItemKind::Struct(ref struct_definition, ref generics)
-        | ItemKind::Union(ref struct_definition, ref generics) => {
+        ItemKind::Struct(box Struct { ref vdata, ref generics })
+        | ItemKind::Union(box Struct { ref vdata, ref generics }) => {
             visitor.visit_generics(generics);
-            visitor.visit_variant_data(struct_definition);
+            visitor.visit_variant_data(vdata);
         }
         ItemKind::Trait(box Trait {
             unsafety: _,
@@ -358,7 +358,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::SuperTraits);
             walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
         }
-        ItemKind::TraitAlias(ref generics, ref bounds) => {
+        ItemKind::TraitAlias(box TraitAlias { ref generics, ref bounds }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Bound);
         }

@@ -398,7 +398,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub(crate) fn visit_struct(&mut self, struct_parts: &StructParts<'_>) {
-        let is_tuple = match struct_parts.def {
+        let is_tuple = match struct_parts.vdata {
             ast::VariantData::Tuple(..) => true,
             _ => false,
         };
@@ -940,7 +940,7 @@ pub(crate) struct StructParts<'a> {
     prefix: &'a str,
     ident: symbol::Ident,
     vis: &'a ast::Visibility,
-    def: &'a ast::VariantData,
+    vdata: &'a ast::VariantData,
     generics: Option<&'a ast::Generics>,
     span: Span,
 }
@@ -955,23 +955,23 @@ impl<'a> StructParts<'a> {
             prefix: "",
             ident: variant.ident,
             vis: &DEFAULT_VISIBILITY,
-            def: &variant.data,
+            vdata: &variant.data,
             generics: None,
             span: variant.span,
         }
     }
 
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (prefix, def, generics) = match item.kind {
-            ast::ItemKind::Struct(ref def, ref generics) => ("struct ", def, generics),
-            ast::ItemKind::Union(ref def, ref generics) => ("union ", def, generics),
+        let (prefix, vdata, generics) = match &item.kind {
+            ast::ItemKind::Struct(struct_) => ("struct ", &struct_.vdata, &struct_.generics),
+            ast::ItemKind::Union(struct_) => ("union ", &struct_.vdata, &struct_.generics),
             _ => unreachable!(),
         };
         StructParts {
             prefix,
             ident: item.ident,
             vis: &item.vis,
-            def,
+            vdata,
             generics: Some(generics),
             span: item.span,
         }
@@ -984,7 +984,7 @@ fn format_struct(
     offset: Indent,
     one_line_width: Option<usize>,
 ) -> Option<String> {
-    match *struct_parts.def {
+    match *struct_parts.vdata {
         ast::VariantData::Unit(..) => format_unit_struct(context, struct_parts, offset),
         ast::VariantData::Tuple(ref fields, _) => {
             format_tuple_struct(context, struct_parts, fields, offset)

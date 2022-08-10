@@ -2811,6 +2811,18 @@ pub struct Enum {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Struct {
+    pub vdata: VariantData,
+    pub generics: Generics,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TraitAlias {
+    pub generics: Generics,
+    pub bounds: GenericBounds,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2855,11 +2867,11 @@ pub enum ItemKind {
     /// A struct definition (`struct`).
     ///
     /// E.g., `struct Foo<A> { x: A }`.
-    Struct(VariantData, Box<Generics>),
+    Struct(Box<Struct>),
     /// A union definition (`union`).
     ///
     /// E.g., `union Foo<A, B> { x: A, y: B }`.
-    Union(VariantData, Box<Generics>),
+    Union(Box<Struct>),
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
@@ -2867,7 +2879,7 @@ pub enum ItemKind {
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
-    TraitAlias(Box<Generics>, GenericBounds),
+    TraitAlias(Box<TraitAlias>),
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
@@ -2918,10 +2930,10 @@ impl ItemKind {
             Self::Fn(box Fn { generics, .. })
             | Self::TyAlias(box TyAlias { generics, .. })
             | Self::Enum(box Enum { generics, .. })
-            | Self::Struct(_, box generics)
-            | Self::Union(_, box generics)
+            | Self::Struct(box Struct { generics, .. })
+            | Self::Union(box Struct { generics, .. })
             | Self::Trait(box Trait { generics, .. })
-            | Self::TraitAlias(box generics, _)
+            | Self::TraitAlias(box TraitAlias { generics, .. })
             | Self::Impl(box Impl { generics, .. }) => Some(generics),
             _ => None,
         }
@@ -3045,8 +3057,8 @@ mod size_asserts {
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 136);
-    static_assert_size!(ItemKind, 48);
+    static_assert_size!(Item, 120);
+    static_assert_size!(ItemKind, 32);
     static_assert_size!(Lit, 48);
     static_assert_size!(Pat, 120);
     static_assert_size!(Path, 40);

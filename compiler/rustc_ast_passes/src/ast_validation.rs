@@ -1290,7 +1290,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }
-            ItemKind::Struct(ref vdata, ref generics) => match vdata {
+            ItemKind::Struct(box Struct { ref vdata, ref generics }) => match vdata {
                 // Duplicating the `Visitor` logic allows catching all cases
                 // of `Anonymous(Struct, Union)` outside of a field struct or union.
                 //
@@ -1309,7 +1309,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 _ => {}
             },
-            ItemKind::Union(ref vdata, ref generics) => {
+            ItemKind::Union(box Struct { ref vdata, ref generics }) => {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span, "unions cannot have zero fields");
                 }

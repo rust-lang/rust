@@ -101,8 +101,8 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
             return;
         }
 
-        if let ast::ItemKind::Struct(variant_data, _) = &item.kind {
-            let (fields, delimiter) = match variant_data {
+        if let ast::ItemKind::Struct(box ast::Struct { vdata, .. }) = &item.kind {
+            let (fields, delimiter) = match vdata {
                 ast::VariantData::Struct(fields, _) => (&**fields, '{'),
                 ast::VariantData::Tuple(fields, _) => (&**fields, '('),
                 ast::VariantData::Unit(_) => return,

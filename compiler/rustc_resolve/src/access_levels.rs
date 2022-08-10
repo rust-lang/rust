@@ -201,12 +201,13 @@ impl<'r, 'ast> Visitor<'ast> for AccessLevelsVisitor<'ast, 'r> {
                     }
                 }
             }
-            ast::ItemKind::Struct(ref def, _) | ast::ItemKind::Union(ref def, _) => {
-                if let Some(ctor_id) = def.ctor_id() {
+            ast::ItemKind::Struct(box ast::Struct { ref vdata, .. })
+            | ast::ItemKind::Union(box ast::Struct { ref vdata, .. }) => {
+                if let Some(ctor_id) = vdata.ctor_id() {
                     self.set_access_level(ctor_id, access_level);
                 }
 
-                for field in def.fields() {
+                for field in vdata.fields() {
                     if field.vis.kind.is_pub() {
                         self.set_access_level(field.id, access_level);
                     }
