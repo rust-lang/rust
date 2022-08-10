@@ -52,6 +52,8 @@ extern "unadjusted" {
 use stdarch_test::assert_instr;
 
 /// AES single round encryption.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaeseq_u8)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "aes"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -61,6 +63,8 @@ pub unsafe fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
 }
 
 /// AES single round decryption.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaesdq_u8)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "aes"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -70,6 +74,8 @@ pub unsafe fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
 }
 
 /// AES mix columns.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaesmcq_u8)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "aes"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -79,6 +85,8 @@ pub unsafe fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
 }
 
 /// AES inverse mix columns.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaesimcq_u8)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "aes"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -88,6 +96,8 @@ pub unsafe fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
 }
 
 /// SHA1 fixed rotate.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha1h_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -97,6 +107,8 @@ pub unsafe fn vsha1h_u32(hash_e: u32) -> u32 {
 }
 
 /// SHA1 hash update accelerator, choose.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha1cq_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -106,6 +118,8 @@ pub unsafe fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 }
 
 /// SHA1 hash update accelerator, majority.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha1mq_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -115,6 +129,8 @@ pub unsafe fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 }
 
 /// SHA1 hash update accelerator, parity.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha1pq_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -124,6 +140,8 @@ pub unsafe fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 }
 
 /// SHA1 schedule update accelerator, first part.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha1su0q_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -133,6 +151,8 @@ pub unsafe fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_
 }
 
 /// SHA1 schedule update accelerator, second part.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha1su1q_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -142,6 +162,8 @@ pub unsafe fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t
 }
 
 /// SHA256 hash update accelerator.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256hq_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -155,6 +177,8 @@ pub unsafe fn vsha256hq_u32(
 }
 
 /// SHA256 hash update accelerator, upper part.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256h2q_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -168,6 +192,8 @@ pub unsafe fn vsha256h2q_u32(
 }
 
 /// SHA256 schedule update accelerator, first part.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256su0q_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]
@@ -177,6 +203,8 @@ pub unsafe fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t 
 }
 
 /// SHA256 schedule update accelerator, second part.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha256su1q_u32)
 #[inline]
 #[cfg_attr(not(target_arch = "arm"), target_feature(enable = "sha2"))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "crypto,v8"))]

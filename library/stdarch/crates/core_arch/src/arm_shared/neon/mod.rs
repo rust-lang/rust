@@ -1284,6 +1284,8 @@ pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) 
 }
 
 /// Load one single-element structure to one lane of one register.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1300,6 +1302,8 @@ pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -
 }
 
 /// Load one single-element structure to one lane of one register.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1675,6 +1679,8 @@ pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1696,6 +1702,8 @@ pub unsafe fn vld1_dup_p64(ptr: *const p64) -> poly64x1_t {
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]

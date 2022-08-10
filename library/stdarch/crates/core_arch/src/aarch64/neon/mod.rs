@@ -664,6 +664,8 @@ pub unsafe fn vld1q_p16(ptr: *const p16) -> poly16x8_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -673,6 +675,8 @@ pub unsafe fn vld1_p64(ptr: *const p64) -> poly64x1_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(ldr))]
@@ -959,6 +963,8 @@ pub unsafe fn vst1q_p16(ptr: *mut p16, a: poly16x8_t) {
 }
 
 // Store multiple single-element structures from one, two, three, or four registers.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(str))]
@@ -969,6 +975,8 @@ pub unsafe fn vst1_p64(ptr: *mut p64, a: poly64x1_t) {
 }
 
 // Store multiple single-element structures from one, two, three, or four registers.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(str))]
@@ -3387,7 +3395,10 @@ pub unsafe fn vsliq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
     static_assert_imm4!(N);
     transmute(vsliq_n_s16_(transmute(a), transmute(b), N))
 }
+
 /// Shift Left and Insert (immediate)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsli_n_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(sli, N = 1))]
@@ -3397,7 +3408,10 @@ pub unsafe fn vsli_n_p64<const N: i32>(a: poly64x1_t, b: poly64x1_t) -> poly64x1
     static_assert!(N: i32 where N >= 0 && N <= 63);
     transmute(vsli_n_s64_(transmute(a), transmute(b), N))
 }
+
 /// Shift Left and Insert (immediate)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsliq_n_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(sli, N = 1))]
@@ -3607,7 +3621,10 @@ pub unsafe fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
     static_assert!(N: i32 where N >= 1 && N <= 16);
     transmute(vsriq_n_s16_(transmute(a), transmute(b), N))
 }
+
 /// Shift Right and Insert (immediate)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsri_n_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(sri, N = 1))]
@@ -3617,7 +3634,10 @@ pub unsafe fn vsri_n_p64<const N: i32>(a: poly64x1_t, b: poly64x1_t) -> poly64x1
     static_assert!(N: i32 where N >= 1 && N <= 64);
     transmute(vsri_n_s64_(transmute(a), transmute(b), N))
 }
+
 /// Shift Right and Insert (immediate)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsriq_n_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(test, assert_instr(sri, N = 1))]
