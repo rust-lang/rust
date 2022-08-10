@@ -128,6 +128,5 @@ fn test_const_flip() {
 
     assert!(TRUE_CONST);
 
-
     assert!(TRUE_STATIC);
 }
