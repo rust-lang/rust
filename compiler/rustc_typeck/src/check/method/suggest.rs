@@ -904,7 +904,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                let label_span_not_found = |err: &mut DiagnosticBuilder<'_, _>| {
+                let label_span_not_found = |err: &mut Diagnostic| {
                     if unsatisfied_predicates.is_empty() {
                         err.span_label(span, format!("{item_kind} not found in `{ty_str}`"));
                         let is_string_or_ref_str = match actual.kind() {
@@ -1150,7 +1150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
         item_name: Ident,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
     ) -> bool {
         let tcx = self.tcx;
         let field_receiver = self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind() {
@@ -1327,7 +1327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_for_field_method(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: SelfSource<'tcx>,
         span: Span,
         actual: Ty<'tcx>,
@@ -1375,7 +1375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_for_unwrap_self(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         source: SelfSource<'tcx>,
         span: Span,
         actual: Ty<'tcx>,

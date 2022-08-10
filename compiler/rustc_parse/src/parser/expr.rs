@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
             );
             let mut err = self.struct_span_err(span, &msg);
 
-            let suggest_parens = |err: &mut DiagnosticBuilder<'_, _>| {
+            let suggest_parens = |err: &mut Diagnostic| {
                 let suggestions = vec![
                     (span.shrink_to_lo(), "(".to_string()),
                     (span.shrink_to_hi(), ")".to_string()),

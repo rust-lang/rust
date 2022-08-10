@@ -783,7 +783,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn maybe_suggest_constrain_dyn_trait_impl(
         &self,
-        diag: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        diag: &mut Diagnostic,
         f: Region<'tcx>,
         o: Region<'tcx>,
         category: &ConstraintCategory<'tcx>,

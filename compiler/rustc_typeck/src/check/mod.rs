@@ -104,7 +104,7 @@ use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, DiagnosticBuilder, EmissionGuarantee, MultiSpan,
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -973,12 +973,7 @@ fn has_expected_num_generic_args<'tcx>(
 /// * `span` - The span of the snippet
 /// * `params` - The number of parameters the constructor accepts
 /// * `err` - A mutable diagnostic builder to add the suggestion to
-fn suggest_call_constructor<G: EmissionGuarantee>(
-    span: Span,
-    kind: CtorOf,
-    params: usize,
-    err: &mut DiagnosticBuilder<'_, G>,
-) {
+fn suggest_call_constructor(span: Span, kind: CtorOf, params: usize, err: &mut Diagnostic) {
     // Note: tuple-structs don't have named fields, so just use placeholders
     let args = vec!["_"; params].join(", ");
     let applicable = if params > 0 {

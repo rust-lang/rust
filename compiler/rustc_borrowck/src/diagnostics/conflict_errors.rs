@@ -451,7 +451,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_borrow_fn_like(
         &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         ty: Ty<'tcx>,
         move_sites: &[MoveSite],
         value_name: &str,
@@ -526,12 +526,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
-    fn suggest_adding_copy_bounds(
-        &self,
-        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) {
+    fn suggest_adding_copy_bounds(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 

@@ -14,7 +14,7 @@ use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -608,11 +608,7 @@ enum ExplainDocComment {
     },
 }
 
-fn annotate_doc_comment(
-    err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
-    sm: &SourceMap,
-    span: Span,
-) {
+fn annotate_doc_comment(err: &mut Diagnostic, sm: &SourceMap, span: Span) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
             err.subdiagnostic(ExplainDocComment::Outer { span });

@@ -28,7 +28,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    EmissionGuarantee, ErrorGuaranteed,
+    ErrorGuaranteed,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -879,7 +879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs: &'tcx hir::Expr<'tcx>,
         err_code: &'static str,
         op_span: Span,
-        adjust_err: impl FnOnce(&mut DiagnosticBuilder<'tcx, ErrorGuaranteed>),
+        adjust_err: impl FnOnce(&mut Diagnostic),
     ) {
         if lhs.is_syntactic_place_expr() {
             return;
@@ -1089,8 +1089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
 
-        let suggest_deref_binop = |err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-                                   rhs_ty: Ty<'tcx>| {
+        let suggest_deref_binop = |err: &mut Diagnostic, rhs_ty: Ty<'tcx>| {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
                 // Can only assign if the type is sized, so if `DerefMut` yields a type that is
                 // unsized, do not suggest dereferencing it.
@@ -2205,9 +2204,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx().ty_error()
     }
 
-    fn check_call_constructor<G: EmissionGuarantee>(
+    fn check_call_constructor(
         &self,
-        err: &mut DiagnosticBuilder<'_, G>,
+        err: &mut Diagnostic,
         base: &'tcx hir::Expr<'tcx>,
         def_id: DefId,
     ) {
