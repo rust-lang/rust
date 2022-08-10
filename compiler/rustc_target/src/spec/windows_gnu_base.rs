@@ -1,4 +1,4 @@
-use crate::spec::crt_objects::{self, CrtObjectsFallback};
+use crate::spec::crt_objects::{self, LinkSelfContainedDefault};
 use crate::spec::{cvs, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
@@ -76,9 +76,9 @@ pub fn opts() -> TargetOptions {
         pre_link_args,
         pre_link_objects: crt_objects::pre_mingw(),
         post_link_objects: crt_objects::post_mingw(),
-        pre_link_objects_fallback: crt_objects::pre_mingw_fallback(),
-        post_link_objects_fallback: crt_objects::post_mingw_fallback(),
-        crt_objects_fallback: Some(CrtObjectsFallback::Mingw),
+        pre_link_objects_self_contained: crt_objects::pre_mingw_self_contained(),
+        post_link_objects_self_contained: crt_objects::post_mingw_self_contained(),
+        link_self_contained: LinkSelfContainedDefault::Mingw,
         late_link_args,
         late_link_args_dynamic,
         late_link_args_static,
