@@ -30,7 +30,7 @@ Using `rustc` directly:
 # Compile the Rust staticlib
 rustc --crate-type=staticlib -Clinker-plugin-lto -Copt-level=2 ./lib.rs
 # Compile the C code with `-flto=thin`
-clang -c -O2 -flto=thin -o main.o ./main.c
+clang -c -O2 -flto=thin -o cmain.o ./cmain.c
 # Link everything, making sure that we use an appropriate linker
 clang -flto=thin -fuse-ld=lld -L . -l"name-of-your-rust-lib" -o main -O2 ./cmain.o
 ```
@@ -41,7 +41,7 @@ Using `cargo`:
 # Compile the Rust staticlib
 RUSTFLAGS="-Clinker-plugin-lto" cargo build --release
 # Compile the C code with `-flto=thin`
-clang -c -O2 -flto=thin -o main.o ./main.c
+clang -c -O2 -flto=thin -o cmain.o ./cmain.c
 # Link everything, making sure that we use an appropriate linker
 clang -flto=thin -fuse-ld=lld -L . -l"name-of-your-rust-lib" -o main -O2 ./cmain.o
 ```

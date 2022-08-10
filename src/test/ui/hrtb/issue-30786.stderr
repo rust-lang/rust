@@ -18,10 +18,6 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let filter = map.stream.filterx(|x: &_| true);
-   |                      +++++++
 
 error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:129:30: 129:37]>`, but its trait bounds were not satisfied
   --> $DIR/issue-30786.rs:130:24
@@ -43,10 +39,6 @@ note: the following trait bounds were not satisfied:
    |
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
-help: one of the expressions' fields has a method of the same name
-   |
-LL |     let count = filter.stream.countx();
-   |                        +++++++
 
 error: aborting due to 2 previous errors
 

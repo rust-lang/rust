@@ -591,8 +591,11 @@ pub struct Import {
     /// May be different from the last segment of `source` when renaming imports:
     /// `use source as name;`
     pub name: String,
-    /// The ID of the item being imported.
-    pub id: Option<Id>, // FIXME is this actually ever None?
+    /// The ID of the item being imported. Will be `None` in case of re-exports of primitives:
+    /// ```rust
+    /// pub use i32 as my_i32;
+    /// ```
+    pub id: Option<Id>,
     /// Whether this import uses a glob: `use source::*;`
     pub glob: bool,
 }

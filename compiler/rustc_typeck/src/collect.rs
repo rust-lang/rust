@@ -94,7 +94,27 @@ pub fn provide(providers: &mut Providers) {
 ///////////////////////////////////////////////////////////////////////////
 
 /// Context specific to some particular item. This is what implements
-/// `AstConv`. It has information about the predicates that are defined
+/// [`AstConv`].
+///
+/// # `ItemCtxt` vs `FnCtxt`
+///
+/// `ItemCtxt` is primarily used to type-check item signatures and lower them
+/// from HIR to their [`ty::Ty`] representation, which is exposed using [`AstConv`].
+/// It's also used for the bodies of items like structs where the body (the fields)
+/// are just signatures.
+///
+/// This is in contrast to [`FnCtxt`], which is used to type-check bodies of
+/// functions, closures, and `const`s -- anywhere that expressions and statements show up.
+///
+/// An important thing to note is that `ItemCtxt` does no inference -- it has no [`InferCtxt`] --
+/// while `FnCtxt` does do inference.
+///
+/// [`FnCtxt`]: crate::check::FnCtxt
+/// [`InferCtxt`]: rustc_infer::infer::InferCtxt
+///
+/// # Trait predicates
+///
+/// `ItemCtxt` has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
 /// process. So we can't just store a pointer to e.g., the AST or the
