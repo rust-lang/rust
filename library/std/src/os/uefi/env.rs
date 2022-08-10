@@ -106,7 +106,7 @@ pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>>
     match inner(&mut guid, boot_services, &mut buf_len, crate::ptr::null_mut()) {
         Ok(()) => unreachable!(),
         Err(e) => match e.kind() {
-            io::ErrorKind::InvalidData => {}
+            io::ErrorKind::FileTooLarge => {}
             _ => return Err(e),
         },
     }
