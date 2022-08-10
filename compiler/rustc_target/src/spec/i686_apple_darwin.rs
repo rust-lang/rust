@@ -1,7 +1,8 @@
 use crate::spec::{FramePointer, LinkerFlavor, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::apple_base::opts("macos");
+    // ld64 only understand i386 and not i686
+    let mut base = super::apple_base::opts("macos", "i386", "");
     base.cpu = "yonah".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
