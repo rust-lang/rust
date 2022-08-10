@@ -1486,7 +1486,7 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
 pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
     match &mut visibility.kind {
         VisibilityKind::Public | VisibilityKind::Inherited => {}
-        VisibilityKind::Restricted { path, id } => {
+        VisibilityKind::Restricted { path, id, shorthand: _ } => {
             vis.visit_path(path);
             vis.visit_id(id);
         }
