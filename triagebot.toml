@@ -342,3 +342,15 @@ cc = ["@rust-lang/rustfmt"]
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
 message = "This PR changes MIR"
 cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakaras"]
+
+[mentions."compiler/rustc_error_messages"]
+message = "`rustc_error_messages` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank"]
+
+[mentions."compiler/rustc_errors/src/translation.rs"]
+message = "`rustc_errors::translation` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank"]
+
+[mentions."compiler/rustc_macros/src/diagnostics"]
+message = "`rustc_macros::diagnostics` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank"]
