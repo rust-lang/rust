@@ -192,7 +192,6 @@ mod thin;
 #[lang = "owned_box"]
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
-// #[rustc_strict_coherence]
 // The declaration of the `Box` struct must be kept in sync with the
 // `alloc::alloc::box_free` function or ICEs will happen. See the comment
 // on `box_free` for more details.
