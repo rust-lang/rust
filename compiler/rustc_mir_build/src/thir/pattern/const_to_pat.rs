@@ -168,7 +168,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // once indirect_structural_match is a full fledged error, this
         // level of indirection can be eliminated
 
-        let inlined_const_as_pat = self.recur(cv, mir_structural_match_violation).unwrap();
+        let inlined_const_as_pat =
+            self.recur(cv, mir_structural_match_violation).unwrap_or_else(|_| Pat {
+                span: self.span,
+                ty: cv.ty(),
+                kind: Box::new(PatKind::Constant { value: cv }),
+            });
 
         if self.include_lint_checks && !self.saw_const_match_error.get() {
             // If we were able to successfully convert the const to some pat,
