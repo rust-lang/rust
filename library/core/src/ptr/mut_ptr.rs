@@ -100,8 +100,8 @@ impl<T: ?Sized> *mut T {
     /// coercion.
     ///
     /// [`cast_mut`]: #method.cast_mut
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     pub const fn cast_const(self) -> *const T {
         self as _
     }
