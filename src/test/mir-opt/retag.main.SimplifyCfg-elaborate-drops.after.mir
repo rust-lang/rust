@@ -73,7 +73,7 @@ fn main() -> () {
         Retag([2phase] _6);              // scope 1 at $DIR/retag.rs:+3:29: +3:35
         _3 = Test::foo(move _4, move _6) -> [return: bb1, unwind: bb8]; // scope 1 at $DIR/retag.rs:+3:17: +3:36
                                          // mir::Constant
-                                         // + span: $DIR/retag.rs:32:25: 32:28
+                                         // + span: $DIR/retag.rs:33:25: 33:28
                                          // + literal: Const { ty: for<'r, 'x> fn(&'r Test, &'x mut i32) -> &'x mut i32 {Test::foo}, val: Value(<ZST>) }
     }
 
@@ -149,7 +149,7 @@ fn main() -> () {
         StorageLive(_23);                // scope 7 at $DIR/retag.rs:+18:21: +18:23
         _28 = const main::promoted[0];   // scope 7 at $DIR/retag.rs:+18:21: +18:23
                                          // mir::Constant
-                                         // + span: $DIR/retag.rs:47:21: 47:23
+                                         // + span: $DIR/retag.rs:48:21: 48:23
                                          // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
         Retag(_28);                      // scope 7 at $DIR/retag.rs:+18:21: +18:23
         _23 = &(*_28);                   // scope 7 at $DIR/retag.rs:+18:21: +18:23
@@ -158,7 +158,7 @@ fn main() -> () {
         Retag(_22);                      // scope 7 at $DIR/retag.rs:+18:21: +18:23
         _19 = Test::foo_shr(move _20, move _22) -> [return: bb4, unwind: bb7]; // scope 7 at $DIR/retag.rs:+18:5: +18:24
                                          // mir::Constant
-                                         // + span: $DIR/retag.rs:47:13: 47:20
+                                         // + span: $DIR/retag.rs:48:13: 48:20
                                          // + literal: Const { ty: for<'r, 'x> fn(&'r Test, &'x i32) -> &'x i32 {Test::foo_shr}, val: Value(<ZST>) }
     }
 
@@ -182,7 +182,7 @@ fn main() -> () {
         StorageLive(_27);                // scope 8 at $DIR/retag.rs:+23:5: +23:18
         _27 = array_casts() -> bb6;      // scope 8 at $DIR/retag.rs:+23:5: +23:18
                                          // mir::Constant
-                                         // + span: $DIR/retag.rs:52:5: 52:16
+                                         // + span: $DIR/retag.rs:53:5: 53:16
                                          // + literal: Const { ty: fn() {array_casts}, val: Value(<ZST>) }
     }
 

@@ -892,8 +892,7 @@ impl char {
     ///
     /// The general categories for numbers (`Nd` for decimal digits, `Nl` for letter-like numeric
     /// characters, and `No` for other numeric characters) are specified in the [Unicode Character
-    /// Database][ucd] [`UnicodeData.txt`]. Note that this means ideographic numbers like '三'
-    /// are considered alphabetic, not numeric. Please consider to use `is_ascii_digit` or `is_digit`.
+    /// Database][ucd] [`UnicodeData.txt`].
     ///
     /// This method doesn't cover everything that could be considered a number, e.g. ideographic numbers like '三'.
     /// If you want everything including characters with overlapping purposes then you might want to use

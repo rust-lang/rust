@@ -1135,7 +1135,7 @@ impl fmt::Debug for Duration {
                     // 2. The postfix: can be "µs" so we have to count UTF8 characters.
                     let mut actual_w = prefix.len() + postfix.chars().count();
                     // 3. The integer part:
-                    if let Some(log) = integer_part.checked_log10() {
+                    if let Some(log) = integer_part.checked_ilog10() {
                         // integer_part is > 0, so has length log10(x)+1
                         actual_w += 1 + log as usize;
                     } else {

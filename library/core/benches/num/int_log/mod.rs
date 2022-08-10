@@ -9,7 +9,7 @@ macro_rules! int_log_bench {
                 for n in 0..(<$t>::BITS / 8) {
                     for i in 1..=(100 as $t) {
                         let x = black_box(i << (n * 8));
-                        black_box(x.log10());
+                        black_box(x.ilog10());
                     }
                 }
             });
@@ -27,7 +27,7 @@ macro_rules! int_log_bench {
                 .collect();
             bench.iter(|| {
                 for x in &numbers {
-                    black_box(black_box(x).log10());
+                    black_box(black_box(x).ilog10());
                 }
             });
         }
@@ -44,7 +44,7 @@ macro_rules! int_log_bench {
                 .collect();
             bench.iter(|| {
                 for x in &numbers {
-                    black_box(black_box(x).log10());
+                    black_box(black_box(x).ilog10());
                 }
             });
         }

@@ -1,4 +1,4 @@
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
+// unit-test: InstCombine
 // EMIT_MIR combine_array_len.norm2.InstCombine.diff
 
 fn norm2(x: [f32; 2]) -> f32 {

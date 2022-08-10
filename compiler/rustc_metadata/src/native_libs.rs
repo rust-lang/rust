@@ -328,7 +328,31 @@ impl<'tcx> Collector<'tcx> {
                         .map(|child_item| self.build_dll_import(abi, child_item))
                         .collect()
                 }
-                _ => Vec::new(),
+                _ => {
+                    for child_item in foreign_mod_items {
+                        if self.tcx.def_kind(child_item.id.def_id).has_codegen_attrs()
+                            && self
+                                .tcx
+                                .codegen_fn_attrs(child_item.id.def_id)
+                                .link_ordinal
+                                .is_some()
+                        {
+                            let link_ordinal_attr = self
+                                .tcx
+                                .hir()
+                                .attrs(self.tcx.hir().local_def_id_to_hir_id(child_item.id.def_id))
+                                .iter()
+                                .find(|a| a.has_name(sym::link_ordinal))
+                                .unwrap();
+                            sess.span_err(
+                                link_ordinal_attr.span,
+                                "`#[link_ordinal]` is only supported if link kind is `raw-dylib`",
+                            );
+                        }
+                    }
+
+                    Vec::new()
+                }
             };
             self.libs.push(NativeLib {
                 name: name.map(|(name, _)| name),
