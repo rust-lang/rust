@@ -103,3 +103,9 @@ fn test_bool_to_option() {
     assert_eq!(C, None);
     assert_eq!(D, Some(0));
 }
+
+#[test]
+fn test_bool_flip() {
+    assert!(false.flip());
+    assert!(!true.flip());
+}

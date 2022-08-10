@@ -41,4 +41,17 @@ impl bool {
     {
         if self { Some(f()) } else { None }
     }
+
+    /// Flips the `bool` value turning false to true and true to false
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!(false.flip())
+    /// asssert!(!true.flip())
+    /// ```
+    #[inline]
+    pub const fn flip(&self) -> Self {
+        !self
+    }
 }
