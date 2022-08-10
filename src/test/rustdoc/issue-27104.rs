@@ -6,5 +6,5 @@
 // @!has - 'extern crate std'
 // @!has - 'use std::prelude::'
 
-// @hastext - 'pub extern crate empty'
+// @hasraw - 'pub extern crate empty'
 pub extern crate empty;

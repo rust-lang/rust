@@ -1,5 +1,5 @@
 // @has issue_31899/index.html
-// @hastext - 'Make this line a bit longer.'
+// @hasraw - 'Make this line a bit longer.'
 // @!has - 'rust rust-example-rendered'
 // @!has - 'use ndarray::arr2'
 // @!has - 'prohibited'

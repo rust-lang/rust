@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-// @hastext 'search-index.js' 'Foo short link.'
+// @hasraw 'search-index.js' 'Foo short link.'
 // @!has - 'www.example.com'
 // @!has - 'More Foo.'
 

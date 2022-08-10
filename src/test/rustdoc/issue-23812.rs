@@ -16,9 +16,9 @@ doc! {
 }
 
 // @has issue_23812/Foo/index.html
-// @hastext - 'Outer comment'
+// @hasraw - 'Outer comment'
 // @!has - '/// Outer comment'
-// @hastext - 'Inner comment'
+// @hasraw - 'Inner comment'
 // @!has - '//! Inner comment'
 
 
@@ -30,7 +30,7 @@ doc! {
 }
 
 // @has issue_23812/Bar/index.html
-// @hastext - 'Outer block comment'
+// @hasraw - 'Outer block comment'
 // @!has - '/** Outer block comment */'
-// @hastext - 'Inner block comment'
+// @hasraw - 'Inner block comment'
 // @!has - '/*! Inner block comment */'

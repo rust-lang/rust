@@ -12,7 +12,7 @@ pub mod a {
 
 // @has please_inline/b/index.html
 pub mod b {
-    // @hastext - 'pub use foo::'
+    // @hasraw - 'pub use foo::'
     // @!has please_inline/b/struct.Foo.html
     #[feature(inline)]
     pub use foo::Foo;

@@ -11,7 +11,7 @@ pub use mod1::*;
 
 // @has foo/index.html
 // @!has - "mod1"
-// @hastext - "public_fn"
+// @hasraw - "public_fn"
 // @!has - "private_fn"
 // @has foo/fn.public_fn.html
 // @!has foo/fn.private_fn.html
