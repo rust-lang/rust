@@ -2619,8 +2619,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         this.with_current_self_type(self_type, |this| {
                                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
                                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
+                                                let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
-                                                    this.resolve_impl_item(&**item);
+                                                    this.resolve_impl_item(&**item, &mut seen_trait_items);
                                                 }
                                             });
                                         });
@@ -2634,7 +2635,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
-    fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
+    fn resolve_impl_item(
+        &mut self,
+        item: &'ast AssocItem,
+        seen_trait_items: &mut FxHashMap<DefId, Span>,
+    ) {
         use crate::ResolutionError::*;
         match &item.kind {
             AssocItemKind::Const(_, ty, default) => {
@@ -2647,6 +2652,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     &item.kind,
                     ValueNS,
                     item.span,
+                    seen_trait_items,
                     |i, s, c| ConstNotMemberOfTrait(i, s, c),
                 );
 
@@ -2687,6 +2693,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             &item.kind,
                             ValueNS,
                             item.span,
+                            seen_trait_items,
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
@@ -2715,6 +2722,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 &item.kind,
                                 TypeNS,
                                 item.span,
+                                seen_trait_items,
                                 |i, s, c| TypeNotMemberOfTrait(i, s, c),
                             );
 
@@ -2736,6 +2744,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         kind: &AssocItemKind,
         ns: Namespace,
         span: Span,
+        seen_trait_items: &mut FxHashMap<DefId, Span>,
         err: F,
     ) where
         F: FnOnce(Ident, String, Option<Symbol>) -> ResolutionError<'a>,
@@ -2768,7 +2777,25 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         };
 
         let res = binding.res();
-        let Res::Def(def_kind, _) = res else { bug!() };
+        let Res::Def(def_kind, id_in_trait) = res else { bug!() };
+
+        match seen_trait_items.entry(id_in_trait) {
+            Entry::Occupied(entry) => {
+                self.report_error(
+                    span,
+                    ResolutionError::TraitImplDuplicate {
+                        name: ident.name,
+                        old_span: *entry.get(),
+                        trait_item_span: binding.span,
+                    },
+                );
+                return;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(span);
+            }
+        };
+
         match (def_kind, kind) {
             (DefKind::AssocTy, AssocItemKind::TyAlias(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))

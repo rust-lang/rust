@@ -236,6 +236,8 @@ enum ResolutionError<'a> {
         trait_item_span: Span,
         code: rustc_errors::DiagnosticId,
     },
+    /// Error E0201: multiple impl items for the same trait item.
+    TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
 }
