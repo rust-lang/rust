@@ -1,18 +1,13 @@
-// If the hidden type is a closure, we require the "outlives" bounds that appear on the
-// defining site to also appear on the opaque type.
-//
-// It's not clear if this is the desired behavior but at least
-// it's consistent and has no back-compat risk.
+// If the hidden type is a closure, we used to require the "outlives" bounds
+// that appear on the defining site to also appear on the opaque type.
 
 // check-fail
 
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 
-// requires `'a: 'b` bound
 mod test1 {
     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
-    //~^ ERROR lifetime bound not satisfied
 
     fn define<'a, 'b>() -> Opaque<'a, 'b>
     where
@@ -25,7 +20,6 @@ mod test1 {
 // Same as the above but through indirection `'x`
 mod test2 {
     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
-    //~^ ERROR cannot infer an appropriate lifetime
 
     fn define<'a, 'b, 'x>() -> Opaque<'a, 'b>
     where
@@ -36,7 +30,6 @@ mod test2 {
     }
 }
 
-// fixed version of the above
 mod test2_fixed {
     type Opaque<'a: 'b, 'b> = impl Sized + 'a + 'b;
 

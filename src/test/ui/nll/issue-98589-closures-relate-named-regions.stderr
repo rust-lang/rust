@@ -1,12 +1,12 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-98589-closures-relate-named-regions.rs:10:5
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:10:10
    |
 LL | fn test_early_early<'a: 'a, 'b: 'b>() {
    |                     --      -- lifetime `'b` defined here
    |                     |
    |                     lifetime `'a` defined here
 LL |     || { None::<&'a &'b ()>; };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |          ^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -56,6 +56,19 @@ help: consider adding an explicit lifetime bound...
 LL | fn test_late_type<'a, T: 'a>() {
    |                        ++++
 
-error: aborting due to 5 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/issue-98589-closures-relate-named-regions.rs:38:8
+   |
+LL | fn test_closure_arg<'a: 'a>() {
+   |                     -- lifetime `'a` defined here
+LL |     let f = |_: &'a str| {};
+LL |     f(&String::new());
+   |     ---^^^^^^^^^^^^^-- temporary value is freed at the end of this statement
+   |     |  |
+   |     |  creates a temporary which is freed while still in use
+   |     argument requires that borrow lasts for `'a`
 
-For more information about this error, try `rustc --explain E0309`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0309, E0716.
+For more information about an error, try `rustc --explain E0309`.

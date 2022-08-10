@@ -33,4 +33,10 @@ fn test_late_type<'a, T>() {
     //~^ ERROR the parameter type `T` may not live long enough
 }
 
+fn test_closure_arg<'a: 'a>() {
+    let f = |_: &'a str| {};
+    f(&String::new());
+    //~^ ERROR temporary value dropped while borrowed
+}
+
 fn main() {}

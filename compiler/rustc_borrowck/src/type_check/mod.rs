@@ -2669,34 +2669,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        // Now equate closure substs to regions inherited from `typeck_root_def_id`. Fixes #98589.
-        let typeck_root_def_id = tcx.typeck_root_def_id(self.body.source.def_id());
-        let typeck_root_substs = ty::InternalSubsts::identity_for_item(tcx, typeck_root_def_id);
-
-        let parent_substs = match tcx.def_kind(def_id) {
-            DefKind::Closure => substs.as_closure().parent_substs(),
-            DefKind::Generator => substs.as_generator().parent_substs(),
-            DefKind::InlineConst => substs.as_inline_const().parent_substs(),
-            other => bug!("unexpected item {:?}", other),
-        };
-        let parent_substs = tcx.mk_substs(parent_substs.iter());
-
-        assert_eq!(typeck_root_substs.len(), parent_substs.len());
-        if let Err(_) = self.eq_substs(
-            typeck_root_substs,
-            parent_substs,
-            location.to_locations(),
-            ConstraintCategory::BoringNoLocation,
-        ) {
-            span_mirbug!(
-                self,
-                def_id,
-                "could not relate closure to parent {:?} != {:?}",
-                typeck_root_substs,
-                parent_substs
-            );
-        }
-
         tcx.predicates_of(def_id).instantiate(tcx, substs)
     }
 

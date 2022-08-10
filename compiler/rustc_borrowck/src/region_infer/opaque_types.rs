@@ -105,6 +105,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
+                        // FIXME: This is a troublesome back-compat hack. See #100372.
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });

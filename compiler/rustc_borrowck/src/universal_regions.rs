@@ -247,11 +247,24 @@ impl<'tcx> UniversalRegions<'tcx> {
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
         region_mapping.push(tcx.lifetimes.re_static);
+
+        let typeck_root_def_id = tcx.local_parent(closure_def_id);
+
+        // We rely on the fact that the first N regions in the ClosureSubsts are
+        // inherited from the `typeck_root_def_id`.
+        let typeck_root_substs =
+            ty::InternalSubsts::identity_for_item(tcx, typeck_root_def_id.to_def_id());
+        assert_eq!(closure_substs.regions().count(), typeck_root_substs.regions().count());
+
+        // The first N regions in ClosureSubsts are the early-bound regions of `typeck_root_*`.
+        // Other regions are the early-bound regions in closure signature, upvars, etc.
+        let mut typeck_root_regions = typeck_root_substs.regions().fuse();
         tcx.for_each_free_region(&closure_substs, |fr| {
-            region_mapping.push(fr);
+            region_mapping.push(typeck_root_regions.next().unwrap_or(fr));
         });
 
-        for_each_late_bound_region_in_recursive_scope(tcx, tcx.local_parent(closure_def_id), |r| {
+        // Now add late-bound regions of `typeck_root_def_id`.
+        for_each_late_bound_region_in_recursive_scope(tcx, typeck_root_def_id, |r| {
             region_mapping.push(r);
         });
 
