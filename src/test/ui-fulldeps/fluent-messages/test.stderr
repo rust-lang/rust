@@ -41,5 +41,21 @@ help: previously defined in this resource
 LL |         a => "./duplicate-a.ftl",
    |         ^
 
-error: aborting due to 4 previous errors
+error: name `this-slug-has-hyphens` contains a '-' character
+  --> $DIR/test.rs:62:9
+   |
+LL |         slug_with_hyphens => "./slug-with-hyphens.ftl",
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: attribute `label-has-hyphens` contains a '-' character
+  --> $DIR/test.rs:71:9
+   |
+LL |         label_with_hyphens => "./label-with-hyphens.ftl",
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: aborting due to 6 previous errors
 
