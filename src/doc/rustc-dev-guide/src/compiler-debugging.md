@@ -16,29 +16,36 @@ set `debug = true` in your config.toml.
 
 Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`,
 `debug-logging`, etc.) which can be individually tweaked if you want to, but many people
-simply set `debug = true`. 
+simply set `debug = true`.
 
 If you want to use GDB to debug rustc, please set `config.toml` with options:
 
 ```toml
 [rust]
 debug = true
-debuginfo-level = 2 
-# WARNING: this will use a lot of disk space (about 35GB) and compile time.
-# Without debuginfo-level, you may also track the execution path, but lost
-# the symbol information for debugging.
+debuginfo-level = 2
 ```
 
-Default configuration will enable `symbol-mangling-version` v0, you need to install a GDB 
-with version higher than 10.2, otherwise you need to disable new symbol-mangling-version.
+> NOTE:
+> This will use a lot of disk space
+> (upwards of <!-- date-check Aug 2022 --> 35GB),
+> and will take a lot more compile time.
+> With `debuginfo-level = 1` (the default when `debug = true`),
+> you will be able to track the execution path,
+> but will lose the symbol information for debugging.
+
+The default configuration will enable `symbol-mangling-version` v0.
+This requires at least GDB v10.2,
+otherwise you need to disable new symbol-mangling-version in `config.toml`.
 
 ```toml
 [rust]
 new-symbol-mangling = false
 ```
 
-Check out the comments in config.toml.example for more info, you will need to rebuild the 
-compiler once you've changed any configuration options.
+> See the comments in `config.toml.example` for more info.
+
+You will need to rebuild the compiler after changing any configuration option.
 
 ## `-Z` flags
 
