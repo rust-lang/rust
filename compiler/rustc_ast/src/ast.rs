@@ -2817,7 +2817,7 @@ pub enum ItemKind {
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
-    Use(UseTree),
+    Use(P<UseTree>),
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
@@ -3043,8 +3043,8 @@ mod size_asserts {
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 72);
     static_assert_size!(Impl, 200);
-    static_assert_size!(Item, 176);
-    static_assert_size!(ItemKind, 88);
+    static_assert_size!(Item, 160);
+    static_assert_size!(ItemKind, 72);
     static_assert_size!(Lit, 48);
     static_assert_size!(Pat, 120);
     static_assert_size!(Path, 40);

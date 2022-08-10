@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
             }
             return Err(e);
         }
-        Ok((Ident::empty(), ItemKind::Use(tree)))
+        Ok((Ident::empty(), ItemKind::Use(P(tree))))
     }
 
     /// When parsing a statement, would the start of a path be an item?

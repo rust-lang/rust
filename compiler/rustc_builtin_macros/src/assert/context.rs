@@ -120,14 +120,14 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     Ident::new(sym::allow, self.span),
                     vec![attr::mk_nested_word_item(Ident::new(sym::unused_imports, self.span))],
                 ))],
-                ItemKind::Use(UseTree {
+                ItemKind::Use(P(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
                     kind: UseTreeKind::Nested(vec![
                         nested_tree(self, sym::TryCaptureGeneric),
                         nested_tree(self, sym::TryCapturePrintable),
                     ]),
                     span: self.span,
-                }),
+                })),
             ),
         )
     }

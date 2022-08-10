@@ -1,4 +1,5 @@
 use rustc_ast as ast;
+use rustc_ast::ptr::P;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::Session;
@@ -79,11 +80,11 @@ pub fn inject(
         span,
         Ident::empty(),
         vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
-        ast::ItemKind::Use(ast::UseTree {
+        ast::ItemKind::Use(P(ast::UseTree {
             prefix: cx.path(span, import_path),
             kind: ast::UseTreeKind::Glob,
             span,
-        }),
+        })),
     );
 
     krate.items.insert(0, use_item);
