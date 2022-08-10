@@ -1513,6 +1513,10 @@ pub trait PrettyPrinter<'tcx>:
                 }
                 return Ok(self);
             }
+            (ty::ValTree::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
+                p!(write("&"));
+                return self.pretty_print_const_scalar_int(leaf, *inner_ty, print_ty);
+            }
             (ty::ValTree::Leaf(leaf), _) => {
                 return self.pretty_print_const_scalar_int(leaf, ty, print_ty);
             }
