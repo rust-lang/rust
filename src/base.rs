@@ -82,27 +82,7 @@ pub(crate) fn codegen_fn<'tcx>(
         next_ssa_var: 0,
     };
 
-    let arg_uninhabited = fx
-        .mir
-        .args_iter()
-        .any(|arg| fx.layout_of(fx.monomorphize(fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
-
-    if !crate::constant::check_constants(&mut fx) {
-        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
-        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        // compilation should have been aborted
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-    } else if arg_uninhabited {
-        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
-        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-    } else {
-        tcx.sess.time("codegen clif ir", || {
-            tcx.sess
-                .time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block));
-            codegen_fn_content(&mut fx);
-        });
-    }
+    tcx.sess.time("codegen clif ir", || codegen_fn_body(&mut fx, start_block));
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
@@ -269,7 +249,27 @@ pub(crate) fn verify_func(
     });
 }
 
-fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
+fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
+    if !crate::constant::check_constants(fx) {
+        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
+        // compilation should have been aborted
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        return;
+    }
+
+    let arg_uninhabited = fx
+        .mir
+        .args_iter()
+        .any(|arg| fx.layout_of(fx.monomorphize(fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
+    if arg_uninhabited {
+        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        return;
+    }
+    fx.tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(fx, start_block));
+
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
