@@ -43,3 +43,23 @@ impl<'tcx> Value<'tcx> for AdtSizedConstraint<'_> {
         }
     }
 }
+
+impl<'tcx> Value<'tcx> for ty::Binder<'_, ty::FnSig<'_>> {
+    fn from_cycle_error(tcx: QueryCtxt<'tcx>) -> Self {
+        let err = tcx.ty_error();
+        // FIXME(compiler-errors): It would be nice if we could get the
+        // query key, so we could at least generate a fn signature that
+        // has the right arity.
+        let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+            [].into_iter(),
+            err,
+            false,
+            rustc_hir::Unsafety::Normal,
+            rustc_target::spec::abi::Abi::Rust,
+        ));
+
+        // SAFETY: This is never called when `Self` is not `ty::Binder<'tcx, ty::FnSig<'tcx>>`.
+        // FIXME: Represent the above fact in the trait system somehow.
+        unsafe { std::mem::transmute::<ty::PolyFnSig<'tcx>, ty::Binder<'_, ty::FnSig<'_>>>(fn_sig) }
+    }
+}
