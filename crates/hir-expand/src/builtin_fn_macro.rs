@@ -251,9 +251,13 @@ fn format_args_expand(
     }
     for arg in &mut args {
         // Remove `key =`.
-        if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' && p.spacing != tt::Spacing::Joint)
+        if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=')
         {
-            arg.token_trees.drain(..2);
+            // but not with `==`
+            if !matches!(arg.token_trees.get(2), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' )
+            {
+                arg.token_trees.drain(..2);
+            }
         }
     }
     let _format_string = args.remove(0);
