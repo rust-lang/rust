@@ -55,4 +55,10 @@ impl bool {
     pub const fn flip(&self) -> Self {
         !self
     }
+
+    #[unstable(feature = "toggle_bool", issue = "none", reason = "recently added")]
+    #[inline]
+    pub const fn toggle(&mut self) {
+        *self = self.flip();
+    }
 }
