@@ -47,8 +47,10 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// assert!(false.flip())
-    /// asssert!(!true.flip())
+    /// #![feature(flip_bool)]
+    ///
+    /// assert!(false.flip());
+    /// assert!(!true.flip());
     /// ```
     #[unstable(feature = "flip_bool", issue = "none", reason = "recently added")]
     #[inline]
@@ -57,6 +59,20 @@ impl bool {
     }
 
     /// Toggles the `bool` variable and mutates it
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(toggle_bool)]
+    ///
+    /// let mut eventually_true = false;
+    ///
+    /// assert!(!eventually_true);
+    ///
+    /// eventually_true.toggle();
+    ///
+    /// assert!(eventually_true);
+    /// ```
     #[unstable(feature = "toggle_bool", issue = "none", reason = "recently added")]
     #[inline]
     pub const fn toggle(&mut self) {
