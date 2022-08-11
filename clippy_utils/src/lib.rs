@@ -1893,8 +1893,8 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr.path == sym::no_std
+        if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            normal.item.path == sym::no_std
         } else {
             false
         }
@@ -1903,8 +1903,8 @@ pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr.path == sym::no_core
+        if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            normal.item.path == sym::no_core
         } else {
             false
         }
