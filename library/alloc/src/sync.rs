@@ -232,6 +232,7 @@ macro_rules! acquire {
 /// [rc_examples]: crate::rc#examples
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[repr(transparent)]
 pub struct Arc<T: ?Sized> {
     ptr: NonNull<ArcInner<T>>,
     phantom: PhantomData<ArcInner<T>>,
@@ -282,6 +283,7 @@ impl<T: ?Sized> Arc<T> {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "arc_weak", since = "1.4.0")]
+#[repr(transparent)]
 pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.

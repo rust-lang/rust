@@ -306,6 +306,7 @@ struct RcBox<T: ?Sized> {
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
+#[repr(transparent)]
 pub struct Rc<T: ?Sized> {
     ptr: NonNull<RcBox<T>>,
     phantom: PhantomData<RcBox<T>>,
@@ -2143,6 +2144,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "rc_weak", since = "1.4.0")]
+#[repr(transparent)]
 pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
     // but it is not necessarily a valid pointer.
