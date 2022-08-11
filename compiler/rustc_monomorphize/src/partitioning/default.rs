@@ -219,10 +219,8 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         // Build a map from every monomorphization to all the monomorphizations that
         // reference it.
         let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
-        cx.inlining_map.iter_accesses(|accessor, accessees| {
-            for accessee in accessees {
-                accessor_map.entry(*accessee).or_default().push(accessor);
-            }
+        cx.inlining_map.iter_accesses(|accessor, access| {
+            accessor_map.entry(*access).or_default().push(accessor);
         });
 
         let mono_item_placements = &partitioning.mono_item_placements;

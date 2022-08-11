@@ -185,7 +185,6 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
@@ -204,7 +203,6 @@ use rustc_session::Limit;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use rustc_target::abi::Size;
 use std::iter;
-use std::ops::Range;
 use std::path::PathBuf;
 
 #[derive(PartialEq)]
@@ -213,18 +211,20 @@ pub enum MonoItemCollectionMode {
     Lazy,
 }
 
+type PreInlineMap<'tcx> = Vec<(
+    MonoItem<'tcx>,                       /* source */
+    Vec<(Spanned<MonoItem<'tcx>>, bool)>, /* accesses */
+)>;
+
 /// Maps every mono item to all mono items it references in its
 /// body.
 pub struct InliningMap<'tcx> {
-    // Maps a source mono item to the range of mono items
-    // accessed by it.
-    // The range selects elements within the `targets` vecs.
-    index: FxHashMap<MonoItem<'tcx>, Range<usize>>,
-    targets: Vec<MonoItem<'tcx>>,
+    // Maps a mono item to the index of it in `targets`.
+    index: FxHashMap<MonoItem<'tcx>, usize>,
 
-    // Contains one bit per mono item in the `targets` field. That bit
-    // is true if that mono item needs to be inlined into every CGU.
-    inlines: GrowableBitSet<usize>,
+    // Maps a source mono item to the items accessed by it, with a bool
+    // represent if the accessed item needs to be inlined.
+    targets: Vec<(MonoItem<'tcx>, Vec<(Spanned<MonoItem<'tcx>>, bool)>)>,
 }
 
 /// Struct to store mono items in each collecting and if they should
@@ -266,37 +266,11 @@ impl<'tcx> MonoItems<'tcx> {
 }
 
 impl<'tcx> InliningMap<'tcx> {
-    fn new() -> InliningMap<'tcx> {
+    fn new(pre_map: PreInlineMap<'tcx>) -> InliningMap<'tcx> {
         InliningMap {
-            index: FxHashMap::default(),
-            targets: Vec::new(),
-            inlines: GrowableBitSet::with_capacity(1024),
+            index: pre_map.iter().enumerate().map(|(index, (item, _))| (*item, index)).collect(),
+            targets: pre_map,
         }
-    }
-
-    fn record_accesses<'a>(
-        &mut self,
-        source: MonoItem<'tcx>,
-        new_targets: &'a [(Spanned<MonoItem<'tcx>>, bool)],
-    ) where
-        'tcx: 'a,
-    {
-        let start_index = self.targets.len();
-        let new_items_count = new_targets.len();
-        let new_items_count_total = new_items_count + self.targets.len();
-
-        self.targets.reserve(new_items_count);
-        self.inlines.ensure(new_items_count_total);
-
-        for (i, (Spanned { node: mono_item, .. }, inlined)) in new_targets.into_iter().enumerate() {
-            self.targets.push(*mono_item);
-            if *inlined {
-                self.inlines.insert(i + start_index);
-            }
-        }
-
-        let end_index = self.targets.len();
-        assert!(self.index.insert(source, start_index..end_index).is_none());
     }
 
     // Internally iterate over all items referenced by `source` which will be
@@ -305,9 +279,9 @@ impl<'tcx> InliningMap<'tcx> {
     where
         F: FnMut(MonoItem<'tcx>),
     {
-        if let Some(range) = self.index.get(&source) {
-            for (i, candidate) in self.targets[range.clone()].iter().enumerate() {
-                if self.inlines.contains(range.start + i) {
+        if let Some(index) = self.index.get(&source) {
+            for (Spanned { node: candidate, span: _ }, inlined) in self.targets[*index].1.iter() {
+                if *inlined {
                     f(*candidate);
                 }
             }
@@ -317,10 +291,12 @@ impl<'tcx> InliningMap<'tcx> {
     // Internally iterate over all items and the things each accesses.
     pub fn iter_accesses<F>(&self, mut f: F)
     where
-        F: FnMut(MonoItem<'tcx>, &[MonoItem<'tcx>]),
+        F: FnMut(MonoItem<'tcx>, &MonoItem<'tcx>),
     {
-        for (&accessor, range) in &self.index {
-            f(accessor, &self.targets[range.clone()])
+        for (accessor, accessees) in &self.targets {
+            for (Spanned { node: access, span: _ }, _) in accessees {
+                f(*accessor, access)
+            }
         }
     }
 }
@@ -338,29 +314,29 @@ pub fn collect_crate_mono_items(
     debug!("building mono item graph, beginning at roots");
 
     let mut visited = MTLock::new(FxHashSet::default());
-    let mut inlining_map = MTLock::new(InliningMap::new());
+    let mut pre_inlining_map = MTLock::new(Vec::new());
     let recursion_limit = tcx.recursion_limit();
 
     {
         let visited: MTRef<'_, _> = &mut visited;
-        let inlining_map: MTRef<'_, _> = &mut inlining_map;
+        let pre_inlining_map: MTRef<'_, _> = &mut pre_inlining_map;
 
         tcx.sess.time("monomorphization_collector_graph_walk", || {
             par_for_each_in(roots, |root| {
                 let mut recursion_depths = DefIdMap::default();
-                collect_items_rec(
+                let map = collect_items_rec(
                     tcx,
-                    dummy_spanned(root),
+                    &dummy_spanned(root),
                     visited,
                     &mut recursion_depths,
                     recursion_limit,
-                    inlining_map,
                 );
+                pre_inlining_map.lock_mut().extend(map);
             });
         });
     }
 
-    (visited.into_inner(), inlining_map.into_inner())
+    (visited.into_inner(), InliningMap::new(pre_inlining_map.into_inner()))
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
@@ -404,18 +380,17 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
 
 /// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
 /// post-monorphization error is encountered during a collection step.
-#[instrument(skip(tcx, visited, recursion_depths, recursion_limit, inlining_map), level = "debug")]
+#[instrument(skip(tcx, visited, recursion_depths, recursion_limit), level = "debug")]
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
-    starting_point: Spanned<MonoItem<'tcx>>,
+    starting_point: &Spanned<MonoItem<'tcx>>,
     visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
-    inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
-) {
+) -> PreInlineMap<'tcx> {
     if !visited.lock_mut().insert(starting_point.node) {
         // We've been here already, no need to search again.
-        return;
+        return Vec::new();
     }
     debug!("BEGIN collect_items_rec({})", starting_point.node);
 
@@ -534,17 +509,22 @@ fn collect_items_rec<'tcx>(
             &format!("the above error was encountered while instantiating `{}`", formatted_item),
         );
     }
-    inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors.items);
 
-    for (neighbour, _) in neighbors.items {
-        collect_items_rec(tcx, neighbour, visited, recursion_depths, recursion_limit, inlining_map);
-    }
-
+    let mut pre_inlining_map: Vec<_> = neighbors
+        .items
+        .iter()
+        .map(|(neighbour, _)| {
+            collect_items_rec(tcx, neighbour, visited, recursion_depths, recursion_limit)
+        })
+        .flatten()
+        .collect();
+    pre_inlining_map.push((starting_point.node, neighbors.items));
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
     }
 
     debug!("END collect_items_rec({})", starting_point.node);
+    pre_inlining_map
 }
 
 /// Format instance name that is already known to be too long for rustc.
