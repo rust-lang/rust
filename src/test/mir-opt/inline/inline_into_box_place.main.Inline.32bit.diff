@@ -10,15 +10,14 @@
       let mut _5: std::boxed::Box<std::vec::Vec<u32>>; // in scope 0 at $DIR/inline-into-box-place.rs:+1:29: +1:43
       let mut _6: ();                      // in scope 0 at $DIR/inline-into-box-place.rs:+1:42: +1:43
       let mut _7: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:+1:29: +1:43
-      let mut _8: *const std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:+1:29: +1:43
-+     let mut _9: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
++     let mut _8: &mut std::vec::Vec<u32>; // in scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
       scope 1 {
           debug _x => _1;                  // in scope 1 at $DIR/inline-into-box-place.rs:+1:9: +1:11
       }
       scope 2 {
       }
 +     scope 3 (inlined Vec::<u32>::new) {  // at $DIR/inline-into-box-place.rs:8:33: 8:43
-+         let mut _10: alloc::raw_vec::RawVec<u32>; // in scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         let mut _9: alloc::raw_vec::RawVec<u32>; // in scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +     }
   
       bb0: {
@@ -37,10 +36,10 @@
           StorageLive(_7);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
           _7 = (((_5.0: std::ptr::Unique<std::vec::Vec<u32>>).0: std::ptr::NonNull<std::vec::Vec<u32>>).0: *const std::vec::Vec<u32>); // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
 -         (*_7) = Vec::<u32>::new() -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
-+         StorageLive(_9);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
-+         _9 = &mut (*_7);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
-+         StorageLive(_10);                // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         _10 = const alloc::raw_vec::RawVec::<u32>::NEW; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         StorageLive(_8);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
++         _8 = &mut (*_7);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
++         StorageLive(_9);                 // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         _9 = const alloc::raw_vec::RawVec::<u32>::NEW; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
                                            // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:33: 8:41
 -                                          // + user_ty: UserType(1)
@@ -51,11 +50,11 @@
 +                                          // + span: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +                                          // + user_ty: UserType(0)
 +                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Unevaluated(alloc::raw_vec::RawVec::<T>::NEW, [u32], None) }
-+         Deinit((*_9));                   // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         ((*_9).0: alloc::raw_vec::RawVec<u32>) = move _10; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         ((*_9).1: usize) = const 0_usize; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         StorageDead(_10);                // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         StorageDead(_9);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
++         Deinit((*_8));                   // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         ((*_8).0: alloc::raw_vec::RawVec<u32>) = move _9; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         ((*_8).1: usize) = const 0_usize; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         StorageDead(_9);                 // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         StorageDead(_8);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
           StorageDead(_7);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:33: +1:43
           _1 = move _5;                    // scope 0 at $DIR/inline-into-box-place.rs:+1:29: +1:43
           StorageDead(_5);                 // scope 0 at $DIR/inline-into-box-place.rs:+1:42: +1:43
