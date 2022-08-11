@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::ty::has_drop;
-use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, meets_msrv, msrvs, trait_ref_of_method};
+use clippy_utils::{
+    fn_has_unsatisfiable_preds, is_entrypoint_fn, is_from_proc_macro, meets_msrv, msrvs, trait_ref_of_method,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
@@ -86,10 +88,10 @@ impl MissingConstForFn {
 impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'_>,
-        kind: FnKind<'_>,
+        cx: &LateContext<'tcx>,
+        kind: FnKind<'tcx>,
         _: &FnDecl<'_>,
-        _: &Body<'_>,
+        body: &Body<'tcx>,
         span: Span,
         hir_id: HirId,
     ) {
@@ -124,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             FnKind::Method(_, sig, ..) => {
                 if trait_ref_of_method(cx, def_id).is_some()
                     || already_const(sig.header)
-                    || method_accepts_dropable(cx, sig.decl.inputs)
+                    || method_accepts_droppable(cx, sig.decl.inputs)
                 {
                     return;
                 }
@@ -144,6 +146,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             }
         }
 
+        if is_from_proc_macro(cx, &(&kind, body, hir_id, span)) {
+            return;
+        }
+
         let mir = cx.tcx.optimized_mir(def_id);
 
         if let Err((span, err)) = is_min_const_fn(cx.tcx, mir, self.msrv) {
@@ -159,7 +165,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
 /// Returns true if any of the method parameters is a type that implements `Drop`. The method
 /// can't be made const then, because `drop` can't be const-evaluated.
-fn method_accepts_dropable(cx: &LateContext<'_>, param_tys: &[hir::Ty<'_>]) -> bool {
+fn method_accepts_droppable(cx: &LateContext<'_>, param_tys: &[hir::Ty<'_>]) -> bool {
     // If any of the params are droppable, return true
     param_tys.iter().any(|hir_ty| {
         let ty_ty = hir_ty_to_ty(cx.tcx, hir_ty);

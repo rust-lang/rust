@@ -1,5 +1,5 @@
 #![warn(clippy::mismatching_type_param_order)]
-#![allow(clippy::blacklisted_name)]
+#![allow(clippy::disallowed_names)]
 
 fn main() {
     struct Foo<A, B> {

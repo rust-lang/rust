@@ -1,4 +1,5 @@
 // run-rustfix
+// aux-build: proc_macro_with_span.rs
 
 #![allow(
     dead_code,
@@ -8,6 +9,9 @@
     clippy::inconsistent_digit_grouping,
     clippy::unusual_byte_groupings
 )]
+
+extern crate proc_macro_with_span;
+use proc_macro_with_span::with_span;
 
 fn main() {
     let fail14 = 2_32;
@@ -40,4 +44,6 @@ fn main() {
     let ok38 = 124_64.0;
 
     let _ = 1.12345E1_32;
+
+    let _ = with_span!(1 2_u32);
 }

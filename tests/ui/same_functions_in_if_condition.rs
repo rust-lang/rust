@@ -48,9 +48,9 @@ fn ifs_same_cond_fn() {
     }
 
     let mut v = vec![1];
-    if v.pop() == None {
+    if v.pop().is_none() {
         //~ ERROR ifs same condition
-    } else if v.pop() == None {
+    } else if v.pop().is_none() {
     }
 
     if v.len() == 42 {

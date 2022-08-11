@@ -6,7 +6,7 @@
     unused_mut,
     unused_variables
 )]
-#![warn(clippy::blacklisted_name)]
+#![warn(clippy::disallowed_names)]
 
 fn test(foo: ()) {}
 
@@ -46,7 +46,7 @@ fn issue_1647_ref_mut() {
 
 mod tests {
     fn issue_7305() {
-        // `blacklisted_name` lint should not be triggered inside of the test code.
+        // `disallowed_names` lint should not be triggered inside of the test code.
         let foo = 0;
 
         // Check that even in nested functions warning is still not triggered.

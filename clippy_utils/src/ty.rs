@@ -503,7 +503,7 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(P
 pub enum ExprFnSig<'tcx> {
     Sig(Binder<'tcx, FnSig<'tcx>>, Option<DefId>),
     Closure(Option<&'tcx FnDecl<'tcx>>, Binder<'tcx, FnSig<'tcx>>),
-    Trait(Binder<'tcx, Ty<'tcx>>, Option<Binder<'tcx, Ty<'tcx>>>),
+    Trait(Binder<'tcx, Ty<'tcx>>, Option<Binder<'tcx, Ty<'tcx>>>, Option<DefId>),
 }
 impl<'tcx> ExprFnSig<'tcx> {
     /// Gets the argument type at the given offset. This will return `None` when the index is out of
@@ -518,7 +518,7 @@ impl<'tcx> ExprFnSig<'tcx> {
                 }
             },
             Self::Closure(_, sig) => Some(sig.input(0).map_bound(|ty| ty.tuple_fields()[i])),
-            Self::Trait(inputs, _) => Some(inputs.map_bound(|ty| ty.tuple_fields()[i])),
+            Self::Trait(inputs, _, _) => Some(inputs.map_bound(|ty| ty.tuple_fields()[i])),
         }
     }
 
@@ -541,7 +541,7 @@ impl<'tcx> ExprFnSig<'tcx> {
                 decl.and_then(|decl| decl.inputs.get(i)),
                 sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
             )),
-            Self::Trait(inputs, _) => Some((None, inputs.map_bound(|ty| ty.tuple_fields()[i]))),
+            Self::Trait(inputs, _, _) => Some((None, inputs.map_bound(|ty| ty.tuple_fields()[i]))),
         }
     }
 
@@ -550,12 +550,16 @@ impl<'tcx> ExprFnSig<'tcx> {
     pub fn output(self) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
             Self::Sig(sig, _) | Self::Closure(_, sig) => Some(sig.output()),
-            Self::Trait(_, output) => output,
+            Self::Trait(_, output, _) => output,
         }
     }
 
     pub fn predicates_id(&self) -> Option<DefId> {
-        if let ExprFnSig::Sig(_, id) = *self { id } else { None }
+        if let ExprFnSig::Sig(_, id) | ExprFnSig::Trait(_, _, id) = *self {
+            id
+        } else {
+            None
+        }
     }
 }
 
@@ -568,7 +572,8 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
     }
 }
 
-fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+/// If the type is function like, get the signature for it.
+pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
     if ty.is_box() {
         return ty_sig(cx, ty.boxed_ty());
     }
@@ -580,7 +585,7 @@ fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>>
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
-        ty::Opaque(id, _) => ty_sig(cx, cx.tcx.type_of(id)),
+        ty::Opaque(id, _) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(id), cx.tcx.opt_parent(id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _) => {
             let lang_items = cx.tcx.lang_items();
@@ -594,26 +599,31 @@ fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>>
                         .projection_bounds()
                         .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
                         .map(|p| p.map_bound(|p| p.term.ty().unwrap()));
-                    Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output))
+                    Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output, None))
                 },
                 _ => None,
             }
         },
         ty::Projection(proj) => match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
-            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty)),
+            _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
         },
-        ty::Param(_) => sig_from_bounds(cx, ty),
+        ty::Param(_) => sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None),
         _ => None,
     }
 }
 
-fn sig_from_bounds<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
+fn sig_from_bounds<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: Ty<'tcx>,
+    predicates: &'tcx [Predicate<'tcx>],
+    predicates_id: Option<DefId>,
+) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for (pred, _) in all_predicates_of(cx.tcx, cx.typeck_results().hir_owner.to_def_id()) {
+    for pred in predicates {
         match pred.kind().skip_binder() {
             PredicateKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
@@ -621,11 +631,12 @@ fn sig_from_bounds<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnS
                     || lang_items.fn_once_trait() == Some(p.def_id()))
                     && p.self_ty() == ty =>
             {
-                if inputs.is_some() {
+                let i = pred.kind().rebind(p.trait_ref.substs.type_at(1));
+                if inputs.map_or(false, |inputs| i != inputs) {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                inputs = Some(pred.kind().rebind(p.trait_ref.substs.type_at(1)));
+                inputs = Some(i);
             },
             PredicateKind::Projection(p)
                 if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
@@ -641,7 +652,7 @@ fn sig_from_bounds<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnS
         }
     }
 
-    inputs.map(|ty| ExprFnSig::Trait(ty, output))
+    inputs.map(|ty| ExprFnSig::Trait(ty, output, predicates_id))
 }
 
 fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
@@ -661,14 +672,15 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id())) =>
             {
-                if inputs.is_some() {
+                let i = pred
+                    .map_bound(|pred| pred.kind().rebind(p.trait_ref.substs.type_at(1)))
+                    .subst(cx.tcx, ty.substs);
+
+                if inputs.map_or(false, |inputs| inputs != i) {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                inputs = Some(
-                    pred.map_bound(|pred| pred.kind().rebind(p.trait_ref.substs.type_at(1)))
-                        .subst(cx.tcx, ty.substs),
-                );
+                inputs = Some(i);
             },
             PredicateKind::Projection(p) if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() => {
                 if output.is_some() {
@@ -684,7 +696,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
         }
     }
 
-    inputs.map(|ty| ExprFnSig::Trait(ty, output))
+    inputs.map(|ty| ExprFnSig::Trait(ty, output, None))
 }
 
 #[derive(Clone, Copy)]

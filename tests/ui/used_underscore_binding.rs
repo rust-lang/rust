@@ -2,7 +2,7 @@
 
 #![feature(rustc_private)]
 #![warn(clippy::all)]
-#![allow(clippy::blacklisted_name, clippy::eq_op)]
+#![allow(clippy::disallowed_names, clippy::eq_op)]
 #![warn(clippy::used_underscore_binding)]
 
 #[macro_use]

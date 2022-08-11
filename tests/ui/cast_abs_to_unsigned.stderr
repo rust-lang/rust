@@ -96,5 +96,11 @@ error: casting the result of `isize::abs()` to u128
 LL |     let _ = a.abs() as u128;
    |             ^^^^^^^ help: replace with: `a.unsigned_abs()`
 
-error: aborting due to 16 previous errors
+error: casting the result of `i64::abs()` to u32
+  --> $DIR/cast_abs_to_unsigned.rs:30:13
+   |
+LL |     let _ = (x as i64 - y as i64).abs() as u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `(x as i64 - y as i64).unsigned_abs()`
+
+error: aborting due to 17 previous errors
 

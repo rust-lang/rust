@@ -1,4 +1,3 @@
-// ignore-windows
 // ignore-macos
 
 #![feature(no_core, lang_items, start)]

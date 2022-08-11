@@ -1,6 +1,6 @@
 #![feature(lint_reasons)]
 #![allow(unused, clippy::diverging_sub_expression)]
-#![warn(clippy::logic_bug)]
+#![warn(clippy::overly_complex_bool_expr)]
 
 fn main() {
     let a: bool = unimplemented!();
@@ -29,6 +29,6 @@ fn equality_stuff() {
 fn check_expect() {
     let a: i32 = unimplemented!();
     let b: i32 = unimplemented!();
-    #[expect(clippy::logic_bug)]
+    #[expect(clippy::overly_complex_bool_expr)]
     let _ = a < b && a >= b;
 }

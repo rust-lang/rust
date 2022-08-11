@@ -39,6 +39,7 @@ pub mod sym_helper;
 
 pub mod ast_utils;
 pub mod attrs;
+mod check_proc_macro;
 pub mod comparisons;
 pub mod consts;
 pub mod diagnostics;
@@ -59,6 +60,7 @@ pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
+pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };

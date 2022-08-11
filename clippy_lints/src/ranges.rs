@@ -385,24 +385,24 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if path.ident.as_str() == "zip";
         if let [iter, zip_arg] = args;
         // `.iter()` call
-        if let ExprKind::MethodCall(iter_path, iter_args, _) = iter.kind;
+        if let ExprKind::MethodCall(iter_path, [iter_caller, ..], _) = iter.kind;
         if iter_path.ident.name == sym::iter;
         // range expression in `.zip()` call: `0..x.len()`
         if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::Range::hir(zip_arg);
         if is_integer_const(cx, start, 0);
         // `.len()` call
-        if let ExprKind::MethodCall(len_path, len_args, _) = end.kind;
-        if len_path.ident.name == sym::len && len_args.len() == 1;
+        if let ExprKind::MethodCall(len_path, [len_caller], _) = end.kind;
+        if len_path.ident.name == sym::len;
         // `.iter()` and `.len()` called on same `Path`
-        if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;
-        if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_args[0].kind;
-        if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
+        if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_caller.kind;
+        if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_caller.kind;
+        if SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments);
         then {
             span_lint(cx,
                 RANGE_ZIP_WITH_LEN,
                 span,
                 &format!("it is more idiomatic to use `{}.iter().enumerate()`",
-                    snippet(cx, iter_args[0].span, "_"))
+                    snippet(cx, iter_caller.span, "_"))
             );
         }
     }
