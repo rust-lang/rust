@@ -96,6 +96,8 @@ mod os_impl {
 
     #[cfg(unix)]
     pub fn check(path: &Path, bad: &mut bool) {
+        use std::ffi::OsStr;
+
         const ALLOWED: &[&str] = &["configure"];
 
         crate::walk_no_read(
@@ -117,9 +119,9 @@ mod os_impl {
             },
             &mut |entry| {
                 let file = entry.path();
-                let filename = file.file_name().unwrap().to_string_lossy();
-                let extensions = [".py", ".sh"];
-                if extensions.iter().any(|e| filename.ends_with(e)) {
+                let extension = file.extension();
+                let scripts = ["py", "sh", "ps1"];
+                if scripts.into_iter().any(|e| extension == Some(OsStr::new(e))) {
                     return;
                 }
 
