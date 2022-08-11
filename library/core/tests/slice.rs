@@ -1197,7 +1197,6 @@ fn chunks_mut_are_send_and_sync() {
     use std::slice::{ChunksExactMut, ChunksMut, RChunksExactMut, RChunksMut};
     use std::sync::MutexGuard;
 
-    #[allow(unused)]
     fn assert_send_and_sync()
     where
         ChunksMut<'static, Cell<i32>>: Send,
@@ -1210,6 +1209,8 @@ fn chunks_mut_are_send_and_sync() {
         RChunksExactMut<'static, MutexGuard<'static, u32>>: Sync,
     {
     }
+
+    assert_send_and_sync();
 }
 
 #[test]
