@@ -5,6 +5,7 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::os::uefi;
+use crate::os::uefi::ffi::OsStrExt;
 use crate::os::uefi::io::status_to_io_error;
 use crate::path::{self, PathBuf};
 
@@ -96,12 +97,24 @@ pub fn getenv(key: &OsStr) -> Option<OsString> {
 }
 
 pub fn setenv(key: &OsStr, val: &OsStr) -> io::Result<()> {
-    // UEFI does not support empty variables
-    if val.is_empty() { Ok(()) } else { uefi_vars::set_variable(key, val) }
+    // Setting a variable with null value is same as unsetting it in UEFI
+    if val.is_empty() {
+        unsetenv(key)
+    } else {
+        unsafe {
+            uefi_vars::set_variable_raw(
+                key.to_ffi_string().as_mut_ptr(),
+                val.len(),
+                val.bytes().as_ptr() as *mut crate::ffi::c_void,
+            )
+        }
+    }
 }
 
 pub fn unsetenv(key: &OsStr) -> io::Result<()> {
-    match uefi_vars::set_variable(key, OsStr::new("")) {
+    match unsafe {
+        uefi_vars::set_variable_raw(key.to_ffi_string().as_mut_ptr(), 0, crate::ptr::null_mut())
+    } {
         Ok(_) => Ok(()),
         Err(e) => match e.kind() {
             // Its fine if the key does not exist
@@ -148,44 +161,40 @@ pub(crate) mod uefi_vars {
     use crate::os::uefi::ffi::OsStrExt;
     use crate::os::uefi::io::status_to_io_error;
 
-    const ENVIRONMENT_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
-        0x49bb4029,
-        0x7d2b,
-        0x4bf7,
-        0xa1,
-        0x95,
-        &[0x0f, 0x18, 0xa1, 0xa8, 0x85, 0xc9],
+    // Using Shell Variable Guid from edk2/ShellPkg
+    const SHELL_VARIABLE_GUID: r_efi::efi::Guid = r_efi::efi::Guid::from_fields(
+        0x158def5a,
+        0xf656,
+        0x419c,
+        0xb0,
+        0x27,
+        &[0x7a, 0x31, 0x92, 0xc0, 0x79, 0xd2],
     );
 
-    pub fn set_variable(key: &OsStr, val: &OsStr) -> io::Result<()> {
-        set_variable_inner(key, val.bytes(), r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS)
-    }
-
-    fn set_variable_inner(key: &OsStr, val: &[u8], attr: u32) -> io::Result<()> {
+    pub(crate) unsafe fn set_variable_raw(
+        variable_name: *mut u16,
+        data_size: usize,
+        data: *mut crate::ffi::c_void,
+    ) -> io::Result<()> {
         let runtime_services =
             uefi::env::get_runtime_services().ok_or(common::RUNTIME_SERVICES_ERROR)?;
-        // Store a copy of data since it is technically possible to manipulate it from other
-        // applications
-        let mut val_copy = val.to_vec();
-        let val_len = val_copy.len();
-        let mut guid = ENVIRONMENT_GUID;
+        let mut guid = SHELL_VARIABLE_GUID;
         let r = unsafe {
             ((*runtime_services.as_ptr()).set_variable)(
-                key.to_ffi_string().as_mut_ptr(),
+                variable_name,
                 &mut guid,
-                attr,
-                val_len,
-                val_copy.as_mut_ptr().cast(),
+                r_efi::efi::VARIABLE_BOOTSERVICE_ACCESS,
+                data_size,
+                data,
             )
         };
-
         if r.is_error() { Err(status_to_io_error(r)) } else { Ok(()) }
     }
 
-    pub fn get_variable(key: &OsStr) -> Option<OsString> {
+    pub(crate) fn get_variable(key: &OsStr) -> Option<OsString> {
         let runtime_services = uefi::env::get_runtime_services()?;
         let mut buf_size = 0;
-        let mut guid = ENVIRONMENT_GUID;
+        let mut guid = SHELL_VARIABLE_GUID;
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_variable)(
                 key.to_ffi_string().as_mut_ptr(),
@@ -201,7 +210,7 @@ pub(crate) mod uefi_vars {
         }
 
         let mut buf: Vec<u8> = Vec::with_capacity(buf_size);
-        let mut guid = ENVIRONMENT_GUID;
+        let mut guid = SHELL_VARIABLE_GUID;
         let r = unsafe {
             ((*runtime_services.as_ptr()).get_variable)(
                 key.to_ffi_string().as_mut_ptr(),
