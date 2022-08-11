@@ -61,11 +61,20 @@ pub use dec2flt::ParseFloatError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 
-#[stable(feature = "nonzero", since = "1.28.0")]
-pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
+#[unstable(
+    feature = "nonzero_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+pub use nonzero::ZeroablePrimitive;
+
+#[unstable(feature = "generic_nonzero", issue = "82363")]
+pub use nonzero::NonZero;
 
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
 pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
+#[stable(feature = "nonzero", since = "1.28.0")]
+pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;

@@ -2132,18 +2132,18 @@ macro_rules! non_zero_option {
 }
 
 non_zero_option! {
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU8;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU16;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU32;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU64;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU128;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroUsize;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI8;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI16;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI32;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI64;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI128;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroIsize;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZero<u8>;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZero<u16>;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZero<u32>;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZero<u64>;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZero<u128>;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZero<usize>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZero<i8>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZero<i16>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZero<i32>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZero<i64>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZero<i128>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZero<isize>;
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]

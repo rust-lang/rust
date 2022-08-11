@@ -189,6 +189,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm_const)]
 #![feature(associated_type_bounds)]
+#![feature(associated_type_defaults)]
 #![feature(auto_traits)]
 #![feature(c_unwind)]
 #![feature(cfg_sanitize)]
