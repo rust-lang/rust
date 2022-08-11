@@ -496,12 +496,14 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     cx,
                 };
                 let body_id = cx.tcx.hir().body_owned_by(
-                    impl_item_refs
-                        .iter()
-                        .find(|iiref| iiref.ident.as_str() == "get_lints")
-                        .expect("LintPass needs to implement get_lints")
-                        .id
-                        .hir_id(),
+                    cx.tcx.hir().local_def_id(
+                        impl_item_refs
+                            .iter()
+                            .find(|iiref| iiref.ident.as_str() == "get_lints")
+                            .expect("LintPass needs to implement get_lints")
+                            .id
+                            .hir_id(),
+                    ),
                 );
                 collector.visit_expr(&cx.tcx.hir().body(body_id).value);
             }
@@ -569,7 +571,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
                 item.span,
                 "this item has an invalid `clippy::version` attribute",
                 None,
-                "please use a valid sematic version, see `doc/adding_lints.md`",
+                "please use a valid semantic version, see `doc/adding_lints.md`",
             );
         }
     } else {

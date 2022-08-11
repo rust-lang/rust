@@ -22,9 +22,9 @@ mod rustc_ok {
 
         #[expect(illegal_floating_point_literal_pattern)]
         match x {
-            5.0 => {}
-            6.0 => {}
-            _ => {}
+            5.0 => {},
+            6.0 => {},
+            _ => {},
         }
     }
 }
@@ -38,9 +38,9 @@ mod rustc_warn {
 
         #[expect(illegal_floating_point_literal_pattern)]
         match x {
-            5 => {}
-            6 => {}
-            _ => {}
+            5 => {},
+            6 => {},
+            _ => {},
         }
     }
 }
@@ -98,7 +98,7 @@ mod clippy_ok {
         let _ = if true { 42 } else { 42 };
     }
 
-    #[expect(clippy::logic_bug)]
+    #[expect(clippy::overly_complex_bool_expr)]
     fn burger() {
         let a = false;
         let b = true;
@@ -127,7 +127,7 @@ mod clippy_warn {
         let _ = if true { 33 } else { 42 };
     }
 
-    #[expect(clippy::logic_bug)]
+    #[expect(clippy::overly_complex_bool_expr)]
     fn burger() {
         let a = false;
         let b = true;

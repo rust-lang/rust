@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(rustc_private)]

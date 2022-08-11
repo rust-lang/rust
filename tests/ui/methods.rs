@@ -2,7 +2,7 @@
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(
-    clippy::blacklisted_name,
+    clippy::disallowed_names,
     clippy::default_trait_access,
     clippy::missing_docs_in_private_items,
     clippy::missing_safety_doc,

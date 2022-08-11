@@ -1,6 +1,6 @@
 #![warn(clippy::if_same_then_else)]
 #![allow(
-    clippy::blacklisted_name,
+    clippy::disallowed_names,
     clippy::eq_op,
     clippy::never_loop,
     clippy::no_effect,
