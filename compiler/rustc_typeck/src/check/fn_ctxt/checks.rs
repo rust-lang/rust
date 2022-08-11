@@ -1778,7 +1778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn label_fn_like(
         &self,
-        err: &mut rustc_errors::DiagnosticBuilder<'tcx, rustc_errors::ErrorGuaranteed>,
+        err: &mut Diagnostic,
         callable_def_id: Option<DefId>,
         callee_ty: Option<Ty<'tcx>>,
     ) {

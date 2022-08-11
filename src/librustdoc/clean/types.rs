@@ -2495,14 +2495,15 @@ impl SubstParam {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(Crate, 72); // frequently moved by-value
-    rustc_data_structures::static_assert_size!(DocFragment, 32);
-    rustc_data_structures::static_assert_size!(GenericArg, 80);
-    rustc_data_structures::static_assert_size!(GenericArgs, 32);
-    rustc_data_structures::static_assert_size!(GenericParamDef, 56);
-    rustc_data_structures::static_assert_size!(Item, 56);
-    rustc_data_structures::static_assert_size!(ItemKind, 112);
-    rustc_data_structures::static_assert_size!(PathSegment, 40);
-    rustc_data_structures::static_assert_size!(Type, 72);
+    static_assert_size!(Crate, 72); // frequently moved by-value
+    static_assert_size!(DocFragment, 32);
+    static_assert_size!(GenericArg, 80);
+    static_assert_size!(GenericArgs, 32);
+    static_assert_size!(GenericParamDef, 56);
+    static_assert_size!(Item, 56);
+    static_assert_size!(ItemKind, 112);
+    static_assert_size!(PathSegment, 40);
+    static_assert_size!(Type, 72);
 }

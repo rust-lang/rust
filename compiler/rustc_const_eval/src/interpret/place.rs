@@ -891,10 +891,11 @@ where
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(MemPlaceMeta, 24);
-    rustc_data_structures::static_assert_size!(MemPlace, 40);
-    rustc_data_structures::static_assert_size!(MPlaceTy<'_>, 64);
-    rustc_data_structures::static_assert_size!(Place, 48);
-    rustc_data_structures::static_assert_size!(PlaceTy<'_>, 72);
+    static_assert_size!(MemPlaceMeta, 24);
+    static_assert_size!(MemPlace, 40);
+    static_assert_size!(MPlaceTy<'_>, 64);
+    static_assert_size!(Place, 48);
+    static_assert_size!(PlaceTy<'_>, 72);
 }

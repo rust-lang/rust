@@ -2021,9 +2021,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     fn suggest_introducing_lifetime(
         &self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         name: Option<&str>,
-        suggest: impl Fn(&mut DiagnosticBuilder<'_, ErrorGuaranteed>, bool, Span, &str, String) -> bool,
+        suggest: impl Fn(&mut Diagnostic, bool, Span, &str, String) -> bool,
     ) {
         let mut suggest_note = true;
         for rib in self.lifetime_ribs.iter().rev() {
@@ -2149,7 +2149,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
     pub(crate) fn add_missing_lifetime_specifiers_label(
         &mut self,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut Diagnostic,
         lifetime_refs: Vec<MissingLifetime>,
         function_param_lifetimes: Option<(Vec<MissingLifetime>, Vec<ElisionFnParameter>)>,
     ) {

@@ -19,7 +19,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
 };
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -228,13 +228,13 @@ struct MultiSugg {
 }
 
 impl MultiSugg {
-    fn emit<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
+    fn emit(self, err: &mut Diagnostic) {
         err.multipart_suggestion(&self.msg, self.patches, self.applicability);
     }
 
     /// Overrides individual messages and applicabilities.
-    fn emit_many<G: EmissionGuarantee>(
-        err: &mut DiagnosticBuilder<'_, G>,
+    fn emit_many(
+        err: &mut Diagnostic,
         msg: &str,
         applicability: Applicability,
         suggestions: impl Iterator<Item = Self>,

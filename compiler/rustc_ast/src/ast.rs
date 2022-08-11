@@ -1338,14 +1338,13 @@ pub enum ExprKind {
     ///
     /// The `PathSegment` represents the method name and its generic arguments
     /// (within the angle brackets).
-    /// The first element of the vector of an `Expr` is the expression that evaluates
-    /// to the object on which the method is being called on (the receiver),
-    /// and the remaining elements are the rest of the arguments.
-    /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
+    /// The standalone `Expr` is the receiver expression.
+    /// The vector of `Expr` is the arguments.
+    /// `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
+    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d])`.
     /// This `Span` is the span of the function, without the dot and receiver
     /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-    MethodCall(PathSegment, Vec<P<Expr>>, Span),
+    MethodCall(PathSegment, P<Expr>, Vec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -3030,22 +3029,25 @@ pub type ForeignItem = Item<ForeignItemKind>;
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(AssocItemKind, 72);
-    rustc_data_structures::static_assert_size!(Attribute, 152);
-    rustc_data_structures::static_assert_size!(Block, 48);
-    rustc_data_structures::static_assert_size!(Expr, 104);
-    rustc_data_structures::static_assert_size!(Fn, 192);
-    rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
-    rustc_data_structures::static_assert_size!(GenericBound, 88);
-    rustc_data_structures::static_assert_size!(Generics, 72);
-    rustc_data_structures::static_assert_size!(Impl, 200);
-    rustc_data_structures::static_assert_size!(Item, 200);
-    rustc_data_structures::static_assert_size!(ItemKind, 112);
-    rustc_data_structures::static_assert_size!(Lit, 48);
-    rustc_data_structures::static_assert_size!(Pat, 120);
-    rustc_data_structures::static_assert_size!(Path, 40);
-    rustc_data_structures::static_assert_size!(PathSegment, 24);
-    rustc_data_structures::static_assert_size!(Stmt, 32);
-    rustc_data_structures::static_assert_size!(Ty, 96);
+    static_assert_size!(AssocItem, 160);
+    static_assert_size!(AssocItemKind, 72);
+    static_assert_size!(Attribute, 152);
+    static_assert_size!(Block, 48);
+    static_assert_size!(Expr, 104);
+    static_assert_size!(Fn, 192);
+    static_assert_size!(ForeignItem, 160);
+    static_assert_size!(ForeignItemKind, 72);
+    static_assert_size!(GenericBound, 88);
+    static_assert_size!(Generics, 72);
+    static_assert_size!(Impl, 200);
+    static_assert_size!(Item, 200);
+    static_assert_size!(ItemKind, 112);
+    static_assert_size!(Lit, 48);
+    static_assert_size!(Pat, 120);
+    static_assert_size!(Path, 40);
+    static_assert_size!(PathSegment, 24);
+    static_assert_size!(Stmt, 32);
+    static_assert_size!(Ty, 96);
 }

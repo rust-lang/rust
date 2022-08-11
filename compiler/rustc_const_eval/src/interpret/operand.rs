@@ -823,9 +823,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
+    use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    rustc_data_structures::static_assert_size!(Immediate, 56);
-    rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
-    rustc_data_structures::static_assert_size!(Operand, 64);
-    rustc_data_structures::static_assert_size!(OpTy<'_>, 88);
+    static_assert_size!(Immediate, 56);
+    static_assert_size!(ImmTy<'_>, 72);
+    static_assert_size!(Operand, 64);
+    static_assert_size!(OpTy<'_>, 88);
 }

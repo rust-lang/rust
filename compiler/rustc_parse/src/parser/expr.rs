@@ -850,7 +850,7 @@ impl<'a> Parser<'a> {
                     ExprKind::Index(_, _) => "indexing",
                     ExprKind::Try(_) => "`?`",
                     ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_, _, _) => "a method call",
+                    ExprKind::MethodCall(_, _, _, _) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_) => "`.await`",
                     ExprKind::Err => return Ok(with_postfix),
@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
             );
             let mut err = self.struct_span_err(span, &msg);
 
-            let suggest_parens = |err: &mut DiagnosticBuilder<'_, _>| {
+            let suggest_parens = |err: &mut Diagnostic| {
                 let suggestions = vec![
                     (span.shrink_to_lo(), "(".to_string()),
                     (span.shrink_to_hi(), ")".to_string()),
@@ -1280,12 +1280,14 @@ impl<'a> Parser<'a> {
 
         if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Method call `expr.f()`
-            let mut args = self.parse_paren_expr_seq()?;
-            args.insert(0, self_arg);
-
+            let args = self.parse_paren_expr_seq()?;
             let fn_span = fn_span_lo.to(self.prev_token.span);
             let span = lo.to(self.prev_token.span);
-            Ok(self.mk_expr(span, ExprKind::MethodCall(segment, args, fn_span), AttrVec::new()))
+            Ok(self.mk_expr(
+                span,
+                ExprKind::MethodCall(segment, self_arg, args, fn_span),
+                AttrVec::new(),
+            ))
         } else {
             // Field access `expr.f`
             if let Some(args) = segment.args {

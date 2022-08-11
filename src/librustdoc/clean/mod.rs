@@ -123,7 +123,7 @@ fn clean_generic_bound<'tcx>(
 
             let trait_ref = ty::TraitRef::identity(cx.tcx, def_id).skip_binder();
 
-            let generic_args = generic_args.clean(cx);
+            let generic_args = clean_generic_args(generic_args, cx);
             let GenericArgs::AngleBracketed { bindings, .. } = generic_args
             else {
                 bug!("clean: parenthesized `GenericBound::LangItemTrait`");
@@ -1092,199 +1092,201 @@ pub(crate) fn clean_impl_item<'tcx>(
     })
 }
 
-impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let tcx = cx.tcx;
-        let kind = match self.kind {
-            ty::AssocKind::Const => {
-                let ty = clean_middle_ty(tcx.type_of(self.def_id), cx, Some(self.def_id));
+pub(crate) fn clean_middle_assoc_item<'tcx>(
+    assoc_item: &ty::AssocItem,
+    cx: &mut DocContext<'tcx>,
+) -> Item {
+    let tcx = cx.tcx;
+    let kind = match assoc_item.kind {
+        ty::AssocKind::Const => {
+            let ty = clean_middle_ty(tcx.type_of(assoc_item.def_id), cx, Some(assoc_item.def_id));
 
-                let provided = match self.container {
-                    ty::ImplContainer => true,
-                    ty::TraitContainer => tcx.impl_defaultness(self.def_id).has_value(),
-                };
-                if provided {
-                    AssocConstItem(ty, ConstantKind::Extern { def_id: self.def_id })
-                } else {
-                    TyAssocConstItem(ty)
-                }
+            let provided = match assoc_item.container {
+                ty::ImplContainer => true,
+                ty::TraitContainer => tcx.impl_defaultness(assoc_item.def_id).has_value(),
+            };
+            if provided {
+                AssocConstItem(ty, ConstantKind::Extern { def_id: assoc_item.def_id })
+            } else {
+                TyAssocConstItem(ty)
             }
-            ty::AssocKind::Fn => {
-                let generics = clean_ty_generics(
-                    cx,
-                    tcx.generics_of(self.def_id),
-                    tcx.explicit_predicates_of(self.def_id),
-                );
-                let sig = tcx.fn_sig(self.def_id);
-                let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(self.def_id), sig);
+        }
+        ty::AssocKind::Fn => {
+            let generics = clean_ty_generics(
+                cx,
+                tcx.generics_of(assoc_item.def_id),
+                tcx.explicit_predicates_of(assoc_item.def_id),
+            );
+            let sig = tcx.fn_sig(assoc_item.def_id);
+            let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(assoc_item.def_id), sig);
 
-                if self.fn_has_self_parameter {
-                    let self_ty = match self.container {
-                        ty::ImplContainer => tcx.type_of(self.container_id(tcx)),
-                        ty::TraitContainer => tcx.types.self_param,
-                    };
-                    let self_arg_ty = sig.input(0).skip_binder();
-                    if self_arg_ty == self_ty {
-                        decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
-                    } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
-                        if ty == self_ty {
-                            match decl.inputs.values[0].type_ {
-                                BorrowedRef { ref mut type_, .. } => {
-                                    **type_ = Generic(kw::SelfUpper)
-                                }
-                                _ => unreachable!(),
-                            }
+            if assoc_item.fn_has_self_parameter {
+                let self_ty = match assoc_item.container {
+                    ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)),
+                    ty::TraitContainer => tcx.types.self_param,
+                };
+                let self_arg_ty = sig.input(0).skip_binder();
+                if self_arg_ty == self_ty {
+                    decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
+                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
+                    if ty == self_ty {
+                        match decl.inputs.values[0].type_ {
+                            BorrowedRef { ref mut type_, .. } => **type_ = Generic(kw::SelfUpper),
+                            _ => unreachable!(),
                         }
                     }
                 }
+            }
 
-                let provided = match self.container {
-                    ty::ImplContainer => true,
-                    ty::TraitContainer => self.defaultness(tcx).has_value(),
+            let provided = match assoc_item.container {
+                ty::ImplContainer => true,
+                ty::TraitContainer => assoc_item.defaultness(tcx).has_value(),
+            };
+            if provided {
+                let defaultness = match assoc_item.container {
+                    ty::ImplContainer => Some(assoc_item.defaultness(tcx)),
+                    ty::TraitContainer => None,
                 };
-                if provided {
-                    let defaultness = match self.container {
-                        ty::ImplContainer => Some(self.defaultness(tcx)),
-                        ty::TraitContainer => None,
-                    };
-                    MethodItem(Box::new(Function { generics, decl }), defaultness)
-                } else {
-                    TyMethodItem(Box::new(Function { generics, decl }))
+                MethodItem(Box::new(Function { generics, decl }), defaultness)
+            } else {
+                TyMethodItem(Box::new(Function { generics, decl }))
+            }
+        }
+        ty::AssocKind::Type => {
+            let my_name = assoc_item.name;
+
+            fn param_eq_arg(param: &GenericParamDef, arg: &GenericArg) -> bool {
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(Type::Generic(ty)))
+                        if *ty == param.name =>
+                    {
+                        true
+                    }
+                    (GenericParamDefKind::Lifetime { .. }, GenericArg::Lifetime(Lifetime(lt)))
+                        if *lt == param.name =>
+                    {
+                        true
+                    }
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(c)) => match &c.kind {
+                        ConstantKind::TyConst { expr } => expr == param.name.as_str(),
+                        _ => false,
+                    },
+                    _ => false,
                 }
             }
-            ty::AssocKind::Type => {
-                let my_name = self.name;
 
-                fn param_eq_arg(param: &GenericParamDef, arg: &GenericArg) -> bool {
-                    match (&param.kind, arg) {
-                        (GenericParamDefKind::Type { .. }, GenericArg::Type(Type::Generic(ty)))
-                            if *ty == param.name =>
-                        {
+            if let ty::TraitContainer = assoc_item.container {
+                let bounds = tcx.explicit_item_bounds(assoc_item.def_id);
+                let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
+                let mut generics =
+                    clean_ty_generics(cx, tcx.generics_of(assoc_item.def_id), predicates);
+                // Filter out the bounds that are (likely?) directly attached to the associated type,
+                // as opposed to being located in the where clause.
+                let mut bounds = generics
+                    .where_predicates
+                    .drain_filter(|pred| match *pred {
+                        WherePredicate::BoundPredicate {
+                            ty: QPath { ref assoc, ref self_type, ref trait_, .. },
+                            ..
+                        } => {
+                            if assoc.name != my_name {
+                                return false;
+                            }
+                            if trait_.def_id() != assoc_item.container_id(tcx) {
+                                return false;
+                            }
+                            match **self_type {
+                                Generic(ref s) if *s == kw::SelfUpper => {}
+                                _ => return false,
+                            }
+                            match &assoc.args {
+                                GenericArgs::AngleBracketed { args, bindings } => {
+                                    if !bindings.is_empty()
+                                        || generics
+                                            .params
+                                            .iter()
+                                            .zip(args.iter())
+                                            .any(|(param, arg)| !param_eq_arg(param, arg))
+                                    {
+                                        return false;
+                                    }
+                                }
+                                GenericArgs::Parenthesized { .. } => {
+                                    // The only time this happens is if we're inside the rustdoc for Fn(),
+                                    // which only has one associated type, which is not a GAT, so whatever.
+                                }
+                            }
                             true
                         }
-                        (
-                            GenericParamDefKind::Lifetime { .. },
-                            GenericArg::Lifetime(Lifetime(lt)),
-                        ) if *lt == param.name => true,
-                        (GenericParamDefKind::Const { .. }, GenericArg::Const(c)) => {
-                            match &c.kind {
-                                ConstantKind::TyConst { expr } => expr == param.name.as_str(),
-                                _ => false,
-                            }
-                        }
                         _ => false,
+                    })
+                    .flat_map(|pred| {
+                        if let WherePredicate::BoundPredicate { bounds, .. } = pred {
+                            bounds
+                        } else {
+                            unreachable!()
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                // Our Sized/?Sized bound didn't get handled when creating the generics
+                // because we didn't actually get our whole set of bounds until just now
+                // (some of them may have come from the trait). If we do have a sized
+                // bound, we remove it, and if we don't then we add the `?Sized` bound
+                // at the end.
+                match bounds.iter().position(|b| b.is_sized_bound(cx)) {
+                    Some(i) => {
+                        bounds.remove(i);
                     }
+                    None => bounds.push(GenericBound::maybe_sized(cx)),
                 }
 
-                if let ty::TraitContainer = self.container {
-                    let bounds = tcx.explicit_item_bounds(self.def_id);
-                    let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
-                    let mut generics =
-                        clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
-                    // Filter out the bounds that are (likely?) directly attached to the associated type,
-                    // as opposed to being located in the where clause.
-                    let mut bounds = generics
-                        .where_predicates
-                        .drain_filter(|pred| match *pred {
-                            WherePredicate::BoundPredicate {
-                                ty: QPath { ref assoc, ref self_type, ref trait_, .. },
-                                ..
-                            } => {
-                                if assoc.name != my_name {
-                                    return false;
-                                }
-                                if trait_.def_id() != self.container_id(tcx) {
-                                    return false;
-                                }
-                                match **self_type {
-                                    Generic(ref s) if *s == kw::SelfUpper => {}
-                                    _ => return false,
-                                }
-                                match &assoc.args {
-                                    GenericArgs::AngleBracketed { args, bindings } => {
-                                        if !bindings.is_empty()
-                                            || generics
-                                                .params
-                                                .iter()
-                                                .zip(args.iter())
-                                                .any(|(param, arg)| !param_eq_arg(param, arg))
-                                        {
-                                            return false;
-                                        }
-                                    }
-                                    GenericArgs::Parenthesized { .. } => {
-                                        // The only time this happens is if we're inside the rustdoc for Fn(),
-                                        // which only has one associated type, which is not a GAT, so whatever.
-                                    }
-                                }
-                                true
-                            }
-                            _ => false,
-                        })
-                        .flat_map(|pred| {
-                            if let WherePredicate::BoundPredicate { bounds, .. } = pred {
-                                bounds
-                            } else {
-                                unreachable!()
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    // Our Sized/?Sized bound didn't get handled when creating the generics
-                    // because we didn't actually get our whole set of bounds until just now
-                    // (some of them may have come from the trait). If we do have a sized
-                    // bound, we remove it, and if we don't then we add the `?Sized` bound
-                    // at the end.
-                    match bounds.iter().position(|b| b.is_sized_bound(cx)) {
-                        Some(i) => {
-                            bounds.remove(i);
-                        }
-                        None => bounds.push(GenericBound::maybe_sized(cx)),
-                    }
-
-                    if tcx.impl_defaultness(self.def_id).has_value() {
-                        AssocTypeItem(
-                            Box::new(Typedef {
-                                type_: clean_middle_ty(
-                                    tcx.type_of(self.def_id),
-                                    cx,
-                                    Some(self.def_id),
-                                ),
-                                generics,
-                                // FIXME: should we obtain the Type from HIR and pass it on here?
-                                item_type: None,
-                            }),
-                            bounds,
-                        )
-                    } else {
-                        TyAssocTypeItem(Box::new(generics), bounds)
-                    }
-                } else {
-                    // FIXME: when could this happen? Associated items in inherent impls?
+                if tcx.impl_defaultness(assoc_item.def_id).has_value() {
                     AssocTypeItem(
                         Box::new(Typedef {
-                            type_: clean_middle_ty(tcx.type_of(self.def_id), cx, Some(self.def_id)),
-                            generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
+                            type_: clean_middle_ty(
+                                tcx.type_of(assoc_item.def_id),
+                                cx,
+                                Some(assoc_item.def_id),
+                            ),
+                            generics,
+                            // FIXME: should we obtain the Type from HIR and pass it on here?
                             item_type: None,
                         }),
-                        Vec::new(),
+                        bounds,
                     )
+                } else {
+                    TyAssocTypeItem(Box::new(generics), bounds)
                 }
+            } else {
+                // FIXME: when could this happen? Associated items in inherent impls?
+                AssocTypeItem(
+                    Box::new(Typedef {
+                        type_: clean_middle_ty(
+                            tcx.type_of(assoc_item.def_id),
+                            cx,
+                            Some(assoc_item.def_id),
+                        ),
+                        generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
+                        item_type: None,
+                    }),
+                    Vec::new(),
+                )
             }
-        };
-
-        let mut what_rustc_thinks =
-            Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx);
-
-        let impl_ref = tcx.impl_trait_ref(tcx.parent(self.def_id));
-
-        // Trait impl items always inherit the impl's visibility --
-        // we don't want to show `pub`.
-        if impl_ref.is_some() {
-            what_rustc_thinks.visibility = Visibility::Inherited;
         }
+    };
 
-        what_rustc_thinks
+    let mut what_rustc_thinks =
+        Item::from_def_id_and_parts(assoc_item.def_id, Some(assoc_item.name), kind, cx);
+
+    let impl_ref = tcx.impl_trait_ref(tcx.parent(assoc_item.def_id));
+
+    // Trait impl items always inherit the impl's visibility --
+    // we don't want to show `pub`.
+    if impl_ref.is_some() {
+        what_rustc_thinks.visibility = Visibility::Inherited;
     }
+
+    what_rustc_thinks
 }
 
 fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
@@ -1824,39 +1826,44 @@ fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
     Path { res: path.res, segments: path.segments.iter().map(|x| x.clean(cx)).collect() }
 }
 
-impl<'tcx> Clean<'tcx, GenericArgs> for hir::GenericArgs<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> GenericArgs {
-        if self.parenthesized {
-            let output = clean_ty(self.bindings[0].ty(), cx);
-            let output =
-                if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
-            let inputs = self.inputs().iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
-            GenericArgs::Parenthesized { inputs, output }
-        } else {
-            let args = self
-                .args
-                .iter()
-                .map(|arg| match arg {
-                    hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
-                        GenericArg::Lifetime(clean_lifetime(*lt, cx))
-                    }
-                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
-                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
-                })
-                .collect::<Vec<_>>()
-                .into();
-            let bindings =
-                self.bindings.iter().map(|x| clean_type_binding(x, cx)).collect::<Vec<_>>().into();
-            GenericArgs::AngleBracketed { args, bindings }
-        }
+fn clean_generic_args<'tcx>(
+    generic_args: &hir::GenericArgs<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> GenericArgs {
+    if generic_args.parenthesized {
+        let output = clean_ty(generic_args.bindings[0].ty(), cx);
+        let output = if output != Type::Tuple(Vec::new()) { Some(Box::new(output)) } else { None };
+        let inputs =
+            generic_args.inputs().iter().map(|x| clean_ty(x, cx)).collect::<Vec<_>>().into();
+        GenericArgs::Parenthesized { inputs, output }
+    } else {
+        let args = generic_args
+            .args
+            .iter()
+            .map(|arg| match arg {
+                hir::GenericArg::Lifetime(lt) if !lt.is_elided() => {
+                    GenericArg::Lifetime(clean_lifetime(*lt, cx))
+                }
+                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
+                hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
+                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+            })
+            .collect::<Vec<_>>()
+            .into();
+        let bindings = generic_args
+            .bindings
+            .iter()
+            .map(|x| clean_type_binding(x, cx))
+            .collect::<Vec<_>>()
+            .into();
+        GenericArgs::AngleBracketed { args, bindings }
     }
 }
 
 impl<'tcx> Clean<'tcx, PathSegment> for hir::PathSegment<'tcx> {
     fn clean(&self, cx: &mut DocContext<'tcx>) -> PathSegment {
-        PathSegment { name: self.ident.name, args: self.args().clean(cx) }
+        PathSegment { name: self.ident.name, args: clean_generic_args(self.args(), cx) }
     }
 }
 
@@ -2226,7 +2233,10 @@ fn clean_type_binding<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> TypeBinding {
     TypeBinding {
-        assoc: PathSegment { name: type_binding.ident.name, args: type_binding.gen_args.clean(cx) },
+        assoc: PathSegment {
+            name: type_binding.ident.name,
+            args: clean_generic_args(type_binding.gen_args, cx),
+        },
         kind: match type_binding.kind {
             hir::TypeBindingKind::Equality { ref term } => {
                 TypeBindingKind::Equality { term: clean_hir_term(term, cx) }

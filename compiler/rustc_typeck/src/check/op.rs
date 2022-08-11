@@ -59,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     // Suppress this error, since we already emitted
                     // a deref suggestion in check_overloaded_binop
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                 }
             }
         });
