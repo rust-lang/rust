@@ -1,7 +1,5 @@
 #![warn(clippy::all)]
-#![allow(clippy::boxed_local, clippy::needless_pass_by_value)]
-#![allow(clippy::blacklisted_name, unused_variables, dead_code)]
-#![allow(unused_imports)]
+#![allow(clippy::boxed_local, clippy::disallowed_names)]
 
 pub struct MyStruct;
 
@@ -9,13 +7,7 @@ pub struct SubT<T> {
     foo: T,
 }
 
-pub enum MyEnum {
-    One,
-    Two,
-}
-
 mod outer_box {
-    use crate::MyEnum;
     use crate::MyStruct;
     use crate::SubT;
     use std::boxed::Box;
@@ -36,7 +28,6 @@ mod outer_box {
 }
 
 mod outer_rc {
-    use crate::MyEnum;
     use crate::MyStruct;
     use crate::SubT;
     use std::boxed::Box;
@@ -57,7 +48,6 @@ mod outer_rc {
 }
 
 mod outer_arc {
-    use crate::MyEnum;
     use crate::MyStruct;
     use crate::SubT;
     use std::boxed::Box;

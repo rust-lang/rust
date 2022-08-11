@@ -1,8 +1,12 @@
 // run-rustfix
+// aux-build: proc_macro_with_span.rs
 
 #![allow(unused_imports, dead_code)]
 #![deny(clippy::default_trait_access)]
 
+extern crate proc_macro_with_span;
+
+use proc_macro_with_span::with_span;
 use std::default;
 use std::default::Default as D2;
 use std::string;
@@ -50,6 +54,8 @@ fn main() {
         s: "foo",
         ..Default::default()
     };
+
+    let _s21: String = with_span!(s Default::default());
 
     println!(
         "[{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}]",

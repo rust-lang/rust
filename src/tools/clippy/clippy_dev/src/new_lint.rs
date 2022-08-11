@@ -438,7 +438,7 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
     let mut lint_context = None;
 
     let mut iter = rustc_lexer::tokenize(&file_contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {

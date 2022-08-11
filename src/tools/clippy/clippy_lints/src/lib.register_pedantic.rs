@@ -49,6 +49,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(loops::EXPLICIT_ITER_LOOP),
     LintId::of(macro_use::MACRO_USE_IMPORTS),
     LintId::of(manual_assert::MANUAL_ASSERT),
+    LintId::of(manual_instant_elapsed::MANUAL_INSTANT_ELAPSED),
     LintId::of(manual_ok_or::MANUAL_OK_OR),
     LintId::of(matches::MATCH_BOOL),
     LintId::of(matches::MATCH_ON_VEC_ITEMS),

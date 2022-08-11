@@ -619,7 +619,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
             if_chain! {
                 // item validation
                 if is_lint_ref_type(cx, ty);
-                // blacklist check
+                // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
@@ -644,7 +644,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
 
             if_chain! {
                 if is_deprecated_lint(cx, ty);
-                // blacklist check
+                // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // Metadata the little we can get from a deprecated lint

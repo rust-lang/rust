@@ -50,14 +50,14 @@ LL |     if obj.method_arg(a) {
 error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:53:15
    |
-LL |     } else if v.pop() == None {
-   |               ^^^^^^^^^^^^^^^
+LL |     } else if v.pop().is_none() {
+   |               ^^^^^^^^^^^^^^^^^
    |
 note: same as this
   --> $DIR/same_functions_in_if_condition.rs:51:8
    |
-LL |     if v.pop() == None {
-   |        ^^^^^^^^^^^^^^^
+LL |     if v.pop().is_none() {
+   |        ^^^^^^^^^^^^^^^^^
 
 error: this `if` has the same function call as a previous `if`
   --> $DIR/same_functions_in_if_condition.rs:58:15

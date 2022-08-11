@@ -23,12 +23,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
     //         val,
     // };
     if_chain! {
-        if let ExprKind::Call(match_fun, try_args) = scrutinee.kind;
+        if let ExprKind::Call(match_fun, [try_arg, ..]) = scrutinee.kind;
         if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
         if matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, ..));
-        if let Some(try_arg) = try_args.get(0);
-        if let ExprKind::Call(err_fun, err_args) = try_arg.kind;
-        if let Some(err_arg) = err_args.get(0);
+        if let ExprKind::Call(err_fun, [err_arg, ..]) = try_arg.kind;
         if let ExprKind::Path(ref err_fun_path) = err_fun.kind;
         if is_lang_ctor(cx, err_fun_path, ResultErr);
         if let Some(return_ty) = find_return_type(cx, &expr.kind);

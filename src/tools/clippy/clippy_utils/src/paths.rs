@@ -194,3 +194,5 @@ pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const WEAK_ARC: [&str; 3] = ["alloc", "sync", "Weak"];
 pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
 pub const PTR_NON_NULL: [&str; 4] = ["core", "ptr", "non_null", "NonNull"];
+pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
+pub const INSTANT: [&str; 3] = ["std", "time", "Instant"];

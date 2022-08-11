@@ -1,9 +1,14 @@
+// aux-build: proc_macro_with_span.rs
+
 #![warn(clippy::missing_docs_in_private_items)]
 #![allow(dead_code)]
 #![feature(associated_type_defaults)]
 
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
+
+extern crate proc_macro_with_span;
+use proc_macro_with_span::with_span;
 
 struct Foo {
     a: isize,
@@ -90,3 +95,13 @@ impl F for Foo {
 }
 
 fn main() {}
+
+// don't lint proc macro output
+with_span!(span
+    pub struct FooPm;
+    impl FooPm {
+        pub fn foo() {}
+        pub const fn bar() {}
+        pub const X: u32 = 0;
+    }
+);
