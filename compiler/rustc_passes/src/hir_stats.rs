@@ -333,11 +333,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_assoc_item(&mut self, item: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
-        let label = match ctxt {
-            ast_visit::AssocCtxt::Trait => "TraitItem",
-            ast_visit::AssocCtxt::Impl => "ImplItem",
-        };
-        self.record(label, Id::None, item);
+        self.record("AssocItem", Id::None, item);
         ast_visit::walk_assoc_item(self, item, ctxt);
     }
 
