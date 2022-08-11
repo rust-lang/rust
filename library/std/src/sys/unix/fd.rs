@@ -131,7 +131,7 @@ impl FileDesc {
         }
     }
 
-    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),

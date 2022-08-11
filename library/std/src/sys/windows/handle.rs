@@ -112,7 +112,7 @@ impl Handle {
         }
     }
 
-    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let res =
             unsafe { self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), None) };
 

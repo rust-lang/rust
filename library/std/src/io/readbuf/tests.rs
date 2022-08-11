@@ -117,14 +117,14 @@ fn append() {
 }
 
 #[test]
-fn clone_written() {
+fn reborrow_written() {
     let buf: &mut [_] = &mut [MaybeUninit::new(0); 32];
     let mut buf: BorrowedBuf<'_> = buf.into();
 
     let mut cursor = buf.unfilled();
     cursor.append(&[1; 16]);
 
-    let mut cursor2 = cursor.clone();
+    let mut cursor2 = cursor.reborrow();
     cursor2.append(&[2; 16]);
 
     assert_eq!(cursor2.written(), 32);

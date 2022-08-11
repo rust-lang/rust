@@ -323,10 +323,10 @@ where
         Ok(n)
     }
 
-    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let prev_written = cursor.written();
 
-        Read::read_buf(&mut self.fill_buf()?, cursor.clone())?;
+        Read::read_buf(&mut self.fill_buf()?, cursor.reborrow())?;
 
         self.pos += (cursor.written() - prev_written) as u64;
 

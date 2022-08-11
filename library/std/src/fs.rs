@@ -703,7 +703,7 @@ impl Read for File {
         self.inner.read_vectored(bufs)
     }
 
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         self.inner.read_buf(cursor)
     }
 
@@ -755,7 +755,7 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         self.inner.read_buf(cursor)
     }
 

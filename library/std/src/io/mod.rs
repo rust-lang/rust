@@ -370,7 +370,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
         }
 
         let mut cursor = read_buf.unfilled();
-        match r.read_buf(cursor.clone()) {
+        match r.read_buf(cursor.reborrow()) {
             Ok(()) => {}
             Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
@@ -462,7 +462,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     }
 }
 
-pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_, '_>) -> Result<()>
+pub(crate) fn default_read_buf<F>(read: F, mut cursor: BorrowedCursor<'_>) -> Result<()>
 where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
@@ -812,7 +812,7 @@ pub trait Read {
     ///
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf(&mut self, buf: BorrowedCursor<'_, '_>) -> Result<()> {
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> Result<()> {
         default_read_buf(|b| self.read(b), buf)
     }
 
@@ -821,10 +821,10 @@ pub trait Read {
     /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`BorrowedCursor`] rather than `[u8]` to
     /// allow use with uninitialized buffers.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> Result<()> {
+    fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> Result<()> {
         while cursor.capacity() > 0 {
             let prev_written = cursor.written();
-            match self.read_buf(cursor.clone()) {
+            match self.read_buf(cursor.reborrow()) {
                 Ok(()) => {}
                 Err(e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e),
@@ -2586,7 +2586,7 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_, '_>) -> Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> Result<()> {
         // Don't call into inner reader at all at EOF because it may still block
         if self.limit == 0 {
             return Ok(());
@@ -2609,7 +2609,7 @@ impl<T: Read> Read for Take<T> {
             }
 
             let mut cursor = sliced_buf.unfilled();
-            self.inner.read_buf(cursor.clone())?;
+            self.inner.read_buf(cursor.reborrow())?;
 
             let new_init = cursor.init_ref().len();
             let filled = sliced_buf.len();
@@ -2626,7 +2626,7 @@ impl<T: Read> Read for Take<T> {
             self.limit -= filled as u64;
         } else {
             let written = buf.written();
-            self.inner.read_buf(buf.clone())?;
+            self.inner.read_buf(buf.reborrow())?;
             self.limit -= (buf.written() - written) as u64;
         }
 

@@ -93,7 +93,7 @@ impl Buffer {
         if self.pos >= self.filled {
             debug_assert!(self.pos == self.filled);
 
-            let mut buf: BorrowedBuf<'_> = (&mut *self.buf).into();
+            let mut buf = BorrowedBuf::from(&mut *self.buf);
             // SAFETY: `self.filled` bytes will always have been initialized.
             unsafe {
                 buf.set_init(self.filled);

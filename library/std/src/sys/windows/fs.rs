@@ -415,7 +415,7 @@ impl File {
         self.handle.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         self.handle.read_buf(cursor)
     }
 

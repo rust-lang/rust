@@ -106,7 +106,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
 
             if read_buf.capacity() >= DEFAULT_BUF_SIZE {
                 let mut cursor = read_buf.unfilled();
-                match reader.read_buf(cursor.clone()) {
+                match reader.read_buf(cursor.reborrow()) {
                     Ok(()) => {
                         let bytes_read = cursor.written();
 

@@ -47,7 +47,7 @@ impl Read for Empty {
     }
 
     #[inline]
-    fn read_buf(&mut self, _cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
         Ok(())
     }
 }
@@ -130,7 +130,7 @@ impl Read for Repeat {
         Ok(buf.len())
     }
 
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
         // SAFETY: No uninit bytes are being written
         for slot in unsafe { buf.as_mut() } {
             slot.write(self.byte);

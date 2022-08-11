@@ -358,7 +358,7 @@ impl File {
         }
     }
 
-    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         unsafe {
             let len = cursor.capacity();
             let mut out_num_bytes = MaybeUninit::uninit();

@@ -266,7 +266,7 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
-    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.
@@ -278,7 +278,7 @@ impl<R: Read> Read for BufReader<R> {
         let prev = cursor.written();
 
         let mut rem = self.fill_buf()?;
-        rem.read_buf(cursor.clone())?;
+        rem.read_buf(cursor.reborrow())?;
 
         self.consume(cursor.written() - prev); //slice impl of read_buf known to never unfill buf
 

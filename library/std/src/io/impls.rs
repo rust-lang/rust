@@ -21,7 +21,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
 
@@ -125,7 +125,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
 
@@ -249,7 +249,7 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let amt = cmp::min(cursor.capacity(), self.len());
         let (a, b) = self.split_at(amt);
 
@@ -427,7 +427,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
     }
 
     #[inline]
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_, '_>) -> io::Result<()> {
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let (ref mut front, _) = self.as_slices();
         let n = cmp::min(cursor.capacity(), front.len());
         Read::read_buf(front, cursor)?;
