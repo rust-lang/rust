@@ -60,6 +60,7 @@ pub use wrapping::Wrapping;
 pub use dec2flt::ParseFloatError;
 
 #[cfg(not(bootstrap))]
+#[cfg(not(no_fp_fmt_parse))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for ParseFloatError {
     #[allow(deprecated)]
