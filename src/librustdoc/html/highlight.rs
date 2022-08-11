@@ -133,7 +133,6 @@ enum Class {
     // Keywords that do pointer/reference stuff.
     RefKeyWord,
     Self_(Span),
-    Op,
     Macro(Span),
     MacroNonTerminal,
     String,
@@ -157,7 +156,6 @@ impl Class {
             Class::KeyWord => "kw",
             Class::RefKeyWord => "kw-2",
             Class::Self_(_) => "self",
-            Class::Op => "op",
             Class::Macro(_) => "macro",
             Class::MacroNonTerminal => "macro-nonterminal",
             Class::String => "string",
@@ -182,7 +180,6 @@ impl Class {
             | Self::Attribute
             | Self::KeyWord
             | Self::RefKeyWord
-            | Self::Op
             | Self::MacroNonTerminal
             | Self::String
             | Self::Number
@@ -494,7 +491,7 @@ impl<'a> Classifier<'a> {
             // or a reference or pointer type. Unless, of course, it looks like
             // a logical and or a multiplication operator: `&&` or `* `.
             TokenKind::Star => match self.tokens.peek() {
-                Some((TokenKind::Whitespace, _)) => Class::Op,
+                Some((TokenKind::Whitespace, _)) => return no_highlight(sink),
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
                     sink(Highlight::Token { text: "*mut", class: Some(Class::RefKeyWord) });
@@ -510,15 +507,15 @@ impl<'a> Classifier<'a> {
             TokenKind::And => match self.tokens.peek() {
                 Some((TokenKind::And, _)) => {
                     self.next();
-                    sink(Highlight::Token { text: "&&", class: Some(Class::Op) });
+                    sink(Highlight::Token { text: "&&", class: None });
                     return;
                 }
                 Some((TokenKind::Eq, _)) => {
                     self.next();
-                    sink(Highlight::Token { text: "&=", class: Some(Class::Op) });
+                    sink(Highlight::Token { text: "&=", class: None });
                     return;
                 }
-                Some((TokenKind::Whitespace, _)) => Class::Op,
+                Some((TokenKind::Whitespace, _)) => return no_highlight(sink),
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
                     sink(Highlight::Token { text: "&mut", class: Some(Class::RefKeyWord) });
@@ -531,7 +528,7 @@ impl<'a> Classifier<'a> {
             TokenKind::Eq => match lookahead {
                 Some(TokenKind::Eq) => {
                     self.next();
-                    sink(Highlight::Token { text: "==", class: Some(Class::Op) });
+                    sink(Highlight::Token { text: "==", class: None });
                     return;
                 }
                 Some(TokenKind::Gt) => {
@@ -539,7 +536,7 @@ impl<'a> Classifier<'a> {
                     sink(Highlight::Token { text: "=>", class: None });
                     return;
                 }
-                _ => Class::Op,
+                _ => return no_highlight(sink),
             },
             TokenKind::Minus if lookahead == Some(TokenKind::Gt) => {
                 self.next();
@@ -556,7 +553,7 @@ impl<'a> Classifier<'a> {
             | TokenKind::Percent
             | TokenKind::Bang
             | TokenKind::Lt
-            | TokenKind::Gt => Class::Op,
+            | TokenKind::Gt => return no_highlight(sink),
 
             // Miscellaneous, no highlighting.
             TokenKind::Dot
