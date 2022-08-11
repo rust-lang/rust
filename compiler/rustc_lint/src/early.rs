@@ -233,9 +233,9 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_where_predicate(self, p);
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef, m: &'a ast::TraitBoundModifier) {
-        run_early_pass!(self, check_poly_trait_ref, t, m);
-        ast_visit::walk_poly_trait_ref(self, t, m);
+    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef) {
+        run_early_pass!(self, check_poly_trait_ref, t);
+        ast_visit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {

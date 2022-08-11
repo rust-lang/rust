@@ -156,8 +156,7 @@ macro_rules! early_lint_methods {
             fn check_generic_arg(a: &ast::GenericArg);
             fn check_generic_param(a: &ast::GenericParam);
             fn check_generics(a: &ast::Generics);
-            fn check_poly_trait_ref(a: &ast::PolyTraitRef,
-                                    b: &ast::TraitBoundModifier);
+            fn check_poly_trait_ref(a: &ast::PolyTraitRef);
             fn check_fn(a: rustc_ast::visit::FnKind<'_>, c: Span, d_: ast::NodeId);
             fn check_trait_item(a: &ast::AssocItem);
             fn check_impl_item(a: &ast::AssocItem);

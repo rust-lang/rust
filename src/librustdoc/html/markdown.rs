@@ -330,34 +330,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         });
 
         let tooltip = if ignore != Ignore::None {
-            Some((None, "ignore"))
+            highlight::Tooltip::Ignore
         } else if compile_fail {
-            Some((None, "compile_fail"))
+            highlight::Tooltip::CompileFail
         } else if should_panic {
-            Some((None, "should_panic"))
+            highlight::Tooltip::ShouldPanic
         } else if explicit_edition {
-            Some((Some(edition), "edition"))
+            highlight::Tooltip::Edition(edition)
         } else {
-            None
+            highlight::Tooltip::None
         };
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
         let mut s = Buffer::new();
         s.push_str("\n");
-        highlight::render_with_highlighting(
+
+        highlight::render_example_with_highlighting(
             &text,
             &mut s,
-            Some(&format!(
-                "rust-example-rendered{}",
-                if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
-            )),
-            playground_button.as_deref(),
             tooltip,
-            edition,
-            None,
-            None,
-            None,
+            playground_button.as_deref(),
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -1446,6 +1439,8 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("not-displayed".into(), 1);
     map.insert("alternative-display".into(), 1);
     map.insert("search".into(), 1);
+    map.insert("crate-search".into(), 1);
+    map.insert("crate-search-div".into(), 1);
     // This is the list of IDs used in HTML generated in Rust (including the ones
     // used in tera template files).
     map.insert("mainThemeStyle".into(), 1);
@@ -1453,7 +1448,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
     map.insert("main-content".into(), 1);
-    map.insert("crate-search".into(), 1);
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);
     map.insert("default-settings".into(), 1);

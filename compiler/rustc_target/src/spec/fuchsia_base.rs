@@ -1,6 +1,11 @@
 use crate::spec::{crt_objects, cvs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
+    // This mirrors the linker options provided by clang. We presume lld for
+    // now. When using clang as the linker it will supply these options for us,
+    // so we only list them for ld/lld.
+    //
+    // https://github.com/llvm/llvm-project/blob/db9322b2066c55254e7691efeab863f43bfcc084/clang/lib/Driver/ToolChains/Fuchsia.cpp#L31
     let pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Ld,
         &[

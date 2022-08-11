@@ -33,27 +33,39 @@ pub(crate) struct HrefContext<'a, 'b, 'c> {
 
 /// Decorations are represented as a map from CSS class to vector of character ranges.
 /// Each range will be wrapped in a span with that class.
+#[derive(Default)]
 pub(crate) struct DecorationInfo(pub(crate) FxHashMap<&'static str, Vec<(u32, u32)>>);
 
-/// Highlights `src`, returning the HTML output.
-pub(crate) fn render_with_highlighting(
+#[derive(Eq, PartialEq, Clone, Copy)]
+pub(crate) enum Tooltip {
+    Ignore,
+    CompileFail,
+    ShouldPanic,
+    Edition(Edition),
+    None,
+}
+
+/// Highlights `src` as an inline example, returning the HTML output.
+pub(crate) fn render_example_with_highlighting(
     src: &str,
     out: &mut Buffer,
-    class: Option<&str>,
+    tooltip: Tooltip,
     playground_button: Option<&str>,
-    tooltip: Option<(Option<Edition>, &str)>,
-    edition: Edition,
-    extra_content: Option<Buffer>,
-    href_context: Option<HrefContext<'_, '_, '_>>,
-    decoration_info: Option<DecorationInfo>,
 ) {
-    debug!("highlighting: ================\n{}\n==============", src);
-    if let Some((edition_info, class)) = tooltip {
+    let class = match tooltip {
+        Tooltip::Ignore => " ignore",
+        Tooltip::CompileFail => " compile_fail",
+        Tooltip::ShouldPanic => " should_panic",
+        Tooltip::Edition(_) => " edition",
+        Tooltip::None => "",
+    };
+
+    if tooltip != Tooltip::None {
         write!(
             out,
-            "<div class='information'><div class='tooltip {}'{}>ⓘ</div></div>",
+            "<div class='information'><div class='tooltip{}'{}>ⓘ</div></div>",
             class,
-            if let Some(edition_info) = edition_info {
+            if let Tooltip::Edition(edition_info) = tooltip {
                 format!(" data-edition=\"{}\"", edition_info)
             } else {
                 String::new()
@@ -61,20 +73,40 @@ pub(crate) fn render_with_highlighting(
         );
     }
 
-    write_header(out, class, extra_content);
-    write_code(out, src, edition, href_context, decoration_info);
+    write_header(out, &format!("rust-example-rendered{}", class), None);
+    write_code(out, src, None, None);
     write_footer(out, playground_button);
 }
 
-fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buffer>) {
+/// Highlights `src` as a macro, returning the HTML output.
+pub(crate) fn render_macro_with_highlighting(src: &str, out: &mut Buffer) {
+    write_header(out, "macro", None);
+    write_code(out, src, None, None);
+    write_footer(out, None);
+}
+
+/// Highlights `src` as a source code page, returning the HTML output.
+pub(crate) fn render_source_with_highlighting(
+    src: &str,
+    out: &mut Buffer,
+    line_numbers: Buffer,
+    href_context: HrefContext<'_, '_, '_>,
+    decoration_info: DecorationInfo,
+) {
+    write_header(out, "", Some(line_numbers));
+    write_code(out, src, Some(href_context), Some(decoration_info));
+    write_footer(out, None);
+}
+
+fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>) {
     write!(out, "<div class=\"example-wrap\">");
     if let Some(extra) = extra_content {
         out.push_buffer(extra);
     }
-    if let Some(class) = class {
-        write!(out, "<pre class=\"rust {}\">", class);
-    } else {
+    if class.is_empty() {
         write!(out, "<pre class=\"rust\">");
+    } else {
+        write!(out, "<pre class=\"rust {}\">", class);
     }
     write!(out, "<code>");
 }
@@ -93,7 +125,6 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 fn write_code(
     out: &mut Buffer,
     src: &str,
-    edition: Edition,
     href_context: Option<HrefContext<'_, '_, '_>>,
     decoration_info: Option<DecorationInfo>,
 ) {
@@ -102,7 +133,6 @@ fn write_code(
     let mut closing_tags: Vec<&'static str> = Vec::new();
     Classifier::new(
         &src,
-        edition,
         href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
         decoration_info,
     )
@@ -220,7 +250,7 @@ impl<'a> Iterator for TokenIter<'a> {
 }
 
 /// Classifies into identifier class; returns `None` if this is a non-keyword identifier.
-fn get_real_ident_class(text: &str, edition: Edition, allow_path_keywords: bool) -> Option<Class> {
+fn get_real_ident_class(text: &str, allow_path_keywords: bool) -> Option<Class> {
     let ignore: &[&str] =
         if allow_path_keywords { &["self", "Self", "super", "crate"] } else { &["self", "Self"] };
     if ignore.iter().any(|k| *k == text) {
@@ -229,7 +259,7 @@ fn get_real_ident_class(text: &str, edition: Edition, allow_path_keywords: bool)
     Some(match text {
         "ref" | "mut" => Class::RefKeyWord,
         "false" | "true" => Class::Bool,
-        _ if Symbol::intern(text).is_reserved(|| edition) => Class::KeyWord,
+        _ if Symbol::intern(text).is_reserved(|| Edition::Edition2021) => Class::KeyWord,
         _ => return None,
     })
 }
@@ -311,7 +341,6 @@ struct Classifier<'a> {
     in_attribute: bool,
     in_macro: bool,
     in_macro_nonterminal: bool,
-    edition: Edition,
     byte_pos: u32,
     file_span: Span,
     src: &'a str,
@@ -321,12 +350,7 @@ struct Classifier<'a> {
 impl<'a> Classifier<'a> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondance_map`.
-    fn new(
-        src: &str,
-        edition: Edition,
-        file_span: Span,
-        decoration_info: Option<DecorationInfo>,
-    ) -> Classifier<'_> {
+    fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
         let tokens = PeekIter::new(TokenIter { src });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
@@ -334,7 +358,6 @@ impl<'a> Classifier<'a> {
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,
-            edition,
             byte_pos: 0,
             file_span,
             src,
@@ -354,7 +377,6 @@ impl<'a> Classifier<'a> {
         let start = self.byte_pos as usize;
         let mut pos = start;
         let mut has_ident = false;
-        let edition = self.edition;
 
         loop {
             let mut nb = 0;
@@ -376,7 +398,7 @@ impl<'a> Classifier<'a> {
 
             if let Some((None, text)) = self.tokens.peek().map(|(token, text)| {
                 if *token == TokenKind::Ident {
-                    let class = get_real_ident_class(text, edition, true);
+                    let class = get_real_ident_class(text, true);
                     (class, text)
                 } else {
                     // Doesn't matter which Class we put in here...
@@ -634,7 +656,7 @@ impl<'a> Classifier<'a> {
                 sink(Highlight::Token { text, class: None });
                 return;
             }
-            TokenKind::Ident => match get_real_ident_class(text, self.edition, false) {
+            TokenKind::Ident => match get_real_ident_class(text, false) {
                 None => match text {
                     "Option" | "Result" => Class::PreludeTy,
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,

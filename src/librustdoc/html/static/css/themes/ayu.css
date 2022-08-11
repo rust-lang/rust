@@ -182,7 +182,7 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
+.search-input {
 	background-color: #141920;
 	border-color: #424c57;
 }
@@ -191,7 +191,17 @@ details.rustdoc-toggle > summary::before {
 	/* Without the `!important`, the border-color is ignored for `<select>`...
 	   It cannot be in the group above because `.search-input` has a different border color on
 	   hover. */
-	border-color: #424c57 !important;
+	border-color: #5c6773 !important;
+}
+#crate-search-div::after {
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	filter: invert(41%) sepia(12%) saturate(487%) hue-rotate(171deg) brightness(94%) contrast(94%);
+}
+#crate-search:hover, #crate-search:focus {
+	border-color: #e0e0e0 !important;
+}
+#crate-search-div:hover::after, #crate-search-div:focus-within::after {
+	filter: invert(98%) sepia(12%) saturate(81%) hue-rotate(343deg) brightness(113%) contrast(76%);
 }
 
 .search-input {
@@ -203,20 +213,9 @@ details.rustdoc-toggle > summary::before {
 	color: #000;
 }
 
-/* Created this empty rule to satisfy the theme checks. */
-.stab.empty-impl {}
-.stab.must_implement {}
-
-.stab.unstable,
-.stab.deprecated,
-.stab.portability,
-.stab.empty-impl,
-.stab.must_implement {
+.stab {
 	color: #c5c5c5;
 	background: #314559 !important;
-	border-style: none !important;
-	border-radius: 4px;
-	padding: 3px 6px 3px 6px;
 }
 
 .stab.portability > code {

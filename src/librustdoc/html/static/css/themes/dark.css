@@ -152,7 +152,7 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
+.search-input {
 	color: #111;
 	background-color: #f0f0f0;
 	border-color: #f0f0f0;
@@ -162,7 +162,17 @@ details.rustdoc-toggle > summary::before {
 	/* Without the `!important`, the border-color is ignored for `<select>`...
 	   It cannot be in the group above because `.search-input` has a different border color on
 	   hover. */
-	border-color: #f0f0f0 !important;
+	border-color: #d2d2d2 !important;
+}
+#crate-search-div::after {
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg) brightness(90%) contrast(90%);
+}
+#crate-search:hover, #crate-search:focus {
+	border-color: #2196f3 !important;
+}
+#crate-search-div:hover::after, #crate-search-div:focus-within::after {
+	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
 }
 
 .search-input {
@@ -173,12 +183,12 @@ details.rustdoc-toggle > summary::before {
 	border-color: #008dfd;
 }
 
-.stab.empty-impl { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
-.stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
-.stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
-.stab.must_implement { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
-.stab.portability { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
-.stab.portability > code { background: none; }
+.stab { background: #314559; }
+
+.stab.portability > code {
+	color: #e6e1cf;
+	background: none;
+}
 
 .rightside,
 .out-of-band {

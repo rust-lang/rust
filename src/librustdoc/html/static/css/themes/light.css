@@ -144,27 +144,32 @@ details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
-#crate-search, .search-input {
+.search-input {
 	background-color: white;
 	border-color: #e0e0e0;
 }
-
 #crate-search {
 	/* Without the `!important`, the border-color is ignored for `<select>`...
 	   It cannot be in the group above because `.search-input` has a different border color on
 	   hover. */
 	border-color: #e0e0e0 !important;
 }
+#crate-search-div::after {
+	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
+	filter: invert(100%) sepia(0%) saturate(4223%) hue-rotate(289deg) brightness(114%) contrast(76%);
+}
+#crate-search:hover, #crate-search:focus {
+	border-color: #717171 !important;
+}
+#crate-search-div:hover::after, #crate-search-div:focus-within::after {
+	filter: invert(44%) sepia(18%) saturate(23%) hue-rotate(317deg) brightness(96%) contrast(93%);
+}
 
 .search-input:focus {
 	border-color: #66afe9;
 }
 
-.stab.empty-impl { background: #FFF5D6; border-color: #FFC600; }
-.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
-.stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
-.stab.must_implement { background: #F3DFFF; border-color: #b07bdb; }
-.stab.portability { background: #F3DFFF; border-color: #b07bdb; }
+.stab { background: #FFF5D6; border-color: #FFC600; }
 .stab.portability > code { background: none; }
 
 .rightside,
@@ -321,7 +326,7 @@ kbd {
 
 .popover, .popover::before,
 #help-button span.top, #help-button span.bottom {
-	border-color: #DDDDDD;
+	border-color: #e0e0e0;
 }
 
 #copy-path {

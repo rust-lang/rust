@@ -1295,7 +1295,11 @@ impl<'a> Parser<'a> {
                 self.bump(); // `in`
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                let vis = VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                    shorthand: false,
+                };
                 return Ok(Visibility {
                     span: lo.to(self.prev_token.span),
                     kind: vis,
@@ -1308,7 +1312,11 @@ impl<'a> Parser<'a> {
                 self.bump(); // `(`
                 let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-                let vis = VisibilityKind::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                let vis = VisibilityKind::Restricted {
+                    path: P(path),
+                    id: ast::DUMMY_NODE_ID,
+                    shorthand: true,
+                };
                 return Ok(Visibility {
                     span: lo.to(self.prev_token.span),
                     kind: vis,

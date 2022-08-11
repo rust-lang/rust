@@ -1322,17 +1322,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
 
 fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
-        highlight::render_with_highlighting(
-            &t.source,
-            w,
-            Some("macro"),
-            None,
-            None,
-            it.span(cx.tcx()).inner().edition(),
-            None,
-            None,
-            None,
-        );
+        highlight::render_macro_with_highlighting(&t.source, w);
     });
     document(w, cx, it, None, HeadingOffset::H2)
 }

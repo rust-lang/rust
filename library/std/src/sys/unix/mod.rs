@@ -295,8 +295,10 @@ pub fn abort_internal() -> ! {
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
-        #[link(name = "dl")]
-        #[link(name = "log")]
+        #[link(name = "dl", kind = "static", modifiers = "-bundle",
+            cfg(target_feature = "crt-static"))]
+        #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
+        #[link(name = "log", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     } else if #[cfg(target_os = "freebsd")] {
         #[link(name = "execinfo")]

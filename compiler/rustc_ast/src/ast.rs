@@ -2601,7 +2601,7 @@ pub struct Visibility {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum VisibilityKind {
     Public,
-    Restricted { path: P<Path>, id: NodeId },
+    Restricted { path: P<Path>, id: NodeId, shorthand: bool },
     Inherited,
 }
 
