@@ -460,7 +460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
-                        InheritStability::No,
+                        InheritStability::Yes,
                         |_| {},
                     );
                 }
