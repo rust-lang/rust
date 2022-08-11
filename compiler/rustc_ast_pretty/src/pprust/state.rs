@@ -442,12 +442,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
         self.maybe_print_comment(attr.span.lo());
         match attr.kind {
-            ast::AttrKind::Normal(ref item, _) => {
+            ast::AttrKind::Normal(ref normal) => {
                 match attr.style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
                 }
-                self.print_attr_item(&item, attr.span);
+                self.print_attr_item(&normal.item, attr.span);
                 self.word("]");
             }
             ast::AttrKind::DocComment(comment_kind, data) => {

@@ -58,8 +58,8 @@ fn get_skip_names(kind: &str, attrs: &[ast::Attribute]) -> Vec<String> {
     for attr in attrs {
         // rustc_ast::ast::Path is implemented partialEq
         // but it is designed for segments.len() == 1
-        if let ast::AttrKind::Normal(attr_item, _) = &attr.kind {
-            if pprust::path_to_string(&attr_item.path) != path {
+        if let ast::AttrKind::Normal(normal) = &attr.kind {
+            if pprust::path_to_string(&normal.item.path) != path {
                 continue;
             }
         }

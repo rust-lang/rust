@@ -2548,9 +2548,15 @@ pub struct Attribute {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct NormalAttr {
+    pub item: AttrItem,
+    pub tokens: Option<LazyTokenStream>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(AttrItem, Option<LazyTokenStream>),
+    Normal(P<NormalAttr>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
@@ -3033,7 +3039,7 @@ mod size_asserts {
     // These are in alphabetical order, which is easy to maintain.
     static_assert_size!(AssocItem, 160);
     static_assert_size!(AssocItemKind, 72);
-    static_assert_size!(Attribute, 152);
+    static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(Fn, 192);

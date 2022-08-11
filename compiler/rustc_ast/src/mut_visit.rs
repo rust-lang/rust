@@ -596,7 +596,9 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
-        AttrKind::Normal(AttrItem { path, args, tokens }, attr_tokens) => {
+        AttrKind::Normal(normal) => {
+            let NormalAttr { item: AttrItem { path, args, tokens }, tokens: attr_tokens } =
+                &mut **normal;
             vis.visit_path(path);
             visit_mac_args(args, vis);
             visit_lazy_tts(tokens, vis);
@@ -659,8 +661,8 @@ pub fn visit_attr_annotated_tt<T: MutVisitor>(tt: &mut AttrAnnotatedTokenTree, v
         AttrAnnotatedTokenTree::Attributes(data) => {
             for attr in &mut *data.attrs {
                 match &mut attr.kind {
-                    AttrKind::Normal(_, attr_tokens) => {
-                        visit_lazy_tts(attr_tokens, vis);
+                    AttrKind::Normal(normal) => {
+                        visit_lazy_tts(&mut normal.tokens, vis);
                     }
                     AttrKind::DocComment(..) => {
                         vis.visit_span(&mut attr.span);
