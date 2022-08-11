@@ -13,13 +13,8 @@ fn main() {
         let has_unwind = build.is_flag_supported("-lunwind").expect("Unable to invoke compiler");
 
         if has_unwind {
-            println!("cargo:rustc-link-lib=unwind");
-        } else {
-            println!("cargo:rustc-link-lib=gcc");
+            println!("cargo:rustc-cfg=feature=\"system-llvm-libunwind\"");
         }
-
-        // Android's unwinding library depends on dl_iterate_phdr in `libdl`.
-        println!("cargo:rustc-link-lib=dl");
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("netbsd") {

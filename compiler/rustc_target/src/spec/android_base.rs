@@ -10,6 +10,6 @@ pub fn opts() -> TargetOptions {
     // for context. (At that time, there was no `-C force-unwind-tables`, so the only solution
     // was to always emit `uwtable`).
     base.default_uwtable = true;
-    base.crt_static_respected = false;
+    base.crt_static_respected = true;
     base
 }

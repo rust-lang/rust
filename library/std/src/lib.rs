@@ -246,6 +246,7 @@
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(linkage)]
+#![feature(link_cfg)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
