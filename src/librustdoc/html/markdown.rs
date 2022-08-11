@@ -1439,6 +1439,8 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("not-displayed".into(), 1);
     map.insert("alternative-display".into(), 1);
     map.insert("search".into(), 1);
+    map.insert("crate-search".into(), 1);
+    map.insert("crate-search-div".into(), 1);
     // This is the list of IDs used in HTML generated in Rust (including the ones
     // used in tera template files).
     map.insert("mainThemeStyle".into(), 1);
@@ -1446,7 +1448,6 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
     map.insert("main-content".into(), 1);
-    map.insert("crate-search".into(), 1);
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);
     map.insert("default-settings".into(), 1);

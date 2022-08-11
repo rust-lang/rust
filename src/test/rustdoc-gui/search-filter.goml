@@ -40,7 +40,7 @@ press-key: "ArrowUp"
 press-key: "Enter"
 // Waiting for the search results to appear...
 wait-for: "#titles"
-assert-property: ("#crate-search", {"value": "All crates"})
+assert-property: ("#crate-search", {"value": "all crates"})
 
 // Checking that the URL parameter is taken into account for crate filtering.
 goto: file://|DOC_PATH|/test_docs/index.html?search=test&filter-crate=lib2
@@ -48,8 +48,8 @@ wait-for: "#crate-search"
 assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"
 
-// Checking that the text for the "title" is correct (the "All" comes from the "<select>").
-assert-text: ("#search-settings", "Results for test in All", STARTS_WITH)
+// Checking that the text for the "title" is correct (the "all crates" comes from the "<select>").
+assert-text: (".search-results-title", "Results in all crates", STARTS_WITH)
 
 // Checking the display of the crate filter.
 // We start with the light theme.
@@ -69,15 +69,15 @@ click: "#settings-menu"
 wait-for: "#settings"
 click: "#theme-dark"
 wait-for-css: ("#crate-search", {
-    "border": "1px solid rgb(240, 240, 240)",
-    "color": "rgb(17, 17, 17)",
-    "background-color": "rgb(240, 240, 240)",
+    "border": "1px solid rgb(210, 210, 210)",
+    "color": "rgb(221, 221, 221)",
+    "background-color": "rgb(53, 53, 53)",
 })
 
 // And finally we check the ayu theme.
 click: "#theme-ayu"
 wait-for-css: ("#crate-search", {
-    "border": "1px solid rgb(66, 76, 87)",
-    "color": "rgb(197, 197, 197)",
-    "background-color": "rgb(20, 25, 32)",
+    "border": "1px solid rgb(92, 103, 115)",
+    "color": "rgb(255, 255, 255)",
+    "background-color": "rgb(15, 20, 25)",
 })

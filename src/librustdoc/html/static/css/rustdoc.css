@@ -947,18 +947,33 @@ table,
 	height: 100%;
 }
 .search-results-title {
-	display: inline;
+	margin-top: 0;
+	white-space: nowrap;
+	/* flex layout allows shrinking the <select> appropriately if it becomes too large */
+	display: inline-flex;
+	max-width: 100%;
+	/* make things look like in a line, despite the fact that we're using a layout
+	with boxes (i.e. from the flex layout) */
+	align-items: baseline;
 }
-#search-settings {
-	font-size: 1.5rem;
-	font-weight: 500;
-	margin-bottom: 20px;
+#crate-search-div {
+	display: inline-block;
+	/* ensures that 100% in properties of #crate-search-div:after
+	are relative to the size of this div */
+	position: relative;
+	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
+	min-width: 5em;
 }
 #crate-search {
 	min-width: 115px;
-	margin-top: 5px;
-	padding-left: 0.15em;
+	padding: 0;
+	/* keep these two in sync with "@-moz-document url-prefix()" below */
+	padding-left: 4px;
 	padding-right: 23px;
+	/* prevents the <select> from overflowing the containing div in case it's shrunk */
+	max-width: 100%;
+	/* contents can overflow because of max-width limit, then show ellipsis */
+	text-overflow: ellipsis;
 	border: 1px solid;
 	border-radius: 4px;
 	outline: none;
@@ -966,13 +981,37 @@ table,
 	-moz-appearance: none;
 	-webkit-appearance: none;
 	/* Removes default arrow from firefox */
+	text-indent: 0.01px;
+	background-color: var(--main-background-color);
+}
+/* cancel stylistic differences in padding in firefox
+for "appearance: none"-style (or equivalent) <select>s */
+@-moz-document url-prefix() {
+	#crate-search {
+		padding-left: 0px; /* == 4px - 4px */
+		padding-right: 19px; /* == 23px - 4px */
+	}
+}
+/* pseudo-element for holding the dropdown-arrow image; needs to be a separate thing
+so that we can apply CSS-filters to change the arrow color in themes */
+#crate-search-div::after {
+	/* lets clicks through! */
+	pointer-events: none;
+	/* completely covers the underlying div */
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	top: 0;
+	left: 0;
+	content: "";
 	background-repeat: no-repeat;
-	background-color: transparent;
 	background-size: 20px;
-	background-position: calc(100% - 1px) 56%;
+	background-position: calc(100% - 2px) 56%;
+	/* image is black color, themes should apply a "filter" property to change the color */
 	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
-	max-width: 100%;
-	text-overflow: ellipsis;
+}
+#crate-search > option {
+	font-size: 1rem;
 }
 .search-container {
 	margin-top: 4px;

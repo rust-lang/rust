@@ -4,7 +4,7 @@ size: (900, 1000)
 write: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
-wait-for: "#search-settings"
+wait-for: "#crate-search"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
 assert-css: (".search-results div.desc", {"width": "295px"})
@@ -17,13 +17,9 @@ assert-css: (".search-results div.desc", {"width": "570px"})
 // To do so we need to update the length of one of its `<option>`.
 size: (900, 900)
 
-// First we check the current width and position.
-assert-css: ("#crate-search", {"width": "218px"})
-compare-elements-position-near: (
-    "#crate-search",
-    "#search-settings .search-results-title",
-    {"y": 5},
-)
+// First we check the current width, height and position.
+assert-css: ("#crate-search", {"width": "223px"})
+assert-css: (".search-results-title", {"height": "44px", "width": "336px"})
 
 // Then we update the text of one of the `<option>`.
 text: (
@@ -31,12 +27,8 @@ text: (
     "sdjfaksdjfaksjdbfkadsbfkjsadbfkdsbkfbsadkjfbkdsabfkadsfkjdsafa",
 )
 
-// Then we compare again.
-assert-css: ("#crate-search", {"width": "640px"})
-compare-elements-position-near-false: (
-    "#crate-search",
-    "#search-settings .search-results-title",
-    {"y": 5},
-)
-// And we check that the `<select>` isn't bigger than its container.
+// Then we compare again to confirm the height didn't change.
+assert-css: ("#crate-search", {"width": "527px"})
+assert-css: (".search-results-title", {"height": "44px", "width": "640px"})
+// And we check that the `<select>` isn't bigger than its container (".search-results-title").
 assert-css: ("#search", {"width": "640px"})
