@@ -120,7 +120,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             items: cx.tcx
                                 .associated_items(impl_def_id)
                                 .in_definition_order()
-                                .map(|x| x.clean(cx))
+                                .map(|x| clean_middle_assoc_item(x, cx))
                                 .collect::<Vec<_>>(),
                             polarity: ty::ImplPolarity::Positive,
                             kind: ImplKind::Blanket(Box::new(clean_middle_ty(trait_ref.0.self_ty(), cx, None))),
