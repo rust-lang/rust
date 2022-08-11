@@ -173,13 +173,14 @@ macro_rules! is_raw_eq_comparable {
     )+};
 }
 
-// SAFETY: All the ordinary integer types allow all bit patterns as distinct values
+// SAFETY: All the ordinary integer types have no padding, and are not pointers.
 is_raw_eq_comparable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
-// SAFETY: bool and char have *niches*, but no *padding*, so this is sound
+// SAFETY: bool and char have *niches*, but no *padding* (and these are not pointer types), so this
+// is sound
 is_raw_eq_comparable!(bool, char);
 
-// SAFETY: Similarly, the non-zero types have a niche, but no undef,
+// SAFETY: Similarly, the non-zero types have a niche, but no undef and no pointers,
 // and they compare like their underlying numeric type.
 is_raw_eq_comparable!(
     NonZeroU8,
