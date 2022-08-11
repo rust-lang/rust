@@ -240,8 +240,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
-            ExprKind::MethodCall(_, ref mut local_exprs, _) => {
-                for local_expr in local_exprs.iter_mut().skip(1) {
+            ExprKind::MethodCall(_, _,ref mut local_exprs, _) => {
+                for local_expr in local_exprs.iter_mut() {
                     self.manage_cond_expr(local_expr);
                 }
             }
@@ -377,14 +377,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     id: DUMMY_NODE_ID,
                     ident: Ident::new(sym::try_capture, self.span),
                 },
-                vec![
-                    expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
-                    expr_addr_of_mut(
-                        self.cx,
-                        self.span,
-                        self.cx.expr_path(Path::from_ident(capture)),
-                    ),
-                ],
+                expr_paren(self.cx, self.span, self.cx.expr_addr_of(self.span, wrapper)),
+                vec![expr_addr_of_mut(
+                    self.cx,
+                    self.span,
+                    self.cx.expr_path(Path::from_ident(capture)),
+                )],
                 self.span,
             ))
             .add_trailing_semicolon();
@@ -442,10 +440,11 @@ fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {
 fn expr_method_call(
     cx: &ExtCtxt<'_>,
     path: PathSegment,
+    receiver: P<Expr>,
     args: Vec<P<Expr>>,
     span: Span,
 ) -> P<Expr> {
-    cx.expr(span, ExprKind::MethodCall(path, args, span))
+    cx.expr(span, ExprKind::MethodCall(path, receiver, args, span))
 }
 
 fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {

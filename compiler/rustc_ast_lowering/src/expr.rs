@@ -62,7 +62,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::ExprKind::Call(f, self.lower_exprs(args))
                     }
                 }
-                ExprKind::MethodCall(ref seg, ref args, span) => {
+                ExprKind::MethodCall(ref seg, ref receiver, ref args, span) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,
@@ -70,7 +70,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParenthesizedGenericArgs::Err,
                         ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     ));
-                    let args = self.lower_exprs(args);
+                    let args = self.arena.alloc_from_iter(
+                        [&*receiver].into_iter().chain(args.iter()).map(|x| self.lower_expr_mut(x)),
+                    );
                     hir::ExprKind::MethodCall(hir_seg, args, self.lower_span(span))
                 }
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
