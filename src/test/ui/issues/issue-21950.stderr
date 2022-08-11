@@ -1,3 +1,12 @@
+error[E0191]: the value of the associated type `Output` (from trait `Add`) must be specified
+  --> $DIR/issue-21950.rs:10:25
+   |
+LL |     type Output;
+   |     ----------- `Output` defined here
+...
+LL |     let x = &10 as &dyn Add;
+   |                         ^^^ help: specify the associated type: `Add<Output = Type>`
+
 error[E0393]: the type parameter `Rhs` must be explicitly specified
   --> $DIR/issue-21950.rs:10:25
    |
@@ -8,15 +17,6 @@ LL |     let x = &10 as &dyn Add;
    |                         ^^^ help: set the type parameter to the desired type: `Add<Rhs>`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
-
-error[E0191]: the value of the associated type `Output` (from trait `Add`) must be specified
-  --> $DIR/issue-21950.rs:10:25
-   |
-LL |     type Output;
-   |     ----------- `Output` defined here
-...
-LL |     let x = &10 as &dyn Add;
-   |                         ^^^ help: specify the associated type: `Add<Output = Type>`
 
 error: aborting due to 2 previous errors
 
