@@ -173,8 +173,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Threading
             "pthread_setname_np" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let name = this.read_pointer(name)?;
-                this.pthread_setname_np(name)?;
+                let thread = this.pthread_self()?;
+                this.pthread_setname_np(thread, this.read_scalar(name)?.check_init()?)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.

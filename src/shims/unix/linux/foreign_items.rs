@@ -69,6 +69,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.pthread_condattr_getclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "pthread_setname_np" => {
+                let [thread, name] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?.check_init()?,
+                    this.read_scalar(name)?.check_init()?,
+                )?;
+                this.write_scalar(res, dest)?;
+            }
 
             // Dynamically invoked syscalls
             "syscall" => {

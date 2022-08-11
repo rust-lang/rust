@@ -437,7 +437,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_self" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.pthread_self(dest)?;
+                let res = this.pthread_self()?;
+                this.write_scalar(res, dest)?;
             }
             "sched_yield" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

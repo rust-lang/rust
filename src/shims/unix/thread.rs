@@ -84,11 +84,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn pthread_self(&mut self, dest: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn pthread_self(&mut self) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         let thread_id = this.get_active_thread();
-        this.write_scalar(Scalar::from_uint(thread_id.to_u32(), dest.layout.size), dest)
+        Ok(Scalar::from_machine_usize(thread_id.into(), this))
+    }
+
+    fn pthread_setname_np(
+        &mut self,
+        thread: Scalar<Provenance>,
+        name: Scalar<Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+
+        let thread = ThreadId::try_from(thread.to_machine_usize(this)?).unwrap();
+        let name = name.to_pointer(this)?;
+
+        let name = this.read_c_str(name)?.to_owned();
+        this.set_thread_name(thread, name);
+
+        Ok(Scalar::from_u32(0))
     }
 
     fn prctl(&mut self, args: &[OpTy<'tcx, Provenance>]) -> InterpResult<'tcx, i32> {
@@ -117,7 +133,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // byte. Since `read_c_str` returns the string without the null
             // byte, we need to truncate to 15.
             name.truncate(15);
-            this.set_active_thread_name(name);
+            this.set_thread_name(this.get_active_thread(), name);
         } else if option == this.eval_libc_i32("PR_GET_NAME")? {
             if args.len() < 2 {
                 throw_ub_format!(
@@ -127,7 +143,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             let address = this.read_pointer(&args[1])?;
-            let mut name = this.get_active_thread_name().to_vec();
+            let mut name = this.get_thread_name(this.get_active_thread()).to_vec();
             name.push(0u8);
             assert!(name.len() <= 16);
             this.write_bytes_ptr(address, name)?;
@@ -136,16 +152,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         Ok(0)
-    }
-
-    fn pthread_setname_np(&mut self, name: Pointer<Option<Provenance>>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.assert_target_os("macos", "pthread_setname_np");
-
-        let name = this.read_c_str(name)?.to_owned();
-        this.set_active_thread_name(name);
-
-        Ok(())
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {
