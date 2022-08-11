@@ -3,13 +3,16 @@ PRE EXPANSION AST STATS
 
 Name                Accumulated Size         Count     Item Size
 ----------------------------------------------------------------
-Lifetime                          32             2            16
-MacCall                           64             1            64
+ExprField                         48             1            48
+GenericArgs                       64             1            64
 Local                             72             1            72
+WherePredicate                    72             1            72
+Crate                             72             1            72
 Arm                               96             2            48
 FieldDef                         160             2            80
 ForeignItem                      160             1           160
 Stmt                             160             5            32
+Param                            160             4            40
 FnDecl                           200             5            40
 Variant                          240             2           120
 Block                            288             6            48
@@ -17,31 +20,38 @@ Attribute                        304             2           152
 ImplItem                         320             2           160
 TraitItem                        320             2           160
 GenericBound                     352             4            88
+GenericParam                     520             5           104
 PathSegment                      720            30            24
 Expr                             832             8           104
 Pat                              840             7           120
 Ty                             1_344            14            96
 Item                           1_800             9           200
 ----------------------------------------------------------------
-Total                          8_304
+Total                          9_144
 
 
 POST EXPANSION AST STATS
 
 Name                Accumulated Size         Count     Item Size
 ----------------------------------------------------------------
-Lifetime                          32             2            16
+ExprField                         48             1            48
+GenericArgs                       64             1            64
 Local                             72             1            72
+WherePredicate                    72             1            72
+Crate                             72             1            72
 Arm                               96             2            48
+InlineAsm                        120             1           120
 FieldDef                         160             2            80
 ForeignItem                      160             1           160
 Stmt                             160             5            32
+Param                            160             4            40
 FnDecl                           200             5            40
 Variant                          240             2           120
 Block                            288             6            48
 ImplItem                         320             2           160
 TraitItem                        320             2           160
 GenericBound                     352             4            88
+GenericParam                     520             5           104
 Attribute                        608             4           152
 PathSegment                      792            33            24
 Pat                              840             7           120
@@ -49,7 +59,7 @@ Expr                             936             9           104
 Ty                             1_344            14            96
 Item                           2_200            11           200
 ----------------------------------------------------------------
-Total                          9_120
+Total                         10_144
 
 
 HIR STATS

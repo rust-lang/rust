@@ -26,6 +26,23 @@ struct NodeData {
     size: usize,
 }
 
+/// This type measures the size of AST and HIR nodes, by implementing the AST
+/// and HIR `Visitor` traits. But we don't measure every visited type because
+/// that could cause double counting.
+///
+/// For example, `ast::Visitor` has `visit_ident`, but `Ident`s are always
+/// stored inline within other AST nodes, so we don't implement `visit_ident`
+/// here. In constrast, we do implement `visit_expr` because `ast::Expr` is
+/// always stored as `P<ast::Expr>`, and every such expression should be
+/// measured separately.
+///
+/// In general, a `visit_foo` method should be implemented here if the
+/// corresponding `Foo` type is always stored on its own, e.g.: `P<Foo>`,
+/// `Box<Foo>`, `Vec<Foo>`, `Box<[Foo]>`.
+///
+/// There are some types in the AST and HIR tree that the visitors do not have
+/// a `visit_*` method for, and so we cannot measure these, which is
+/// unfortunate.
 struct StatCollector<'k> {
     krate: Option<Map<'k>>,
     data: FxHashMap<&'static str, NodeData>,
@@ -44,9 +61,11 @@ pub fn print_hir_stats(tcx: TyCtxt<'_>) {
 }
 
 pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
+    use rustc_ast::visit::Visitor;
+
     let mut collector =
         StatCollector { krate: None, data: FxHashMap::default(), seen: FxHashSet::default() };
-    ast_visit::walk_crate(&mut collector, krate);
+    collector.visit_crate(krate);
     collector.print(title);
 }
 
@@ -228,6 +247,10 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_path(self, path)
     }
 
+    // `PathSegment` has one inline use (in `ast::ExprKind::MethodCall`) and
+    // one non-inline use (in `Path::segments`). The latter case is more common
+    // than the former case, so we implement this visitor and tolerate the
+    // double counting in the former case.
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
         hir_visit::walk_path_segment(self, path_span, path_segment)
@@ -269,6 +292,11 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_stmt(self, s)
     }
 
+    fn visit_param(&mut self, p: &'v ast::Param) {
+        self.record("Param", Id::None, p);
+        ast_visit::walk_param(self, p)
+    }
+
     fn visit_arm(&mut self, a: &'v ast::Arm) {
         self.record("Arm", Id::None, a);
         ast_visit::walk_arm(self, a)
@@ -287,6 +315,16 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_ty(&mut self, t: &'v ast::Ty) {
         self.record("Ty", Id::None, t);
         ast_visit::walk_ty(self, t)
+    }
+
+    fn visit_generic_param(&mut self, g: &'v ast::GenericParam) {
+        self.record("GenericParam", Id::None, g);
+        ast_visit::walk_generic_param(self, g)
+    }
+
+    fn visit_where_predicate(&mut self, p: &'v ast::WherePredicate) {
+        self.record("WherePredicate", Id::None, p);
+        ast_visit::walk_where_predicate(self, p)
     }
 
     fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, s: Span, _: NodeId) {
@@ -318,27 +356,42 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_variant(self, v)
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime, _: ast_visit::LifetimeCtxt) {
-        self.record("Lifetime", Id::None, lifetime);
-        ast_visit::walk_lifetime(self, lifetime)
-    }
-
-    fn visit_mac_call(&mut self, mac: &'v ast::MacCall) {
-        self.record("MacCall", Id::None, mac);
-        ast_visit::walk_mac(self, mac)
-    }
+    // `UseTree` has one inline use (in `ast::ItemKind::Use`) and one
+    // non-inline use (in `ast::UseTreeKind::Nested). The former case is more
+    // common, so we don't implement `visit_use_tree` and tolerate the missed
+    // coverage in the latter case.
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v ast::PathSegment) {
         self.record("PathSegment", Id::None, path_segment);
         ast_visit::walk_path_segment(self, path_span, path_segment)
     }
 
-    fn visit_assoc_constraint(&mut self, constraint: &'v ast::AssocConstraint) {
-        self.record("AssocConstraint", Id::None, constraint);
-        ast_visit::walk_assoc_constraint(self, constraint)
+    // `GenericArgs` has one inline use (in `ast::AssocConstraint::gen_args`) and one
+    // non-inline use (in `ast::PathSegment::args`). The latter case is more
+    // common, so we implement `visit_generic_args` and tolerate the double
+    // counting in the former case.
+    fn visit_generic_args(&mut self, sp: Span, g: &'v ast::GenericArgs) {
+        self.record("GenericArgs", Id::None, g);
+        ast_visit::walk_generic_args(self, sp, g)
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         self.record("Attribute", Id::None, attr);
+        ast_visit::walk_attribute(self, attr)
+    }
+
+    fn visit_expr_field(&mut self, f: &'v ast::ExprField) {
+        self.record("ExprField", Id::None, f);
+        ast_visit::walk_expr_field(self, f)
+    }
+
+    fn visit_crate(&mut self, krate: &'v ast::Crate) {
+        self.record("Crate", Id::None, krate);
+        ast_visit::walk_crate(self, krate)
+    }
+
+    fn visit_inline_asm(&mut self, asm: &'v ast::InlineAsm) {
+        self.record("InlineAsm", Id::None, asm);
+        ast_visit::walk_inline_asm(self, asm)
     }
 }
