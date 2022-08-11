@@ -246,7 +246,7 @@ impl Tr for Result<i32, i32> {
 
 mod issue9084 {
     fn wildcard_if() {
-        let some_bool = true;
+        let mut some_bool = true;
         let e = Some(1);
 
         // should lint
@@ -272,6 +272,19 @@ mod issue9084 {
         let _ = match e {
             Some(i) => Some(i + 1),
             _ if some_bool => e,
+            _ => e,
+        };
+
+        // should not lint (guard has side effects)
+        let _ = match e {
+            Some(i) => Some(i),
+            _ if {
+                some_bool = false;
+                some_bool
+            } =>
+            {
+                e
+            },
             _ => e,
         };
     }
