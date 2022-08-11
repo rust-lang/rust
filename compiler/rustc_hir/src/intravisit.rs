@@ -391,7 +391,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_field_def(&mut self, s: &'v FieldDef<'v>) {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>, item_id: HirId, _: Span) {
+    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>, item_id: HirId) {
         walk_enum_def(self, enum_definition, item_id)
     }
     fn visit_variant(&mut self, v: &'v Variant<'v>) {
@@ -559,7 +559,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
-            visitor.visit_enum_def(enum_definition, item.hir_id(), item.span)
+            visitor.visit_enum_def(enum_definition, item.hir_id())
         }
         ItemKind::Impl(Impl {
             unsafety: _,
