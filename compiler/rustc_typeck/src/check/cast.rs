@@ -32,6 +32,7 @@ use super::FnCtxt;
 
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
+use hir::def_id::LOCAL_CRATE;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
@@ -40,7 +41,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -173,6 +174,7 @@ pub enum CastError {
     /// or "a length". If this argument is None, then the metadata is unknown, for example,
     /// when we're typechecking a type parameter with a ?Sized bound.
     IntToFatCast(Option<&'static str>),
+    ForeignNonExhaustiveAdt,
 }
 
 impl From<ErrorGuaranteed> for CastError {
@@ -591,6 +593,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 }
                 err.emit();
             }
+            CastError::ForeignNonExhaustiveAdt => {
+                make_invalid_casting_error(
+                    fcx.tcx.sess,
+                    self.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                    fcx,
+                )
+                .note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
+                .emit();
+            }
         }
     }
 
@@ -788,6 +801,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             _ => return Err(CastError::NonScalar),
         };
+
+        if let ty::Adt(adt_def, _) = *self.expr_ty.kind() {
+            if adt_def.did().krate != LOCAL_CRATE {
+                if adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive) {
+                    return Err(CastError::ForeignNonExhaustiveAdt);
+                }
+            }
+        }
 
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.
