@@ -63,7 +63,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "close" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.close(fd)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "fcntl" => {
                 // `fcntl` is variadic. The argument count is checked based on the first argument
@@ -128,13 +128,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "lseek64" => {
                 let [fd, offset, whence] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.lseek64(fd, offset, whence)?;
-                this.write_scalar(Scalar::from_i64(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "ftruncate64" => {
                 let [fd, length] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "fsync" => {
                 let [fd] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -164,7 +164,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "realpath" => {
                 let [path, resolved_path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.realpath(path, resolved_path)?;
-                this.write_pointer(result, dest)?;
+                this.write_scalar(result, dest)?;
             }
             "mkstemp" => {
                 let [template] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -437,7 +437,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_self" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.pthread_self(dest)?;
+                let res = this.pthread_self()?;
+                this.write_scalar(res, dest)?;
             }
             "sched_yield" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;

@@ -38,7 +38,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [fd, offset, nbytes, flags] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Time related shims
@@ -47,27 +47,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [clk_id, tp] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.clock_gettime(clk_id, tp)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Threading
-            "prctl" => {
-                // prctl is variadic. (It is not documented like that in the manpage, but defined like that in the libc crate.)
-                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
-                let result = this.prctl(args)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
             "pthread_condattr_setclock" => {
                 let [attr, clock_id] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_condattr_setclock(attr, clock_id)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "pthread_condattr_getclock" => {
                 let [attr, clock_id] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.pthread_condattr_getclock(attr, clock_id)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
+            }
+            "pthread_setname_np" => {
+                let [thread, name] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?.check_init()?,
+                    this.read_scalar(name)?.check_init()?,
+                )?;
+                this.write_scalar(res, dest)?;
             }
 
             // Dynamically invoked syscalls

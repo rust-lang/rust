@@ -69,9 +69,9 @@ impl From<u32> for ThreadId {
     }
 }
 
-impl ThreadId {
-    pub fn to_u32_scalar(&self) -> Scalar<Provenance> {
-        Scalar::from_u32(self.0)
+impl From<ThreadId> for u64 {
+    fn from(t: ThreadId) -> Self {
+        t.0.into()
     }
 }
 
@@ -394,14 +394,9 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         Ok(())
     }
 
-    /// Set the name of the active thread.
-    fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
-        self.active_thread_mut().thread_name = Some(new_thread_name);
-    }
-
-    /// Get the name of the active thread.
-    pub fn get_active_thread_name(&self) -> &[u8] {
-        self.active_thread_ref().thread_name()
+    /// Set the name of the given thread.
+    pub fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
+        self.threads[thread].thread_name = Some(new_thread_name);
     }
 
     /// Get the name of the given thread.
@@ -704,18 +699,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
+    fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
-        this.machine.threads.set_active_thread_name(new_thread_name);
+        this.machine.threads.set_thread_name(thread, new_thread_name);
     }
 
     #[inline]
-    fn get_active_thread_name<'c>(&'c self) -> &'c [u8]
+    fn get_thread_name<'c>(&'c self, thread: ThreadId) -> &'c [u8]
     where
         'mir: 'c,
     {
         let this = self.eval_context_ref();
-        this.machine.threads.get_active_thread_name()
+        this.machine.threads.get_thread_name(thread)
     }
 
     #[inline]

@@ -277,58 +277,6 @@ fn test_rwlock_libc_static_initializer() {
     }
 }
 
-/// Test whether the `prctl` shim correctly sets the thread name.
-///
-/// Note: `prctl` exists only on Linux.
-#[cfg(any(target_os = "linux"))]
-fn test_prctl_thread_name() {
-    use libc::c_long;
-    use std::ffi::CString;
-    unsafe {
-        let mut buf = [255; 10];
-        assert_eq!(
-            libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
-            0,
-        );
-        // Rust runtime might set thread name, so we allow two options here.
-        assert!(&buf[..10] == b"<unnamed>\0" || &buf[..5] == b"main\0");
-        let thread_name = CString::new("hello").expect("CString::new failed");
-        assert_eq!(
-            libc::prctl(
-                libc::PR_SET_NAME,
-                thread_name.as_ptr(),
-                0 as c_long,
-                0 as c_long,
-                0 as c_long,
-            ),
-            0,
-        );
-        let mut buf = [255; 6];
-        assert_eq!(
-            libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
-            0,
-        );
-        assert_eq!(b"hello\0", &buf);
-        let long_thread_name = CString::new("01234567890123456789").expect("CString::new failed");
-        assert_eq!(
-            libc::prctl(
-                libc::PR_SET_NAME,
-                long_thread_name.as_ptr(),
-                0 as c_long,
-                0 as c_long,
-                0 as c_long,
-            ),
-            0,
-        );
-        let mut buf = [255; 16];
-        assert_eq!(
-            libc::prctl(libc::PR_GET_NAME, buf.as_mut_ptr(), 0 as c_long, 0 as c_long, 0 as c_long),
-            0,
-        );
-        assert_eq!(b"012345678901234\0", &buf);
-    }
-}
-
 /// Tests whether each thread has its own `__errno_location`.
 fn test_thread_local_errno() {
     #[cfg(target_os = "linux")]
@@ -472,9 +420,6 @@ fn main() {
 
     #[cfg(any(target_os = "linux"))]
     test_mutex_libc_static_initializer_recursive();
-
-    #[cfg(any(target_os = "linux"))]
-    test_prctl_thread_name();
 
     test_thread_local_errno();
 

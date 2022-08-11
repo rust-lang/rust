@@ -664,17 +664,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn close(&mut self, fd_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn close(&mut self, fd_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        if let Some(file_descriptor) = this.machine.file_handler.handles.remove(&fd) {
-            let result = file_descriptor.close(this.machine.communicate())?;
-            this.try_unwrap_io_result(result)
-        } else {
-            this.handle_not_found()
-        }
+        Ok(Scalar::from_i32(
+            if let Some(file_descriptor) = this.machine.file_handler.handles.remove(&fd) {
+                let result = file_descriptor.close(this.machine.communicate())?;
+                this.try_unwrap_io_result(result)?
+            } else {
+                this.handle_not_found()?
+            },
+        ))
     }
 
     fn read(
@@ -772,7 +774,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         fd_op: &OpTy<'tcx, Provenance>,
         offset_op: &OpTy<'tcx, Provenance>,
         whence_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i64> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -790,18 +792,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i64(-1));
         };
 
         let communicate = this.machine.communicate();
-        if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
-            let result = file_descriptor
-                .seek(communicate, seek_from)?
-                .map(|offset| i64::try_from(offset).unwrap());
-            this.try_unwrap_io_result(result)
-        } else {
-            this.handle_not_found()
-        }
+        Ok(Scalar::from_i64(
+            if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
+                let result = file_descriptor
+                    .seek(communicate, seek_from)?
+                    .map(|offset| i64::try_from(offset).unwrap());
+                this.try_unwrap_io_result(result)?
+            } else {
+                this.handle_not_found()?
+            },
+        ))
     }
 
     fn unlink(&mut self, path_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
@@ -855,7 +859,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         path_op: &OpTy<'tcx, Provenance>,
         buf_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "stat");
 
@@ -867,16 +871,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.reject_in_isolation("`stat`", reject_with)?;
             let eacc = this.eval_libc("EACCES")?;
             this.set_last_error(eacc)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         // `stat` always follows symlinks.
         let metadata = match FileMetadata::from_path(this, &path, true)? {
             Some(metadata) => metadata,
-            None => return Ok(-1),
+            None => return Ok(Scalar::from_i32(-1)), // `FileMetadata` has set errno
         };
 
-        this.macos_stat_write_buf(metadata, buf_op)
+        Ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
@@ -884,7 +888,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         path_op: &OpTy<'tcx, Provenance>,
         buf_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "lstat");
 
@@ -896,22 +900,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.reject_in_isolation("`lstat`", reject_with)?;
             let eacc = this.eval_libc("EACCES")?;
             this.set_last_error(eacc)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         let metadata = match FileMetadata::from_path(this, &path, false)? {
             Some(metadata) => metadata,
-            None => return Ok(-1),
+            None => return Ok(Scalar::from_i32(-1)), // `FileMetadata` has set errno
         };
 
-        this.macos_stat_write_buf(metadata, buf_op)
+        Ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
     }
 
     fn macos_fstat(
         &mut self,
         fd_op: &OpTy<'tcx, Provenance>,
         buf_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "fstat");
@@ -922,14 +926,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`fstat`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.handle_not_found();
+            return Ok(Scalar::from_i32(this.handle_not_found()?));
         }
 
         let metadata = match FileMetadata::from_fd(this, fd)? {
             Some(metadata) => metadata,
-            None => return Ok(-1),
+            None => return Ok(Scalar::from_i32(-1)),
         };
-        this.macos_stat_write_buf(metadata, buf_op)
+        Ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -1343,7 +1347,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dirp_op: &OpTy<'tcx, Provenance>,
         entry_op: &OpTy<'tcx, Provenance>,
         result_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "readdir_r");
@@ -1354,13 +1358,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`readdir_r`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.handle_not_found();
+            return Ok(Scalar::from_i32(this.handle_not_found()?));
         }
 
         let open_dir = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
         })?;
-        match open_dir.read_dir.next() {
+        Ok(Scalar::from_i32(match open_dir.read_dir.next() {
             Some(Ok(dir_entry)) => {
                 // Write into entry, write pointer to result, return 0 on success.
                 // The name is written with write_os_str_to_c_str, while the rest of the
@@ -1417,17 +1421,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result_place = this.deref_operand(result_op)?;
                 this.write_scalar(this.read_scalar(entry_op)?, &result_place.into())?;
 
-                Ok(0)
+                0
             }
             None => {
                 // end of stream: return 0, assign *result=NULL
                 this.write_null(&this.deref_operand(result_op)?.into())?;
-                Ok(0)
+                0
             }
             Some(Err(e)) =>
                 match e.raw_os_error() {
                     // return positive error number on error
-                    Some(error) => Ok(error),
+                    Some(error) => error,
                     None => {
                         throw_unsup_format!(
                             "the error {} couldn't be converted to a return value",
@@ -1435,7 +1439,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         )
                     }
                 },
-        }
+        }))
     }
 
     fn closedir(&mut self, dirp_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
@@ -1463,7 +1467,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         fd_op: &OpTy<'tcx, Provenance>,
         length_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -1473,30 +1477,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`ftruncate64`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.handle_not_found();
+            return Ok(Scalar::from_i32(this.handle_not_found()?));
         }
 
-        if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
-            // FIXME: Support ftruncate64 for all FDs
-            let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
-            if *writable {
-                if let Ok(length) = length.try_into() {
-                    let result = file.set_len(length);
-                    this.try_unwrap_io_result(result.map(|_| 0i32))
+        Ok(Scalar::from_i32(
+            if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
+                // FIXME: Support ftruncate64 for all FDs
+                let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
+                if *writable {
+                    if let Ok(length) = length.try_into() {
+                        let result = file.set_len(length);
+                        this.try_unwrap_io_result(result.map(|_| 0i32))?
+                    } else {
+                        let einval = this.eval_libc("EINVAL")?;
+                        this.set_last_error(einval)?;
+                        -1
+                    }
                 } else {
+                    // The file is not writable
                     let einval = this.eval_libc("EINVAL")?;
                     this.set_last_error(einval)?;
-                    Ok(-1)
+                    -1
                 }
             } else {
-                // The file is not writable
-                let einval = this.eval_libc("EINVAL")?;
-                this.set_last_error(einval)?;
-                Ok(-1)
-            }
-        } else {
-            this.handle_not_found()
-        }
+                this.handle_not_found()?
+            },
+        ))
     }
 
     fn fsync(&mut self, fd_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
@@ -1554,7 +1560,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         offset_op: &OpTy<'tcx, Provenance>,
         nbytes_op: &OpTy<'tcx, Provenance>,
         flags_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -1565,7 +1571,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if offset < 0 || nbytes < 0 {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
         let allowed_flags = this.eval_libc_i32("SYNC_FILE_RANGE_WAIT_BEFORE")?
             | this.eval_libc_i32("SYNC_FILE_RANGE_WRITE")?
@@ -1573,23 +1579,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if flags & allowed_flags != flags {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         }
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`sync_file_range`", reject_with)?;
             // Set error code as "EBADF" (bad fd)
-            return this.handle_not_found();
+            return Ok(Scalar::from_i32(this.handle_not_found()?));
         }
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
             // FIXME: Support sync_data_range for all FDs
             let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
             let io_result = maybe_sync_file(file, *writable, File::sync_data);
-            this.try_unwrap_io_result(io_result)
+            Ok(Scalar::from_i32(this.try_unwrap_io_result(io_result)?))
         } else {
-            this.handle_not_found()
+            Ok(Scalar::from_i32(this.handle_not_found()?))
         }
     }
 
@@ -1674,7 +1680,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         path_op: &OpTy<'tcx, Provenance>,
         processed_path_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
         this.assert_target_os_is_unix("realpath");
 
@@ -1686,7 +1692,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.reject_in_isolation("`realpath`", reject_with)?;
             let eacc = this.eval_libc("EACCES")?;
             this.set_last_error(eacc)?;
-            return Ok(Pointer::null());
+            return Ok(Scalar::from_machine_usize(0, this));
         }
 
         let result = std::fs::canonicalize(pathname);
@@ -1717,16 +1723,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // seems like a bit of a mess anyway: <https://eklitzke.org/path-max-is-tricky>.
                         let enametoolong = this.eval_libc("ENAMETOOLONG")?;
                         this.set_last_error(enametoolong)?;
-                        return Ok(Pointer::null());
+                        return Ok(Scalar::from_machine_usize(0, this));
                     }
                     processed_ptr
                 };
 
-                Ok(dest)
+                Ok(Scalar::from_maybe_pointer(dest, this))
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e.kind())?;
-                Ok(Pointer::null())
+                Ok(Scalar::from_machine_usize(0, this))
             }
         }
     }
