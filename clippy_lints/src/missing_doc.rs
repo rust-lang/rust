@@ -12,7 +12,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty::DefIdTree;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Span;
@@ -175,13 +175,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        match cx.tcx.associated_item(impl_item.def_id).container {
-            ty::TraitContainer(_) => return,
-            ty::ImplContainer(cid) => {
-                if cx.tcx.impl_trait_ref(cid).is_some() {
-                    return;
-                }
-            },
+        if let Some(cid) = cx.tcx.associated_item(impl_item.def_id).impl_container(cx.tcx) {
+            if cx.tcx.impl_trait_ref(cid).is_some() {
+                return;
+            }
+        } else {
+            return;
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());

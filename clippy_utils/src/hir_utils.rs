@@ -141,7 +141,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 let mut left_pos = 0;
                 let left = tokenize(&left)
                     .map(|t| {
-                        let end = left_pos + t.len;
+                        let end = left_pos + t.len as usize;
                         let s = &left[left_pos..end];
                         left_pos = end;
                         (t, s)
@@ -156,7 +156,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 let mut right_pos = 0;
                 let right = tokenize(&right)
                     .map(|t| {
-                        let end = right_pos + t.len;
+                        let end = right_pos + t.len as usize;
                         let s = &right[right_pos..end];
                         right_pos = end;
                         (t, s)

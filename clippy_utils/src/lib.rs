@@ -969,7 +969,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                     }
                 },
                 ExprKind::Closure { .. } => {
-                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id).to_def_id();
+                    let closure_id = self.cx.tcx.hir().local_def_id(e.hir_id);
                     for capture in self.cx.typeck_results().closure_min_captures_flattened(closure_id) {
                         let local_id = match capture.place.base {
                             PlaceBase::Local(id) => id,
@@ -1354,7 +1354,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     if is_integer_literal(e, value) {
         return true;
     }
-    let enclosing_body = cx.tcx.hir().local_def_id(cx.tcx.hir().enclosing_body_owner(e.hir_id));
+    let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
     if let Some((Constant::Int(v), _)) = constant(cx, cx.tcx.typeck(enclosing_body), e) {
         return value == v;
     }

@@ -462,7 +462,7 @@ impl SimpleFormatArgs {
                     }
                 }
             },
-            ArgumentNamed(n, _) => {
+            ArgumentNamed(n) => {
                 let n = Symbol::intern(n);
                 if let Some(x) = self.named.iter_mut().find(|x| x.0 == n) {
                     match x.1.as_slice() {
