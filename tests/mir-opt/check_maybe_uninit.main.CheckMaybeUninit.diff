@@ -1,0 +1,90 @@
+- // MIR for `main` before CheckMaybeUninit
++ // MIR for `main` after CheckMaybeUninit
+  
+  | User Type Annotations
+  | 0: user_ty: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: TypeOf(DefId(2:2022 ~ core[4f75]::mem::maybe_uninit::{impl#2}::uninit), UserSubsts { substs: [^0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(2:2019 ~ core[4f75]::mem::maybe_uninit::{impl#2}), self_ty: std::mem::MaybeUninit<u8> }) }) }, span: $DIR/check-maybe-uninit.rs:6:17: 6:42, inferred_ty: fn() -> std::mem::MaybeUninit<u8> {std::mem::MaybeUninit::<u8>::uninit}
+  | 1: user_ty: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }], value: TypeOf(DefId(2:2022 ~ core[4f75]::mem::maybe_uninit::{impl#2}::uninit), UserSubsts { substs: [^0], user_self_ty: Some(UserSelfTy { impl_def_id: DefId(2:2019 ~ core[4f75]::mem::maybe_uninit::{impl#2}), self_ty: std::mem::MaybeUninit<std::string::String> }) }) }, span: $DIR/check-maybe-uninit.rs:7:17: 7:46, inferred_ty: fn() -> std::mem::MaybeUninit<std::string::String> {std::mem::MaybeUninit::<std::string::String>::uninit}
+  |
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/check-maybe-uninit.rs:+0:11: +0:11
+      let mut _1: u8;                      // in scope 0 at $DIR/check-maybe-uninit.rs:+2:17: +2:58
+      let mut _2: std::mem::MaybeUninit<u8>; // in scope 0 at $DIR/check-maybe-uninit.rs:+2:17: +2:44
+      let mut _3: std::string::String;     // in scope 0 at $DIR/check-maybe-uninit.rs:+3:17: +3:62
+      let mut _4: std::mem::MaybeUninit<std::string::String>; // in scope 0 at $DIR/check-maybe-uninit.rs:+3:17: +3:48
++     let mut _5: ();                      // in scope 0 at $DIR/check-maybe-uninit.rs:+2:45: +2:58
++     let mut _6: ();                      // in scope 0 at $DIR/check-maybe-uninit.rs:+3:49: +3:62
+      scope 1 {
+          scope 2 {
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 1 at $DIR/check-maybe-uninit.rs:+2:17: +2:58
+          StorageLive(_2);                 // scope 1 at $DIR/check-maybe-uninit.rs:+2:17: +2:44
+-         _2 = MaybeUninit::<u8>::uninit() -> [return: bb1, unwind: bb6]; // scope 1 at $DIR/check-maybe-uninit.rs:+2:17: +2:44
++         _2 = MaybeUninit::<u8>::uninit() -> [return: bb7, unwind: bb6]; // scope 1 at $DIR/check-maybe-uninit.rs:+2:17: +2:44
+                                           // mir::Constant
+                                           // + span: $DIR/check-maybe-uninit.rs:6:17: 6:42
+                                           // + user_ty: UserType(0)
+                                           // + literal: Const { ty: fn() -> MaybeUninit<u8> {MaybeUninit::<u8>::uninit}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          _1 = MaybeUninit::<u8>::assume_init(move _2) -> [return: bb2, unwind: bb6]; // scope 1 at $DIR/check-maybe-uninit.rs:+2:17: +2:58
+                                           // mir::Constant
+                                           // + span: $DIR/check-maybe-uninit.rs:6:45: 6:56
+                                           // + literal: Const { ty: unsafe fn(MaybeUninit<u8>) -> u8 {MaybeUninit::<u8>::assume_init}, val: Value(<ZST>) }
+      }
+  
+      bb2: {
+          StorageDead(_2);                 // scope 1 at $DIR/check-maybe-uninit.rs:+2:57: +2:58
+          StorageDead(_1);                 // scope 1 at $DIR/check-maybe-uninit.rs:+2:58: +2:59
+          StorageLive(_3);                 // scope 2 at $DIR/check-maybe-uninit.rs:+3:17: +3:62
+          StorageLive(_4);                 // scope 2 at $DIR/check-maybe-uninit.rs:+3:17: +3:48
+-         _4 = MaybeUninit::<String>::uninit() -> [return: bb3, unwind: bb6]; // scope 2 at $DIR/check-maybe-uninit.rs:+3:17: +3:48
++         _4 = MaybeUninit::<String>::uninit() -> [return: bb8, unwind: bb6]; // scope 2 at $DIR/check-maybe-uninit.rs:+3:17: +3:48
+                                           // mir::Constant
+                                           // + span: $DIR/check-maybe-uninit.rs:7:17: 7:46
+                                           // + user_ty: UserType(1)
+                                           // + literal: Const { ty: fn() -> MaybeUninit<String> {MaybeUninit::<String>::uninit}, val: Value(<ZST>) }
+      }
+  
+      bb3: {
+          _3 = MaybeUninit::<String>::assume_init(move _4) -> [return: bb4, unwind: bb6]; // scope 2 at $DIR/check-maybe-uninit.rs:+3:17: +3:62
+                                           // mir::Constant
+                                           // + span: $DIR/check-maybe-uninit.rs:7:49: 7:60
+                                           // + literal: Const { ty: unsafe fn(MaybeUninit<String>) -> String {MaybeUninit::<String>::assume_init}, val: Value(<ZST>) }
+      }
+  
+      bb4: {
+          StorageDead(_4);                 // scope 2 at $DIR/check-maybe-uninit.rs:+3:61: +3:62
+          drop(_3) -> [return: bb5, unwind: bb6]; // scope 2 at $DIR/check-maybe-uninit.rs:+3:62: +3:63
+      }
+  
+      bb5: {
+          StorageDead(_3);                 // scope 2 at $DIR/check-maybe-uninit.rs:+3:62: +3:63
+          _0 = const ();                   // scope 1 at $DIR/check-maybe-uninit.rs:+1:5: +4:6
+          return;                          // scope 0 at $DIR/check-maybe-uninit.rs:+5:2: +5:2
+      }
+  
+      bb6 (cleanup): {
+          resume;                          // scope 0 at $DIR/check-maybe-uninit.rs:+0:1: +5:2
++     }
++ 
++     bb7: {
++         _5 = <ZST>: fn() {assert_uninit_valid_wrapper::<u8>}() -> [return: bb1, unwind: bb6]; // scope 0 at $DIR/check-maybe-uninit.rs:+2:45: +2:58
++                                          // mir::Constant
++                                          // + span: $DIR/check-maybe-uninit.rs:6:45: 6:58
++                                          // + literal: Const { ty: fn() {assert_uninit_valid_wrapper::<u8>}, val: Value(ValTree::Branch(..)) }
++     }
++ 
++     bb8: {
++         _6 = <ZST>: fn() {assert_uninit_valid_wrapper::<String>}() -> [return: bb3, unwind: bb6]; // scope 0 at $DIR/check-maybe-uninit.rs:+3:49: +3:62
++                                          // mir::Constant
++                                          // + span: $DIR/check-maybe-uninit.rs:7:49: 7:62
++                                          // + literal: Const { ty: fn() {assert_uninit_valid_wrapper::<String>}, val: Value(ValTree::Branch(..)) }
+      }
+  }
+  

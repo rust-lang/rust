@@ -1,0 +1,72 @@
+error: any use of this value will cause an error
+  --> $DIR/maybe_uninit_checks_consts_invalid.rs:5:51
+   |
+LL | const X: () = {
+   | -----------
+LL |     unsafe { MaybeUninit::<&'static ()>::uninit().assume_init(); }
+   |                                                   ^^^^^^^^^^^^^ aborted execution: attempted to leave type `&()` uninitialized, which is invalid
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+warning: the type `&()` does not permit being left uninitialized
+  --> $DIR/maybe_uninit_checks_consts_invalid.rs:5:14
+   |
+LL |     unsafe { MaybeUninit::<&'static ()>::uninit().assume_init(); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              this code causes undefined behavior when executed
+   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: `#[warn(invalid_value)]` on by default
+   = note: references must be non-null
+
+warning: the type `bool` does not permit being left uninitialized
+  --> $DIR/maybe_uninit_checks_consts_invalid.rs:6:14
+   |
+LL |     unsafe { MaybeUninit::<bool>::uninit().assume_init(); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              this code causes undefined behavior when executed
+   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: booleans must be either `true` or `false`
+
+warning: the type `char` does not permit being left uninitialized
+  --> $DIR/maybe_uninit_checks_consts_invalid.rs:7:14
+   |
+LL |     unsafe { MaybeUninit::<char>::uninit().assume_init(); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              this code causes undefined behavior when executed
+   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: characters must be a valid Unicode codepoint
+
+warning: the type `u8` does not permit being left uninitialized
+  --> $DIR/maybe_uninit_checks_consts_invalid.rs:8:14
+   |
+LL |     unsafe { MaybeUninit::<u8>::uninit().assume_init(); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              this code causes undefined behavior when executed
+   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |
+   = note: integers must not be uninitialized
+
+error: aborting due to previous error; 4 warnings emitted
+
+Future incompatibility report: Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/maybe_uninit_checks_consts_invalid.rs:5:51
+   |
+LL | const X: () = {
+   | -----------
+LL |     unsafe { MaybeUninit::<&'static ()>::uninit().assume_init(); }
+   |                                                   ^^^^^^^^^^^^^ aborted execution: attempted to leave type `&()` uninitialized, which is invalid
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+

@@ -624,6 +624,10 @@ impl<T> MaybeUninit<T> {
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
+
+            // When this function is called directly after <MaybeUninit<T>>::uninit, we insert calls to
+            // `intrinsics::assert_zero_valid_wrapper` or `intrinsics::assert_uninit_valid_wrapper` respectively.
+
             ManuallyDrop::into_inner(self.value)
         }
     }

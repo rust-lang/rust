@@ -328,6 +328,10 @@ language_item_table! {
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
 
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
+
+    // Lang item because the compiler inserts calls to it when uninit memory is used
+    AssertUninitValid,       sym::assert_uninit_valid, assert_uninit_valid,        Target::Fn,             GenericRequirement::Exact(1);
+    AssertZeroValid,         sym::assert_zero_valid,   assert_zero_valid,          Target::Fn,             GenericRequirement::Exact(1);
 }
 
 pub enum GenericRequirement {

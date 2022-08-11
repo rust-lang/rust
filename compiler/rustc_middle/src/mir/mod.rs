@@ -3022,6 +3022,11 @@ impl fmt::Debug for Location {
 impl Location {
     pub const START: Location = Location { block: START_BLOCK, statement_index: 0 };
 
+    /// Create a new location at the start of a basic block.
+    pub fn start_of_block(block: BasicBlock) -> Self {
+        Self { block, statement_index: 0 }
+    }
+
     /// Returns the location immediately after this one within the enclosing block.
     ///
     /// Note that if this location represents a terminator, then the

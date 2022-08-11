@@ -383,6 +383,7 @@ symbols! {
         assert_mem_uninitialized_valid,
         assert_ne_macro,
         assert_receiver_is_total_eq,
+        assert_uninit_valid,
         assert_zero_valid,
         asserting,
         associated_const_equality,

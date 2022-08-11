@@ -964,6 +964,14 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn assert_mem_uninitialized_valid<T>();
 
+    /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[cfg(bootstrap)]
+    pub fn assert_uninit_valid<T>();
+
     /// Gets a reference to a static `Location` indicating where it was called.
     ///
     /// Note that, unlike most intrinsics, this is safe to call;
@@ -2526,4 +2534,42 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         );
         write_bytes(dst, val, count)
     }
+}
+
+// Wrappers around the init assertion intrinsics. Calls to these
+// are inserted in the check_maybe_uninit mir pass
+
+#[unstable(
+    feature = "maybe_uninit_checks_internals",
+    issue = "none",
+    reason = "implementation detail of panics on invalid MaybeUninit usage"
+)]
+#[rustc_allow_const_fn_unstable(const_assert_type2)]
+#[rustc_const_stable(
+    feature = "const_maybe_uninit_checks_internals",
+    since = "CURRENT_RUSTC_VERSION"
+)]
+#[cfg_attr(not(bootstrap), lang = "assert_zero_valid")]
+#[track_caller]
+pub const fn assert_zero_valid_wrapper<T>() {
+    assert_zero_valid::<T>();
+}
+
+#[unstable(
+    feature = "maybe_uninit_checks_internals",
+    issue = "none",
+    reason = "implementation detail of panics on invalid MaybeUninit usage"
+)]
+#[rustc_allow_const_fn_unstable(const_assert_type2)]
+#[rustc_const_stable(
+    feature = "const_maybe_uninit_checks_internals",
+    since = "CURRENT_RUSTC_VERSION"
+)]
+#[cfg_attr(not(bootstrap), lang = "assert_uninit_valid")]
+#[track_caller]
+pub const fn assert_uninit_valid_wrapper<T>() {
+    #[cfg(bootstrap)]
+    assert_uninit_valid::<T>();
+    #[cfg(not(bootstrap))]
+    assert_mem_uninitialized_valid::<T>();
 }

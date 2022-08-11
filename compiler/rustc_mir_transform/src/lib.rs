@@ -48,6 +48,7 @@ mod add_call_guards;
 mod add_moves_for_packed_drops;
 mod add_retag;
 mod check_const_item_mutation;
+mod check_maybe_uninit;
 mod check_packed_ref;
 pub mod check_unsafety;
 // This pass is public to allow external drivers to perform MIR cleanup
@@ -300,6 +301,7 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
             // What we need to do constant evaluation.
+            &check_maybe_uninit::CheckMaybeUninit,
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck, // Just a lint
         ],
@@ -497,6 +499,8 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
+        // FIXME: Preferably we'd run this before const eval once the stability of the wrapper function is figured out
+        &check_maybe_uninit::CheckMaybeUninit,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("early-opt"),
