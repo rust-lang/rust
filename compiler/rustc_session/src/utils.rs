@@ -1,5 +1,11 @@
+use crate::config::dep_tracking::DepTrackingHash;
+use crate::config::ErrorOutputType;
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use std::collections::hash_map::DefaultHasher;
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 impl Session {
@@ -90,4 +96,60 @@ impl CanonicalizedPath {
     pub fn original(&self) -> &PathBuf {
         &self.original
     }
+}
+
+/// A path that should be invalidated when the file that it points to has changed.
+/// `ContentHashedFilePath` is identified by its contents only, so even if the filepath itself
+/// changes, but the contents stay the same, it will contain the same hash.
+#[derive(Clone, Debug)]
+pub struct ContentHashedFilePath {
+    path: PathBuf,
+    hash: (u64, u64),
+}
+
+impl ContentHashedFilePath {
+    pub fn new(path: PathBuf) -> Self {
+        // If the file does not exist or couldn't be hashed, just use a placeholder hash
+        let hash = hash_file(&path).unwrap_or((0, 0));
+        Self { path, hash }
+    }
+
+    pub fn as_path(&self) -> &Path {
+        self.path.as_path()
+    }
+}
+
+impl From<ContentHashedFilePath> for PathBuf {
+    fn from(path: ContentHashedFilePath) -> Self {
+        path.path
+    }
+}
+
+impl DepTrackingHash for ContentHashedFilePath {
+    fn hash(
+        &self,
+        hasher: &mut DefaultHasher,
+        _error_format: ErrorOutputType,
+        _for_crate_hash: bool,
+    ) {
+        std::hash::Hash::hash(&self.hash, hasher);
+    }
+}
+
+fn hash_file(path: &Path) -> std::io::Result<(u64, u64)> {
+    let mut hasher = StableHasher::new();
+
+    let mut file = File::open(path)?;
+    let mut buffer = [0; 128 * 1024];
+
+    loop {
+        let count = file.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+
+        buffer[..count].hash_stable(&mut (), &mut hasher);
+    }
+
+    Ok(hasher.finalize())
 }
