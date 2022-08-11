@@ -95,8 +95,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
     /// refactored.
-    #[unstable(feature = "ptr_const_cast", issue = "92675")]
-    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[stable(feature = "ptr_const_cast", since = "1.65.0")]
+    #[rustc_const_stable(feature = "ptr_const_cast", since = "1.65.0")]
     pub const fn cast_mut(self) -> *mut T {
         self as _
     }

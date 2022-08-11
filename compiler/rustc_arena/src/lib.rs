@@ -19,7 +19,6 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
-#![feature(ptr_const_cast)]
 
 use smallvec::SmallVec;
 
