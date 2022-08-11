@@ -117,9 +117,34 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-// FIXME: Use EFI_RNG_PROTOCOL
 pub fn hashmap_random_keys() -> (u64, u64) {
-    (1, 2)
+    unsafe { (get_random().unwrap_or(1), get_random().unwrap_or(2)) }
+}
+
+unsafe fn get_random() -> Option<u64> {
+    use r_efi::protocols::rng;
+
+    let mut buf = [0u8; 8];
+    let handles = uefi::env::locate_handles(rng::PROTOCOL_GUID).ok()?;
+    for handle in handles {
+        if let Ok(protocol) = uefi::env::open_protocol::<rng::Protocol>(handle, rng::PROTOCOL_GUID)
+        {
+            let r = unsafe {
+                ((*protocol.as_ptr()).get_rng)(
+                    protocol.as_ptr(),
+                    crate::ptr::null_mut(),
+                    buf.len(),
+                    buf.as_mut_ptr(),
+                )
+            };
+            if r.is_error() {
+                continue;
+            } else {
+                return Some(u64::from_le_bytes(buf));
+            }
+        }
+    }
+    None
 }
 
 extern "C" {

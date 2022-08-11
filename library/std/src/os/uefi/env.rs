@@ -48,7 +48,8 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
     NonNull::new(runtime_services)
 }
 
-pub(crate) fn open_protocol<T>(
+#[unstable(feature = "uefi_std", issue = "none")]
+pub fn open_protocol<T>(
     handle: NonNull<c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
@@ -77,7 +78,8 @@ pub(crate) fn open_protocol<T>(
     }
 }
 
-pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
+#[unstable(feature = "uefi_std", issue = "none")]
+pub fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
     fn inner(
         guid: &mut Guid,
         boot_services: NonNull<BootServices>,
