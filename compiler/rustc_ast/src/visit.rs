@@ -168,8 +168,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_param_bound(&mut self, bounds: &'ast GenericBound, _ctxt: BoundKind) {
         walk_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
-        walk_poly_trait_ref(self, t, m)
+    fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef) {
+        walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &'ast VariantData) {
         walk_struct_def(self, s)
@@ -281,11 +281,8 @@ pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime
     visitor.visit_ident(lifetime.ident);
 }
 
-pub fn walk_poly_trait_ref<'a, V>(
-    visitor: &mut V,
-    trait_ref: &'a PolyTraitRef,
-    _: &TraitBoundModifier,
-) where
+pub fn walk_poly_trait_ref<'a, V>(visitor: &mut V, trait_ref: &'a PolyTraitRef)
+where
     V: Visitor<'a>,
 {
     walk_list!(visitor, visit_generic_param, &trait_ref.bound_generic_params);
@@ -587,7 +584,7 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
 
 pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericBound) {
     match *bound {
-        GenericBound::Trait(ref typ, ref modifier) => visitor.visit_poly_trait_ref(typ, modifier),
+        GenericBound::Trait(ref typ, ref _modifier) => visitor.visit_poly_trait_ref(typ),
         GenericBound::Outlives(ref lifetime) => {
             visitor.visit_lifetime(lifetime, LifetimeCtxt::Bound)
         }

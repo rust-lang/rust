@@ -79,9 +79,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &PolyTraitRef, m: &TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &PolyTraitRef) {
         self.count += 1;
-        walk_poly_trait_ref(self, t, m)
+        walk_poly_trait_ref(self, t)
     }
     fn visit_variant_data(&mut self, s: &VariantData) {
         self.count += 1;

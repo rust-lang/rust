@@ -1538,9 +1538,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_param_bound(self, bound)
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {
+    fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef) {
         self.check_late_bound_lifetime_defs(&t.bound_generic_params);
-        visit::walk_poly_trait_ref(self, t, m);
+        visit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_variant_data(&mut self, s: &'a VariantData) {
