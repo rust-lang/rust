@@ -86,26 +86,28 @@ impl<'k> StatCollector<'k> {
 
         stats.sort_by_key(|&(_, ref d)| d.count * d.size);
 
-        let mut total_size = 0;
+        let total_size = stats.iter().map(|(_, data)| data.count * data.size).sum();
 
         eprintln!("\n{}\n", title);
 
         eprintln!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
         eprintln!("----------------------------------------------------------------");
 
+        let percent = |m, n| { (m * 100) as f64 / n as f64 };
+
         for (label, data) in stats {
+            let size = data.count * data.size;
             eprintln!(
-                "{:<18}{:>18}{:>14}{:>14}",
+                "{:<18}{:>10} ({:4.1}%){:>14}{:>14}",
                 label,
-                to_readable_str(data.count * data.size),
+                to_readable_str(size),
+                percent(size, total_size),
                 to_readable_str(data.count),
                 to_readable_str(data.size)
             );
-
-            total_size += data.count * data.size;
         }
         eprintln!("----------------------------------------------------------------");
-        eprintln!("{:<18}{:>18}\n", "Total", to_readable_str(total_size));
+        eprintln!("{:<18}{:>10}\n", "Total", to_readable_str(total_size));
     }
 }
 
