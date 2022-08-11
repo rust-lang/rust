@@ -1,0 +1,83 @@
+
+PRE EXPANSION AST STATS
+
+Name                Accumulated Size         Count     Item Size
+----------------------------------------------------------------
+Lifetime                          32             2            16
+MacCall                           64             1            64
+Local                             72             1            72
+Arm                               96             2            48
+FieldDef                         160             2            80
+ForeignItem                      160             1           160
+Stmt                             160             5            32
+FnDecl                           200             5            40
+Variant                          240             2           120
+Block                            288             6            48
+Attribute                        304             2           152
+ImplItem                         320             2           160
+TraitItem                        320             2           160
+GenericBound                     352             4            88
+PathSegment                      720            30            24
+Expr                             832             8           104
+Pat                              840             7           120
+Ty                             1_344            14            96
+Item                           1_800             9           200
+----------------------------------------------------------------
+Total                          8_304
+
+
+POST EXPANSION AST STATS
+
+Name                Accumulated Size         Count     Item Size
+----------------------------------------------------------------
+Lifetime                          32             2            16
+Local                             72             1            72
+Arm                               96             2            48
+FieldDef                         160             2            80
+ForeignItem                      160             1           160
+Stmt                             160             5            32
+FnDecl                           200             5            40
+Variant                          240             2           120
+Block                            288             6            48
+ImplItem                         320             2           160
+TraitItem                        320             2           160
+GenericBound                     352             4            88
+Attribute                        608             4           152
+PathSegment                      792            33            24
+Pat                              840             7           120
+Expr                             936             9           104
+Ty                             1_344            14            96
+Item                           2_200            11           200
+----------------------------------------------------------------
+Total                          9_120
+
+
+HIR STATS
+
+Name                Accumulated Size         Count     Item Size
+----------------------------------------------------------------
+Param                             64             2            32
+Local                             64             1            64
+ForeignItem                       72             1            72
+FieldDef                          96             2            48
+Arm                               96             2            48
+Stmt                              96             3            32
+FnDecl                           120             3            40
+Lifetime                         128             4            32
+Variant                          160             2            80
+ImplItem                         176             2            88
+GenericBound                     192             4            48
+TraitItem                        192             2            96
+WherePredicate                   216             3            72
+Block                            288             6            48
+QPath                            408            17            24
+Pat                              440             5            88
+Attribute                        608             4           152
+Expr                             672            12            56
+Item                             960            12            80
+Ty                             1_152            16            72
+Path                           1_296            27            48
+PathSegment                    2_240            40            56
+----------------------------------------------------------------
+Total                          9_736
+
