@@ -116,11 +116,9 @@ impl Thread {
         debug_assert_eq!(ret, 0);
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(target_os = "android")]
     pub fn set_name(name: &CStr) {
         const PR_SET_NAME: libc::c_int = 15;
-        // pthread wrapper only appeared in glibc 2.12, so we use syscall
-        // directly.
         unsafe {
             libc::prctl(
                 PR_SET_NAME,
@@ -129,6 +127,14 @@ impl Thread {
                 0 as libc::c_ulong,
                 0 as libc::c_ulong,
             );
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn set_name(name: &CStr) {
+        unsafe {
+            // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
+            libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
         }
     }
 
