@@ -544,17 +544,21 @@ def check_command(c, cache):
         cerr = ""
         if c.cmd in ['has', 'hasraw', 'matches', 'matchesraw']:  # string test
             regexp = c.cmd.startswith('matches')
-            if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:  # @has <path> = file existence
+
+            # @has <path> = file existence
+            if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
                 try:
                     cache.get_file(c.args[0])
                     ret = True
                 except FailedCheck as err:
                     cerr = str(err)
                     ret = False
-            elif len(c.args) == 2 and 'raw' in c.cmd:  # @hasraw/matchesraw <path> <pat> = string test
+            # @hasraw/matchesraw <path> <pat> = string test
+            elif len(c.args) == 2 and 'raw' in c.cmd:
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
-            elif len(c.args) == 3 and 'raw' not in c.cmd:  # @has/matches <path> <pat> <match> = XML tree test
+            # @has/matches <path> <pat> <match> = XML tree test
+            elif len(c.args) == 3 and 'raw' not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
