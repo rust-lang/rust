@@ -1289,14 +1289,9 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'hir hir::Variant<'_>,
-        g: &'hir hir::Generics<'_>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
         self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
-            intravisit::walk_variant(this, v, g, item_id);
+            intravisit::walk_variant(this, v);
         });
     }
 

@@ -276,14 +276,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_field_def(self, s)
     }
 
-    fn visit_variant(
-        &mut self,
-        v: &'v hir::Variant<'v>,
-        g: &'v hir::Generics<'v>,
-        item_id: hir::HirId,
-    ) {
+    fn visit_variant(&mut self, v: &'v hir::Variant<'v>) {
         self.record("Variant", Id::None, v);
-        hir_visit::walk_variant(self, v, g, item_id)
+        hir_visit::walk_variant(self, v)
     }
 
     fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {

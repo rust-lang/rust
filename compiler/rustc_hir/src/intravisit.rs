@@ -385,30 +385,17 @@ pub trait Visitor<'v>: Sized {
     fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef<'v>, m: TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
     }
-    fn visit_variant_data(
-        &mut self,
-        s: &'v VariantData<'v>,
-        _: Symbol,
-        _: &'v Generics<'v>,
-        _parent_id: HirId,
-        _: Span,
-    ) {
+    fn visit_variant_data(&mut self, s: &'v VariantData<'v>) {
         walk_struct_def(self, s)
     }
     fn visit_field_def(&mut self, s: &'v FieldDef<'v>) {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(
-        &mut self,
-        enum_definition: &'v EnumDef<'v>,
-        generics: &'v Generics<'v>,
-        item_id: HirId,
-        _: Span,
-    ) {
-        walk_enum_def(self, enum_definition, generics, item_id)
+    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>, item_id: HirId) {
+        walk_enum_def(self, enum_definition, item_id)
     }
-    fn visit_variant(&mut self, v: &'v Variant<'v>, g: &'v Generics<'v>, item_id: HirId) {
-        walk_variant(self, v, g, item_id)
+    fn visit_variant(&mut self, v: &'v Variant<'v>) {
+        walk_variant(self, v)
     }
     fn visit_label(&mut self, label: &'v Label) {
         walk_label(self, label)
@@ -572,7 +559,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         ItemKind::Enum(ref enum_definition, ref generics) => {
             visitor.visit_generics(generics);
             // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
-            visitor.visit_enum_def(enum_definition, generics, item.hir_id(), item.span)
+            visitor.visit_enum_def(enum_definition, item.hir_id())
         }
         ItemKind::Impl(Impl {
             unsafety: _,
@@ -595,13 +582,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         | ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_id(item.hir_id());
-            visitor.visit_variant_data(
-                struct_definition,
-                item.ident.name,
-                generics,
-                item.hir_id(),
-                item.span,
-            );
+            visitor.visit_variant_data(struct_definition);
         }
         ItemKind::Trait(.., ref generics, bounds, trait_item_refs) => {
             visitor.visit_id(item.hir_id());
@@ -649,28 +630,16 @@ pub fn walk_use<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>, hir_id:
 pub fn walk_enum_def<'v, V: Visitor<'v>>(
     visitor: &mut V,
     enum_definition: &'v EnumDef<'v>,
-    generics: &'v Generics<'v>,
     item_id: HirId,
 ) {
     visitor.visit_id(item_id);
-    walk_list!(visitor, visit_variant, enum_definition.variants, generics, item_id);
+    walk_list!(visitor, visit_variant, enum_definition.variants);
 }
 
-pub fn walk_variant<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    variant: &'v Variant<'v>,
-    generics: &'v Generics<'v>,
-    parent_item_id: HirId,
-) {
+pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V, variant: &'v Variant<'v>) {
     visitor.visit_ident(variant.ident);
     visitor.visit_id(variant.id);
-    visitor.visit_variant_data(
-        &variant.data,
-        variant.ident.name,
-        generics,
-        parent_item_id,
-        variant.span,
-    );
+    visitor.visit_variant_data(&variant.data);
     walk_list!(visitor, visit_anon_const, &variant.disr_expr);
 }
 

@@ -383,16 +383,12 @@ fn find_type_parameters(
         }
 
         // Place bound generic params on a stack, to extract them when a type is encountered.
-        fn visit_poly_trait_ref(
-            &mut self,
-            trait_ref: &'a ast::PolyTraitRef,
-            modifier: &'a ast::TraitBoundModifier,
-        ) {
+        fn visit_poly_trait_ref(&mut self, trait_ref: &'a ast::PolyTraitRef) {
             let stack_len = self.bound_generic_params_stack.len();
             self.bound_generic_params_stack
                 .extend(trait_ref.bound_generic_params.clone().into_iter());
 
-            visit::walk_poly_trait_ref(self, trait_ref, modifier);
+            visit::walk_poly_trait_ref(self, trait_ref);
 
             self.bound_generic_params_stack.truncate(stack_len);
         }

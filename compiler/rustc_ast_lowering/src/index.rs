@@ -295,14 +295,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.insert(lifetime.span, lifetime.hir_id, Node::Lifetime(lifetime));
     }
 
-    fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics<'hir>, item_id: HirId) {
+    fn visit_variant(&mut self, v: &'hir Variant<'hir>) {
         self.insert(v.span, v.id, Node::Variant(v));
         self.with_parent(v.id, |this| {
             // Register the constructor of this variant.
             if let Some(ctor_hir_id) = v.data.ctor_hir_id() {
                 this.insert(v.span, ctor_hir_id, Node::Ctor(&v.data));
             }
-            intravisit::walk_variant(this, v, g, item_id);
+            intravisit::walk_variant(this, v);
         });
     }
 

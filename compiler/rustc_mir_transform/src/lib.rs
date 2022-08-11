@@ -29,7 +29,6 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
-use rustc_span::{Span, Symbol};
 
 #[macro_use]
 mod pass_manager;
@@ -159,14 +158,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
         set: &'a mut FxIndexSet<LocalDefId>,
     }
     impl<'tcx> Visitor<'tcx> for GatherCtors<'_, 'tcx> {
-        fn visit_variant_data(
-            &mut self,
-            v: &'tcx hir::VariantData<'tcx>,
-            _: Symbol,
-            _: &'tcx hir::Generics<'tcx>,
-            _: hir::HirId,
-            _: Span,
-        ) {
+        fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
                 self.set.insert(self.tcx.hir().local_def_id(hir_id));
             }
