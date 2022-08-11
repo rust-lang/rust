@@ -924,6 +924,11 @@ fn compare_browser_ui_test_version(installed_version: &str, src: &Path) {
                      one used in the CI (`{}`)",
                     installed_version, v
                 );
+                eprintln!(
+                    "You can install this version using `npm update browser-ui-test` or by using \
+                     `npm install browser-ui-test@{}`",
+                    v,
+                );
             }
         }
         Err(e) => eprintln!("Couldn't find the CI browser-ui-test version: {:?}", e),
