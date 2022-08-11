@@ -231,7 +231,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We now fake capture information for all variables that are mentioned within the closure
         // We do this after handling migrations so that min_captures computes before
-        if !enable_precise_capture(self.tcx, span) {
+        if !enable_precise_capture(self.tcx, span)
+            // (ouz-a) #93242 - ICE happens because closure_min_captures is empty with
+            // 2021 edition, because it sets `enable_precise_capture` to true, which won't allow us
+            // fake capture information this check sidesteps that and avoids the ICE.
+            || (infer_kind == None && self.typeck_results.borrow().closure_min_captures.is_empty())
+        {
             let mut capture_information: InferredCaptureInformation<'tcx> = Default::default();
 
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
