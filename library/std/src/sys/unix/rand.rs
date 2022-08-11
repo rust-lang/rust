@@ -1,13 +1,13 @@
-use crate::mem;
-use crate::slice;
-
 pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut v = (0, 0);
-    unsafe {
-        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8, mem::size_of_val(&v));
-        imp::fill_bytes(view);
-    }
-    v
+    const KEY_LEN: usize = core::mem::size_of::<u64>();
+
+    let mut v = [0u8; KEY_LEN * 2];
+    imp::fill_bytes(&mut v);
+
+    let key1 = v[0..KEY_LEN].try_into().unwrap();
+    let key2 = v[KEY_LEN..].try_into().unwrap();
+
+    (u64::from_ne_bytes(key1), u64::from_ne_bytes(key2))
 }
 
 #[cfg(all(
