@@ -2773,11 +2773,10 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
         sources::print_src(
             w,
             contents_subset,
-            call_data.edition,
             file_span,
             cx,
             &root_path,
-            Some(highlight::DecorationInfo(decoration_info)),
+            highlight::DecorationInfo(decoration_info),
             sources::SourceContext::Embedded { offset: line_min },
         );
         write!(w, "</div></div>");
