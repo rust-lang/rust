@@ -21,6 +21,70 @@ use super::{
 };
 use crate::ty;
 
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(TyEncodable, TyDecodable)]
+#[derive(HashStable)]
+pub enum AllocBytes {
+    Boxed(Box<[u8]>),
+    /// Address and length of the allocation.
+    Addr((u64, usize)),
+}
+
+impl AllocBytes {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Boxed(b) => b.len(),
+            Self::Addr((_, len)) => *len,
+        }
+    }
+
+    pub fn get_addr(&self) -> u64 {
+        match self {
+            Self::Boxed(b) => b.as_ptr() as u64,
+            Self::Addr((addr, _)) => *addr,
+        }
+    }
+
+    pub fn get_slice(&self) -> &[u8] {
+        match self {
+            Self::Boxed(b) => &b,
+            Self::Addr((_addr, _len)) => todo!(),
+        }
+    }
+
+    pub fn get_slice_from_range(&self, range: Range<usize>) -> &[u8] {
+        match &self {
+            Self::Boxed(b) => &b[range],
+            Self::Addr((_addr, _len)) => {
+                // TODO! 
+                todo!();
+            }
+        }
+    }
+
+    pub fn get_slice_from_range_mut<'a>(&'a mut self, range: Range<usize>) -> &'a mut [u8]{
+        match self {
+            AllocBytes::Boxed(ref mut b) => &mut b[range],
+            AllocBytes::Addr((_addr, _len)) => {
+                // TODO!
+                todo!();
+            }
+        }
+    }
+
+    pub fn add_ptr(&mut self, to_add: usize) -> *mut u8{
+        match self {
+            AllocBytes::Boxed(b) => {
+                b.as_mut_ptr().wrapping_add(to_add)
+            },
+            AllocBytes::Addr((_addr, _len)) => {
+                // TODO!
+                todo!();
+            }
+        }
+    }
+}
+
 /// This type represents an Allocation in the Miri/CTFE core engine.
 ///
 /// Its public API is rather low-level, working directly with allocation offsets and a custom error
@@ -33,7 +97,7 @@ use crate::ty;
 pub struct Allocation<Prov = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Box<[u8]>,
+    bytes: AllocBytes,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -76,9 +140,11 @@ impl hash::Hash for Allocation {
             // Hash the buffer's length.
             byte_count.hash(state);
 
-            // And its head and tail.
-            self.bytes[..MAX_BYTES_TO_HASH].hash(state);
-            self.bytes[byte_count - MAX_BYTES_TO_HASH..].hash(state);
+            // And its head and tail, if it is a Box<[u8]>.
+            if let AllocBytes::Boxed(byte_box) = &self.bytes {
+                byte_box[..MAX_BYTES_TO_HASH].hash(state);
+                byte_box[byte_count - MAX_BYTES_TO_HASH..].hash(state);
+            }
         } else {
             self.bytes.hash(state);
         }
@@ -223,7 +289,7 @@ impl<Prov> Allocation<Prov> {
         bytes[..slice.len()].copy_from_slice(&slice);
         
         Self {
-            bytes,
+            bytes: AllocBytes::Boxed(bytes),
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, true),
             align,
@@ -266,7 +332,7 @@ impl<Prov> Allocation<Prov> {
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;
         Ok(Allocation {
-            bytes,
+            bytes: AllocBytes::Boxed(bytes),
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, false),
             align,
@@ -287,6 +353,7 @@ impl Allocation {
     ) -> Result<Allocation<Prov, Extra>, Err> {
         // Compute new pointer provenance, which also adjusts the bytes.
         // Realign the pointer
+
         let align_usize: usize = self.align.bytes().try_into().unwrap();
         let count_align = ((self.bytes.len() / align_usize) + 1)*align_usize;
         
@@ -294,7 +361,7 @@ impl Allocation {
         vec_align.resize(count_align, 0);
         assert!(vec_align.as_ptr() as u64 % self.align.bytes() == 0);
 
-        vec_align[..self.bytes.len()].copy_from_slice(&self.bytes);
+        vec_align[..self.bytes.len()].copy_from_slice(self.bytes.get_slice());
         let mut bytes = vec_align.into_boxed_slice();
         let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
@@ -312,7 +379,7 @@ impl Allocation {
         
         // Create allocation.
         Ok(Allocation {
-            bytes,
+            bytes: AllocBytes::Boxed(bytes),
             relocations: Relocations::from_presorted(new_relocations),
             init_mask: self.init_mask,
             align: self.align,
@@ -337,7 +404,7 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
     /// edges) at all.
     /// This must not be used for reads affecting the interpreter execution.
     pub fn inspect_with_uninit_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
-        &self.bytes[range]
+        self.bytes.get_slice_from_range(range)
     }
 
     /// Returns the mask indicating which bytes are initialized.
@@ -355,14 +422,14 @@ impl<Prov, Extra> Allocation<Prov, Extra> {
 impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
     /// Get the pointer of the [u8] of bytes.
     pub fn get_bytes_addr(&self) -> Size {
-        Size::from_bytes(self.bytes.as_ptr() as u64)
+        Size::from_bytes(self.bytes.get_addr())
     }
 
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
     /// caring about relocations. It just deduplicates some code between `read_scalar`
     /// and `get_bytes_internal`.
     fn get_bytes_even_more_internal(&self, range: AllocRange) -> &[u8] {
-        &self.bytes[range.start.bytes_usize()..range.end().bytes_usize()]
+        self.bytes.get_slice_from_range(range.start.bytes_usize()..range.end().bytes_usize())
     }
 
     /// The last argument controls whether we error out when there are uninitialized or pointer
@@ -431,7 +498,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         self.mark_init(range, true);
         self.clear_relocations(cx, range)?;
 
-        Ok(&mut self.bytes[range.start.bytes_usize()..range.end().bytes_usize()])
+        Ok(self.bytes.get_slice_from_range_mut(range.start.bytes_usize()..range.end().bytes_usize()))
     }
 
     /// A raw pointer variant of `get_bytes_mut` that avoids invalidating existing aliases into this memory.
@@ -444,7 +511,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
         self.clear_relocations(cx, range)?;
 
         assert!(range.end().bytes_usize() <= self.bytes.len()); // need to do our own bounds-check
-        let begin_ptr = self.bytes.as_mut_ptr().wrapping_add(range.start.bytes_usize());
+        let begin_ptr = self.bytes.add_ptr(range.start.bytes_usize());
         let len = range.end().bytes_usize() - range.start.bytes_usize();
         Ok(ptr::slice_from_raw_parts_mut(begin_ptr, len))
     }
