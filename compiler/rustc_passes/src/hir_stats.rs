@@ -21,9 +21,26 @@ enum Id {
     None,
 }
 
-struct NodeData {
+struct NodeStats {
     count: usize,
     size: usize,
+}
+
+impl NodeStats {
+    fn new() -> NodeStats {
+        NodeStats { count: 0, size: 0 }
+    }
+}
+
+struct Node {
+    stats: NodeStats,
+    subnodes: FxHashMap<&'static str, NodeStats>,
+}
+
+impl Node {
+    fn new() -> Node {
+        Node { stats: NodeStats::new(), subnodes: FxHashMap::default() }
+    }
 }
 
 /// This type measures the size of AST and HIR nodes, by implementing the AST
@@ -45,14 +62,14 @@ struct NodeData {
 /// unfortunate.
 struct StatCollector<'k> {
     krate: Option<Map<'k>>,
-    data: FxHashMap<&'static str, NodeData>,
+    nodes: FxHashMap<&'static str, Node>,
     seen: FxHashSet<Id>,
 }
 
 pub fn print_hir_stats(tcx: TyCtxt<'_>) {
     let mut collector = StatCollector {
         krate: Some(tcx.hir()),
-        data: FxHashMap::default(),
+        nodes: FxHashMap::default(),
         seen: FxHashSet::default(),
     };
     tcx.hir().walk_toplevel_module(&mut collector);
@@ -64,47 +81,82 @@ pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
-        StatCollector { krate: None, data: FxHashMap::default(), seen: FxHashSet::default() };
+        StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
     collector.print(title);
 }
 
 impl<'k> StatCollector<'k> {
-    fn record<T>(&mut self, label: &'static str, id: Id, node: &T) {
+    // Record a top-level node.
+    fn record<T>(&mut self, label: &'static str, id: Id, val: &T) {
+        self.record_inner(label, None, id, val);
+    }
+
+    // Record a two-level entry, with a top-level enum type and a variant.
+    fn record_variant<T>(&mut self, label1: &'static str, label2: &'static str, id: Id, val: &T) {
+        self.record_inner(label1, Some(label2), id, val);
+    }
+
+    fn record_inner<T>(
+        &mut self,
+        label1: &'static str,
+        label2: Option<&'static str>,
+        id: Id,
+        val: &T,
+    ) {
         if id != Id::None && !self.seen.insert(id) {
             return;
         }
 
-        let entry = self.data.entry(label).or_insert(NodeData { count: 0, size: 0 });
+        let node = self.nodes.entry(label1).or_insert(Node::new());
+        node.stats.count += 1;
+        node.stats.size = std::mem::size_of_val(val);
 
-        entry.count += 1;
-        entry.size = std::mem::size_of_val(node);
+        if let Some(label2) = label2 {
+            let subnode = node.subnodes.entry(label2).or_insert(NodeStats::new());
+            subnode.count += 1;
+            subnode.size = std::mem::size_of_val(val);
+        }
     }
 
     fn print(&self, title: &str) {
-        let mut stats: Vec<_> = self.data.iter().collect();
+        let mut nodes: Vec<_> = self.nodes.iter().collect();
+        nodes.sort_by_key(|&(_, ref node)| node.stats.count * node.stats.size);
 
-        stats.sort_by_key(|&(_, ref d)| d.count * d.size);
-
-        let total_size = stats.iter().map(|(_, data)| data.count * data.size).sum();
+        let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
         eprintln!("\n{}\n", title);
 
         eprintln!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
         eprintln!("----------------------------------------------------------------");
 
-        let percent = |m, n| { (m * 100) as f64 / n as f64 };
+        let percent = |m, n| (m * 100) as f64 / n as f64;
 
-        for (label, data) in stats {
-            let size = data.count * data.size;
+        for (label, node) in nodes {
+            let size = node.stats.count * node.stats.size;
             eprintln!(
                 "{:<18}{:>10} ({:4.1}%){:>14}{:>14}",
                 label,
                 to_readable_str(size),
                 percent(size, total_size),
-                to_readable_str(data.count),
-                to_readable_str(data.size)
+                to_readable_str(node.stats.count),
+                to_readable_str(node.stats.size)
             );
+            if !node.subnodes.is_empty() {
+                let mut subnodes: Vec<_> = node.subnodes.iter().collect();
+                subnodes.sort_by_key(|&(_, ref subnode)| subnode.count * subnode.size);
+
+                for (label, subnode) in subnodes {
+                    let size = subnode.count * subnode.size;
+                    eprintln!(
+                        "- {:<18}{:>10} ({:4.1}%){:>14}",
+                        label,
+                        to_readable_str(size),
+                        percent(size, total_size),
+                        to_readable_str(subnode.count),
+                    );
+                }
+            }
         }
         eprintln!("----------------------------------------------------------------");
         eprintln!("{:<18}{:>10}\n", "Total", to_readable_str(total_size));
@@ -268,14 +320,54 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 }
 
+// Used to avoid boilerplate for types with many variants.
+macro_rules! record_variants {
+    (
+        ($self:ident, $val:expr, $kind:expr, $ty:ty, $tykind:ident), // mandatory pieces
+        [$($variant:ident),*]
+    ) => {
+        match $kind {
+            $(
+                ast::$tykind::$variant { .. } => {
+                    $self.record_variant(stringify!($ty), stringify!($variant), Id::None, $val)
+                }
+            )*
+        }
+    };
+}
+
 impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_foreign_item(&mut self, i: &'v ast::ForeignItem) {
-        self.record("ForeignItem", Id::None, i);
+        record_variants!(
+            (self, i, i.kind, ForeignItem, ForeignItemKind),
+            [Static, Fn, TyAlias, MacCall]
+        );
         ast_visit::walk_foreign_item(self, i)
     }
 
     fn visit_item(&mut self, i: &'v ast::Item) {
-        self.record("Item", Id::None, i);
+        record_variants!(
+            (self, i, i.kind, Item, ItemKind),
+            [
+                ExternCrate,
+                Use,
+                Static,
+                Const,
+                Fn,
+                Mod,
+                ForeignMod,
+                GlobalAsm,
+                TyAlias,
+                Enum,
+                Struct,
+                Union,
+                Trait,
+                TraitAlias,
+                Impl,
+                MacCall,
+                MacroDef
+            ]
+        );
         ast_visit::walk_item(self, i)
     }
 
@@ -290,7 +382,10 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_stmt(&mut self, s: &'v ast::Stmt) {
-        self.record("Stmt", Id::None, s);
+        record_variants!(
+            (self, s, s.kind, Stmt, StmtKind),
+            [Local, Item, Expr, Semi, Empty, MacCall]
+        );
         ast_visit::walk_stmt(self, s)
     }
 
@@ -305,17 +400,66 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_pat(&mut self, p: &'v ast::Pat) {
-        self.record("Pat", Id::None, p);
+        record_variants!(
+            (self, p, p.kind, Pat, PatKind),
+            [
+                Wild,
+                Ident,
+                Struct,
+                TupleStruct,
+                Or,
+                Path,
+                Tuple,
+                Box,
+                Ref,
+                Lit,
+                Range,
+                Slice,
+                Rest,
+                Paren,
+                MacCall
+            ]
+        );
         ast_visit::walk_pat(self, p)
     }
 
-    fn visit_expr(&mut self, ex: &'v ast::Expr) {
-        self.record("Expr", Id::None, ex);
-        ast_visit::walk_expr(self, ex)
+    fn visit_expr(&mut self, e: &'v ast::Expr) {
+        record_variants!(
+            (self, e, e.kind, Expr, ExprKind),
+            [
+                Box, Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
+                If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
+                AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
+                InlineAsm, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, Err
+            ]
+        );
+        ast_visit::walk_expr(self, e)
     }
 
     fn visit_ty(&mut self, t: &'v ast::Ty) {
-        self.record("Ty", Id::None, t);
+        record_variants!(
+            (self, t, t.kind, Ty, TyKind),
+            [
+                Slice,
+                Array,
+                Ptr,
+                Rptr,
+                BareFn,
+                Never,
+                Tup,
+                Path,
+                TraitObject,
+                ImplTrait,
+                Paren,
+                Typeof,
+                Infer,
+                ImplicitSelf,
+                MacCall,
+                Err,
+                CVarArgs
+            ]
+        );
+
         ast_visit::walk_ty(self, t)
     }
 
@@ -325,7 +469,10 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_where_predicate(&mut self, p: &'v ast::WherePredicate) {
-        self.record("WherePredicate", Id::None, p);
+        record_variants!(
+            (self, p, p, WherePredicate, WherePredicate),
+            [BoundPredicate, RegionPredicate, EqPredicate]
+        );
         ast_visit::walk_where_predicate(self, p)
     }
 
@@ -334,14 +481,17 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_fn(self, fk, s)
     }
 
-    fn visit_assoc_item(&mut self, item: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
-        self.record("AssocItem", Id::None, item);
-        ast_visit::walk_assoc_item(self, item, ctxt);
+    fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
+        record_variants!(
+            (self, i, i.kind, AssocItem, AssocItemKind),
+            [Const, Fn, TyAlias, MacCall]
+        );
+        ast_visit::walk_assoc_item(self, i, ctxt);
     }
 
-    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound, _ctxt: BoundKind) {
-        self.record("GenericBound", Id::None, bounds);
-        ast_visit::walk_param_bound(self, bounds)
+    fn visit_param_bound(&mut self, b: &'v ast::GenericBound, _ctxt: BoundKind) {
+        record_variants!((self, b, b, GenericBound, GenericBound), [Trait, Outlives]);
+        ast_visit::walk_param_bound(self, b)
     }
 
     fn visit_field_def(&mut self, s: &'v ast::FieldDef) {
@@ -369,12 +519,12 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     // common, so we implement `visit_generic_args` and tolerate the double
     // counting in the former case.
     fn visit_generic_args(&mut self, sp: Span, g: &'v ast::GenericArgs) {
-        self.record("GenericArgs", Id::None, g);
+        record_variants!((self, g, g, GenericArgs, GenericArgs), [AngleBracketed, Parenthesized]);
         ast_visit::walk_generic_args(self, sp, g)
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-        self.record("Attribute", Id::None, attr);
+        record_variants!((self, attr, attr.kind, Attribute, AttrKind), [Normal, DocComment]);
         ast_visit::walk_attribute(self, attr)
     }
 

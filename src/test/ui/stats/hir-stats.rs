@@ -2,8 +2,8 @@
 // compile-flags: -Zhir-stats
 // only-x86_64
 
-// The aim here is to include at least one of every different type of AST/HIR
-// node reported by `-Zhir-stats`.
+// The aim here is to include at least one of every different type of top-level
+// AST/HIR node reported by `-Zhir-stats`.
 
 #![allow(dead_code)]
 
