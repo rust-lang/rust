@@ -29,24 +29,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "close$NOCANCEL" => {
                 let [result] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.close(result)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "stat" | "stat64" | "stat$INODE64" => {
                 let [path, buf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_stat(path, buf)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat64" | "lstat$INODE64" => {
                 let [path, buf] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_lstat(path, buf)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat64" | "fstat$INODE64" => {
                 let [fd, buf] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_fstat(fd, buf)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "opendir$INODE64" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -57,27 +57,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let [dirp, entry, result] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.macos_readdir_r(dirp, entry, result)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "lseek" => {
                 let [fd, offset, whence] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // macOS is 64bit-only, so this is lseek64
                 let result = this.lseek64(fd, offset, whence)?;
-                this.write_scalar(Scalar::from_i64(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "ftruncate" => {
                 let [fd, length] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 // macOS is 64bit-only, so this is ftruncate64
                 let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
             "realpath$DARWIN_EXTSN" => {
                 let [path, resolved_path] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.realpath(path, resolved_path)?;
-                this.write_pointer(result, dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Environment related shims
@@ -93,13 +93,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "mach_absolute_time" => {
                 let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.mach_absolute_time()?;
-                this.write_scalar(Scalar::from_u64(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             "mach_timebase_info" => {
                 let [info] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.mach_timebase_info(info)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Access to command-line arguments

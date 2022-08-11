@@ -723,7 +723,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         attr_op: &OpTy<'tcx, Provenance>,
         clock_id_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         let clock_id = this.read_scalar(clock_id_op)?.check_init()?;
@@ -733,23 +733,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             condattr_set_clock_id(this, attr_op, clock_id)?;
         } else {
             let einval = this.eval_libc_i32("EINVAL")?;
-            return Ok(einval);
+            return Ok(Scalar::from_i32(einval));
         }
 
-        Ok(0)
+        Ok(Scalar::from_i32(0))
     }
 
     fn pthread_condattr_getclock(
         &mut self,
         attr_op: &OpTy<'tcx, Provenance>,
         clk_id_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
         this.write_scalar(clock_id, &this.deref_operand(clk_id_op)?.into())?;
 
-        Ok(0)
+        Ok(Scalar::from_i32(0))
     }
 
     fn pthread_condattr_destroy(

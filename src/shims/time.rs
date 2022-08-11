@@ -15,7 +15,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         clk_id_op: &OpTy<'tcx, Provenance>,
         tp_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, i32> {
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         // This clock support is deliberately minimal because a lot of clock types have fiddly
         // properties (is it possible for Miri to be suspended independently of the host?). If you
         // have a use for another clock type, please open an issue.
@@ -46,7 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;
-            return Ok(-1);
+            return Ok(Scalar::from_i32(-1));
         };
 
         let tv_sec = duration.as_secs();
@@ -54,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.write_int_fields(&[tv_sec.into(), tv_nsec.into()], &this.deref_operand(tp_op)?)?;
 
-        Ok(0)
+        Ok(Scalar::from_i32(0))
     }
 
     fn gettimeofday(
@@ -160,7 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(-1) // Return non-zero on success
     }
 
-    fn mach_absolute_time(&self) -> InterpResult<'tcx, u64> {
+    fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
 
         this.assert_target_os("macos", "mach_absolute_time");
@@ -169,13 +169,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
         let duration = Instant::now().duration_since(this.machine.time_anchor);
-        u64::try_from(duration.as_nanos()).map_err(|_| {
+        let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
-                .into()
-        })
+        })?;
+        Ok(Scalar::from_u64(res))
     }
 
-    fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
+    fn mach_timebase_info(
+        &mut self,
+        info_op: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "mach_timebase_info");
@@ -188,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (numer, denom) = (1, 1);
         this.write_int_fields(&[numer.into(), denom.into()], &info)?;
 
-        Ok(0) // KERN_SUCCESS
+        Ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 
     fn nanosleep(
