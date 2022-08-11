@@ -932,6 +932,7 @@ supported_targets! {
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
+    ("armeb-linux-gnueabi", armeb_linux_gnueabi),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
     ("arm-unknown-linux-musleabihf", arm_unknown_linux_musleabihf),
     ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
