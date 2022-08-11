@@ -118,12 +118,15 @@ pub struct Backtrace {
 pub enum BacktraceStatus {
     /// Capturing a backtrace is not supported, likely because it's not
     /// implemented for the current platform.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Unsupported,
     /// Capturing a backtrace has been disabled through either the
     /// `RUST_LIB_BACKTRACE` or `RUST_BACKTRACE` environment variables.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Disabled,
     /// A backtrace has been captured and the `Backtrace` should print
     /// reasonable information when rendered.
+    #[stable(feature = "backtrace", since = "1.65.0")]
     Captured,
 }
 
