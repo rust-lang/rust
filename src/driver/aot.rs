@@ -27,6 +27,41 @@ impl<HCX> HashStable<HCX> for ModuleCodegenResult {
     }
 }
 
+pub(crate) struct OngoingCodegen {
+    modules: Vec<ModuleCodegenResult>,
+    allocator_module: Option<CompiledModule>,
+    metadata_module: Option<CompiledModule>,
+    metadata: EncodedMetadata,
+    crate_info: CrateInfo,
+    work_products: FxHashMap<WorkProductId, WorkProduct>,
+}
+
+impl OngoingCodegen {
+    pub(crate) fn join(self) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
+        let mut work_products = self.work_products;
+        let mut modules = vec![];
+
+        for module_codegen_result in self.modules {
+            let ModuleCodegenResult(module, work_product) = module_codegen_result;
+            if let Some((work_product_id, work_product)) = work_product {
+                work_products.insert(work_product_id, work_product);
+            }
+            modules.push(module);
+        }
+
+        (
+            CodegenResults {
+                modules,
+                allocator_module: self.allocator_module,
+                metadata_module: self.metadata_module,
+                metadata: self.metadata,
+                crate_info: self.crate_info,
+            },
+            work_products,
+        )
+    }
+}
+
 fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
@@ -192,9 +227,7 @@ pub(crate) fn run_aot(
     backend_config: BackendConfig,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
-) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
-    let mut work_products = FxHashMap::default();
-
+) -> Box<OngoingCodegen> {
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
         tcx.collect_and_partition_mono_items(()).1
     } else {
@@ -219,7 +252,7 @@ pub(crate) fn run_aot(
                 };
                 tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
 
-                let module_codegen_result = match cgu_reuse {
+                match cgu_reuse {
                     CguReuse::No => {
                         let dep_node = cgu.codegen_dep_node(tcx);
                         tcx.dep_graph
@@ -234,20 +267,14 @@ pub(crate) fn run_aot(
                     }
                     CguReuse::PreLto => reuse_workproduct_for_cgu(tcx, &*cgu),
                     CguReuse::PostLto => unreachable!(),
-                };
-
-                let ModuleCodegenResult(module, work_product) = module_codegen_result;
-
-                if let Some((id, product)) = work_product {
-                    work_products.insert(id, product);
                 }
-
-                module
             })
             .collect::<Vec<_>>()
     });
 
     tcx.sess.abort_if_errors();
+
+    let mut work_products = FxHashMap::default();
 
     let isa = crate::build_isa(tcx.sess, &backend_config);
     let mut allocator_module = make_module(tcx.sess, isa, "allocator_shim".to_string());
@@ -316,16 +343,14 @@ pub(crate) fn run_aot(
     }
     .to_owned();
 
-    Box::new((
-        CodegenResults {
-            modules,
-            allocator_module,
-            metadata_module,
-            metadata,
-            crate_info: CrateInfo::new(tcx, target_cpu),
-        },
+    Box::new(OngoingCodegen {
+        modules,
+        allocator_module,
+        metadata_module,
+        metadata,
+        crate_info: CrateInfo::new(tcx, target_cpu),
         work_products,
-    ))
+    })
 }
 
 fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {

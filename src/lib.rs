@@ -211,9 +211,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         _sess: &Session,
         _outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
-        Ok(*ongoing_codegen
-            .downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>()
-            .unwrap())
+        Ok(ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join())
     }
 
     fn link(
