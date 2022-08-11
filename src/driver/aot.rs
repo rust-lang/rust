@@ -79,11 +79,7 @@ fn emit_module(
     )
 }
 
-fn reuse_workproduct_for_cgu(
-    tcx: TyCtxt<'_>,
-    cgu: &CodegenUnit<'_>,
-    work_products: &mut FxHashMap<WorkProductId, WorkProduct>,
-) -> CompiledModule {
+fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCodegenResult {
     let work_product = cgu.previous_work_product(tcx);
     let obj_out = tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
     let source_file = rustc_incremental::in_incr_comp_dir_sess(
@@ -99,15 +95,16 @@ fn reuse_workproduct_for_cgu(
         ));
     }
 
-    work_products.insert(cgu.work_product_id(), work_product);
-
-    CompiledModule {
-        name: cgu.name().to_string(),
-        kind: ModuleKind::Regular,
-        object: Some(obj_out),
-        dwarf_object: None,
-        bytecode: None,
-    }
+    ModuleCodegenResult(
+        CompiledModule {
+            name: cgu.name().to_string(),
+            kind: ModuleKind::Regular,
+            object: Some(obj_out),
+            dwarf_object: None,
+            bytecode: None,
+        },
+        Some((cgu.work_product_id(), work_product)),
+    )
 }
 
 fn module_codegen(
@@ -215,26 +212,31 @@ pub(crate) fn run_aot(
     let modules = super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
         cgus.iter()
             .map(|cgu| {
-                let cgu_reuse = determine_cgu_reuse(tcx, cgu);
+                let cgu_reuse = if backend_config.disable_incr_cache {
+                    CguReuse::No
+                } else {
+                    determine_cgu_reuse(tcx, cgu)
+                };
                 tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
 
-                match cgu_reuse {
-                    _ if backend_config.disable_incr_cache => {}
-                    CguReuse::No => {}
-                    CguReuse::PreLto => {
-                        return reuse_workproduct_for_cgu(tcx, &*cgu, &mut work_products);
+                let module_codegen_result = match cgu_reuse {
+                    CguReuse::No => {
+                        let dep_node = cgu.codegen_dep_node(tcx);
+                        tcx.dep_graph
+                            .with_task(
+                                dep_node,
+                                tcx,
+                                (backend_config.clone(), cgu.name()),
+                                module_codegen,
+                                Some(rustc_middle::dep_graph::hash_result),
+                            )
+                            .0
                     }
+                    CguReuse::PreLto => reuse_workproduct_for_cgu(tcx, &*cgu),
                     CguReuse::PostLto => unreachable!(),
-                }
+                };
 
-                let dep_node = cgu.codegen_dep_node(tcx);
-                let (ModuleCodegenResult(module, work_product), _) = tcx.dep_graph.with_task(
-                    dep_node,
-                    tcx,
-                    (backend_config.clone(), cgu.name()),
-                    module_codegen,
-                    Some(rustc_middle::dep_graph::hash_result),
-                );
+                let ModuleCodegenResult(module, work_product) = module_codegen_result;
 
                 if let Some((id, product)) = work_product {
                     work_products.insert(id, product);
