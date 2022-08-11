@@ -521,6 +521,12 @@ fn main() {
                 Err(err) => show_error!("-Zmiri-report-progress requires a `u32`: {}", err),
             };
             miri_config.report_progress = Some(interval);
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-tag-gc=") {
+            let interval = match param.parse::<u32>() {
+                Ok(i) => i,
+                Err(err) => show_error!("-Zmiri-tag-gc requires a `u32`: {}", err),
+            };
+            miri_config.gc_interval = interval;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-measureme=") {
             miri_config.measureme_out = Some(param.to_string());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-backtrace=") {

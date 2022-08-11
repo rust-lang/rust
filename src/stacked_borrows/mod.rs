@@ -80,6 +80,8 @@ pub struct Stacks {
     history: AllocHistory,
     /// The set of tags that have been exposed inside this allocation.
     exposed_tags: FxHashSet<SbTag>,
+    /// Whether this memory has been modified since the last time the tag GC ran
+    modified_since_last_gc: bool,
 }
 
 /// Extra global state, available to the memory access hooks.
@@ -422,6 +424,7 @@ impl<'tcx> Stack {
             let item = self.get(idx).unwrap();
             Stack::item_popped(&item, global, dcx)?;
         }
+
         Ok(())
     }
 
@@ -496,6 +499,20 @@ impl<'tcx> Stack {
 }
 // # Stacked Borrows Core End
 
+/// Integration with the SbTag garbage collector
+impl Stacks {
+    pub fn remove_unreachable_tags(&mut self, live_tags: &FxHashSet<SbTag>) {
+        if self.modified_since_last_gc {
+            for stack in self.stacks.iter_mut_all() {
+                if stack.len() > 64 {
+                    stack.retain(live_tags);
+                }
+            }
+            self.modified_since_last_gc = false;
+        }
+    }
+}
+
 /// Map per-stack operations to higher-level per-location-range operations.
 impl<'tcx> Stacks {
     /// Creates a new stack with an initial tag. For diagnostic purposes, we also need to know
@@ -514,6 +531,7 @@ impl<'tcx> Stacks {
             stacks: RangeMap::new(size, stack),
             history: AllocHistory::new(id, item, current_span),
             exposed_tags: FxHashSet::default(),
+            modified_since_last_gc: false,
         }
     }
 
@@ -528,6 +546,7 @@ impl<'tcx> Stacks {
             &mut FxHashSet<SbTag>,
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
+        self.modified_since_last_gc = true;
         for (offset, stack) in self.stacks.iter_mut(range.start, range.size) {
             let mut dcx = dcx_builder.build(&mut self.history, offset);
             f(stack, &mut dcx, &mut self.exposed_tags)?;

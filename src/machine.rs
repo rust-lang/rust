@@ -394,6 +394,11 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Handle of the optional shared object file for external functions.
     pub external_so_lib: Option<(libloading::Library, std::path::PathBuf)>,
+
+    /// Run a garbage collector for SbTags every N basic blocks.
+    pub(crate) gc_interval: u32,
+    /// The number of blocks that passed since the last SbTag GC pass.
+    pub(crate) since_gc: u32,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -469,6 +474,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
                     lib_file_path.clone(),
                 )
             }),
+            gc_interval: config.gc_interval,
+            since_gc: 0,
         }
     }
 
@@ -1016,6 +1023,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 });
             }
         }
+
+        // Search for SbTags to find all live pointers, then remove all other tags from borrow
+        // stacks.
+        // When debug assertions are enabled, run the GC as often as possible so that any cases
+        // where it mistakenly removes an important tag become visible.
+        if cfg!(debug_assertions)
+            || (ecx.machine.gc_interval > 0 && ecx.machine.since_gc >= ecx.machine.gc_interval)
+        {
+            ecx.machine.since_gc = 0;
+            ecx.garbage_collect_tags()?;
+        } else {
+            ecx.machine.since_gc += 1;
+        }
+
         // These are our preemption points.
         ecx.maybe_preempt_active_thread();
         Ok(())

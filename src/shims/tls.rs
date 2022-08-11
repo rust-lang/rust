@@ -233,6 +233,12 @@ impl<'tcx> TlsData<'tcx> {
             data.remove(&thread_id);
         }
     }
+
+    pub fn iter(&self, mut visitor: impl FnMut(&Scalar<Provenance>)) {
+        for scalar in self.keys.values().flat_map(|v| v.data.values()) {
+            visitor(scalar);
+        }
+    }
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
