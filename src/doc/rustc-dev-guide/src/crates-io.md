@@ -1,20 +1,20 @@
 # crates.io Dependencies
 
 The Rust compiler supports building with some dependencies from `crates.io`.
-For example, `log` and `env_logger` come from `crates.io`.
+Examples are `log` and `env_logger`.
 
-In general, you should avoid adding dependencies to the compiler for several
-reasons:
+In general,
+you should avoid adding dependencies to the compiler for several reasons:
 
-- The dependency may not be high quality or well-maintained, whereas we want
-  the compiler to be high-quality.
+- The dependency may not be of high quality or well-maintained.
 - The dependency may not be using a compatible license.
 - The dependency may have transitive dependencies that have one of the above
   problems.
 
-As of <!-- date-check --> February 2022, there is no official policy for vetting
-new dependencies to the compiler. Generally, new dependencies are not added
-to the compiler unless there is a good reason to do so.
+As of <!-- date-check --> Aug 2022,
+there is no official policy for vetting new dependencies to the compiler.
+Decisions are made on a case-by-case basis,
+during code review.
 
 ## Permitted dependencies
 
