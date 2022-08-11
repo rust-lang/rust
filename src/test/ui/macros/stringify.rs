@@ -865,8 +865,9 @@ fn test_vis() {
     assert_eq!(stringify_vis!(pub(crate)), "pub(crate) ");
     assert_eq!(stringify_vis!(pub(self)), "pub(self) ");
     assert_eq!(stringify_vis!(pub(super)), "pub(super) ");
-    assert_eq!(stringify_vis!(pub(in self)), "pub(self) ");
-    assert_eq!(stringify_vis!(pub(in super)), "pub(super) ");
+    assert_eq!(stringify_vis!(pub(in crate)), "pub(in crate) ");
+    assert_eq!(stringify_vis!(pub(in self)), "pub(in self) ");
+    assert_eq!(stringify_vis!(pub(in super)), "pub(in super) ");
     assert_eq!(stringify_vis!(pub(in path::to)), "pub(in path::to) ");
     assert_eq!(stringify_vis!(pub(in ::path::to)), "pub(in ::path::to) ");
     assert_eq!(stringify_vis!(pub(in self::path::to)), "pub(in self::path::to) ");

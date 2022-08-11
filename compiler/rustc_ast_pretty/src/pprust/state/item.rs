@@ -412,9 +412,9 @@ impl<'a> State<'a> {
     pub(crate) fn print_visibility(&mut self, vis: &ast::Visibility) {
         match vis.kind {
             ast::VisibilityKind::Public => self.word_nbsp("pub"),
-            ast::VisibilityKind::Restricted { ref path, .. } => {
+            ast::VisibilityKind::Restricted { ref path, id: _, shorthand } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
-                if path == "crate" || path == "self" || path == "super" {
+                if shorthand && (path == "crate" || path == "self" || path == "super") {
                     self.word_nbsp(format!("pub({})", path))
                 } else {
                     self.word_nbsp(format!("pub(in {})", path))
