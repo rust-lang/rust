@@ -5,7 +5,8 @@ use rustc_codegen_ssa::{
     debuginfo::{type_names::compute_debuginfo_type_name, wants_c_like_enum_debuginfo},
     traits::ConstMethods,
 };
-use rustc_data_structures::fx::FxHashMap;
+
+use rustc_index::vec::IndexVec;
 use rustc_middle::{
     bug,
     ty::{
@@ -680,6 +681,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
 
     let common_upvar_names = closure_saved_names_of_captured_variables(cx.tcx, generator_def_id);
     let variant_range = generator_substs.variant_range(generator_def_id, cx.tcx);
+    let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
     let tag_base_type = tag_base_type(cx, generator_type_and_layout);
 
@@ -691,10 +693,17 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
             .map(|variant_index| (variant_index, GeneratorSubsts::variant_name(variant_index))),
     );
 
-    let discriminants: FxHashMap<VariantIdx, DiscrResult> = generator_substs
-        .discriminants(generator_def_id, cx.tcx)
-        .map(|(variant_index, discr)| (variant_index, DiscrResult::Value(discr.val)))
-        .collect();
+    let discriminants: IndexVec<VariantIdx, DiscrResult> = {
+        let discriminants_iter = generator_substs.discriminants(generator_def_id, cx.tcx);
+        let mut discriminants: IndexVec<VariantIdx, DiscrResult> =
+            IndexVec::with_capacity(variant_count);
+        for (variant_index, discr) in discriminants_iter {
+            // Assert that the index in the IndexMap matches up with the given VariantIdx.
+            assert_eq!(variant_index, discriminants.next_index());
+            discriminants.push(DiscrResult::Value(discr.val));
+        }
+        discriminants
+    };
 
     // Build the type node for each field.
     let variant_field_infos: SmallVec<VariantFieldInfo<'ll>> = variant_range
@@ -721,7 +730,7 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
                 variant_index,
                 variant_struct_type_di_node,
                 source_info,
-                discr: discriminants[&variant_index],
+                discr: discriminants[variant_index],
             }
         })
         .collect();
