@@ -961,6 +961,28 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
+    /// Convert a reference to an [`Arc`] into a reference to a [`Weak`] of the same type.
+    ///
+    /// This is a type-only operation; it doesn't modify the inner reference counts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_as_weak)]
+    ///
+    /// use std::sync::{Arc, Weak};
+    ///
+    /// let five: &Arc<i32> = &Arc::new(5);
+    ///
+    /// let weak_five: &Weak<i32> = Arc::as_weak(five);
+    /// ```
+    #[inline]
+    #[unstable(feature = "rc_as_weak", issue = "none")]
+    #[must_use]
+    pub const fn as_weak<'a>(this: &'a Self) -> &'a Weak<T> {
+        unsafe { mem::transmute::<&'a Arc<T>, &'a Weak<T>>(this) }
+    }
+
     /// Gets the number of [`Weak`] pointers to this allocation.
     ///
     /// # Safety

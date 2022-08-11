@@ -934,6 +934,28 @@ impl<T: ?Sized> Rc<T> {
         Weak { ptr: this.ptr }
     }
 
+    /// Convert a reference to an [`Rc`] into a reference to a [`Weak`] of the same type.
+    ///
+    /// This is a type-only operation; it doesn't modify the inner reference counts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_as_weak)]
+    ///
+    /// use std::rc::{Rc, Weak};
+    ///
+    /// let five: &Rc<i32> = &Rc::new(5);
+    ///
+    /// let weak_five: &Weak<i32> = Rc::as_weak(five);
+    /// ```
+    #[inline]
+    #[unstable(feature = "rc_as_weak", issue = "none")]
+    #[must_use]
+    pub const fn as_weak<'a>(this: &'a Self) -> &'a Weak<T> {
+        unsafe { mem::transmute::<&'a Rc<T>, &'a Weak<T>>(this) }
+    }
+
     /// Gets the number of [`Weak`] pointers to this allocation.
     ///
     /// # Examples
