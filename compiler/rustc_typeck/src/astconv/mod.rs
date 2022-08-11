@@ -16,7 +16,8 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, MultiSpan,
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -2106,7 +2107,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn prohibit_generics<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
-        extend: impl Fn(&mut DiagnosticBuilder<'tcx, ErrorGuaranteed>),
+        extend: impl Fn(&mut Diagnostic),
     ) -> bool {
         let args = segments.clone().flat_map(|segment| segment.args().args);
 
@@ -2984,11 +2985,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    fn maybe_lint_blanket_trait_impl<T: rustc_errors::EmissionGuarantee>(
-        &self,
-        self_ty: &hir::Ty<'_>,
-        diag: &mut DiagnosticBuilder<'_, T>,
-    ) {
+    fn maybe_lint_blanket_trait_impl(&self, self_ty: &hir::Ty<'_>, diag: &mut Diagnostic) {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id);
         if let hir::Node::Item(hir::Item {
@@ -3081,7 +3078,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        self.maybe_lint_blanket_trait_impl::<()>(&self_ty, &mut diag);
+                        self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
                         diag.emit();
                     },
                 );

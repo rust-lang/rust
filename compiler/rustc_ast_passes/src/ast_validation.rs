@@ -13,9 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
-};
+use rustc_errors::{error_code, pluralize, struct_span_err, Applicability, Diagnostic};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -477,7 +475,7 @@ impl<'a> AstValidator<'a> {
         ctx: &str,
         msg: &str,
         sugg: &str,
-        help: impl FnOnce(&mut DiagnosticBuilder<'_, ErrorGuaranteed>),
+        help: impl FnOnce(&mut Diagnostic),
     ) {
         let source_map = self.session.source_map();
         let end = source_map.end_point(sp);
@@ -1196,7 +1194,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     let msg = "free function without a body";
                     let ext = sig.header.ext;
 
-                    let f = |e: &mut DiagnosticBuilder<'_, _>| {
+                    let f = |e: &mut Diagnostic| {
                         if let Extern::Implicit(start_span) | Extern::Explicit(_, start_span) = &ext
                         {
                             let start_suggestion = if let Extern::Explicit(abi, _) = ext {

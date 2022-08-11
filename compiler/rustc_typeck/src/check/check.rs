@@ -1525,9 +1525,7 @@ fn detect_discriminant_duplicate<'tcx>(
 ) {
     // Helper closure to reduce duplicate code. This gets called everytime we detect a duplicate.
     // Here `idx` refers to the order of which the discriminant appears, and its index in `vs`
-    let report = |dis: Discr<'tcx>,
-                  idx: usize,
-                  err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>| {
+    let report = |dis: Discr<'tcx>, idx: usize, err: &mut Diagnostic| {
         let var = &vs[idx]; // HIR for the duplicate discriminant
         let (span, display_discr) = match var.disr_expr {
             Some(ref expr) => {
