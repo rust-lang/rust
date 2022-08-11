@@ -11,7 +11,7 @@ mod repr_unpacked;
 #[cfg(not(target_pointer_width = "64"))]
 use repr_unpacked::Repr;
 
-use crate::convert::From;
+use crate::convert::{From, Infallible};
 use crate::error;
 use crate::fmt;
 use crate::result;
@@ -462,6 +462,13 @@ impl From<ErrorKind> for Error {
     #[inline]
     fn from(kind: ErrorKind) -> Error {
         Error { repr: Repr::new_simple(kind) }
+    }
+}
+
+#[stable(feature = "io_error_from_infallible", since = "1.65.0")]
+impl From<Infallible> for Error {
+    fn from(infallible: Infallible) -> Error {
+        match infallible {}
     }
 }
 
