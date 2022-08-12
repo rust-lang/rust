@@ -8,12 +8,14 @@
 //! * Library features have at most one `since` value.
 //! * All unstable lang features have tests to ensure they are actually unstable.
 //! * Language features in a group are sorted by feature name.
+#![allow(unused)]
 
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::num::NonZeroU32;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 use regex::Regex;
 
@@ -26,7 +28,7 @@ use version::Version;
 const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Status {
     Stable,
     Removed,
@@ -44,7 +46,7 @@ impl fmt::Display for Status {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Feature {
     pub level: Status,
     pub since: Option<Version>,
@@ -169,6 +171,8 @@ pub fn check(paths: &crate::Paths, bad: &mut bool, verbose: bool) -> CollectedFe
         tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
     }
 
+    check_feature_changes(&paths.root, &lib_features, &features, bad, verbose);
+
     if *bad {
         return CollectedFeatures { lib: lib_features, lang: features };
     }
@@ -187,6 +191,137 @@ pub fn check(paths: &crate::Paths, bad: &mut bool, verbose: bool) -> CollectedFe
     }
 
     CollectedFeatures { lib: lib_features, lang: features }
+}
+
+/// Check whether feature changes (stabilizations etc) were done correctly
+///
+/// It is common for a stabilization PR to not make it into the release it was
+/// originally targetted against, and the stabilization version is not always
+/// adjusted accordingly.
+fn check_feature_changes(
+    root: &Path,
+    lib_features: &Features,
+    lang_features: &Features,
+    bad: &mut bool,
+    verbose: bool,
+) {
+    let base_tree_dir = root.join("build/tmp/base-checkout");
+
+    let base_commit = if let Some(base_commit) = find_base_commit(root) {
+        base_commit
+    } else {
+        // Not a git repo, don't do the check.
+        return;
+    };
+    if verbose {
+        println!("Base commit hash: {base_commit}");
+    }
+
+    let base_tree_paths = crate::Paths::from_root(&base_tree_dir);
+    let current_version = get_version(root);
+
+    // FIXME use git archive --format=tar src/ plus the known grepping to get the lib features
+    //let base_lib_features =
+    //    get_and_check_lib_features(&base_tree_paths.library, bad, &lib_features);
+    let base_lang_features = collect_lang_features_at_commit(root, &base_commit, bad);
+
+    //check_changes(&base_lib_features, &lib_features, current_version, bad, verbose);
+    check_changes(&base_lang_features, &lang_features, current_version, bad, verbose);
+}
+
+/// Returns `Some(c)` if a base commit could be found, and `None` if
+/// git is not available, it is not a git repo (say a tarball), or other reasons.
+///
+/// "Base commit" in this instance is defined as the bors commit that the change
+/// "bases" on, and ideally the most recent one. This needs to support the
+/// following scenarios:
+///
+/// * In the "bors tests a PR merge commit" scenario, we want bors to ignore the
+///   top level merge commit, because that commit is the one being tested, not
+///   the one the PR bases on.
+/// * In the "PR author runs tidy locally" scenario, they might or might not
+///   have committed their changes. So the most recent commit is from bors, and
+///   is the base commit.
+/// These two requirements in combination mean we can't use a simple logic like
+/// "take last bors commit" or "take second last bors commit", because neither
+/// are always correct. Instead, we first check if the working directory is
+/// clean, and if it isn't, we know that we are not in the first scenario, so
+/// we can safely take the last bors commit.
+fn find_base_commit(root: &Path) -> Option<String> {
+    let git_status_output = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .current_dir(root)
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    let git_status_output = String::from_utf8(git_status_output.stdout).ok()?;
+    let working_dir_is_clean = git_status_output.trim().is_empty();
+
+    let prior_arg: &[_] = if working_dir_is_clean { &["HEAD~1"] } else { &[] };
+
+    let base_commit_output = Command::new("git")
+        .arg("log")
+        .args(prior_arg)
+        .arg("--author=\"bors <bors@rust-lang.org>\"")
+        .arg("--first-parent")
+        .arg("-1")
+        .arg("--pretty=format:\"%H\"")
+        .current_dir(root)
+        .stderr(Stdio::inherit())
+        .output()
+        .unwrap_or_else(|e| {
+            panic!("could not run git log: {e}");
+        });
+    let base_commit_hash = t!(std::str::from_utf8(&base_commit_output.stdout));
+    Some(base_commit_hash.to_owned())
+}
+
+fn check_changes(
+    base_features: &Features,
+    features: &Features,
+    current_version: Version,
+    bad: &mut bool,
+    verbose: bool,
+) {
+    let mut features_vec: Vec<_> = features.iter().collect();
+    features_vec.sort_by_key(|(name, _feature)| name.to_owned());
+    for (name, feature) in features_vec {
+        let base_feature = base_features.get(name);
+        if let Some(base_feature) = base_feature && base_feature == feature {
+            // Most cases: the feature has not been modified
+            continue;
+        }
+        // Whether the feature has been added or stabilized
+        let was_stabilization =
+            matches!(base_feature, None | Some(Feature { level: Status::Unstable, .. }))
+                && feature.level == Status::Stable;
+
+        if was_stabilization {
+            if let Some(since) = feature.since && current_version != since {
+                let introducing_or_stabilizing = if base_feature.is_none() {
+                    "introducing and stabilizing"
+                } else {
+                    "stabilizing"
+                };
+                tidy_error!(
+                    bad,
+                    "Your change is {} feature `{}` for version {} but current version is {}.",
+                    introducing_or_stabilizing,
+                    name,
+                    since,
+                    current_version
+                );
+            }
+            println!("** 🥳🎉 stabilized feature `{name}` 🎉🥳 **");
+        }
+    }
+}
+
+fn get_version(root: &Path) -> Version {
+    let version_str = t!(std::fs::read_to_string(root.join("src/version")));
+    let version_str = version_str.trim();
+    t!(std::str::FromStr::from_str(&version_str).map_err(|e| format!("{e:?}")))
 }
 
 fn format_features<'a>(
@@ -236,15 +371,51 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
 }
 
 pub fn collect_lang_features(base_compiler_path: &Path, bad: &mut bool) -> Features {
-    let mut all = collect_lang_features_in(base_compiler_path, "active.rs", bad);
-    all.extend(collect_lang_features_in(base_compiler_path, "accepted.rs", bad));
-    all.extend(collect_lang_features_in(base_compiler_path, "removed.rs", bad));
+    collect_lang_features_with(
+        |segments| {
+            let path = segments.iter().fold(base_compiler_path.to_owned(), |p, q| p.join(q));
+            (format!("{}", path.display()), t!(fs::read_to_string(&path)))
+        },
+        bad,
+    )
+}
+
+fn collect_lang_features_at_commit(root: &Path, commit_hash: &str, bad: &mut bool) -> Features {
+    collect_lang_features_with(
+        |segments| {
+            let path_arg = format!("{commit_hash}:compiler/{}", segments.join("/"));
+            let git_show_output = Command::new("git")
+                .arg("show")
+                .arg(&path_arg)
+                .current_dir(root)
+                .stderr(Stdio::null())
+                .output()
+                .unwrap_or_else(|e| {
+                    panic!("could not run git show: {e}");
+                });
+            let file_contents = t!(String::from_utf8(git_show_output.stdout));
+            (path_arg, file_contents)
+        },
+        bad,
+    )
+}
+
+fn collect_lang_features_with(
+    file_read_fn: impl Fn(&[&str]) -> (String, String),
+    bad: &mut bool,
+) -> Features {
+    let mut all = collect_lang_features_in(&file_read_fn, "active.rs", bad);
+    all.extend(collect_lang_features_in(&file_read_fn, "accepted.rs", bad));
+    all.extend(collect_lang_features_in(&file_read_fn, "removed.rs", bad));
     all
 }
 
-fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features {
-    let path = base.join("rustc_feature").join("src").join(file);
-    let contents = t!(fs::read_to_string(&path));
+fn collect_lang_features_in(
+    file_read_fn: impl Fn(&[&str]) -> (String, String),
+    file: &str,
+    bad: &mut bool,
+) -> Features {
+    let (path, contents) = file_read_fn(&["rustc_feature", "src", file]);
 
     // We allow rustc-internal features to omit a tracking issue.
     // To make tidy accept omitting a tracking issue, group the list of features
@@ -279,7 +450,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                         bad,
                         "{}:{}: \
                         new feature group is started without ending the previous one",
-                        path.display(),
+                        path,
                         line_number,
                     );
                 }
@@ -310,7 +481,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                     tidy_error!(
                         bad,
                         "{}:{}: failed to parse since: {} ({:?})",
-                        path.display(),
+                        path,
                         line_number,
                         since_str,
                         err,
@@ -328,7 +499,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                             tidy_error!(
                                 bad,
                                 "{}:{}: duplicate feature {}",
-                                path.display(),
+                                path,
                                 line_number,
                                 name,
                             );
@@ -355,7 +526,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                     tidy_error!(
                         bad,
                         "{}:{}: feature {} is not sorted by feature name (should be {})",
-                        path.display(),
+                        path,
                         line_number,
                         name,
                         correct_placement,
@@ -370,7 +541,7 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
                     tidy_error!(
                         bad,
                         "{}:{}: no tracking issue for feature {}",
-                        path.display(),
+                        path,
                         line_number,
                         name,
                     );
