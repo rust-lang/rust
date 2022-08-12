@@ -2289,7 +2289,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            let span = lo.until(this.token.span);
+            let span = lo.to(this.prev_token.span);
 
             Ok((
                 Param {
