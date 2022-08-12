@@ -11,10 +11,12 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for if-else that could be written to `bool::then`.
+    /// Checks for if-else that could be written using either `bool::then` or `bool::then_some`.
     ///
     /// ### Why is this bad?
-    /// Looks a little redundant. Using `bool::then` helps it have less lines of code.
+    /// Looks a little redundant. Using `bool::then` is more concise and incurs no loss of clarity.
+    /// For simple calculations and known values, use `bool::then_some`, which is eagerly evaluated
+    /// in comparison to `bool::then`.
     ///
     /// ### Example
     /// ```rust
@@ -39,7 +41,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.53.0"]
     pub IF_THEN_SOME_ELSE_NONE,
     restriction,
-    "Finds if-else that could be written using `bool::then`"
+    "Finds if-else that could be written using either `bool::then` or `bool::then_some`"
 }
 
 pub struct IfThenSomeElseNone {
