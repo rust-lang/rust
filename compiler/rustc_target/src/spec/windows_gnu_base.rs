@@ -1,5 +1,6 @@
 use crate::spec::crt_objects::{self, CrtObjectsFallback};
-use crate::spec::{cvs, LinkerFlavor, TargetOptions};
+use crate::spec::{cvs, LinkerFlavor, SplitDebuginfo, TargetOptions};
+use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(
@@ -86,6 +87,8 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
         eh_frame_header: false,
+        // FIXME(davidtwco): Support Split DWARF on Windows GNU.
+        supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }
 }

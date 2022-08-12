@@ -661,8 +661,9 @@ impl Session {
             )
     }
 
+    /// Returns `true` if the target can use the current split debuginfo configuration.
     pub fn target_can_use_split_dwarf(&self) -> bool {
-        !self.target.is_like_windows && !self.target.is_like_osx
+        self.target.options.supported_split_debuginfo.contains(&self.split_debuginfo())
     }
 
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
@@ -1542,6 +1543,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if dwarf_version > 5 {
             sess.err(&format!("requested DWARF version {} is greater than 5", dwarf_version));
         }
+    }
+
+    if !sess.target_can_use_split_dwarf() && !sess.opts.unstable_opts.unstable_options {
+        sess.err(&format!(
+            "`-Csplit-debuginfo={}` is unstable on this platform",
+            sess.split_debuginfo()
+        ));
     }
 }
 

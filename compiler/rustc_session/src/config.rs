@@ -2423,13 +2423,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let pretty = parse_pretty(&unstable_opts, error_format);
 
-    if !unstable_opts.unstable_options
-        && !target_triple.triple().contains("apple")
-        && cg.split_debuginfo.is_some()
-    {
-        early_error(error_format, "`-Csplit-debuginfo` is unstable on this platform");
-    }
-
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let tmp_buf;
