@@ -8545,9 +8545,6 @@ pub unsafe fn _mm_movm_epi8(k: __mmask16) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kadd_mask32&expand=3207)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(all(test, target_arch = "x86"), assert_instr(add))]
-#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(lea))] // generate normal lea/add code instead of kaddd
-                                                                  //llvm.x86.avx512.kadd.d
 pub unsafe fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(a + b)
 }
@@ -8557,9 +8554,6 @@ pub unsafe fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kadd_mask64&expand=3208)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(all(test, target_arch = "x86"), assert_instr(add))]
-#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(lea))] // generate normal lea/add code instead of kaddd
-                                                                  //llvm.x86.avx512.kadd.d
 pub unsafe fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(a + b)
 }
@@ -8569,7 +8563,6 @@ pub unsafe fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kand_mask32&expand=3213)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(and))] // generate normal and code instead of kandd
 pub unsafe fn _kand_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(a & b)
 }
@@ -8579,7 +8572,6 @@ pub unsafe fn _kand_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kand_mask64&expand=3214)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(and))] // generate normal and code instead of kandq
 pub unsafe fn _kand_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(a & b)
 }
@@ -8607,7 +8599,6 @@ pub unsafe fn _knot_mask64(a: __mmask64) -> __mmask64 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kandn_mask32&expand=3219)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(not))] // generate normal and code instead of kandnd
 pub unsafe fn _kandn_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(_knot_mask32(a) & b)
 }
@@ -8617,7 +8608,6 @@ pub unsafe fn _kandn_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kandn_mask64&expand=3220)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(not))] // generate normal and code instead of kandnq
 pub unsafe fn _kandn_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(_knot_mask64(a) & b)
 }
@@ -8627,7 +8617,6 @@ pub unsafe fn _kandn_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kor_mask32&expand=3240)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(or))] // generate normal and code instead of kord
 pub unsafe fn _kor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(a | b)
 }
@@ -8637,7 +8626,6 @@ pub unsafe fn _kor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kor_mask64&expand=3241)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(or))] // generate normal and code instead of korq
 pub unsafe fn _kor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(a | b)
 }
@@ -8647,7 +8635,6 @@ pub unsafe fn _kor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kxor_mask32&expand=3292)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(xor))] // generate normal and code instead of kxord
 pub unsafe fn _kxor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(a ^ b)
 }
@@ -8657,7 +8644,6 @@ pub unsafe fn _kxor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kxor_mask64&expand=3293)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(xor))] // generate normal and code instead of kxorq
 pub unsafe fn _kxor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(a ^ b)
 }
@@ -8667,7 +8653,6 @@ pub unsafe fn _kxor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kxnor_mask32&expand=3286)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(xor))] // generate normal and code instead of kxnord
 pub unsafe fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
     transmute(_knot_mask32(a ^ b))
 }
@@ -8677,7 +8662,6 @@ pub unsafe fn _kxnor_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_kxnor_mask64&expand=3287)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(xor))] // generate normal and code instead of kxnorq
 pub unsafe fn _kxnor_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
     transmute(_knot_mask64(a ^ b))
 }
