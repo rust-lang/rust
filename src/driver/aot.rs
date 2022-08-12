@@ -38,12 +38,11 @@ pub(crate) struct OngoingCodegen {
     metadata_module: Option<CompiledModule>,
     metadata: EncodedMetadata,
     crate_info: CrateInfo,
-    work_products: FxHashMap<WorkProductId, WorkProduct>,
 }
 
 impl OngoingCodegen {
     pub(crate) fn join(self) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
-        let mut work_products = self.work_products;
+        let mut work_products = FxHashMap::default();
         let mut modules = vec![];
 
         for module_codegen_result in self.modules {
@@ -331,8 +330,6 @@ pub(crate) fn run_aot(
 
     tcx.sess.abort_if_errors();
 
-    let mut work_products = FxHashMap::default();
-
     let isa = crate::build_isa(tcx.sess, &backend_config);
     let mut allocator_module = make_module(tcx.sess, isa, "allocator_shim".to_string());
     assert_eq!(pointer_ty(tcx), allocator_module.target_config().pointer_type());
@@ -341,21 +338,27 @@ pub(crate) fn run_aot(
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 
     let allocator_module = if created_alloc_shim {
-        let ModuleCodegenResult { module_regular, module_global_asm, work_product } = emit_module(
-            tcx,
-            &backend_config,
-            "allocator_shim".to_string(),
-            ModuleKind::Allocator,
-            allocator_module,
-            None,
-            allocator_unwind_context,
-            None,
-        );
-        assert!(module_global_asm.is_none());
-        if let Some((id, product)) = work_product {
-            work_products.insert(id, product);
+        let name = "allocator_shim".to_owned();
+
+        let mut product = allocator_module.finish();
+        allocator_unwind_context.emit(&mut product);
+
+        let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
+        let obj = product.object.write().unwrap();
+
+        tcx.sess.prof.artifact_size("object_file", &*name, obj.len().try_into().unwrap());
+
+        if let Err(err) = std::fs::write(&tmp_file, obj) {
+            tcx.sess.fatal(&format!("error writing object file: {}", err));
         }
-        Some(module_regular)
+
+        Some(CompiledModule {
+            name,
+            kind: ModuleKind::Allocator,
+            object: Some(tmp_file),
+            dwarf_object: None,
+            bytecode: None,
+        })
     } else {
         None
     };
@@ -408,7 +411,6 @@ pub(crate) fn run_aot(
         metadata_module,
         metadata,
         crate_info: CrateInfo::new(tcx, target_cpu),
-        work_products,
     })
 }
 
