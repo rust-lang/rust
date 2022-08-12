@@ -26,5 +26,6 @@ RUN sh /scripts/sccache.sh
 COPY scripts/cmake.sh /scripts/
 RUN /scripts/cmake.sh
 
-ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
+ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu \
+    --set llvm.allow-old-toolchain
 ENV RUST_CHECK_TARGET check-aux

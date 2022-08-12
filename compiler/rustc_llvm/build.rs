@@ -242,6 +242,13 @@ fn main() {
         println!("cargo:rustc-link-lib=uuid");
     } else if target.contains("netbsd") || target.contains("haiku") || target.contains("darwin") {
         println!("cargo:rustc-link-lib=z");
+    } else if target.starts_with("arm")
+        || target.starts_with("mips-")
+        || target.starts_with("mipsel-")
+        || target.starts_with("powerpc-")
+    {
+        // 32-bit targets need to link libatomic.
+        println!("cargo:rustc-link-lib=atomic");
     }
     cmd.args(&components);
 

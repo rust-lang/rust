@@ -23,7 +23,8 @@ RUN sh /scripts/sccache.sh
 COPY scripts/cmake.sh /scripts/
 RUN /scripts/cmake.sh
 
-ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
+ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu \
+    --set llvm.allow-old-toolchain
 # Exclude some tests that are unlikely to be platform specific, to speed up
 # this slow job.
 ENV SCRIPT python3 ../x.py --stage 2 test \

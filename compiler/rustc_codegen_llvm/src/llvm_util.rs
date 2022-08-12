@@ -440,6 +440,8 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             .features
             .split(',')
             .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
+            // Drop +atomics-32 feature introduced in LLVM 15.
+            .filter(|v| *v != "+atomics-32" || get_version() >= (15, 0, 0))
             .map(String::from),
     );
 

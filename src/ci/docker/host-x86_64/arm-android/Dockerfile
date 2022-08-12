@@ -29,7 +29,8 @@ ENV PATH=$PATH:/android/sdk/platform-tools
 
 ENV TARGETS=arm-linux-androideabi
 
-ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-14
+ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-14 \
+    --set llvm.allow-old-toolchain
 
 ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS
 

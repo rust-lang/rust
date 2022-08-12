@@ -32,7 +32,8 @@ ENV RUST_CONFIGURE_ARGS \
       --i686-linux-android-ndk=/android/ndk/x86-14 \
       --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
       --x86_64-linux-android-ndk=/android/ndk/x86_64-21 \
-      --disable-docs
+      --disable-docs \
+      --set llvm.allow-old-toolchain
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
 
