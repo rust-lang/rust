@@ -614,7 +614,7 @@ impl<'tcx> CPlace<'tcx> {
                     dst_align,
                     src_align,
                     true,
-                    MemFlags::trusted(),
+                    flags,
                 );
             }
             CValueInner::ByRef(_, Some(_)) => todo!(),
