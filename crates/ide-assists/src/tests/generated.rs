@@ -473,6 +473,26 @@ impl Point {
 }
 
 #[test]
+fn doctest_convert_two_arm_bool_match_to_matches_macro() {
+    check_doc_test(
+        "convert_two_arm_bool_match_to_matches_macro",
+        r#####"
+fn main() {
+    match scrutinee$0 {
+        Some(val) if val.cond() => true,
+        _ => false,
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    matches!(scrutinee, Some(val) if val.cond())
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_while_to_loop() {
     check_doc_test(
         "convert_while_to_loop",
