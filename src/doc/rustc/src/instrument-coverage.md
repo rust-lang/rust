@@ -97,22 +97,15 @@ $ echo "{some: 'thing'}" | target/debug/examples/formatjson5 -
 }
 ```
 
-After running this program, a new file, `default_%m_%p.profraw`, should be in the current working directory. This file takes advantage ofLLVM's support for rewriting special pattern strings to ensure `.profraw` files generated are unique. The following special pattern strings are rewritten as:
-
--   `%p` - The process ID.
--   `%h` - The hostname of the machine running the program.
--   `%t` - The value of the TMPDIR environment variable.
--   `%Nm` - the instrumented binary’s signature: The runtime creates a pool of N raw profiles, used for on-line profile merging. The runtime takes care of selecting a raw profile from the pool, locking it, and updating it before the program exits. `N` must be between `1` and `9`, and defaults to `1` if omitted (with simply `%m`).
--   `%c` - Does not add anything to the filename, but enables a mode (on some platforms, including Darwin) in which profile counter updates are continuously synced to a file. This means that if the instrumented program crashes, or is killed by a signal, perfect coverage information can still be recovered.
+After running this program, a new file named like `default_11699812450447639123_0_20944` should be in the current working directory.
+A new, unique file name will be generated each time the program is run to avoid overwriting previous data.
 
 ```shell
 $ echo "{some: 'thing'}" | target/debug/examples/formatjson5 -
 ...
-$ ls default_11699812450447639123_0_20944.profraw
+$ ls default_*.profraw
 default_11699812450447639123_0_20944.profraw
 ```
-
-In the example above, the value `11699812450447639123_0` in the generated filename is the instrumented binary's signature, which replaced the `%m` pattern and the value `20944` is the process ID of the binary being executed.
 
 You can also set a specific file name or path for the generated `.profraw` files by using the environment variable `LLVM_PROFILE_FILE`:
 
@@ -123,6 +116,17 @@ $ echo "{some: 'thing'}" \
 $ ls formatjson5.profraw
 formatjson5.profraw
 ```
+
+If `LLVM_PROFILE_FILE` contains a path to a non-existent directory, the missing directory structure will be created. Additionally, the following special pattern strings are rewritten:
+
+-   `%p` - The process ID.
+-   `%h` - The hostname of the machine running the program.
+-   `%t` - The value of the TMPDIR environment variable.
+-   `%Nm` - the instrumented binary’s signature: The runtime creates a pool of N raw profiles, used for on-line profile merging. The runtime takes care of selecting a raw profile from the pool, locking it, and updating it before the program exits. `N` must be between `1` and `9`, and defaults to `1` if omitted (with simply `%m`).
+-   `%c` - Does not add anything to the filename, but enables a mode (on some platforms, including Darwin) in which profile counter updates are continuously synced to a file. This means that if the instrumented program crashes, or is killed by a signal, perfect coverage information can still be recovered.
+
+In the first example above, the value `11699812450447639123_0` in the generated filename is the instrumented binary's signature,
+which replaced the `%m` pattern and the value `20944` is the process ID of the binary being executed.
 
 ## Installing LLVM coverage tools
 
@@ -190,9 +194,7 @@ A typical use case for coverage analysis is test coverage. Rust's source-based c
 
 The following example (using the [`json5format`] crate, for demonstration purposes) show how to generate and analyze coverage results for all tests in a crate.
 
-Since `cargo test` both builds and runs the tests, we set the additional `RUSTFLAGS`, to add the `-C instrument-coverage` flag. If setting `LLVM_PROFILE_FILE` to specify a custom filename for the raw profiling data generated during the test runs,
-apply `%m` in the filename pattern since there may be more than one test binary. This generates unique names for each test binary which is not done by default when setting the `LLVM_PROFILE_FILE` environment variable.
-(Otherwise, each executed test binary would overwrite the coverage results from the previous binary.) If not setting `LLVM_PROFILE_FILE`, the `%m` and `%p` filename patterns are added by default.
+Since `cargo test` both builds and runs the tests, we set the additional `RUSTFLAGS`, to add the `-C instrument-coverage` flag.
 
 ```shell
 $ RUSTFLAGS="-C instrument-coverage" \
@@ -239,6 +241,8 @@ $ llvm-cov show \
     --show-instantiations --show-line-counts-or-regions \
     --Xdemangler=rustfilt | less -R
 ```
+
+> **Note**: If overriding the default `profraw` file name via the `LLVM_PROFILE_FILE` environment variable, it's highly recommended to use the `%m` and `%p` special pattern strings to generate unique file names in the case of more than a single test binary being executed.
 
 > **Note**: The command line option `--ignore-filename-regex=/.cargo/registry`, which excludes the sources for dependencies from the coverage results.\_
 
