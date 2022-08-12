@@ -1,7 +1,9 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::io::{self, Write};
 use std::path::PathBuf;
+use std::process::{Command, Stdio};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::ItemId;
@@ -29,12 +31,13 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
     }
 }
 
-pub(crate) fn compile_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
-    use std::io::Write;
-    use std::process::{Command, Stdio};
-
+pub(crate) fn compile_global_asm(
+    tcx: TyCtxt<'_>,
+    cgu_name: &str,
+    global_asm: &str,
+) -> io::Result<()> {
     if global_asm.is_empty() {
-        return;
+        return Ok(());
     }
 
     if cfg!(not(feature = "inline_asm"))
@@ -42,16 +45,20 @@ pub(crate) fn compile_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &s
         || tcx.sess.target.is_like_windows
     {
         if global_asm.contains("__rust_probestack") {
-            return;
+            return Ok(());
         }
 
         // FIXME fix linker error on macOS
         if cfg!(not(feature = "inline_asm")) {
-            tcx.sess.fatal(
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
                 "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift",
-            );
+            ));
         } else {
-            tcx.sess.fatal("asm! and global_asm! are not yet supported on macOS and Windows");
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "asm! and global_asm! are not yet supported on macOS and Windows",
+            ));
         }
     }
 
@@ -78,7 +85,10 @@ pub(crate) fn compile_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &s
     child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
     let status = child.wait().expect("Failed to wait for `as`.");
     if !status.success() {
-        tcx.sess.fatal(&format!("Failed to assemble `{}`", global_asm));
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("Failed to assemble `{}`", global_asm),
+        ));
     }
 
     // Link the global asm and main object file together
@@ -93,15 +103,20 @@ pub(crate) fn compile_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &s
         .status()
         .unwrap();
     if !status.success() {
-        tcx.sess.fatal(&format!(
-            "Failed to link `{}` and `{}` together",
-            main_object_file.display(),
-            global_asm_object_file.display(),
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "Failed to link `{}` and `{}` together",
+                main_object_file.display(),
+                global_asm_object_file.display(),
+            ),
         ));
     }
 
     std::fs::remove_file(global_asm_object_file).unwrap();
     std::fs::remove_file(main_object_file).unwrap();
+
+    Ok(())
 }
 
 fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {

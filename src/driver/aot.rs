@@ -198,7 +198,10 @@ fn module_codegen(
         )
     });
 
-    crate::global_asm::compile_global_asm(tcx, cgu.name().as_str(), &cx.global_asm);
+    match crate::global_asm::compile_global_asm(tcx, cgu.name().as_str(), &cx.global_asm) {
+        Ok(()) => {}
+        Err(err) => tcx.sess.fatal(&err.to_string()),
+    }
 
     codegen_result
 }
