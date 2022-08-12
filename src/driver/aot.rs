@@ -14,7 +14,6 @@ use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{DebugInfo, OutputType};
 use rustc_session::Session;
 
-use cranelift_codegen::isa::TargetIsa;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
 use crate::global_asm::GlobalAsmConfig;
@@ -70,7 +69,9 @@ impl OngoingCodegen {
     }
 }
 
-fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
+fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> ObjectModule {
+    let isa = crate::build_isa(sess, backend_config);
+
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
     // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
@@ -211,8 +212,7 @@ fn module_codegen(
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let isa = crate::build_isa(tcx.sess, &backend_config);
-    let mut module = make_module(tcx.sess, isa, cgu_name.as_str().to_string());
+    let mut module = make_module(tcx.sess, &backend_config, cgu_name.as_str().to_string());
 
     let mut cx = crate::CodegenCx::new(
         tcx,
@@ -330,9 +330,7 @@ pub(crate) fn run_aot(
 
     tcx.sess.abort_if_errors();
 
-    let isa = crate::build_isa(tcx.sess, &backend_config);
-    let mut allocator_module = make_module(tcx.sess, isa, "allocator_shim".to_string());
-    assert_eq!(pointer_ty(tcx), allocator_module.target_config().pointer_type());
+    let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
     let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);
     let created_alloc_shim =
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
