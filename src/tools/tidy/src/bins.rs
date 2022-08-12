@@ -98,7 +98,7 @@ mod os_impl {
     pub fn check(path: &Path, bad: &mut bool) {
         use std::ffi::OsStr;
 
-        const ALLOWED: &[&str] = &["configure"];
+        const ALLOWED: &[&str] = &["configure", "x"];
 
         crate::walk_no_read(
             path,
