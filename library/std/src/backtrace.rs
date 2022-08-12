@@ -92,6 +92,7 @@ use crate::backtrace_rs::{self, BytesOrWideString};
 use crate::env;
 use crate::ffi::c_void;
 use crate::fmt;
+use crate::panic::UnwindSafe;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sync::LazyLock;
 use crate::sys_common::backtrace::{lock, output_filename};
@@ -427,7 +428,7 @@ impl fmt::Display for Backtrace {
     }
 }
 
-type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync;
+type LazyResolve = impl (FnOnce() -> Capture) + Send + Sync + UnwindSafe;
 
 fn lazy_resolve(mut capture: Capture) -> LazyResolve {
     move || {
