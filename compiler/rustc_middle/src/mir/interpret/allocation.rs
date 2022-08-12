@@ -218,7 +218,7 @@ impl<Prov> Allocation<Prov> {
         
         let mut bytes = vec_align.into_boxed_slice();
         assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
-        bytes[..slice.len()].copy_from_slice(&slice);
+        bytes.copy_from_slice(&slice);
         
         Self {
             bytes,
@@ -285,10 +285,11 @@ impl Allocation {
         // Compute new pointer provenance, which also adjusts the bytes.
         // Realign the pointer
         let align_usize: usize = self.align.bytes().try_into().unwrap();
-        let count_align = ((self.bytes.len() / align_usize) + 1)*align_usize;
-        
-        let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
-        vec_align.resize(count_align, 0);
+        let layout = std::alloc::Layout::from_size_align(self.bytes.len(), align_usize).unwrap();
+        let mut vec_align = unsafe {
+            let buf = std::alloc::alloc(layout);
+            Vec::from_raw_parts(buf as *mut u8, self.bytes.len(), self.bytes.len())
+        };
         assert!(vec_align.as_ptr() as usize % align_usize == 0);
 
         vec_align[..self.bytes.len()].copy_from_slice(&self.bytes);
