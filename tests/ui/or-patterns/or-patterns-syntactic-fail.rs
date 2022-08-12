@@ -9,7 +9,7 @@ use E::*;
 fn no_top_level_or_patterns() {
     // We do *not* allow or-patterns at the top level of lambdas...
     let _ = |A | B: E| ();
-                           //~^ ERROR expected identifier, found
+    //~^ ERROR expected identifier, found `:`
     //           -------- This looks like an or-pattern but is in fact `|A| (B: E | ())`.
 }
 

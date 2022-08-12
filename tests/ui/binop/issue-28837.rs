@@ -15,7 +15,8 @@ fn main() {
 
     a & a; //~ ERROR no implementation for `A & A`
 
-    a | a; //~ ERROR no implementation for `A | A`
+    a | a;
+    //~^ ERROR no implementation for `A | A`
 
     a << a; //~ ERROR no implementation for `A << A`
 

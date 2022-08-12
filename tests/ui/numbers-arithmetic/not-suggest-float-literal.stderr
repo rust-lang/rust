@@ -126,7 +126,7 @@ LL |     x / 100.0
              <&'a u8 as Div<u8>>
              <&u8 as Div<&u8>>
              <u8 as Div<&u8>>
-             <u8 as Div<NonZeroU8>>
+             <u8 as Div<NonZero<u8>>>
              <u8 as Div>
 
 error[E0277]: cannot divide `f64` by `&str`

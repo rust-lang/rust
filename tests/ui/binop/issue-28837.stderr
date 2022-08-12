@@ -111,7 +111,7 @@ note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: no implementation for `A << A`
-  --> $DIR/issue-28837.rs:20:7
+  --> $DIR/issue-28837.rs:21:7
    |
 LL |     a << a;
    |     - ^^ - A
@@ -127,7 +127,7 @@ note: the trait `Shl` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: no implementation for `A >> A`
-  --> $DIR/issue-28837.rs:22:7
+  --> $DIR/issue-28837.rs:23:7
    |
 LL |     a >> a;
    |     - ^^ - A
@@ -143,7 +143,7 @@ note: the trait `Shr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error[E0369]: binary operation `==` cannot be applied to type `A`
-  --> $DIR/issue-28837.rs:24:7
+  --> $DIR/issue-28837.rs:25:7
    |
 LL |     a == a;
    |     - ^^ - A
@@ -162,7 +162,7 @@ LL | struct A;
    |
 
 error[E0369]: binary operation `!=` cannot be applied to type `A`
-  --> $DIR/issue-28837.rs:26:7
+  --> $DIR/issue-28837.rs:27:7
    |
 LL |     a != a;
    |     - ^^ - A
@@ -181,7 +181,7 @@ LL | struct A;
    |
 
 error[E0369]: binary operation `<` cannot be applied to type `A`
-  --> $DIR/issue-28837.rs:28:7
+  --> $DIR/issue-28837.rs:29:7
    |
 LL |     a < a;
    |     - ^ - A
@@ -200,7 +200,7 @@ LL | struct A;
    |
 
 error[E0369]: binary operation `<=` cannot be applied to type `A`
-  --> $DIR/issue-28837.rs:30:7
+  --> $DIR/issue-28837.rs:31:7
    |
 LL |     a <= a;
    |     - ^^ - A
@@ -219,7 +219,7 @@ LL | struct A;
    |
 
 error[E0369]: binary operation `>` cannot be applied to type `A`
-  --> $DIR/issue-28837.rs:32:7
+  --> $DIR/issue-28837.rs:33:7
    |
 LL |     a > a;
    |     - ^ - A
@@ -238,7 +238,7 @@ LL | struct A;
    |
 
 error[E0369]: binary operation `>=` cannot be applied to type `A`
-  --> $DIR/issue-28837.rs:34:7
+  --> $DIR/issue-28837.rs:35:7
    |
 LL |     a >= a;
    |     - ^^ - A

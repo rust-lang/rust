@@ -1,6 +1,6 @@
 // compile-flags: -Ztrait-solver=next
 
-#![feature(specialization)]
+#![feature(generic_nonzero, specialization)]
 //~^ WARN the feature `specialization` is incomplete
 
 trait Default {
@@ -22,9 +22,9 @@ fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
     *t.intu()
 }
 
-use std::num::NonZeroU8;
+use std::num::NonZero;
 fn main() {
-    let s = transmute::<u8, Option<NonZeroU8>>(0);
-    //~^ ERROR cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>
+    let s = transmute::<u8, Option<NonZero<u8>>>(0);
+    //~^ ERROR cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>
     assert_eq!(s, None);
 }

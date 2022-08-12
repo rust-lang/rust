@@ -1,8 +1,8 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/specialization-transmute.rs:3:12
+  --> $DIR/specialization-transmute.rs:3:29
    |
-LL | #![feature(specialization)]
-   |            ^^^^^^^^^^^^^^
+LL | #![feature(generic_nonzero, specialization)]
+   |                             ^^^^^^^^^^^^^^
    |
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
@@ -14,11 +14,11 @@ error[E0284]: type annotations needed: cannot satisfy `T <: <T as Default>::Id`
 LL |         self
    |         ^^^^ cannot satisfy `T <: <T as Default>::Id`
 
-error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>`
+error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
   --> $DIR/specialization-transmute.rs:27:13
    |
-LL |     let s = transmute::<u8, Option<NonZeroU8>>(0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZeroU8>`
+LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
    |
 note: required by a bound in `transmute`
   --> $DIR/specialization-transmute.rs:21:25

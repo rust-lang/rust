@@ -10,7 +10,7 @@
       let mut _8: EnumReprIsize;           // in scope 0 at $DIR/combine_transmutes.rs:+4:31: +4:47
       let mut _10: std::cmp::Ordering;     // in scope 0 at $DIR/combine_transmutes.rs:+5:28: +5:52
       let mut _12: std::cmp::Ordering;     // in scope 0 at $DIR/combine_transmutes.rs:+6:28: +6:52
-      let mut _14: std::option::Option<std::num::NonZeroU8>; // in scope 0 at $DIR/combine_transmutes.rs:+7:28: +7:58
+      let mut _14: std::option::Option<std::num::NonZero<u8>>; // in scope 0 at $DIR/combine_transmutes.rs:+7:28: +7:58
       let mut _16: std::num::Wrapping<i16>; // in scope 0 at $DIR/combine_transmutes.rs:+8:29: +8:54
       let mut _18: std::num::Wrapping<i16>; // in scope 0 at $DIR/combine_transmutes.rs:+9:29: +9:54
       let mut _20: Union32;                // in scope 0 at $DIR/combine_transmutes.rs:+10:29: +10:47
@@ -99,10 +99,10 @@
           StorageDead(_12);                // scope 5 at $DIR/combine_transmutes.rs:+6:52: +6:53
           StorageLive(_13);                // scope 6 at $DIR/combine_transmutes.rs:+7:9: +7:11
           StorageLive(_14);                // scope 6 at $DIR/combine_transmutes.rs:+7:28: +7:58
-          _14 = Option::<NonZeroU8>::Some(const _); // scope 6 at $DIR/combine_transmutes.rs:+7:28: +7:58
+          _14 = Option::<NonZero<u8>>::Some(const _); // scope 6 at $DIR/combine_transmutes.rs:+7:28: +7:58
                                            // mir::Constant
                                            // + span: $DIR/combine_transmutes.rs:41:33: 41:57
-                                           // + literal: Const { ty: NonZeroU8, val: Unevaluated(NonZeroU8::MAX, [], None) }
+                                           // + literal: Const { ty: NonZero<u8>, val: Unevaluated(NonZero::<u8>::MAX, [], None) }
           _13 = move _14 as u8 (Transmute); // scope 6 at $DIR/combine_transmutes.rs:+7:18: +7:59
           StorageDead(_14);                // scope 6 at $DIR/combine_transmutes.rs:+7:58: +7:59
           StorageLive(_15);                // scope 7 at $DIR/combine_transmutes.rs:+8:9: +8:11
