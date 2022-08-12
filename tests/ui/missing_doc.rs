@@ -1,3 +1,5 @@
+// aux-build: proc_macro_with_span.rs
+
 #![warn(clippy::missing_docs_in_private_items)]
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
@@ -5,6 +7,9 @@
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
 
+extern crate proc_macro_with_span;
+
+use proc_macro_with_span::with_span;
 use std::arch::global_asm;
 
 type Typedef = String;
@@ -100,3 +105,11 @@ fn main() {}
 
 // Ensure global asm doesn't require documentation.
 global_asm! { "" }
+
+// Don't lint proc macro output with an unexpected span.
+with_span!(span pub struct FooPm { pub field: u32});
+with_span!(span pub struct FooPm2;);
+with_span!(span pub enum FooPm3 { A, B(u32), C { field: u32 }});
+with_span!(span pub fn foo_pm() {});
+with_span!(span pub static FOO_PM: u32 = 0;);
+with_span!(span pub const FOO2_PM: u32 = 0;);

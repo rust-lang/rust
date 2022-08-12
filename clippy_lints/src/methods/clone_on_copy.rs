@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, Expr, ExprKind, MatchSource, Node, PatKind};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, adjustment::Adjust};
 use rustc_span::symbol::{sym, Symbol};
@@ -86,6 +86,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, 
                 {
                     return;
                 },
+                // ? is a Call, makes sure not to rec *x?, but rather (*x)?
+                ExprKind::Call(hir_callee, _) => matches!(
+                    hir_callee.kind,
+                    ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, _, _))
+                ),
                 ExprKind::MethodCall(_, [self_arg, ..], _) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
                 | ExprKind::Field(..)

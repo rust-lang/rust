@@ -13,6 +13,7 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(future_not_send::FUTURE_NOT_SEND),
     LintId::of(index_refutable_slice::INDEX_REFUTABLE_SLICE),
     LintId::of(let_if_seq::USELESS_LET_IF_SEQ),
+    LintId::of(matches::SIGNIFICANT_DROP_IN_SCRUTINEE),
     LintId::of(methods::ITER_WITH_DRAIN),
     LintId::of(missing_const_for_fn::MISSING_CONST_FOR_FN),
     LintId::of(mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),

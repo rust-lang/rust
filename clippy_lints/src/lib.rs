@@ -178,7 +178,6 @@ mod assertions_on_result_states;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
-mod blacklisted_name;
 mod blocks_in_if_conditions;
 mod bool_assert_comparison;
 mod booleans;
@@ -206,6 +205,7 @@ mod dereference;
 mod derivable_impls;
 mod derive;
 mod disallowed_methods;
+mod disallowed_names;
 mod disallowed_script_idents;
 mod disallowed_types;
 mod doc;
@@ -274,6 +274,7 @@ mod main_recursion;
 mod manual_assert;
 mod manual_async_fn;
 mod manual_bits;
+mod manual_instant_elapsed;
 mod manual_non_exhaustive;
 mod manual_ok_or;
 mod manual_rem_euclid;
@@ -332,6 +333,7 @@ mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
 mod partialeq_ne_impl;
+mod partialeq_to_none;
 mod pass_by_ref_or_value;
 mod path_buf_push_overwrite;
 mod pattern_type_mismatch;
@@ -487,7 +489,7 @@ pub fn read_conf(sess: &Session) -> Conf {
         },
     };
 
-    let TryConf { conf, errors } = utils::conf::read(&file_name);
+    let TryConf { conf, errors, warnings } = utils::conf::read(&file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
         sess.err(&format!(
@@ -495,6 +497,15 @@ pub fn read_conf(sess: &Session) -> Conf {
             file_name.display(),
             format_error(error)
         ));
+    }
+
+    for warning in warnings {
+        sess.struct_warn(&format!(
+            "error reading Clippy's configuration file `{}`: {}",
+            file_name.display(),
+            format_error(warning)
+        ))
+        .emit();
     }
 
     conf
@@ -675,8 +686,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(swap::Swap));
     store.register_late_pass(|| Box::new(overflow_check_conditional::OverflowCheckConditional));
     store.register_late_pass(|| Box::new(new_without_default::NewWithoutDefault::default()));
-    let blacklisted_names = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
-    store.register_late_pass(move || Box::new(blacklisted_name::BlacklistedName::new(blacklisted_names.clone())));
+    let disallowed_names = conf.disallowed_names.iter().cloned().collect::<FxHashSet<_>>();
+    store.register_late_pass(move || Box::new(disallowed_names::DisallowedNames::new(disallowed_names.clone())));
     let too_many_arguments_threshold = conf.too_many_arguments_threshold;
     let too_many_lines_threshold = conf.too_many_lines_threshold;
     store.register_late_pass(move || {
@@ -921,6 +932,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(operators::Operators::new(verbose_bit_mask_threshold)));
     store.register_late_pass(|| Box::new(invalid_utf8_in_unchecked::InvalidUtf8InUnchecked));
     store.register_late_pass(|| Box::new(std_instead_of_core::StdReexports::default()));
+    store.register_late_pass(|| Box::new(manual_instant_elapsed::ManualInstantElapsed));
+    store.register_late_pass(|| Box::new(partialeq_to_none::PartialeqToNone));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

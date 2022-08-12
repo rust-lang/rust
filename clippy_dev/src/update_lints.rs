@@ -836,7 +836,7 @@ pub(crate) struct LintDeclSearchResult<'a> {
 fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -899,7 +899,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
 fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
     let mut offset = 0usize;
     let mut iter = tokenize(contents).map(|t| {
-        let range = offset..offset + t.len;
+        let range = offset..offset + t.len as usize;
         offset = range.end;
 
         LintDeclSearchResult {
@@ -946,7 +946,7 @@ fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
     for line in contents.lines() {
         let mut offset = 0usize;
         let mut iter = tokenize(line).map(|t| {
-            let range = offset..offset + t.len;
+            let range = offset..offset + t.len as usize;
             offset = range.end;
 
             LintDeclSearchResult {

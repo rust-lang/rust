@@ -2,7 +2,7 @@
 
 #![warn(clippy::all)]
 #![allow(
-    clippy::blacklisted_name,
+    clippy::disallowed_names,
     clippy::no_effect,
     clippy::redundant_clone,
     redundant_semicolons,
