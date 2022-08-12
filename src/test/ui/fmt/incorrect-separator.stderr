@@ -3,6 +3,8 @@ error: unknown start of token: \u{326}
    |
 LL |     format!("A number: {}" ̦ iter::once(42).next().unwrap());
    |                            ^
+   |
+   = help: Unicode character \u{326} might not be visible when rendered
 
 error: expected `,`, found `.`
   --> $DIR/incorrect-separator.rs:7:27

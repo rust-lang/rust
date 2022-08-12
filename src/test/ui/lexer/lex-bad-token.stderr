@@ -3,6 +3,8 @@ error: unknown start of token: \u{25cf}
    |
 LL | ●
    | ^
+   |
+   = help: Unicode character \u{25cf} might not be visible when rendered
 
 error: aborting due to previous error
 

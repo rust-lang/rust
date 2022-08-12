@@ -3,6 +3,8 @@ error: unknown start of token: \u{a7}
    |
 LL | M (§& u8)}
    |    ^
+   |
+   = help: Unicode character \u{a7} might not be visible when rendered
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-69130.rs:4:5

@@ -322,6 +322,8 @@ impl<'a> StringReader<'a> {
                 let token = unicode_chars::check_for_substitution(self, start, c, &mut err);
                 if c == '\x00' {
                     err.help("source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used");
+                } else if let Ok(v) = &err.suggestions && v.len() == 0 && !c.is_ascii() {
+                    err.help(format!("Unicode character {} might not be visible when rendered", escaped_char(c)));
                 }
                 err.emit();
                 token?

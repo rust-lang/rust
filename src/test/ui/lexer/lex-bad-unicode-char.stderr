@@ -1,0 +1,10 @@
+error: unknown start of token: \u{323}
+  --> $DIR/lex-bad-unicode-char.rs:2:24
+   |
+LL |     println!("hello {}"̣, 1);
+   |                        ^
+   |
+   = help: Unicode character \u{323} might not be visible when rendered
+
+error: aborting due to previous error
+
