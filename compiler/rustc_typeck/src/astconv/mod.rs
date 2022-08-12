@@ -44,7 +44,7 @@ use rustc_trait_selection::traits::error_reporting::{
 };
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
 use std::slice;
 
@@ -368,36 +368,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return (tcx.intern_substs(&[]), arg_count);
         }
 
-        let is_object = self_ty.map_or(false, |ty| ty == self.tcx().types.trait_object_dummy_self);
-
         struct SubstsForAstPathCtxt<'a, 'tcx> {
             astconv: &'a (dyn AstConv<'tcx> + 'a),
             def_id: DefId,
             generic_args: &'a GenericArgs<'a>,
             span: Span,
-            missing_type_params: Vec<Symbol>,
             inferred_params: Vec<Span>,
             infer_args: bool,
-            is_object: bool,
-        }
-
-        impl<'tcx, 'a> SubstsForAstPathCtxt<'tcx, 'a> {
-            fn default_needs_object_self(&mut self, param: &ty::GenericParamDef) -> bool {
-                let tcx = self.astconv.tcx();
-                if let GenericParamDefKind::Type { has_default, .. } = param.kind {
-                    if self.is_object && has_default {
-                        let default_ty = tcx.at(self.span).type_of(param.def_id);
-                        let self_param = tcx.types.self_param;
-                        if default_ty.walk().any(|arg| arg == self_param.into()) {
-                            // There is no suitable inference default for a type parameter
-                            // that references self, in an object type.
-                            return true;
-                        }
-                    }
-                }
-
-                false
-            }
         }
 
         impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for SubstsForAstPathCtxt<'a, 'tcx> {
@@ -500,41 +477,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
-
-                            // If we are converting an object type, then the
-                            // `Self` parameter is unknown. However, some of the
-                            // other type parameters may reference `Self` in their
-                            // defaults. This will lead to an ICE if we are not
-                            // careful!
-                            if self.default_needs_object_self(param) {
-                                self.missing_type_params.push(param.name);
-                                tcx.ty_error().into()
-                            } else {
-                                // This is a default type parameter.
-                                let substs = substs.unwrap();
-                                if substs.iter().any(|arg| match arg.unpack() {
-                                    GenericArgKind::Type(ty) => ty.references_error(),
-                                    _ => false,
-                                }) {
-                                    // Avoid ICE #86756 when type error recovery goes awry.
-                                    return tcx.ty_error().into();
-                                }
-                                self.astconv
-                                    .normalize_ty(
-                                        self.span,
-                                        EarlyBinder(tcx.at(self.span).type_of(param.def_id))
-                                            .subst(tcx, substs),
-                                    )
-                                    .into()
+                            let substs = substs.unwrap();
+                            if substs.iter().any(|arg| match arg.unpack() {
+                                GenericArgKind::Type(ty) => ty.references_error(),
+                                _ => false,
+                            }) {
+                                // Avoid ICE #86756 when type error recovery goes awry.
+                                return tcx.ty_error().into();
                             }
+                            self.astconv
+                                .normalize_ty(
+                                    self.span,
+                                    EarlyBinder(tcx.at(self.span).type_of(param.def_id))
+                                        .subst(tcx, substs),
+                                )
+                                .into()
                         } else if infer_args {
-                            // No type parameters were provided, we can infer all.
-                            let param = if !self.default_needs_object_self(param) {
-                                Some(param)
-                            } else {
-                                None
-                            };
-                            self.astconv.ty_infer(param, self.span).into()
+                            self.astconv.ty_infer(Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
                             tcx.ty_error().into()
@@ -564,10 +523,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             def_id,
             span,
             generic_args,
-            missing_type_params: vec![],
             inferred_params: vec![],
             infer_args,
-            is_object,
         };
         let substs = Self::create_substs_for_generic_args(
             tcx,
@@ -577,13 +534,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             &arg_count,
             &mut substs_ctx,
-        );
-
-        self.complain_about_missing_type_params(
-            substs_ctx.missing_type_params,
-            def_id,
-            span,
-            generic_args.args.is_empty(),
         );
 
         debug!(
@@ -1490,23 +1440,71 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
         let existential_trait_refs = regular_traits.iter().map(|i| {
             i.trait_ref().map_bound(|trait_ref: ty::TraitRef<'tcx>| {
-                if trait_ref.self_ty() != dummy_self {
-                    // FIXME: There appears to be a missing filter on top of `expand_trait_aliases`,
-                    // which picks up non-supertraits where clauses - but also, the object safety
-                    // completely ignores trait aliases, which could be object safety hazards. We
-                    // `delay_span_bug` here to avoid an ICE in stable even when the feature is
-                    // disabled. (#66420)
-                    tcx.sess.delay_span_bug(
-                        DUMMY_SP,
-                        &format!(
-                            "trait_ref_to_existential called on {:?} with non-dummy Self",
-                            trait_ref,
-                        ),
+                assert_eq!(trait_ref.self_ty(), dummy_self);
+
+                // Verify that `dummy_self` did not leak inside default type parameters.  This
+                // could not be done at path creation, since we need to see through trait aliases.
+                let mut missing_type_params = vec![];
+                let mut references_self = false;
+                let generics = tcx.generics_of(trait_ref.def_id);
+                let substs: Vec<_> = trait_ref
+                    .substs
+                    .iter()
+                    .enumerate()
+                    .skip(1) // Remove `Self` for `ExistentialPredicate`.
+                    .map(|(index, arg)| {
+                        if let ty::GenericArgKind::Type(ty) = arg.unpack() {
+                            debug!(?ty);
+                            if ty == dummy_self {
+                                let param = &generics.params[index];
+                                missing_type_params.push(param.name);
+                                tcx.ty_error().into()
+                            } else if ty.walk().any(|arg| arg == dummy_self.into()) {
+                                references_self = true;
+                                tcx.ty_error().into()
+                            } else {
+                                arg
+                            }
+                        } else {
+                            arg
+                        }
+                    })
+                    .collect();
+                let substs = tcx.intern_substs(&substs[..]);
+
+                let span = i.bottom().1;
+                let empty_generic_args = trait_bounds.iter().any(|hir_bound| {
+                    hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
+                        && hir_bound.span.contains(span)
+                });
+                self.complain_about_missing_type_params(
+                    missing_type_params,
+                    trait_ref.def_id,
+                    span,
+                    empty_generic_args,
+                );
+
+                if references_self {
+                    let def_id = i.bottom().0.def_id();
+                    let mut err = struct_span_err!(
+                        tcx.sess,
+                        i.bottom().1,
+                        E0038,
+                        "the {} `{}` cannot be made into an object",
+                        tcx.def_kind(def_id).descr(def_id),
+                        tcx.item_name(def_id),
                     );
+                    err.note(
+                        rustc_middle::traits::ObjectSafetyViolation::SupertraitSelf(smallvec![])
+                            .error_msg(),
+                    );
+                    err.emit();
                 }
-                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+
+                ty::ExistentialTraitRef { def_id: trait_ref.def_id, substs }
             })
         });
+
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
                 if b.projection_ty.self_ty() != dummy_self {
