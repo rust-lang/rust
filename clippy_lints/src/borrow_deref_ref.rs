@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// let a: &String = s;
     /// foo(&**s);
     /// ```
-    #[clippy::version = "1.59.0"]
+    #[clippy::version = "1.63.0"]
     pub BORROW_DEREF_REF,
     complexity,
     "deref on an immutable reference returns the same type as itself"

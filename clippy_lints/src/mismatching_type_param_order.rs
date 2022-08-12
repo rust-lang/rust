@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// }
     /// impl<A, B> Foo<A, B> {}
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub MISMATCHING_TYPE_PARAM_ORDER,
     pedantic,
     "type parameter positioned inconsistently between type def and impl block"

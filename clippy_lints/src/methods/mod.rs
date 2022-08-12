@@ -2269,7 +2269,7 @@ declare_clippy_lint! {
     /// "1234".replace("12", "12");
     /// "1234".replacen("12", "12", 1);
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub NO_EFFECT_REPLACE,
     suspicious,
     "replace with no effect"

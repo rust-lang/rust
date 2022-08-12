@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// let data = std::rc::Rc::new("some data".to_string());
     /// let v = vec![data; 100];
     /// ```
-    #[clippy::version = "1.62.0"]
+    #[clippy::version = "1.63.0"]
     pub RC_CLONE_IN_VEC_INIT,
     suspicious,
     "initializing reference-counted pointer in `vec![elem; len]`"
