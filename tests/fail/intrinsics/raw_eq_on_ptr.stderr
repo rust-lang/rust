@@ -1,0 +1,14 @@
+error: unsupported operation: unable to turn pointer into raw bytes
+  --> $DIR/raw_eq_on_ptr.rs:LL:CC
+   |
+LL |     unsafe { raw_eq(&x, &x) };
+   |              ^^^^^^^^^^^^^^ unable to turn pointer into raw bytes
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+   = note: backtrace:
+   = note: inside `main` at $DIR/raw_eq_on_ptr.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+
