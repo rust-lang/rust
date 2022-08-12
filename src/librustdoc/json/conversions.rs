@@ -59,7 +59,7 @@ impl JsonRenderer<'_> {
             id: from_item_id_with_name(item_id, self.tcx, name),
             crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
-            span: self.convert_span(span),
+            span: span.and_then(|span| self.convert_span(span)),
             visibility: self.convert_visibility(visibility),
             docs,
             attrs,
