@@ -2,13 +2,18 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
+use crate::keys::Key;
 use crate::{on_disk_cache, Queries};
-use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{self, DepKind, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEffects};
+use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::{
+    QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
+};
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, Handler};
@@ -233,6 +238,53 @@ macro_rules! get_provider {
     };
 }
 
+pub(crate) fn create_query_frame<
+    'tcx,
+    K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
+>(
+    tcx: QueryCtxt<'tcx>,
+    do_describe: fn(QueryCtxt<'tcx>, K) -> String,
+    key: K,
+    kind: DepKind,
+    name: &'static str,
+) -> QueryStackFrame {
+    // Disable visible paths printing for performance reasons.
+    // Showing visible path instead of any path is not that important in production.
+    let description = ty::print::with_no_visible_paths!(
+        // Force filename-line mode to avoid invoking `type_of` query.
+        ty::print::with_forced_impl_filename_line!(do_describe(tcx, key))
+    );
+    let description =
+        if tcx.sess.verbose() { format!("{} [{}]", description, name) } else { description };
+    let span = if kind == dep_graph::DepKind::def_span {
+        // The `def_span` query is used to calculate `default_span`,
+        // so exit to avoid infinite recursion.
+        None
+    } else {
+        Some(key.default_span(*tcx))
+    };
+    let def_kind = if kind == dep_graph::DepKind::opt_def_kind {
+        // Try to avoid infinite recursion.
+        None
+    } else {
+        key.key_as_def_id()
+            .and_then(|def_id| def_id.as_local())
+            .and_then(|def_id| tcx.opt_def_kind(def_id))
+    };
+    let hash = || {
+        tcx.with_stable_hashing_context(|mut hcx| {
+            let mut hasher = StableHasher::new();
+            std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
+            key.hash_stable(&mut hcx, &mut hasher);
+            hasher.finish::<u64>()
+        })
+    };
+
+    QueryStackFrame::new(name, description, span, def_kind, hash)
+}
+
+// NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
+// invoked by `rustc_query_append`.
 macro_rules! define_queries {
     (
      $($(#[$attr:meta])*
@@ -249,44 +301,7 @@ macro_rules! define_queries {
             pub fn $name<'tcx>(tcx: QueryCtxt<'tcx>, key: <queries::$name<'tcx> as QueryConfig>::Key) -> QueryStackFrame {
                 let kind = dep_graph::DepKind::$name;
                 let name = stringify!($name);
-                // Disable visible paths printing for performance reasons.
-                // Showing visible path instead of any path is not that important in production.
-                let description = ty::print::with_no_visible_paths!(
-                    // Force filename-line mode to avoid invoking `type_of` query.
-                    ty::print::with_forced_impl_filename_line!(
-                        queries::$name::describe(tcx, key)
-                    )
-                );
-                let description = if tcx.sess.verbose() {
-                    format!("{} [{}]", description, name)
-                } else {
-                    description
-                };
-                let span = if kind == dep_graph::DepKind::def_span {
-                    // The `def_span` query is used to calculate `default_span`,
-                    // so exit to avoid infinite recursion.
-                    None
-                } else {
-                    Some(key.default_span(*tcx))
-                };
-                let def_kind = if kind == dep_graph::DepKind::opt_def_kind {
-                    // Try to avoid infinite recursion.
-                    None
-                } else {
-                    key.key_as_def_id()
-                        .and_then(|def_id| def_id.as_local())
-                        .and_then(|def_id| tcx.opt_def_kind(def_id))
-                };
-                let hash = || {
-                    tcx.with_stable_hashing_context(|mut hcx|{
-                        let mut hasher = StableHasher::new();
-                        std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
-                        key.hash_stable(&mut hcx, &mut hasher);
-                        hasher.finish::<u64>()
-                    })
-                };
-
-                QueryStackFrame::new(name, description, span, def_kind, hash)
+                $crate::plumbing::create_query_frame(tcx, queries::$name::describe, key, kind, name)
             })*
         }
 

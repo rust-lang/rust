@@ -15,7 +15,6 @@ extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_middle;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::{self, DepKindStruct, SerializedDepNodeIndex};
