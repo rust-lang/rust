@@ -2,7 +2,7 @@ use crate::spec::{LinkerFlavor, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
-    base.cpu = "pentium4".into();
+    base.cpu = "pentiumpro".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
