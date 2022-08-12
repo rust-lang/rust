@@ -46,19 +46,14 @@ impl AllocBytes {
         }
     }
 
-    pub fn get_slice(&self) -> &[u8] {
-        match self {
-            Self::Boxed(b) => &b,
-            Self::Addr((_addr, _len)) => todo!(),
-        }
-    }
-
     pub fn get_slice_from_range(&self, range: Range<usize>) -> &[u8] {
         match &self {
             Self::Boxed(b) => &b[range],
-            Self::Addr((_addr, _len)) => {
-                // TODO! 
-                todo!();
+            Self::Addr((addr, len)) => {
+                unsafe {
+                    let addr = *addr as *const u8;
+                    std::slice::from_raw_parts(addr, *len)
+                }
             }
         }
     }
@@ -67,7 +62,10 @@ impl AllocBytes {
         match self {
             AllocBytes::Boxed(ref mut b) => &mut b[range],
             AllocBytes::Addr((_addr, _len)) => {
-                // TODO!
+                // unsafe {
+                //     let addr = *addr as *const u8;
+                //     &mut std::slice::from_raw_parts(addr, *len)[range]
+                // }
                 todo!();
             }
         }
@@ -81,6 +79,20 @@ impl AllocBytes {
             AllocBytes::Addr((_addr, _len)) => {
                 // TODO!
                 todo!();
+            }
+        }
+    }
+
+    pub fn write_maybe_uninit_slice(boxed: &mut Box<[MaybeUninit<u8>]>, to_write: &AllocBytes) {
+        match to_write {
+            AllocBytes::Boxed(ref b) => {
+                MaybeUninit::write_slice(boxed, &b);
+            },
+            AllocBytes::Addr((addr, len)) => {
+                unsafe {
+                    let addr = *addr as *const u8;
+                    MaybeUninit::write_slice(boxed, std::slice::from_raw_parts(addr, *len));
+                }
             }
         }
     }
@@ -297,6 +309,22 @@ impl<Prov> Allocation<Prov> {
         }
     }
 
+    pub fn from_raw_addr(
+        addr_len: (u64, usize),
+        align: Align,
+        mutability: Mutability,
+    ) -> Self {
+        let size = Size::from_bytes(addr_len.1);
+        Self {
+            bytes: AllocBytes::Addr(addr_len),
+            relocations: Relocations::new(),
+            init_mask: InitMask::new(size, false),
+            align,
+            mutability,
+            extra: (),
+        }
+    }
+
     pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
@@ -357,7 +385,7 @@ impl Allocation {
         let mut bytes = unsafe {
             let buf = std::alloc::alloc(layout);
             let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(std::slice::from_raw_parts_mut(buf as *mut MaybeUninit<u8>, self.bytes.len()));
-            MaybeUninit::write_slice(&mut boxed, &self.bytes);
+            AllocBytes::write_maybe_uninit_slice(&mut boxed, &self.bytes);
             boxed.assume_init()
         };
         assert!(bytes.as_ptr() as usize % align_usize == 0);
