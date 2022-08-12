@@ -18,7 +18,7 @@ pub(crate) fn prepare() {
         "abi-checker",
         "Gankra",
         "abi-checker",
-        "7c1571da6e43f9a37347623e7d5c7d51be664a7b",
+        "a2232d45f202846f5c02203c9f27355360f9a2ff",
     );
 
     clone_repo_shallow_github(

@@ -1,6 +1,6 @@
 use super::build_sysroot;
 use super::config;
-use super::utils::spawn_and_wait_with_input;
+use super::utils::spawn_and_wait;
 use build_system::SysrootKind;
 use std::env;
 use std::path::Path;
@@ -56,13 +56,5 @@ pub(crate) fn run(
     cmd.arg("--add-rustc-codegen-backend");
     cmd.arg(format!("cgclif:{}", cg_clif_dylib_path.display()));
 
-    let output = spawn_and_wait_with_input(cmd, "".to_string());
-
-    // TODO: The correct thing to do here is to check the exit code, but abi-checker
-    // currently doesn't return 0 on success, so check for the test fail count.
-    // See: https://github.com/Gankra/abi-checker/issues/10
-    let failed = !(output.contains("0 failed") && output.contains("0 completely failed"));
-    if failed {
-        panic!("abi-checker failed!");
-    }
+    spawn_and_wait(cmd);
 }
