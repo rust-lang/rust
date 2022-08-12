@@ -210,13 +210,11 @@ impl<Prov> Allocation<Prov> {
         let slice: Cow<'a, [u8]> = slice.into();
         let size = Size::from_bytes(slice.len());
         let align_usize: usize = align.bytes().try_into().unwrap();
-        let count_align = ((slice.len() / align_usize) + 1)*align_usize;
-        
-        let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
-        vec_align.resize(count_align, 0);
-        // TODO avoid excess initialization
-        let (buf, _len, _capacity) = vec_align.into_raw_parts();
-        vec_align = unsafe {Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())};
+        let layout = std::alloc::Layout::from_size_align(slice.len(), align_usize).unwrap();
+        let vec_align = unsafe {
+            let buf = std::alloc::alloc(layout);
+            Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())
+        };
         
         let mut bytes = vec_align.into_boxed_slice();
         assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
@@ -242,29 +240,28 @@ impl<Prov> Allocation<Prov> {
     /// If `panic_on_fail` is true, this will never return `Err`.
     pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
         let align_usize: usize = align.bytes().try_into().unwrap();
-        let count_align = ((size.bytes_usize() / align_usize) + 1)*align_usize;
-
-        // TODO this one is supposed to handle allocation failure, so do so.
-        let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
-        vec_align.resize(count_align, 0);
-        let (buf, _len, _capacity) = vec_align.into_raw_parts();
-        vec_align = unsafe {Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())};
+        let layout = std::alloc::Layout::from_size_align(size.bytes_usize(), align_usize).unwrap();
+        let vec_align = unsafe {
+            // https://doc.rust-lang.org/nightly/std/alloc/trait.GlobalAlloc.html#tymethod.alloc
+            // std::alloc::alloc returns null to indicate an allocation failure: 
+            // "Returning a null pointer indicates that either memory is exhausted 
+            // or layout does not meet this allocator’s size or alignment constraints."
+            let buf = std::alloc::alloc(layout);
+            // Handle allocation failure.
+            if buf.is_null() {
+                if panic_on_fail {
+                    panic!("Allocation::uninit called with panic_on_fail had allocation failure")
+                }
+                ty::tls::with(|tcx| {
+                    tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
+                });
+                Err(InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted))?
+            } 
+            Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())
+        };
         
         let bytes = vec_align.into_boxed_slice();
-        Ok(()).map_err(|_: ()| {
-            // This results in an error that can happen non-deterministically, since the memory
-            // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-deterministic here because all uses of const
-            // evaluation (including ConstProp!) will make compilation fail (via hard error
-            // or ICE) upon encountering a `MemoryExhausted` error.
-            if panic_on_fail {
-                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
-            }
-            ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
-            });
-            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-        })?;
+        assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),
@@ -292,7 +289,7 @@ impl Allocation {
         
         let mut vec_align: Vec<u8> = Vec::with_capacity(count_align);
         vec_align.resize(count_align, 0);
-        assert!(vec_align.as_ptr() as u64 % self.align.bytes() == 0);
+        assert!(vec_align.as_ptr() as usize % align_usize == 0);
 
         vec_align[..self.bytes.len()].copy_from_slice(&self.bytes);
         let mut bytes = vec_align.into_boxed_slice();
