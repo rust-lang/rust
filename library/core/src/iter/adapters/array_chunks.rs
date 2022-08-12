@@ -1,5 +1,5 @@
 use crate::array;
-use crate::iter::{FusedIterator, Iterator};
+use crate::iter::{ByRefSized, FusedIterator, Iterator};
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator over `N` elements of the iterator at a time.
@@ -82,12 +82,12 @@ where
         }
     }
 
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn fold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, |acc, x| NeverShortCircuit(f(acc, x))).0
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 }
 
@@ -111,12 +111,14 @@ where
         self.next_back_remainder();
 
         let mut acc = init;
-        let mut iter = self.iter.by_ref().rev();
+        let mut iter = ByRefSized(&mut self.iter).rev();
 
         // NB remainder is handled by `next_back_remainder`, so
         // `next_chunk` can't return `Err` with non-empty remainder
         // (assuming correct `I as ExactSizeIterator` impl).
         while let Ok(mut chunk) = iter.next_chunk() {
+            // FIXME: do not do double reverse
+            //        (we could instead add `next_chunk_back` for example)
             chunk.reverse();
             acc = f(acc, chunk)?
         }
@@ -124,12 +126,12 @@ where
         try { acc }
     }
 
-    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    fn rfold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(init, |acc, x| NeverShortCircuit(f(acc, x))).0
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 }
 
