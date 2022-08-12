@@ -36,7 +36,6 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
 pub(crate) struct GlobalAsmConfig {
     asm_enabled: bool,
     assembler: PathBuf,
-    linker: PathBuf,
     output_filenames: Arc<OutputFilenames>,
 }
 
@@ -49,7 +48,6 @@ impl GlobalAsmConfig {
         GlobalAsmConfig {
             asm_enabled,
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
-            linker: crate::toolchain::get_toolchain_binary(tcx.sess, "ld"),
             output_filenames: tcx.output_filenames(()).clone(),
         }
     }
@@ -59,14 +57,14 @@ pub(crate) fn compile_global_asm(
     config: &GlobalAsmConfig,
     cgu_name: &str,
     global_asm: &str,
-) -> Result<(), String> {
+) -> Result<Option<PathBuf>, String> {
     if global_asm.is_empty() {
-        return Ok(());
+        return Ok(None);
     }
 
     if !config.asm_enabled {
         if global_asm.contains("__rust_probestack") {
-            return Ok(());
+            return Ok(None);
         }
 
         // FIXME fix linker error on macOS
@@ -105,32 +103,10 @@ pub(crate) fn compile_global_asm(
         return Err(format!("Failed to assemble `{}`", global_asm));
     }
 
-    // Link the global asm and main object file together
-    let main_object_file = add_file_stem_postfix(output_object_file.clone(), ".main");
-    std::fs::rename(&output_object_file, &main_object_file).unwrap();
-    let status = Command::new(&config.linker)
-        .arg("-r") // Create a new object file
-        .arg("-o")
-        .arg(output_object_file)
-        .arg(&main_object_file)
-        .arg(&global_asm_object_file)
-        .status()
-        .unwrap();
-    if !status.success() {
-        return Err(format!(
-            "Failed to link `{}` and `{}` together",
-            main_object_file.display(),
-            global_asm_object_file.display(),
-        ));
-    }
-
-    std::fs::remove_file(global_asm_object_file).unwrap();
-    std::fs::remove_file(main_object_file).unwrap();
-
-    Ok(())
+    Ok(Some(global_asm_object_file))
 }
 
-fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {
+pub(crate) fn add_file_stem_postfix(mut path: PathBuf, postfix: &str) -> PathBuf {
     let mut new_filename = path.file_stem().unwrap().to_owned();
     new_filename.push(postfix);
     if let Some(extension) = path.extension() {

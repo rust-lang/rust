@@ -1,6 +1,7 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
@@ -19,7 +20,11 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use crate::global_asm::GlobalAsmConfig;
 use crate::{prelude::*, BackendConfig};
 
-struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
+struct ModuleCodegenResult(
+    CompiledModule,
+    Option<CompiledModule>,
+    Option<(WorkProductId, WorkProduct)>,
+);
 
 impl<HCX> HashStable<HCX> for ModuleCodegenResult {
     fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
@@ -42,11 +47,15 @@ impl OngoingCodegen {
         let mut modules = vec![];
 
         for module_codegen_result in self.modules {
-            let ModuleCodegenResult(module, work_product) = module_codegen_result;
+            let ModuleCodegenResult(module_regular, module_global_asm, work_product) =
+                module_codegen_result;
             if let Some((work_product_id, work_product)) = work_product {
                 work_products.insert(work_product_id, work_product);
             }
-            modules.push(module);
+            modules.push(module_regular);
+            if let Some(module_global_asm) = module_global_asm {
+                modules.push(module_global_asm);
+            }
         }
 
         (
@@ -80,6 +89,7 @@ fn emit_module(
     module: ObjectModule,
     debug: Option<DebugContext<'_>>,
     unwind_context: UnwindContext,
+    global_asm_object_file: Option<PathBuf>,
 ) -> ModuleCodegenResult {
     let mut product = module.finish();
 
@@ -100,6 +110,12 @@ fn emit_module(
 
     let work_product = if backend_config.disable_incr_cache {
         None
+    } else if let Some(global_asm_object_file) = &global_asm_object_file {
+        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+            tcx.sess,
+            &name,
+            &[("o", &tmp_file), ("asm.o", global_asm_object_file)],
+        )
     } else {
         rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
             tcx.sess,
@@ -109,34 +125,77 @@ fn emit_module(
     };
 
     ModuleCodegenResult(
-        CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None },
+        CompiledModule {
+            name: name.clone(),
+            kind,
+            object: Some(tmp_file),
+            dwarf_object: None,
+            bytecode: None,
+        },
+        global_asm_object_file.map(|global_asm_object_file| CompiledModule {
+            name: format!("{name}.asm"),
+            kind,
+            object: Some(global_asm_object_file),
+            dwarf_object: None,
+            bytecode: None,
+        }),
         work_product,
     )
 }
 
 fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCodegenResult {
     let work_product = cgu.previous_work_product(tcx);
-    let obj_out = tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
-    let source_file = rustc_incremental::in_incr_comp_dir_sess(
+    let obj_out_regular =
+        tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
+    let source_file_regular = rustc_incremental::in_incr_comp_dir_sess(
         &tcx.sess,
         &work_product.saved_files.get("o").expect("no saved object file in work product"),
     );
-    if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
+
+    if let Err(err) = rustc_fs_util::link_or_copy(&source_file_regular, &obj_out_regular) {
         tcx.sess.err(&format!(
             "unable to copy {} to {}: {}",
-            source_file.display(),
-            obj_out.display(),
+            source_file_regular.display(),
+            obj_out_regular.display(),
             err
         ));
     }
+    let obj_out_global_asm =
+        crate::global_asm::add_file_stem_postfix(obj_out_regular.clone(), ".asm");
+    let has_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
+        let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, asm_o);
+        if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
+        {
+            tcx.sess.err(&format!(
+                "unable to copy {} to {}: {}",
+                source_file_regular.display(),
+                obj_out_regular.display(),
+                err
+            ));
+        }
+        true
+    } else {
+        false
+    };
 
     ModuleCodegenResult(
         CompiledModule {
             name: cgu.name().to_string(),
             kind: ModuleKind::Regular,
-            object: Some(obj_out),
+            object: Some(obj_out_regular),
             dwarf_object: None,
             bytecode: None,
+        },
+        if has_global_asm {
+            Some(CompiledModule {
+                name: cgu.name().to_string(),
+                kind: ModuleKind::Regular,
+                object: Some(obj_out_global_asm),
+                dwarf_object: None,
+                bytecode: None,
+            })
+        } else {
+            None
         },
         Some((cgu.work_product_id(), work_product)),
     )
@@ -191,6 +250,15 @@ fn module_codegen(
         cgu.is_primary(),
     );
 
+    let global_asm_object_file = match crate::global_asm::compile_global_asm(
+        &global_asm_config,
+        cgu.name().as_str(),
+        &cx.global_asm,
+    ) {
+        Ok(global_asm_object_file) => global_asm_object_file,
+        Err(err) => tcx.sess.fatal(&err),
+    };
+
     let debug_context = cx.debug_context;
     let unwind_context = cx.unwind_context;
     let codegen_result = tcx.sess.time("write object file", || {
@@ -202,17 +270,9 @@ fn module_codegen(
             module,
             debug_context,
             unwind_context,
+            global_asm_object_file,
         )
     });
-
-    match crate::global_asm::compile_global_asm(
-        &global_asm_config,
-        cgu.name().as_str(),
-        &cx.global_asm,
-    ) {
-        Ok(()) => {}
-        Err(err) => tcx.sess.fatal(&err),
-    }
 
     codegen_result
 }
@@ -281,7 +341,7 @@ pub(crate) fn run_aot(
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 
     let allocator_module = if created_alloc_shim {
-        let ModuleCodegenResult(module, work_product) = emit_module(
+        let ModuleCodegenResult(module, module_global_asm, work_product) = emit_module(
             tcx,
             &backend_config,
             "allocator_shim".to_string(),
@@ -289,7 +349,9 @@ pub(crate) fn run_aot(
             allocator_module,
             None,
             allocator_unwind_context,
+            None,
         );
+        assert!(module_global_asm.is_none());
         if let Some((id, product)) = work_product {
             work_products.insert(id, product);
         }
