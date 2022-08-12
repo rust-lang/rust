@@ -1,6 +1,8 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::sync::Arc;
+
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -14,6 +16,7 @@ use rustc_session::Session;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
+use crate::global_asm::GlobalAsmConfig;
 use crate::{prelude::*, BackendConfig};
 
 struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
@@ -141,7 +144,11 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
 
 fn module_codegen(
     tcx: TyCtxt<'_>,
-    (backend_config, cgu_name): (BackendConfig, rustc_span::Symbol),
+    (backend_config, global_asm_config, cgu_name): (
+        BackendConfig,
+        Arc<GlobalAsmConfig>,
+        rustc_span::Symbol,
+    ),
 ) -> ModuleCodegenResult {
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
@@ -198,9 +205,13 @@ fn module_codegen(
         )
     });
 
-    match crate::global_asm::compile_global_asm(tcx, cgu.name().as_str(), &cx.global_asm) {
+    match crate::global_asm::compile_global_asm(
+        &global_asm_config,
+        cgu.name().as_str(),
+        &cx.global_asm,
+    ) {
         Ok(()) => {}
-        Err(err) => tcx.sess.fatal(&err.to_string()),
+        Err(err) => tcx.sess.fatal(&err),
     }
 
     codegen_result
@@ -226,6 +237,8 @@ pub(crate) fn run_aot(
         }
     }
 
+    let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
+
     let modules = super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
         cgus.iter()
             .map(|cgu| {
@@ -243,7 +256,7 @@ pub(crate) fn run_aot(
                             .with_task(
                                 dep_node,
                                 tcx,
-                                (backend_config.clone(), cgu.name()),
+                                (backend_config.clone(), global_asm_config.clone(), cgu.name()),
                                 module_codegen,
                                 Some(rustc_middle::dep_graph::hash_result),
                             )

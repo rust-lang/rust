@@ -1,13 +1,14 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
-use std::io::{self, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::ItemId;
-use rustc_session::config::OutputType;
+use rustc_session::config::{OutputFilenames, OutputType};
 
 use crate::prelude::*;
 
@@ -31,39 +32,55 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct GlobalAsmConfig {
+    asm_enabled: bool,
+    assembler: PathBuf,
+    linker: PathBuf,
+    output_filenames: Arc<OutputFilenames>,
+}
+
+impl GlobalAsmConfig {
+    pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
+        let asm_enabled = cfg!(feature = "inline_asm")
+            && !tcx.sess.target.is_like_osx
+            && !tcx.sess.target.is_like_windows;
+
+        GlobalAsmConfig {
+            asm_enabled,
+            assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
+            linker: crate::toolchain::get_toolchain_binary(tcx.sess, "ld"),
+            output_filenames: tcx.output_filenames(()).clone(),
+        }
+    }
+}
+
 pub(crate) fn compile_global_asm(
-    tcx: TyCtxt<'_>,
+    config: &GlobalAsmConfig,
     cgu_name: &str,
     global_asm: &str,
-) -> io::Result<()> {
+) -> Result<(), String> {
     if global_asm.is_empty() {
         return Ok(());
     }
 
-    if cfg!(not(feature = "inline_asm"))
-        || tcx.sess.target.is_like_osx
-        || tcx.sess.target.is_like_windows
-    {
+    if !config.asm_enabled {
         if global_asm.contains("__rust_probestack") {
             return Ok(());
         }
 
         // FIXME fix linker error on macOS
         if cfg!(not(feature = "inline_asm")) {
-            return Err(io::Error::new(
-                io::ErrorKind::Unsupported,
-                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift",
-            ));
+            return Err(
+                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift"
+                    .to_owned(),
+            );
         } else {
-            return Err(io::Error::new(
-                io::ErrorKind::Unsupported,
-                "asm! and global_asm! are not yet supported on macOS and Windows",
-            ));
+            return Err(
+                "asm! and global_asm! are not yet supported on macOS and Windows".to_owned()
+            );
         }
     }
-
-    let assembler = crate::toolchain::get_toolchain_binary(tcx.sess, "as");
-    let linker = crate::toolchain::get_toolchain_binary(tcx.sess, "ld");
 
     // Remove all LLVM style comments
     let global_asm = global_asm
@@ -72,11 +89,11 @@ pub(crate) fn compile_global_asm(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let output_object_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu_name));
+    let output_object_file = config.output_filenames.temp_path(OutputType::Object, Some(cgu_name));
 
     // Assemble `global_asm`
     let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");
-    let mut child = Command::new(assembler)
+    let mut child = Command::new(&config.assembler)
         .arg("-o")
         .arg(&global_asm_object_file)
         .stdin(Stdio::piped())
@@ -85,16 +102,13 @@ pub(crate) fn compile_global_asm(
     child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
     let status = child.wait().expect("Failed to wait for `as`.");
     if !status.success() {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("Failed to assemble `{}`", global_asm),
-        ));
+        return Err(format!("Failed to assemble `{}`", global_asm));
     }
 
     // Link the global asm and main object file together
     let main_object_file = add_file_stem_postfix(output_object_file.clone(), ".main");
     std::fs::rename(&output_object_file, &main_object_file).unwrap();
-    let status = Command::new(linker)
+    let status = Command::new(&config.linker)
         .arg("-r") // Create a new object file
         .arg("-o")
         .arg(output_object_file)
@@ -103,13 +117,10 @@ pub(crate) fn compile_global_asm(
         .status()
         .unwrap();
     if !status.success() {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!(
-                "Failed to link `{}` and `{}` together",
-                main_object_file.display(),
-                global_asm_object_file.display(),
-            ),
+        return Err(format!(
+            "Failed to link `{}` and `{}` together",
+            main_object_file.display(),
+            global_asm_object_file.display(),
         ));
     }
 
