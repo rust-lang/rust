@@ -1322,14 +1322,17 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let trait_def = cx.tcx.associated_item(p.res.def_id()).container_id(cx.tcx);
             let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
-                segments: trait_segments.iter().map(|x| x.clean(cx)).collect(),
+                segments: trait_segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
             };
             register_res(cx, trait_.res);
             let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
             Type::QPath {
-                assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
+                assoc: Box::new(clean_path_segment(
+                    p.segments.last().expect("segments were empty"),
+                    cx,
+                )),
                 should_show_cast,
                 self_type: Box::new(self_type),
                 trait_,
@@ -1349,7 +1352,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
             Type::QPath {
-                assoc: Box::new(segment.clean(cx)),
+                assoc: Box::new(clean_path_segment(segment, cx)),
                 should_show_cast,
                 self_type: Box::new(self_type),
                 trait_,
@@ -1823,7 +1826,10 @@ fn clean_variant_data<'tcx>(
 }
 
 fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
-    Path { res: path.res, segments: path.segments.iter().map(|x| x.clean(cx)).collect() }
+    Path {
+        res: path.res,
+        segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
+    }
 }
 
 fn clean_generic_args<'tcx>(
@@ -1861,10 +1867,11 @@ fn clean_generic_args<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, PathSegment> for hir::PathSegment<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> PathSegment {
-        PathSegment { name: self.ident.name, args: clean_generic_args(self.args(), cx) }
-    }
+fn clean_path_segment<'tcx>(
+    path: &hir::PathSegment<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> PathSegment {
+    PathSegment { name: path.ident.name, args: clean_generic_args(path.args(), cx) }
 }
 
 impl<'tcx> Clean<'tcx, BareFunctionDecl> for hir::BareFnTy<'tcx> {
