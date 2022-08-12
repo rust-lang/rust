@@ -246,7 +246,7 @@ macro_rules! define_queries {
 
             // Create an eponymous constructor for each query.
             $(#[allow(nonstandard_style)] $(#[$attr])*
-            pub fn $name<'tcx>(tcx: QueryCtxt<'tcx>, key: query_keys::$name<'tcx>) -> QueryStackFrame {
+            pub fn $name<'tcx>(tcx: QueryCtxt<'tcx>, key: <queries::$name<'tcx> as QueryConfig>::Key) -> QueryStackFrame {
                 let kind = dep_graph::DepKind::$name;
                 let name = stringify!($name);
                 // Disable visible paths printing for performance reasons.
@@ -348,7 +348,6 @@ macro_rules! define_queries {
         mod query_callbacks {
             use super::*;
             use rustc_middle::dep_graph::DepNode;
-            use rustc_middle::ty::query::query_keys;
             use rustc_query_system::dep_graph::DepNodeParams;
             use rustc_query_system::query::{force_query, QueryDescription};
             use rustc_query_system::dep_graph::FingerprintStyle;
@@ -410,7 +409,7 @@ macro_rules! define_queries {
                 let is_eval_always = is_eval_always!([$($modifiers)*]);
 
                 let fingerprint_style =
-                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::fingerprint_style();
+                    <<queries::$name<'_> as QueryConfig>::Key as DepNodeParams<TyCtxt<'_>>>::fingerprint_style();
 
                 if is_anon || !fingerprint_style.reconstructible() {
                     return DepKindStruct {
@@ -423,8 +422,8 @@ macro_rules! define_queries {
                 }
 
                 #[inline(always)]
-                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> Option<query_keys::$name<'tcx>> {
-                    <query_keys::$name<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, &dep_node)
+                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> Option<<queries::$name<'tcx> as QueryConfig>::Key> {
+                    <<queries::$name<'_> as QueryConfig>::Key as DepNodeParams<TyCtxt<'_>>>::recover(tcx, &dep_node)
                 }
 
                 fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: DepNode) -> bool {
@@ -475,7 +474,7 @@ macro_rules! define_queries_struct {
 
             jobs: AtomicU64,
 
-            $($(#[$attr])*  $name: QueryState<query_keys::$name<'tcx>>,)*
+            $($(#[$attr])*  $name: QueryState<<queries::$name<'tcx> as QueryConfig>::Key>,)*
         }
 
         impl<'tcx> Queries<'tcx> {
@@ -530,7 +529,7 @@ macro_rules! define_queries_struct {
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
                 span: Span,
-                key: query_keys::$name<'tcx>,
+                key: <queries::$name<'tcx> as QueryConfig>::Key,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<'tcx>> {
                 let qcx = QueryCtxt { tcx, queries: self };
