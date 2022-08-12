@@ -1510,7 +1510,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 if !lifetime.is_elided() { Some(clean_lifetime(*lifetime, cx)) } else { None };
             DynTrait(bounds, lifetime)
         }
-        TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
+        TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer | TyKind::Err => Infer,
         TyKind::Typeof(..) => panic!("unimplemented type {:?}", ty.kind),
@@ -1874,22 +1874,23 @@ fn clean_path_segment<'tcx>(
     PathSegment { name: path.ident.name, args: clean_generic_args(path.args(), cx) }
 }
 
-impl<'tcx> Clean<'tcx, BareFunctionDecl> for hir::BareFnTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> BareFunctionDecl {
-        let (generic_params, decl) = enter_impl_trait(cx, |cx| {
-            // NOTE: generics must be cleaned before args
-            let generic_params = self
-                .generic_params
-                .iter()
-                .filter(|p| !is_elided_lifetime(p))
-                .map(|x| clean_generic_param(cx, None, x))
-                .collect();
-            let args = clean_args_from_types_and_names(cx, self.decl.inputs, self.param_names);
-            let decl = clean_fn_decl_with_args(cx, self.decl, args);
-            (generic_params, decl)
-        });
-        BareFunctionDecl { unsafety: self.unsafety, abi: self.abi, decl, generic_params }
-    }
+fn clean_bare_fn_ty<'tcx>(
+    bare_fn: &hir::BareFnTy<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> BareFunctionDecl {
+    let (generic_params, decl) = enter_impl_trait(cx, |cx| {
+        // NOTE: generics must be cleaned before args
+        let generic_params = bare_fn
+            .generic_params
+            .iter()
+            .filter(|p| !is_elided_lifetime(p))
+            .map(|x| clean_generic_param(cx, None, x))
+            .collect();
+        let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_names);
+        let decl = clean_fn_decl_with_args(cx, bare_fn.decl, args);
+        (generic_params, decl)
+    });
+    BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
 }
 
 fn clean_maybe_renamed_item<'tcx>(
