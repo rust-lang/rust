@@ -214,8 +214,7 @@ impl<Prov> Allocation<Prov> {
         let layout = std::alloc::Layout::from_size_align(slice.len(), align_usize).unwrap();
         let bytes = unsafe {
             let buf = std::alloc::alloc(layout);
-            let mut uninit_bytes = Vec::from_raw_parts(buf as *mut MaybeUninit<u8>, slice.len(), slice.len());
-            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(&mut *uninit_bytes);
+            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(std::slice::from_raw_parts_mut(buf as *mut MaybeUninit<u8>, slice.len()));
             MaybeUninit::write_slice(&mut boxed, &slice);
             boxed.assume_init()
         };
@@ -290,8 +289,7 @@ impl Allocation {
         let layout = std::alloc::Layout::from_size_align(self.bytes.len(), align_usize).unwrap();
         let mut bytes = unsafe {
             let buf = std::alloc::alloc(layout);
-            let mut uninit_bytes = Vec::from_raw_parts(buf as *mut MaybeUninit<u8>, self.bytes.len(), self.bytes.len());
-            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(&mut *uninit_bytes);
+            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(std::slice::from_raw_parts_mut(buf as *mut MaybeUninit<u8>, self.bytes.len()));
             MaybeUninit::write_slice(&mut boxed, &self.bytes);
             boxed.assume_init()
         };
