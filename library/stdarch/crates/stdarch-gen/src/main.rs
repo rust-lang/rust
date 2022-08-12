@@ -971,6 +971,15 @@ fn is_vstx(name: &str) -> bool {
         && (s[1].starts_with("s") || s[1].starts_with("f"))
 }
 
+fn create_doc_string(comment_string: &str, fn_name: &str) -> String {
+    format!(
+        r#"{}
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/{})"#,
+        comment_string, fn_name
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 fn gen_aarch64(
     current_comment: &str,
@@ -1374,6 +1383,7 @@ fn gen_aarch64(
         RDM => String::from("\n#[stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")]"),
         _ => String::new(),
     };
+    let function_doc = create_doc_string(current_comment, &name);
     let function = format!(
         r#"
 {}
@@ -1384,7 +1394,7 @@ fn gen_aarch64(
     {}
 }}
 "#,
-        current_comment,
+        function_doc,
         current_target,
         current_aarch64,
         const_assert,
@@ -2342,6 +2352,7 @@ fn gen_arm(
             RDM => String::from("\n#[stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")]"),
             _ => String::new(),
         };
+        let function_doc = create_doc_string(current_comment, &name);
         format!(
             r#"
 {}
@@ -2358,13 +2369,13 @@ fn gen_arm(
 #[cfg_attr(test, assert_instr({}{}))]{}{}
 {}
 "#,
-            current_comment,
+            function_doc,
             current_target_arm,
             expand_intrinsic(&current_arm, in_t[1]),
             const_assert,
             const_legacy,
             call_arm,
-            current_comment,
+            function_doc,
             current_target_aarch64,
             expand_intrinsic(&current_aarch64, in_t[1]),
             const_assert,
@@ -2410,6 +2421,7 @@ fn gen_arm(
             RDM => String::from("\n#[cfg_attr(target_arch = \"aarch64\", stable(feature = \"rdm_intrinsics\", since = \"1.62.0\"))]"),
             _ => String::new(),
         };
+        let function_doc = create_doc_string(current_comment, &name);
         format!(
             r#"
 {}
@@ -2420,7 +2432,7 @@ fn gen_arm(
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}{}
 {}
 "#,
-            current_comment,
+            function_doc,
             current_target_aarch64,
             current_target_arm,
             expand_intrinsic(&current_arm, in_t[1]),

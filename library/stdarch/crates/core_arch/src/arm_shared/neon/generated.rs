@@ -10,6 +10,8 @@ use super::*;
 use stdarch_test::assert_instr;
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21,6 +23,8 @@ pub unsafe fn vand_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -32,6 +36,8 @@ pub unsafe fn vandq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -43,6 +49,8 @@ pub unsafe fn vand_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -54,6 +62,8 @@ pub unsafe fn vandq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -65,6 +75,8 @@ pub unsafe fn vand_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -76,6 +88,8 @@ pub unsafe fn vandq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -87,6 +101,8 @@ pub unsafe fn vand_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -98,6 +114,8 @@ pub unsafe fn vandq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -109,6 +127,8 @@ pub unsafe fn vand_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -120,6 +140,8 @@ pub unsafe fn vandq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -131,6 +153,8 @@ pub unsafe fn vand_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -142,6 +166,8 @@ pub unsafe fn vandq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -153,6 +179,8 @@ pub unsafe fn vand_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -164,6 +192,8 @@ pub unsafe fn vandq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vand_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -175,6 +205,8 @@ pub unsafe fn vand_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 }
 
 /// Vector bitwise and
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vandq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -186,6 +218,8 @@ pub unsafe fn vandq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -197,6 +231,8 @@ pub unsafe fn vorr_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -208,6 +244,8 @@ pub unsafe fn vorrq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -219,6 +257,8 @@ pub unsafe fn vorr_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -230,6 +270,8 @@ pub unsafe fn vorrq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -241,6 +283,8 @@ pub unsafe fn vorr_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -252,6 +296,8 @@ pub unsafe fn vorrq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -263,6 +309,8 @@ pub unsafe fn vorr_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -274,6 +322,8 @@ pub unsafe fn vorrq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -285,6 +335,8 @@ pub unsafe fn vorr_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -296,6 +348,8 @@ pub unsafe fn vorrq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -307,6 +361,8 @@ pub unsafe fn vorr_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -318,6 +374,8 @@ pub unsafe fn vorrq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -329,6 +387,8 @@ pub unsafe fn vorr_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -340,6 +400,8 @@ pub unsafe fn vorrq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorr_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -351,6 +413,8 @@ pub unsafe fn vorr_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 }
 
 /// Vector bitwise or (immediate, inclusive)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vorrq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -362,6 +426,8 @@ pub unsafe fn vorrq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -373,6 +439,8 @@ pub unsafe fn veor_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -384,6 +452,8 @@ pub unsafe fn veorq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -395,6 +465,8 @@ pub unsafe fn veor_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -406,6 +478,8 @@ pub unsafe fn veorq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -417,6 +491,8 @@ pub unsafe fn veor_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -428,6 +504,8 @@ pub unsafe fn veorq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -439,6 +517,8 @@ pub unsafe fn veor_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -450,6 +530,8 @@ pub unsafe fn veorq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -461,6 +543,8 @@ pub unsafe fn veor_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -472,6 +556,8 @@ pub unsafe fn veorq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -483,6 +569,8 @@ pub unsafe fn veor_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -494,6 +582,8 @@ pub unsafe fn veorq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -505,6 +595,8 @@ pub unsafe fn veor_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -516,6 +608,8 @@ pub unsafe fn veorq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -527,6 +621,8 @@ pub unsafe fn veor_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 }
 
 /// Vector bitwise exclusive or (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veorq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -538,6 +634,8 @@ pub unsafe fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -555,6 +653,8 @@ vabd_s8_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -572,6 +672,8 @@ vabdq_s8_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -589,6 +691,8 @@ vabd_s16_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -606,6 +710,8 @@ vabdq_s16_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -623,6 +729,8 @@ vabd_s32_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -640,6 +748,8 @@ vabdq_s32_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -657,6 +767,8 @@ vabd_u8_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -674,6 +786,8 @@ vabdq_u8_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -691,6 +805,8 @@ vabd_u16_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -708,6 +824,8 @@ vabdq_u16_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -725,6 +843,8 @@ vabd_u32_(a, b)
 }
 
 /// Absolute difference between the arguments
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -742,6 +862,8 @@ vabdq_u32_(a, b)
 }
 
 /// Absolute difference between the arguments of Floating
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabd_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -759,6 +881,8 @@ vabd_f32_(a, b)
 }
 
 /// Absolute difference between the arguments of Floating
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -776,6 +900,8 @@ vabdq_f32_(a, b)
 }
 
 /// Unsigned Absolute difference Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -787,6 +913,8 @@ pub unsafe fn vabdl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
 }
 
 /// Unsigned Absolute difference Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -798,6 +926,8 @@ pub unsafe fn vabdl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
 }
 
 /// Unsigned Absolute difference Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -809,6 +939,8 @@ pub unsafe fn vabdl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 }
 
 /// Signed Absolute difference Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -821,6 +953,8 @@ pub unsafe fn vabdl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
 }
 
 /// Signed Absolute difference Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -833,6 +967,8 @@ pub unsafe fn vabdl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 }
 
 /// Signed Absolute difference Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabdl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -845,6 +981,8 @@ pub unsafe fn vabdl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -856,6 +994,8 @@ pub unsafe fn vceq_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -867,6 +1007,8 @@ pub unsafe fn vceqq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -878,6 +1020,8 @@ pub unsafe fn vceq_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -889,6 +1033,8 @@ pub unsafe fn vceqq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -900,6 +1046,8 @@ pub unsafe fn vceq_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -911,6 +1059,8 @@ pub unsafe fn vceqq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -922,6 +1072,8 @@ pub unsafe fn vceq_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -933,6 +1085,8 @@ pub unsafe fn vceqq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -944,6 +1098,8 @@ pub unsafe fn vceq_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -955,6 +1111,8 @@ pub unsafe fn vceqq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -966,6 +1124,8 @@ pub unsafe fn vceq_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -977,6 +1137,8 @@ pub unsafe fn vceqq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -988,6 +1150,8 @@ pub unsafe fn vceq_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
 }
 
 /// Compare bitwise Equal (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -999,6 +1163,8 @@ pub unsafe fn vceqq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
 }
 
 /// Floating-point compare equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1010,6 +1176,8 @@ pub unsafe fn vceq_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point compare equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vceqq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1021,6 +1189,8 @@ pub unsafe fn vceqq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1034,6 +1204,8 @@ pub unsafe fn vtst_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1047,6 +1219,8 @@ pub unsafe fn vtstq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1060,6 +1234,8 @@ pub unsafe fn vtst_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1073,6 +1249,8 @@ pub unsafe fn vtstq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1086,6 +1264,8 @@ pub unsafe fn vtst_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1099,6 +1279,8 @@ pub unsafe fn vtstq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1112,6 +1294,8 @@ pub unsafe fn vtst_p8(a: poly8x8_t, b: poly8x8_t) -> uint8x8_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1125,6 +1309,8 @@ pub unsafe fn vtstq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1138,6 +1324,8 @@ pub unsafe fn vtst_p16(a: poly16x4_t, b: poly16x4_t) -> uint16x4_t {
 }
 
 /// Signed compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1151,6 +1339,8 @@ pub unsafe fn vtstq_p16(a: poly16x8_t, b: poly16x8_t) -> uint16x8_t {
 }
 
 /// Unsigned compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1164,6 +1354,8 @@ pub unsafe fn vtst_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Unsigned compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1177,6 +1369,8 @@ pub unsafe fn vtstq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Unsigned compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1190,6 +1384,8 @@ pub unsafe fn vtst_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Unsigned compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1203,6 +1399,8 @@ pub unsafe fn vtstq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Unsigned compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtst_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1216,6 +1414,8 @@ pub unsafe fn vtst_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Unsigned compare bitwise Test bits nonzero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtstq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1229,6 +1429,8 @@ pub unsafe fn vtstq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabs_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1240,6 +1442,8 @@ pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
 }
 
 /// Floating-point absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabsq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1251,6 +1455,8 @@ pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
 }
 
 /// Compare signed greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1262,6 +1468,8 @@ pub unsafe fn vcgt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 }
 
 /// Compare signed greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1273,6 +1481,8 @@ pub unsafe fn vcgtq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 }
 
 /// Compare signed greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1284,6 +1494,8 @@ pub unsafe fn vcgt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 }
 
 /// Compare signed greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1295,6 +1507,8 @@ pub unsafe fn vcgtq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 }
 
 /// Compare signed greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1306,6 +1520,8 @@ pub unsafe fn vcgt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 }
 
 /// Compare signed greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1317,6 +1533,8 @@ pub unsafe fn vcgtq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 }
 
 /// Compare unsigned highe
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1328,6 +1546,8 @@ pub unsafe fn vcgt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Compare unsigned highe
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1339,6 +1559,8 @@ pub unsafe fn vcgtq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Compare unsigned highe
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1350,6 +1572,8 @@ pub unsafe fn vcgt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Compare unsigned highe
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1361,6 +1585,8 @@ pub unsafe fn vcgtq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Compare unsigned highe
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1372,6 +1598,8 @@ pub unsafe fn vcgt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Compare unsigned highe
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1383,6 +1611,8 @@ pub unsafe fn vcgtq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point compare greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgt_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1394,6 +1624,8 @@ pub unsafe fn vcgt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point compare greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgtq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1405,6 +1637,8 @@ pub unsafe fn vcgtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Compare signed less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1416,6 +1650,8 @@ pub unsafe fn vclt_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 }
 
 /// Compare signed less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1427,6 +1663,8 @@ pub unsafe fn vcltq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 }
 
 /// Compare signed less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1438,6 +1676,8 @@ pub unsafe fn vclt_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 }
 
 /// Compare signed less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1449,6 +1689,8 @@ pub unsafe fn vcltq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 }
 
 /// Compare signed less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1460,6 +1702,8 @@ pub unsafe fn vclt_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 }
 
 /// Compare signed less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1471,6 +1715,8 @@ pub unsafe fn vcltq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 }
 
 /// Compare unsigned less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1482,6 +1728,8 @@ pub unsafe fn vclt_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Compare unsigned less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1493,6 +1741,8 @@ pub unsafe fn vcltq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Compare unsigned less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1504,6 +1754,8 @@ pub unsafe fn vclt_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Compare unsigned less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1515,6 +1767,8 @@ pub unsafe fn vcltq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Compare unsigned less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1526,6 +1780,8 @@ pub unsafe fn vclt_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Compare unsigned less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1537,6 +1793,8 @@ pub unsafe fn vcltq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point compare less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclt_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1548,6 +1806,8 @@ pub unsafe fn vclt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point compare less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcltq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1559,6 +1819,8 @@ pub unsafe fn vcltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Compare signed less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1570,6 +1832,8 @@ pub unsafe fn vcle_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 }
 
 /// Compare signed less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1581,6 +1845,8 @@ pub unsafe fn vcleq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 }
 
 /// Compare signed less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1592,6 +1858,8 @@ pub unsafe fn vcle_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 }
 
 /// Compare signed less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1603,6 +1871,8 @@ pub unsafe fn vcleq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 }
 
 /// Compare signed less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1614,6 +1884,8 @@ pub unsafe fn vcle_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 }
 
 /// Compare signed less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1625,6 +1897,8 @@ pub unsafe fn vcleq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 }
 
 /// Compare unsigned less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1636,6 +1910,8 @@ pub unsafe fn vcle_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Compare unsigned less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1647,6 +1923,8 @@ pub unsafe fn vcleq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Compare unsigned less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1658,6 +1936,8 @@ pub unsafe fn vcle_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Compare unsigned less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1669,6 +1949,8 @@ pub unsafe fn vcleq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Compare unsigned less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1680,6 +1962,8 @@ pub unsafe fn vcle_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Compare unsigned less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1691,6 +1975,8 @@ pub unsafe fn vcleq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point compare less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcle_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1702,6 +1988,8 @@ pub unsafe fn vcle_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point compare less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcleq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1713,6 +2001,8 @@ pub unsafe fn vcleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Compare signed greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1724,6 +2014,8 @@ pub unsafe fn vcge_s8(a: int8x8_t, b: int8x8_t) -> uint8x8_t {
 }
 
 /// Compare signed greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1735,6 +2027,8 @@ pub unsafe fn vcgeq_s8(a: int8x16_t, b: int8x16_t) -> uint8x16_t {
 }
 
 /// Compare signed greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1746,6 +2040,8 @@ pub unsafe fn vcge_s16(a: int16x4_t, b: int16x4_t) -> uint16x4_t {
 }
 
 /// Compare signed greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1757,6 +2053,8 @@ pub unsafe fn vcgeq_s16(a: int16x8_t, b: int16x8_t) -> uint16x8_t {
 }
 
 /// Compare signed greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1768,6 +2066,8 @@ pub unsafe fn vcge_s32(a: int32x2_t, b: int32x2_t) -> uint32x2_t {
 }
 
 /// Compare signed greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1779,6 +2079,8 @@ pub unsafe fn vcgeq_s32(a: int32x4_t, b: int32x4_t) -> uint32x4_t {
 }
 
 /// Compare unsigned greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1790,6 +2092,8 @@ pub unsafe fn vcge_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Compare unsigned greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1801,6 +2105,8 @@ pub unsafe fn vcgeq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Compare unsigned greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1812,6 +2118,8 @@ pub unsafe fn vcge_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Compare unsigned greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1823,6 +2131,8 @@ pub unsafe fn vcgeq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Compare unsigned greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1834,6 +2144,8 @@ pub unsafe fn vcge_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Compare unsigned greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1845,6 +2157,8 @@ pub unsafe fn vcgeq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point compare greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcge_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1856,6 +2170,8 @@ pub unsafe fn vcge_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point compare greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgeq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1867,6 +2183,8 @@ pub unsafe fn vcgeq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1884,6 +2202,8 @@ vcls_s8_(a)
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1901,6 +2221,8 @@ vclsq_s8_(a)
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1918,6 +2240,8 @@ vcls_s16_(a)
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1935,6 +2259,8 @@ vclsq_s16_(a)
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1952,6 +2278,8 @@ vcls_s32_(a)
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1969,6 +2297,8 @@ vclsq_s32_(a)
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1980,6 +2310,8 @@ pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -1991,6 +2323,8 @@ pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2002,6 +2336,8 @@ pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2013,6 +2349,8 @@ pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcls_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2024,6 +2362,8 @@ pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
 }
 
 /// Count leading sign bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclsq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2035,6 +2375,8 @@ pub unsafe fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2046,6 +2388,8 @@ pub unsafe fn vclz_s8(a: int8x8_t) -> int8x8_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2057,6 +2401,8 @@ pub unsafe fn vclzq_s8(a: int8x16_t) -> int8x16_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2068,6 +2414,8 @@ pub unsafe fn vclz_s16(a: int16x4_t) -> int16x4_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2079,6 +2427,8 @@ pub unsafe fn vclzq_s16(a: int16x8_t) -> int16x8_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2090,6 +2440,8 @@ pub unsafe fn vclz_s32(a: int32x2_t) -> int32x2_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2101,6 +2453,8 @@ pub unsafe fn vclzq_s32(a: int32x4_t) -> int32x4_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2112,6 +2466,8 @@ pub unsafe fn vclz_u8(a: uint8x8_t) -> uint8x8_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2123,6 +2479,8 @@ pub unsafe fn vclzq_u8(a: uint8x16_t) -> uint8x16_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2134,6 +2492,8 @@ pub unsafe fn vclz_u16(a: uint16x4_t) -> uint16x4_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2145,6 +2505,8 @@ pub unsafe fn vclzq_u16(a: uint16x8_t) -> uint16x8_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclz_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2156,6 +2518,8 @@ pub unsafe fn vclz_u32(a: uint32x2_t) -> uint32x2_t {
 }
 
 /// Count leading zero bits
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclzq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2167,6 +2531,8 @@ pub unsafe fn vclzq_u32(a: uint32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point absolute compare greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagt_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2184,6 +2550,8 @@ vcagt_f32_(a, b)
 }
 
 /// Floating-point absolute compare greater than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagtq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2201,6 +2569,8 @@ vcagtq_f32_(a, b)
 }
 
 /// Floating-point absolute compare greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcage_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2218,6 +2588,8 @@ vcage_f32_(a, b)
 }
 
 /// Floating-point absolute compare greater than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcageq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2235,6 +2607,8 @@ vcageq_f32_(a, b)
 }
 
 /// Floating-point absolute compare less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcalt_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2246,6 +2620,8 @@ pub unsafe fn vcalt_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point absolute compare less than
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaltq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2257,6 +2633,8 @@ pub unsafe fn vcaltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Floating-point absolute compare less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcale_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2268,6 +2646,8 @@ pub unsafe fn vcale_f32(a: float32x2_t, b: float32x2_t) -> uint32x2_t {
 }
 
 /// Floating-point absolute compare less than or equal
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaleq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2279,6 +2659,8 @@ pub unsafe fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2290,6 +2672,8 @@ pub unsafe fn vcreate_s8(a: u64) -> int8x8_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2301,6 +2685,8 @@ pub unsafe fn vcreate_s16(a: u64) -> int16x4_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2312,6 +2698,8 @@ pub unsafe fn vcreate_s32(a: u64) -> int32x2_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2323,6 +2711,8 @@ pub unsafe fn vcreate_s64(a: u64) -> int64x1_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2334,6 +2724,8 @@ pub unsafe fn vcreate_u8(a: u64) -> uint8x8_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2345,6 +2737,8 @@ pub unsafe fn vcreate_u16(a: u64) -> uint16x4_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2356,6 +2750,8 @@ pub unsafe fn vcreate_u32(a: u64) -> uint32x2_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2367,6 +2763,8 @@ pub unsafe fn vcreate_u64(a: u64) -> uint64x1_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2378,6 +2776,8 @@ pub unsafe fn vcreate_p8(a: u64) -> poly8x8_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2389,6 +2789,8 @@ pub unsafe fn vcreate_p16(a: u64) -> poly16x4_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -2400,6 +2802,8 @@ pub unsafe fn vcreate_p64(a: u64) -> poly64x1_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2411,6 +2815,8 @@ pub unsafe fn vcreate_f32(a: u64) -> float32x2_t {
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2422,6 +2828,8 @@ pub unsafe fn vcvt_f32_s32(a: int32x2_t) -> float32x2_t {
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_f32_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2433,6 +2841,8 @@ pub unsafe fn vcvtq_f32_s32(a: int32x4_t) -> float32x4_t {
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2444,6 +2854,8 @@ pub unsafe fn vcvt_f32_u32(a: uint32x2_t) -> float32x2_t {
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_f32_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2455,6 +2867,8 @@ pub unsafe fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2471,6 +2885,8 @@ vcvt_n_f32_s32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2488,6 +2904,8 @@ vcvt_n_f32_s32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2504,6 +2922,8 @@ vcvtq_n_f32_s32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2521,6 +2941,8 @@ vcvtq_n_f32_s32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_u32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2537,6 +2959,8 @@ vcvt_n_f32_u32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_f32_u32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2554,6 +2978,8 @@ vcvt_n_f32_u32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_u32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2570,6 +2996,8 @@ vcvtq_n_f32_u32_(a, N)
 }
 
 /// Fixed-point convert to floating-point
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f32_u32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2587,6 +3015,8 @@ vcvtq_n_f32_u32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_s32_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2603,6 +3033,8 @@ vcvt_n_s32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_s32_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2620,6 +3052,8 @@ vcvt_n_s32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_s32_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2636,6 +3070,8 @@ vcvtq_n_s32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_s32_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2653,6 +3089,8 @@ vcvtq_n_s32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_u32_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2669,6 +3107,8 @@ vcvt_n_u32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_u32_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2686,6 +3126,8 @@ vcvt_n_u32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_u32_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -2702,6 +3144,8 @@ vcvtq_n_u32_f32_(a, N)
 }
 
 /// Floating-point convert to fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_u32_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -2719,6 +3163,8 @@ vcvtq_n_u32_f32_(a, N)
 }
 
 /// Floating-point convert to signed fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_s32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2736,6 +3182,8 @@ vcvt_s32_f32_(a)
 }
 
 /// Floating-point convert to signed fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_s32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2753,6 +3201,8 @@ vcvtq_s32_f32_(a)
 }
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_u32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2770,6 +3220,8 @@ vcvt_u32_f32_(a)
 }
 
 /// Floating-point convert to unsigned fixed-point, rounding toward zero
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_u32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2787,6 +3239,8 @@ vcvtq_u32_f32_(a)
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2800,6 +3254,8 @@ pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2813,6 +3269,8 @@ pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2826,6 +3284,8 @@ pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2839,6 +3299,8 @@ pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2852,6 +3314,8 @@ pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2865,6 +3329,8 @@ pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2878,6 +3344,8 @@ pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2891,6 +3359,8 @@ pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2904,6 +3374,8 @@ pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2917,6 +3389,8 @@ pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2930,6 +3404,8 @@ pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2943,6 +3419,8 @@ pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2956,6 +3434,8 @@ pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2969,6 +3449,8 @@ pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2982,6 +3464,8 @@ pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -2995,6 +3479,8 @@ pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3008,6 +3494,8 @@ pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3021,6 +3509,8 @@ pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3034,6 +3524,8 @@ pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3047,6 +3539,8 @@ pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3060,6 +3554,8 @@ pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3073,6 +3569,8 @@ pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3086,6 +3584,8 @@ pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3099,6 +3599,8 @@ pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3112,6 +3614,8 @@ pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3125,6 +3629,8 @@ pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3138,6 +3644,8 @@ pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3151,6 +3659,8 @@ pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3164,6 +3674,8 @@ pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3177,6 +3689,8 @@ pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3190,6 +3704,8 @@ pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3203,6 +3719,8 @@ pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3216,6 +3734,8 @@ pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3229,6 +3749,8 @@ pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3242,6 +3764,8 @@ pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3255,6 +3779,8 @@ pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3268,6 +3794,8 @@ pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3281,6 +3809,8 @@ pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3294,6 +3824,8 @@ pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3307,6 +3839,8 @@ pub unsafe fn vdupq_lane_f32<const N: i32>(a: float32x2_t) -> float32x4_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3320,6 +3854,8 @@ pub unsafe fn vdup_lane_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3333,6 +3869,8 @@ pub unsafe fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3346,6 +3884,8 @@ pub unsafe fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
 }
 
 /// Set all vector lanes to the same value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3359,6 +3899,8 @@ pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3382,6 +3924,8 @@ pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3413,6 +3957,8 @@ pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3432,6 +3978,8 @@ pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3455,6 +4003,8 @@ pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3472,6 +4022,8 @@ pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3491,6 +4043,8 @@ pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3514,6 +4068,8 @@ pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3545,6 +4101,8 @@ pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3564,6 +4122,8 @@ pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3587,6 +4147,8 @@ pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3604,6 +4166,8 @@ pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3623,6 +4187,8 @@ pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3646,6 +4212,8 @@ pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3677,6 +4245,8 @@ pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3696,6 +4266,8 @@ pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3719,6 +4291,8 @@ pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3736,6 +4310,8 @@ pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3753,6 +4329,8 @@ pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vext_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3770,6 +4348,8 @@ pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x
 }
 
 /// Extract vector from pair of vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3789,6 +4369,8 @@ pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3800,6 +4382,8 @@ pub unsafe fn vmla_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3811,6 +4395,8 @@ pub unsafe fn vmlaq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3822,6 +4408,8 @@ pub unsafe fn vmla_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3833,6 +4421,8 @@ pub unsafe fn vmlaq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3844,6 +4434,8 @@ pub unsafe fn vmla_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3855,6 +4447,8 @@ pub unsafe fn vmlaq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3866,6 +4460,8 @@ pub unsafe fn vmla_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3877,6 +4473,8 @@ pub unsafe fn vmlaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3888,6 +4486,8 @@ pub unsafe fn vmla_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3899,6 +4499,8 @@ pub unsafe fn vmlaq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3910,6 +4512,8 @@ pub unsafe fn vmla_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 }
 
 /// Multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3921,6 +4525,8 @@ pub unsafe fn vmlaq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 }
 
 /// Floating-point multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3932,6 +4538,8 @@ pub unsafe fn vmla_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 }
 
 /// Floating-point multiply-add to accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3943,6 +4551,8 @@ pub unsafe fn vmlaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3954,6 +4564,8 @@ pub unsafe fn vmla_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3965,6 +4577,8 @@ pub unsafe fn vmlaq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3976,6 +4590,8 @@ pub unsafe fn vmla_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3987,6 +4603,8 @@ pub unsafe fn vmlaq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -3998,6 +4616,8 @@ pub unsafe fn vmla_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4009,6 +4629,8 @@ pub unsafe fn vmlaq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4020,6 +4642,8 @@ pub unsafe fn vmla_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4031,6 +4655,8 @@ pub unsafe fn vmlaq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4042,6 +4668,8 @@ pub unsafe fn vmla_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4053,6 +4681,8 @@ pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4066,6 +4696,8 @@ pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4079,6 +4711,8 @@ pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4092,6 +4726,8 @@ pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4105,6 +4741,8 @@ pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4118,6 +4756,8 @@ pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4131,6 +4771,8 @@ pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4144,6 +4786,8 @@ pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4157,6 +4801,8 @@ pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4170,6 +4816,8 @@ pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4183,6 +4831,8 @@ pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4196,6 +4846,8 @@ pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4209,6 +4861,8 @@ pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4222,6 +4876,8 @@ pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4235,6 +4891,8 @@ pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4248,6 +4906,8 @@ pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4261,6 +4921,8 @@ pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4274,6 +4936,8 @@ pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4287,6 +4951,8 @@ pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4300,6 +4966,8 @@ pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 }
 
 /// Vector multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlaq_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4313,6 +4981,8 @@ pub unsafe fn vmlaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c
 }
 
 /// Signed multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4324,6 +4994,8 @@ pub unsafe fn vmlal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 }
 
 /// Signed multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4335,6 +5007,8 @@ pub unsafe fn vmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 }
 
 /// Signed multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4346,6 +5020,8 @@ pub unsafe fn vmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 }
 
 /// Unsigned multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4357,6 +5033,8 @@ pub unsafe fn vmlal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 }
 
 /// Unsigned multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4368,6 +5046,8 @@ pub unsafe fn vmlal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 }
 
 /// Unsigned multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4379,6 +5059,8 @@ pub unsafe fn vmlal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4390,6 +5072,8 @@ pub unsafe fn vmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4401,6 +5085,8 @@ pub unsafe fn vmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4412,6 +5098,8 @@ pub unsafe fn vmlal_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4423,6 +5111,8 @@ pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4436,6 +5126,8 @@ pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4449,6 +5141,8 @@ pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4462,6 +5156,8 @@ pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4475,6 +5171,8 @@ pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4488,6 +5186,8 @@ pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4501,6 +5201,8 @@ pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4514,6 +5216,8 @@ pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 }
 
 /// Vector widening multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlal_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4527,6 +5231,8 @@ pub unsafe fn vmlal_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: 
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4538,6 +5244,8 @@ pub unsafe fn vmls_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4549,6 +5257,8 @@ pub unsafe fn vmlsq_s8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4560,6 +5270,8 @@ pub unsafe fn vmls_s16(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4571,6 +5283,8 @@ pub unsafe fn vmlsq_s16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4582,6 +5296,8 @@ pub unsafe fn vmls_s32(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4593,6 +5309,8 @@ pub unsafe fn vmlsq_s32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4604,6 +5322,8 @@ pub unsafe fn vmls_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4615,6 +5335,8 @@ pub unsafe fn vmlsq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4626,6 +5348,8 @@ pub unsafe fn vmls_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4637,6 +5361,8 @@ pub unsafe fn vmlsq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4648,6 +5374,8 @@ pub unsafe fn vmls_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 }
 
 /// Multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4659,6 +5387,8 @@ pub unsafe fn vmlsq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 }
 
 /// Floating-point multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4670,6 +5400,8 @@ pub unsafe fn vmls_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 }
 
 /// Floating-point multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4681,6 +5413,8 @@ pub unsafe fn vmlsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4692,6 +5426,8 @@ pub unsafe fn vmls_n_s16(a: int16x4_t, b: int16x4_t, c: i16) -> int16x4_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4703,6 +5439,8 @@ pub unsafe fn vmlsq_n_s16(a: int16x8_t, b: int16x8_t, c: i16) -> int16x8_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4714,6 +5452,8 @@ pub unsafe fn vmls_n_s32(a: int32x2_t, b: int32x2_t, c: i32) -> int32x2_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4725,6 +5465,8 @@ pub unsafe fn vmlsq_n_s32(a: int32x4_t, b: int32x4_t, c: i32) -> int32x4_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4736,6 +5478,8 @@ pub unsafe fn vmls_n_u16(a: uint16x4_t, b: uint16x4_t, c: u16) -> uint16x4_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4747,6 +5491,8 @@ pub unsafe fn vmlsq_n_u16(a: uint16x8_t, b: uint16x8_t, c: u16) -> uint16x8_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4758,6 +5504,8 @@ pub unsafe fn vmls_n_u32(a: uint32x2_t, b: uint32x2_t, c: u32) -> uint32x2_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4769,6 +5517,8 @@ pub unsafe fn vmlsq_n_u32(a: uint32x4_t, b: uint32x4_t, c: u32) -> uint32x4_t {
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4780,6 +5530,8 @@ pub unsafe fn vmls_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4791,6 +5543,8 @@ pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4804,6 +5558,8 @@ pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4817,6 +5573,8 @@ pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4830,6 +5588,8 @@ pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4843,6 +5603,8 @@ pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4856,6 +5618,8 @@ pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4869,6 +5633,8 @@ pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4882,6 +5648,8 @@ pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4895,6 +5663,8 @@ pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4908,6 +5678,8 @@ pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4921,6 +5693,8 @@ pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4934,6 +5708,8 @@ pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4947,6 +5723,8 @@ pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4960,6 +5738,8 @@ pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4973,6 +5753,8 @@ pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4986,6 +5768,8 @@ pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -4999,6 +5783,8 @@ pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5012,6 +5798,8 @@ pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmls_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5025,6 +5813,8 @@ pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5038,6 +5828,8 @@ pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 }
 
 /// Vector multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsq_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5051,6 +5843,8 @@ pub unsafe fn vmlsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c
 }
 
 /// Signed multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5062,6 +5856,8 @@ pub unsafe fn vmlsl_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 }
 
 /// Signed multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5073,6 +5869,8 @@ pub unsafe fn vmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 }
 
 /// Signed multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5084,6 +5882,8 @@ pub unsafe fn vmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 }
 
 /// Unsigned multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5095,6 +5895,8 @@ pub unsafe fn vmlsl_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 }
 
 /// Unsigned multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5106,6 +5908,8 @@ pub unsafe fn vmlsl_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 }
 
 /// Unsigned multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5117,6 +5921,8 @@ pub unsafe fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5128,6 +5934,8 @@ pub unsafe fn vmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5139,6 +5947,8 @@ pub unsafe fn vmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5150,6 +5960,8 @@ pub unsafe fn vmlsl_n_u16(a: uint32x4_t, b: uint16x4_t, c: u16) -> uint32x4_t {
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5161,6 +5973,8 @@ pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5174,6 +5988,8 @@ pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5187,6 +6003,8 @@ pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5200,6 +6018,8 @@ pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5213,6 +6033,8 @@ pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5226,6 +6048,8 @@ pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5239,6 +6063,8 @@ pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5252,6 +6078,8 @@ pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 }
 
 /// Vector widening multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmlsl_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5265,6 +6093,8 @@ pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: 
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5276,6 +6106,8 @@ pub unsafe fn vneg_s8(a: int8x8_t) -> int8x8_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5287,6 +6119,8 @@ pub unsafe fn vnegq_s8(a: int8x16_t) -> int8x16_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5298,6 +6132,8 @@ pub unsafe fn vneg_s16(a: int16x4_t) -> int16x4_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5309,6 +6145,8 @@ pub unsafe fn vnegq_s16(a: int16x8_t) -> int16x8_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5320,6 +6158,8 @@ pub unsafe fn vneg_s32(a: int32x2_t) -> int32x2_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5331,6 +6171,8 @@ pub unsafe fn vnegq_s32(a: int32x4_t) -> int32x4_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vneg_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5342,6 +6184,8 @@ pub unsafe fn vneg_f32(a: float32x2_t) -> float32x2_t {
 }
 
 /// Negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vnegq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5353,6 +6197,8 @@ pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
 }
 
 /// Signed saturating negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5370,6 +6216,8 @@ vqneg_s8_(a)
 }
 
 /// Signed saturating negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5387,6 +6235,8 @@ vqnegq_s8_(a)
 }
 
 /// Signed saturating negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5404,6 +6254,8 @@ vqneg_s16_(a)
 }
 
 /// Signed saturating negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5421,6 +6273,8 @@ vqnegq_s16_(a)
 }
 
 /// Signed saturating negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqneg_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5438,6 +6292,8 @@ vqneg_s32_(a)
 }
 
 /// Signed saturating negate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqnegq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5455,6 +6311,8 @@ vqnegq_s32_(a)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5472,6 +6330,8 @@ vqsub_u8_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5489,6 +6349,8 @@ vqsubq_u8_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5506,6 +6368,8 @@ vqsub_u16_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5523,6 +6387,8 @@ vqsubq_u16_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5540,6 +6406,8 @@ vqsub_u32_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5557,6 +6425,8 @@ vqsubq_u32_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5574,6 +6444,8 @@ vqsub_u64_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5591,6 +6463,8 @@ vqsubq_u64_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5608,6 +6482,8 @@ vqsub_s8_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5625,6 +6501,8 @@ vqsubq_s8_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5642,6 +6520,8 @@ vqsub_s16_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5659,6 +6539,8 @@ vqsubq_s16_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5676,6 +6558,8 @@ vqsub_s32_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5693,6 +6577,8 @@ vqsubq_s32_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsub_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5710,6 +6596,8 @@ vqsub_s64_(a, b)
 }
 
 /// Saturating subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5727,6 +6615,8 @@ vqsubq_s64_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5744,6 +6634,8 @@ vhadd_u8_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5761,6 +6653,8 @@ vhaddq_u8_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5778,6 +6672,8 @@ vhadd_u16_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5795,6 +6691,8 @@ vhaddq_u16_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5812,6 +6710,8 @@ vhadd_u32_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5829,6 +6729,8 @@ vhaddq_u32_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5846,6 +6748,8 @@ vhadd_s8_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5863,6 +6767,8 @@ vhaddq_s8_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5880,6 +6786,8 @@ vhadd_s16_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5897,6 +6805,8 @@ vhaddq_s16_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5914,6 +6824,8 @@ vhadd_s32_(a, b)
 }
 
 /// Halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhaddq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5931,6 +6843,8 @@ vhaddq_s32_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5948,6 +6862,8 @@ vrhadd_u8_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5965,6 +6881,8 @@ vrhaddq_u8_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5982,6 +6900,8 @@ vrhadd_u16_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -5999,6 +6919,8 @@ vrhaddq_u16_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6016,6 +6938,8 @@ vrhadd_u32_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6033,6 +6957,8 @@ vrhaddq_u32_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6050,6 +6976,8 @@ vrhadd_s8_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6067,6 +6995,8 @@ vrhaddq_s8_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6084,6 +7014,8 @@ vrhadd_s16_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6101,6 +7033,8 @@ vrhaddq_s16_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhadd_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6118,6 +7052,8 @@ vrhadd_s32_(a, b)
 }
 
 /// Rounding halving add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrhaddq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6135,6 +7071,8 @@ vrhaddq_s32_(a, b)
 }
 
 /// Floating-point round to integral, to nearest with ties to even
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndn_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -6152,6 +7090,8 @@ vrndn_f32_(a)
 }
 
 /// Floating-point round to integral, to nearest with ties to even
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrndnq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -6169,6 +7109,8 @@ vrndnq_f32_(a)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6186,6 +7128,8 @@ vqadd_u8_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6203,6 +7147,8 @@ vqaddq_u8_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6220,6 +7166,8 @@ vqadd_u16_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6237,6 +7185,8 @@ vqaddq_u16_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6254,6 +7204,8 @@ vqadd_u32_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6271,6 +7223,8 @@ vqaddq_u32_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6288,6 +7242,8 @@ vqadd_u64_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6305,6 +7261,8 @@ vqaddq_u64_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6322,6 +7280,8 @@ vqadd_s8_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6339,6 +7299,8 @@ vqaddq_s8_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6356,6 +7318,8 @@ vqadd_s16_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6373,6 +7337,8 @@ vqaddq_s16_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6390,6 +7356,8 @@ vqadd_s32_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6407,6 +7375,8 @@ vqaddq_s32_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqadd_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6424,6 +7394,8 @@ vqadd_s64_(a, b)
 }
 
 /// Saturating add
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6441,6 +7413,8 @@ vqaddq_s64_(a, b)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6458,6 +7432,8 @@ vld1_s8_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6475,6 +7451,8 @@ vld1_s16_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6492,6 +7470,8 @@ vld1_s32_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6509,6 +7489,8 @@ vld1_s64_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6526,6 +7508,8 @@ vld1q_s8_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6543,6 +7527,8 @@ vld1q_s16_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6560,6 +7546,8 @@ vld1q_s32_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6577,6 +7565,8 @@ vld1q_s64_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6594,6 +7584,8 @@ vld1_s8_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6611,6 +7603,8 @@ vld1_s16_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6628,6 +7622,8 @@ vld1_s32_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6645,6 +7641,8 @@ vld1_s64_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6662,6 +7660,8 @@ vld1q_s8_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6679,6 +7679,8 @@ vld1q_s16_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6696,6 +7698,8 @@ vld1q_s32_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6713,6 +7717,8 @@ vld1q_s64_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6730,6 +7736,8 @@ vld1_s8_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6747,6 +7755,8 @@ vld1_s16_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6764,6 +7774,8 @@ vld1_s32_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_s64_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6781,6 +7793,8 @@ vld1_s64_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6798,6 +7812,8 @@ vld1q_s8_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6815,6 +7831,8 @@ vld1q_s16_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6832,6 +7850,8 @@ vld1q_s32_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_s64_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6849,6 +7869,8 @@ vld1q_s64_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6860,6 +7882,8 @@ pub unsafe fn vld1_u8_x2(a: *const u8) -> uint8x8x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6871,6 +7895,8 @@ pub unsafe fn vld1_u16_x2(a: *const u16) -> uint16x4x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6882,6 +7908,8 @@ pub unsafe fn vld1_u32_x2(a: *const u32) -> uint32x2x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6893,6 +7921,8 @@ pub unsafe fn vld1_u64_x2(a: *const u64) -> uint64x1x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6904,6 +7934,8 @@ pub unsafe fn vld1q_u8_x2(a: *const u8) -> uint8x16x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6915,6 +7947,8 @@ pub unsafe fn vld1q_u16_x2(a: *const u16) -> uint16x8x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6926,6 +7960,8 @@ pub unsafe fn vld1q_u32_x2(a: *const u32) -> uint32x4x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6937,6 +7973,8 @@ pub unsafe fn vld1q_u64_x2(a: *const u64) -> uint64x2x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6948,6 +7986,8 @@ pub unsafe fn vld1_u8_x3(a: *const u8) -> uint8x8x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6959,6 +7999,8 @@ pub unsafe fn vld1_u16_x3(a: *const u16) -> uint16x4x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6970,6 +8012,8 @@ pub unsafe fn vld1_u32_x3(a: *const u32) -> uint32x2x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6981,6 +8025,8 @@ pub unsafe fn vld1_u64_x3(a: *const u64) -> uint64x1x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -6992,6 +8038,8 @@ pub unsafe fn vld1q_u8_x3(a: *const u8) -> uint8x16x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7003,6 +8051,8 @@ pub unsafe fn vld1q_u16_x3(a: *const u16) -> uint16x8x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7014,6 +8064,8 @@ pub unsafe fn vld1q_u32_x3(a: *const u32) -> uint32x4x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7025,6 +8077,8 @@ pub unsafe fn vld1q_u64_x3(a: *const u64) -> uint64x2x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7036,6 +8090,8 @@ pub unsafe fn vld1_u8_x4(a: *const u8) -> uint8x8x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7047,6 +8103,8 @@ pub unsafe fn vld1_u16_x4(a: *const u16) -> uint16x4x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7058,6 +8116,8 @@ pub unsafe fn vld1_u32_x4(a: *const u32) -> uint32x2x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_u64_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7069,6 +8129,8 @@ pub unsafe fn vld1_u64_x4(a: *const u64) -> uint64x1x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7080,6 +8142,8 @@ pub unsafe fn vld1q_u8_x4(a: *const u8) -> uint8x16x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7091,6 +8155,8 @@ pub unsafe fn vld1q_u16_x4(a: *const u16) -> uint16x8x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7102,6 +8168,8 @@ pub unsafe fn vld1q_u32_x4(a: *const u32) -> uint32x4x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_u64_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7113,6 +8181,8 @@ pub unsafe fn vld1q_u64_x4(a: *const u64) -> uint64x2x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7124,6 +8194,8 @@ pub unsafe fn vld1_p8_x2(a: *const p8) -> poly8x8x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7135,6 +8207,8 @@ pub unsafe fn vld1_p8_x3(a: *const p8) -> poly8x8x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7146,6 +8220,8 @@ pub unsafe fn vld1_p8_x4(a: *const p8) -> poly8x8x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7157,6 +8233,8 @@ pub unsafe fn vld1q_p8_x2(a: *const p8) -> poly8x16x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7168,6 +8246,8 @@ pub unsafe fn vld1q_p8_x3(a: *const p8) -> poly8x16x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7179,6 +8259,8 @@ pub unsafe fn vld1q_p8_x4(a: *const p8) -> poly8x16x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7190,6 +8272,8 @@ pub unsafe fn vld1_p16_x2(a: *const p16) -> poly16x4x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7201,6 +8285,8 @@ pub unsafe fn vld1_p16_x3(a: *const p16) -> poly16x4x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7212,6 +8298,8 @@ pub unsafe fn vld1_p16_x4(a: *const p16) -> poly16x4x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7223,6 +8311,8 @@ pub unsafe fn vld1q_p16_x2(a: *const p16) -> poly16x8x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7234,6 +8324,8 @@ pub unsafe fn vld1q_p16_x3(a: *const p16) -> poly16x8x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7245,6 +8337,8 @@ pub unsafe fn vld1q_p16_x4(a: *const p16) -> poly16x8x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7256,6 +8350,8 @@ pub unsafe fn vld1_p64_x2(a: *const p64) -> poly64x1x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7267,6 +8363,8 @@ pub unsafe fn vld1_p64_x3(a: *const p64) -> poly64x1x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7278,6 +8376,8 @@ pub unsafe fn vld1_p64_x4(a: *const p64) -> poly64x1x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7289,6 +8389,8 @@ pub unsafe fn vld1q_p64_x2(a: *const p64) -> poly64x2x2_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7300,6 +8402,8 @@ pub unsafe fn vld1q_p64_x3(a: *const p64) -> poly64x2x3_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7311,6 +8415,8 @@ pub unsafe fn vld1q_p64_x4(a: *const p64) -> poly64x2x4_t {
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7328,6 +8434,8 @@ vld1_f32_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7345,6 +8453,8 @@ vld1q_f32_x2_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7362,6 +8472,8 @@ vld1_f32_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7379,6 +8491,8 @@ vld1q_f32_x3_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7396,6 +8510,8 @@ vld1_f32_x4_(a)
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_f32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7413,6 +8529,8 @@ vld1q_f32_x4_(a)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7427,6 +8545,8 @@ vld2_s8_(a as *const i8, 1)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7442,6 +8562,8 @@ vld2_s8_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7456,6 +8578,8 @@ vld2_s16_(a as *const i8, 2)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7471,6 +8595,8 @@ vld2_s16_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7485,6 +8611,8 @@ vld2_s32_(a as *const i8, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7500,6 +8628,8 @@ vld2_s32_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7514,6 +8644,8 @@ vld2q_s8_(a as *const i8, 1)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7529,6 +8661,8 @@ vld2q_s8_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7543,6 +8677,8 @@ vld2q_s16_(a as *const i8, 2)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7558,6 +8694,8 @@ vld2q_s16_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7572,6 +8710,8 @@ vld2q_s32_(a as *const i8, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7587,6 +8727,8 @@ vld2q_s32_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7601,6 +8743,8 @@ vld2_s64_(a as *const i8, 8)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7616,6 +8760,8 @@ vld2_s64_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7627,6 +8773,8 @@ pub unsafe fn vld2_u8(a: *const u8) -> uint8x8x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7638,6 +8786,8 @@ pub unsafe fn vld2_u16(a: *const u16) -> uint16x4x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7649,6 +8799,8 @@ pub unsafe fn vld2_u32(a: *const u32) -> uint32x2x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7660,6 +8812,8 @@ pub unsafe fn vld2q_u8(a: *const u8) -> uint8x16x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7671,6 +8825,8 @@ pub unsafe fn vld2q_u16(a: *const u16) -> uint16x8x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7682,6 +8838,8 @@ pub unsafe fn vld2q_u32(a: *const u32) -> uint32x4x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7693,6 +8851,8 @@ pub unsafe fn vld2_p8(a: *const p8) -> poly8x8x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7704,6 +8864,8 @@ pub unsafe fn vld2_p16(a: *const p16) -> poly16x4x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7715,6 +8877,8 @@ pub unsafe fn vld2q_p8(a: *const p8) -> poly8x16x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7726,6 +8890,8 @@ pub unsafe fn vld2q_p16(a: *const p16) -> poly16x8x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -7737,6 +8903,8 @@ pub unsafe fn vld2_u64(a: *const u64) -> uint64x1x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -7748,6 +8916,8 @@ pub unsafe fn vld2_p64(a: *const p64) -> poly64x1x2_t {
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7762,6 +8932,8 @@ vld2_f32_(a as *const i8, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7777,6 +8949,8 @@ vld2_f32_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7791,6 +8965,8 @@ vld2q_f32_(a as *const i8, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7806,6 +8982,8 @@ vld2q_f32_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7820,6 +8998,8 @@ vld2_dup_s8_(a as *const i8, 1)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7835,6 +9015,8 @@ vld2_dup_s8_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7849,6 +9031,8 @@ vld2_dup_s16_(a as *const i8, 2)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7864,6 +9048,8 @@ vld2_dup_s16_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7878,6 +9064,8 @@ vld2_dup_s32_(a as *const i8, 4)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7893,6 +9081,8 @@ vld2_dup_s32_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7907,6 +9097,8 @@ vld2q_dup_s8_(a as *const i8, 1)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7922,6 +9114,8 @@ vld2q_dup_s8_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7936,6 +9130,8 @@ vld2q_dup_s16_(a as *const i8, 2)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7951,6 +9147,8 @@ vld2q_dup_s16_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7965,6 +9163,8 @@ vld2q_dup_s32_(a as *const i8, 4)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -7980,6 +9180,8 @@ vld2q_dup_s32_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -7994,6 +9196,8 @@ vld2_dup_s64_(a as *const i8, 8)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8009,6 +9213,8 @@ vld2_dup_s64_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8020,6 +9226,8 @@ pub unsafe fn vld2_dup_u8(a: *const u8) -> uint8x8x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8031,6 +9239,8 @@ pub unsafe fn vld2_dup_u16(a: *const u16) -> uint16x4x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8042,6 +9252,8 @@ pub unsafe fn vld2_dup_u32(a: *const u32) -> uint32x2x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8053,6 +9265,8 @@ pub unsafe fn vld2q_dup_u8(a: *const u8) -> uint8x16x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8064,6 +9278,8 @@ pub unsafe fn vld2q_dup_u16(a: *const u16) -> uint16x8x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8075,6 +9291,8 @@ pub unsafe fn vld2q_dup_u32(a: *const u32) -> uint32x4x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8086,6 +9304,8 @@ pub unsafe fn vld2_dup_p8(a: *const p8) -> poly8x8x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8097,6 +9317,8 @@ pub unsafe fn vld2_dup_p16(a: *const p16) -> poly16x4x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8108,6 +9330,8 @@ pub unsafe fn vld2q_dup_p8(a: *const p8) -> poly8x16x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8119,6 +9343,8 @@ pub unsafe fn vld2q_dup_p16(a: *const p16) -> poly16x8x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8130,6 +9356,8 @@ pub unsafe fn vld2_dup_u64(a: *const u64) -> uint64x1x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -8141,6 +9369,8 @@ pub unsafe fn vld2_dup_p64(a: *const p64) -> poly64x1x2_t {
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8155,6 +9385,8 @@ vld2_dup_f32_(a as *const i8, 4)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8170,6 +9402,8 @@ vld2_dup_f32_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8184,6 +9418,8 @@ vld2q_dup_f32_(a as *const i8, 4)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8199,6 +9435,8 @@ vld2q_dup_f32_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8215,6 +9453,8 @@ vld2_lane_s8_(a as _, b.0, b.1, LANE, 1)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8232,6 +9472,8 @@ vld2_lane_s8_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8248,6 +9490,8 @@ vld2_lane_s16_(a as _, b.0, b.1, LANE, 2)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8265,6 +9509,8 @@ vld2_lane_s16_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8281,6 +9527,8 @@ vld2_lane_s32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8298,6 +9546,8 @@ vld2_lane_s32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8314,6 +9564,8 @@ vld2q_lane_s16_(a as _, b.0, b.1, LANE, 2)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8331,6 +9583,8 @@ vld2q_lane_s16_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8347,6 +9601,8 @@ vld2q_lane_s32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8364,6 +9620,8 @@ vld2q_lane_s32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8377,6 +9635,8 @@ pub unsafe fn vld2_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x2_t) -> uin
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8390,6 +9650,8 @@ pub unsafe fn vld2_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x2_t) -> 
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8403,6 +9665,8 @@ pub unsafe fn vld2_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x2_t) -> 
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8416,6 +9680,8 @@ pub unsafe fn vld2q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x2_t) ->
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8429,6 +9695,8 @@ pub unsafe fn vld2q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x2_t) ->
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8442,6 +9710,8 @@ pub unsafe fn vld2_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x2_t) -> pol
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8455,6 +9725,8 @@ pub unsafe fn vld2_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x2_t) -> 
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8468,6 +9740,8 @@ pub unsafe fn vld2q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x2_t) ->
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8484,6 +9758,8 @@ vld2_lane_f32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8501,6 +9777,8 @@ vld2_lane_f32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8517,6 +9795,8 @@ vld2q_lane_f32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Load multiple 2-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8534,6 +9814,8 @@ vld2q_lane_f32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8548,6 +9830,8 @@ vld3_s8_(a as *const i8, 1)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8563,6 +9847,8 @@ vld3_s8_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8577,6 +9863,8 @@ vld3_s16_(a as *const i8, 2)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8592,6 +9880,8 @@ vld3_s16_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8606,6 +9896,8 @@ vld3_s32_(a as *const i8, 4)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8621,6 +9913,8 @@ vld3_s32_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8635,6 +9929,8 @@ vld3q_s8_(a as *const i8, 1)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8650,6 +9946,8 @@ vld3q_s8_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8664,6 +9962,8 @@ vld3q_s16_(a as *const i8, 2)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8679,6 +9979,8 @@ vld3q_s16_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8693,6 +9995,8 @@ vld3q_s32_(a as *const i8, 4)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8708,6 +10012,8 @@ vld3q_s32_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8722,6 +10028,8 @@ vld3_s64_(a as *const i8, 8)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8737,6 +10045,8 @@ vld3_s64_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8748,6 +10058,8 @@ pub unsafe fn vld3_u8(a: *const u8) -> uint8x8x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8759,6 +10071,8 @@ pub unsafe fn vld3_u16(a: *const u16) -> uint16x4x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8770,6 +10084,8 @@ pub unsafe fn vld3_u32(a: *const u32) -> uint32x2x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8781,6 +10097,8 @@ pub unsafe fn vld3q_u8(a: *const u8) -> uint8x16x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8792,6 +10110,8 @@ pub unsafe fn vld3q_u16(a: *const u16) -> uint16x8x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8803,6 +10123,8 @@ pub unsafe fn vld3q_u32(a: *const u32) -> uint32x4x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8814,6 +10136,8 @@ pub unsafe fn vld3_p8(a: *const p8) -> poly8x8x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8825,6 +10149,8 @@ pub unsafe fn vld3_p16(a: *const p16) -> poly16x4x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8836,6 +10162,8 @@ pub unsafe fn vld3q_p8(a: *const p8) -> poly8x16x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8847,6 +10175,8 @@ pub unsafe fn vld3q_p16(a: *const p16) -> poly16x8x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -8858,6 +10188,8 @@ pub unsafe fn vld3_u64(a: *const u64) -> uint64x1x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -8869,6 +10201,8 @@ pub unsafe fn vld3_p64(a: *const p64) -> poly64x1x3_t {
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8883,6 +10217,8 @@ vld3_f32_(a as *const i8, 4)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8898,6 +10234,8 @@ vld3_f32_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8912,6 +10250,8 @@ vld3q_f32_(a as *const i8, 4)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8927,6 +10267,8 @@ vld3q_f32_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8941,6 +10283,8 @@ vld3_dup_s8_(a as *const i8, 1)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8956,6 +10300,8 @@ vld3_dup_s8_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8970,6 +10316,8 @@ vld3_dup_s16_(a as *const i8, 2)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -8985,6 +10333,8 @@ vld3_dup_s16_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -8999,6 +10349,8 @@ vld3_dup_s32_(a as *const i8, 4)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9014,6 +10366,8 @@ vld3_dup_s32_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9028,6 +10382,8 @@ vld3q_dup_s8_(a as *const i8, 1)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9043,6 +10399,8 @@ vld3q_dup_s8_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9057,6 +10415,8 @@ vld3q_dup_s16_(a as *const i8, 2)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9072,6 +10432,8 @@ vld3q_dup_s16_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9086,6 +10448,8 @@ vld3q_dup_s32_(a as *const i8, 4)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9101,6 +10465,8 @@ vld3q_dup_s32_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9115,6 +10481,8 @@ vld3_dup_s64_(a as *const i8, 8)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9130,6 +10498,8 @@ vld3_dup_s64_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9141,6 +10511,8 @@ pub unsafe fn vld3_dup_u8(a: *const u8) -> uint8x8x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9152,6 +10524,8 @@ pub unsafe fn vld3_dup_u16(a: *const u16) -> uint16x4x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9163,6 +10537,8 @@ pub unsafe fn vld3_dup_u32(a: *const u32) -> uint32x2x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9174,6 +10550,8 @@ pub unsafe fn vld3q_dup_u8(a: *const u8) -> uint8x16x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9185,6 +10563,8 @@ pub unsafe fn vld3q_dup_u16(a: *const u16) -> uint16x8x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9196,6 +10576,8 @@ pub unsafe fn vld3q_dup_u32(a: *const u32) -> uint32x4x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9207,6 +10589,8 @@ pub unsafe fn vld3_dup_p8(a: *const p8) -> poly8x8x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9218,6 +10602,8 @@ pub unsafe fn vld3_dup_p16(a: *const p16) -> poly16x4x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9229,6 +10615,8 @@ pub unsafe fn vld3q_dup_p8(a: *const p8) -> poly8x16x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9240,6 +10628,8 @@ pub unsafe fn vld3q_dup_p16(a: *const p16) -> poly16x8x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9251,6 +10641,8 @@ pub unsafe fn vld3_dup_u64(a: *const u64) -> uint64x1x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -9262,6 +10654,8 @@ pub unsafe fn vld3_dup_p64(a: *const p64) -> poly64x1x3_t {
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9276,6 +10670,8 @@ vld3_dup_f32_(a as *const i8, 4)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9291,6 +10687,8 @@ vld3_dup_f32_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9305,6 +10703,8 @@ vld3q_dup_f32_(a as *const i8, 4)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9320,6 +10720,8 @@ vld3q_dup_f32_(a as _)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9336,6 +10738,8 @@ vld3_lane_s8_(a as _, b.0, b.1, b.2, LANE, 1)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9353,6 +10757,8 @@ vld3_lane_s8_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9369,6 +10775,8 @@ vld3_lane_s16_(a as _, b.0, b.1, b.2, LANE, 2)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9386,6 +10794,8 @@ vld3_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9402,6 +10812,8 @@ vld3_lane_s32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9419,6 +10831,8 @@ vld3_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9435,6 +10849,8 @@ vld3q_lane_s16_(a as _, b.0, b.1, b.2, LANE, 2)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9452,6 +10868,8 @@ vld3q_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9468,6 +10886,8 @@ vld3q_lane_s32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Load multiple 3-element structures to two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9485,6 +10905,8 @@ vld3q_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9498,6 +10920,8 @@ pub unsafe fn vld3_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x3_t) -> uin
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9511,6 +10935,8 @@ pub unsafe fn vld3_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x3_t) -> 
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9524,6 +10950,8 @@ pub unsafe fn vld3_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x3_t) -> 
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9537,6 +10965,8 @@ pub unsafe fn vld3q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x3_t) ->
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9550,6 +10980,8 @@ pub unsafe fn vld3q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x3_t) ->
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9563,6 +10995,8 @@ pub unsafe fn vld3_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x3_t) -> pol
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9576,6 +11010,8 @@ pub unsafe fn vld3_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x3_t) -> 
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9589,6 +11025,8 @@ pub unsafe fn vld3q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x3_t) ->
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9605,6 +11043,8 @@ vld3_lane_f32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9622,6 +11062,8 @@ vld3_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9638,6 +11080,8 @@ vld3q_lane_f32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Load multiple 3-element structures to three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9655,6 +11099,8 @@ vld3q_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9669,6 +11115,8 @@ vld4_s8_(a as *const i8, 1)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9684,6 +11132,8 @@ vld4_s8_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9698,6 +11148,8 @@ vld4_s16_(a as *const i8, 2)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9713,6 +11165,8 @@ vld4_s16_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9727,6 +11181,8 @@ vld4_s32_(a as *const i8, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9742,6 +11198,8 @@ vld4_s32_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9756,6 +11214,8 @@ vld4q_s8_(a as *const i8, 1)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9771,6 +11231,8 @@ vld4q_s8_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9785,6 +11247,8 @@ vld4q_s16_(a as *const i8, 2)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9800,6 +11264,8 @@ vld4q_s16_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9814,6 +11280,8 @@ vld4q_s32_(a as *const i8, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9829,6 +11297,8 @@ vld4q_s32_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -9843,6 +11313,8 @@ vld4_s64_(a as *const i8, 8)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -9858,6 +11330,8 @@ vld4_s64_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9869,6 +11343,8 @@ pub unsafe fn vld4_u8(a: *const u8) -> uint8x8x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9880,6 +11356,8 @@ pub unsafe fn vld4_u16(a: *const u16) -> uint16x4x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9891,6 +11369,8 @@ pub unsafe fn vld4_u32(a: *const u32) -> uint32x2x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9902,6 +11382,8 @@ pub unsafe fn vld4q_u8(a: *const u8) -> uint8x16x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9913,6 +11395,8 @@ pub unsafe fn vld4q_u16(a: *const u16) -> uint16x8x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9924,6 +11408,8 @@ pub unsafe fn vld4q_u32(a: *const u32) -> uint32x4x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9935,6 +11421,8 @@ pub unsafe fn vld4_p8(a: *const p8) -> poly8x8x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9946,6 +11434,8 @@ pub unsafe fn vld4_p16(a: *const p16) -> poly16x4x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9957,6 +11447,8 @@ pub unsafe fn vld4q_p8(a: *const p8) -> poly8x16x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9968,6 +11460,8 @@ pub unsafe fn vld4q_p16(a: *const p16) -> poly16x8x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -9979,6 +11473,8 @@ pub unsafe fn vld4_u64(a: *const u64) -> uint64x1x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -9990,6 +11486,8 @@ pub unsafe fn vld4_p64(a: *const p64) -> poly64x1x4_t {
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10004,6 +11502,8 @@ vld4_f32_(a as *const i8, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10019,6 +11519,8 @@ vld4_f32_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10033,6 +11535,8 @@ vld4q_f32_(a as *const i8, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10048,6 +11552,8 @@ vld4q_f32_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10062,6 +11568,8 @@ vld4_dup_s8_(a as *const i8, 1)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10077,6 +11585,8 @@ vld4_dup_s8_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10091,6 +11601,8 @@ vld4_dup_s16_(a as *const i8, 2)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10106,6 +11618,8 @@ vld4_dup_s16_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10120,6 +11634,8 @@ vld4_dup_s32_(a as *const i8, 4)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10135,6 +11651,8 @@ vld4_dup_s32_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10149,6 +11667,8 @@ vld4q_dup_s8_(a as *const i8, 1)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10164,6 +11684,8 @@ vld4q_dup_s8_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10178,6 +11700,8 @@ vld4q_dup_s16_(a as *const i8, 2)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10193,6 +11717,8 @@ vld4q_dup_s16_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10207,6 +11733,8 @@ vld4q_dup_s32_(a as *const i8, 4)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10222,6 +11750,8 @@ vld4q_dup_s32_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10236,6 +11766,8 @@ vld4_dup_s64_(a as *const i8, 8)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10251,6 +11783,8 @@ vld4_dup_s64_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10262,6 +11796,8 @@ pub unsafe fn vld4_dup_u8(a: *const u8) -> uint8x8x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10273,6 +11809,8 @@ pub unsafe fn vld4_dup_u16(a: *const u16) -> uint16x4x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10284,6 +11822,8 @@ pub unsafe fn vld4_dup_u32(a: *const u32) -> uint32x2x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10295,6 +11835,8 @@ pub unsafe fn vld4q_dup_u8(a: *const u8) -> uint8x16x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10306,6 +11848,8 @@ pub unsafe fn vld4q_dup_u16(a: *const u16) -> uint16x8x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10317,6 +11861,8 @@ pub unsafe fn vld4q_dup_u32(a: *const u32) -> uint32x4x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10328,6 +11874,8 @@ pub unsafe fn vld4_dup_p8(a: *const p8) -> poly8x8x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10339,6 +11887,8 @@ pub unsafe fn vld4_dup_p16(a: *const p16) -> poly16x4x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10350,6 +11900,8 @@ pub unsafe fn vld4q_dup_p8(a: *const p8) -> poly8x16x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10361,6 +11913,8 @@ pub unsafe fn vld4q_dup_p16(a: *const p16) -> poly16x8x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10372,6 +11926,8 @@ pub unsafe fn vld4_dup_u64(a: *const u64) -> uint64x1x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -10383,6 +11939,8 @@ pub unsafe fn vld4_dup_p64(a: *const p64) -> poly64x1x4_t {
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10397,6 +11955,8 @@ vld4_dup_f32_(a as *const i8, 4)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10412,6 +11972,8 @@ vld4_dup_f32_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10426,6 +11988,8 @@ vld4q_dup_f32_(a as *const i8, 4)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10441,6 +12005,8 @@ vld4q_dup_f32_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10457,6 +12023,8 @@ vld4_lane_s8_(a as _, b.0, b.1, b.2, b.3, LANE, 1)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10474,6 +12042,8 @@ vld4_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10490,6 +12060,8 @@ vld4_lane_s16_(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10507,6 +12079,8 @@ vld4_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10523,6 +12097,8 @@ vld4_lane_s32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10540,6 +12116,8 @@ vld4_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10556,6 +12134,8 @@ vld4q_lane_s16_(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10573,6 +12153,8 @@ vld4q_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10589,6 +12171,8 @@ vld4q_lane_s32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10606,6 +12190,8 @@ vld4q_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10619,6 +12205,8 @@ pub unsafe fn vld4_lane_u8<const LANE: i32>(a: *const u8, b: uint8x8x4_t) -> uin
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10632,6 +12220,8 @@ pub unsafe fn vld4_lane_u16<const LANE: i32>(a: *const u16, b: uint16x4x4_t) -> 
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10645,6 +12235,8 @@ pub unsafe fn vld4_lane_u32<const LANE: i32>(a: *const u32, b: uint32x2x4_t) -> 
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10658,6 +12250,8 @@ pub unsafe fn vld4q_lane_u16<const LANE: i32>(a: *const u16, b: uint16x8x4_t) ->
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10671,6 +12265,8 @@ pub unsafe fn vld4q_lane_u32<const LANE: i32>(a: *const u32, b: uint32x4x4_t) ->
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10684,6 +12280,8 @@ pub unsafe fn vld4_lane_p8<const LANE: i32>(a: *const p8, b: poly8x8x4_t) -> pol
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10697,6 +12295,8 @@ pub unsafe fn vld4_lane_p16<const LANE: i32>(a: *const p16, b: poly16x4x4_t) -> 
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10710,6 +12310,8 @@ pub unsafe fn vld4q_lane_p16<const LANE: i32>(a: *const p16, b: poly16x8x4_t) ->
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10726,6 +12328,8 @@ vld4_lane_f32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10743,6 +12347,8 @@ vld4_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -10759,6 +12365,8 @@ vld4q_lane_f32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Load multiple 4-element structures to four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -10776,6 +12384,8 @@ vld4q_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10789,6 +12399,8 @@ pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10802,6 +12414,8 @@ pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10815,6 +12429,8 @@ pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10828,6 +12444,8 @@ pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10841,6 +12459,8 @@ pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10854,6 +12474,8 @@ pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10867,6 +12489,8 @@ pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10880,6 +12504,8 @@ pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10893,6 +12519,8 @@ pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10906,6 +12534,8 @@ pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10919,6 +12549,8 @@ pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10932,6 +12564,8 @@ pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10945,6 +12579,8 @@ pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10958,6 +12594,8 @@ pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10971,6 +12609,8 @@ pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10984,6 +12624,8 @@ pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -10997,6 +12639,8 @@ pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11010,6 +12654,8 @@ pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11023,6 +12669,8 @@ pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11036,6 +12684,8 @@ pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -11049,6 +12699,8 @@ pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -11062,6 +12714,8 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11075,6 +12729,8 @@ pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11088,6 +12744,8 @@ pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11102,6 +12760,8 @@ vst1_s8_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11117,6 +12777,8 @@ vst1_s8_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11131,6 +12793,8 @@ vst1_s16_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11146,6 +12810,8 @@ vst1_s16_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11160,6 +12826,8 @@ vst1_s32_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11175,6 +12843,8 @@ vst1_s32_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11189,6 +12859,8 @@ vst1_s64_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11204,6 +12876,8 @@ vst1_s64_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11218,6 +12892,8 @@ vst1q_s8_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11233,6 +12909,8 @@ vst1q_s8_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11247,6 +12925,8 @@ vst1q_s16_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11262,6 +12942,8 @@ vst1q_s16_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11276,6 +12958,8 @@ vst1q_s32_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11291,6 +12975,8 @@ vst1q_s32_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11305,6 +12991,8 @@ vst1q_s64_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11320,6 +13008,8 @@ vst1q_s64_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11334,6 +13024,8 @@ vst1_s8_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11349,6 +13041,8 @@ vst1_s8_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11363,6 +13057,8 @@ vst1_s16_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11378,6 +13074,8 @@ vst1_s16_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11392,6 +13090,8 @@ vst1_s32_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11407,6 +13107,8 @@ vst1_s32_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11421,6 +13123,8 @@ vst1_s64_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11436,6 +13140,8 @@ vst1_s64_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11450,6 +13156,8 @@ vst1q_s8_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11465,6 +13173,8 @@ vst1q_s8_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11479,6 +13189,8 @@ vst1q_s16_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11494,6 +13206,8 @@ vst1q_s16_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11508,6 +13222,8 @@ vst1q_s32_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11523,6 +13239,8 @@ vst1q_s32_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11537,6 +13255,8 @@ vst1q_s64_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11552,6 +13272,8 @@ vst1q_s64_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11566,6 +13288,8 @@ vst1_s8_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s8_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11581,6 +13305,8 @@ vst1_s8_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11595,6 +13321,8 @@ vst1_s16_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s16_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11610,6 +13338,8 @@ vst1_s16_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11624,6 +13354,8 @@ vst1_s32_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s32_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11639,6 +13371,8 @@ vst1_s32_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11653,6 +13387,8 @@ vst1_s64_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_s64_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11668,6 +13404,8 @@ vst1_s64_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11682,6 +13420,8 @@ vst1q_s8_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s8_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11697,6 +13437,8 @@ vst1q_s8_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11711,6 +13453,8 @@ vst1q_s16_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s16_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11726,6 +13470,8 @@ vst1q_s16_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11740,6 +13486,8 @@ vst1q_s32_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s32_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11755,6 +13503,8 @@ vst1q_s32_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -11769,6 +13519,8 @@ vst1q_s64_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_s64_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -11784,6 +13536,8 @@ vst1q_s64_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11795,6 +13549,8 @@ pub unsafe fn vst1_u8_x2(a: *mut u8, b: uint8x8x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11806,6 +13562,8 @@ pub unsafe fn vst1_u16_x2(a: *mut u16, b: uint16x4x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11817,6 +13575,8 @@ pub unsafe fn vst1_u32_x2(a: *mut u32, b: uint32x2x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11828,6 +13588,8 @@ pub unsafe fn vst1_u64_x2(a: *mut u64, b: uint64x1x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11839,6 +13601,8 @@ pub unsafe fn vst1q_u8_x2(a: *mut u8, b: uint8x16x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11850,6 +13614,8 @@ pub unsafe fn vst1q_u16_x2(a: *mut u16, b: uint16x8x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11861,6 +13627,8 @@ pub unsafe fn vst1q_u32_x2(a: *mut u32, b: uint32x4x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11872,6 +13640,8 @@ pub unsafe fn vst1q_u64_x2(a: *mut u64, b: uint64x2x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11883,6 +13653,8 @@ pub unsafe fn vst1_u8_x3(a: *mut u8, b: uint8x8x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11894,6 +13666,8 @@ pub unsafe fn vst1_u16_x3(a: *mut u16, b: uint16x4x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11905,6 +13679,8 @@ pub unsafe fn vst1_u32_x3(a: *mut u32, b: uint32x2x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11916,6 +13692,8 @@ pub unsafe fn vst1_u64_x3(a: *mut u64, b: uint64x1x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11927,6 +13705,8 @@ pub unsafe fn vst1q_u8_x3(a: *mut u8, b: uint8x16x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11938,6 +13718,8 @@ pub unsafe fn vst1q_u16_x3(a: *mut u16, b: uint16x8x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11949,6 +13731,8 @@ pub unsafe fn vst1q_u32_x3(a: *mut u32, b: uint32x4x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11960,6 +13744,8 @@ pub unsafe fn vst1q_u64_x3(a: *mut u64, b: uint64x2x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11971,6 +13757,8 @@ pub unsafe fn vst1_u8_x4(a: *mut u8, b: uint8x8x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11982,6 +13770,8 @@ pub unsafe fn vst1_u16_x4(a: *mut u16, b: uint16x4x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -11993,6 +13783,8 @@ pub unsafe fn vst1_u32_x4(a: *mut u32, b: uint32x2x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_u64_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12004,6 +13796,8 @@ pub unsafe fn vst1_u64_x4(a: *mut u64, b: uint64x1x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12015,6 +13809,8 @@ pub unsafe fn vst1q_u8_x4(a: *mut u8, b: uint8x16x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12026,6 +13822,8 @@ pub unsafe fn vst1q_u16_x4(a: *mut u16, b: uint16x8x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u32_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12037,6 +13835,8 @@ pub unsafe fn vst1q_u32_x4(a: *mut u32, b: uint32x4x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_u64_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12048,6 +13848,8 @@ pub unsafe fn vst1q_u64_x4(a: *mut u64, b: uint64x2x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12059,6 +13861,8 @@ pub unsafe fn vst1_p8_x2(a: *mut p8, b: poly8x8x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12070,6 +13874,8 @@ pub unsafe fn vst1_p8_x3(a: *mut p8, b: poly8x8x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12081,6 +13887,8 @@ pub unsafe fn vst1_p8_x4(a: *mut p8, b: poly8x8x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12092,6 +13900,8 @@ pub unsafe fn vst1q_p8_x2(a: *mut p8, b: poly8x16x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12103,6 +13913,8 @@ pub unsafe fn vst1q_p8_x3(a: *mut p8, b: poly8x16x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p8_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12114,6 +13926,8 @@ pub unsafe fn vst1q_p8_x4(a: *mut p8, b: poly8x16x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12125,6 +13939,8 @@ pub unsafe fn vst1_p16_x2(a: *mut p16, b: poly16x4x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12136,6 +13952,8 @@ pub unsafe fn vst1_p16_x3(a: *mut p16, b: poly16x4x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12147,6 +13965,8 @@ pub unsafe fn vst1_p16_x4(a: *mut p16, b: poly16x4x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16_x2)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12158,6 +13978,8 @@ pub unsafe fn vst1q_p16_x2(a: *mut p16, b: poly16x8x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16_x3)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12169,6 +13991,8 @@ pub unsafe fn vst1q_p16_x3(a: *mut p16, b: poly16x8x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p16_x4)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12180,6 +14004,8 @@ pub unsafe fn vst1q_p16_x4(a: *mut p16, b: poly16x8x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12191,6 +14017,8 @@ pub unsafe fn vst1_p64_x2(a: *mut p64, b: poly64x1x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12202,6 +14030,8 @@ pub unsafe fn vst1_p64_x3(a: *mut p64, b: poly64x1x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12213,6 +14043,8 @@ pub unsafe fn vst1_p64_x4(a: *mut p64, b: poly64x1x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x2)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12224,6 +14056,8 @@ pub unsafe fn vst1q_p64_x2(a: *mut p64, b: poly64x2x2_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x3)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12235,6 +14069,8 @@ pub unsafe fn vst1q_p64_x3(a: *mut p64, b: poly64x2x3_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_p64_x4)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12246,6 +14082,8 @@ pub unsafe fn vst1q_p64_x4(a: *mut p64, b: poly64x2x4_t) {
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12260,6 +14098,8 @@ vst1_f32_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12275,6 +14115,8 @@ vst1_f32_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x2)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12289,6 +14131,8 @@ vst1q_f32_x2_(a, b.0, b.1)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x2)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12304,6 +14148,8 @@ vst1q_f32_x2_(b.0, b.1, a)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12318,6 +14164,8 @@ vst1_f32_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12333,6 +14181,8 @@ vst1_f32_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x3)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12347,6 +14197,8 @@ vst1q_f32_x3_(a, b.0, b.1, b.2)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x3)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12362,6 +14214,8 @@ vst1q_f32_x3_(b.0, b.1, b.2, a)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12376,6 +14230,8 @@ vst1_f32_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f32_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12391,6 +14247,8 @@ vst1_f32_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x4)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12405,6 +14263,8 @@ vst1q_f32_x4_(a, b.0, b.1, b.2, b.3)
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_f32_x4)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12420,6 +14280,8 @@ vst1q_f32_x4_(b.0, b.1, b.2, b.3, a)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12434,6 +14296,8 @@ vst2_s8_(a as _, b.0, b.1, 1)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12449,6 +14313,8 @@ vst2_s8_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12463,6 +14329,8 @@ vst2_s16_(a as _, b.0, b.1, 2)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12478,6 +14346,8 @@ vst2_s16_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12492,6 +14362,8 @@ vst2_s32_(a as _, b.0, b.1, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12507,6 +14379,8 @@ vst2_s32_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12521,6 +14395,8 @@ vst2q_s8_(a as _, b.0, b.1, 1)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12536,6 +14412,8 @@ vst2q_s8_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12550,6 +14428,8 @@ vst2q_s16_(a as _, b.0, b.1, 2)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12565,6 +14445,8 @@ vst2q_s16_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12579,6 +14461,8 @@ vst2q_s32_(a as _, b.0, b.1, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12594,6 +14478,8 @@ vst2q_s32_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12608,6 +14494,8 @@ vst2_s64_(a as _, b.0, b.1, 8)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12623,6 +14511,8 @@ vst2_s64_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12634,6 +14524,8 @@ pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12645,6 +14537,8 @@ pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12656,6 +14550,8 @@ pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12667,6 +14563,8 @@ pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12678,6 +14576,8 @@ pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12689,6 +14589,8 @@ pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12700,6 +14602,8 @@ pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12711,6 +14615,8 @@ pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12722,6 +14628,8 @@ pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12733,6 +14641,8 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12744,6 +14654,8 @@ pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -12755,6 +14667,8 @@ pub unsafe fn vst2_p64(a: *mut p64, b: poly64x1x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12769,6 +14683,8 @@ vst2_f32_(a as _, b.0, b.1, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12784,6 +14700,8 @@ vst2_f32_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12798,6 +14716,8 @@ vst2q_f32_(a as _, b.0, b.1, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12813,6 +14733,8 @@ vst2q_f32_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12829,6 +14751,8 @@ vst2_lane_s8_(a as _, b.0, b.1, LANE, 1)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12846,6 +14770,8 @@ vst2_lane_s8_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12862,6 +14788,8 @@ vst2_lane_s16_(a as _, b.0, b.1, LANE, 2)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12879,6 +14807,8 @@ vst2_lane_s16_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12895,6 +14825,8 @@ vst2_lane_s32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12912,6 +14844,8 @@ vst2_lane_s32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12928,6 +14862,8 @@ vst2q_lane_s16_(a as _, b.0, b.1, LANE, 2)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12945,6 +14881,8 @@ vst2q_lane_s16_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -12961,6 +14899,8 @@ vst2q_lane_s32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -12978,6 +14918,8 @@ vst2q_lane_s32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -12991,6 +14933,8 @@ pub unsafe fn vst2_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13004,6 +14948,8 @@ pub unsafe fn vst2_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13017,6 +14963,8 @@ pub unsafe fn vst2_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13030,6 +14978,8 @@ pub unsafe fn vst2q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13043,6 +14993,8 @@ pub unsafe fn vst2q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13056,6 +15008,8 @@ pub unsafe fn vst2_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13069,6 +15023,8 @@ pub unsafe fn vst2_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13082,6 +15038,8 @@ pub unsafe fn vst2q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x2_t) {
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13098,6 +15056,8 @@ vst2_lane_f32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13115,6 +15075,8 @@ vst2_lane_f32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13131,6 +15093,8 @@ vst2q_lane_f32_(a as _, b.0, b.1, LANE, 4)
 }
 
 /// Store multiple 2-element structures from two registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13148,6 +15112,8 @@ vst2q_lane_f32_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13162,6 +15128,8 @@ vst3_s8_(a as _, b.0, b.1, b.2, 1)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13177,6 +15145,8 @@ vst3_s8_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13191,6 +15161,8 @@ vst3_s16_(a as _, b.0, b.1, b.2, 2)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13206,6 +15178,8 @@ vst3_s16_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13220,6 +15194,8 @@ vst3_s32_(a as _, b.0, b.1, b.2, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13235,6 +15211,8 @@ vst3_s32_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13249,6 +15227,8 @@ vst3q_s8_(a as _, b.0, b.1, b.2, 1)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13264,6 +15244,8 @@ vst3q_s8_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13278,6 +15260,8 @@ vst3q_s16_(a as _, b.0, b.1, b.2, 2)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13293,6 +15277,8 @@ vst3q_s16_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13307,6 +15293,8 @@ vst3q_s32_(a as _, b.0, b.1, b.2, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13322,6 +15310,8 @@ vst3q_s32_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13336,6 +15326,8 @@ vst3_s64_(a as _, b.0, b.1, b.2, 8)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13351,6 +15343,8 @@ vst3_s64_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13362,6 +15356,8 @@ pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13373,6 +15369,8 @@ pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13384,6 +15382,8 @@ pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13395,6 +15395,8 @@ pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13406,6 +15408,8 @@ pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13417,6 +15421,8 @@ pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13428,6 +15434,8 @@ pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13439,6 +15447,8 @@ pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13450,6 +15460,8 @@ pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13461,6 +15473,8 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13472,6 +15486,8 @@ pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -13483,6 +15499,8 @@ pub unsafe fn vst3_p64(a: *mut p64, b: poly64x1x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13497,6 +15515,8 @@ vst3_f32_(a as _, b.0, b.1, b.2, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13512,6 +15532,8 @@ vst3_f32_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13526,6 +15548,8 @@ vst3q_f32_(a as _, b.0, b.1, b.2, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13541,6 +15565,8 @@ vst3q_f32_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13557,6 +15583,8 @@ vst3_lane_s8_(a as _, b.0, b.1, b.2, LANE, 1)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13574,6 +15602,8 @@ vst3_lane_s8_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13590,6 +15620,8 @@ vst3_lane_s16_(a as _, b.0, b.1, b.2, LANE, 2)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13607,6 +15639,8 @@ vst3_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13623,6 +15657,8 @@ vst3_lane_s32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13640,6 +15676,8 @@ vst3_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13656,6 +15694,8 @@ vst3q_lane_s16_(a as _, b.0, b.1, b.2, LANE, 2)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13673,6 +15713,8 @@ vst3q_lane_s16_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13689,6 +15731,8 @@ vst3q_lane_s32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13706,6 +15750,8 @@ vst3q_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13719,6 +15765,8 @@ pub unsafe fn vst3_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13732,6 +15780,8 @@ pub unsafe fn vst3_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13745,6 +15795,8 @@ pub unsafe fn vst3_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13758,6 +15810,8 @@ pub unsafe fn vst3q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13771,6 +15825,8 @@ pub unsafe fn vst3q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13784,6 +15840,8 @@ pub unsafe fn vst3_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13797,6 +15855,8 @@ pub unsafe fn vst3_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -13810,6 +15870,8 @@ pub unsafe fn vst3q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x3_t) {
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13826,6 +15888,8 @@ vst3_lane_f32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13843,6 +15907,8 @@ vst3_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13859,6 +15925,8 @@ vst3q_lane_f32_(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 /// Store multiple 3-element structures from three registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13876,6 +15944,8 @@ vst3q_lane_f32_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13890,6 +15960,8 @@ vst4_s8_(a as _, b.0, b.1, b.2, b.3, 1)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13905,6 +15977,8 @@ vst4_s8_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13919,6 +15993,8 @@ vst4_s16_(a as _, b.0, b.1, b.2, b.3, 2)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13934,6 +16010,8 @@ vst4_s16_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13948,6 +16026,8 @@ vst4_s32_(a as _, b.0, b.1, b.2, b.3, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13963,6 +16043,8 @@ vst4_s32_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -13977,6 +16059,8 @@ vst4q_s8_(a as _, b.0, b.1, b.2, b.3, 1)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -13992,6 +16076,8 @@ vst4q_s8_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14006,6 +16092,8 @@ vst4q_s16_(a as _, b.0, b.1, b.2, b.3, 2)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14021,6 +16109,8 @@ vst4q_s16_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14035,6 +16125,8 @@ vst4q_s32_(a as _, b.0, b.1, b.2, b.3, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14050,6 +16142,8 @@ vst4q_s32_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14064,6 +16158,8 @@ vst4_s64_(a as _, b.0, b.1, b.2, b.3, 8)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14079,6 +16175,8 @@ vst4_s64_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14090,6 +16188,8 @@ pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14101,6 +16201,8 @@ pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14112,6 +16214,8 @@ pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14123,6 +16227,8 @@ pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14134,6 +16240,8 @@ pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14145,6 +16253,8 @@ pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14156,6 +16266,8 @@ pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14167,6 +16279,8 @@ pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14178,6 +16292,8 @@ pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14189,6 +16305,8 @@ pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14200,6 +16318,8 @@ pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -14211,6 +16331,8 @@ pub unsafe fn vst4_p64(a: *mut p64, b: poly64x1x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14225,6 +16347,8 @@ vst4_f32_(a as _, b.0, b.1, b.2, b.3, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14240,6 +16364,8 @@ vst4_f32_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14254,6 +16380,8 @@ vst4q_f32_(a as _, b.0, b.1, b.2, b.3, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14269,6 +16397,8 @@ vst4q_f32_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14285,6 +16415,8 @@ vst4_lane_s8_(a as _, b.0, b.1, b.2, b.3, LANE, 1)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14302,6 +16434,8 @@ vst4_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14318,6 +16452,8 @@ vst4_lane_s16_(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14335,6 +16471,8 @@ vst4_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14351,6 +16489,8 @@ vst4_lane_s32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14368,6 +16508,8 @@ vst4_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14384,6 +16526,8 @@ vst4q_lane_s16_(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14401,6 +16545,8 @@ vst4q_lane_s16_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14417,6 +16563,8 @@ vst4q_lane_s32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14434,6 +16582,8 @@ vst4q_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14447,6 +16597,8 @@ pub unsafe fn vst4_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14460,6 +16612,8 @@ pub unsafe fn vst4_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14473,6 +16627,8 @@ pub unsafe fn vst4_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14486,6 +16642,8 @@ pub unsafe fn vst4q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14499,6 +16657,8 @@ pub unsafe fn vst4q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14512,6 +16672,8 @@ pub unsafe fn vst4_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14525,6 +16687,8 @@ pub unsafe fn vst4_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14538,6 +16702,8 @@ pub unsafe fn vst4q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x4_t) {
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14554,6 +16720,8 @@ vst4_lane_f32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14571,6 +16739,8 @@ vst4_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -14587,6 +16757,8 @@ vst4q_lane_f32_(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 /// Store multiple 4-element structures from four registers
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_f32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -14604,6 +16776,8 @@ vst4q_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14615,6 +16789,8 @@ pub unsafe fn vmul_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14626,6 +16802,8 @@ pub unsafe fn vmulq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14637,6 +16815,8 @@ pub unsafe fn vmul_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14648,6 +16828,8 @@ pub unsafe fn vmulq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14659,6 +16841,8 @@ pub unsafe fn vmul_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14670,6 +16854,8 @@ pub unsafe fn vmulq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14681,6 +16867,8 @@ pub unsafe fn vmul_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14692,6 +16880,8 @@ pub unsafe fn vmulq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14703,6 +16893,8 @@ pub unsafe fn vmul_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14714,6 +16906,8 @@ pub unsafe fn vmulq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14725,6 +16919,8 @@ pub unsafe fn vmul_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14736,6 +16932,8 @@ pub unsafe fn vmulq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Polynomial multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14753,6 +16951,8 @@ vmul_p8_(a, b)
 }
 
 /// Polynomial multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14770,6 +16970,8 @@ vmulq_p8_(a, b)
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14781,6 +16983,8 @@ pub unsafe fn vmul_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14792,6 +16996,8 @@ pub unsafe fn vmulq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14803,6 +17009,8 @@ pub unsafe fn vmul_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14814,6 +17022,8 @@ pub unsafe fn vmulq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14825,6 +17035,8 @@ pub unsafe fn vmul_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14836,6 +17048,8 @@ pub unsafe fn vmulq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14847,6 +17061,8 @@ pub unsafe fn vmul_n_u16(a: uint16x4_t, b: u16) -> uint16x4_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14858,6 +17074,8 @@ pub unsafe fn vmulq_n_u16(a: uint16x8_t, b: u16) -> uint16x8_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14869,6 +17087,8 @@ pub unsafe fn vmul_n_u32(a: uint32x2_t, b: u32) -> uint32x2_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14880,6 +17100,8 @@ pub unsafe fn vmulq_n_u32(a: uint32x4_t, b: u32) -> uint32x4_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14891,6 +17113,8 @@ pub unsafe fn vmul_n_f32(a: float32x2_t, b: f32) -> float32x2_t {
 }
 
 /// Vector multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14902,6 +17126,8 @@ pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14915,6 +17141,8 @@ pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int1
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14928,6 +17156,8 @@ pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14941,6 +17171,8 @@ pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14954,6 +17186,8 @@ pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> in
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14967,6 +17201,8 @@ pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int3
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14980,6 +17216,8 @@ pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -14993,6 +17231,8 @@ pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15006,6 +17246,8 @@ pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> in
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15019,6 +17261,8 @@ pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> ui
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15032,6 +17276,8 @@ pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> u
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15045,6 +17291,8 @@ pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> u
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15058,6 +17306,8 @@ pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> 
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15071,6 +17321,8 @@ pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> ui
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15084,6 +17336,8 @@ pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> u
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15097,6 +17351,8 @@ pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> u
 }
 
 /// Multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15110,6 +17366,8 @@ pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> 
 }
 
 /// Floating-point multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15123,6 +17381,8 @@ pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> 
 }
 
 /// Floating-point multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmul_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15136,6 +17396,8 @@ pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) ->
 }
 
 /// Floating-point multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15149,6 +17411,8 @@ pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) ->
 }
 
 /// Floating-point multiply
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmulq_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15162,6 +17426,8 @@ pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -
 }
 
 /// Signed multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15179,6 +17445,8 @@ vmull_s8_(a, b)
 }
 
 /// Signed multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15196,6 +17464,8 @@ vmull_s16_(a, b)
 }
 
 /// Signed multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15213,6 +17483,8 @@ vmull_s32_(a, b)
 }
 
 /// Unsigned multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15230,6 +17502,8 @@ vmull_u8_(a, b)
 }
 
 /// Unsigned multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15247,6 +17521,8 @@ vmull_u16_(a, b)
 }
 
 /// Unsigned multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15264,6 +17540,8 @@ vmull_u32_(a, b)
 }
 
 /// Polynomial multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15281,6 +17559,8 @@ vmull_p8_(a, b)
 }
 
 /// Vector long multiply with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15292,6 +17572,8 @@ pub unsafe fn vmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 }
 
 /// Vector long multiply with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15303,6 +17585,8 @@ pub unsafe fn vmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 }
 
 /// Vector long multiply with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15314,6 +17598,8 @@ pub unsafe fn vmull_n_u16(a: uint16x4_t, b: u16) -> uint32x4_t {
 }
 
 /// Vector long multiply with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15325,6 +17611,8 @@ pub unsafe fn vmull_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15338,6 +17626,8 @@ pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15351,6 +17641,8 @@ pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> in
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15364,6 +17656,8 @@ pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15377,6 +17671,8 @@ pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> in
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15390,6 +17686,8 @@ pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> u
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15403,6 +17701,8 @@ pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> 
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15416,6 +17716,8 @@ pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> u
 }
 
 /// Vector long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmull_laneq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15429,6 +17731,8 @@ pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> 
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15446,6 +17750,8 @@ vfma_f32_(b, c, a)
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15463,6 +17769,8 @@ vfmaq_f32_(b, c, a)
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15474,6 +17782,8 @@ pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmaq_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15485,6 +17795,8 @@ pub unsafe fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 }
 
 /// Floating-point fused multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15497,6 +17809,8 @@ pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
 }
 
 /// Floating-point fused multiply-subtract from accumulator
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15509,6 +17823,8 @@ pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
 }
 
 /// Floating-point fused Multiply-subtract to accumulator(vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15520,6 +17836,8 @@ pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 }
 
 /// Floating-point fused Multiply-subtract to accumulator(vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsq_n_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "vfp4"))]
@@ -15531,6 +17849,8 @@ pub unsafe fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15542,6 +17862,8 @@ pub unsafe fn vsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15553,6 +17875,8 @@ pub unsafe fn vsubq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15564,6 +17888,8 @@ pub unsafe fn vsub_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15575,6 +17901,8 @@ pub unsafe fn vsubq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15586,6 +17914,8 @@ pub unsafe fn vsub_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15597,6 +17927,8 @@ pub unsafe fn vsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15608,6 +17940,8 @@ pub unsafe fn vsub_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15619,6 +17953,8 @@ pub unsafe fn vsubq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15630,6 +17966,8 @@ pub unsafe fn vsub_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15641,6 +17979,8 @@ pub unsafe fn vsubq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15652,6 +17992,8 @@ pub unsafe fn vsub_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15663,6 +18005,8 @@ pub unsafe fn vsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15674,6 +18018,8 @@ pub unsafe fn vsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15685,6 +18031,8 @@ pub unsafe fn vsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15696,6 +18044,8 @@ pub unsafe fn vsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15707,6 +18057,8 @@ pub unsafe fn vsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsub_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15718,6 +18070,8 @@ pub unsafe fn vsub_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 }
 
 /// Subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15729,6 +18083,8 @@ pub unsafe fn vsubq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15740,6 +18096,8 @@ pub unsafe fn vadd_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15751,6 +18109,8 @@ pub unsafe fn vadd_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15762,6 +18122,8 @@ pub unsafe fn vaddq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15773,6 +18135,8 @@ pub unsafe fn vaddq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vadd_p64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15784,6 +18148,8 @@ pub unsafe fn vadd_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15795,6 +18161,8 @@ pub unsafe fn vaddq_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 }
 
 /// Bitwise exclusive OR
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddq_p128)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15806,6 +18174,8 @@ pub unsafe fn vaddq_p128(a: p128, b: p128) -> p128 {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15818,6 +18188,8 @@ pub unsafe fn vsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15830,6 +18202,8 @@ pub unsafe fn vsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15842,6 +18216,8 @@ pub unsafe fn vsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15854,6 +18230,8 @@ pub unsafe fn vsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15866,6 +18244,8 @@ pub unsafe fn vsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15878,6 +18258,8 @@ pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15890,6 +18272,8 @@ pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x1
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15902,6 +18286,8 @@ pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15914,6 +18300,8 @@ pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15926,6 +18314,8 @@ pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uin
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15938,6 +18328,8 @@ pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
 }
 
 /// Subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubhn_high_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15950,6 +18342,8 @@ pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> ui
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15967,6 +18361,8 @@ vhsub_u8_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -15984,6 +18380,8 @@ vhsubq_u8_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16001,6 +18399,8 @@ vhsub_u16_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16018,6 +18418,8 @@ vhsubq_u16_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16035,6 +18437,8 @@ vhsub_u32_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16052,6 +18456,8 @@ vhsubq_u32_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16069,6 +18475,8 @@ vhsub_s8_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16086,6 +18494,8 @@ vhsubq_s8_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16103,6 +18513,8 @@ vhsub_s16_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16120,6 +18532,8 @@ vhsubq_s16_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsub_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16137,6 +18551,8 @@ vhsub_s32_(a, b)
 }
 
 /// Signed halving subtract
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhsubq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16154,6 +18570,8 @@ vhsubq_s32_(a, b)
 }
 
 /// Signed Subtract Wide
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16165,6 +18583,8 @@ pub unsafe fn vsubw_s8(a: int16x8_t, b: int8x8_t) -> int16x8_t {
 }
 
 /// Signed Subtract Wide
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16176,6 +18596,8 @@ pub unsafe fn vsubw_s16(a: int32x4_t, b: int16x4_t) -> int32x4_t {
 }
 
 /// Signed Subtract Wide
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16187,6 +18609,8 @@ pub unsafe fn vsubw_s32(a: int64x2_t, b: int32x2_t) -> int64x2_t {
 }
 
 /// Unsigned Subtract Wide
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16198,6 +18622,8 @@ pub unsafe fn vsubw_u8(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
 }
 
 /// Unsigned Subtract Wide
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16209,6 +18635,8 @@ pub unsafe fn vsubw_u16(a: uint32x4_t, b: uint16x4_t) -> uint32x4_t {
 }
 
 /// Unsigned Subtract Wide
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubw_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16220,6 +18648,8 @@ pub unsafe fn vsubw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
 }
 
 /// Signed Subtract Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16233,6 +18663,8 @@ pub unsafe fn vsubl_s8(a: int8x8_t, b: int8x8_t) -> int16x8_t {
 }
 
 /// Signed Subtract Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16246,6 +18678,8 @@ pub unsafe fn vsubl_s16(a: int16x4_t, b: int16x4_t) -> int32x4_t {
 }
 
 /// Signed Subtract Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16259,6 +18693,8 @@ pub unsafe fn vsubl_s32(a: int32x2_t, b: int32x2_t) -> int64x2_t {
 }
 
 /// Unsigned Subtract Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16272,6 +18708,8 @@ pub unsafe fn vsubl_u8(a: uint8x8_t, b: uint8x8_t) -> uint16x8_t {
 }
 
 /// Unsigned Subtract Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16285,6 +18723,8 @@ pub unsafe fn vsubl_u16(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
 }
 
 /// Unsigned Subtract Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsubl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16298,6 +18738,8 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16315,6 +18757,8 @@ vmax_s8_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16332,6 +18776,8 @@ vmaxq_s8_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16349,6 +18795,8 @@ vmax_s16_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16366,6 +18814,8 @@ vmaxq_s16_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16383,6 +18833,8 @@ vmax_s32_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16400,6 +18852,8 @@ vmaxq_s32_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16417,6 +18871,8 @@ vmax_u8_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16434,6 +18890,8 @@ vmaxq_u8_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16451,6 +18909,8 @@ vmax_u16_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16468,6 +18928,8 @@ vmaxq_u16_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16485,6 +18947,8 @@ vmax_u32_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16502,6 +18966,8 @@ vmaxq_u32_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16519,6 +18985,8 @@ vmax_f32_(a, b)
 }
 
 /// Maximum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16536,6 +19004,8 @@ vmaxq_f32_(a, b)
 }
 
 /// Floating-point Maximum Number (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnm_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16553,6 +19023,8 @@ vmaxnm_f32_(a, b)
 }
 
 /// Floating-point Maximum Number (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxnmq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16570,6 +19042,8 @@ vmaxnmq_f32_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16587,6 +19061,8 @@ vmin_s8_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16604,6 +19080,8 @@ vminq_s8_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16621,6 +19099,8 @@ vmin_s16_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16638,6 +19118,8 @@ vminq_s16_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16655,6 +19137,8 @@ vmin_s32_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16672,6 +19156,8 @@ vminq_s32_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16689,6 +19175,8 @@ vmin_u8_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16706,6 +19194,8 @@ vminq_u8_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16723,6 +19213,8 @@ vmin_u16_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16740,6 +19232,8 @@ vminq_u16_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16757,6 +19251,8 @@ vmin_u32_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16774,6 +19270,8 @@ vminq_u32_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16791,6 +19289,8 @@ vmin_f32_(a, b)
 }
 
 /// Minimum (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16808,6 +19308,8 @@ vminq_f32_(a, b)
 }
 
 /// Floating-point Minimum Number (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnm_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16825,6 +19327,8 @@ vminnm_f32_(a, b)
 }
 
 /// Floating-point Minimum Number (vector)
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminnmq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16842,6 +19346,8 @@ vminnmq_f32_(a, b)
 }
 
 /// Floating-point add pairwise
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpadd_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16859,6 +19365,8 @@ vpadd_f32_(a, b)
 }
 
 /// Signed saturating doubling multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16876,6 +19384,8 @@ vqdmull_s16_(a, b)
 }
 
 /// Signed saturating doubling multiply long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16893,6 +19403,8 @@ vqdmull_s32_(a, b)
 }
 
 /// Vector saturating doubling long multiply with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16904,6 +19416,8 @@ pub unsafe fn vqdmull_n_s16(a: int16x4_t, b: i16) -> int32x4_t {
 }
 
 /// Vector saturating doubling long multiply with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16915,6 +19429,8 @@ pub unsafe fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 }
 
 /// Vector saturating doubling long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16929,6 +19445,8 @@ pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int3
 }
 
 /// Vector saturating doubling long multiply by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmull_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16943,6 +19461,8 @@ pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int6
 }
 
 /// Signed saturating doubling multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16954,6 +19474,8 @@ pub unsafe fn vqdmlal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t
 }
 
 /// Signed saturating doubling multiply-add long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16965,6 +19487,8 @@ pub unsafe fn vqdmlal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t
 }
 
 /// Vector widening saturating doubling multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16976,6 +19500,8 @@ pub unsafe fn vqdmlal_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 }
 
 /// Vector widening saturating doubling multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -16987,6 +19513,8 @@ pub unsafe fn vqdmlal_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 }
 
 /// Vector widening saturating doubling multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17000,6 +19528,8 @@ pub unsafe fn vqdmlal_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int1
 }
 
 /// Vector widening saturating doubling multiply accumulate with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17013,6 +19543,8 @@ pub unsafe fn vqdmlal_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int3
 }
 
 /// Signed saturating doubling multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17024,6 +19556,8 @@ pub unsafe fn vqdmlsl_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t
 }
 
 /// Signed saturating doubling multiply-subtract long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17035,6 +19569,8 @@ pub unsafe fn vqdmlsl_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t
 }
 
 /// Vector widening saturating doubling multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17046,6 +19582,8 @@ pub unsafe fn vqdmlsl_n_s16(a: int32x4_t, b: int16x4_t, c: i16) -> int32x4_t {
 }
 
 /// Vector widening saturating doubling multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17057,6 +19595,8 @@ pub unsafe fn vqdmlsl_n_s32(a: int64x2_t, b: int32x2_t, c: i32) -> int64x2_t {
 }
 
 /// Vector widening saturating doubling multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17070,6 +19610,8 @@ pub unsafe fn vqdmlsl_lane_s16<const N: i32>(a: int32x4_t, b: int16x4_t, c: int1
 }
 
 /// Vector widening saturating doubling multiply subtract with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlsl_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17083,6 +19625,8 @@ pub unsafe fn vqdmlsl_lane_s32<const N: i32>(a: int64x2_t, b: int32x2_t, c: int3
 }
 
 /// Signed saturating doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17100,6 +19644,8 @@ vqdmulh_s16_(a, b)
 }
 
 /// Signed saturating doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17117,6 +19663,8 @@ vqdmulhq_s16_(a, b)
 }
 
 /// Signed saturating doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17134,6 +19682,8 @@ vqdmulh_s32_(a, b)
 }
 
 /// Signed saturating doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17151,6 +19701,8 @@ vqdmulhq_s32_(a, b)
 }
 
 /// Vector saturating doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17163,6 +19715,8 @@ pub unsafe fn vqdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 }
 
 /// Vector saturating doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17175,6 +19729,8 @@ pub unsafe fn vqdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 }
 
 /// Vector saturating doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17187,6 +19743,8 @@ pub unsafe fn vqdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 }
 
 /// Vector saturating doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17199,6 +19757,8 @@ pub unsafe fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 }
 
 /// Vector saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17212,6 +19772,8 @@ pub unsafe fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) ->
 }
 
 /// Vector saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17225,6 +19787,8 @@ pub unsafe fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> 
 }
 
 /// Vector saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulhq_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17238,6 +19802,8 @@ pub unsafe fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) ->
 }
 
 /// Vector saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmulh_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17251,6 +19817,8 @@ pub unsafe fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> 
 }
 
 /// Signed saturating extract narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17268,6 +19836,8 @@ vqmovn_s16_(a)
 }
 
 /// Signed saturating extract narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17285,6 +19855,8 @@ vqmovn_s32_(a)
 }
 
 /// Signed saturating extract narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17302,6 +19874,8 @@ vqmovn_s64_(a)
 }
 
 /// Unsigned saturating extract narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17319,6 +19893,8 @@ vqmovn_u16_(a)
 }
 
 /// Unsigned saturating extract narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17336,6 +19912,8 @@ vqmovn_u32_(a)
 }
 
 /// Unsigned saturating extract narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovn_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17353,6 +19931,8 @@ vqmovn_u64_(a)
 }
 
 /// Signed saturating extract unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17370,6 +19950,8 @@ vqmovun_s16_(a)
 }
 
 /// Signed saturating extract unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17387,6 +19969,8 @@ vqmovun_s32_(a)
 }
 
 /// Signed saturating extract unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovun_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17404,6 +19988,8 @@ vqmovun_s64_(a)
 }
 
 /// Signed saturating rounding doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17421,6 +20007,8 @@ vqrdmulh_s16_(a, b)
 }
 
 /// Signed saturating rounding doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17438,6 +20026,8 @@ vqrdmulhq_s16_(a, b)
 }
 
 /// Signed saturating rounding doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17455,6 +20045,8 @@ vqrdmulh_s32_(a, b)
 }
 
 /// Signed saturating rounding doubling multiply returning high half
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17472,6 +20064,8 @@ vqrdmulhq_s32_(a, b)
 }
 
 /// Vector saturating rounding doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17483,6 +20077,8 @@ pub unsafe fn vqrdmulh_n_s16(a: int16x4_t, b: i16) -> int16x4_t {
 }
 
 /// Vector saturating rounding doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17494,6 +20090,8 @@ pub unsafe fn vqrdmulhq_n_s16(a: int16x8_t, b: i16) -> int16x8_t {
 }
 
 /// Vector saturating rounding doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17505,6 +20103,8 @@ pub unsafe fn vqrdmulh_n_s32(a: int32x2_t, b: i32) -> int32x2_t {
 }
 
 /// Vector saturating rounding doubling multiply high with scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17516,6 +20116,8 @@ pub unsafe fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17530,6 +20132,8 @@ pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> 
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17544,6 +20148,8 @@ pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) ->
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17558,6 +20164,8 @@ pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) ->
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_laneq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17572,6 +20180,8 @@ pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17586,6 +20196,8 @@ pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> 
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulh_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17600,6 +20212,8 @@ pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) ->
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17614,6 +20228,8 @@ pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) ->
 }
 
 /// Vector rounding saturating doubling multiply high by scalar
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrdmulhq_laneq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17628,6 +20244,8 @@ pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17645,6 +20263,8 @@ vqrshl_s8_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17662,6 +20282,8 @@ vqrshlq_s8_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17679,6 +20301,8 @@ vqrshl_s16_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17696,6 +20320,8 @@ vqrshlq_s16_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17713,6 +20339,8 @@ vqrshl_s32_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17730,6 +20358,8 @@ vqrshlq_s32_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17747,6 +20377,8 @@ vqrshl_s64_(a, b)
 }
 
 /// Signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17764,6 +20396,8 @@ vqrshlq_s64_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17781,6 +20415,8 @@ vqrshl_u8_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17798,6 +20434,8 @@ vqrshlq_u8_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17815,6 +20453,8 @@ vqrshl_u16_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17832,6 +20472,8 @@ vqrshlq_u16_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17849,6 +20491,8 @@ vqrshl_u32_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17866,6 +20510,8 @@ vqrshlq_u32_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshl_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17883,6 +20529,8 @@ vqrshl_u64_(a, b)
 }
 
 /// Unsigned signed saturating rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshlq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -17900,6 +20548,8 @@ vqrshlq_u64_(a, b)
 }
 
 /// Signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -17916,6 +20566,8 @@ vqrshrn_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i1
 }
 
 /// Signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -17933,6 +20585,8 @@ vqrshrn_n_s16_(a, N)
 }
 
 /// Signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -17949,6 +20603,8 @@ vqrshrn_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 }
 
 /// Signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -17966,6 +20622,8 @@ vqrshrn_n_s32_(a, N)
 }
 
 /// Signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -17982,6 +20640,8 @@ vqrshrn_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 }
 
 /// Signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -17999,6 +20659,8 @@ vqrshrn_n_s64_(a, N)
 }
 
 /// Unsigned signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18015,6 +20677,8 @@ vqrshrn_n_u16_(a, uint16x8_t(-N as u16, -N as u16, -N as u16, -N as u16, -N as u
 }
 
 /// Unsigned signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18032,6 +20696,8 @@ vqrshrn_n_u16_(a, N)
 }
 
 /// Unsigned signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18048,6 +20714,8 @@ vqrshrn_n_u32_(a, uint32x4_t(-N as u32, -N as u32, -N as u32, -N as u32))
 }
 
 /// Unsigned signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18065,6 +20733,8 @@ vqrshrn_n_u32_(a, N)
 }
 
 /// Unsigned signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18081,6 +20751,8 @@ vqrshrn_n_u64_(a, uint64x2_t(-N as u64, -N as u64))
 }
 
 /// Unsigned signed saturating rounded shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_n_u64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18098,6 +20770,8 @@ vqrshrn_n_u64_(a, N)
 }
 
 /// Signed saturating rounded shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18114,6 +20788,8 @@ vqrshrun_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i
 }
 
 /// Signed saturating rounded shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18131,6 +20807,8 @@ vqrshrun_n_s16_(a, N)
 }
 
 /// Signed saturating rounded shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18147,6 +20825,8 @@ vqrshrun_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 }
 
 /// Signed saturating rounded shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18164,6 +20844,8 @@ vqrshrun_n_s32_(a, N)
 }
 
 /// Signed saturating rounded shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18180,6 +20862,8 @@ vqrshrun_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 }
 
 /// Signed saturating rounded shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrun_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18197,6 +20881,8 @@ vqrshrun_n_s64_(a, N)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18214,6 +20900,8 @@ vqshl_s8_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18231,6 +20919,8 @@ vqshlq_s8_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18248,6 +20938,8 @@ vqshl_s16_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18265,6 +20957,8 @@ vqshlq_s16_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18282,6 +20976,8 @@ vqshl_s32_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18299,6 +20995,8 @@ vqshlq_s32_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18316,6 +21014,8 @@ vqshl_s64_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18333,6 +21033,8 @@ vqshlq_s64_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18350,6 +21052,8 @@ vqshl_u8_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18367,6 +21071,8 @@ vqshlq_u8_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18384,6 +21090,8 @@ vqshl_u16_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18401,6 +21109,8 @@ vqshlq_u16_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18418,6 +21128,8 @@ vqshl_u32_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18435,6 +21147,8 @@ vqshlq_u32_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18452,6 +21166,8 @@ vqshl_u64_(a, b)
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18469,6 +21185,8 @@ vqshlq_u64_(a, b)
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18482,6 +21200,8 @@ pub unsafe fn vqshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18495,6 +21215,8 @@ pub unsafe fn vqshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18508,6 +21230,8 @@ pub unsafe fn vqshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18521,6 +21245,8 @@ pub unsafe fn vqshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18534,6 +21260,8 @@ pub unsafe fn vqshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18547,6 +21275,8 @@ pub unsafe fn vqshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18560,6 +21290,8 @@ pub unsafe fn vqshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 }
 
 /// Signed saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18573,6 +21305,8 @@ pub unsafe fn vqshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18586,6 +21320,8 @@ pub unsafe fn vqshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18599,6 +21335,8 @@ pub unsafe fn vqshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18612,6 +21350,8 @@ pub unsafe fn vqshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18625,6 +21365,8 @@ pub unsafe fn vqshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18638,6 +21380,8 @@ pub unsafe fn vqshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18651,6 +21395,8 @@ pub unsafe fn vqshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshl_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18664,6 +21410,8 @@ pub unsafe fn vqshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 }
 
 /// Unsigned saturating shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlq_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -18677,6 +21425,8 @@ pub unsafe fn vqshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18693,6 +21443,8 @@ vqshlu_n_s8_(a, int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18710,6 +21462,8 @@ vqshlu_n_s8_(a, int8x8_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8, N
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18726,6 +21480,8 @@ vqshlu_n_s16_(a, int16x4_t(N as i16, N as i16, N as i16, N as i16))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18743,6 +21499,8 @@ vqshlu_n_s16_(a, int16x4_t(N as i16, N as i16, N as i16, N as i16))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18759,6 +21517,8 @@ vqshlu_n_s32_(a, int32x2_t(N as i32, N as i32))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18776,6 +21536,8 @@ vqshlu_n_s32_(a, int32x2_t(N as i32, N as i32))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18792,6 +21554,8 @@ vqshlu_n_s64_(a, int64x1_t(N as i64))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlu_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18809,6 +21573,8 @@ vqshlu_n_s64_(a, int64x1_t(N as i64))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s8)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18825,6 +21591,8 @@ vqshluq_n_s8_(a, int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8,
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s8)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18842,6 +21610,8 @@ vqshluq_n_s8_(a, int8x16_t(N as i8, N as i8, N as i8, N as i8, N as i8, N as i8,
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18858,6 +21628,8 @@ vqshluq_n_s16_(a, int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N 
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18875,6 +21647,8 @@ vqshluq_n_s16_(a, int16x8_t(N as i16, N as i16, N as i16, N as i16, N as i16, N 
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18891,6 +21665,8 @@ vqshluq_n_s32_(a, int32x4_t(N as i32, N as i32, N as i32, N as i32))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18908,6 +21684,8 @@ vqshluq_n_s32_(a, int32x4_t(N as i32, N as i32, N as i32, N as i32))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18924,6 +21702,8 @@ vqshluq_n_s64_(a, int64x2_t(N as i64, N as i64))
 }
 
 /// Signed saturating shift left unsigned
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshluq_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18941,6 +21721,8 @@ vqshluq_n_s64_(a, int64x2_t(N as i64, N as i64))
 }
 
 /// Signed saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18957,6 +21739,8 @@ vqshrn_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16
 }
 
 /// Signed saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -18974,6 +21758,8 @@ vqshrn_n_s16_(a, N)
 }
 
 /// Signed saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -18990,6 +21776,8 @@ vqshrn_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 }
 
 /// Signed saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19007,6 +21795,8 @@ vqshrn_n_s32_(a, N)
 }
 
 /// Signed saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19023,6 +21813,8 @@ vqshrn_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 }
 
 /// Signed saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19040,6 +21832,8 @@ vqshrn_n_s64_(a, N)
 }
 
 /// Unsigned saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19056,6 +21850,8 @@ vqshrn_n_u16_(a, uint16x8_t(-N as u16, -N as u16, -N as u16, -N as u16, -N as u1
 }
 
 /// Unsigned saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19073,6 +21869,8 @@ vqshrn_n_u16_(a, N)
 }
 
 /// Unsigned saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19089,6 +21887,8 @@ vqshrn_n_u32_(a, uint32x4_t(-N as u32, -N as u32, -N as u32, -N as u32))
 }
 
 /// Unsigned saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19106,6 +21906,8 @@ vqshrn_n_u32_(a, N)
 }
 
 /// Unsigned saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19122,6 +21924,8 @@ vqshrn_n_u64_(a, uint64x2_t(-N as u64, -N as u64))
 }
 
 /// Unsigned saturating shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrn_n_u64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19139,6 +21943,8 @@ vqshrn_n_u64_(a, N)
 }
 
 /// Signed saturating shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19155,6 +21961,8 @@ vqshrun_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i1
 }
 
 /// Signed saturating shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19172,6 +21980,8 @@ vqshrun_n_s16_(a, N)
 }
 
 /// Signed saturating shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19188,6 +21998,8 @@ vqshrun_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 }
 
 /// Signed saturating shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19205,6 +22017,8 @@ vqshrun_n_s32_(a, N)
 }
 
 /// Signed saturating shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -19221,6 +22035,8 @@ vqshrun_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 }
 
 /// Signed saturating shift right unsigned narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrun_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -19238,6 +22054,8 @@ vqshrun_n_s64_(a, N)
 }
 
 /// Reciprocal square-root estimate.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrte_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19255,6 +22073,8 @@ vrsqrte_f32_(a)
 }
 
 /// Reciprocal square-root estimate.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19272,6 +22092,8 @@ vrsqrteq_f32_(a)
 }
 
 /// Unsigned reciprocal square root estimate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrte_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19289,6 +22111,8 @@ vrsqrte_u32_(a)
 }
 
 /// Unsigned reciprocal square root estimate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrteq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19306,6 +22130,8 @@ vrsqrteq_u32_(a)
 }
 
 /// Floating-point reciprocal square root step
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrts_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19323,6 +22149,8 @@ vrsqrts_f32_(a, b)
 }
 
 /// Floating-point reciprocal square root step
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsqrtsq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19340,6 +22168,8 @@ vrsqrtsq_f32_(a, b)
 }
 
 /// Reciprocal estimate.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpe_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19357,6 +22187,8 @@ vrecpe_f32_(a)
 }
 
 /// Reciprocal estimate.
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpeq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19374,6 +22206,8 @@ vrecpeq_f32_(a)
 }
 
 /// Unsigned reciprocal estimate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpe_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19391,6 +22225,8 @@ vrecpe_u32_(a)
 }
 
 /// Unsigned reciprocal estimate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpeq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19408,6 +22244,8 @@ vrecpeq_u32_(a)
 }
 
 /// Floating-point reciprocal step
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecps_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19425,6 +22263,8 @@ vrecps_f32_(a, b)
 }
 
 /// Floating-point reciprocal step
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrecpsq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19442,6 +22282,8 @@ vrecpsq_f32_(a, b)
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19453,6 +22295,8 @@ pub unsafe fn vreinterpret_s8_u8(a: uint8x8_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19464,6 +22308,8 @@ pub unsafe fn vreinterpret_s8_p8(a: poly8x8_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19475,6 +22321,8 @@ pub unsafe fn vreinterpret_s16_p16(a: poly16x4_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19486,6 +22334,8 @@ pub unsafe fn vreinterpret_s16_u16(a: uint16x4_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19497,6 +22347,8 @@ pub unsafe fn vreinterpret_s32_u32(a: uint32x2_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19508,6 +22360,8 @@ pub unsafe fn vreinterpret_s64_u64(a: uint64x1_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19519,6 +22373,8 @@ pub unsafe fn vreinterpretq_s8_u8(a: uint8x16_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19530,6 +22386,8 @@ pub unsafe fn vreinterpretq_s8_p8(a: poly8x16_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19541,6 +22399,8 @@ pub unsafe fn vreinterpretq_s16_p16(a: poly16x8_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19552,6 +22412,8 @@ pub unsafe fn vreinterpretq_s16_u16(a: uint16x8_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19563,6 +22425,8 @@ pub unsafe fn vreinterpretq_s32_u32(a: uint32x4_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19574,6 +22438,8 @@ pub unsafe fn vreinterpretq_s64_u64(a: uint64x2_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19585,6 +22451,8 @@ pub unsafe fn vreinterpret_u8_p8(a: poly8x8_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19596,6 +22464,8 @@ pub unsafe fn vreinterpret_u8_s8(a: int8x8_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19607,6 +22477,8 @@ pub unsafe fn vreinterpret_u16_p16(a: poly16x4_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19618,6 +22490,8 @@ pub unsafe fn vreinterpret_u16_s16(a: int16x4_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19629,6 +22503,8 @@ pub unsafe fn vreinterpret_u32_s32(a: int32x2_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19640,6 +22516,8 @@ pub unsafe fn vreinterpret_u64_s64(a: int64x1_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19651,6 +22529,8 @@ pub unsafe fn vreinterpretq_u8_p8(a: poly8x16_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19662,6 +22542,8 @@ pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19673,6 +22555,8 @@ pub unsafe fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19684,6 +22568,8 @@ pub unsafe fn vreinterpretq_u16_s16(a: int16x8_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19695,6 +22581,8 @@ pub unsafe fn vreinterpretq_u32_s32(a: int32x4_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19706,6 +22594,8 @@ pub unsafe fn vreinterpretq_u64_s64(a: int64x2_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19717,6 +22607,8 @@ pub unsafe fn vreinterpret_p8_s8(a: int8x8_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19728,6 +22620,8 @@ pub unsafe fn vreinterpret_p8_u8(a: uint8x8_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19739,6 +22633,8 @@ pub unsafe fn vreinterpret_p16_s16(a: int16x4_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19750,6 +22646,8 @@ pub unsafe fn vreinterpret_p16_u16(a: uint16x4_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19761,6 +22659,8 @@ pub unsafe fn vreinterpretq_p8_s8(a: int8x16_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19772,6 +22672,8 @@ pub unsafe fn vreinterpretq_p8_u8(a: uint8x16_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19783,6 +22685,8 @@ pub unsafe fn vreinterpretq_p16_s16(a: int16x8_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19794,6 +22698,8 @@ pub unsafe fn vreinterpretq_p16_u16(a: uint16x8_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19805,6 +22711,8 @@ pub unsafe fn vreinterpret_s8_s16(a: int16x4_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19816,6 +22724,8 @@ pub unsafe fn vreinterpret_s8_u16(a: uint16x4_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19827,6 +22737,8 @@ pub unsafe fn vreinterpret_s8_p16(a: poly16x4_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19838,6 +22750,8 @@ pub unsafe fn vreinterpret_s16_s32(a: int32x2_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19849,6 +22763,8 @@ pub unsafe fn vreinterpret_s16_u32(a: uint32x2_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19860,6 +22776,8 @@ pub unsafe fn vreinterpret_s32_s64(a: int64x1_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19871,6 +22789,8 @@ pub unsafe fn vreinterpret_s32_u64(a: uint64x1_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19882,6 +22802,8 @@ pub unsafe fn vreinterpretq_s8_s16(a: int16x8_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19893,6 +22815,8 @@ pub unsafe fn vreinterpretq_s8_u16(a: uint16x8_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19904,6 +22828,8 @@ pub unsafe fn vreinterpretq_s8_p16(a: poly16x8_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19915,6 +22841,8 @@ pub unsafe fn vreinterpretq_s16_s32(a: int32x4_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19926,6 +22854,8 @@ pub unsafe fn vreinterpretq_s16_u32(a: uint32x4_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19937,6 +22867,8 @@ pub unsafe fn vreinterpretq_s32_s64(a: int64x2_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19948,6 +22880,8 @@ pub unsafe fn vreinterpretq_s32_u64(a: uint64x2_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19959,6 +22893,8 @@ pub unsafe fn vreinterpret_u8_p16(a: poly16x4_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19970,6 +22906,8 @@ pub unsafe fn vreinterpret_u8_s16(a: int16x4_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19981,6 +22919,8 @@ pub unsafe fn vreinterpret_u8_u16(a: uint16x4_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -19992,6 +22932,8 @@ pub unsafe fn vreinterpret_u16_s32(a: int32x2_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20003,6 +22945,8 @@ pub unsafe fn vreinterpret_u16_u32(a: uint32x2_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20014,6 +22958,8 @@ pub unsafe fn vreinterpret_u32_s64(a: int64x1_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20025,6 +22971,8 @@ pub unsafe fn vreinterpret_u32_u64(a: uint64x1_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20036,6 +22984,8 @@ pub unsafe fn vreinterpretq_u8_p16(a: poly16x8_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20047,6 +22997,8 @@ pub unsafe fn vreinterpretq_u8_s16(a: int16x8_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20058,6 +23010,8 @@ pub unsafe fn vreinterpretq_u8_u16(a: uint16x8_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20069,6 +23023,8 @@ pub unsafe fn vreinterpretq_u16_s32(a: int32x4_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20080,6 +23036,8 @@ pub unsafe fn vreinterpretq_u16_u32(a: uint32x4_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20091,6 +23049,8 @@ pub unsafe fn vreinterpretq_u32_s64(a: int64x2_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20102,6 +23062,8 @@ pub unsafe fn vreinterpretq_u32_u64(a: uint64x2_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20113,6 +23075,8 @@ pub unsafe fn vreinterpret_p8_p16(a: poly16x4_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20124,6 +23088,8 @@ pub unsafe fn vreinterpret_p8_s16(a: int16x4_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20135,6 +23101,8 @@ pub unsafe fn vreinterpret_p8_u16(a: uint16x4_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20146,6 +23114,8 @@ pub unsafe fn vreinterpret_p16_s32(a: int32x2_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20157,6 +23127,8 @@ pub unsafe fn vreinterpret_p16_u32(a: uint32x2_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20168,6 +23140,8 @@ pub unsafe fn vreinterpretq_p8_p16(a: poly16x8_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20179,6 +23153,8 @@ pub unsafe fn vreinterpretq_p8_s16(a: int16x8_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20190,6 +23166,8 @@ pub unsafe fn vreinterpretq_p8_u16(a: uint16x8_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20201,6 +23179,8 @@ pub unsafe fn vreinterpretq_p16_s32(a: int32x4_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20212,6 +23192,8 @@ pub unsafe fn vreinterpretq_p16_u32(a: uint32x4_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20223,6 +23205,8 @@ pub unsafe fn vreinterpret_s32_p64(a: poly64x1_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20234,6 +23218,8 @@ pub unsafe fn vreinterpret_u32_p64(a: poly64x1_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20245,6 +23231,8 @@ pub unsafe fn vreinterpretq_s32_p64(a: poly64x2_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20256,6 +23244,8 @@ pub unsafe fn vreinterpretq_u32_p64(a: poly64x2_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20267,6 +23257,8 @@ pub unsafe fn vreinterpretq_s64_p128(a: p128) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20278,6 +23270,8 @@ pub unsafe fn vreinterpretq_u64_p128(a: p128) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20289,6 +23283,8 @@ pub unsafe fn vreinterpretq_p64_p128(a: p128) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20300,6 +23296,8 @@ pub unsafe fn vreinterpret_s16_p8(a: poly8x8_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20311,6 +23309,8 @@ pub unsafe fn vreinterpret_s16_s8(a: int8x8_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20322,6 +23322,8 @@ pub unsafe fn vreinterpret_s16_u8(a: uint8x8_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20333,6 +23335,8 @@ pub unsafe fn vreinterpret_s32_p16(a: poly16x4_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20344,6 +23348,8 @@ pub unsafe fn vreinterpret_s32_s16(a: int16x4_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20355,6 +23361,8 @@ pub unsafe fn vreinterpret_s32_u16(a: uint16x4_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20366,6 +23374,8 @@ pub unsafe fn vreinterpret_s64_s32(a: int32x2_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20377,6 +23387,8 @@ pub unsafe fn vreinterpret_s64_u32(a: uint32x2_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20388,6 +23400,8 @@ pub unsafe fn vreinterpretq_s16_p8(a: poly8x16_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20399,6 +23413,8 @@ pub unsafe fn vreinterpretq_s16_s8(a: int8x16_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20410,6 +23426,8 @@ pub unsafe fn vreinterpretq_s16_u8(a: uint8x16_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20421,6 +23439,8 @@ pub unsafe fn vreinterpretq_s32_p16(a: poly16x8_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20432,6 +23452,8 @@ pub unsafe fn vreinterpretq_s32_s16(a: int16x8_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20443,6 +23465,8 @@ pub unsafe fn vreinterpretq_s32_u16(a: uint16x8_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20454,6 +23478,8 @@ pub unsafe fn vreinterpretq_s64_s32(a: int32x4_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20465,6 +23491,8 @@ pub unsafe fn vreinterpretq_s64_u32(a: uint32x4_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20476,6 +23504,8 @@ pub unsafe fn vreinterpret_u16_p8(a: poly8x8_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20487,6 +23517,8 @@ pub unsafe fn vreinterpret_u16_s8(a: int8x8_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20498,6 +23530,8 @@ pub unsafe fn vreinterpret_u16_u8(a: uint8x8_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20509,6 +23543,8 @@ pub unsafe fn vreinterpret_u32_p16(a: poly16x4_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20520,6 +23556,8 @@ pub unsafe fn vreinterpret_u32_s16(a: int16x4_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20531,6 +23569,8 @@ pub unsafe fn vreinterpret_u32_u16(a: uint16x4_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20542,6 +23582,8 @@ pub unsafe fn vreinterpret_u64_s32(a: int32x2_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20553,6 +23595,8 @@ pub unsafe fn vreinterpret_u64_u32(a: uint32x2_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20564,6 +23608,8 @@ pub unsafe fn vreinterpretq_u16_p8(a: poly8x16_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20575,6 +23621,8 @@ pub unsafe fn vreinterpretq_u16_s8(a: int8x16_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20586,6 +23634,8 @@ pub unsafe fn vreinterpretq_u16_u8(a: uint8x16_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20597,6 +23647,8 @@ pub unsafe fn vreinterpretq_u32_p16(a: poly16x8_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20608,6 +23660,8 @@ pub unsafe fn vreinterpretq_u32_s16(a: int16x8_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20619,6 +23673,8 @@ pub unsafe fn vreinterpretq_u32_u16(a: uint16x8_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20630,6 +23686,8 @@ pub unsafe fn vreinterpretq_u64_s32(a: int32x4_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20641,6 +23699,8 @@ pub unsafe fn vreinterpretq_u64_u32(a: uint32x4_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20652,6 +23712,8 @@ pub unsafe fn vreinterpret_p16_p8(a: poly8x8_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20663,6 +23725,8 @@ pub unsafe fn vreinterpret_p16_s8(a: int8x8_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20674,6 +23738,8 @@ pub unsafe fn vreinterpret_p16_u8(a: uint8x8_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20685,6 +23751,8 @@ pub unsafe fn vreinterpretq_p16_p8(a: poly8x16_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20696,6 +23764,8 @@ pub unsafe fn vreinterpretq_p16_s8(a: int8x16_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20707,6 +23777,8 @@ pub unsafe fn vreinterpretq_p16_u8(a: uint8x16_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20718,6 +23790,8 @@ pub unsafe fn vreinterpret_p64_s32(a: int32x2_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20729,6 +23803,8 @@ pub unsafe fn vreinterpret_p64_u32(a: uint32x2_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20740,6 +23816,8 @@ pub unsafe fn vreinterpretq_p64_s32(a: int32x4_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20751,6 +23829,8 @@ pub unsafe fn vreinterpretq_p64_u32(a: uint32x4_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20762,6 +23842,8 @@ pub unsafe fn vreinterpretq_p128_s64(a: int64x2_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20773,6 +23855,8 @@ pub unsafe fn vreinterpretq_p128_u64(a: uint64x2_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -20784,6 +23868,8 @@ pub unsafe fn vreinterpretq_p128_p64(a: poly64x2_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20795,6 +23881,8 @@ pub unsafe fn vreinterpret_s8_s32(a: int32x2_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20806,6 +23894,8 @@ pub unsafe fn vreinterpret_s8_u32(a: uint32x2_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20817,6 +23907,8 @@ pub unsafe fn vreinterpret_s16_s64(a: int64x1_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20828,6 +23920,8 @@ pub unsafe fn vreinterpret_s16_u64(a: uint64x1_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20839,6 +23933,8 @@ pub unsafe fn vreinterpretq_s8_s32(a: int32x4_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20850,6 +23946,8 @@ pub unsafe fn vreinterpretq_s8_u32(a: uint32x4_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20861,6 +23959,8 @@ pub unsafe fn vreinterpretq_s16_s64(a: int64x2_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20872,6 +23972,8 @@ pub unsafe fn vreinterpretq_s16_u64(a: uint64x2_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20883,6 +23985,8 @@ pub unsafe fn vreinterpret_u8_s32(a: int32x2_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20894,6 +23998,8 @@ pub unsafe fn vreinterpret_u8_u32(a: uint32x2_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20905,6 +24011,8 @@ pub unsafe fn vreinterpret_u16_s64(a: int64x1_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20916,6 +24024,8 @@ pub unsafe fn vreinterpret_u16_u64(a: uint64x1_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20927,6 +24037,8 @@ pub unsafe fn vreinterpretq_u8_s32(a: int32x4_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20938,6 +24050,8 @@ pub unsafe fn vreinterpretq_u8_u32(a: uint32x4_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20949,6 +24063,8 @@ pub unsafe fn vreinterpretq_u16_s64(a: int64x2_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20960,6 +24076,8 @@ pub unsafe fn vreinterpretq_u16_u64(a: uint64x2_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20971,6 +24089,8 @@ pub unsafe fn vreinterpret_p8_s32(a: int32x2_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20982,6 +24102,8 @@ pub unsafe fn vreinterpret_p8_u32(a: uint32x2_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -20993,6 +24115,8 @@ pub unsafe fn vreinterpret_p16_s64(a: int64x1_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21004,6 +24128,8 @@ pub unsafe fn vreinterpret_p16_u64(a: uint64x1_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21015,6 +24141,8 @@ pub unsafe fn vreinterpretq_p8_s32(a: int32x4_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21026,6 +24154,8 @@ pub unsafe fn vreinterpretq_p8_u32(a: uint32x4_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21037,6 +24167,8 @@ pub unsafe fn vreinterpretq_p16_s64(a: int64x2_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21048,6 +24180,8 @@ pub unsafe fn vreinterpretq_p16_u64(a: uint64x2_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21059,6 +24193,8 @@ pub unsafe fn vreinterpret_s16_p64(a: poly64x1_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21070,6 +24206,8 @@ pub unsafe fn vreinterpret_u16_p64(a: poly64x1_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21081,6 +24219,8 @@ pub unsafe fn vreinterpret_p16_p64(a: poly64x1_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21092,6 +24232,8 @@ pub unsafe fn vreinterpretq_s16_p64(a: poly64x2_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21103,6 +24245,8 @@ pub unsafe fn vreinterpretq_u16_p64(a: poly64x2_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21114,6 +24258,8 @@ pub unsafe fn vreinterpretq_p16_p64(a: poly64x2_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21125,6 +24271,8 @@ pub unsafe fn vreinterpretq_s32_p128(a: p128) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21136,6 +24284,8 @@ pub unsafe fn vreinterpretq_u32_p128(a: p128) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21147,6 +24297,8 @@ pub unsafe fn vreinterpret_s32_p8(a: poly8x8_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21158,6 +24310,8 @@ pub unsafe fn vreinterpret_s32_s8(a: int8x8_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21169,6 +24323,8 @@ pub unsafe fn vreinterpret_s32_u8(a: uint8x8_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21180,6 +24336,8 @@ pub unsafe fn vreinterpret_s64_p16(a: poly16x4_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21191,6 +24349,8 @@ pub unsafe fn vreinterpret_s64_s16(a: int16x4_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21202,6 +24362,8 @@ pub unsafe fn vreinterpret_s64_u16(a: uint16x4_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21213,6 +24375,8 @@ pub unsafe fn vreinterpretq_s32_p8(a: poly8x16_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21224,6 +24388,8 @@ pub unsafe fn vreinterpretq_s32_s8(a: int8x16_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21235,6 +24401,8 @@ pub unsafe fn vreinterpretq_s32_u8(a: uint8x16_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21246,6 +24414,8 @@ pub unsafe fn vreinterpretq_s64_p16(a: poly16x8_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21257,6 +24427,8 @@ pub unsafe fn vreinterpretq_s64_s16(a: int16x8_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21268,6 +24440,8 @@ pub unsafe fn vreinterpretq_s64_u16(a: uint16x8_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21279,6 +24453,8 @@ pub unsafe fn vreinterpret_u32_p8(a: poly8x8_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21290,6 +24466,8 @@ pub unsafe fn vreinterpret_u32_s8(a: int8x8_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21301,6 +24479,8 @@ pub unsafe fn vreinterpret_u32_u8(a: uint8x8_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21312,6 +24492,8 @@ pub unsafe fn vreinterpret_u64_p16(a: poly16x4_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21323,6 +24505,8 @@ pub unsafe fn vreinterpret_u64_s16(a: int16x4_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21334,6 +24518,8 @@ pub unsafe fn vreinterpret_u64_u16(a: uint16x4_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21345,6 +24531,8 @@ pub unsafe fn vreinterpretq_u32_p8(a: poly8x16_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21356,6 +24544,8 @@ pub unsafe fn vreinterpretq_u32_s8(a: int8x16_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21367,6 +24557,8 @@ pub unsafe fn vreinterpretq_u32_u8(a: uint8x16_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21378,6 +24570,8 @@ pub unsafe fn vreinterpretq_u64_p16(a: poly16x8_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21389,6 +24583,8 @@ pub unsafe fn vreinterpretq_u64_s16(a: int16x8_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21400,6 +24596,8 @@ pub unsafe fn vreinterpretq_u64_u16(a: uint16x8_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_p16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21411,6 +24609,8 @@ pub unsafe fn vreinterpret_p64_p16(a: poly16x4_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21422,6 +24622,8 @@ pub unsafe fn vreinterpret_p64_s16(a: int16x4_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21433,6 +24635,8 @@ pub unsafe fn vreinterpret_p64_u16(a: uint16x4_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21444,6 +24648,8 @@ pub unsafe fn vreinterpretq_p64_p16(a: poly16x8_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21455,6 +24661,8 @@ pub unsafe fn vreinterpretq_p64_s16(a: int16x8_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21466,6 +24674,8 @@ pub unsafe fn vreinterpretq_p64_u16(a: uint16x8_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21477,6 +24687,8 @@ pub unsafe fn vreinterpretq_p128_s32(a: int32x4_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u32)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21488,6 +24700,8 @@ pub unsafe fn vreinterpretq_p128_u32(a: uint32x4_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21499,6 +24713,8 @@ pub unsafe fn vreinterpret_s8_s64(a: int64x1_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21510,6 +24726,8 @@ pub unsafe fn vreinterpret_s8_u64(a: uint64x1_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21521,6 +24739,8 @@ pub unsafe fn vreinterpret_u8_s64(a: int64x1_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21532,6 +24752,8 @@ pub unsafe fn vreinterpret_u8_u64(a: uint64x1_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21543,6 +24765,8 @@ pub unsafe fn vreinterpret_p8_s64(a: int64x1_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21554,6 +24778,8 @@ pub unsafe fn vreinterpret_p8_u64(a: uint64x1_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21565,6 +24791,8 @@ pub unsafe fn vreinterpretq_s8_s64(a: int64x2_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21576,6 +24804,8 @@ pub unsafe fn vreinterpretq_s8_u64(a: uint64x2_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21587,6 +24817,8 @@ pub unsafe fn vreinterpretq_u8_s64(a: int64x2_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21598,6 +24830,8 @@ pub unsafe fn vreinterpretq_u8_u64(a: uint64x2_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21609,6 +24843,8 @@ pub unsafe fn vreinterpretq_p8_s64(a: int64x2_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21620,6 +24856,8 @@ pub unsafe fn vreinterpretq_p8_u64(a: uint64x2_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21631,6 +24869,8 @@ pub unsafe fn vreinterpret_s8_p64(a: poly64x1_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21642,6 +24882,8 @@ pub unsafe fn vreinterpret_u8_p64(a: poly64x1_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21653,6 +24895,8 @@ pub unsafe fn vreinterpret_p8_p64(a: poly64x1_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21664,6 +24908,8 @@ pub unsafe fn vreinterpretq_s8_p64(a: poly64x2_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21675,6 +24921,8 @@ pub unsafe fn vreinterpretq_u8_p64(a: poly64x2_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21686,6 +24934,8 @@ pub unsafe fn vreinterpretq_p8_p64(a: poly64x2_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21697,6 +24947,8 @@ pub unsafe fn vreinterpretq_s16_p128(a: p128) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21708,6 +24960,8 @@ pub unsafe fn vreinterpretq_u16_p128(a: p128) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21719,6 +24973,8 @@ pub unsafe fn vreinterpretq_p16_p128(a: p128) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21730,6 +24986,8 @@ pub unsafe fn vreinterpret_s64_p8(a: poly8x8_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21741,6 +24999,8 @@ pub unsafe fn vreinterpret_s64_s8(a: int8x8_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21752,6 +25012,8 @@ pub unsafe fn vreinterpret_s64_u8(a: uint8x8_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21763,6 +25025,8 @@ pub unsafe fn vreinterpret_u64_p8(a: poly8x8_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21774,6 +25038,8 @@ pub unsafe fn vreinterpret_u64_s8(a: int8x8_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21785,6 +25051,8 @@ pub unsafe fn vreinterpret_u64_u8(a: uint8x8_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21796,6 +25064,8 @@ pub unsafe fn vreinterpretq_s64_p8(a: poly8x16_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21807,6 +25077,8 @@ pub unsafe fn vreinterpretq_s64_s8(a: int8x16_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21818,6 +25090,8 @@ pub unsafe fn vreinterpretq_s64_u8(a: uint8x16_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21829,6 +25103,8 @@ pub unsafe fn vreinterpretq_u64_p8(a: poly8x16_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21840,6 +25116,8 @@ pub unsafe fn vreinterpretq_u64_s8(a: int8x16_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -21851,6 +25129,8 @@ pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_p8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21862,6 +25142,8 @@ pub unsafe fn vreinterpret_p64_p8(a: poly8x8_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_s8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21873,6 +25155,8 @@ pub unsafe fn vreinterpret_p64_s8(a: int8x8_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_u8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21884,6 +25168,8 @@ pub unsafe fn vreinterpret_p64_u8(a: uint8x8_t) -> poly64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_p8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21895,6 +25181,8 @@ pub unsafe fn vreinterpretq_p64_p8(a: poly8x16_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_s8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21906,6 +25194,8 @@ pub unsafe fn vreinterpretq_p64_s8(a: int8x16_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_u8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21917,6 +25207,8 @@ pub unsafe fn vreinterpretq_p64_u8(a: uint8x16_t) -> poly64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21928,6 +25220,8 @@ pub unsafe fn vreinterpretq_p128_s16(a: int16x8_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21939,6 +25233,8 @@ pub unsafe fn vreinterpretq_p128_u16(a: uint16x8_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p16)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21950,6 +25246,8 @@ pub unsafe fn vreinterpretq_p128_p16(a: poly16x8_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_s8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21961,6 +25259,8 @@ pub unsafe fn vreinterpretq_p128_s8(a: int8x16_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_u8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21972,6 +25272,8 @@ pub unsafe fn vreinterpretq_p128_u8(a: uint8x16_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_p8)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21983,6 +25285,8 @@ pub unsafe fn vreinterpretq_p128_p8(a: poly8x16_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -21994,6 +25298,8 @@ pub unsafe fn vreinterpretq_s8_p128(a: p128) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -22005,6 +25311,8 @@ pub unsafe fn vreinterpretq_u8_p128(a: p128) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_p128)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -22016,6 +25324,8 @@ pub unsafe fn vreinterpretq_p8_p128(a: p128) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22027,6 +25337,8 @@ pub unsafe fn vreinterpret_s8_f32(a: float32x2_t) -> int8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22038,6 +25350,8 @@ pub unsafe fn vreinterpret_s16_f32(a: float32x2_t) -> int16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22049,6 +25363,8 @@ pub unsafe fn vreinterpret_s32_f32(a: float32x2_t) -> int32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22060,6 +25376,8 @@ pub unsafe fn vreinterpret_s64_f32(a: float32x2_t) -> int64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22071,6 +25389,8 @@ pub unsafe fn vreinterpretq_s8_f32(a: float32x4_t) -> int8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22082,6 +25402,8 @@ pub unsafe fn vreinterpretq_s16_f32(a: float32x4_t) -> int16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22093,6 +25415,8 @@ pub unsafe fn vreinterpretq_s32_f32(a: float32x4_t) -> int32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22104,6 +25428,8 @@ pub unsafe fn vreinterpretq_s64_f32(a: float32x4_t) -> int64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22115,6 +25441,8 @@ pub unsafe fn vreinterpret_u8_f32(a: float32x2_t) -> uint8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22126,6 +25454,8 @@ pub unsafe fn vreinterpret_u16_f32(a: float32x2_t) -> uint16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22137,6 +25467,8 @@ pub unsafe fn vreinterpret_u32_f32(a: float32x2_t) -> uint32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22148,6 +25480,8 @@ pub unsafe fn vreinterpret_u64_f32(a: float32x2_t) -> uint64x1_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22159,6 +25493,8 @@ pub unsafe fn vreinterpretq_u8_f32(a: float32x4_t) -> uint8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22170,6 +25506,8 @@ pub unsafe fn vreinterpretq_u16_f32(a: float32x4_t) -> uint16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22181,6 +25519,8 @@ pub unsafe fn vreinterpretq_u32_f32(a: float32x4_t) -> uint32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22192,6 +25532,8 @@ pub unsafe fn vreinterpretq_u64_f32(a: float32x4_t) -> uint64x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22203,6 +25545,8 @@ pub unsafe fn vreinterpret_p8_f32(a: float32x2_t) -> poly8x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22214,6 +25558,8 @@ pub unsafe fn vreinterpret_p16_f32(a: float32x2_t) -> poly16x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22225,6 +25571,8 @@ pub unsafe fn vreinterpretq_p8_f32(a: float32x4_t) -> poly8x16_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22236,6 +25584,8 @@ pub unsafe fn vreinterpretq_p16_f32(a: float32x4_t) -> poly16x8_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22247,6 +25597,8 @@ pub unsafe fn vreinterpretq_p128_f32(a: float32x4_t) -> p128 {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22258,6 +25610,8 @@ pub unsafe fn vreinterpret_f32_s8(a: int8x8_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22269,6 +25623,8 @@ pub unsafe fn vreinterpret_f32_s16(a: int16x4_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22280,6 +25636,8 @@ pub unsafe fn vreinterpret_f32_s32(a: int32x2_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22291,6 +25649,8 @@ pub unsafe fn vreinterpret_f32_s64(a: int64x1_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22302,6 +25662,8 @@ pub unsafe fn vreinterpretq_f32_s8(a: int8x16_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22313,6 +25675,8 @@ pub unsafe fn vreinterpretq_f32_s16(a: int16x8_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22324,6 +25688,8 @@ pub unsafe fn vreinterpretq_f32_s32(a: int32x4_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22335,6 +25701,8 @@ pub unsafe fn vreinterpretq_f32_s64(a: int64x2_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22346,6 +25714,8 @@ pub unsafe fn vreinterpret_f32_u8(a: uint8x8_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22357,6 +25727,8 @@ pub unsafe fn vreinterpret_f32_u16(a: uint16x4_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22368,6 +25740,8 @@ pub unsafe fn vreinterpret_f32_u32(a: uint32x2_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22379,6 +25753,8 @@ pub unsafe fn vreinterpret_f32_u64(a: uint64x1_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22390,6 +25766,8 @@ pub unsafe fn vreinterpretq_f32_u8(a: uint8x16_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22401,6 +25779,8 @@ pub unsafe fn vreinterpretq_f32_u16(a: uint16x8_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22412,6 +25792,8 @@ pub unsafe fn vreinterpretq_f32_u32(a: uint32x4_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22423,6 +25805,8 @@ pub unsafe fn vreinterpretq_f32_u64(a: uint64x2_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22434,6 +25818,8 @@ pub unsafe fn vreinterpret_f32_p8(a: poly8x8_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22445,6 +25831,8 @@ pub unsafe fn vreinterpret_f32_p16(a: poly16x4_t) -> float32x2_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22456,6 +25844,8 @@ pub unsafe fn vreinterpretq_f32_p8(a: poly8x16_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22467,6 +25857,8 @@ pub unsafe fn vreinterpretq_f32_p16(a: poly16x8_t) -> float32x4_t {
 }
 
 /// Vector reinterpret cast operation
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_p128)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22478,6 +25870,8 @@ pub unsafe fn vreinterpretq_f32_p128(a: p128) -> float32x4_t {
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22495,6 +25889,8 @@ vrshl_s8_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22512,6 +25908,8 @@ vrshlq_s8_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22529,6 +25927,8 @@ vrshl_s16_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22546,6 +25946,8 @@ vrshlq_s16_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22563,6 +25965,8 @@ vrshl_s32_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22580,6 +25984,8 @@ vrshlq_s32_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22597,6 +26003,8 @@ vrshl_s64_(a, b)
 }
 
 /// Signed rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22614,6 +26022,8 @@ vrshlq_s64_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22631,6 +26041,8 @@ vrshl_u8_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22648,6 +26060,8 @@ vrshlq_u8_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22665,6 +26079,8 @@ vrshl_u16_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22682,6 +26098,8 @@ vrshlq_u16_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22699,6 +26117,8 @@ vrshl_u32_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22716,6 +26136,8 @@ vrshlq_u32_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshl_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22733,6 +26155,8 @@ vrshl_u64_(a, b)
 }
 
 /// Unsigned rounding shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshlq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22750,6 +26174,8 @@ vrshlq_u64_(a, b)
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22763,6 +26189,8 @@ pub unsafe fn vrshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22776,6 +26204,8 @@ pub unsafe fn vrshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22789,6 +26219,8 @@ pub unsafe fn vrshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22802,6 +26234,8 @@ pub unsafe fn vrshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22815,6 +26249,8 @@ pub unsafe fn vrshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22828,6 +26264,8 @@ pub unsafe fn vrshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22841,6 +26279,8 @@ pub unsafe fn vrshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 }
 
 /// Signed rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22854,6 +26294,8 @@ pub unsafe fn vrshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22867,6 +26309,8 @@ pub unsafe fn vrshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22880,6 +26324,8 @@ pub unsafe fn vrshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22893,6 +26339,8 @@ pub unsafe fn vrshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22906,6 +26354,8 @@ pub unsafe fn vrshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22919,6 +26369,8 @@ pub unsafe fn vrshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22932,6 +26384,8 @@ pub unsafe fn vrshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshr_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22945,6 +26399,8 @@ pub unsafe fn vrshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 }
 
 /// Unsigned rounding shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrq_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -22958,6 +26414,8 @@ pub unsafe fn vrshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s16)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -22974,6 +26432,8 @@ vrshrn_n_s16_(a, int16x8_t(-N as i16, -N as i16, -N as i16, -N as i16, -N as i16
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s16)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -22991,6 +26451,8 @@ vrshrn_n_s16_(a, N)
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s32)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -23007,6 +26469,8 @@ vrshrn_n_s32_(a, int32x4_t(-N as i32, -N as i32, -N as i32, -N as i32))
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s32)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -23024,6 +26488,8 @@ vrshrn_n_s32_(a, N)
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s64)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
@@ -23040,6 +26506,8 @@ vrshrn_n_s64_(a, int64x2_t(-N as i64, -N as i64))
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_s64)
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "neon")]
@@ -23057,6 +26525,8 @@ vrshrn_n_s64_(a, N)
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23070,6 +26540,8 @@ pub unsafe fn vrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23083,6 +26555,8 @@ pub unsafe fn vrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 }
 
 /// Rounding shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrn_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23096,6 +26570,8 @@ pub unsafe fn vrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23109,6 +26585,8 @@ pub unsafe fn vrsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23122,6 +26600,8 @@ pub unsafe fn vrsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23135,6 +26615,8 @@ pub unsafe fn vrsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23148,6 +26630,8 @@ pub unsafe fn vrsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23161,6 +26645,8 @@ pub unsafe fn vrsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23174,6 +26660,8 @@ pub unsafe fn vrsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23187,6 +26675,8 @@ pub unsafe fn vrsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t
 }
 
 /// Signed rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23200,6 +26690,8 @@ pub unsafe fn vrsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23213,6 +26705,8 @@ pub unsafe fn vrsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t 
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23226,6 +26720,8 @@ pub unsafe fn vrsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x1
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23239,6 +26735,8 @@ pub unsafe fn vrsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23252,6 +26750,8 @@ pub unsafe fn vrsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23265,6 +26765,8 @@ pub unsafe fn vrsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23278,6 +26780,8 @@ pub unsafe fn vrsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsra_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23291,6 +26795,8 @@ pub unsafe fn vrsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x
 }
 
 /// Unsigned rounding shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsraq_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23304,6 +26810,8 @@ pub unsafe fn vrsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64
 }
 
 /// Rounding subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23321,6 +26829,8 @@ vrsubhn_s16_(a, b)
 }
 
 /// Rounding subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23338,6 +26848,8 @@ vrsubhn_s32_(a, b)
 }
 
 /// Rounding subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23355,6 +26867,8 @@ vrsubhn_s64_(a, b)
 }
 
 /// Rounding subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23366,6 +26880,8 @@ pub unsafe fn vrsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
 }
 
 /// Rounding subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23377,6 +26893,8 @@ pub unsafe fn vrsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
 }
 
 /// Rounding subtract returning high narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23388,6 +26906,8 @@ pub unsafe fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23401,6 +26921,8 @@ pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23414,6 +26936,8 @@ pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t 
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23427,6 +26951,8 @@ pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t 
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23440,6 +26966,8 @@ pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t 
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23453,6 +26981,8 @@ pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23466,6 +26996,8 @@ pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23479,6 +27011,8 @@ pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23492,6 +27026,8 @@ pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23505,6 +27041,8 @@ pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23518,6 +27056,8 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -23531,6 +27071,8 @@ pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23544,6 +27086,8 @@ pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23557,6 +27101,8 @@ pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23570,6 +27116,8 @@ pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23583,6 +27131,8 @@ pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23596,6 +27146,8 @@ pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23609,6 +27161,8 @@ pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23622,6 +27176,8 @@ pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23635,6 +27191,8 @@ pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23648,6 +27206,8 @@ pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23661,6 +27221,8 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_p64)
 #[inline]
 #[target_feature(enable = "neon,aes")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "aes,v8"))]
@@ -23674,6 +27236,8 @@ pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23687,6 +27251,8 @@ pub unsafe fn vset_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> float32x
 }
 
 /// Insert vector element from another vector element
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23700,6 +27266,8 @@ pub unsafe fn vsetq_lane_f32<const LANE: i32>(a: f32, b: float32x4_t) -> float32
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23717,6 +27285,8 @@ vshl_s8_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23734,6 +27304,8 @@ vshlq_s8_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23751,6 +27323,8 @@ vshl_s16_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23768,6 +27342,8 @@ vshlq_s16_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23785,6 +27361,8 @@ vshl_s32_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23802,6 +27380,8 @@ vshlq_s32_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23819,6 +27399,8 @@ vshl_s64_(a, b)
 }
 
 /// Signed Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23836,6 +27418,8 @@ vshlq_s64_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23853,6 +27437,8 @@ vshl_u8_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23870,6 +27456,8 @@ vshlq_u8_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23887,6 +27475,8 @@ vshl_u16_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23904,6 +27494,8 @@ vshlq_u16_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23921,6 +27513,8 @@ vshl_u32_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23938,6 +27532,8 @@ vshlq_u32_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23955,6 +27551,8 @@ vshl_u64_(a, b)
 }
 
 /// Unsigned Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23972,6 +27570,8 @@ vshlq_u64_(a, b)
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23985,6 +27585,8 @@ pub unsafe fn vshl_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -23998,6 +27600,8 @@ pub unsafe fn vshlq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24011,6 +27615,8 @@ pub unsafe fn vshl_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24024,6 +27630,8 @@ pub unsafe fn vshlq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24037,6 +27645,8 @@ pub unsafe fn vshl_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24050,6 +27660,8 @@ pub unsafe fn vshlq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24063,6 +27675,8 @@ pub unsafe fn vshl_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24076,6 +27690,8 @@ pub unsafe fn vshlq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24089,6 +27705,8 @@ pub unsafe fn vshl_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24102,6 +27720,8 @@ pub unsafe fn vshlq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24115,6 +27735,8 @@ pub unsafe fn vshl_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24128,6 +27750,8 @@ pub unsafe fn vshlq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24141,6 +27765,8 @@ pub unsafe fn vshl_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24154,6 +27780,8 @@ pub unsafe fn vshlq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshl_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24167,6 +27795,8 @@ pub unsafe fn vshl_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 }
 
 /// Shift left
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshlq_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24180,6 +27810,8 @@ pub unsafe fn vshlq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 }
 
 /// Signed shift left long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24193,6 +27825,8 @@ pub unsafe fn vshll_n_s8<const N: i32>(a: int8x8_t) -> int16x8_t {
 }
 
 /// Signed shift left long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24206,6 +27840,8 @@ pub unsafe fn vshll_n_s16<const N: i32>(a: int16x4_t) -> int32x4_t {
 }
 
 /// Signed shift left long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24219,6 +27855,8 @@ pub unsafe fn vshll_n_s32<const N: i32>(a: int32x2_t) -> int64x2_t {
 }
 
 /// Signed shift left long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24232,6 +27870,8 @@ pub unsafe fn vshll_n_u8<const N: i32>(a: uint8x8_t) -> uint16x8_t {
 }
 
 /// Signed shift left long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24245,6 +27885,8 @@ pub unsafe fn vshll_n_u16<const N: i32>(a: uint16x4_t) -> uint32x4_t {
 }
 
 /// Signed shift left long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshll_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24258,6 +27900,8 @@ pub unsafe fn vshll_n_u32<const N: i32>(a: uint32x2_t) -> uint64x2_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24272,6 +27916,8 @@ pub unsafe fn vshr_n_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24286,6 +27932,8 @@ pub unsafe fn vshrq_n_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24300,6 +27948,8 @@ pub unsafe fn vshr_n_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24314,6 +27964,8 @@ pub unsafe fn vshrq_n_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24328,6 +27980,8 @@ pub unsafe fn vshr_n_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24342,6 +27996,8 @@ pub unsafe fn vshrq_n_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24356,6 +28012,8 @@ pub unsafe fn vshr_n_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24370,6 +28028,8 @@ pub unsafe fn vshrq_n_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24384,6 +28044,8 @@ pub unsafe fn vshr_n_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24398,6 +28060,8 @@ pub unsafe fn vshrq_n_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24412,6 +28076,8 @@ pub unsafe fn vshr_n_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24426,6 +28092,8 @@ pub unsafe fn vshrq_n_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24440,6 +28108,8 @@ pub unsafe fn vshr_n_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24454,6 +28124,8 @@ pub unsafe fn vshrq_n_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshr_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24468,6 +28140,8 @@ pub unsafe fn vshr_n_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 }
 
 /// Shift right
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrq_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24482,6 +28156,8 @@ pub unsafe fn vshrq_n_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 }
 
 /// Shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24495,6 +28171,8 @@ pub unsafe fn vshrn_n_s16<const N: i32>(a: int16x8_t) -> int8x8_t {
 }
 
 /// Shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24508,6 +28186,8 @@ pub unsafe fn vshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
 }
 
 /// Shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24521,6 +28201,8 @@ pub unsafe fn vshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
 }
 
 /// Shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24534,6 +28216,8 @@ pub unsafe fn vshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
 }
 
 /// Shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24547,6 +28231,8 @@ pub unsafe fn vshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
 }
 
 /// Shift right narrow
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshrn_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24560,6 +28246,8 @@ pub unsafe fn vshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24573,6 +28261,8 @@ pub unsafe fn vsra_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24586,6 +28276,8 @@ pub unsafe fn vsraq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t 
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24599,6 +28291,8 @@ pub unsafe fn vsra_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t 
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24612,6 +28306,8 @@ pub unsafe fn vsraq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24625,6 +28321,8 @@ pub unsafe fn vsra_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t 
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24638,6 +28336,8 @@ pub unsafe fn vsraq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24651,6 +28351,8 @@ pub unsafe fn vsra_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t 
 }
 
 /// Signed shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_s64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24664,6 +28366,8 @@ pub unsafe fn vsraq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24677,6 +28381,8 @@ pub unsafe fn vsra_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24690,6 +28396,8 @@ pub unsafe fn vsraq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24703,6 +28411,8 @@ pub unsafe fn vsra_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24716,6 +28426,8 @@ pub unsafe fn vsraq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24729,6 +28441,8 @@ pub unsafe fn vsra_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24742,6 +28456,8 @@ pub unsafe fn vsraq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsra_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24755,6 +28471,8 @@ pub unsafe fn vsra_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1
 }
 
 /// Unsigned shift right and accumulate
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsraq_n_u64)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24768,6 +28486,8 @@ pub unsafe fn vsraq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24781,6 +28501,8 @@ pub unsafe fn vtrn_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24794,6 +28516,8 @@ pub unsafe fn vtrn_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24807,6 +28531,8 @@ pub unsafe fn vtrnq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24820,6 +28546,8 @@ pub unsafe fn vtrnq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24833,6 +28561,8 @@ pub unsafe fn vtrnq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24846,6 +28576,8 @@ pub unsafe fn vtrn_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24859,6 +28591,8 @@ pub unsafe fn vtrn_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24872,6 +28606,8 @@ pub unsafe fn vtrnq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24885,6 +28621,8 @@ pub unsafe fn vtrnq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24898,6 +28636,8 @@ pub unsafe fn vtrnq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24911,6 +28651,8 @@ pub unsafe fn vtrn_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24924,6 +28666,8 @@ pub unsafe fn vtrn_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24937,6 +28681,8 @@ pub unsafe fn vtrnq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24950,6 +28696,8 @@ pub unsafe fn vtrnq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24963,6 +28711,8 @@ pub unsafe fn vtrn_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24976,6 +28726,8 @@ pub unsafe fn vtrn_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrn_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -24989,6 +28741,8 @@ pub unsafe fn vtrn_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 }
 
 /// Transpose elements
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vtrnq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25002,6 +28756,8 @@ pub unsafe fn vtrnq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25015,6 +28771,8 @@ pub unsafe fn vzip_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25028,6 +28786,8 @@ pub unsafe fn vzip_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25041,6 +28801,8 @@ pub unsafe fn vzip_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25054,6 +28816,8 @@ pub unsafe fn vzip_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25067,6 +28831,8 @@ pub unsafe fn vzip_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25080,6 +28846,8 @@ pub unsafe fn vzip_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25093,6 +28861,8 @@ pub unsafe fn vzip_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25106,6 +28876,8 @@ pub unsafe fn vzip_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25119,6 +28891,8 @@ pub unsafe fn vzipq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25132,6 +28906,8 @@ pub unsafe fn vzipq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25145,6 +28921,8 @@ pub unsafe fn vzipq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25158,6 +28936,8 @@ pub unsafe fn vzipq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25171,6 +28951,8 @@ pub unsafe fn vzipq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25184,6 +28966,8 @@ pub unsafe fn vzipq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25197,6 +28981,8 @@ pub unsafe fn vzipq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25210,6 +28996,8 @@ pub unsafe fn vzipq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25223,6 +29011,8 @@ pub unsafe fn vzip_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 }
 
 /// Zip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzipq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25236,6 +29026,8 @@ pub unsafe fn vzipq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25249,6 +29041,8 @@ pub unsafe fn vuzp_s8(a: int8x8_t, b: int8x8_t) -> int8x8x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25262,6 +29056,8 @@ pub unsafe fn vuzp_s16(a: int16x4_t, b: int16x4_t) -> int16x4x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25275,6 +29071,8 @@ pub unsafe fn vuzpq_s8(a: int8x16_t, b: int8x16_t) -> int8x16x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25288,6 +29086,8 @@ pub unsafe fn vuzpq_s16(a: int16x8_t, b: int16x8_t) -> int16x8x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25301,6 +29101,8 @@ pub unsafe fn vuzpq_s32(a: int32x4_t, b: int32x4_t) -> int32x4x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25314,6 +29116,8 @@ pub unsafe fn vuzp_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25327,6 +29131,8 @@ pub unsafe fn vuzp_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25340,6 +29146,8 @@ pub unsafe fn vuzpq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25353,6 +29161,8 @@ pub unsafe fn vuzpq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25366,6 +29176,8 @@ pub unsafe fn vuzpq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25379,6 +29191,8 @@ pub unsafe fn vuzp_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25392,6 +29206,8 @@ pub unsafe fn vuzp_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_p8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25405,6 +29221,8 @@ pub unsafe fn vuzpq_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_p16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25418,6 +29236,8 @@ pub unsafe fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25431,6 +29251,8 @@ pub unsafe fn vuzp_s32(a: int32x2_t, b: int32x2_t) -> int32x2x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25444,6 +29266,8 @@ pub unsafe fn vuzp_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzp_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25457,6 +29281,8 @@ pub unsafe fn vuzp_f32(a: float32x2_t, b: float32x2_t) -> float32x2x2_t {
 }
 
 /// Unzip vectors
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuzpq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25470,6 +29296,8 @@ pub unsafe fn vuzpq_f32(a: float32x4_t, b: float32x4_t) -> float32x4x2_t {
 }
 
 /// Unsigned Absolute difference and Accumulate Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_u8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25482,6 +29310,8 @@ pub unsafe fn vabal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t 
 }
 
 /// Unsigned Absolute difference and Accumulate Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_u16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25494,6 +29324,8 @@ pub unsafe fn vabal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4
 }
 
 /// Unsigned Absolute difference and Accumulate Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_u32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25506,6 +29338,8 @@ pub unsafe fn vabal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
 }
 
 /// Signed Absolute difference and Accumulate Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25519,6 +29353,8 @@ pub unsafe fn vabal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
 }
 
 /// Signed Absolute difference and Accumulate Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25532,6 +29368,8 @@ pub unsafe fn vabal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
 }
 
 /// Signed Absolute difference and Accumulate Long
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25545,6 +29383,8 @@ pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
 }
 
 /// Singned saturating Absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25562,6 +29402,8 @@ vqabs_s8_(a)
 }
 
 /// Singned saturating Absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25579,6 +29421,8 @@ vqabsq_s8_(a)
 }
 
 /// Singned saturating Absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25596,6 +29440,8 @@ vqabs_s16_(a)
 }
 
 /// Singned saturating Absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25613,6 +29459,8 @@ vqabsq_s16_(a)
 }
 
 /// Singned saturating Absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
@@ -25630,6 +29478,8 @@ vqabs_s32_(a)
 }
 
 /// Singned saturating Absolute value
+///
+/// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
