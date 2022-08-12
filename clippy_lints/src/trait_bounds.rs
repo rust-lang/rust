@@ -103,7 +103,6 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         self.check_type_repetition(cx, gen);
         check_trait_bound_duplication(cx, gen);
-        check_bounds_or_where_duplication(cx, gen);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
@@ -234,7 +233,7 @@ impl TraitBounds {
 }
 
 fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() || gen.params.is_empty() || gen.predicates.is_empty() {
+    if gen.span.from_expansion() {
         return;
     }
 
@@ -254,9 +253,9 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                 if let WherePredicate::BoundPredicate(bound_predicate) = pred;
                 if let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind;
                 then {
-                    return Some(bound_predicate.bounds.iter().filter_map(|t| {
-                        Some((path.res, into_comparable_trait_ref(t.trait_ref()?)))
-                    }))
+                    return Some(
+                        rollup_traits(cx, bound_predicate.bounds, "these where clauses contain repeated elements")
+                        .into_keys().map(|trait_ref| (path.res, trait_ref)))
                 }
             }
             None
@@ -277,19 +276,18 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
             if !bound_predicate.span.from_expansion();
             if let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind;
             then {
-                for t in bound_predicate.bounds {
-                    if let Some(trait_ref) = t.trait_ref() {
-                        let key = (path.res, into_comparable_trait_ref(trait_ref));
-                        if where_predicates.contains(&key) {
-                            span_lint_and_help(
-                                cx,
-                                TRAIT_DUPLICATION_IN_BOUNDS,
-                                t.span(),
-                                "this trait bound is already specified in the where clause",
-                                None,
-                                "consider removing this trait bound",
-                                );
-                        }
+                let traits = rollup_traits(cx, bound_predicate.bounds, "these bounds contain repeated elements");
+                for (trait_ref, span) in traits {
+                    let key = (path.res, trait_ref);
+                    if where_predicates.contains(&key) {
+                        span_lint_and_help(
+                            cx,
+                            TRAIT_DUPLICATION_IN_BOUNDS,
+                            span,
+                            "this trait bound is already specified in the where clause",
+                            None,
+                            "consider removing this trait bound",
+                            );
                     }
                 }
             }
@@ -299,23 +297,6 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 struct ComparableTraitRef(Res, Vec<Res>);
-
-fn check_bounds_or_where_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() {
-        return;
-    }
-
-    for predicate in gen.predicates {
-        if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate {
-            let msg = if predicate.in_where_clause() {
-                "these where clauses contain repeated elements"
-            } else {
-                "these bounds contain repeated elements"
-            };
-            rollup_traits(cx, bound_predicate.bounds, msg);
-        }
-    }
-}
 
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
     if let GenericBound::Trait(t, tbm) = bound {
@@ -358,7 +339,7 @@ fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
     )
 }
 
-fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) {
+fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -> FxHashMap<ComparableTraitRef, Span> {
     let mut map = FxHashMap::default();
     let mut repeated_res = false;
 
@@ -400,4 +381,6 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) {
             );
         }
     }
+
+    map
 }
