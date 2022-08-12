@@ -29,7 +29,7 @@ pub struct X(usize);
 
 // @hasraw type_layout/struct.Y.html 'Size: '
 // @hasraw - '1 byte'
-// @!has - ' bytes'
+// @!hasraw - ' bytes'
 pub struct Y(u8);
 
 // @hasraw type_layout/struct.Z.html 'Size: '
@@ -38,7 +38,7 @@ pub struct Z;
 
 // We can't compute layout for generic types.
 // @hasraw type_layout/struct.Generic.html 'Unable to compute type layout, possibly due to this type having generic parameters'
-// @!has - 'Size: '
+// @!hasraw - 'Size: '
 pub struct Generic<T>(T);
 
 // We *can*, however, compute layout for types that are only generic over lifetimes,
@@ -63,7 +63,7 @@ pub type GenericTypeAlias = (Generic<(u32, ())>, Generic<u32>);
 // @hasraw type_layout/type.Edges.html 'Encountered an error during type layout; the type failed to be normalized.'
 pub type Edges<'a, E> = std::borrow::Cow<'a, [E]>;
 
-// @!has type_layout/trait.MyTrait.html 'Size: '
+// @!hasraw type_layout/trait.MyTrait.html 'Size: '
 pub trait MyTrait {}
 
 // @hasraw type_layout/enum.Variants.html 'Size: '

@@ -5,7 +5,7 @@ pub trait Foo {
     const FOO: usize = 12 + 1;
     // @has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
     const FOO_NO_DEFAULT: bool;
-    // @!has - FOO_HIDDEN
+    // @!hasraw - FOO_HIDDEN
     #[doc(hidden)]
     const FOO_HIDDEN: u8 = 0;
 }
@@ -18,7 +18,7 @@ impl Foo for Bar {
     const FOO: usize = 12;
     // @has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
     const FOO_NO_DEFAULT: bool = false;
-    // @!has - FOO_HIDDEN
+    // @!hasraw - FOO_HIDDEN
     #[doc(hidden)]
     const FOO_HIDDEN: u8 = 0;
 }
@@ -50,9 +50,9 @@ impl Bar {
 }
 
 impl Bar {
-    // @!has assoc_consts/struct.Bar.html 'BAR_PRIVATE'
+    // @!hasraw assoc_consts/struct.Bar.html 'BAR_PRIVATE'
     const BAR_PRIVATE: char = 'a';
-    // @!has assoc_consts/struct.Bar.html 'BAR_HIDDEN'
+    // @!hasraw assoc_consts/struct.Bar.html 'BAR_HIDDEN'
     #[doc(hidden)]
     pub const BAR_HIDDEN: &'static str = "a";
 }

@@ -1,6 +1,6 @@
 // @has issue_41783/struct.Foo.html
-// @!has - 'space'
-// @!has - 'comment'
+// @!hasraw - 'space'
+// @!hasraw - 'comment'
 // @hasraw - '# <span class="ident">single'
 // @hasraw - '## <span class="ident">double</span>'
 // @hasraw - '### <span class="ident">triple</span>'

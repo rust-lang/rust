@@ -4,7 +4,7 @@ pub mod foo {
 
 // @has please_inline/a/index.html
 pub mod a {
-    // @!has - 'pub use foo::'
+    // @!hasraw - 'pub use foo::'
     // @has please_inline/a/struct.Foo.html
     #[doc(inline)]
     pub use foo::Foo;

@@ -24,5 +24,5 @@ mod private_module {
 }
 
 // @has foo/all.html '//a[@href="struct.ReexportedStruct.html"]' 'ReexportedStruct'
-// @!has foo/all.html 'private_module'
+// @!hasraw foo/all.html 'private_module'
 pub use private_module::ReexportedStruct;

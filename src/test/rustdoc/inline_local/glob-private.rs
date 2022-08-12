@@ -13,12 +13,12 @@ mod mod1 {
 pub use mod1::*;
 
 // @has foo/index.html
-// @!has - "mod1"
+// @!hasraw - "mod1"
 // @hasraw - "Mod1Public"
-// @!has - "Mod1Private"
-// @!has - "mod2"
+// @!hasraw - "Mod1Private"
+// @!hasraw - "mod2"
 // @hasraw - "Mod2Public"
-// @!has - "Mod2Private"
+// @!hasraw - "Mod2Private"
 // @has foo/struct.Mod1Public.html
 // @!has foo/struct.Mod1Private.html
 // @has foo/struct.Mod2Public.html

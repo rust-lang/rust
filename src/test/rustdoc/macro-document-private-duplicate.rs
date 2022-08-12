@@ -18,7 +18,7 @@ macro_rules! a_macro {
 }
 
 // @hasraw macro_document_private_duplicate/index.html 'Doc 2.'
-// @!has macro_document_private_duplicate/macro.a_macro.html 'Doc 2.'
+// @!hasraw macro_document_private_duplicate/macro.a_macro.html 'Doc 2.'
 /// Doc 2.
 macro_rules! a_macro {
     () => ()

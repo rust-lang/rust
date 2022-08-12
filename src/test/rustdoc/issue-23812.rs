@@ -17,9 +17,9 @@ doc! {
 
 // @has issue_23812/Foo/index.html
 // @hasraw - 'Outer comment'
-// @!has - '/// Outer comment'
+// @!hasraw - '/// Outer comment'
 // @hasraw - 'Inner comment'
-// @!has - '//! Inner comment'
+// @!hasraw - '//! Inner comment'
 
 
 doc! {
@@ -31,6 +31,6 @@ doc! {
 
 // @has issue_23812/Bar/index.html
 // @hasraw - 'Outer block comment'
-// @!has - '/** Outer block comment */'
+// @!hasraw - '/** Outer block comment */'
 // @hasraw - 'Inner block comment'
-// @!has - '/*! Inner block comment */'
+// @!hasraw - '/*! Inner block comment */'

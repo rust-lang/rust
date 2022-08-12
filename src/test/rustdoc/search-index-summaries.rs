@@ -1,8 +1,8 @@
 #![crate_name = "foo"]
 
 // @hasraw 'search-index.js' 'Foo short link.'
-// @!has - 'www.example.com'
-// @!has - 'More Foo.'
+// @!hasraw - 'www.example.com'
+// @!hasraw - 'More Foo.'
 
 /// Foo short [link](https://www.example.com/).
 ///

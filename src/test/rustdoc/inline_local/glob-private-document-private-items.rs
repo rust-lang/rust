@@ -17,10 +17,10 @@ pub use mod1::*;
 // @has foo/index.html
 // @hasraw - "mod1"
 // @hasraw - "Mod1Public"
-// @!has - "Mod1Private"
-// @!has - "mod2"
+// @!hasraw - "Mod1Private"
+// @!hasraw - "mod2"
 // @hasraw - "Mod2Public"
-// @!has - "Mod2Private"
+// @!hasraw - "Mod2Private"
 // @has foo/struct.Mod1Public.html
 // @!has foo/struct.Mod1Private.html
 // @has foo/struct.Mod2Public.html
@@ -30,8 +30,8 @@ pub use mod1::*;
 // @hasraw - "mod2"
 // @hasraw - "Mod1Public"
 // @hasraw - "Mod1Private"
-// @!has - "Mod2Public"
-// @!has - "Mod2Private"
+// @!hasraw - "Mod2Public"
+// @!hasraw - "Mod2Private"
 // @has foo/mod1/struct.Mod1Public.html
 // @has foo/mod1/struct.Mod1Private.html
 // @!has foo/mod1/struct.Mod2Public.html
