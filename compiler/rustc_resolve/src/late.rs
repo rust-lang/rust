@@ -3191,33 +3191,52 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
                 let binding = binding.expect("no binding for a ctor or static");
-                self.report_error(
-                    ident.span,
-                    ResolutionError::BindingShadowsSomethingUnacceptable {
-                        shadowing_binding: pat_src,
-                        name: ident.name,
-                        participle: if binding.is_import() { "imported" } else { "defined" },
-                        article: binding.res().article(),
-                        shadowed_binding: binding.res(),
-                        shadowed_binding_span: binding.span,
-                    },
-                );
+                // When working with macros we dont always want to report an error
+                // here, because doing so can result in the leaking of variable
+                // names and such out of a macro. At the same time, the confusion
+                // that can be caused by the variable definition hiding a constant
+                // in pattern matching is less of a concern in macros, as it
+                // probably doesn't want (or expect) the constant anyway. Allowing
+                // the shadow in these circumstances improves predictability and
+                // makes stability guarantees simpler.
+                //
+                // We need to do the context check asymetrically here to properly account
+                // for the fact that we only want to ignore constants comming into the macro
+                // not those defined inside it seen from a containing context.
+                let ident_context = ident.span.ctxt().normalize_to_macro_rules();
+                if binding.span.ctxt().outer_expn().is_descendant_of(ident_context.outer_expn()) {
+                    self.report_error(
+                        ident.span,
+                        ResolutionError::BindingShadowsSomethingUnacceptable {
+                            shadowing_binding: pat_src,
+                            name: ident.name,
+                            participle: if binding.is_import() { "imported" } else { "defined" },
+                            article: binding.res().article(),
+                            shadowed_binding: binding.res(),
+                            shadowed_binding_span: binding.span,
+                        },
+                    );
+                }
                 None
             }
             Res::Def(DefKind::ConstParam, def_id) => {
                 // Same as for DefKind::Const above, but here, `binding` is `None`, so we
                 // have to construct the error differently
-                self.report_error(
-                    ident.span,
-                    ResolutionError::BindingShadowsSomethingUnacceptable {
-                        shadowing_binding: pat_src,
-                        name: ident.name,
-                        participle: "defined",
-                        article: res.article(),
-                        shadowed_binding: res,
-                        shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
-                    }
-                );
+                let ident_context = ident.span.ctxt().normalize_to_macro_rules();
+                let shadowed_binding_span = self.r.opt_span(def_id).expect("const parameter defined outside of local crate");
+                if shadowed_binding_span.ctxt().outer_expn().is_descendant_of(ident_context.outer_expn()) {
+                    self.report_error(
+                        ident.span,
+                        ResolutionError::BindingShadowsSomethingUnacceptable {
+                            shadowing_binding: pat_src,
+                            name: ident.name,
+                            participle: "defined",
+                            article: res.article(),
+                            shadowed_binding: res,
+                            shadowed_binding_span,
+                        }
+                    );
+                }
                 None
             }
             Res::Def(DefKind::Fn, _) | Res::Local(..) | Res::Err => {

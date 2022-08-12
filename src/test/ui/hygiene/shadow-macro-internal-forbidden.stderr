@@ -1,0 +1,44 @@
+error[E0530]: let bindings cannot shadow statics
+  --> $DIR/shadow-macro-internal-forbidden.rs:10:17
+   |
+LL |         static x: usize = 2;
+   |         -------------------- the static `x` is defined here
+...
+LL |             let x @ _ = 4;
+   |                 ^ cannot be named the same as a static
+...
+LL | h!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `h` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0530]: let bindings cannot shadow constants
+  --> $DIR/shadow-macro-internal-forbidden.rs:12:17
+   |
+LL |         const y: usize = 3;
+   |         ------------------- the constant `y` is defined here
+...
+LL |             let y @ _ = 5;
+   |                 ^ cannot be named the same as a constant
+...
+LL | h!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `h` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0530]: let bindings cannot shadow const parameters
+  --> $DIR/shadow-macro-internal-forbidden.rs:17:17
+   |
+LL |         fn b<const z: usize>() {
+   |                    - the const parameter `z` is defined here
+LL |             let z @ _ = 21;
+   |                 ^ cannot be named the same as a const parameter
+...
+LL | h!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `h` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0530`.

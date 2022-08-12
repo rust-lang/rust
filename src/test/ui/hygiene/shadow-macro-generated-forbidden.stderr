@@ -1,0 +1,21 @@
+error[E0530]: let bindings cannot shadow statics
+  --> $DIR/shadow-macro-generated-forbidden.rs:15:9
+   |
+LL |         static x: usize = 2;
+   |         -------------------- the static `x` is defined here
+...
+LL |     let x @ _ = 4;
+   |         ^ cannot be named the same as a static
+
+error[E0530]: let bindings cannot shadow constants
+  --> $DIR/shadow-macro-generated-forbidden.rs:17:9
+   |
+LL |         const y: usize = 3;
+   |         ------------------- the constant `y` is defined here
+...
+LL |     let y @ _ = 5;
+   |         ^ cannot be named the same as a constant
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0530`.
