@@ -23,7 +23,7 @@ use crate::{prelude::*, BackendConfig};
 struct ModuleCodegenResult {
     module_regular: CompiledModule,
     module_global_asm: Option<CompiledModule>,
-    work_product: Option<(WorkProductId, WorkProduct)>,
+    existing_work_product: Option<(WorkProductId, WorkProduct)>,
 }
 
 impl<HCX> HashStable<HCX> for ModuleCodegenResult {
@@ -41,16 +41,44 @@ pub(crate) struct OngoingCodegen {
 }
 
 impl OngoingCodegen {
-    pub(crate) fn join(self) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
+    pub(crate) fn join(
+        self,
+        sess: &Session,
+        backend_config: &BackendConfig,
+    ) -> (CodegenResults, FxHashMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxHashMap::default();
         let mut modules = vec![];
 
         for module_codegen_result in self.modules {
-            let ModuleCodegenResult { module_regular, module_global_asm, work_product } =
+            let ModuleCodegenResult { module_regular, module_global_asm, existing_work_product } =
                 module_codegen_result;
-            if let Some((work_product_id, work_product)) = work_product {
+
+            if let Some((work_product_id, work_product)) = existing_work_product {
                 work_products.insert(work_product_id, work_product);
+            } else {
+                let work_product = if backend_config.disable_incr_cache {
+                    None
+                } else if let Some(module_global_asm) = &module_global_asm {
+                    rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                        sess,
+                        &module_regular.name,
+                        &[
+                            ("o", &module_regular.object.as_ref().unwrap()),
+                            ("asm.o", &module_global_asm.object.as_ref().unwrap()),
+                        ],
+                    )
+                } else {
+                    rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
+                        sess,
+                        &module_regular.name,
+                        &[("o", &module_regular.object.as_ref().unwrap())],
+                    )
+                };
+                if let Some((work_product_id, work_product)) = work_product {
+                    work_products.insert(work_product_id, work_product);
+                }
             }
+
             modules.push(module_regular);
             if let Some(module_global_asm) = module_global_asm {
                 modules.push(module_global_asm);
@@ -84,7 +112,6 @@ fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> 
 
 fn emit_cgu(
     tcx: TyCtxt<'_>,
-    backend_config: &BackendConfig,
     name: String,
     module: ObjectModule,
     debug: Option<DebugContext<'_>>,
@@ -101,22 +128,6 @@ fn emit_cgu(
 
     let module_regular = emit_module(tcx, product.object, ModuleKind::Regular, name.clone());
 
-    let work_product = if backend_config.disable_incr_cache {
-        None
-    } else if let Some(global_asm_object_file) = &global_asm_object_file {
-        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-            tcx.sess,
-            &name,
-            &[("o", &module_regular.object.as_ref().unwrap()), ("asm.o", global_asm_object_file)],
-        )
-    } else {
-        rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
-            tcx.sess,
-            &name,
-            &[("o", &module_regular.object.as_ref().unwrap())],
-        )
-    };
-
     ModuleCodegenResult {
         module_regular,
         module_global_asm: global_asm_object_file.map(|global_asm_object_file| CompiledModule {
@@ -126,7 +137,7 @@ fn emit_cgu(
             dwarf_object: None,
             bytecode: None,
         }),
-        work_product,
+        existing_work_product: None,
     }
 }
 
@@ -205,7 +216,7 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
         } else {
             None
         },
-        work_product: Some((cgu.work_product_id(), work_product)),
+        existing_work_product: Some((cgu.work_product_id(), work_product)),
     }
 }
 
@@ -271,7 +282,6 @@ fn module_codegen(
     let codegen_result = tcx.sess.time("write object file", || {
         emit_cgu(
             tcx,
-            &backend_config,
             cgu.name().as_str().to_string(),
             module,
             debug_context,

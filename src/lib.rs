@@ -25,7 +25,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -158,7 +158,7 @@ impl<'tcx> CodegenCx<'tcx> {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: Option<BackendConfig>,
+    pub config: RefCell<Option<BackendConfig>>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -167,6 +167,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
             Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
+        }
+
+        let mut config = self.config.borrow_mut();
+        if config.is_none() {
+            let new_config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| sess.fatal(&err));
+            *config = Some(new_config);
         }
     }
 
@@ -185,15 +192,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
         tcx.sess.abort_if_errors();
-        let config = if let Some(config) = self.config.clone() {
-            config
-        } else {
-            if !tcx.sess.unstable_options() && !tcx.sess.opts.cg.llvm_args.is_empty() {
-                tcx.sess.fatal("`-Z unstable-options` must be passed to allow configuring cg_clif");
-            }
-            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| tcx.sess.fatal(&err))
-        };
+        let config = self.config.borrow().clone().unwrap();
         match config.codegen_mode {
             CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
@@ -209,10 +208,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn join_codegen(
         &self,
         ongoing_codegen: Box<dyn Any>,
-        _sess: &Session,
+        sess: &Session,
         _outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
-        Ok(ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join())
+        Ok(ongoing_codegen
+            .downcast::<driver::aot::OngoingCodegen>()
+            .unwrap()
+            .join(sess, self.config.borrow().as_ref().unwrap()))
     }
 
     fn link(
@@ -309,5 +311,5 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: None })
+    Box::new(CraneliftCodegenBackend { config: RefCell::new(None) })
 }
