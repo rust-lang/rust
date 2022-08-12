@@ -33,7 +33,7 @@ pub use self::{
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 pub use self::array_chunks::ArrayChunks;
 
 #[unstable(feature = "std_internals", issue = "none")]

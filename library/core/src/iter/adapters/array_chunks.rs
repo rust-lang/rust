@@ -11,7 +11,7 @@ use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 /// method on [`Iterator`]. See its documentation for more.
 #[derive(Debug, Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 pub struct ArrayChunks<I: Iterator, const N: usize> {
     iter: I,
     remainder: Option<array::IntoIter<I::Item, N>>,
@@ -30,14 +30,14 @@ where
     /// Returns an iterator over the remaining elements of the original iterator
     /// that are not going to be returned by this iterator. The returned
     /// iterator will yield at most `N-1` elements.
-    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
     #[inline]
     pub fn into_remainder(self) -> Option<array::IntoIter<I::Item, N>> {
         self.remainder
     }
 }
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 impl<I, const N: usize> Iterator for ArrayChunks<I, N>
 where
     I: Iterator,
@@ -91,7 +91,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 impl<I, const N: usize> DoubleEndedIterator for ArrayChunks<I, N>
 where
     I: DoubleEndedIterator + ExactSizeIterator,
@@ -162,10 +162,10 @@ where
     }
 }
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 impl<I, const N: usize> FusedIterator for ArrayChunks<I, N> where I: FusedIterator {}
 
-#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
 impl<I, const N: usize> ExactSizeIterator for ArrayChunks<I, N>
 where
     I: ExactSizeIterator,

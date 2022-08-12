@@ -3351,7 +3351,7 @@ pub trait Iterator {
     /// }
     /// ```
     #[track_caller]
-    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
     fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
     where
         Self: Sized,
