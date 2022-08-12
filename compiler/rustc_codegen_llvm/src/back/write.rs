@@ -425,7 +425,7 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
 
 fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
     if config.instrument_coverage {
-        Some(CString::new(format!("{}", PathBuf::from("default_%m_%p.profraw").display())).unwrap())
+        Some(CString::new("default_%m_%p.profraw").unwrap())
     } else {
         None
     }

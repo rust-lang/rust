@@ -97,7 +97,24 @@ $ echo "{some: 'thing'}" | target/debug/examples/formatjson5 -
 }
 ```
 
-After running this program, a new file, `default.profraw`, should be in the current working directory. It's often preferable to set a specific file name or path. You can change the output file using the environment variable `LLVM_PROFILE_FILE`:
+After running this program, a new file, `default_%m_%p.profraw`, should be in the current working directory. This file takes advantage ofLLVM's support for rewriting special pattern strings to ensure `.profraw` files generated are unique. The following special pattern strings are rewritten as:
+
+-   `%p` - The process ID.
+-   `%h` - The hostname of the machine running the program.
+-   `%t` - The value of the TMPDIR environment variable.
+-   `%Nm` - the instrumented binary’s signature: The runtime creates a pool of N raw profiles, used for on-line profile merging. The runtime takes care of selecting a raw profile from the pool, locking it, and updating it before the program exits. `N` must be between `1` and `9`, and defaults to `1` if omitted (with simply `%m`).
+-   `%c` - Does not add anything to the filename, but enables a mode (on some platforms, including Darwin) in which profile counter updates are continuously synced to a file. This means that if the instrumented program crashes, or is killed by a signal, perfect coverage information can still be recovered.
+
+```shell
+$ echo "{some: 'thing'}" | target/debug/examples/formatjson5 -
+...
+$ ls default_11699812450447639123_0_20944.profraw
+default_11699812450447639123_0_20944.profraw
+```
+
+In the example above, the value `11699812450447639123_0` in the generated filename is the instrumented binary's signature, which replaced the `%m` pattern and the value `20944` is the process ID of the binary being executed.
+
+You can also set a specific file name or path for the generated `.profraw` files by using the environment variable `LLVM_PROFILE_FILE`:
 
 ```shell
 $ echo "{some: 'thing'}" \
@@ -106,14 +123,6 @@ $ echo "{some: 'thing'}" \
 $ ls formatjson5.profraw
 formatjson5.profraw
 ```
-
-If `LLVM_PROFILE_FILE` contains a path to a non-existent directory, the missing directory structure will be created. Additionally, the following special pattern strings are rewritten:
-
--   `%p` - The process ID.
--   `%h` - The hostname of the machine running the program.
--   `%t` - The value of the TMPDIR environment variable.
--   `%Nm` - the instrumented binary’s signature: The runtime creates a pool of N raw profiles, used for on-line profile merging. The runtime takes care of selecting a raw profile from the pool, locking it, and updating it before the program exits. `N` must be between `1` and `9`, and defaults to `1` if omitted (with simply `%m`).
--   `%c` - Does not add anything to the filename, but enables a mode (on some platforms, including Darwin) in which profile counter updates are continuously synced to a file. This means that if the instrumented program crashes, or is killed by a signal, perfect coverage information can still be recovered.
 
 ## Installing LLVM coverage tools
 
@@ -181,11 +190,12 @@ A typical use case for coverage analysis is test coverage. Rust's source-based c
 
 The following example (using the [`json5format`] crate, for demonstration purposes) show how to generate and analyze coverage results for all tests in a crate.
 
-Since `cargo test` both builds and runs the tests, we set both the additional `RUSTFLAGS`, to add the `-C instrument-coverage` flag, and `LLVM_PROFILE_FILE`, to set a custom filename for the raw profiling data generated during the test runs. Since there may be more than one test binary, apply `%m` in the filename pattern. This generates unique names for each test binary. (Otherwise, each executed test binary would overwrite the coverage results from the previous binary.)
+Since `cargo test` both builds and runs the tests, we set the additional `RUSTFLAGS`, to add the `-C instrument-coverage` flag. If setting `LLVM_PROFILE_FILE` to specify a custom filename for the raw profiling data generated during the test runs,
+apply `%m` in the filename pattern since there may be more than one test binary. This generates unique names for each test binary which is not done by default when setting the `LLVM_PROFILE_FILE` environment variable.
+(Otherwise, each executed test binary would overwrite the coverage results from the previous binary.) If not setting `LLVM_PROFILE_FILE`, the `%m` and `%p` filename patterns are added by default.
 
 ```shell
 $ RUSTFLAGS="-C instrument-coverage" \
-    LLVM_PROFILE_FILE="json5format-%m.profraw" \
     cargo test --tests
 ```
 
@@ -210,7 +220,7 @@ test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 You should have one or more `.profraw` files now, one for each test binary. Run the `profdata` tool to merge them:
 
 ```shell
-$ llvm-profdata merge -sparse json5format-*.profraw -o json5format.profdata
+$ llvm-profdata merge -sparse default_*.profraw -o json5format.profdata
 ```
 
 Then run the `cov` tool, with the `profdata` file and all test binaries:
@@ -271,9 +281,8 @@ To include doc tests in the coverage results, drop the `--tests` flag, and apply
 ```bash
 $ RUSTFLAGS="-C instrument-coverage" \
   RUSTDOCFLAGS="-C instrument-coverage -Z unstable-options --persist-doctests target/debug/doctestbins" \
-  LLVM_PROFILE_FILE="json5format-%m.profraw" \
     cargo test
-$ llvm-profdata merge -sparse json5format-*.profraw -o json5format.profdata
+$ llvm-profdata merge -sparse default_*.profraw -o json5format.profdata
 ```
 
 The `-Z unstable-options --persist-doctests` flag is required, to save the test binaries
@@ -302,8 +311,7 @@ $ llvm-cov report \
 > version without doc tests, include:
 
 -   The `cargo test ... --no-run` command is updated with the same environment variables
-    and flags used to _build_ the tests, _including_ the doc tests. (`LLVM_PROFILE_FILE`
-    is only used when _running_ the tests.)
+    and flags used to _build_ the tests, _including_ the doc tests.
 -   The file glob pattern `target/debug/doctestbins/*/rust_out` adds the `rust_out`
     binaries generated for doc tests (note, however, that some `rust_out` files may not
     be executable binaries).
