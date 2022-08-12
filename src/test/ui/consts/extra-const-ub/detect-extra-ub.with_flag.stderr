@@ -1,0 +1,71 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/detect-extra-ub.rs:9:20
+   |
+LL |     let _x: bool = transmute(3u8);
+   |                    ^^^^^^^^^^^^^^ constructing invalid value: encountered 0x03, but expected a boolean
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/detect-extra-ub.rs:15:21
+   |
+LL |     let _x: usize = transmute(&3u8);
+   |                     ^^^^^^^^^^^^^^^ constructing invalid value: encountered (potentially part of) a pointer, but expected plain (non-pointer) bytes
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/detect-extra-ub.rs:22:30
+   |
+LL |     let _x: (usize, usize) = transmute(x);
+   |                              ^^^^^^^^^^^^ constructing invalid value at .0: encountered (potentially part of) a pointer, but expected plain (non-pointer) bytes
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/detect-extra-ub.rs:28:20
+   |
+LL |     let _x: &u32 = transmute(&[0u8; 4]);
+   |                    ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)
+
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         accessing memory with alignment 1, but alignment 4 is required
+   |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+  ::: $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |
+LL |         unsafe { read(self) }
+   |                  ---------- inside `ptr::const_ptr::<impl *const u32>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |
+  ::: $DIR/detect-extra-ub.rs:41:9
+   |
+LL |         ptr.read();
+   |         ---------- inside `INNER` at $DIR/detect-extra-ub.rs:41:9
+
+error: any use of this value will cause an error
+  --> $DIR/detect-extra-ub.rs:34:5
+   |
+LL | const UNALIGNED_READ: () = {
+   | ------------------------
+LL |     INNER;
+   |     ^^^^^ referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
+Future incompatibility report: Future breakage diagnostic:
+error: any use of this value will cause an error
+  --> $DIR/detect-extra-ub.rs:34:5
+   |
+LL | const UNALIGNED_READ: () = {
+   | ------------------------
+LL |     INNER;
+   |     ^^^^^ referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+

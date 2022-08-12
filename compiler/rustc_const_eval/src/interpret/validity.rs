@@ -1005,6 +1005,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
     pub fn validate_operand(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
+        // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
+        // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
+        // value, it rules out things like `UnsafeCell` in awkward places. It also can make checking
+        // recurse through references which, for now, we don't want here, either.
         self.validate_operand_internal(op, vec![], None, None)
     }
 }
