@@ -273,40 +273,58 @@ pub trait Emitter {
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
 
-        let bundle = match self.fluent_bundle() {
-            Some(bundle) if bundle.has_message(&identifier) => bundle,
-            _ => self.fallback_fluent_bundle(),
+        let translate_with_bundle = |bundle: &'a FluentBundle| -> Option<(Cow<'_, str>, Vec<_>)> {
+            let message = bundle.get_message(&identifier)?;
+            let value = match attr {
+                Some(attr) => message.get_attribute(attr)?.value(),
+                None => message.value()?,
+            };
+            debug!(?message, ?value);
+
+            let mut errs = vec![];
+            let translated = bundle.format_pattern(value, Some(&args), &mut errs);
+            debug!(?translated, ?errs);
+            Some((translated, errs))
         };
 
-        let message = bundle.get_message(&identifier).expect("missing diagnostic in fluent bundle");
-        let value = match attr {
-            Some(attr) => {
-                if let Some(attr) = message.get_attribute(attr) {
-                    attr.value()
-                } else {
-                    panic!("missing attribute `{attr}` in fluent message `{identifier}`")
-                }
-            }
-            None => {
-                if let Some(value) = message.value() {
-                    value
-                } else {
-                    panic!("missing value in fluent message `{identifier}`")
-                }
-            }
-        };
-
-        let mut err = vec![];
-        let translated = bundle.format_pattern(value, Some(&args), &mut err);
-        trace!(?translated, ?err);
-        debug_assert!(
-            err.is_empty(),
-            "identifier: {:?}, args: {:?}, errors: {:?}",
-            identifier,
-            args,
-            err
-        );
-        translated
+        self.fluent_bundle()
+            .and_then(|bundle| translate_with_bundle(bundle))
+            // If `translate_with_bundle` returns `None` with the primary bundle, this is likely
+            // just that the primary bundle doesn't contain the message being translated, so
+            // proceed to the fallback bundle.
+            //
+            // However, when errors are produced from translation, then that means the translation
+            // is broken (e.g. `{$foo}` exists in a translation but `foo` isn't provided).
+            //
+            // In debug builds, assert so that compiler devs can spot the broken translation and
+            // fix it..
+            .inspect(|(_, errs)| {
+                debug_assert!(
+                    errs.is_empty(),
+                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
+                    identifier,
+                    attr,
+                    args,
+                    errs
+                );
+            })
+            // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
+            // just hide it and try with the fallback bundle.
+            .filter(|(_, errs)| errs.is_empty())
+            .or_else(|| translate_with_bundle(self.fallback_fluent_bundle()))
+            .map(|(translated, errs)| {
+                // Always bail out for errors with the fallback bundle.
+                assert!(
+                    errs.is_empty(),
+                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
+                    identifier,
+                    attr,
+                    args,
+                    errs
+                );
+                translated
+            })
+            .expect("failed to find message in primary or fallback fluent bundles")
     }
 
     /// Formats the substitutions of the primary_span
