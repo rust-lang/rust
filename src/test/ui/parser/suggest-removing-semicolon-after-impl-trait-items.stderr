@@ -1,0 +1,18 @@
+error: non-item in item list
+  --> $DIR/suggest-removing-semicolon-after-impl-trait-items.rs:4:16
+   |
+LL | trait Foo {
+   |           - item list starts here
+LL |     fn bar() {};
+   |                ^ non-item starts here
+LL | }
+   | - item list ends here
+   |
+help: consider removing this semicolon
+   |
+LL -     fn bar() {};
+LL +     fn bar() {}
+   |
+
+error: aborting due to previous error
+
