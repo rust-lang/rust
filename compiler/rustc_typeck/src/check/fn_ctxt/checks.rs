@@ -1890,14 +1890,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .flat_map(|id| self.tcx.hir().body(id).params)
                 .skip(if is_method { 1 } else { 0 });
 
-            for (idx, param) in params.into_iter().enumerate() {
-                if let Some(expected_idx) = expected_idx {
-                    if idx == expected_idx {
-                        spans.push_span_label(param.span, "");
-                    }
-                } else {
-                    spans.push_span_label(param.span, "");
-                }
+            for (_, param) in params
+                .into_iter()
+                .enumerate()
+                .filter(|(idx, _)| expected_idx.map_or(true, |expected_idx| expected_idx == *idx))
+            {
+                spans.push_span_label(param.span, "");
             }
 
             let def_kind = self.tcx.def_kind(def_id);
