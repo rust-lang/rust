@@ -2410,12 +2410,6 @@ extern "C" {
         cookie_out: &mut c_uint,
     ) -> &'a SMDiagnostic;
 
-    pub fn LLVMRustSetInlineAsmDiagnosticHandler(
-        C: &Context,
-        H: InlineAsmDiagHandlerTy,
-        CX: *mut c_void,
-    );
-
     #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackSMDiagnostic(
         d: &SMDiagnostic,

@@ -284,7 +284,7 @@ jobs:
           - name: mingw-check
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-12
+          - name: x86_64-gnu-llvm-13
             <<: *job-linux-xl
             
           - name: x86_64-gnu-tools
@@ -431,12 +431,12 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-12
+          - name: x86_64-gnu-llvm-13
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-12-stage1
+          - name: x86_64-gnu-llvm-13-stage1
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl

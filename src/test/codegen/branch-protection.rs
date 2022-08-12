@@ -1,7 +1,6 @@
 // Test that the correct module flags are emitted with different branch protection flags.
 
 // revisions: BTI PACRET LEAF BKEY NONE
-// min-llvm-version: 12.0.0
 // needs-llvm-components: aarch64
 // [BTI] compile-flags: -Z branch-protection=bti
 // [PACRET] compile-flags: -Z branch-protection=pac-ret

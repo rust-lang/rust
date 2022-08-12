@@ -1,4 +1,3 @@
-// min-llvm-version: 13.0
 // assembly-output: emit-asm
 // compile-flags: --target avr-unknown-gnu-atmega328
 // needs-llvm-components: avr

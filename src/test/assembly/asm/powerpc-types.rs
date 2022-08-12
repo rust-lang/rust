@@ -1,4 +1,3 @@
-// min-llvm-version: 12.0.1
 // revisions: powerpc powerpc64
 // assembly-output: emit-asm
 //[powerpc] compile-flags: --target powerpc-unknown-linux-gnu

@@ -3,7 +3,6 @@ use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm;
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -419,13 +418,6 @@ pub(crate) fn inline_asm_call<'ll>(
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
         debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
-            if unwind && llvm_util::get_version() < (13, 0, 0) {
-                bx.cx.sess().span_fatal(
-                    line_spans[0],
-                    "unwinding from inline assembly is only supported on llvm >= 13.",
-                );
-            }
-
             let v = llvm::LLVMRustInlineAsm(
                 fty,
                 asm.as_ptr().cast(),

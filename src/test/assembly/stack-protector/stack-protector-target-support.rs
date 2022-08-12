@@ -156,7 +156,6 @@
 // [r74] needs-llvm-components: x86
 // [r75] compile-flags:--target x86_64-fortanix-unknown-sgx
 // [r75] needs-llvm-components: x86
-// [r75] min-llvm-version: 11.0.0
 // [r76] compile-flags:--target x86_64-fuchsia
 // [r76] needs-llvm-components: x86
 // [r77] compile-flags:--target x86_64-linux-android
