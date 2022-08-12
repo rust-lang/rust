@@ -1,6 +1,7 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -81,11 +82,10 @@ fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> 
     ObjectModule::new(builder)
 }
 
-fn emit_module(
+fn emit_cgu(
     tcx: TyCtxt<'_>,
     backend_config: &BackendConfig,
     name: String,
-    kind: ModuleKind,
     module: ObjectModule,
     debug: Option<DebugContext<'_>>,
     unwind_context: UnwindContext,
@@ -99,14 +99,7 @@ fn emit_module(
 
     unwind_context.emit(&mut product);
 
-    let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
-    let obj = product.object.write().unwrap();
-
-    tcx.sess.prof.artifact_size("object_file", name.clone(), obj.len().try_into().unwrap());
-
-    if let Err(err) = std::fs::write(&tmp_file, obj) {
-        tcx.sess.fatal(&format!("error writing object file: {}", err));
-    }
+    let module_regular = emit_module(tcx, product.object, ModuleKind::Regular, name.clone());
 
     let work_product = if backend_config.disable_incr_cache {
         None
@@ -114,33 +107,48 @@ fn emit_module(
         rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
             tcx.sess,
             &name,
-            &[("o", &tmp_file), ("asm.o", global_asm_object_file)],
+            &[("o", &module_regular.object.as_ref().unwrap()), ("asm.o", global_asm_object_file)],
         )
     } else {
         rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
             tcx.sess,
             &name,
-            &[("o", &tmp_file)],
+            &[("o", &module_regular.object.as_ref().unwrap())],
         )
     };
 
     ModuleCodegenResult {
-        module_regular: CompiledModule {
-            name: name.clone(),
-            kind,
-            object: Some(tmp_file),
-            dwarf_object: None,
-            bytecode: None,
-        },
+        module_regular,
         module_global_asm: global_asm_object_file.map(|global_asm_object_file| CompiledModule {
             name: format!("{name}.asm"),
-            kind,
+            kind: ModuleKind::Regular,
             object: Some(global_asm_object_file),
             dwarf_object: None,
             bytecode: None,
         }),
         work_product,
     }
+}
+
+fn emit_module(
+    tcx: TyCtxt<'_>,
+    object: cranelift_object::object::write::Object<'_>,
+    kind: ModuleKind,
+    name: String,
+) -> CompiledModule {
+    let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
+    let mut file = match File::create(&tmp_file) {
+        Ok(file) => file,
+        Err(err) => tcx.sess.fatal(&format!("error creating object file: {}", err)),
+    };
+
+    if let Err(err) = object.write_stream(&mut file) {
+        tcx.sess.fatal(&format!("error writing object file: {}", err));
+    }
+
+    tcx.sess.prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
+
+    CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None }
 }
 
 fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCodegenResult {
@@ -261,11 +269,10 @@ fn module_codegen(
     let debug_context = cx.debug_context;
     let unwind_context = cx.unwind_context;
     let codegen_result = tcx.sess.time("write object file", || {
-        emit_module(
+        emit_cgu(
             tcx,
             &backend_config,
             cgu.name().as_str().to_string(),
-            ModuleKind::Regular,
             module,
             debug_context,
             unwind_context,
@@ -336,27 +343,10 @@ pub(crate) fn run_aot(
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 
     let allocator_module = if created_alloc_shim {
-        let name = "allocator_shim".to_owned();
-
         let mut product = allocator_module.finish();
         allocator_unwind_context.emit(&mut product);
 
-        let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
-        let obj = product.object.write().unwrap();
-
-        tcx.sess.prof.artifact_size("object_file", &*name, obj.len().try_into().unwrap());
-
-        if let Err(err) = std::fs::write(&tmp_file, obj) {
-            tcx.sess.fatal(&format!("error writing object file: {}", err));
-        }
-
-        Some(CompiledModule {
-            name,
-            kind: ModuleKind::Allocator,
-            object: Some(tmp_file),
-            dwarf_object: None,
-            bytecode: None,
-        })
+        Some(emit_module(tcx, product.object, ModuleKind::Allocator, "allocator_shim".to_owned()))
     } else {
         None
     };
