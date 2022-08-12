@@ -115,7 +115,7 @@ pub unsafe trait UserSafe {
     /// * the pointer is null.
     /// * the pointed-to range is not in user memory.
     unsafe fn check_ptr(ptr: *const Self) {
-        let is_aligned = |p| -> bool { 0 == (p as usize) & (Self::align_of() - 1) };
+        let is_aligned = |p: *const u8| -> bool { 0 == p.addr() & (Self::align_of() - 1) };
 
         assert!(is_aligned(ptr as *const u8));
         assert!(is_user_range(ptr as _, mem::size_of_val(unsafe { &*ptr })));
