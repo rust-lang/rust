@@ -20,11 +20,11 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use crate::global_asm::GlobalAsmConfig;
 use crate::{prelude::*, BackendConfig};
 
-struct ModuleCodegenResult(
-    CompiledModule,
-    Option<CompiledModule>,
-    Option<(WorkProductId, WorkProduct)>,
-);
+struct ModuleCodegenResult {
+    module_regular: CompiledModule,
+    module_global_asm: Option<CompiledModule>,
+    work_product: Option<(WorkProductId, WorkProduct)>,
+}
 
 impl<HCX> HashStable<HCX> for ModuleCodegenResult {
     fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
@@ -47,7 +47,7 @@ impl OngoingCodegen {
         let mut modules = vec![];
 
         for module_codegen_result in self.modules {
-            let ModuleCodegenResult(module_regular, module_global_asm, work_product) =
+            let ModuleCodegenResult { module_regular, module_global_asm, work_product } =
                 module_codegen_result;
             if let Some((work_product_id, work_product)) = work_product {
                 work_products.insert(work_product_id, work_product);
@@ -124,15 +124,15 @@ fn emit_module(
         )
     };
 
-    ModuleCodegenResult(
-        CompiledModule {
+    ModuleCodegenResult {
+        module_regular: CompiledModule {
             name: name.clone(),
             kind,
             object: Some(tmp_file),
             dwarf_object: None,
             bytecode: None,
         },
-        global_asm_object_file.map(|global_asm_object_file| CompiledModule {
+        module_global_asm: global_asm_object_file.map(|global_asm_object_file| CompiledModule {
             name: format!("{name}.asm"),
             kind,
             object: Some(global_asm_object_file),
@@ -140,7 +140,7 @@ fn emit_module(
             bytecode: None,
         }),
         work_product,
-    )
+    }
 }
 
 fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCodegenResult {
@@ -178,15 +178,15 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
         false
     };
 
-    ModuleCodegenResult(
-        CompiledModule {
+    ModuleCodegenResult {
+        module_regular: CompiledModule {
             name: cgu.name().to_string(),
             kind: ModuleKind::Regular,
             object: Some(obj_out_regular),
             dwarf_object: None,
             bytecode: None,
         },
-        if has_global_asm {
+        module_global_asm: if has_global_asm {
             Some(CompiledModule {
                 name: cgu.name().to_string(),
                 kind: ModuleKind::Regular,
@@ -197,8 +197,8 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
         } else {
             None
         },
-        Some((cgu.work_product_id(), work_product)),
-    )
+        work_product: Some((cgu.work_product_id(), work_product)),
+    }
 }
 
 fn module_codegen(
@@ -341,7 +341,7 @@ pub(crate) fn run_aot(
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 
     let allocator_module = if created_alloc_shim {
-        let ModuleCodegenResult(module, module_global_asm, work_product) = emit_module(
+        let ModuleCodegenResult { module_regular, module_global_asm, work_product } = emit_module(
             tcx,
             &backend_config,
             "allocator_shim".to_string(),
@@ -355,7 +355,7 @@ pub(crate) fn run_aot(
         if let Some((id, product)) = work_product {
             work_products.insert(id, product);
         }
-        Some(module)
+        Some(module_regular)
     } else {
         None
     };
