@@ -164,7 +164,8 @@ fn write_pending_elems(
 /// * If two `Class` have the same variant, then they can be merged.
 /// * If the other `Class` is unclassified and only contains white characters (backline,
 ///   whitespace, etc), it can be merged.
-/// * If `Class` is `Ident`, then it can be merged with all unclassified elements.
+/// * `Class::Ident` is considered the same as unclassified (because it doesn't have an associated
+///    CSS class).
 fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
     match (class1, class2) {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
@@ -264,7 +265,7 @@ enum Class {
     DocComment,
     Attribute,
     KeyWord,
-    // Keywords that do pointer/reference stuff.
+    /// Keywords that do pointer/reference stuff.
     RefKeyWord,
     Self_(Span),
     Macro(Span),
@@ -272,6 +273,7 @@ enum Class {
     String,
     Number,
     Bool,
+    /// `Ident` isn't rendered in the HTML but we still need it for the `Span` it contains.
     Ident(Span),
     Lifetime,
     PreludeTy,
@@ -320,7 +322,7 @@ impl Class {
             Class::String => "string",
             Class::Number => "number",
             Class::Bool => "bool-val",
-            Class::Ident(_) => "ident",
+            Class::Ident(_) => "",
             Class::Lifetime => "lifetime",
             Class::PreludeTy => "prelude-ty",
             Class::PreludeVal => "prelude-val",
@@ -920,7 +922,7 @@ fn string_without_closing_tag<T: Display>(
             path
         });
     }
-    // We don't want to generate links on empty text.
+
     if let Some(href_context) = href_context {
         if let Some(href) =
             href_context.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
@@ -954,7 +956,12 @@ fn string_without_closing_tag<T: Display>(
                 // again.
                 write!(out, "<a href=\"{}\">{}", href, text_s);
             } else {
-                write!(out, "<a class=\"{}\" href=\"{}\">{}", klass.as_html(), href, text_s);
+                let klass_s = klass.as_html();
+                if klass_s.is_empty() {
+                    write!(out, "<a href=\"{}\">{}", href, text_s);
+                } else {
+                    write!(out, "<a class=\"{}\" href=\"{}\">{}", klass_s, href, text_s);
+                }
             }
             return Some("</a>");
         }
@@ -963,8 +970,14 @@ fn string_without_closing_tag<T: Display>(
         write!(out, "{}", text_s);
         return None;
     }
-    write!(out, "<span class=\"{}\">{}", klass.as_html(), text_s);
-    Some("</span>")
+    let klass_s = klass.as_html();
+    if klass_s.is_empty() {
+        write!(out, "{}", text_s);
+        Some("")
+    } else {
+        write!(out, "<span class=\"{}\">{}", klass_s, text_s);
+        Some("</span>")
+    }
 }
 
 #[cfg(test)]

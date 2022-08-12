@@ -202,7 +202,7 @@ pre.rust .kw { color: #ab8ac1; }
 pre.rust .kw-2, pre.rust .prelude-ty { color: #769acb; }
 pre.rust .number, pre.rust .string { color: #83a300; }
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute, pre.rust .attribute .ident { color: #ee6868; }
+pre.rust .attribute { color: #ee6868; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #d97f26; }
 pre.rust .question-mark {
