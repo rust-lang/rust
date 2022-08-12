@@ -307,8 +307,13 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args);
             }
-            ast::ExprKind::MethodCall(ref segment, ref receiver, ref args, _) => {
-                self.print_expr_method_call(segment, &receiver, &args);
+            ast::ExprKind::MethodCall(box ast::MethodCall {
+                ref seg,
+                ref receiver,
+                ref args,
+                ..
+            }) => {
+                self.print_expr_method_call(seg, &receiver, &args);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, lhs, rhs);

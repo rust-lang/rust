@@ -1289,6 +1289,20 @@ impl Expr {
     }
 }
 
+/// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct MethodCall {
+    /// The method name and its generic arguments, e.g. `foo::<Bar, Baz>`.
+    pub seg: PathSegment,
+    /// The receiver, e.g. `x`.
+    pub receiver: P<Expr>,
+    /// The arguments, e.g. `a, b, c`.
+    pub args: Vec<P<Expr>>,
+    /// The span of the function, without the dot and receiver e.g. `foo::<Bar,
+    /// Baz>(a, b, c)`.
+    pub span: Span,
+}
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Closure {
     pub binder: ClosureBinder,
@@ -1343,17 +1357,8 @@ pub enum ExprKind {
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
     Call(P<Expr>, Vec<P<Expr>>),
-    /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
-    ///
-    /// The `PathSegment` represents the method name and its generic arguments
-    /// (within the angle brackets).
-    /// The standalone `Expr` is the receiver expression.
-    /// The vector of `Expr` is the arguments.
-    /// `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, x, [a, b, c, d])`.
-    /// This `Span` is the span of the function, without the dot and receiver
-    /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-    MethodCall(PathSegment, P<Expr>, Vec<P<Expr>>, Span),
+    /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
+    MethodCall(Box<MethodCall>),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -3050,8 +3055,8 @@ mod size_asserts {
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 48);
-    static_assert_size!(Expr, 104);
-    static_assert_size!(ExprKind, 72);
+    static_assert_size!(Expr, 88);
+    static_assert_size!(ExprKind, 56);
     static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);

@@ -60,7 +60,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::ExprKind::Call(f, self.lower_exprs(args))
                     }
                 }
-                ExprKind::MethodCall(ref seg, ref receiver, ref args, span) => {
+                ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, span }) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,

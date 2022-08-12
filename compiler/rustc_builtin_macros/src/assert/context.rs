@@ -3,8 +3,8 @@ use rustc_ast::{
     ptr::P,
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
-    BinOpKind, BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, Mutability,
-    Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    BinOpKind, BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, MethodCall,
+    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -241,9 +241,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
-            ExprKind::MethodCall(_, _,ref mut local_exprs, _) => {
-                for local_expr in local_exprs.iter_mut() {
-                    self.manage_cond_expr(local_expr);
+            ExprKind::MethodCall(ref mut call) => {
+                for arg in call.args.iter_mut() {
+                    self.manage_cond_expr(arg);
                 }
             }
             ExprKind::Path(_, Path { ref segments, .. }) if let &[ref path_segment] = &segments[..] => {
@@ -440,12 +440,12 @@ fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {
 
 fn expr_method_call(
     cx: &ExtCtxt<'_>,
-    path: PathSegment,
+    seg: PathSegment,
     receiver: P<Expr>,
     args: Vec<P<Expr>>,
     span: Span,
 ) -> P<Expr> {
-    cx.expr(span, ExprKind::MethodCall(path, receiver, args, span))
+    cx.expr(span, ExprKind::MethodCall(Box::new(MethodCall { seg, receiver, args, span })))
 }
 
 fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {

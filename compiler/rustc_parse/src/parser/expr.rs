@@ -832,7 +832,7 @@ impl<'a> Parser<'a> {
                     ExprKind::Index(_, _) => "indexing",
                     ExprKind::Try(_) => "`?`",
                     ExprKind::Field(_, _) => "a field access",
-                    ExprKind::MethodCall(_, _, _, _) => "a method call",
+                    ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_) => "`.await`",
                     ExprKind::Err => return Ok(with_postfix),
@@ -1253,24 +1253,32 @@ impl<'a> Parser<'a> {
         }
 
         let fn_span_lo = self.token.span;
-        let mut segment = self.parse_path_segment(PathStyle::Expr, None)?;
-        self.check_trailing_angle_brackets(&segment, &[&token::OpenDelim(Delimiter::Parenthesis)]);
-        self.check_turbofish_missing_angle_brackets(&mut segment);
+        let mut seg = self.parse_path_segment(PathStyle::Expr, None)?;
+        self.check_trailing_angle_brackets(&seg, &[&token::OpenDelim(Delimiter::Parenthesis)]);
+        self.check_turbofish_missing_angle_brackets(&mut seg);
 
         if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Method call `expr.f()`
             let args = self.parse_paren_expr_seq()?;
             let fn_span = fn_span_lo.to(self.prev_token.span);
             let span = lo.to(self.prev_token.span);
-            Ok(self.mk_expr(span, ExprKind::MethodCall(segment, self_arg, args, fn_span)))
+            Ok(self.mk_expr(
+                span,
+                ExprKind::MethodCall(Box::new(ast::MethodCall {
+                    seg,
+                    receiver: self_arg,
+                    args,
+                    span: fn_span,
+                })),
+            ))
         } else {
             // Field access `expr.f`
-            if let Some(args) = segment.args {
+            if let Some(args) = seg.args {
                 self.sess.emit_err(FieldExpressionWithGeneric(args.span()));
             }
 
             let span = lo.to(self.prev_token.span);
-            Ok(self.mk_expr(span, ExprKind::Field(self_arg, segment.ident)))
+            Ok(self.mk_expr(span, ExprKind::Field(self_arg, seg.ident)))
         }
     }
 

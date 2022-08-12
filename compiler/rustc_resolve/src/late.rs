@@ -3788,12 +3788,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(ref segment, ref receiver, ref arguments, _) => {
+            ExprKind::MethodCall(box MethodCall { ref seg, ref receiver, ref args, .. }) => {
                 self.resolve_expr(receiver, Some(expr));
-                for argument in arguments {
-                    self.resolve_expr(argument, None);
+                for arg in args {
+                    self.resolve_expr(arg, None);
                 }
-                self.visit_path_segment(expr.span, segment);
+                self.visit_path_segment(expr.span, seg);
             }
 
             ExprKind::Call(ref callee, ref arguments) => {
@@ -3910,9 +3910,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let traits = self.traits_in_scope(ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
-            ExprKind::MethodCall(ref segment, ..) => {
+            ExprKind::MethodCall(ref call) => {
                 debug!("(recording candidate traits for expr) recording traits for {}", expr.id);
-                let traits = self.traits_in_scope(segment.ident, ValueNS);
+                let traits = self.traits_in_scope(call.seg.ident, ValueNS);
                 self.r.trait_map.insert(expr.id, traits);
             }
             _ => {

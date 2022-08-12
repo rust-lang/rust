@@ -73,11 +73,15 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             2 => {
                 let seg = PathSegment::from_ident(Ident::from_str("x"));
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::MethodCall(seg.clone(), e, vec![make_x()], DUMMY_SP))
-                });
+                    g(ExprKind::MethodCall(Box::new(MethodCall {
+                        seg: seg.clone(), receiver: e, args: vec![make_x()], span: DUMMY_SP
+                    }))
+                )});
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::MethodCall(seg.clone(), make_x(), vec![e], DUMMY_SP))
-                });
+                    g(ExprKind::MethodCall(Box::new(MethodCall {
+                        seg: seg.clone(), receiver: make_x(), args: vec![e], span: DUMMY_SP
+                    }))
+                )});
             }
             3..=8 => {
                 let op = Spanned {

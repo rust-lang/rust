@@ -396,7 +396,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
             contains_exterior_struct_lit(&x)
         }
 
-        ast::ExprKind::MethodCall(_, ref receiver, _, _) => {
+        ast::ExprKind::MethodCall(box ast::MethodCall { ref receiver, .. }) => {
             // X { y: 1 }.bar(...)
             contains_exterior_struct_lit(&receiver)
         }
