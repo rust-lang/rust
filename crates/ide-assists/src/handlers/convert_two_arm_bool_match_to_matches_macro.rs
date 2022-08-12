@@ -1,4 +1,4 @@
-use syntax::ast::{self, AstNode, Pat};
+use syntax::ast::{self, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -31,27 +31,16 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
         return None;
     }
 
-    let mut normal_arm = None;
-    let mut normal_expr = None;
-    let mut wildcard_expr = None;
-    for arm in match_arm_list.arms() {
-        if matches!(arm.pat(), Some(Pat::WildcardPat(_))) && arm.guard().is_none() {
-            wildcard_expr = arm.expr();
-        } else if !matches!(arm.pat(), Some(Pat::WildcardPat(_))) {
-            normal_arm = Some(arm.clone());
-            normal_expr = arm.expr();
-        }
-    }
+    let first_arm = match_arm_list.arms().next()?;
+    let first_arm_expr = first_arm.expr();
 
     let invert_matches;
-    if is_bool_literal_expr(&normal_expr, true) && is_bool_literal_expr(&wildcard_expr, false) {
+    if is_bool_literal_expr(&first_arm_expr, true) {
         invert_matches = false;
-    } else if is_bool_literal_expr(&normal_expr, false)
-        && is_bool_literal_expr(&wildcard_expr, true)
-    {
+    } else if is_bool_literal_expr(&first_arm_expr, false) {
         invert_matches = true;
     } else {
-        cov_mark::hit!(non_invert_bool_literal_arms);
+        cov_mark::hit!(non_bool_literal_match);
         return None;
     }
 
@@ -64,10 +53,10 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
         target_range,
         |builder| {
             let mut arm_str = String::new();
-            if let Some(ref pat) = normal_arm.as_ref().unwrap().pat() {
+            if let Some(ref pat) = first_arm.pat() {
                 arm_str += &pat.to_string();
             }
-            if let Some(ref guard) = normal_arm.as_ref().unwrap().guard() {
+            if let Some(ref guard) = first_arm.guard() {
                 arm_str += &format!(" {}", &guard.to_string());
             }
             if invert_matches {
@@ -129,7 +118,7 @@ fn foo(a: Option<u32>) -> bool {
 
     #[test]
     fn not_applicable_non_bool_literal_arms() {
-        cov_mark::check!(non_invert_bool_literal_arms);
+        cov_mark::check!(non_bool_literal_match);
         check_assist_not_applicable(
             convert_two_arm_bool_match_to_matches_macro,
             r#"
@@ -140,54 +129,6 @@ fn foo(a: Option<u32>) -> bool {
     }
 }
         "#,
-        );
-    }
-
-    #[test]
-    fn not_applicable_both_false_arms() {
-        cov_mark::check!(non_invert_bool_literal_arms);
-        check_assist_not_applicable(
-            convert_two_arm_bool_match_to_matches_macro,
-            r#"
-fn foo(a: Option<u32>) -> bool {
-    match a$0 {
-        Some(val) => false,
-        _ => false
-    }
-}
-        "#,
-        );
-    }
-
-    #[test]
-    fn not_applicable_both_true_arms() {
-        cov_mark::check!(non_invert_bool_literal_arms);
-        check_assist_not_applicable(
-            convert_two_arm_bool_match_to_matches_macro,
-            r#"
-fn foo(a: Option<u32>) -> bool {
-    match a$0 {
-        Some(val) => true,
-        _ => true
-    }
-}
-        "#,
-        );
-    }
-
-    #[test]
-    fn not_applicable_non_bool_match() {
-        cov_mark::check!(non_invert_bool_literal_arms);
-        check_assist_not_applicable(
-            convert_two_arm_bool_match_to_matches_macro,
-            r#"
-fn foo(a: Option<u32>) -> u32 {
-    match a$0 {
-        Some(_val) => 1,
-        _ => 0
-    }
-}
-"#,
         );
     }
 
@@ -246,6 +187,30 @@ fn foo(a: Option<u32>) -> bool {
             r#"
 fn foo(a: Option<u32>) -> bool {
     matches!(a, Some(val) if val > 3)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn convert_enum_match_cases() {
+        check_assist(
+            convert_two_arm_bool_match_to_matches_macro,
+            r#"
+enum X { A, B }
+
+fn foo(a: X) -> bool {
+    match a$0 {
+        X::A => true,
+        _ => false
+    }
+}
+"#,
+            r#"
+enum X { A, B }
+
+fn foo(a: X) -> bool {
+    matches!(a, X::A)
 }
 "#,
         );
