@@ -24,9 +24,7 @@ fn main() {
         FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
             .expect("concurrency must be a number");
 
-    let src_path = root_path.join("src");
-    let library_path = root_path.join("library");
-    let compiler_path = root_path.join("compiler");
+    let paths = Paths::from_root(&root_path);
 
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -55,53 +53,53 @@ fn main() {
             }
         }
 
-        check!(target_specific_tests, &src_path);
+        check!(target_specific_tests, &paths.src);
 
         // Checks that are done on the cargo workspace.
         check!(deps, &root_path, &cargo);
         check!(extdeps, &root_path);
 
         // Checks over tests.
-        check!(debug_artifacts, &src_path);
-        check!(ui_tests, &src_path);
+        check!(debug_artifacts, &paths.src);
+        check!(ui_tests, &paths.src);
 
         // Checks that only make sense for the compiler.
-        check!(errors, &compiler_path);
-        check!(error_codes_check, &[&src_path, &compiler_path]);
+        check!(errors, &paths.compiler);
+        check!(error_codes_check, &[&paths.src, &paths.compiler]);
 
         // Checks that only make sense for the std libs.
-        check!(pal, &library_path);
-        check!(primitive_docs, &library_path);
+        check!(pal, &paths.library);
+        check!(primitive_docs, &paths.library);
 
         // Checks that need to be done for both the compiler and std libraries.
-        check!(unit_tests, &src_path);
-        check!(unit_tests, &compiler_path);
-        check!(unit_tests, &library_path);
+        check!(unit_tests, &paths.src);
+        check!(unit_tests, &paths.compiler);
+        check!(unit_tests, &paths.library);
 
         if bins::check_filesystem_support(&[&root_path], &output_directory) {
             check!(bins, &root_path);
         }
 
-        check!(style, &src_path);
-        check!(style, &compiler_path);
-        check!(style, &library_path);
+        check!(style, &paths.src);
+        check!(style, &paths.compiler);
+        check!(style, &paths.library);
 
-        check!(edition, &src_path);
-        check!(edition, &compiler_path);
-        check!(edition, &library_path);
+        check!(edition, &paths.src);
+        check!(edition, &paths.compiler);
+        check!(edition, &paths.library);
 
         let collected = {
             while handles.len() >= concurrency.get() {
                 handles.pop_front().unwrap().join().unwrap();
             }
             let mut flag = false;
-            let r = features::check(&src_path, &compiler_path, &library_path, &mut flag, verbose);
+            let r = features::check(&paths, &mut flag, verbose);
             if flag {
                 bad.store(true, Ordering::Relaxed);
             }
             r
         };
-        check!(unstable_book, &src_path, collected);
+        check!(unstable_book, &paths.src, collected);
     })
     .unwrap();
 

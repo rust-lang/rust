@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::Read;
 use walkdir::{DirEntry, WalkDir};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 macro_rules! t {
     ($e:expr, $p:expr) => {
@@ -74,6 +74,24 @@ fn filter_dirs(path: &Path) -> bool {
         "target/rls",
     ];
     skip.iter().any(|p| path.ends_with(p))
+}
+
+pub struct Paths {
+    pub root: PathBuf,
+    pub src: PathBuf,
+    pub compiler: PathBuf,
+    pub library: PathBuf,
+}
+
+impl Paths {
+    pub fn from_root(root: &Path) -> Self {
+        Self {
+            root: root.to_owned(),
+            src: root.join("src"),
+            library: root.join("library"),
+            compiler: root.join("compiler"),
+        }
+    }
 }
 
 fn walk_many(

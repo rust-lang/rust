@@ -79,25 +79,19 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
     lib_features
 }
 
-pub fn check(
-    src_path: &Path,
-    compiler_path: &Path,
-    lib_path: &Path,
-    bad: &mut bool,
-    verbose: bool,
-) -> CollectedFeatures {
-    let mut features = collect_lang_features(compiler_path, bad);
+pub fn check(paths: &crate::Paths, bad: &mut bool, verbose: bool) -> CollectedFeatures {
+    let mut features = collect_lang_features(&paths.compiler, bad);
     assert!(!features.is_empty());
 
-    let lib_features = get_and_check_lib_features(lib_path, bad, &features);
+    let lib_features = get_and_check_lib_features(&paths.library, bad, &features);
     assert!(!lib_features.is_empty());
 
     super::walk_many(
         &[
-            &src_path.join("test/ui"),
-            &src_path.join("test/ui-fulldeps"),
-            &src_path.join("test/rustdoc-ui"),
-            &src_path.join("test/rustdoc"),
+            &paths.src.join("test/ui"),
+            &paths.src.join("test/ui-fulldeps"),
+            &paths.src.join("test/rustdoc-ui"),
+            &paths.src.join("test/rustdoc"),
         ],
         &mut |path| super::filter_dirs(path),
         &mut |entry, contents| {
