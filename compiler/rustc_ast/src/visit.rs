@@ -843,8 +843,16 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(ref binder, _, _, _, ref decl, ref body, _decl_span) => {
-            visitor.visit_fn(FnKind::Closure(binder, decl, body), expression.span, expression.id)
+        ExprKind::Closure(box Closure {
+            ref binder,
+            capture_clause: _,
+            asyncness: _,
+            movability: _,
+            ref fn_decl,
+            ref body,
+            fn_decl_span: _,
+        }) => {
+            visitor.visit_fn(FnKind::Closure(binder, fn_decl, body), expression.span, expression.id)
         }
         ExprKind::Block(ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);

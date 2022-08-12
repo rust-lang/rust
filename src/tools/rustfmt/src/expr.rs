@@ -203,16 +203,16 @@ pub(crate) fn format_expr(
                 Some("yield".to_string())
             }
         }
-        ast::ExprKind::Closure(
-            ref binder,
-            capture,
-            ref is_async,
-            movability,
-            ref fn_decl,
-            ref body,
-            _,
-        ) => closures::rewrite_closure(
-            binder, capture, is_async, movability, fn_decl, body, expr.span, context, shape,
+        ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
+            &cl.binder,
+            cl.capture_clause,
+            &cl.asyncness,
+            cl.movability,
+            &cl.fn_decl,
+            &cl.body,
+            expr.span,
+            context,
+            shape,
         ),
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)

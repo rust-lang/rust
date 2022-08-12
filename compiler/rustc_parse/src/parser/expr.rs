@@ -2062,9 +2062,9 @@ impl<'a> Parser<'a> {
         };
 
         let capture_clause = self.parse_capture_clause()?;
-        let decl = self.parse_fn_block_decl()?;
+        let fn_decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
-        let mut body = match decl.output {
+        let mut body = match fn_decl.output {
             FnRetTy::Default(_) => {
                 let restrictions = self.restrictions - Restrictions::STMT_EXPR;
                 self.parse_expr_res(restrictions, None)?
@@ -2094,15 +2094,15 @@ impl<'a> Parser<'a> {
 
         let closure = self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(
+            ExprKind::Closure(Box::new(ast::Closure {
                 binder,
                 capture_clause,
                 asyncness,
                 movability,
-                decl,
+                fn_decl,
                 body,
-                lo.to(decl_hi),
-            ),
+                fn_decl_span: lo.to(decl_hi),
+            })),
         );
 
         // Disable recovery for closure body

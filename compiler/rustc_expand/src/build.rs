@@ -530,15 +530,15 @@ impl<'a> ExtCtxt<'a> {
         // here, but that's not entirely clear.
         self.expr(
             span,
-            ast::ExprKind::Closure(
-                ast::ClosureBinder::NotPresent,
-                ast::CaptureBy::Ref,
-                ast::Async::No,
-                ast::Movability::Movable,
+            ast::ExprKind::Closure(Box::new(ast::Closure {
+                binder: ast::ClosureBinder::NotPresent,
+                capture_clause: ast::CaptureBy::Ref,
+                asyncness: ast::Async::No,
+                movability: ast::Movability::Movable,
                 fn_decl,
                 body,
-                span,
-            ),
+                fn_decl_span: span,
+            })),
         )
     }
 

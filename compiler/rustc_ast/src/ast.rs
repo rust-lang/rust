@@ -1289,6 +1289,18 @@ impl Expr {
     }
 }
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Closure {
+    pub binder: ClosureBinder,
+    pub capture_clause: CaptureBy,
+    pub asyncness: Async,
+    pub movability: Movability,
+    pub fn_decl: P<FnDecl>,
+    pub body: P<Expr>,
+    /// The span of the argument block `|...|`.
+    pub fn_decl_span: Span,
+}
+
 /// Limit types of a range (inclusive or exclusive)
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug)]
 pub enum RangeLimits {
@@ -1380,9 +1392,7 @@ pub enum ExprKind {
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
-    ///
-    /// The final span is the span of the argument block `|...|`.
-    Closure(ClosureBinder, CaptureBy, Async, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(Box<Closure>),
     /// A block (`'label: { ... }`).
     Block(P<Block>, Option<Label>),
     /// An async block (`async move { ... }`).

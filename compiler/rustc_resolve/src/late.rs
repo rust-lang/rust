@@ -3840,7 +3840,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
-            ExprKind::Closure(_, _, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
+            ExprKind::Closure(box ast::Closure {
+                asyncness: Async::Yes { .. },
+                ref fn_decl,
+                ref body,
+                ..
+            }) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
                     this.with_label_rib(ClosureOrAsyncRibKind, |this| {
                         // Resolve arguments:
@@ -3860,7 +3865,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
             // For closures, ClosureOrAsyncRibKind is added in visit_fn
-            ExprKind::Closure(ClosureBinder::For { ref generic_params, span }, ..) => {
+            ExprKind::Closure(box ast::Closure {
+                binder: ClosureBinder::For { ref generic_params, span },
+                ..
+            }) => {
                 self.with_generic_param_rib(
                     &generic_params,
                     NormalRibKind,

@@ -112,15 +112,15 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             11 => {
                 let decl = P(FnDecl { inputs: vec![], output: FnRetTy::Default(DUMMY_SP) });
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::Closure(
-                        ClosureBinder::NotPresent,
-                        CaptureBy::Value,
-                        Async::No,
-                        Movability::Movable,
-                        decl.clone(),
-                        e,
-                        DUMMY_SP,
-                    ))
+                    g(ExprKind::Closure(Box::new(Closure {
+                        binder: ClosureBinder::NotPresent,
+                        capture_clause: CaptureBy::Value,
+                        asyncness: Async::No,
+                        movability: Movability::Movable,
+                        fn_decl: decl.clone(),
+                        body: e,
+                        fn_decl_span: DUMMY_SP,
+                    })))
                 });
             }
             12 => {

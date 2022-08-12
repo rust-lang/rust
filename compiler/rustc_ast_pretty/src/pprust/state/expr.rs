@@ -392,21 +392,21 @@ impl<'a> State<'a> {
                 let empty = attrs.is_empty() && arms.is_empty();
                 self.bclose(expr.span, empty);
             }
-            ast::ExprKind::Closure(
+            ast::ExprKind::Closure(box ast::Closure {
                 ref binder,
                 capture_clause,
                 asyncness,
                 movability,
-                ref decl,
+                ref fn_decl,
                 ref body,
-                _,
-            ) => {
+                fn_decl_span: _,
+            }) => {
                 self.print_closure_binder(binder);
                 self.print_movability(movability);
                 self.print_asyncness(asyncness);
                 self.print_capture_clause(capture_clause);
 
-                self.print_fn_params_and_ret(decl, true);
+                self.print_fn_params_and_ret(fn_decl, true);
                 self.space();
                 self.print_expr(body);
                 self.end(); // need to close a box

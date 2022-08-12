@@ -1347,12 +1347,20 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_expr(expr);
             arms.flat_map_in_place(|arm| vis.flat_map_arm(arm));
         }
-        ExprKind::Closure(binder, _capture_by, asyncness, _movability, decl, body, span) => {
+        ExprKind::Closure(box Closure {
+            binder,
+            capture_clause: _,
+            asyncness,
+            movability: _,
+            fn_decl,
+            body,
+            fn_decl_span,
+        }) => {
             vis.visit_closure_binder(binder);
             vis.visit_asyncness(asyncness);
-            vis.visit_fn_decl(decl);
+            vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);
-            vis.visit_span(span);
+            vis.visit_span(fn_decl_span);
         }
         ExprKind::Block(blk, label) => {
             vis.visit_block(blk);

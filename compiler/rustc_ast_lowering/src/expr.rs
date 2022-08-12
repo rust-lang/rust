@@ -154,22 +154,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
                     self.lower_expr_await(span, expr)
                 }
-                ExprKind::Closure(
+                ExprKind::Closure(box Closure {
                     ref binder,
                     capture_clause,
                     asyncness,
                     movability,
-                    ref decl,
+                    ref fn_decl,
                     ref body,
                     fn_decl_span,
-                ) => {
+                }) => {
                     if let Async::Yes { closure_id, .. } = asyncness {
                         self.lower_expr_async_closure(
                             binder,
                             capture_clause,
                             e.id,
                             closure_id,
-                            decl,
+                            fn_decl,
                             body,
                             fn_decl_span,
                         )
@@ -179,7 +179,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             capture_clause,
                             e.id,
                             movability,
-                            decl,
+                            fn_decl,
                             body,
                             fn_decl_span,
                         )

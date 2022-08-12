@@ -170,7 +170,26 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
-        (Closure(lb, lc, la, lm, lf, le, _), Closure(rb, rc, ra, rm, rf, re, _)) => {
+        (
+            Closure(box ast::Closure {
+                binder: lb,
+                capture_clause: lc,
+                asyncness: la,
+                movability: lm,
+                fn_decl: lf,
+                body: le,
+                ..
+            }),
+            Closure(box ast::Closure {
+                binder: rb,
+                capture_clause: rc,
+                asyncness: ra,
+                movability: rm,
+                fn_decl: rf,
+                body: re,
+                ..
+            })
+        ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
                 && la.is_async() == ra.is_async()
