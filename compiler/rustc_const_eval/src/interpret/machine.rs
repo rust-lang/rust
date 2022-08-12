@@ -437,21 +437,9 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type FrameExtra = ();
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        // We do not check for alignment to avoid having to carry an `Align`
-        // in `ConstValue::ByRef`.
-        false
-    }
-
-    #[inline(always)]
     fn force_int_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         // We do not support `force_int`.
         false
-    }
-
-    #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        false // for now, we don't enforce validity
     }
 
     #[inline(always)]

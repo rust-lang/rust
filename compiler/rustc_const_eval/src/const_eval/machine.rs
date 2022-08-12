@@ -236,6 +236,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
+    #[inline(always)]
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+    }
+
+    #[inline(always)]
+    fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+        ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+    }
+
     fn load_mir(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         instance: ty::InstanceDef<'tcx>,

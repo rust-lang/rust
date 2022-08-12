@@ -170,7 +170,6 @@ use crate::ptr::addr_of_mut;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::thread_parker::Parker;
@@ -1033,24 +1032,48 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        // It is UB to attempt to acquire this mutex reentrantly!
-        static GUARD: mutex::StaticMutex = mutex::StaticMutex::new();
-        static mut COUNTER: u64 = 1;
+        #[cold]
+        fn exhausted() -> ! {
+            panic!("failed to generate unique thread ID: bitspace exhausted")
+        }
 
-        unsafe {
-            let guard = GUARD.lock();
+        cfg_if::cfg_if! {
+            if #[cfg(target_has_atomic = "64")] {
+                use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
-            // If we somehow use up all our bits, panic so that we're not
-            // covering up subtle bugs of IDs being reused.
-            if COUNTER == u64::MAX {
-                drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
-                panic!("failed to generate unique thread ID: bitspace exhausted");
+                static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+                let mut last = COUNTER.load(Relaxed);
+                loop {
+                    let Some(id) = last.checked_add(1) else {
+                        exhausted();
+                    };
+
+                    match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
+                        Ok(_) => return ThreadId(NonZeroU64::new(id).unwrap()),
+                        Err(id) => last = id,
+                    }
+                }
+            } else {
+                use crate::sys_common::mutex::StaticMutex;
+
+                // It is UB to attempt to acquire this mutex reentrantly!
+                static GUARD: StaticMutex = StaticMutex::new();
+                static mut COUNTER: u64 = 0;
+
+                unsafe {
+                    let guard = GUARD.lock();
+
+                    let Some(id) = COUNTER.checked_add(1) else {
+                        drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
+                        exhausted();
+                    };
+
+                    COUNTER = id;
+                    drop(guard);
+                    ThreadId(NonZeroU64::new(id).unwrap())
+                }
             }
-
-            let id = COUNTER;
-            COUNTER += 1;
-
-            ThreadId(NonZeroU64::new(id).unwrap())
         }
     }
 
