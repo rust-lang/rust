@@ -41,9 +41,7 @@ pub(crate) struct GlobalAsmConfig {
 
 impl GlobalAsmConfig {
     pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
-        let asm_enabled = cfg!(feature = "inline_asm")
-            && !tcx.sess.target.is_like_osx
-            && !tcx.sess.target.is_like_windows;
+        let asm_enabled = cfg!(feature = "inline_asm") && !tcx.sess.target.is_like_windows;
 
         GlobalAsmConfig {
             asm_enabled,
@@ -74,9 +72,7 @@ pub(crate) fn compile_global_asm(
                     .to_owned(),
             );
         } else {
-            return Err(
-                "asm! and global_asm! are not yet supported on macOS and Windows".to_owned()
-            );
+            return Err("asm! and global_asm! are not yet supported on Windows".to_owned());
         }
     }
 
