@@ -717,10 +717,10 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Option<QSelf>, Path, Vec<PatField>, /* recovered */ bool),
+    Struct(Option<P<QSelf>>, Path, Vec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    TupleStruct(Option<QSelf>, Path, Vec<P<Pat>>),
+    TupleStruct(Option<P<QSelf>>, Path, Vec<P<Pat>>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
@@ -730,7 +730,7 @@ pub enum PatKind {
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
     /// or associated constants. Qualified path patterns `<A>::B::C`/`<A as Trait>::B::C` can
     /// only legally refer to associated constants.
-    Path(Option<QSelf>, Path),
+    Path(Option<P<QSelf>>, Path),
 
     /// A tuple pattern (`(a, b)`).
     Tuple(Vec<P<Pat>>),
@@ -1322,7 +1322,7 @@ pub enum StructRest {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StructExpr {
-    pub qself: Option<QSelf>,
+    pub qself: Option<P<QSelf>>,
     pub path: Path,
     pub fields: Vec<ExprField>,
     pub rest: StructRest,
@@ -1430,7 +1430,7 @@ pub enum ExprKind {
     /// parameters (e.g., `foo::bar::<baz>`).
     ///
     /// Optionally "qualified" (e.g., `<Vec<T> as SomeTrait>::SomeType`).
-    Path(Option<QSelf>, Path),
+    Path(Option<P<QSelf>>, Path),
 
     /// A referencing operation (`&a`, `&mut a`, `&raw const a` or `&raw mut a`).
     AddrOf(BorrowKind, Mutability, P<Expr>),
@@ -2029,7 +2029,7 @@ pub enum TyKind {
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
     /// Type parameters are stored in the `Path` itself.
-    Path(Option<QSelf>, Path),
+    Path(Option<P<QSelf>>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(GenericBounds, TraitObjectSyntax),
@@ -2157,7 +2157,7 @@ impl InlineAsmTemplatePiece {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct InlineAsmSym {
     pub id: NodeId,
-    pub qself: Option<QSelf>,
+    pub qself: Option<P<QSelf>>,
     pub path: Path,
 }
 
@@ -3062,12 +3062,12 @@ mod size_asserts {
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
     static_assert_size!(LitKind, 24);
-    static_assert_size!(Pat, 120);
-    static_assert_size!(PatKind, 96);
+    static_assert_size!(Pat, 104);
+    static_assert_size!(PatKind, 80);
     static_assert_size!(Path, 40);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(Ty, 96);
-    static_assert_size!(TyKind, 72);
+    static_assert_size!(Ty, 80);
+    static_assert_size!(TyKind, 56);
 }

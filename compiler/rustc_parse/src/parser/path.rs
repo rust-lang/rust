@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
     /// `<T as U>::a`
     /// `<T as U>::F::a<S>` (without disambiguator)
     /// `<T as U>::F::a::<S>` (with disambiguator)
-    pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (QSelf, Path)> {
+    pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (P<QSelf>, Path)> {
         let lo = self.prev_token.span;
         let ty = self.parse_ty()?;
 
@@ -77,7 +77,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::ModSep)?;
         }
 
-        let qself = QSelf { ty, path_span, position: path.segments.len() };
+        let qself = P(QSelf { ty, path_span, position: path.segments.len() });
         self.parse_path_segments(&mut path.segments, style, None)?;
 
         Ok((

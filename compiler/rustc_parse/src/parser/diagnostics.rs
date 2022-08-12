@@ -83,7 +83,7 @@ impl Error {
 pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
     fn to_ty(&self) -> Option<P<Ty>>;
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self;
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self;
 }
 
 impl RecoverQPath for Ty {
@@ -91,7 +91,7 @@ impl RecoverQPath for Ty {
     fn to_ty(&self) -> Option<P<Ty>> {
         Some(P(self.clone()))
     }
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: TyKind::Path(qself, path),
@@ -105,7 +105,7 @@ impl RecoverQPath for Pat {
     fn to_ty(&self) -> Option<P<Ty>> {
         self.to_ty()
     }
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: PatKind::Path(qself, path),
@@ -119,7 +119,7 @@ impl RecoverQPath for Expr {
     fn to_ty(&self) -> Option<P<Ty>> {
         self.to_ty()
     }
-    fn recovered(qself: Option<QSelf>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: ExprKind::Path(qself, path),
@@ -1937,7 +1937,7 @@ impl<'a> Parser<'a> {
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
-        Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
+        Ok(P(T::recovered(Some(P(QSelf { ty, path_span, position: 0 })), path)))
     }
 
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
