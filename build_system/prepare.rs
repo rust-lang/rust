@@ -20,6 +20,7 @@ pub(crate) fn prepare() {
         "abi-checker",
         "a2232d45f202846f5c02203c9f27355360f9a2ff",
     );
+    apply_patches("abi-checker", Path::new("abi-checker"));
 
     clone_repo_shallow_github(
         "rand",
