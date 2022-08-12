@@ -173,7 +173,7 @@ macro_rules! opt_remap_env_constness {
 }
 
 macro_rules! define_callbacks {
-    (<$tcx:tt>
+    (
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
@@ -187,33 +187,33 @@ macro_rules! define_callbacks {
         pub mod query_keys {
             use super::*;
 
-            $(pub type $name<$tcx> = $($K)*;)*
+            $(pub type $name<'tcx> = $($K)*;)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_values {
             use super::*;
 
-            $(pub type $name<$tcx> = $V;)*
+            $(pub type $name<'tcx> = $V;)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_storage {
             use super::*;
 
-            $(pub type $name<$tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
+            $(pub type $name<'tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
         }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_stored {
             use super::*;
 
-            $(pub type $name<$tcx> = <query_storage::$name<$tcx> as QueryStorage>::Stored;)*
+            $(pub type $name<'tcx> = <query_storage::$name<'tcx> as QueryStorage>::Stored;)*
         }
 
         #[derive(Default)]
-        pub struct QueryCaches<$tcx> {
-            $($(#[$attr])* pub $name: query_storage::$name<$tcx>,)*
+        pub struct QueryCaches<'tcx> {
+            $($(#[$attr])* pub $name: query_storage::$name<'tcx>,)*
         }
 
-        impl<$tcx> TyCtxtEnsure<$tcx> {
+        impl<'tcx> TyCtxtEnsure<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
@@ -231,20 +231,20 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl<$tcx> TyCtxt<$tcx> {
+        impl<'tcx> TyCtxt<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<'tcx>
             {
                 self.at(DUMMY_SP).$name(key)
             })*
         }
 
-        impl<$tcx> TyCtxtAt<$tcx> {
+        impl<'tcx> TyCtxtAt<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<'tcx>
             {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
@@ -311,11 +311,11 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             fn $name(
                 &'tcx self,
-                tcx: TyCtxt<$tcx>,
+                tcx: TyCtxt<'tcx>,
                 span: Span,
-                key: query_keys::$name<$tcx>,
+                key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<query_stored::$name<$tcx>>;)*
+            ) -> Option<query_stored::$name<'tcx>>;)*
         }
     };
 }
@@ -332,7 +332,7 @@ macro_rules! define_callbacks {
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
-rustc_query_append! { [define_callbacks!][<'tcx>] }
+rustc_query_append! { [define_callbacks!] }
 
 mod sealed {
     use super::{DefId, LocalDefId};

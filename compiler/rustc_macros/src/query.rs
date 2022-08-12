@@ -400,10 +400,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #[macro_export]
         macro_rules! rustc_query_append {
-            ([$($macro:tt)*][$($other:tt)*]) => {
+            ([$($macro:tt)*]) => {
                 $($macro)* {
-                    $($other)*
-
                     #query_stream
                 }
             }

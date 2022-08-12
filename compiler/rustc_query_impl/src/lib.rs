@@ -55,7 +55,7 @@ fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     }
 }
 
-rustc_query_append! { [define_queries!][<'tcx>] }
+rustc_query_append! { [define_queries!] }
 
 impl<'tcx> Queries<'tcx> {
     // Force codegen in the dyn-trait transformation in this crate.
