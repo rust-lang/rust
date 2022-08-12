@@ -33,8 +33,8 @@ LL |     #[expect(clippy::if_same_then_else)]
 error: this lint expectation is unfulfilled
   --> $DIR/expect_tool_lint_rfc_2383.rs:130:14
    |
-LL |     #[expect(clippy::logic_bug)]
-   |              ^^^^^^^^^^^^^^^^^
+LL |     #[expect(clippy::overly_complex_bool_expr)]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

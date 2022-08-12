@@ -270,10 +270,7 @@ fn get_types_from_cast<'a>(
     let limit_from: Option<(&Expr<'_>, &str)> = call_from_cast.or_else(|| {
         if_chain! {
             // `from_type::from, to_type::max_value()`
-            if let ExprKind::Call(from_func, args) = &expr.kind;
-            // `to_type::max_value()`
-            if args.len() == 1;
-            if let limit = &args[0];
+            if let ExprKind::Call(from_func, [limit]) = &expr.kind;
             // `from_type::from`
             if let ExprKind::Path(ref path) = &from_func.kind;
             if let Some(from_sym) = get_implementing_type(path, INTS, "from");

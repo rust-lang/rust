@@ -4,7 +4,6 @@
 
 store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
-    LintId::of(blacklisted_name::BLACKLISTED_NAME),
     LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
     LintId::of(casts::FN_TO_NUMERIC_CAST),
@@ -17,6 +16,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(dereference::NEEDLESS_BORROW),
     LintId::of(derive::DERIVE_PARTIAL_EQ_WITHOUT_EQ),
     LintId::of(disallowed_methods::DISALLOWED_METHODS),
+    LintId::of(disallowed_names::DISALLOWED_NAMES),
     LintId::of(disallowed_types::DISALLOWED_TYPES),
     LintId::of(doc::MISSING_SAFETY_DOC),
     LintId::of(doc::NEEDLESS_DOCTEST_MAIN),
@@ -100,6 +100,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(operators::ASSIGN_OP_PATTERN),
     LintId::of(operators::OP_REF),
     LintId::of(operators::PTR_EQ),
+    LintId::of(partialeq_to_none::PARTIALEQ_TO_NONE),
     LintId::of(ptr::CMP_NULL),
     LintId::of(ptr::PTR_ARG),
     LintId::of(question_mark::QUESTION_MARK),

@@ -223,10 +223,12 @@ impl<'a> NumericLiteral<'a> {
 
 fn split_suffix<'a>(src: &'a str, lit_kind: &LitKind) -> (&'a str, Option<&'a str>) {
     debug_assert!(lit_kind.is_numeric());
-    lit_suffix_length(lit_kind).map_or((src, None), |suffix_length| {
-        let (unsuffixed, suffix) = src.split_at(src.len() - suffix_length);
-        (unsuffixed, Some(suffix))
-    })
+    lit_suffix_length(lit_kind)
+        .and_then(|suffix_length| src.len().checked_sub(suffix_length))
+        .map_or((src, None), |split_pos| {
+            let (unsuffixed, suffix) = src.split_at(split_pos);
+            (unsuffixed, Some(suffix))
+        })
 }
 
 fn lit_suffix_length(lit_kind: &LitKind) -> Option<usize> {

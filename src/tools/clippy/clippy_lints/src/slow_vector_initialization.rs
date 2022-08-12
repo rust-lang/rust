@@ -233,15 +233,10 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::MethodCall(take_path, take_args, _) = expr.kind;
+            if let ExprKind::MethodCall(take_path, [recv, len_arg, ..], _) = expr.kind;
             if take_path.ident.name == sym!(take);
-
             // Check that take is applied to `repeat(0)`
-            if let Some(repeat_expr) = take_args.get(0);
-            if self.is_repeat_zero(repeat_expr);
-
-            if let Some(len_arg) = take_args.get(1);
-
+            if self.is_repeat_zero(recv);
             then {
                 // Check that len expression is equals to `with_capacity` expression
                 if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr) {

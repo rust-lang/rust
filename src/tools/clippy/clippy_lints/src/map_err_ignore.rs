@@ -113,10 +113,10 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
         }
 
         // check if this is a method call (e.g. x.foo())
-        if let ExprKind::MethodCall(method, args, _) = e.kind {
+        if let ExprKind::MethodCall(method, [_, arg], _) = e.kind {
             // only work if the method name is `map_err` and there are only 2 arguments (e.g. x.map_err(|_|[1]
             // Enum::Variant[2]))
-            if method.ident.as_str() == "map_err" && args.len() == 2 {
+            if method.ident.name == sym!(map_err) {
                 // make sure the first argument is a closure, and grab the CaptureRef, BodyId, and fn_decl_span
                 // fields
                 if let ExprKind::Closure(&Closure {
@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
                     body,
                     fn_decl_span,
                     ..
-                }) = args[1].kind
+                }) = arg.kind
                 {
                     // check if this is by Reference (meaning there's no move statement)
                     if capture_clause == CaptureBy::Ref {

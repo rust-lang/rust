@@ -72,10 +72,10 @@ fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotat
         if is_lang_ctor(cx, qpath, LangItem::OptionSome);
         if let PatKind::Binding(rb, .., ident, _) = first_pat.kind;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
-        if let ExprKind::Call(e, args) = peel_blocks(arm.body).kind;
+        if let ExprKind::Call(e, [arg]) = peel_blocks(arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
-        if is_lang_ctor(cx, some_path, LangItem::OptionSome) && args.len() == 1;
-        if let ExprKind::Path(QPath::Resolved(_, path2)) = args[0].kind;
+        if is_lang_ctor(cx, some_path, LangItem::OptionSome);
+        if let ExprKind::Path(QPath::Resolved(_, path2)) = arg.kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
             return Some(rb)
