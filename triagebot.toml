@@ -178,6 +178,13 @@ trigger_files = [
     "src/tools/bump-stage0",
 ]
 
+[autolabel."A-translation"]
+trigger_files = [
+    "compiler/rustc_error_messages",
+    "compiler/rustc_errors/src/translation.rs",
+    "compiler/rustc_macros/src/diagnostics"
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
