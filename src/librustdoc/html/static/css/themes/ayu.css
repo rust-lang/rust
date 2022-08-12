@@ -238,7 +238,7 @@ details.rustdoc-toggle > summary::before {
 pre.rust .number, pre.rust .string { color: #b8cc52; }
 pre.rust .kw, pre.rust .kw-2, pre.rust .prelude-ty,
 pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .op, pre.rust .lifetime { color: #ff7733; }
+pre.rust .lifetime { color: #ff7733; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #a37acc; }
 pre.rust .question-mark {
 	color: #ff9011;
@@ -250,7 +250,7 @@ pre.rust .self {
 pre.rust .attribute {
 	color: #e6e1cf;
 }
-pre.rust .attribute .ident, pre.rust .attribute .op {
+pre.rust .attribute .ident {
 	color: #e6e1cf;
 }
 

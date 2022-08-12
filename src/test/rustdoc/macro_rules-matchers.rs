@@ -6,16 +6,13 @@
 // @has 'foo/macro.todo.html'
 // @has - '//span[@class="macro"]' 'macro_rules!'
 // @has - '//span[@class="ident"]' 'todo'
-// Note: the only op is the `+`
-// @count - '//pre[@class="rust macro"]//span[@class="op"]' 1
 
 // @has - '{ () =&gt; { ... }; ($('
 // @has - '//span[@class="macro-nonterminal"]' '$'
 // @has - '//span[@class="macro-nonterminal"]' 'arg'
 // @has - ':'
 // @has - '//span[@class="ident"]' 'tt'
-// @has - '),'
-// @has - '//span[@class="op"]' '+'
+// @has - ')+'
 // @has - ') =&gt; { ... }; }'
 pub use std::todo;
 
