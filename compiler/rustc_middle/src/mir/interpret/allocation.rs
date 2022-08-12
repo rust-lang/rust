@@ -7,6 +7,7 @@ use std::hash;
 use std::iter;
 use std::ops::{Deref, Range};
 use std::ptr;
+use std::mem::MaybeUninit;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
@@ -211,14 +212,15 @@ impl<Prov> Allocation<Prov> {
         let size = Size::from_bytes(slice.len());
         let align_usize: usize = align.bytes().try_into().unwrap();
         let layout = std::alloc::Layout::from_size_align(slice.len(), align_usize).unwrap();
-        let vec_align = unsafe {
+        let bytes = unsafe {
             let buf = std::alloc::alloc(layout);
-            Vec::from_raw_parts(buf as *mut u8, size.bytes_usize(), size.bytes_usize())
+            let mut uninit_bytes = Vec::from_raw_parts(buf as *mut MaybeUninit<u8>, slice.len(), slice.len());
+            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(&mut *uninit_bytes);
+            MaybeUninit::write_slice(&mut boxed, &slice);
+            boxed.assume_init()
         };
         
-        let mut bytes = vec_align.into_boxed_slice();
         assert!(bytes.as_ptr() as u64 % align.bytes() == 0);
-        bytes.copy_from_slice(&slice);
         
         Self {
             bytes,
@@ -286,14 +288,15 @@ impl Allocation {
         // Realign the pointer
         let align_usize: usize = self.align.bytes().try_into().unwrap();
         let layout = std::alloc::Layout::from_size_align(self.bytes.len(), align_usize).unwrap();
-        let mut vec_align = unsafe {
+        let mut bytes = unsafe {
             let buf = std::alloc::alloc(layout);
-            Vec::from_raw_parts(buf as *mut u8, self.bytes.len(), self.bytes.len())
+            let mut uninit_bytes = Vec::from_raw_parts(buf as *mut MaybeUninit<u8>, self.bytes.len(), self.bytes.len());
+            let mut boxed = Box::<[MaybeUninit<u8>]>::from_raw(&mut *uninit_bytes);
+            MaybeUninit::write_slice(&mut boxed, &self.bytes);
+            boxed.assume_init()
         };
-        assert!(vec_align.as_ptr() as usize % align_usize == 0);
+        assert!(bytes.as_ptr() as usize % align_usize == 0);
 
-        vec_align[..self.bytes.len()].copy_from_slice(&self.bytes);
-        let mut bytes = vec_align.into_boxed_slice();
         let mut new_relocations = Vec::with_capacity(self.relocations.0.len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
         let endian = cx.data_layout().endian;
