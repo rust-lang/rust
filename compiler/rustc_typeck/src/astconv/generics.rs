@@ -298,9 +298,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     // show that order to the user as a possible order for the parameters
                                     let mut param_types_present = defs
                                         .params
-                                        .clone()
-                                        .into_iter()
-                                        .map(|param| (param.kind.to_ord(), param))
+                                        .iter()
+                                        .map(|param| (param.kind.to_ord(), param.clone()))
                                         .collect::<Vec<(ParamKindOrd, GenericParamDef)>>();
                                     param_types_present.sort_by_key(|(ord, _)| *ord);
                                     let (mut param_types_present, ordered_params): (

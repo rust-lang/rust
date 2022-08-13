@@ -341,7 +341,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         }
                     }
 
-                    let obligations = impl_source.clone().nested_obligations().into_iter();
+                    let obligations = impl_source.borrow_nested_obligations().iter().cloned();
 
                     if !self.evaluate_nested_obligations(
                         ty,
