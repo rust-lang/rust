@@ -2,7 +2,7 @@ use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -43,13 +43,9 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
         if a_sz != b_sz {
             // Adjust a, b to equal length
             if a_sz > b_sz {
-                for _ in 0..a_sz - b_sz {
-                    self.a.next_back();
-                }
+                let _ = self.a.advance_back_by(a_sz - b_sz);
             } else {
-                for _ in 0..b_sz - a_sz {
-                    self.b.next_back();
-                }
+                let _ = self.b.advance_back_by(b_sz - a_sz);
             }
         }
     }
@@ -211,11 +207,6 @@ trait ZipImpl<A, B> {
 }
 
 #[inline]
-fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-    move |acc, x| Ok(f(acc, x))
-}
-
-#[inline]
 fn check_rfold<AItem, B: DoubleEndedIterator, T, F: FnMut(T, (AItem, B::Item)) -> T>(
     mut b: B,
     mut f: F,
@@ -227,16 +218,9 @@ fn check_rfold<AItem, B: DoubleEndedIterator, T, F: FnMut(T, (AItem, B::Item)) -
 }
 
 #[inline]
-fn check_try_fold<
-    'b,
-    AItem,
-    B: Iterator,
-    T,
-    R: Try<Output = T>,
-    F: 'b + FnMut(T, (AItem, B::Item)) -> R,
->(
-    b: &'b mut B,
-    mut f: F,
+fn check_try_fold<'b, AItem, BItem, T, R: Try<Output = T>>(
+    b: &'b mut impl Iterator<Item = BItem>,
+    mut f: impl 'b + FnMut(T, (AItem, BItem)) -> R,
 ) -> impl 'b + FnMut(T, AItem) -> ControlFlow<R, T> {
     move |acc, x| match b.next() {
         Some(y) => ControlFlow::from_try(f(acc, (x, y))),
@@ -311,7 +295,7 @@ macro_rules! zip_impl_general_defaults {
         where
             F: FnMut(T, Self::Item) -> T,
         {
-            ZipImpl::try_fold(&mut self, init, ok(f)).unwrap()
+            ZipImpl::try_fold(&mut self, init, NeverShortCircuit::wrap_mut_2(f)).0
         }
 
         #[inline]
@@ -407,6 +391,9 @@ where
     }
 }
 
+/// Adjusts a, b to equal length. Makes sure that only the first call
+/// of `next_back` does this, otherwise we will break the restriction
+/// on calls to `zipped.next_back()` after calling `get_unchecked()`.
 #[inline]
 fn adjust_back_trusted_random_access<
     A: TrustedRandomAccess + DoubleEndedIterator + ExactSizeIterator,
@@ -417,9 +404,6 @@ fn adjust_back_trusted_random_access<
     if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
         let sz_a = zipped.a.size();
         let sz_b = zipped.b.size();
-        // Adjust a, b to equal length, make sure that only the first call
-        // of `next_back` does this, otherwise we will break the restriction
-        // on calls to `zipped.next_back()` after calling `get_unchecked()`.
         if sz_a != sz_b {
             let sz_a = zipped.a.size();
             if A::MAY_HAVE_SIDE_EFFECT && sz_a > zipped.len {
