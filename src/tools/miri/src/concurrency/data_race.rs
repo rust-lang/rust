@@ -714,7 +714,8 @@ impl VClockAlloc {
                 MiriMemoryKind::Rust
                 | MiriMemoryKind::Miri
                 | MiriMemoryKind::C
-                | MiriMemoryKind::WinHeap,
+                | MiriMemoryKind::WinHeap
+                | MiriMemoryKind::Mmap,
             )
             | MemoryKind::Stack => {
                 let (alloc_index, clocks) = global.current_thread_state(thread_mgr);

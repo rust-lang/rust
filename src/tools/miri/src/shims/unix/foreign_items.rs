@@ -10,6 +10,7 @@ use rustc_target::spec::abi::Abi;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
+use shims::unix::mem::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
@@ -211,6 +212,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                     this.write_null(dest)?;
                 }
+            }
+
+            "mmap" => {
+                let [addr, length, prot, flags, fd, offset] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "mremap" => {
+                let [old_address, old_size, new_size, flags] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let ptr = this.mremap(old_address, old_size, new_size, flags)?;
+                this.write_scalar(ptr, dest)?;
+            }
+            "munmap" => {
+                let [addr, length] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
+                let result = this.munmap(addr, length)?;
+                this.write_scalar(result, dest)?;
             }
 
             // Dynamic symbol loading
