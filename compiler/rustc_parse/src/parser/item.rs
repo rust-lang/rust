@@ -700,7 +700,7 @@ impl<'a> Parser<'a> {
                         .span_label(non_item_span, "non-item starts here")
                         .span_label(self.prev_token.span, "item list ends here");
                     if is_unnecessary_semicolon {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             semicolon_span,
                             "consider removing this semicolon",
                             "",
