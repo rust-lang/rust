@@ -53,12 +53,6 @@ In `config.toml`, add:
 ```toml
 [build]
 target = ["<host_platform>", "aarch64-fuchsia", "x86_64-fuchsia"]
-
-[target.x86_64-fuchsia]
-llvm-libunwind = "in-tree"
-
-[target.aarch64-fuchsia]
-llvm-libunwind = "in-tree"
 ```
 
 Additionally, the following environment variables must be configured (for

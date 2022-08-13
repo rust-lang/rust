@@ -1445,7 +1445,11 @@ impl Config {
             .get(&target)
             .and_then(|t| t.llvm_libunwind)
             .or(self.llvm_libunwind_default)
-            .unwrap_or(LlvmLibunwind::No)
+            .unwrap_or(if target.contains("fuchsia") {
+                LlvmLibunwind::InTree
+            } else {
+                LlvmLibunwind::No
+            })
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
