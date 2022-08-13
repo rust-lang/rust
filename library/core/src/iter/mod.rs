@@ -398,6 +398,8 @@ pub use self::traits::{
 
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::adapters::zip;
+#[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
+pub use self::adapters::ArrayChunks;
 #[unstable(feature = "std_internals", issue = "none")]
 pub use self::adapters::ByRefSized;
 #[stable(feature = "iter_cloned", since = "1.1.0")]
