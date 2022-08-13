@@ -1426,20 +1426,30 @@ impl<'a> Builder<'a> {
                 // Only run clippy on a very limited subset of crates (in particular, not build scripts).
                 cargo.arg("-Zunstable-options");
                 // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
-                let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
-                let output = host_version.and_then(|output| {
-                    if output.status.success() {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }).unwrap_or_else(|_| {
+                let output = Command::new("rustc")
+                    .arg("--version")
+                    .env("RUSTC_STAGE", stage.to_string())
+                    .output();
+                let output = output.unwrap_or_else(|err| {
                     eprintln!(
-                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
+                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component (could not execute rustc: {})",
+                        err
                     );
                     eprintln!("help: try `rustup component add clippy`");
                     crate::detail_exit(1);
                 });
+                if !output.status.success() {
+                    if let Some(code) = output.status.code() {
+                        eprintln!("rustc exited with code {code}");
+                    }
+                    if !output.stdout.is_empty() {
+                        eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                    }
+                    if !output.stderr.is_empty() {
+                        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+                    }
+                    crate::detail_exit(1);
+                }
                 if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
                     rustflags.arg("--cfg=bootstrap");
                 }
