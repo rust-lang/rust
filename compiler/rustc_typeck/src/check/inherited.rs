@@ -1,18 +1,22 @@
 use super::callee::DeferredCallResolution;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
 use rustc_infer::infer;
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::{
+    self, FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt as _,
+};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -84,7 +88,29 @@ impl<'tcx> Inherited<'_, 'tcx> {
             infcx: tcx
                 .infer_ctxt()
                 .ignoring_regions()
-                .with_fresh_in_progress_typeck_results(hir_owner),
+                .with_fresh_in_progress_typeck_results(hir_owner)
+                .with_normalize_fn_sig_for_diagnostic(Lrc::new(move |infcx, fn_sig| {
+                    if fn_sig.has_escaping_bound_vars() {
+                        return fn_sig;
+                    }
+                    infcx.probe(|_| {
+                        let traits::Normalized { value: normalized_fn_sig, obligations } =
+                            traits::normalize(
+                                &mut traits::SelectionContext::new(infcx),
+                                // FIXME(compiler-errors): This is probably not the right param-env...
+                                infcx.tcx.param_env(def_id),
+                                ObligationCause::dummy(),
+                                fn_sig,
+                            );
+                        let mut fulfillment_ctxt = FulfillmentContext::new_in_snapshot();
+                        fulfillment_ctxt.register_predicate_obligations(infcx, obligations);
+                        if fulfillment_ctxt.select_all_or_error(infcx).is_empty() {
+                            infcx.resolve_vars_if_possible(normalized_fn_sig)
+                        } else {
+                            fn_sig
+                        }
+                    })
+                })),
             def_id,
         }
     }

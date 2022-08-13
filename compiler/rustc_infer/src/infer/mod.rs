@@ -337,6 +337,9 @@ pub struct InferCtxt<'a, 'tcx> {
     /// when we enter into a higher-ranked (`for<..>`) type or trait
     /// bound.
     universe: Cell<ty::UniverseIndex>,
+
+    normalize_fn_sig_for_diagnostic:
+        Option<Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
 
 /// See the `error_reporting` module for more details.
@@ -540,6 +543,8 @@ pub struct InferCtxtBuilder<'tcx> {
     defining_use_anchor: DefiningAnchor,
     considering_regions: bool,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
+    normalize_fn_sig_for_diagnostic:
+        Option<Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -553,6 +558,7 @@ impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
             defining_use_anchor: DefiningAnchor::Error,
             considering_regions: true,
             fresh_typeck_results: None,
+            normalize_fn_sig_for_diagnostic: None,
         }
     }
 }
@@ -579,6 +585,14 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 
     pub fn ignoring_regions(mut self) -> Self {
         self.considering_regions = false;
+        self
+    }
+
+    pub fn with_normalize_fn_sig_for_diagnostic(
+        mut self,
+        fun: Lrc<dyn Fn(&InferCtxt<'_, 'tcx>, ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx>>,
+    ) -> Self {
+        self.normalize_fn_sig_for_diagnostic = Some(fun);
         self
     }
 
@@ -611,6 +625,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             defining_use_anchor,
             considering_regions,
             ref fresh_typeck_results,
+            ref normalize_fn_sig_for_diagnostic,
         } = *self;
         let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
@@ -629,6 +644,9 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             in_snapshot: Cell::new(false),
             skip_leak_check: Cell::new(false),
             universe: Cell::new(ty::UniverseIndex::ROOT),
+            normalize_fn_sig_for_diagnostic: normalize_fn_sig_for_diagnostic
+                .as_ref()
+                .map(|f| f.clone()),
         })
     }
 }

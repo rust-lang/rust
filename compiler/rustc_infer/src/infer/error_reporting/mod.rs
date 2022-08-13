@@ -961,12 +961,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    fn normalize_fn_sig_for_diagnostic(&self, sig: ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> {
+        if let Some(normalize) = &self.normalize_fn_sig_for_diagnostic {
+            normalize(self, sig)
+        } else {
+            sig
+        }
+    }
+
     /// Given two `fn` signatures highlight only sub-parts that are different.
     fn cmp_fn_sig(
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
         sig2: &ty::PolyFnSig<'tcx>,
     ) -> (DiagnosticStyledString, DiagnosticStyledString) {
+        let sig1 = &self.normalize_fn_sig_for_diagnostic(*sig1);
+        let sig2 = &self.normalize_fn_sig_for_diagnostic(*sig2);
+
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
             let (_, sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)

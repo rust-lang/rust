@@ -78,6 +78,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err_count_on_creation: self.err_count_on_creation,
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
+            normalize_fn_sig_for_diagnostic: self
+                .normalize_fn_sig_for_diagnostic
+                .as_ref()
+                .map(|f| f.clone()),
         }
     }
 }
