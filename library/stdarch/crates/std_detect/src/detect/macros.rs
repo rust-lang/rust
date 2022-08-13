@@ -1,4 +1,5 @@
 #[macro_export]
+#[allow_internal_unstable(stdsimd)]
 macro_rules! detect_feature {
     ($feature:tt, $feature_lit:tt) => {
         $crate::detect_feature!($feature, $feature_lit : $feature_lit)
