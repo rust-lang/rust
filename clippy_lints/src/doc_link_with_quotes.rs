@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// /// See also: [`foo`]
     /// fn bar() {}
     /// ```
-    #[clippy::version = "1.60.0"]
+    #[clippy::version = "1.63.0"]
     pub DOC_LINK_WITH_QUOTES,
     pedantic,
     "possible typo for an intra-doc link"
