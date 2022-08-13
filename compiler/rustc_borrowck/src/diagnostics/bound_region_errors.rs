@@ -484,9 +484,7 @@ fn try_extract_error_from_region_constraints<'tcx>(
     };
     nice_error.try_report_from_nll().or_else(|| {
         if let SubregionOrigin::Subtype(trace) = cause {
-            Some(
-                infcx.report_and_explain_type_error(*trace, &TypeError::RegionsPlaceholderMismatch),
-            )
+            Some(infcx.report_and_explain_type_error(*trace, TypeError::RegionsPlaceholderMismatch))
         } else {
             None
         }

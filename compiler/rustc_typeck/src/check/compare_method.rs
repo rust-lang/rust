@@ -291,7 +291,7 @@ fn compare_predicate_entailment<'tcx>(
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
 
             let (impl_err_span, trait_err_span) =
-                extract_spans_for_error_reporting(&infcx, &terr, &cause, impl_m, trait_m);
+                extract_spans_for_error_reporting(&infcx, terr, &cause, impl_m, trait_m);
 
             cause.span = impl_err_span;
 
@@ -381,7 +381,7 @@ fn compare_predicate_entailment<'tcx>(
                     expected: trait_fty.into(),
                     found: impl_fty.into(),
                 })),
-                &terr,
+                terr,
                 false,
                 false,
             );
@@ -468,7 +468,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
 #[instrument(level = "debug", skip(infcx))]
 fn extract_spans_for_error_reporting<'a, 'tcx>(
     infcx: &infer::InferCtxt<'a, 'tcx>,
-    terr: &TypeError<'_>,
+    terr: TypeError<'_>,
     cause: &ObligationCause<'tcx>,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
@@ -488,7 +488,7 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
             _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
         });
 
-    match *terr {
+    match terr {
         TypeError::ArgumentMutability(i) => {
             (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
@@ -1143,7 +1143,7 @@ pub(crate) fn compare_const_impl<'tcx>(
                     expected: trait_ty.into(),
                     found: impl_ty.into(),
                 })),
-                &terr,
+                terr,
                 false,
                 false,
             );

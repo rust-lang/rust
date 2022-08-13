@@ -1527,8 +1527,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let trace = TypeTrace::types(cause, true, expected, actual);
-        self.report_and_explain_type_error(trace, &err)
+        self.report_and_explain_type_error(TypeTrace::types(cause, true, expected, actual), err)
     }
 
     pub fn report_mismatched_consts(
@@ -1538,8 +1537,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let trace = TypeTrace::consts(cause, true, expected, actual);
-        self.report_and_explain_type_error(trace, &err)
+        self.report_and_explain_type_error(TypeTrace::consts(cause, true, expected, actual), err)
     }
 
     pub fn replace_bound_vars_with_fresh_vars<T>(

@@ -1507,8 +1507,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         self.probe(|_| {
-            let err_buf;
-            let mut err = &error.err;
+            let mut err = error.err;
             let mut values = None;
 
             // try to find the mismatched types to report the error with.
@@ -1544,14 +1543,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
-                if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
+                if let Err(new_err) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
                     normalized_ty,
                     data.term,
                 ) {
                     values = Some((data, is_normalized_ty_expected, normalized_ty, data.term));
-                    err_buf = error;
-                    err = &err_buf;
+                    err = new_err;
                 }
             }
 
