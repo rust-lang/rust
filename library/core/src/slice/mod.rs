@@ -4101,7 +4101,6 @@ impl<T, const N: usize> [[T; N]] {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(test))]
 impl [f32] {
     /// Sorts the slice of floats.
@@ -4131,7 +4130,6 @@ impl [f32] {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[cfg(not(test))]
 impl [f64] {
     /// Sorts the slice of floats.

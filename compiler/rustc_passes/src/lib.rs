@@ -7,7 +7,6 @@
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(iter_intersperse)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]

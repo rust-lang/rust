@@ -63,7 +63,7 @@ use crate::mem;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -71,214 +71,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
-// These have been renamed.
-#[cfg(bootstrap)]
-extern "rust-intrinsic" {
-    pub fn atomic_cxchg<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchg_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acqrel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_failacq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acq_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_cxchgweak_acqrel_failrelaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-    pub fn atomic_load<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_acq<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
-    pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
-    pub fn atomic_store<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_rel<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
-    pub fn atomic_xchg<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_acq<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_rel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
-    pub fn atomic_fence();
-    pub fn atomic_fence_acq();
-    pub fn atomic_fence_rel();
-    pub fn atomic_fence_acqrel();
-    pub fn atomic_singlethreadfence();
-    pub fn atomic_singlethreadfence_acq();
-    pub fn atomic_singlethreadfence_rel();
-    pub fn atomic_singlethreadfence_acqrel();
-}
-
-// These have been renamed.
-#[cfg(bootstrap)]
-mod atomics {
-    pub use super::atomic_cxchg as atomic_cxchg_seqcst_seqcst;
-    pub use super::atomic_cxchg_acq as atomic_cxchg_acquire_acquire;
-    pub use super::atomic_cxchg_acq_failrelaxed as atomic_cxchg_acquire_relaxed;
-    pub use super::atomic_cxchg_acqrel as atomic_cxchg_acqrel_acquire;
-    pub use super::atomic_cxchg_acqrel_failrelaxed as atomic_cxchg_acqrel_relaxed;
-    pub use super::atomic_cxchg_failacq as atomic_cxchg_seqcst_acquire;
-    pub use super::atomic_cxchg_failrelaxed as atomic_cxchg_seqcst_relaxed;
-    pub use super::atomic_cxchg_rel as atomic_cxchg_release_relaxed;
-    pub use super::atomic_cxchg_relaxed as atomic_cxchg_relaxed_relaxed;
-
-    pub use super::atomic_cxchgweak as atomic_cxchgweak_seqcst_seqcst;
-    pub use super::atomic_cxchgweak_acq as atomic_cxchgweak_acquire_acquire;
-    pub use super::atomic_cxchgweak_acq_failrelaxed as atomic_cxchgweak_acquire_relaxed;
-    pub use super::atomic_cxchgweak_acqrel as atomic_cxchgweak_acqrel_acquire;
-    pub use super::atomic_cxchgweak_acqrel_failrelaxed as atomic_cxchgweak_acqrel_relaxed;
-    pub use super::atomic_cxchgweak_failacq as atomic_cxchgweak_seqcst_acquire;
-    pub use super::atomic_cxchgweak_failrelaxed as atomic_cxchgweak_seqcst_relaxed;
-    pub use super::atomic_cxchgweak_rel as atomic_cxchgweak_release_relaxed;
-    pub use super::atomic_cxchgweak_relaxed as atomic_cxchgweak_relaxed_relaxed;
-
-    pub use super::atomic_load as atomic_load_seqcst;
-    pub use super::atomic_load_acq as atomic_load_acquire;
-    pub use super::atomic_load_relaxed;
-    pub use super::atomic_load_unordered;
-
-    pub use super::atomic_store as atomic_store_seqcst;
-    pub use super::atomic_store_rel as atomic_store_release;
-    pub use super::atomic_store_relaxed;
-    pub use super::atomic_store_unordered;
-
-    pub use super::atomic_xchg as atomic_xchg_seqcst;
-    pub use super::atomic_xchg_acq as atomic_xchg_acquire;
-    pub use super::atomic_xchg_acqrel;
-    pub use super::atomic_xchg_rel as atomic_xchg_release;
-    pub use super::atomic_xchg_relaxed;
-
-    pub use super::atomic_xadd as atomic_xadd_seqcst;
-    pub use super::atomic_xadd_acq as atomic_xadd_acquire;
-    pub use super::atomic_xadd_acqrel;
-    pub use super::atomic_xadd_rel as atomic_xadd_release;
-    pub use super::atomic_xadd_relaxed;
-
-    pub use super::atomic_xsub as atomic_xsub_seqcst;
-    pub use super::atomic_xsub_acq as atomic_xsub_acquire;
-    pub use super::atomic_xsub_acqrel;
-    pub use super::atomic_xsub_rel as atomic_xsub_release;
-    pub use super::atomic_xsub_relaxed;
-
-    pub use super::atomic_and as atomic_and_seqcst;
-    pub use super::atomic_and_acq as atomic_and_acquire;
-    pub use super::atomic_and_acqrel;
-    pub use super::atomic_and_rel as atomic_and_release;
-    pub use super::atomic_and_relaxed;
-
-    pub use super::atomic_nand as atomic_nand_seqcst;
-    pub use super::atomic_nand_acq as atomic_nand_acquire;
-    pub use super::atomic_nand_acqrel;
-    pub use super::atomic_nand_rel as atomic_nand_release;
-    pub use super::atomic_nand_relaxed;
-
-    pub use super::atomic_or as atomic_or_seqcst;
-    pub use super::atomic_or_acq as atomic_or_acquire;
-    pub use super::atomic_or_acqrel;
-    pub use super::atomic_or_rel as atomic_or_release;
-    pub use super::atomic_or_relaxed;
-
-    pub use super::atomic_xor as atomic_xor_seqcst;
-    pub use super::atomic_xor_acq as atomic_xor_acquire;
-    pub use super::atomic_xor_acqrel;
-    pub use super::atomic_xor_rel as atomic_xor_release;
-    pub use super::atomic_xor_relaxed;
-
-    pub use super::atomic_max as atomic_max_seqcst;
-    pub use super::atomic_max_acq as atomic_max_acquire;
-    pub use super::atomic_max_acqrel;
-    pub use super::atomic_max_rel as atomic_max_release;
-    pub use super::atomic_max_relaxed;
-
-    pub use super::atomic_min as atomic_min_seqcst;
-    pub use super::atomic_min_acq as atomic_min_acquire;
-    pub use super::atomic_min_acqrel;
-    pub use super::atomic_min_rel as atomic_min_release;
-    pub use super::atomic_min_relaxed;
-
-    pub use super::atomic_umin as atomic_umin_seqcst;
-    pub use super::atomic_umin_acq as atomic_umin_acquire;
-    pub use super::atomic_umin_acqrel;
-    pub use super::atomic_umin_rel as atomic_umin_release;
-    pub use super::atomic_umin_relaxed;
-
-    pub use super::atomic_umax as atomic_umax_seqcst;
-    pub use super::atomic_umax_acq as atomic_umax_acquire;
-    pub use super::atomic_umax_acqrel;
-    pub use super::atomic_umax_rel as atomic_umax_release;
-    pub use super::atomic_umax_relaxed;
-
-    pub use super::atomic_fence as atomic_fence_seqcst;
-    pub use super::atomic_fence_acq as atomic_fence_acquire;
-    pub use super::atomic_fence_acqrel;
-    pub use super::atomic_fence_rel as atomic_fence_release;
-
-    pub use super::atomic_singlethreadfence as atomic_singlethreadfence_seqcst;
-    pub use super::atomic_singlethreadfence_acq as atomic_singlethreadfence_acquire;
-    pub use super::atomic_singlethreadfence_acqrel;
-    pub use super::atomic_singlethreadfence_rel as atomic_singlethreadfence_release;
-}
-
-#[cfg(bootstrap)]
-pub use atomics::*;
-
-#[cfg(not(bootstrap))]
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -951,7 +743,6 @@ extern "rust-intrinsic" {
 //
 // These are the aliases for the old names.
 // To be removed when stdarch and panic_unwind have been updated.
-#[cfg(not(bootstrap))]
 mod atomics {
     pub use super::atomic_cxchg_acqrel_acquire as atomic_cxchg_acqrel;
     pub use super::atomic_cxchg_acqrel_relaxed as atomic_cxchg_acqrel_failrelaxed;
@@ -965,7 +756,6 @@ mod atomics {
     pub use super::atomic_store_seqcst as atomic_store;
 }
 
-#[cfg(not(bootstrap))]
 pub use atomics::*;
 
 extern "rust-intrinsic" {
@@ -1463,7 +1253,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+    #[rustc_allowed_through_unstable_modules]
     #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
     #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
@@ -2300,12 +2090,10 @@ extern "rust-intrinsic" {
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the size stored in that vtable.
-    #[cfg(not(bootstrap))]
     pub fn vtable_size(ptr: *const ()) -> usize;
 
     /// `ptr` must point to a vtable.
     /// The intrinsic will return the alignment stored in that vtable.
-    #[cfg(not(bootstrap))]
     pub fn vtable_align(ptr: *const ()) -> usize;
 }
 
@@ -2452,7 +2240,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -2539,7 +2327,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -2607,7 +2395,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), rustc_allowed_through_unstable_modules)]
+#[rustc_allowed_through_unstable_modules]
 #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

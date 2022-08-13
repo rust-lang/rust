@@ -5,8 +5,8 @@
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
-#![cfg_attr(not(bootstrap), deny(rustc::untranslatable_diagnostic))]
-#![cfg_attr(not(bootstrap), deny(rustc::diagnostic_outside_of_impl))]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 mod errors;
 

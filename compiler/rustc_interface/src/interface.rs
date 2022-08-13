@@ -330,7 +330,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
 }
 
 // JUSTIFICATION: before session exists, only config
-#[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+#[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     tracing::trace!("run_compiler");
     util::run_in_thread_pool_with_globals(

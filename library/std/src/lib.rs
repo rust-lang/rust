@@ -211,7 +211,7 @@
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
-#![cfg_attr(not(bootstrap), deny(ffi_unwind_calls))]
+#![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
@@ -243,7 +243,6 @@
 #![feature(intra_doc_pointers)]
 #![feature(label_break_value)]
 #![feature(lang_items)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(linkage)]
 #![feature(link_cfg)]

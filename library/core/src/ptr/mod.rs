@@ -1834,7 +1834,7 @@ macro_rules! maybe_fnptr_doc {
         $item
     };
     ($a:ident @ #[$meta:meta] $item:item) => {
-        #[cfg_attr(not(bootstrap), doc(fake_variadic))]
+        #[doc(fake_variadic)]
         #[doc = "This trait is implemented for function pointers with up to twelve arguments."]
         #[$meta]
         $item

@@ -2,7 +2,6 @@
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
 #![feature(if_let_guard)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(let_else)]
 #![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]

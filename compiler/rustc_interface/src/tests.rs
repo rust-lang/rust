@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
+#![allow(rustc::bad_opt_access)]
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
