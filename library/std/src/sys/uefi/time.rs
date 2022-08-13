@@ -1,3 +1,7 @@
+//! Time is implemeted using `EFI_RUNTIME_SERVICES.GetTime()`
+//! While this is  not technically monotonic, the single-threaded nature of UEFI might make it fine
+//! to use for Instant. Still, maybe revisit this in future.
+
 use crate::os::uefi;
 use crate::time::Duration;
 
@@ -9,7 +13,6 @@ pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::ZERO);
 
-// FIXME: Maybe optionally use `EFI_TIMESTAMP_PROTOCOL.GetTimestamp()`?
 impl Instant {
     pub fn now() -> Instant {
         if let Some(runtime_services) = uefi::env::get_runtime_services() {

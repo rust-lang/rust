@@ -1,4 +1,4 @@
-//! Implemented using File Protocol
+//! File System functionality for UEFI
 
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
@@ -9,7 +9,6 @@ use crate::sys::time::{SystemTime, UNIX_EPOCH};
 use crate::sys::unsupported;
 use r_efi::protocols::file;
 
-// FIXME: Do not store FileProtocol Instead store Handle
 pub struct File {
     ptr: uefi_fs::FileProtocol,
     path: PathBuf,
@@ -149,6 +148,7 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         let dir_entry = self.inner.read_dir_entry(self.path.as_path());
         if let Some(Ok(ref x)) = dir_entry {
+            // Ignore `.` and `..`
             if x.file_name().as_os_str() == OsStr::new(".")
                 || x.file_name().as_os_str() == OsStr::new("..")
             {
@@ -382,6 +382,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     Ok(ReadDir { inner, path: abs_path })
 }
 
+// Just Delete the file since symlinks are not supported
 pub fn unlink(p: &Path) -> io::Result<()> {
     let open_mode = file::MODE_READ | file::MODE_WRITE;
     let attr = 0;
@@ -431,14 +432,17 @@ pub fn try_exists(path: &Path) -> io::Result<bool> {
     }
 }
 
+// Symlink not supported
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
+// Symlink not supported
 pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
     unsupported()
 }
 
+// Symlink not supported
 pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
     unsupported()
 }
@@ -459,7 +463,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     stat(p)
 }
 
-// Not sure how to implement. Tryied doing a round conversion from EFI_DEVICE_PATH protocol but
+// Not sure how to implement. Tried doing a round conversion from EFI_DEVICE_PATH protocol but
 // that doesn't work either.
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
@@ -533,6 +537,9 @@ mod uefi_fs {
             FileProtocol { inner }
         }
 
+        // Can open any file as long as it is possible to convert path to EFI_DEVICE_PATH_PROTOCOL
+        // using `EFI_DEVICE_PATH_FROM_TEXT_PROTOCOL.ConvertTextToDevicePath()`.
+        // If relative path is provided, then opens the file in the EFI_LOADED_IMAGE_DEVICE_PATH
         pub fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
             match path.prefix() {
                 None => {
@@ -559,6 +566,7 @@ mod uefi_fs {
             }
         }
 
+        // Open the volume on the device_handle the image was loaded from.
         fn get_rootfs() -> io::Result<FileProtocol> {
             use r_efi::protocols::loaded_image;
 
@@ -581,6 +589,7 @@ mod uefi_fs {
             Self::get_volume(device_handle)
         }
 
+        // Open a volume having a particular prefix.
         fn get_volume_from_prefix(prefix: &OsStr) -> io::Result<Self> {
             use r_efi::protocols::{device_path, simple_file_system};
 
@@ -608,6 +617,7 @@ mod uefi_fs {
             Err(io::error::const_io_error!(io::ErrorKind::NotFound, "Volume Not Found"))
         }
 
+        // Open volume on device_handle using SIMPLE_FILE_SYSTEM_PROTOCOL
         fn get_volume(device_handle: NonNull<crate::ffi::c_void>) -> io::Result<Self> {
             use r_efi::protocols::simple_file_system;
 
@@ -636,6 +646,7 @@ mod uefi_fs {
             }
         }
 
+        // Open a file from current EFI_FILE_PATH_PROTOCOL
         pub fn open(&self, path: &Path, open_mode: u64, attr: u64) -> io::Result<FileProtocol> {
             let mut file_opened: MaybeUninit<*mut file::Protocol> = MaybeUninit::uninit();
             unsafe {
@@ -684,6 +695,7 @@ mod uefi_fs {
             unsafe { Self::flush_raw(self.inner.as_ptr()) }
         }
 
+        // Read a Directory.
         pub fn read_dir_entry(&self, base_path: &Path) -> Option<io::Result<DirEntry>> {
             let mut buf_size = 0usize;
             if let Err(e) = unsafe {
@@ -718,6 +730,7 @@ mod uefi_fs {
             Some(Ok(DirEntry { attr, name, path }))
         }
 
+        // Get current file info
         pub fn get_file_info(&self) -> io::Result<uefi::raw::VariableSizeType<file::Info>> {
             let mut buf_size = 0usize;
             match unsafe {
@@ -749,6 +762,7 @@ mod uefi_fs {
             }
         }
 
+        // Set file size. Useful for truncation
         pub fn set_file_size(&self, file_size: u64) -> io::Result<()> {
             use r_efi::efi::Time;
 
@@ -771,6 +785,7 @@ mod uefi_fs {
             }
         }
 
+        // Set file attributes
         pub fn set_file_attr(&self, attribute: u64) -> io::Result<()> {
             use r_efi::efi::Time;
 
@@ -793,6 +808,8 @@ mod uefi_fs {
             }
         }
 
+        // Change file name. It seems possible to provide a relative path as file name. Thus it
+        // also acts as move
         pub fn set_file_name(&self, file_name: &OsStr) -> io::Result<()> {
             use r_efi::efi::Time;
 
@@ -825,7 +842,10 @@ mod uefi_fs {
             }
         }
 
+        // Delete a file.
         pub fn delete(self) -> io::Result<()> {
+            // Deleting the file makes the pointer invalid. Thus calling drop on it later will
+            // cause UB
             let file = crate::mem::ManuallyDrop::new(self);
             unsafe { Self::delete_raw(file.inner.as_ptr()) }
         }

@@ -77,6 +77,7 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
+    // First try to use EFI_BOOT_SERVICES.Exit()
     if let (Some(boot_services), Some(handle)) =
         (uefi::env::get_boot_services(), uefi::env::get_system_handle())
     {

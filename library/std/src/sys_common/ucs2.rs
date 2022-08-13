@@ -103,14 +103,25 @@ impl<'a> EncodeUcs2<'a> {
 }
 
 #[unstable(feature = "ucs2", issue = "none")]
+pub struct EncodeError(char);
+
+#[unstable(feature = "ucs2", issue = "none")]
+impl fmt::Debug for EncodeError {
+    #[inline]
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "Char {} cannot be converted to UCS-2", self.0)
+    }
+}
+
+#[unstable(feature = "ucs2", issue = "none")]
 impl<'a> Iterator for EncodeUcs2<'a> {
-    type Item = Ucs2Char;
+    type Item = Result<Ucs2Char, EncodeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(ch) = self.utf8_buf.next() {
             match Ucs2Char::from_char(ch) {
-                Some(x) => Some(x),
-                None => Some(Ucs2Char::REPLACEMENT_CHARACTER),
+                Some(x) => Some(Ok(x)),
+                None => Some(Err(EncodeError(ch))),
             }
         } else {
             None

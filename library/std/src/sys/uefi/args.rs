@@ -1,3 +1,5 @@
+//! Args related functionality for UEFI. Takes a lot of inspiration of Windows args
+
 use super::common;
 use crate::ffi::OsString;
 use crate::fmt;
@@ -11,6 +13,8 @@ pub struct Args {
     parsed_args_list: vec::IntoIter<OsString>,
 }
 
+// Get the Supplied arguments for loaded image.
+// Uses EFI_LOADED_IMAGE_PROTOCOL
 pub fn args() -> Args {
     use r_efi::efi::protocols::loaded_image;
 

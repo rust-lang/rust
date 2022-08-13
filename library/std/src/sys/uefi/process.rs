@@ -276,6 +276,7 @@ pub struct Process {
 }
 
 impl Process {
+    // Process does not have an id
     pub fn id(&self) -> u32 {
         unimplemented!()
     }
@@ -289,7 +290,7 @@ impl Process {
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        unsupported()
+        Ok(ExitStatus(self.status))
     }
 }
 

@@ -1,7 +1,13 @@
+//! Global Allocator for UEFI.
+//! Uses `EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`.
+//! Takes a lot of inspiration from Windows allocator for Alignment > 8.
+
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::os::uefi;
 
 const POOL_ALIGNMENT: usize = 8;
+// FIXME: Maybe allow chaing the MEMORY_TYPE. However, since allocation is done even before main,
+// there will be a few allocations with the default MEMORY_TYPE.
 const MEMORY_TYPE: u32 = r_efi::efi::LOADER_DATA;
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
@@ -80,7 +86,7 @@ unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
         // SAFETY: Because the size and alignment of a header is <= `MIN_ALIGN` and `aligned`
         // is aligned to at least `MIN_ALIGN` and has at least `MIN_ALIGN` bytes of padding before
         // it, it is safe to write a header directly before it.
-        unsafe { core::ptr::write((aligned as *mut Header).offset(-1), Header(ptr)) };
+        unsafe { crate::ptr::write((aligned as *mut Header).offset(-1), Header(ptr)) };
 
         aligned
     } else {
@@ -93,7 +99,7 @@ unsafe fn unalign_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
     if align > POOL_ALIGNMENT {
         // SAFETY: Because of the contract of `System`, `ptr` is guaranteed to be non-null
         // and have a header readable directly before it.
-        unsafe { core::ptr::read((ptr as *mut Header).offset(-1)).0 }
+        unsafe { crate::ptr::read((ptr as *mut Header).offset(-1)).0 }
     } else {
         ptr
     }

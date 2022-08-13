@@ -49,6 +49,8 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
 }
 
 #[unstable(feature = "uefi_std", issue = "none")]
+/// Open Protocol on a handle
+/// Implemented using `EFI_BOOT_SERVICES.OpenProtocol()`
 pub fn open_protocol<T>(
     handle: NonNull<c_void>,
     mut protocol_guid: Guid,
@@ -79,6 +81,8 @@ pub fn open_protocol<T>(
 }
 
 #[unstable(feature = "uefi_std", issue = "none")]
+// Locate handles with a particula protocol Guid
+/// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
 pub fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
     fn inner(
         guid: &mut Guid,

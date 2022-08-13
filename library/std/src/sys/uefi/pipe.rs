@@ -1,3 +1,5 @@
+//! An implementation of Pipes using UEFI variables
+
 use crate::os::uefi::ffi::OsStrExt;
 use crate::{
     ffi::OsStr,
