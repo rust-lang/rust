@@ -75,7 +75,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
-        if let Some(conflict) = self.is_knowable(stack) {
+        if let Err(conflict) = self.is_knowable(stack) {
             debug!("coherence stage: not knowable");
             if self.intercrate_ambiguity_causes.is_some() {
                 debug!("evaluate_stack: intercrate_ambiguity_causes is some");

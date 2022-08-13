@@ -1265,11 +1265,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
-    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
+    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         debug!("is_knowable(intercrate={:?})", self.intercrate);
 
         if !self.intercrate || stack.obligation.polarity() == ty::ImplPolarity::Negative {
-            return None;
+            return Ok(());
         }
 
         let obligation = &stack.obligation;
