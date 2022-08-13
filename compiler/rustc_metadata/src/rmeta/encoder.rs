@@ -2296,7 +2296,20 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        all_local_trait_impls: |tcx, ()| tcx.impls_in_crate(LOCAL_CRATE),
+        all_local_trait_impls: |tcx, _| {
+            let o: FxHashMap<_, _> = tcx
+                .impls_in_crate(LOCAL_CRATE)
+                .iter()
+                .map(|(trait_id, impls)| {
+                    (
+                        *trait_id,
+                        impls.iter().map(|(id, _)| id.expect_local()).collect::<Vec<LocalDefId>>(),
+                    )
+                })
+                .collect();
+
+            tcx.arena.alloc(o)
+        },
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
 

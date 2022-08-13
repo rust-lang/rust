@@ -1748,7 +1748,7 @@ rustc_queries! {
 
     // robert-trait
     //HashMap<DefId, Vec<(DefIndex, Option<SimplifiedTypeGen<DefId>>)> (from decoder.encode_impls)
-    // all_local_trait_impls: tcx FxIndexMap<DefId, Vec<LocalDefId>>
+    //all_local_trait_impls: tcx FxIndexMap<DefId, Vec<LocalDefId>>
     // FxIndexMap<DefId, Vec<LocalDefId>>,
     /// A list of all impls in a crate.
     //use rustc_middle::ty::fast_reject::SimplifiedTypeGen;
