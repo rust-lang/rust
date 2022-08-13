@@ -189,7 +189,7 @@ pub enum Prefix<'a> {
 
     /// UEFI Device Prefix. e.g., `PciRoot(0x0)/Pci(0x1,0x1)/Ata(0x0)/CDROM(0x0)`
     /// Sometimes also represented like Windows Disks, but this is more general
-    #[unstable(feature = "uefi_std", issue = "none")]
+    #[unstable(feature = "uefi_std", issue = "100499")]
     UefiDevice(&'a OsStr),
 }
 

@@ -75,7 +75,7 @@ struct Header(*mut u8);
 #[inline]
 unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
     if align > POOL_ALIGNMENT {
-        let offset = align - (ptr.addr() & (align - 1));
+        let offset = ptr.align_offset(align);
 
         // SAFETY: `MIN_ALIGN` <= `offset` <= `layout.align()` and the size of the allocated
         // block is `layout.align() + layout.size()`. `aligned` will thus be a correctly aligned

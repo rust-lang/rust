@@ -36,6 +36,7 @@ impl Thread {
     }
 }
 
+#[inline]
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     // UEFI is single threaded
     Ok(NonZeroUsize::new(1).unwrap())

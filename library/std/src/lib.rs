@@ -234,6 +234,7 @@
 )]
 //
 // Language features:
+#![feature(abi_efiapi)]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -251,6 +252,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(exclusive_range_pattern)]
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
@@ -272,15 +274,13 @@
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(utf8_chunks)]
-#![feature(abi_efiapi)]
-#![feature(exclusive_range_pattern)]
-#![feature(const_option)]
 //
 // Library features (core):
 #![feature(array_error_internals)]
 #![feature(atomic_mut_ptr)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
+#![feature(const_option)]
 #![feature(core_intrinsics)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]

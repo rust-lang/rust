@@ -290,7 +290,7 @@ impl Process {
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        Ok(ExitStatus(self.status))
+        Ok(Some(ExitStatus(self.status)))
     }
 }
 

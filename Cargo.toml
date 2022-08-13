@@ -113,5 +113,3 @@ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
-
-

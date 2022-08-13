@@ -20,37 +20,37 @@ pub(crate) fn init_globals(handle: NonNull<c_void>, system_table: NonNull<System
     GLOBAL_SYSTEM_HANDLE.store(handle.as_ptr(), Ordering::SeqCst);
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Get the SystemTable Pointer.
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub fn get_system_table() -> Option<NonNull<SystemTable>> {
     NonNull::new(GLOBAL_SYSTEM_TABLE.load(Ordering::SeqCst))
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Get the SystemHandle Pointer.
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub fn get_system_handle() -> Option<NonNull<c_void>> {
     NonNull::new(GLOBAL_SYSTEM_HANDLE.load(Ordering::SeqCst))
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Get the BootServices Pointer.
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub fn get_boot_services() -> Option<NonNull<BootServices>> {
     let system_table = get_system_table()?;
     let boot_services = unsafe { (*system_table.as_ptr()).boot_services };
     NonNull::new(boot_services)
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Get the RuntimeServices Pointer.
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
     let system_table = get_system_table()?;
     let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
     NonNull::new(runtime_services)
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
 /// Open Protocol on a handle
 /// Implemented using `EFI_BOOT_SERVICES.OpenProtocol()`
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub fn open_protocol<T>(
     handle: NonNull<c_void>,
     mut protocol_guid: Guid,
@@ -80,9 +80,9 @@ pub fn open_protocol<T>(
     }
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
-// Locate handles with a particula protocol Guid
+// Locate handles with a particular protocol GUID
 /// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
     fn inner(
         guid: &mut Guid,
@@ -117,11 +117,14 @@ pub fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
         },
     }
 
-    let mut buf: Vec<Handle> = Vec::with_capacity(buf_len);
-
+    // The returned buf_len is in bytes
+    let mut buf: Vec<Handle> = Vec::with_capacity(buf_len / crate::mem::size_of::<Handle>());
     match inner(&mut guid, boot_services, &mut buf_len, buf.as_mut_ptr()) {
         Ok(()) => {
-            unsafe { buf.set_len(buf_len) };
+            // SAFETY: This is safe because the call will succeed only if buf_len >= required
+            // length. Also, on success, the `buf_len` is updated with the size of bufferv (in
+            // bytes) written
+            unsafe { buf.set_len(buf_len / crate::mem::size_of::<Handle>()) };
             Ok(buf.iter().filter_map(|x| NonNull::new(*x)).collect())
         }
         Err(e) => Err(e),

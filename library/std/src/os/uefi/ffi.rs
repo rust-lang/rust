@@ -2,14 +2,14 @@ use crate::ffi::{OsStr, OsString};
 use crate::sealed::Sealed;
 use crate::sys_common::ucs2;
 
-#[unstable(feature = "uefi_std", issue = "none")]
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub trait OsStrExt: Sealed {
     /// This function does not do any allocation
     fn to_ucs2<'a>(&'a self) -> ucs2::EncodeUcs2<'a>;
 
     /// Creates a UCS-2 Vec which can be passed for FFI.
-    /// Note: The returned string is NULL terminated.
-    /// Note: The supplied should not contain NULL.
+    /// Note: This function will replace `NULL` and other characters which are not valid in UEFI
+    /// strings with `std::sys_common::ucs::Ucs2Char::REPLACEMENT_CHARACTER`
     fn to_ffi_string(&self) -> Vec<u16> {
         let mut v: Vec<u16> = self
             .to_ucs2()
@@ -32,7 +32,7 @@ impl OsStrExt for OsStr {
     }
 }
 
-#[unstable(feature = "uefi_std", issue = "none")]
+#[unstable(feature = "uefi_std", issue = "100499")]
 pub trait OsStringExt: Sealed
 where
     Self: Sized,
