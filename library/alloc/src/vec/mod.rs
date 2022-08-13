@@ -1773,9 +1773,10 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Appends an element if there is sufficient spare capacity, otherwise the element is returned.
+    /// Appends an element if there is sufficient spare capacity, otherwise an error is returned
+    /// with the element.
     ///
-    /// Unlike [`push`] method will not reallocate when there's insufficient capacity.
+    /// Unlike [`push`] this method will not reallocate when there's insufficient capacity.
     /// The caller should use [`reserve`] or [`try_reserve`] to ensure that there is enough capacity.
     ///
     /// [`push`]: Vec::push
@@ -1784,13 +1785,13 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
-    /// A manual, panic-free alternative to FromIterator
+    /// A manual, panic-free alternative to [`FromIterator`]:
     ///
     /// ```
-    /// #![feature(vec_push_within_capacity, try_reserve)]
+    /// #![feature(vec_push_within_capacity)]
     ///
     /// use std::collections::TryReserveError;
-    /// fn from_iter<T>(iter: impl Iterator<Item=T>) -> Result<Vec<T>, TryReserveError> {
+    /// fn from_iter_fallible<T>(iter: impl Iterator<Item=T>) -> Result<Vec<T>, TryReserveError> {
     ///     let mut vec = Vec::new();
     ///     for value in iter {
     ///         if let Err(value) = vec.push_within_capacity(value) {
@@ -1801,10 +1802,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///     }
     ///     Ok(vec)
     /// }
-    /// # from_iter(0..100).expect("please insert more memory");
+    /// assert_eq!(from_iter_fallible(0..100), Ok(Vec::from_iter(0..100)));
     /// ```
     #[inline]
-    #[unstable(feature = "vec_push_within_capacity", issue = "none")]
+    #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
         if self.len == self.buf.capacity() {
             return Err(value);
