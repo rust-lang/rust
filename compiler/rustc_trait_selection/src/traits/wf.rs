@@ -31,9 +31,9 @@ pub fn obligations<'a, 'tcx>(
                     if resolved_ty == ty {
                         // No progress, bail out to prevent "livelock".
                         return None;
+                    } else {
+                        resolved_ty
                     }
-
-                    resolved_ty
                 }
                 _ => ty,
             }
@@ -41,16 +41,14 @@ pub fn obligations<'a, 'tcx>(
         }
         GenericArgKind::Const(ct) => {
             match ct.kind() {
-                ty::ConstKind::Infer(infer) => {
-                    let resolved = infcx.shallow_resolve(infer);
-                    if resolved == infer {
+                ty::ConstKind::Infer(_) => {
+                    let resolved = infcx.shallow_resolve(ct);
+                    if resolved == ct {
                         // No progress.
                         return None;
+                    } else {
+                        resolved
                     }
-
-                    infcx
-                        .tcx
-                        .mk_const(ty::ConstS { kind: ty::ConstKind::Infer(resolved), ty: ct.ty() })
                 }
                 _ => ct,
             }
