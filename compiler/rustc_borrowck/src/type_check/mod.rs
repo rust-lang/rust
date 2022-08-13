@@ -1270,7 +1270,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if let Err(terr) =
                     self.sub_types(rv_ty, place_ty, location.to_locations(), category)
                 {
-                    // HACK(ouz-a): Bypasses ICE for #91633 
+                    // HACK(ouz-a): Bypasses ICE for #91633
                     if rv_ty.discriminant_ty(self.tcx()) != place_ty.discriminant_ty(self.tcx()) {
                         span_mirbug!(
                             self,
