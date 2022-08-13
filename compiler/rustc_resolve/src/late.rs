@@ -2621,13 +2621,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     let item_def_id = this.r.local_def_id(item_id);
 
                                     // Register the trait definitions from here.
-                                    if let Some(trait_id) = trait_id {
-                                        this.r
-                                            .trait_impls
-                                            .entry(trait_id)
-                                            .or_default()
-                                            .push(item_def_id);
-                                    }
+                                    //if let Some(trait_id) = trait_id {
+                                    //    this.r
+                                    //        .trait_impls
+                                    //        .entry(trait_id)
+                                    //        .or_default()
+                                    //        .push(item_def_id);
+                                    //}
 
                                     let item_def_id = item_def_id.to_def_id();
                                     let res = Res::SelfTy {

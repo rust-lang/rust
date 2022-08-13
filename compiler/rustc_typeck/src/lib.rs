@@ -486,7 +486,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     tcx.sess.track_errors(|| {
         tcx.sess.time("coherence_checking", || {
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            //for &trait_def_id in tcx.impls_in_crate(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
 
