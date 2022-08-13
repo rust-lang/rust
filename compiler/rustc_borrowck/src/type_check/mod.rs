@@ -200,46 +200,8 @@ pub(crate) fn type_check<'mir, 'tcx>(
             );
 
             translate_outlives_facts(&mut cx);
-            let opaque_type_values =
-                infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-            opaque_type_values
-                .into_iter()
-                .map(|(opaque_type_key, decl)| {
-                    cx.fully_perform_op(
-                        Locations::All(body.span),
-                        ConstraintCategory::OpaqueType,
-                        CustomTypeOp::new(
-                            |infcx| {
-                                infcx.register_member_constraints(
-                                    param_env,
-                                    opaque_type_key,
-                                    decl.hidden_type.ty,
-                                    decl.hidden_type.span,
-                                );
-                                Ok(InferOk { value: (), obligations: vec![] })
-                            },
-                            || "opaque_type_map".to_string(),
-                        ),
-                    )
-                    .unwrap();
-                    let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
-                    trace!(
-                        "finalized opaque type {:?} to {:#?}",
-                        opaque_type_key,
-                        hidden_type.ty.kind()
-                    );
-                    if hidden_type.has_infer_types_or_consts() {
-                        infcx.tcx.sess.delay_span_bug(
-                            decl.hidden_type.span,
-                            &format!("could not resolve {:#?}", hidden_type.ty.kind()),
-                        );
-                        hidden_type.ty = infcx.tcx.ty_error();
-                    }
-
-                    (opaque_type_key, (hidden_type, decl.origin))
-                })
-                .collect()
+            cx.finalize_opaque_types()
         },
     );
 
@@ -2679,6 +2641,54 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.check_terminator(&body, block_data.terminator(), location);
             self.check_iscleanup(&body, block_data);
         }
+    }
+
+    /// Generates member constraints for the opaque types found so far.
+    /// Returns a map to their hidden types.
+    fn finalize_opaque_types(
+        &mut self,
+    ) -> VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)> {
+        let opaque_type_values =
+            self.infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+
+        opaque_type_values
+            .into_iter()
+            .map(|(opaque_type_key, decl)| {
+                let param_env = self.param_env;
+                self.fully_perform_op(
+                    Locations::All(self.body.span),
+                    ConstraintCategory::OpaqueType,
+                    CustomTypeOp::new(
+                        |infcx| {
+                            infcx.register_member_constraints(
+                                param_env,
+                                opaque_type_key,
+                                decl.hidden_type.ty,
+                                decl.hidden_type.span,
+                            );
+                            Ok(InferOk { value: (), obligations: vec![] })
+                        },
+                        || "opaque_type_map".to_string(),
+                    ),
+                )
+                .unwrap();
+                let mut hidden_type = self.infcx.resolve_vars_if_possible(decl.hidden_type);
+                trace!(
+                    "finalized opaque type {:?} to {:#?}",
+                    opaque_type_key,
+                    hidden_type.ty.kind()
+                );
+                if hidden_type.has_infer_types_or_consts() {
+                    self.infcx.tcx.sess.delay_span_bug(
+                        decl.hidden_type.span,
+                        &format!("could not resolve {:#?}", hidden_type.ty.kind()),
+                    );
+                    hidden_type.ty = self.infcx.tcx.ty_error();
+                }
+
+                (opaque_type_key, (hidden_type, decl.origin))
+            })
+            .collect()
     }
 }
 
