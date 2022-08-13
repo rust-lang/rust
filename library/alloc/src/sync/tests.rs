@@ -314,6 +314,10 @@ fn test_weak_count() {
     let w = Arc::downgrade(&a);
     assert!(Arc::strong_count(&a) == 1);
     assert!(Arc::weak_count(&a) == 1);
+    let r = Arc::as_weak(&a);
+    assert!(Arc::strong_count(&a) == 1);
+    assert!(Arc::weak_count(&a) == 1);
+    assert!(r.as_ptr() == Arc::as_ptr(&a));
     let x = w.clone();
     assert!(Arc::weak_count(&a) == 2);
     drop(w);
