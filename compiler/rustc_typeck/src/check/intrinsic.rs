@@ -69,6 +69,9 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         // to note that it's safe to call, since
         // safe extern fns are otherwise unprecedented.
         sym::abort
+        | sym::assert_inhabited
+        | sym::assert_zero_valid
+        | sym::assert_uninit_valid
         | sym::size_of
         | sym::min_align_of
         | sym::needs_drop
