@@ -936,8 +936,8 @@ impl usize {
 /// assert_eq!(num.classify(), FpCategory::Normal);
 /// assert_eq!(inf.classify(), FpCategory::Infinite);
 /// assert_eq!(zero.classify(), FpCategory::Zero);
-/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// assert_eq!(sub.classify(), FpCategory::Subnormal);
+/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
