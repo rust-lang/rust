@@ -211,6 +211,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+// robert-trait: ultimately provided by decoder.trait_impls
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
     let mut impls = TraitImpls::default();

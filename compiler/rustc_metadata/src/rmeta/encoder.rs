@@ -1813,11 +1813,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(self.tcx.traits_in_crate(LOCAL_CRATE).iter().map(|def_id| def_id.index))
     }
 
+    // robert-trait: serialize traits to meta vir HIR iteration
     /// Encodes an index, mapping each trait to its (local) implementations.
     fn encode_impls(&mut self) -> LazyArray<TraitImpls> {
         debug!("EncodeContext::encode_traits_and_impls()");
         empty_proc_macro!(self);
         let tcx = self.tcx;
+        /*
         let mut fx_hash_map: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxHashMap::default();
 
@@ -1837,8 +1839,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
         }
+        */
 
+        let fx_hash_map = self.tcx.impls_in_crate(LOCAL_CRATE).to_owned();
+
+        // let mut all_impls: Vec<(DefId, Vec<(DefId, Option<SimplifiedTypeGen<DefId>>)>)>
         let mut all_impls: Vec<_> = fx_hash_map.into_iter().collect();
+        //.map(|(trait_def_id, impls)| (trait_def_id, impls.iter().map(|(impl_def_, d)| (c.expect_local().local_def_index, d))));
 
         // Bring everything into deterministic order for hashing
         all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
@@ -1848,8 +1855,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
                 impls.sort_by_cached_key(|&(index, _)| {
-                    tcx.hir().def_path_hash(LocalDefId { local_def_index: index })
+                    tcx.hir().def_path_hash(LocalDefId {
+                        local_def_index: index.expect_local().local_def_index,
+                    })
                 });
+
+                let impls: Vec<_> = impls
+                    .iter()
+                    .map(|(def_id, ty)| (def_id.expect_local().local_def_index, *ty))
+                    .collect();
 
                 TraitImpls {
                     trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
@@ -2282,6 +2296,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
+        all_local_trait_impls: |tcx, ()| tcx.impls_in_crate(LOCAL_CRATE),
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
 
@@ -2293,10 +2308,48 @@ pub fn provide(providers: &mut Providers) {
             }
 
             // Bring everything into deterministic order.
-            traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            // traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            // This is not necessary, since the default order is source-code order.
+            // The source code is hashed into crate_hash, so if crate_hash is stable then it must be stable too.
+
             tcx.arena.alloc_slice(&traits)
         },
+        impls_in_crate: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
 
+            /*
+            let mut impls = Vec::new();
+
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
+                    impls.push(id.def_id.to_def_id());
+                }
+            }
+
+            tcx.arena.alloc_slice(&impls) // no need to sort, source-code order is fine.
+            */
+            let mut fx_hash_map: FxHashMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> =
+                FxHashMap::default();
+
+            for id in tcx.hir().items() {
+                if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
+                    if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
+                        let simplified_self_ty = fast_reject::simplify_type(
+                            tcx,
+                            trait_ref.self_ty(),
+                            TreatParams::AsInfer,
+                        );
+
+                        fx_hash_map
+                            .entry(trait_ref.def_id)
+                            .or_default()
+                            .push((id.def_id.to_def_id(), simplified_self_ty));
+                    }
+                }
+            }
+
+            tcx.arena.alloc(fx_hash_map)
+        },
         ..*providers
     }
 }

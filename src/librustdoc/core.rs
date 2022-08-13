@@ -142,6 +142,7 @@ impl<'tcx> DocContext<'tcx> {
         self.resolver_caches.all_traits = all_traits;
     }
 
+    // robert-trait: should this use a query?
     pub(crate) fn with_all_trait_impls(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
         let all_trait_impls = self.resolver_caches.all_trait_impls.take();
         f(self, all_trait_impls.as_ref().expect("`all_trait_impls` are already borrowed"));

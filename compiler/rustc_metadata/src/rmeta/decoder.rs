@@ -1248,6 +1248,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.traits.decode(self).map(move |index| self.local_def_id(index))
     }
 
+    // robert-trait: this implements trait_impls_in_crate_untracked
     /// Decodes all trait impls in the crate (for rustdoc).
     fn get_trait_impls(self) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + 'a {
         self.cdata.trait_impls.iter().flat_map(move |(&(trait_cnum_raw, trait_index), impls)| {
@@ -1259,6 +1260,25 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
             })
         })
+    }
+
+    fn get_trait_impl_map(self) -> FxHashMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> {
+        self.cdata
+            .trait_impls
+            .iter()
+            .map(|(&(trait_cnum_raw, trait_index), impls)| {
+                let krate = self.cnum_map[CrateNum::from_u32(trait_cnum_raw)];
+                let trait_def_id = DefId { krate, index: trait_index };
+
+                return (
+                    trait_def_id,
+                    impls
+                        .decode(self)
+                        .map(|(impl_index, ty)| (DefId { krate, index: impl_index }, ty))
+                        .collect(),
+                );
+            })
+            .collect()
     }
 
     fn get_all_incoherent_impls(self) -> impl Iterator<Item = DefId> + 'a {
@@ -1276,6 +1296,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    // robert-trait: ultimately uses decoder.trait_impls. this is for external crates, and is used in trait_impls_of, which iterates over external crates and calls this.
     fn get_implementations_of_trait(
         self,
         tcx: TyCtxt<'tcx>,

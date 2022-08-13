@@ -513,8 +513,10 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    // robert-trait: ultimately provided by resolver outputs.
     pub fn trait_impls(self, trait_did: DefId) -> &'hir [LocalDefId] {
         self.tcx.all_local_trait_impls(()).get(&trait_did).map_or(&[], |xs| &xs[..])
+        //self.tcx.impls_in_crate(LOCAL_CRATE).get(trait_did).map_or(&[], |xs| &xs[..])
     }
 
     /// Gets the attributes on the crate. This is preferable to

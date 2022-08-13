@@ -1191,11 +1191,13 @@ rustc_queries! {
         }
     }
 
+    // robert-trait: provided by the resolver outputs.
     /// Return all `impl` blocks in the current crate.
-    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
+    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxHashMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 
+    // robert-trait: this aggregates across all crates. Ultimately provided by decoder.trait_impls.
     /// Given a trait `trait_id`, return all known `impl` blocks.
     query trait_impls_of(trait_id: DefId) -> ty::trait_def::TraitImpls {
         storage(ArenaCacheSelector<'tcx>)
@@ -1525,6 +1527,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    // robert-trait: used for external crates. ultimately provided by decoder.trait_impls.
     /// Given a crate and a trait, look up all impls of that trait in the crate.
     /// Return `(impl_id, self_ty)`.
     query implementations_of_trait(_: (CrateNum, DefId)) -> &'tcx [(DefId, Option<SimplifiedType>)] {
@@ -1735,10 +1738,22 @@ rustc_queries! {
         desc { "fetching all foreign CrateNum instances" }
     }
 
+    // robert-trait
     /// A list of all traits in a crate, used by rustdoc and error reporting.
     /// NOTE: Not named just `traits` due to a naming conflict.
     query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all traits in a crate" }
+        separate_provide_extern
+    }
+
+    // robert-trait
+    //HashMap<DefId, Vec<(DefIndex, Option<SimplifiedTypeGen<DefId>>)> (from decoder.encode_impls)
+    // all_local_trait_impls: tcx FxIndexMap<DefId, Vec<LocalDefId>>
+    // FxIndexMap<DefId, Vec<LocalDefId>>,
+    /// A list of all impls in a crate.
+    //use rustc_middle::ty::fast_reject::SimplifiedTypeGen;
+    query impls_in_crate(_: CrateNum) -> &'tcx FxHashMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<DefId>>)>> {
+        desc { "fetching trait to impl map in a crate" }
         separate_provide_extern
     }
 
