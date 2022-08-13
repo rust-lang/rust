@@ -78,7 +78,7 @@ note: function defined here
   --> $DIR/issue-34264.rs:3:4
    |
 LL | fn bar(x, y: usize) {}
-   |    ^^^ -  --------
+   |    ^^^    --------
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/issue-34264.rs:10:5
