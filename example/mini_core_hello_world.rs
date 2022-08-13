@@ -321,7 +321,7 @@ fn main() {
     #[cfg(not(any(jit, windows)))]
     test_tls();
 
-    #[cfg(all(not(jit), target_arch = "x86_64", target_os = "linux"))]
+    #[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
     unsafe {
         global_asm_test();
     }
@@ -343,7 +343,7 @@ fn main() {
 }
 }
 
-#[cfg(all(not(jit), target_arch = "x86_64", target_os = "linux"))]
+#[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
 extern "C" {
     fn global_asm_test();
 }
@@ -353,6 +353,16 @@ global_asm! {
     "
     .global global_asm_test
     global_asm_test:
+    // comment that would normally be removed by LLVM
+    ret
+    "
+}
+
+#[cfg(all(not(jit), target_arch = "x86_64", target_os = "darwin"))]
+global_asm! {
+    "
+    .global _global_asm_test
+    _global_asm_test:
     // comment that would normally be removed by LLVM
     ret
     "
