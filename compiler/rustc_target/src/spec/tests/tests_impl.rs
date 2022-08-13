@@ -110,9 +110,9 @@ impl Target {
         }
 
         assert!(
-            (self.pre_link_objects_fallback.is_empty()
-                && self.post_link_objects_fallback.is_empty())
-                || self.crt_objects_fallback.is_some()
+            (self.pre_link_objects_self_contained.is_empty()
+                && self.post_link_objects_self_contained.is_empty())
+                || self.link_self_contained != LinkSelfContainedDefault::False
         );
 
         // If your target really needs to deviate from the rules below,
