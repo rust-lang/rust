@@ -2,4 +2,4 @@
 
 pub use std::marker::Send;
 
-// @!has foo/index.html 'Implementations'
+// @!hasraw foo/index.html 'Implementations'

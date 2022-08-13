@@ -59,7 +59,7 @@ pub struct MyStruct;
 
 // We check that associated items with default values aren't generated in the implementors list.
 impl MyTrait for (u8, u8) {
-    // @!has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-4"]'
+    // @!has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-4"]' ''
     type Assoc = bool;
     fn trait_function(&self) {}
 }

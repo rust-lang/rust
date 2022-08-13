@@ -10,7 +10,7 @@
 
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]' \
 //      '👎 Deprecated since 1.0.0: text'
-// @has - '<code>test</code>&nbsp;<a href="https://issue_url/32374">#32374</a>'
+// @hasraw - '<code>test</code>&nbsp;<a href="https://issue_url/32374">#32374</a>'
 // @matches issue_32374/struct.T.html '//*[@class="stab unstable"]' \
 //      '🔬 This is a nightly-only experimental API. \(test\s#32374\)$'
 /// Docs
