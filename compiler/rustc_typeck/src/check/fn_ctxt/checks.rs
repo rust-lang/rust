@@ -1756,25 +1756,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let hir::ExprKind::Call(path, _) = &call_expr.kind {
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &path.kind {
                 for error in errors {
-                    if let ty::PredicateKind::Trait(predicate) =
-                        error.obligation.predicate.kind().skip_binder()
+                    let self_ty = match error.obligation.predicate.kind().skip_binder() {
+                        ty::PredicateKind::Trait(predicate) => predicate.self_ty(),
+                        ty::PredicateKind::Projection(predicate) => {
+                            predicate.projection_ty.self_ty()
+                        }
+                        _ => continue,
+                    };
+                    // If any of the type arguments in this path segment caused the
+                    // `FulfillmentError`, point at its span (#61860).
+                    for arg in path
+                        .segments
+                        .iter()
+                        .filter_map(|seg| seg.args.as_ref())
+                        .flat_map(|a| a.args.iter())
                     {
-                        // If any of the type arguments in this path segment caused the
-                        // `FulfillmentError`, point at its span (#61860).
-                        for arg in path
-                            .segments
-                            .iter()
-                            .filter_map(|seg| seg.args.as_ref())
-                            .flat_map(|a| a.args.iter())
+                        if let hir::GenericArg::Type(hir_ty) = &arg
+                            && let Some(ty) =
+                                self.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
+                            && self.resolve_vars_if_possible(ty) == self_ty
                         {
-                            if let hir::GenericArg::Type(hir_ty) = &arg
-                                && let Some(ty) =
-                                    self.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
-                                && self.resolve_vars_if_possible(ty) == predicate.self_ty()
-                            {
-                                error.obligation.cause.span = hir_ty.span;
-                                break;
-                            }
+                            error.obligation.cause.span = hir_ty.span;
+                            break;
                         }
                     }
                 }
