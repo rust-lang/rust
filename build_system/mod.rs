@@ -4,6 +4,7 @@ use std::process;
 
 use self::utils::is_ci;
 
+mod abi_checker;
 mod build_backend;
 mod build_sysroot;
 mod config;
@@ -134,6 +135,15 @@ pub fn main() {
     match command {
         Command::Test => {
             tests::run_tests(
+                channel,
+                sysroot_kind,
+                &target_dir,
+                &cg_clif_build_dir,
+                &host_triple,
+                &target_triple,
+            );
+
+            abi_checker::run(
                 channel,
                 sysroot_kind,
                 &target_dir,
