@@ -116,4 +116,5 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zmir-opt-level=0",
     "--cfg=miri",
     "-Cdebug-assertions=on",
+    "-Zextra-const-ub-checks",
 ];
