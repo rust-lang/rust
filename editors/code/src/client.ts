@@ -111,6 +111,13 @@ export async function createClient(
                     if (!diagnostic.message) {
                         diagnostic.message = " ";
                     }
+                    if (diagnostic.relatedInformation) {
+                        for (const relatedInformation of diagnostic.relatedInformation) {
+                            if (!relatedInformation.message) {
+                                relatedInformation.message = " ";
+                            }
+                        }
+                    }
                 }
                 next(uri, diagnostics);
             },
