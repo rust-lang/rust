@@ -545,7 +545,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
             let can_coerce = self.can_coerce(arg_ty, coerced_ty);
             if !can_coerce {
-                return Compatibility::Incompatible(None);
+                return Compatibility::Incompatible(Some(ty::error::TypeError::Sorts(
+                    ty::error::ExpectedFound::new(true, coerced_ty, arg_ty),
+                )));
             }
 
             // Using probe here, since we don't want this subtyping to affect inference.
