@@ -327,29 +327,15 @@ impl GlobalState {
                     continue;
                 }
 
-                let url = file_id_to_url(&self.vfs.read().0, file_id);
-                let mut diagnostics =
+                let uri = file_id_to_url(&self.vfs.read().0, file_id);
+                let diagnostics =
                     self.diagnostics.diagnostics_for(file_id).cloned().collect::<Vec<_>>();
-                for d in &mut diagnostics {
-                    // https://github.com/rust-lang/rust-analyzer/issues/11404
-                    // FIXME: We should move this workaround into the client code
-                    if d.message.is_empty() {
-                        d.message = " ".to_string();
-                    }
-                    if let Some(rds) = d.related_information.as_mut() {
-                        for rd in rds {
-                            if rd.message.is_empty() {
-                                rd.message = " ".to_string();
-                            }
-                        }
-                    }
-                }
-                let version = from_proto::vfs_path(&url)
+                let version = from_proto::vfs_path(&uri)
                     .map(|path| self.mem_docs.get(&path).map(|it| it.version))
                     .unwrap_or_default();
 
                 self.send_notification::<lsp_types::notification::PublishDiagnostics>(
-                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version },
+                    lsp_types::PublishDiagnosticsParams { uri, diagnostics, version },
                 );
             }
         }

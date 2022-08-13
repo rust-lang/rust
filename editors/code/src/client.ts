@@ -105,6 +105,15 @@ export async function createClient(
         traceOutputChannel: traceOutputChannel(),
         outputChannel: outputChannel(),
         middleware: {
+            async handleDiagnostics(uri, diagnostics, next) {
+                // Workaround for https://github.com/microsoft/vscode/issues/155531
+                for (const diagnostic of diagnostics) {
+                    if (!diagnostic.message) {
+                        diagnostic.message = " ";
+                    }
+                }
+                next(uri, diagnostics);
+            },
             async provideHover(
                 document: vscode.TextDocument,
                 position: vscode.Position,
