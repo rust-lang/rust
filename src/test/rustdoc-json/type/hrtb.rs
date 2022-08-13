@@ -19,7 +19,7 @@ where
 // @is - "$.index[*][?(@.name=='dynfn')].inner.decl.inputs[0][1].inner.type.inner.lifetime" null
 // @count - "$.index[*][?(@.name=='dynfn')].inner.decl.inputs[0][1].inner.type.inner.traits[*]" 1
 // @is - "$.index[*][?(@.name=='dynfn')].inner.decl.inputs[0][1].inner.type.inner.traits[0].generic_params" '[{"kind": {"lifetime": {"outlives": []}},"name": "'\''a"},{"kind": {"lifetime": {"outlives": []}},"name": "'\''b"}]'
-// @is - "$.index[*][?(@.name=='dynfn')].inner.decl.inputs[0][1].inner.type.inner.traits[0].trait.inner.name" '"Fn"'
+// @is - "$.index[*][?(@.name=='dynfn')].inner.decl.inputs[0][1].inner.type.inner.traits[0].trait.name" '"Fn"'
 pub fn dynfn(f: &dyn for<'a, 'b> Fn(&'a i32, &'b i32)) {
     let zero = 0;
     f(&zero, &zero);

@@ -21,10 +21,10 @@ use std::fmt::Debug;
 // @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].generic_params" []
 // @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[1].generic_params" []
 // @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[2].generic_params" []
-// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].trait.inner.name" '"Fn"'
-// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[1].trait.inner.name" '"Send"'
-// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[2].trait.inner.name" '"Sync"'
-// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].trait.inner.args" '{"parenthesized": {"inputs": [],"output": {"inner": "i32","kind": "primitive"}}}'
+// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].trait.name" '"Fn"'
+// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[1].trait.name" '"Send"'
+// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[2].trait.name" '"Sync"'
+// @is    - "$.index[*][?(@.name=='SyncIntGen')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].trait.args" '{"parenthesized": {"inputs": [],"output": {"inner": "i32","kind": "primitive"}}}'
 pub type SyncIntGen = Box<dyn Fn() -> i32 + Send + Sync + 'static>;
 
 // @is - "$.index[*][?(@.name=='RefFn')].kind" \"typedef\"
@@ -36,14 +36,13 @@ pub type SyncIntGen = Box<dyn Fn() -> i32 + Send + Sync + 'static>;
 // @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.lifetime" null
 // @count - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[*]" 1
 // @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].generic_params" '[{"kind": {"lifetime": {"outlives": []}},"name": "'\''b"}]'
-// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.kind" '"resolved_path"'
-// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.inner.name" '"Fn"'
-// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.inner.args.parenthesized.inputs[0].kind" '"borrowed_ref"'
-// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.inner.args.parenthesized.inputs[0].inner.lifetime" "\"'b\""
-// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.inner.args.parenthesized.output.kind" '"borrowed_ref"'
-// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.inner.args.parenthesized.output.inner.lifetime" "\"'b\""
+// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.name" '"Fn"'
+// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.args.parenthesized.inputs[0].kind" '"borrowed_ref"'
+// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.args.parenthesized.inputs[0].inner.lifetime" "\"'b\""
+// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.args.parenthesized.output.kind" '"borrowed_ref"'
+// @is - "$.index[*][?(@.name=='RefFn')].inner.type.inner.type.inner.traits[0].trait.args.parenthesized.output.inner.lifetime" "\"'b\""
 pub type RefFn<'a> = &'a dyn for<'b> Fn(&'b i32) -> &'b i32;
 
-// @is    - "$.index[*][?(@.name=='WeirdOrder')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].trait.inner.name" '"Send"'
-// @is    - "$.index[*][?(@.name=='WeirdOrder')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[1].trait.inner.name" '"Debug"'
+// @is    - "$.index[*][?(@.name=='WeirdOrder')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[0].trait.name" '"Send"'
+// @is    - "$.index[*][?(@.name=='WeirdOrder')].inner.type.inner.args.angle_bracketed.args[0].type.inner.traits[1].trait.name" '"Debug"'
 pub type WeirdOrder = Box<dyn Send + Debug>;
