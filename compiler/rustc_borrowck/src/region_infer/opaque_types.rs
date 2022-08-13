@@ -3,6 +3,7 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
+use rustc_infer::infer::opaque_types::OpaqueTypeMap;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
@@ -62,12 +63,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+        opaque_ty_decls: OpaqueTypeMap<'tcx>,
     ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
-        for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
+        for (opaque_type_key, decl) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
-            debug!(?concrete_type, ?substs);
+            debug!(?decl.hidden_type, ?substs);
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
             let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
@@ -90,7 +91,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     None => {
                         subst_regions.push(vid);
                         infcx.tcx.sess.delay_span_bug(
-                            concrete_type.span,
+                            decl.hidden_type.span,
                             "opaque type with non-universal region substs",
                         );
                         infcx.tcx.lifetimes.re_static
@@ -102,7 +103,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             subst_regions.dedup();
 
             let universal_concrete_type =
-                infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
+                infcx.tcx.fold_regions(decl.hidden_type, |region, _| match *region {
                     ty::ReVar(vid) => subst_regions
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
@@ -118,7 +119,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let ty = infcx.infer_opaque_definition_from_instantiation(
                 opaque_type_key,
                 universal_concrete_type,
-                origin,
+                decl.origin,
             );
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
@@ -128,7 +129,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 if prev.ty != ty {
                     if !ty.references_error() {
                         prev.report_mismatch(
-                            &OpaqueHiddenType { ty, span: concrete_type.span },
+                            &OpaqueHiddenType { ty, span: decl.hidden_type.span },
                             infcx.tcx,
                         );
                     }
@@ -136,11 +137,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
                 // Pick a better span if there is one.
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
-                prev.span = prev.span.substitute_dummy(concrete_type.span);
+                prev.span = prev.span.substitute_dummy(decl.hidden_type.span);
             } else {
                 result.insert(
                     opaque_type_key.def_id,
-                    OpaqueHiddenType { ty, span: concrete_type.span },
+                    OpaqueHiddenType { ty, span: decl.hidden_type.span },
                 );
             }
         }
