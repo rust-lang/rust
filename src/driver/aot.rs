@@ -7,12 +7,13 @@ use std::sync::Arc;
 
 use rustc_codegen_ssa::back::metadata::create_compressed_metadata_file;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{DebugInfo, OutputType};
+use rustc_session::config::{DebugInfo, OutputFilenames, OutputType};
 use rustc_session::Session;
 
 use cranelift_object::{ObjectBuilder, ObjectModule};
@@ -115,7 +116,8 @@ fn make_module(sess: &Session, backend_config: &BackendConfig, name: String) -> 
 }
 
 fn emit_cgu(
-    tcx: TyCtxt<'_>,
+    output_filenames: &OutputFilenames,
+    prof: &SelfProfilerRef,
     name: String,
     module: ObjectModule,
     debug: Option<DebugContext<'_>>,
@@ -130,7 +132,8 @@ fn emit_cgu(
 
     unwind_context.emit(&mut product);
 
-    let module_regular = emit_module(tcx, product.object, ModuleKind::Regular, name.clone())?;
+    let module_regular =
+        emit_module(output_filenames, prof, product.object, ModuleKind::Regular, name.clone())?;
 
     Ok(ModuleCodegenResult {
         module_regular,
@@ -146,12 +149,13 @@ fn emit_cgu(
 }
 
 fn emit_module(
-    tcx: TyCtxt<'_>,
+    output_filenames: &OutputFilenames,
+    prof: &SelfProfilerRef,
     object: cranelift_object::object::write::Object<'_>,
     kind: ModuleKind,
     name: String,
 ) -> Result<CompiledModule, String> {
-    let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
+    let tmp_file = output_filenames.temp_path(OutputType::Object, Some(&name));
     let mut file = match File::create(&tmp_file) {
         Ok(file) => file,
         Err(err) => return Err(format!("error creating object file: {}", err)),
@@ -161,7 +165,7 @@ fn emit_module(
         return Err(format!("error writing object file: {}", err));
     }
 
-    tcx.sess.prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
+    prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
 
     Ok(CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None })
 }
@@ -288,7 +292,8 @@ fn module_codegen(
     let unwind_context = cx.unwind_context;
     tcx.sess.time("write object file", || {
         emit_cgu(
-            tcx,
+            &global_asm_config.output_filenames,
+            &tcx.sess.prof,
             cgu.name().as_str().to_string(),
             module,
             debug_context,
@@ -361,7 +366,13 @@ pub(crate) fn run_aot(
         let mut product = allocator_module.finish();
         allocator_unwind_context.emit(&mut product);
 
-        match emit_module(tcx, product.object, ModuleKind::Allocator, "allocator_shim".to_owned()) {
+        match emit_module(
+            tcx.output_filenames(()),
+            &tcx.sess.prof,
+            product.object,
+            ModuleKind::Allocator,
+            "allocator_shim".to_owned(),
+        ) {
             Ok(allocator_module) => Some(allocator_module),
             Err(err) => tcx.sess.fatal(err),
         }

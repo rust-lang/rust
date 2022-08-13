@@ -36,7 +36,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
 pub(crate) struct GlobalAsmConfig {
     asm_enabled: bool,
     assembler: PathBuf,
-    output_filenames: Arc<OutputFilenames>,
+    pub(crate) output_filenames: Arc<OutputFilenames>,
 }
 
 impl GlobalAsmConfig {
