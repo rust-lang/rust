@@ -950,7 +950,7 @@ impl<T: ?Sized> Rc<T> {
     /// let weak_five: &Weak<i32> = Rc::as_weak(five);
     /// ```
     #[inline]
-    #[unstable(feature = "rc_as_weak", issue = "none")]
+    #[unstable(feature = "rc_as_weak", issue = "100472")]
     #[must_use]
     pub const fn as_weak<'a>(this: &'a Self) -> &'a Weak<T> {
         unsafe { mem::transmute::<&'a Rc<T>, &'a Weak<T>>(this) }

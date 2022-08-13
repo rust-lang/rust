@@ -977,7 +977,7 @@ impl<T: ?Sized> Arc<T> {
     /// let weak_five: &Weak<i32> = Arc::as_weak(five);
     /// ```
     #[inline]
-    #[unstable(feature = "rc_as_weak", issue = "none")]
+    #[unstable(feature = "rc_as_weak", issue = "100472")]
     #[must_use]
     pub const fn as_weak<'a>(this: &'a Self) -> &'a Weak<T> {
         unsafe { mem::transmute::<&'a Arc<T>, &'a Weak<T>>(this) }
