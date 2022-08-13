@@ -33,7 +33,7 @@ impl<HCX> HashStable<HCX> for ModuleCodegenResult {
 }
 
 pub(crate) struct OngoingCodegen {
-    modules: Vec<ModuleCodegenResult>,
+    modules: Vec<Result<ModuleCodegenResult, String>>,
     allocator_module: Option<CompiledModule>,
     metadata_module: Option<CompiledModule>,
     metadata: EncodedMetadata,
@@ -50,6 +50,10 @@ impl OngoingCodegen {
         let mut modules = vec![];
 
         for module_codegen_result in self.modules {
+            let module_codegen_result = match module_codegen_result {
+                Ok(module_codegen_result) => module_codegen_result,
+                Err(err) => sess.fatal(&err),
+            };
             let ModuleCodegenResult { module_regular, module_global_asm, existing_work_product } =
                 module_codegen_result;
 
@@ -117,7 +121,7 @@ fn emit_cgu(
     debug: Option<DebugContext<'_>>,
     unwind_context: UnwindContext,
     global_asm_object_file: Option<PathBuf>,
-) -> ModuleCodegenResult {
+) -> Result<ModuleCodegenResult, String> {
     let mut product = module.finish();
 
     if let Some(mut debug) = debug {
@@ -126,9 +130,9 @@ fn emit_cgu(
 
     unwind_context.emit(&mut product);
 
-    let module_regular = emit_module(tcx, product.object, ModuleKind::Regular, name.clone());
+    let module_regular = emit_module(tcx, product.object, ModuleKind::Regular, name.clone())?;
 
-    ModuleCodegenResult {
+    Ok(ModuleCodegenResult {
         module_regular,
         module_global_asm: global_asm_object_file.map(|global_asm_object_file| CompiledModule {
             name: format!("{name}.asm"),
@@ -138,7 +142,7 @@ fn emit_cgu(
             bytecode: None,
         }),
         existing_work_product: None,
-    }
+    })
 }
 
 fn emit_module(
@@ -146,23 +150,26 @@ fn emit_module(
     object: cranelift_object::object::write::Object<'_>,
     kind: ModuleKind,
     name: String,
-) -> CompiledModule {
+) -> Result<CompiledModule, String> {
     let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
     let mut file = match File::create(&tmp_file) {
         Ok(file) => file,
-        Err(err) => tcx.sess.fatal(&format!("error creating object file: {}", err)),
+        Err(err) => return Err(format!("error creating object file: {}", err)),
     };
 
     if let Err(err) = object.write_stream(&mut file) {
-        tcx.sess.fatal(&format!("error writing object file: {}", err));
+        return Err(format!("error writing object file: {}", err));
     }
 
     tcx.sess.prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
 
-    CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None }
+    Ok(CompiledModule { name, kind, object: Some(tmp_file), dwarf_object: None, bytecode: None })
 }
 
-fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCodegenResult {
+fn reuse_workproduct_for_cgu(
+    tcx: TyCtxt<'_>,
+    cgu: &CodegenUnit<'_>,
+) -> Result<ModuleCodegenResult, String> {
     let work_product = cgu.previous_work_product(tcx);
     let obj_out_regular =
         tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
@@ -172,7 +179,7 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
     );
 
     if let Err(err) = rustc_fs_util::link_or_copy(&source_file_regular, &obj_out_regular) {
-        tcx.sess.err(&format!(
+        return Err(format!(
             "unable to copy {} to {}: {}",
             source_file_regular.display(),
             obj_out_regular.display(),
@@ -185,7 +192,7 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
         let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, asm_o);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
         {
-            tcx.sess.err(&format!(
+            return Err(format!(
                 "unable to copy {} to {}: {}",
                 source_file_regular.display(),
                 obj_out_regular.display(),
@@ -197,7 +204,7 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
         false
     };
 
-    ModuleCodegenResult {
+    Ok(ModuleCodegenResult {
         module_regular: CompiledModule {
             name: cgu.name().to_string(),
             kind: ModuleKind::Regular,
@@ -217,7 +224,7 @@ fn reuse_workproduct_for_cgu(tcx: TyCtxt<'_>, cgu: &CodegenUnit<'_>) -> ModuleCo
             None
         },
         existing_work_product: Some((cgu.work_product_id(), work_product)),
-    }
+    })
 }
 
 fn module_codegen(
@@ -227,7 +234,7 @@ fn module_codegen(
         Arc<GlobalAsmConfig>,
         rustc_span::Symbol,
     ),
-) -> ModuleCodegenResult {
+) -> Result<ModuleCodegenResult, String> {
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
@@ -279,7 +286,7 @@ fn module_codegen(
 
     let debug_context = cx.debug_context;
     let unwind_context = cx.unwind_context;
-    let codegen_result = tcx.sess.time("write object file", || {
+    tcx.sess.time("write object file", || {
         emit_cgu(
             tcx,
             cgu.name().as_str().to_string(),
@@ -288,9 +295,7 @@ fn module_codegen(
             unwind_context,
             global_asm_object_file,
         )
-    });
-
-    codegen_result
+    })
 }
 
 pub(crate) fn run_aot(
@@ -356,7 +361,10 @@ pub(crate) fn run_aot(
         let mut product = allocator_module.finish();
         allocator_unwind_context.emit(&mut product);
 
-        Some(emit_module(tcx, product.object, ModuleKind::Allocator, "allocator_shim".to_owned()))
+        match emit_module(tcx, product.object, ModuleKind::Allocator, "allocator_shim".to_owned()) {
+            Ok(allocator_module) => Some(allocator_module),
+            Err(err) => tcx.sess.fatal(err),
+        }
     } else {
         None
     };
