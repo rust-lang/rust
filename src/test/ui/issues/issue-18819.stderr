@@ -2,11 +2,13 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/issue-18819.rs:16:5
    |
 LL |     print_x(X);
-   |     ^^^^^^^---
-   |            ||
-   |            |expected reference, found struct `X`
-   |            an argument of type `&str` is missing
+   |     ^^^^^^^--- an argument of type `&str` is missing
    |
+note: expected reference, found struct `X`
+  --> $DIR/issue-18819.rs:16:13
+   |
+LL |     print_x(X);
+   |             ^
    = note: expected reference `&dyn Foo<Item = bool>`
                  found struct `X`
 note: function defined here

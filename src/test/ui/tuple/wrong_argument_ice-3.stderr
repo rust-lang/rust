@@ -2,10 +2,13 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/wrong_argument_ice-3.rs:9:16
    |
 LL |         groups.push(new_group, vec![process]);
-   |                ^^^^ ---------  ------------- argument of type `Vec<&Process>` unexpected
-   |                     |
-   |                     expected tuple, found struct `Vec`
+   |                ^^^^            ------------- argument of type `Vec<&Process>` unexpected
    |
+note: expected tuple, found struct `Vec`
+  --> $DIR/wrong_argument_ice-3.rs:9:21
+   |
+LL |         groups.push(new_group, vec![process]);
+   |                     ^^^^^^^^^
    = note: expected tuple `(Vec<String>, Vec<Process>)`
              found struct `Vec<String>`
 note: associated function defined here
