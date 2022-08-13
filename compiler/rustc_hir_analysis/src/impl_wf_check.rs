@@ -11,15 +11,13 @@
 use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::{Span, Symbol};
-
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 mod min_specialization;
 
@@ -59,7 +57,6 @@ fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     for id in module.items() {
         if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
             enforce_impl_params_are_constrained(tcx, id.def_id.def_id);
-            enforce_impl_items_are_distinct(tcx, id.def_id.def_id);
             if min_specialization {
                 check_min_specialization(tcx, id.def_id.def_id);
             }
@@ -193,39 +190,4 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol
         );
     }
     err.emit();
-}
-
-/// Enforce that we do not have two items in an impl with the same name.
-fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
-    if tcx.impl_trait_ref(impl_def_id).is_some() {
-        return;
-    }
-    let mut seen_type_items = FxHashMap::default();
-    let mut seen_value_items = FxHashMap::default();
-    for &impl_item_ref in tcx.associated_item_def_ids(impl_def_id) {
-        let impl_item = tcx.associated_item(impl_item_ref);
-        let seen_items = match impl_item.kind {
-            ty::AssocKind::Type => &mut seen_type_items,
-            _ => &mut seen_value_items,
-        };
-        let span = tcx.def_span(impl_item_ref);
-        let ident = impl_item.ident(tcx);
-        match seen_items.entry(ident.normalize_to_macros_2_0()) {
-            Occupied(entry) => {
-                let mut err = struct_span_err!(
-                    tcx.sess,
-                    span,
-                    E0201,
-                    "duplicate definitions with name `{}`:",
-                    ident
-                );
-                err.span_label(*entry.get(), format!("previous definition of `{}` here", ident));
-                err.span_label(span, "duplicate definition");
-                err.emit();
-            }
-            Vacant(entry) => {
-                entry.insert(span);
-            }
-        }
-    }
 }
