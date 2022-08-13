@@ -1,8 +1,10 @@
 error[E0271]: type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
-  --> $DIR/issue-74684-2.rs:23:5
+  --> $DIR/issue-74684-2.rs:23:9
    |
 LL |     bug(Box::new(x));
-   |     ^^^ type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
+   |     --- ^^^^^^^^^^^ type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: expected this to be `[u8]`
   --> $DIR/issue-74684-2.rs:10:18

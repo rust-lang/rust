@@ -14,10 +14,12 @@ LL | fn foo2<I: Foo<A = Bar>>(x: I) {
    |               +++++++++
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
-  --> $DIR/associated-types-eq-3.rs:38:5
+  --> $DIR/associated-types-eq-3.rs:38:10
    |
 LL |     foo1(a);
-   |     ^^^^ type mismatch resolving `<isize as Foo>::A == Bar`
+   |     ---- ^ type mismatch resolving `<isize as Foo>::A == Bar`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: expected this to be `Bar`
   --> $DIR/associated-types-eq-3.rs:12:14
@@ -34,7 +36,9 @@ error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:40:9
    |
 LL |     baz(&a);
-   |         ^^ type mismatch resolving `<isize as Foo>::A == Bar`
+   |     --- ^^ type mismatch resolving `<isize as Foo>::A == Bar`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: expected this to be `Bar`
   --> $DIR/associated-types-eq-3.rs:12:14

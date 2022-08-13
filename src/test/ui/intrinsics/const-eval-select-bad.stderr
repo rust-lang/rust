@@ -52,10 +52,12 @@ LL |     G: FnOnce<ARG, Output = RET> + ~const Destruct,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0271]: expected `fn(i32) -> bool {bar}` to be a fn item that returns `i32`, but it returns `bool`
-  --> $DIR/const-eval-select-bad.rs:29:5
+  --> $DIR/const-eval-select-bad.rs:29:34
    |
 LL |     const_eval_select((1,), foo, bar);
-   |     ^^^^^^^^^^^^^^^^^ expected `i32`, found `bool`
+   |     -----------------            ^^^ expected `i32`, found `bool`
+   |     |
+   |     required by a bound introduced by this call
    |
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL

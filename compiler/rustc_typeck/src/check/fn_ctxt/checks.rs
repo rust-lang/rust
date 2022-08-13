@@ -1660,12 +1660,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::ImplDerivedObligation(code) => {
                         code.derived.parent_trait_pred.self_ty().skip_binder().into()
                     }
-                    _ if let ty::PredicateKind::Trait(predicate) =
-                        error.obligation.predicate.kind().skip_binder() =>
-                    {
-                        predicate.self_ty().into()
-                    }
-                    _ => continue,
+                    _ => match error.obligation.predicate.kind().skip_binder() {
+                        ty::PredicateKind::Trait(predicate) => predicate.self_ty().into(),
+                        ty::PredicateKind::Projection(predicate) => {
+                            predicate.projection_ty.self_ty().into()
+                        }
+                        _ => continue,
+                    },
                 };
             let self_ = self.resolve_vars_if_possible(self_);
             let ty_matches_self = |ty: Ty<'tcx>| ty.walk().any(|arg| arg == self_);
