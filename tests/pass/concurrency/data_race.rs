@@ -1,5 +1,5 @@
 //@ignore-target-windows: Concurrency on Windows is not supported yet.
-//@compile-flags: -Zmiri-disable-weak-memory-emulation
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
 
 use std::sync::atomic::{fence, AtomicUsize, Ordering};
 use std::thread::spawn;
@@ -10,9 +10,9 @@ struct EvilSend<T>(pub T);
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
-static SYNC: AtomicUsize = AtomicUsize::new(0);
-
 fn test_fence_sync() {
+    static SYNC: AtomicUsize = AtomicUsize::new(0);
+
     let mut var = 0u32;
     let ptr = &mut var as *mut u32;
     let evil_ptr = EvilSend(ptr);
@@ -28,7 +28,7 @@ fn test_fence_sync() {
             fence(Ordering::Acquire);
             unsafe { *evil_ptr.0 }
         } else {
-            0
+            panic!(); // relies on thread 2 going last
         }
     });
 
@@ -56,6 +56,8 @@ fn test_multiple_reads() {
 }
 
 pub fn test_rmw_no_block() {
+    static SYNC: AtomicUsize = AtomicUsize::new(0);
+
     let mut a = 0u32;
     let b = &mut a as *mut u32;
     let c = EvilSend(b);
@@ -77,11 +79,13 @@ pub fn test_rmw_no_block() {
         j1.join().unwrap();
         j2.join().unwrap();
         let v = j3.join().unwrap();
-        assert!(v == 1 || v == 2);
+        assert!(v == 1 || v == 2); // relies on thread 3 going last
     }
 }
 
 pub fn test_simple_release() {
+    static SYNC: AtomicUsize = AtomicUsize::new(0);
+
     let mut a = 0u32;
     let b = &mut a as *mut u32;
     let c = EvilSend(b);
@@ -95,7 +99,7 @@ pub fn test_simple_release() {
         let j2 = spawn(move || if SYNC.load(Ordering::Acquire) == 1 { *c.0 } else { 0 });
 
         j1.join().unwrap();
-        assert_eq!(j2.join().unwrap(), 1);
+        assert_eq!(j2.join().unwrap(), 1); // relies on thread 2 going last
     }
 }
 
