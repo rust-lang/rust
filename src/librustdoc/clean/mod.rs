@@ -1322,14 +1322,17 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let trait_def = cx.tcx.associated_item(p.res.def_id()).container_id(cx.tcx);
             let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
-                segments: trait_segments.iter().map(|x| x.clean(cx)).collect(),
+                segments: trait_segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
             };
             register_res(cx, trait_.res);
             let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
             Type::QPath {
-                assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
+                assoc: Box::new(clean_path_segment(
+                    p.segments.last().expect("segments were empty"),
+                    cx,
+                )),
                 should_show_cast,
                 self_type: Box::new(self_type),
                 trait_,
@@ -1349,7 +1352,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let self_type = clean_ty(qself, cx);
             let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
             Type::QPath {
-                assoc: Box::new(segment.clean(cx)),
+                assoc: Box::new(clean_path_segment(segment, cx)),
                 should_show_cast,
                 self_type: Box::new(self_type),
                 trait_,
@@ -1507,7 +1510,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                 if !lifetime.is_elided() { Some(clean_lifetime(*lifetime, cx)) } else { None };
             DynTrait(bounds, lifetime)
         }
-        TyKind::BareFn(barefn) => BareFunction(Box::new(barefn.clean(cx))),
+        TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer | TyKind::Err => Infer,
         TyKind::Typeof(..) => panic!("unimplemented type {:?}", ty.kind),
@@ -1823,7 +1826,10 @@ fn clean_variant_data<'tcx>(
 }
 
 fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
-    Path { res: path.res, segments: path.segments.iter().map(|x| x.clean(cx)).collect() }
+    Path {
+        res: path.res,
+        segments: path.segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
+    }
 }
 
 fn clean_generic_args<'tcx>(
@@ -1861,28 +1867,30 @@ fn clean_generic_args<'tcx>(
     }
 }
 
-impl<'tcx> Clean<'tcx, PathSegment> for hir::PathSegment<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> PathSegment {
-        PathSegment { name: self.ident.name, args: clean_generic_args(self.args(), cx) }
-    }
+fn clean_path_segment<'tcx>(
+    path: &hir::PathSegment<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> PathSegment {
+    PathSegment { name: path.ident.name, args: clean_generic_args(path.args(), cx) }
 }
 
-impl<'tcx> Clean<'tcx, BareFunctionDecl> for hir::BareFnTy<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> BareFunctionDecl {
-        let (generic_params, decl) = enter_impl_trait(cx, |cx| {
-            // NOTE: generics must be cleaned before args
-            let generic_params = self
-                .generic_params
-                .iter()
-                .filter(|p| !is_elided_lifetime(p))
-                .map(|x| clean_generic_param(cx, None, x))
-                .collect();
-            let args = clean_args_from_types_and_names(cx, self.decl.inputs, self.param_names);
-            let decl = clean_fn_decl_with_args(cx, self.decl, args);
-            (generic_params, decl)
-        });
-        BareFunctionDecl { unsafety: self.unsafety, abi: self.abi, decl, generic_params }
-    }
+fn clean_bare_fn_ty<'tcx>(
+    bare_fn: &hir::BareFnTy<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> BareFunctionDecl {
+    let (generic_params, decl) = enter_impl_trait(cx, |cx| {
+        // NOTE: generics must be cleaned before args
+        let generic_params = bare_fn
+            .generic_params
+            .iter()
+            .filter(|p| !is_elided_lifetime(p))
+            .map(|x| clean_generic_param(cx, None, x))
+            .collect();
+        let args = clean_args_from_types_and_names(cx, bare_fn.decl.inputs, bare_fn.param_names);
+        let decl = clean_fn_decl_with_args(cx, bare_fn.decl, args);
+        (generic_params, decl)
+    });
+    BareFunctionDecl { unsafety: bare_fn.unsafety, abi: bare_fn.abi, decl, generic_params }
 }
 
 fn clean_maybe_renamed_item<'tcx>(
