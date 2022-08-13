@@ -26,6 +26,7 @@ use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -373,6 +374,9 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
+
+    let mut seen = FxHashSet::default();
+    predicates.retain(|&p| seen.insert(p));
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
