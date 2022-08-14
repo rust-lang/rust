@@ -2,10 +2,13 @@ error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple-errors.rs:6:34
    |
 LL |     let _: Option<(i32, bool)> = Some(1, 2);
-   |                                  ^^^^ -  - argument of type `{integer}` unexpected
-   |                                       |
-   |                                       expected tuple, found integer
+   |                                  ^^^^    - argument of type `{integer}` unexpected
    |
+note: expected tuple, found integer
+  --> $DIR/args-instead-of-tuple-errors.rs:6:39
+   |
+LL |     let _: Option<(i32, bool)> = Some(1, 2);
+   |                                       ^
    = note: expected tuple `(i32, bool)`
                found type `{integer}`
 note: tuple variant defined here
@@ -22,10 +25,13 @@ error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple-errors.rs:8:5
    |
 LL |     int_bool(1, 2);
-   |     ^^^^^^^^ -  - argument of type `{integer}` unexpected
-   |              |
-   |              expected tuple, found integer
+   |     ^^^^^^^^    - argument of type `{integer}` unexpected
    |
+note: expected tuple, found integer
+  --> $DIR/args-instead-of-tuple-errors.rs:8:14
+   |
+LL |     int_bool(1, 2);
+   |              ^
    = note: expected tuple `(i32, bool)`
                found type `{integer}`
 note: function defined here

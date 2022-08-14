@@ -1424,7 +1424,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// E0271, like `src/test/ui/issues/issue-39970.stderr`.
     #[tracing::instrument(
         level = "debug",
-        skip(self, diag, secondary_span, swap_secondary_and_primary, force_label)
+        skip(self, diag, secondary_span, swap_secondary_and_primary, prefer_label)
     )]
     pub fn note_type_err(
         &self,
@@ -1434,7 +1434,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
         swap_secondary_and_primary: bool,
-        force_label: bool,
+        prefer_label: bool,
     ) {
         let span = cause.span();
 
@@ -1612,7 +1612,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
                 let mut label_or_note = |span: Span, msg: &str| {
-                    if force_label || &[span] == diag.span.primary_spans() {
+                    if (prefer_label && is_simple_error) || &[span] == diag.span.primary_spans() {
                         diag.span_label(span, msg);
                     } else {
                         diag.span_note(span, msg);
