@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 
-# See x.sh for why these scripts exist.
+# See ./x for why these scripts exist.
 
 $xpy = Join-Path $PSScriptRoot x.py
 # Start-Process for some reason splits arguments on spaces. (Isn't powershell supposed to be simpler than bash?)

@@ -80,7 +80,7 @@ TESTS_IN_MINGW_2 := \
 	src/test/ui
 
 ci-mingw-subset-1:
-	$(Q)$(CFG_SRC_DIR)/x.sh test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
+	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)
 ci-mingw-subset-2:
 	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2)
 
