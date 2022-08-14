@@ -80,6 +80,7 @@ pub struct Flags {
     pub llvm_profile_generate: bool,
 }
 
+#[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub enum Subcommand {
     Build {
