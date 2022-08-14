@@ -603,6 +603,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 #[must_use]
 #[inline]
 #[unstable(feature = "strict_provenance", issue = "95228")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn from_exposed_addr<T>(addr: usize) -> *const T
 where
     T: Sized,
@@ -639,6 +640,7 @@ where
 #[must_use]
 #[inline]
 #[unstable(feature = "strict_provenance", issue = "95228")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
 where
     T: Sized,

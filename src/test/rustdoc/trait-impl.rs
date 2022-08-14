@@ -40,7 +40,7 @@ impl Trait for Struct {
     fn c() {}
 
     // @has - '//*[@id="method.d"]/../../div[@class="docblock"]/p' 'Escaped formatting a*b*c* works'
-    // @!has - '//*[@id="method.d"]/../../div[@class="docblock"]/p/em'
+    // @!has - '//*[@id="method.d"]/../../div[@class="docblock"]/p/em' ''
     fn d() {}
 
     // @has - '//*[@id="impl-Trait-for-Struct"]/h3//a/@href' 'trait.Trait.html'

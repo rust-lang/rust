@@ -41,15 +41,15 @@ There are a number of supported commands:
   `PATH` is relative to the output directory. It can be given as `-`
   which repeats the most recently used `PATH`.
 
-* `@has PATH PATTERN` and `@matches PATH PATTERN` checks for
-  the occurrence of the given pattern `PATTERN` in the specified file.
+* `@hasraw PATH PATTERN` and `@matchesraw PATH PATTERN` checks
+  for the occurrence of the given pattern `PATTERN` in the specified file.
   Only one occurrence of the pattern is enough.
 
-  For `@has`, `PATTERN` is a whitespace-normalized (every consecutive
+  For `@hasraw`, `PATTERN` is a whitespace-normalized (every consecutive
   whitespace being replaced by one single space character) string.
   The entire file is also whitespace-normalized including newlines.
 
-  For `@matches`, `PATTERN` is a Python-supported regular expression.
+  For `@matchesraw`, `PATTERN` is a Python-supported regular expression.
   The file remains intact but the regexp is matched without the `MULTILINE`
   and `IGNORECASE` options. You can still use a prefix `(?m)` or `(?i)`
   to override them, and `\A` and `\Z` for definitely matching
@@ -542,19 +542,23 @@ ERR_COUNT = 0
 def check_command(c, cache):
     try:
         cerr = ""
-        if c.cmd == 'has' or c.cmd == 'matches':  # string test
-            regexp = (c.cmd == 'matches')
-            if len(c.args) == 1 and not regexp:  # @has <path> = file existence
+        if c.cmd in ['has', 'hasraw', 'matches', 'matchesraw']:  # string test
+            regexp = c.cmd.startswith('matches')
+
+            # @has <path> = file existence
+            if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
                 try:
                     cache.get_file(c.args[0])
                     ret = True
                 except FailedCheck as err:
                     cerr = str(err)
                     ret = False
-            elif len(c.args) == 2:  # @has/matches <path> <pat> = string test
+            # @hasraw/matchesraw <path> <pat> = string test
+            elif len(c.args) == 2 and 'raw' in c.cmd:
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
-            elif len(c.args) == 3:  # @has/matches <path> <pat> <match> = XML tree test
+            # @has/matches <path> <pat> <match> = XML tree test
+            elif len(c.args) == 3 and 'raw' not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:

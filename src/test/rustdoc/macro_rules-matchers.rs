@@ -7,27 +7,27 @@
 // @has - '//span[@class="macro"]' 'macro_rules!'
 // @has - '//span[@class="ident"]' 'todo'
 
-// @has - '{ () =&gt; { ... }; ($('
+// @hasraw - '{ () =&gt; { ... }; ($('
 // @has - '//span[@class="macro-nonterminal"]' '$'
 // @has - '//span[@class="macro-nonterminal"]' 'arg'
-// @has - ':'
+// @hasraw - ':'
 // @has - '//span[@class="ident"]' 'tt'
-// @has - ')+'
-// @has - ') =&gt; { ... }; }'
+// @hasraw - ')+'
+// @hasraw - ') =&gt; { ... }; }'
 pub use std::todo;
 
 mod mod1 {
     // @has 'foo/macro.macro1.html'
-    // @has - 'macro_rules!'
-    // @has - 'macro1'
-    // @has - '{ () =&gt; { ... }; ($('
+    // @hasraw - 'macro_rules!'
+    // @hasraw - 'macro1'
+    // @hasraw - '{ () =&gt; { ... }; ($('
     // @has - '//span[@class="macro-nonterminal"]' '$'
     // @has - '//span[@class="macro-nonterminal"]' 'arg'
-    // @has - ':'
-    // @has - 'expr'
-    // @has - '),'
-    // @has - '+'
-    // @has - ') =&gt; { ... }; }'
+    // @hasraw - ':'
+    // @hasraw - 'expr'
+    // @hasraw - '),'
+    // @hasraw - '+'
+    // @hasraw - ') =&gt; { ... }; }'
     #[macro_export]
     macro_rules! macro1 {
         () => {};

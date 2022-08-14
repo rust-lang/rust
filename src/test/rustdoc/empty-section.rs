@@ -5,7 +5,7 @@
 pub struct Foo;
 
 // @has foo/struct.Foo.html
-// @!has - 'Auto Trait Implementations'
+// @!hasraw - 'Auto Trait Implementations'
 impl !Send for Foo {}
 impl !Sync for Foo {}
 impl !std::marker::Unpin for Foo {}

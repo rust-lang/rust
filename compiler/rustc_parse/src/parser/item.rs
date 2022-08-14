@@ -1544,8 +1544,12 @@ impl<'a> Parser<'a> {
                     }
                 }
 
-                if self.token.is_ident() {
-                    // This is likely another field; emit the diagnostic and keep going
+                if self.token.is_ident()
+                    || (self.token.kind == TokenKind::Pound
+                        && (self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Bracket))))
+                {
+                    // This is likely another field, TokenKind::Pound is used for `#[..]` attribute for next field,
+                    // emit the diagnostic and keep going
                     err.span_suggestion(
                         sp,
                         "try adding a comma",
