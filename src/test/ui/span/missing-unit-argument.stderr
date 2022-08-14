@@ -72,7 +72,7 @@ note: associated function defined here
   --> $DIR/missing-unit-argument.rs:6:8
    |
 LL |     fn baz(self, (): ()) { }
-   |        ^^^ ----  ------
+   |        ^^^       ------
 help: provide the argument
    |
 LL |     S.baz(());
@@ -88,7 +88,7 @@ note: associated function defined here
   --> $DIR/missing-unit-argument.rs:7:8
    |
 LL |     fn generic<T>(self, _: T) { }
-   |        ^^^^^^^    ----  ----
+   |        ^^^^^^^          ----
 help: provide the argument
    |
 LL |     S.generic::<()>(());
