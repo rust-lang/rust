@@ -9,8 +9,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
@@ -19,6 +21,7 @@ use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_trait_selection::traits::{self, SelectionContext};
 
 use std::mem;
 use std::ops::ControlFlow;
@@ -223,7 +226,35 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(index_ty);
 
-                if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
+                let mut lang_index = false;
+
+                // (ouz-a #100498): Normally `[T] : std::ops::Index<usize>` should be normalized
+                // into [T] but currently `Where` clause stops the normalization process for it,
+                // here we check if the expr is `LangItem::Index` if so we don't
+                // `fix_index_builtin_expr`.
+                self.tcx().infer_ctxt().enter(|infcx| {
+                    let mut selection_context = SelectionContext::new(&infcx);
+
+                    let def_id = self.tcx().require_lang_item(LangItem::Index, Some(e.span));
+                    let substs = self.tcx().mk_substs([(*base_ty).into(), index_ty.into()].iter());
+                    let trait_ref = ty::TraitRef { def_id, substs };
+                    let binder = ty::Binder::dummy(trait_ref).without_const();
+                    let obligation = traits::Obligation::new(
+                        traits::ObligationCause::dummy(),
+                        self.fcx.param_env,
+                        binder,
+                    );
+                    let results = selection_context.select(&obligation);
+
+                    if results.is_ok() {
+                        lang_index = true;
+                    }
+                });
+
+                if base_ty.builtin_index().is_some()
+                    && index_ty == self.fcx.tcx.types.usize
+                    && !lang_index
+                {
                     // Remove the method call record
                     typeck_results.type_dependent_defs_mut().remove(e.hir_id);
                     typeck_results.node_substs_mut().remove(e.hir_id);
