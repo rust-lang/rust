@@ -1,39 +1,132 @@
 use crate::cell::UnsafeCell;
+use crate::ptr;
+use crate::sync::atomic::{AtomicPtr, Ordering::Relaxed};
 use crate::sys::locks::{pthread_mutex, Mutex};
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
 
-pub struct Condvar {
-    inner: UnsafeCell<libc::pthread_cond_t>,
-}
-
-pub(crate) type MovableCondvar = LazyBox<Condvar>;
-
-unsafe impl Send for Condvar {}
-unsafe impl Sync for Condvar {}
-
 const TIMESPEC_MAX: libc::timespec =
     libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
 
-fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
-    if value > <libc::time_t>::MAX as u64 { <libc::time_t>::MAX } else { value as libc::time_t }
+pub struct Condvar {
+    boxed: LazyBox<StaticCondvar>,
 }
 
-impl LazyInit for Condvar {
+#[inline]
+fn raw(condvar: &Condvar) -> *mut libc::pthread_cond_t {
+    condvar.boxed.inner.get()
+}
+
+impl Condvar {
+    #[inline]
+    pub const fn new() -> Condvar {
+        Condvar { boxed: LazyBox::new() }
+    }
+
+    #[inline]
+    fn verify(&self, mutex: &Mutex) {
+        let addr = pthread_mutex::raw(mutex);
+        match self.boxed.mutex_addr.compare_exchange(ptr::null_mut(), addr, Relaxed, Relaxed) {
+            // Stored the address
+            Ok(_) => {}
+            // Lost a race to store the same address
+            Err(n) if n == addr => {}
+            _ => panic!("attempted to use a condition variable with two mutexes"),
+        }
+    }
+
+    #[inline]
+    pub fn notify_one(&self) {
+        let r = unsafe { libc::pthread_cond_signal(raw(self)) };
+        debug_assert_eq!(r, 0);
+    }
+
+    #[inline]
+    pub fn notify_all(&self) {
+        let r = unsafe { libc::pthread_cond_broadcast(raw(self)) };
+        debug_assert_eq!(r, 0);
+    }
+
+    #[inline]
+    pub unsafe fn wait(&self, mutex: &Mutex) {
+        self.verify(mutex);
+        let r = libc::pthread_cond_wait(raw(self), pthread_mutex::raw(mutex));
+        debug_assert_eq!(r, 0);
+    }
+
+    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+        // Use the system clock on systems that do not support pthread_condattr_setclock.
+        // This unfortunately results in problems when the system time changes.
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "watchos",
+            target_os = "espidf",
+            target_os = "horizon",
+        ))]
+        let (now, dur) = {
+            use crate::cmp::min;
+            use crate::sys::time::SystemTime;
+
+            // OSX implementation of `pthread_cond_timedwait` is buggy
+            // with super long durations. When duration is greater than
+            // 0x100_0000_0000_0000 seconds, `pthread_cond_timedwait`
+            // in macOS Sierra return error 316.
+            //
+            // This program demonstrates the issue:
+            // https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c
+            //
+            // To work around this issue, and possible bugs of other OSes, timeout
+            // is clamped to 1000 years, which is allowable per the API of `park_timeout`
+            // because of spurious wakeups.
+            let dur = min(dur, Duration::from_secs(1000 * 365 * 86400));
+            let now = SystemTime::now().t;
+            (now, dur)
+        };
+        // Use the monotonic clock on other systems.
+        #[cfg(not(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "watchos",
+            target_os = "espidf",
+            target_os = "horizon",
+        )))]
+        let (now, dur) = {
+            use crate::sys::time::Timespec;
+
+            (Timespec::now(libc::CLOCK_MONOTONIC), dur)
+        };
+
+        let timeout =
+            now.checked_add_duration(&dur).and_then(|t| t.to_timespec()).unwrap_or(TIMESPEC_MAX);
+        self.verify(mutex);
+        let r = libc::pthread_cond_timedwait(raw(self), pthread_mutex::raw(mutex), &timeout);
+        // The mutex will be locked no matter the error, so only check it in debug mode.
+        debug_assert!(r == libc::ETIMEDOUT || r == 0);
+        r == 0
+    }
+}
+
+struct StaticCondvar {
+    inner: UnsafeCell<libc::pthread_cond_t>,
+    mutex_addr: AtomicPtr<libc::pthread_mutex_t>,
+}
+
+unsafe impl Send for StaticCondvar {}
+unsafe impl Sync for StaticCondvar {}
+
+impl LazyInit for StaticCondvar {
     fn init() -> Box<Self> {
-        let mut condvar = Box::new(Self::new());
+        let mut condvar = Box::new(StaticCondvar {
+            inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER),
+            mutex_addr: AtomicPtr::new(ptr::null_mut()),
+        });
         unsafe { condvar.init() };
         condvar
     }
 }
 
-impl Condvar {
-    pub const fn new() -> Condvar {
-        // Might be moved and address is changing it is better to avoid
-        // initialization of potentially opaque OS data before it landed
-        Condvar { inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER) }
-    }
-
+impl StaticCondvar {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
@@ -80,122 +173,6 @@ impl Condvar {
     }
 
     #[inline]
-    pub unsafe fn notify_one(&self) {
-        let r = libc::pthread_cond_signal(self.inner.get());
-        debug_assert_eq!(r, 0);
-    }
-
-    #[inline]
-    pub unsafe fn notify_all(&self) {
-        let r = libc::pthread_cond_broadcast(self.inner.get());
-        debug_assert_eq!(r, 0);
-    }
-
-    #[inline]
-    pub unsafe fn wait(&self, mutex: &Mutex) {
-        let r = libc::pthread_cond_wait(self.inner.get(), pthread_mutex::raw(mutex));
-        debug_assert_eq!(r, 0);
-    }
-
-    // This implementation is used on systems that support pthread_condattr_setclock
-    // where we configure condition variable to use monotonic clock (instead of
-    // default system clock). This approach avoids all problems that result
-    // from changes made to the system time.
-    #[cfg(not(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "android",
-        target_os = "espidf",
-        target_os = "horizon"
-    )))]
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        use crate::mem;
-
-        let mut now: libc::timespec = mem::zeroed();
-        let r = libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut now);
-        assert_eq!(r, 0);
-
-        // Nanosecond calculations can't overflow because both values are below 1e9.
-        let nsec = dur.subsec_nanos() + now.tv_nsec as u32;
-
-        let sec = saturating_cast_to_time_t(dur.as_secs())
-            .checked_add((nsec / 1_000_000_000) as libc::time_t)
-            .and_then(|s| s.checked_add(now.tv_sec));
-        let nsec = nsec % 1_000_000_000;
-
-        let timeout =
-            sec.map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec as _ }).unwrap_or(TIMESPEC_MAX);
-
-        let r = libc::pthread_cond_timedwait(self.inner.get(), pthread_mutex::raw(mutex), &timeout);
-        assert!(r == libc::ETIMEDOUT || r == 0);
-        r == 0
-    }
-
-    // This implementation is modeled after libcxx's condition_variable
-    // https://github.com/llvm-mirror/libcxx/blob/release_35/src/condition_variable.cpp#L46
-    // https://github.com/llvm-mirror/libcxx/blob/release_35/include/__mutex_base#L367
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "watchos",
-        target_os = "android",
-        target_os = "espidf",
-        target_os = "horizon"
-    ))]
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
-        use crate::ptr;
-        use crate::time::Instant;
-
-        // 1000 years
-        let max_dur = Duration::from_secs(1000 * 365 * 86400);
-
-        if dur > max_dur {
-            // OSX implementation of `pthread_cond_timedwait` is buggy
-            // with super long durations. When duration is greater than
-            // 0x100_0000_0000_0000 seconds, `pthread_cond_timedwait`
-            // in macOS Sierra return error 316.
-            //
-            // This program demonstrates the issue:
-            // https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c
-            //
-            // To work around this issue, and possible bugs of other OSes, timeout
-            // is clamped to 1000 years, which is allowable per the API of `wait_timeout`
-            // because of spurious wakeups.
-
-            dur = max_dur;
-        }
-
-        // First, figure out what time it currently is, in both system and
-        // stable time.  pthread_cond_timedwait uses system time, but we want to
-        // report timeout based on stable time.
-        let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
-        let stable_now = Instant::now();
-        let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
-        assert_eq!(r, 0, "unexpected error: {:?}", crate::io::Error::last_os_error());
-
-        let nsec = dur.subsec_nanos() as libc::c_long + (sys_now.tv_usec * 1000) as libc::c_long;
-        let extra = (nsec / 1_000_000_000) as libc::time_t;
-        let nsec = nsec % 1_000_000_000;
-        let seconds = saturating_cast_to_time_t(dur.as_secs());
-
-        let timeout = sys_now
-            .tv_sec
-            .checked_add(extra)
-            .and_then(|s| s.checked_add(seconds))
-            .map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec })
-            .unwrap_or(TIMESPEC_MAX);
-
-        // And wait!
-        let r = libc::pthread_cond_timedwait(self.inner.get(), pthread_mutex::raw(mutex), &timeout);
-        debug_assert!(r == libc::ETIMEDOUT || r == 0);
-
-        // ETIMEDOUT is not a totally reliable method of determining timeout due
-        // to clock shifts, so do the check ourselves
-        stable_now.elapsed() < dur
-    }
-
-    #[inline]
     #[cfg(not(target_os = "dragonfly"))]
     unsafe fn destroy(&mut self) {
         let r = libc::pthread_cond_destroy(self.inner.get());
@@ -214,7 +191,7 @@ impl Condvar {
     }
 }
 
-impl Drop for Condvar {
+impl Drop for StaticCondvar {
     #[inline]
     fn drop(&mut self) {
         unsafe { self.destroy() };

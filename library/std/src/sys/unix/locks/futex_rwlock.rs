@@ -4,8 +4,6 @@ use crate::sync::atomic::{
 };
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
 
-pub type MovableRwLock = RwLock;
-
 pub struct RwLock {
     // The state consists of a 30-bit reader counter, a 'readers waiting' flag, and a 'writers waiting' flag.
     // Bits 0..30:
@@ -70,14 +68,14 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
+    pub fn try_read(&self) -> bool {
         self.state
             .fetch_update(Acquire, Relaxed, |s| is_read_lockable(s).then(|| s + READ_LOCKED))
             .is_ok()
     }
 
     #[inline]
-    pub unsafe fn read(&self) {
+    pub fn read(&self) {
         let state = self.state.load(Relaxed);
         if !is_read_lockable(state)
             || self
@@ -144,14 +142,14 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
+    pub fn try_write(&self) -> bool {
         self.state
             .fetch_update(Acquire, Relaxed, |s| is_unlocked(s).then(|| s + WRITE_LOCKED))
             .is_ok()
     }
 
     #[inline]
-    pub unsafe fn write(&self) {
+    pub fn write(&self) {
         if self.state.compare_exchange_weak(0, WRITE_LOCKED, Acquire, Relaxed).is_err() {
             self.write_contended();
         }

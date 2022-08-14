@@ -4,22 +4,47 @@ use crate::sys::cvt_nz;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 pub struct Mutex {
+    boxed: LazyBox<StaticMutex>,
+}
+
+impl Mutex {
+    #[inline]
+    pub const fn new() -> Mutex {
+        Mutex { boxed: LazyBox::new() }
+    }
+
+    #[inline]
+    pub fn try_lock(&self) -> bool {
+        unsafe { self.boxed.try_lock() }
+    }
+
+    #[inline]
+    pub fn lock(&self) {
+        unsafe { self.boxed.lock() }
+    }
+
+    #[inline]
+    pub unsafe fn unlock(&self) {
+        self.boxed.unlock()
+    }
+}
+
+#[inline]
+pub(super) fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
+    m.boxed.inner.get()
+}
+
+struct StaticMutex {
     inner: UnsafeCell<libc::pthread_mutex_t>,
 }
 
-pub(crate) type MovableMutex = LazyBox<Mutex>;
+unsafe impl Send for StaticMutex {}
+unsafe impl Sync for StaticMutex {}
 
-#[inline]
-pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
-    m.inner.get()
-}
-
-unsafe impl Send for Mutex {}
-unsafe impl Sync for Mutex {}
-
-impl LazyInit for Mutex {
+impl LazyInit for StaticMutex {
     fn init() -> Box<Self> {
-        let mut mutex = Box::new(Self::new());
+        let mut mutex =
+            Box::new(StaticMutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) });
         unsafe { mutex.init() };
         mutex
     }
@@ -43,16 +68,9 @@ impl LazyInit for Mutex {
     }
 }
 
-impl Mutex {
-    pub const fn new() -> Mutex {
-        // Might be moved to a different address, so it is better to avoid
-        // initialization of potentially opaque OS data before it landed.
-        // Be very careful using this newly constructed `Mutex`, reentrant
-        // locking is undefined behavior until `init` is called!
-        Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
-    }
+impl StaticMutex {
     #[inline]
-    pub unsafe fn init(&mut self) {
+    unsafe fn init(&mut self) {
         // Issue #33770
         //
         // A pthread mutex initialized with PTHREAD_MUTEX_INITIALIZER will have
@@ -84,26 +102,31 @@ impl Mutex {
             .unwrap();
         cvt_nz(libc::pthread_mutex_init(self.inner.get(), attr.0.as_ptr())).unwrap();
     }
+
     #[inline]
     pub unsafe fn lock(&self) {
         let r = libc::pthread_mutex_lock(self.inner.get());
         debug_assert_eq!(r, 0);
     }
+
     #[inline]
     pub unsafe fn unlock(&self) {
         let r = libc::pthread_mutex_unlock(self.inner.get());
         debug_assert_eq!(r, 0);
     }
+
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
         libc::pthread_mutex_trylock(self.inner.get()) == 0
     }
+
     #[inline]
     #[cfg(not(target_os = "dragonfly"))]
     unsafe fn destroy(&mut self) {
         let r = libc::pthread_mutex_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
     }
+
     #[inline]
     #[cfg(target_os = "dragonfly")]
     unsafe fn destroy(&mut self) {
@@ -116,14 +139,14 @@ impl Mutex {
     }
 }
 
-impl Drop for Mutex {
+impl Drop for StaticMutex {
     #[inline]
     fn drop(&mut self) {
         unsafe { self.destroy() };
     }
 }
 
-pub(super) struct PthreadMutexAttr<'a>(pub &'a mut MaybeUninit<libc::pthread_mutexattr_t>);
+struct PthreadMutexAttr<'a>(pub &'a mut MaybeUninit<libc::pthread_mutexattr_t>);
 
 impl Drop for PthreadMutexAttr<'_> {
     fn drop(&mut self) {

@@ -1,14 +1,11 @@
 use crate::cell::UnsafeCell;
-use crate::sys::locks::{MovableCondvar, Mutex};
-use crate::sys_common::lazy_box::{LazyBox, LazyInit};
+use crate::sys::locks::{Condvar, Mutex};
 
 pub struct RwLock {
     lock: Mutex,
-    cond: MovableCondvar,
+    cond: Condvar,
     state: UnsafeCell<State>,
 }
-
-pub type MovableRwLock = RwLock;
 
 enum State {
     Unlocked,
@@ -29,45 +26,49 @@ unsafe impl Sync for RwLock {}
 
 impl RwLock {
     pub const fn new() -> RwLock {
-        RwLock {
-            lock: Mutex::new(),
-            cond: MovableCondvar::new(),
-            state: UnsafeCell::new(State::Unlocked),
+        RwLock { lock: Mutex::new(), cond: Condvar::new(), state: UnsafeCell::new(State::Unlocked) }
+    }
+
+    #[inline]
+    pub fn read(&self) {
+        unsafe {
+            self.lock.lock();
+            while !(*self.state.get()).inc_readers() {
+                self.cond.wait(&self.lock);
+            }
+            self.lock.unlock();
         }
     }
 
     #[inline]
-    pub unsafe fn read(&self) {
-        self.lock.lock();
-        while !(*self.state.get()).inc_readers() {
-            self.cond.wait(&self.lock);
+    pub fn try_read(&self) -> bool {
+        unsafe {
+            self.lock.lock();
+            let ok = (*self.state.get()).inc_readers();
+            self.lock.unlock();
+            ok
         }
-        self.lock.unlock();
     }
 
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
-        self.lock.lock();
-        let ok = (*self.state.get()).inc_readers();
-        self.lock.unlock();
-        return ok;
-    }
-
-    #[inline]
-    pub unsafe fn write(&self) {
-        self.lock.lock();
-        while !(*self.state.get()).inc_writers() {
-            self.cond.wait(&self.lock);
+    pub fn write(&self) {
+        unsafe {
+            self.lock.lock();
+            while !(*self.state.get()).inc_writers() {
+                self.cond.wait(&self.lock);
+            }
+            self.lock.unlock();
         }
-        self.lock.unlock();
     }
 
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
-        self.lock.lock();
-        let ok = (*self.state.get()).inc_writers();
-        self.lock.unlock();
-        return ok;
+    pub fn try_write(&self) -> bool {
+        unsafe {
+            self.lock.lock();
+            let ok = (*self.state.get()).inc_writers();
+            self.lock.unlock();
+            ok
+        }
     }
 
     #[inline]

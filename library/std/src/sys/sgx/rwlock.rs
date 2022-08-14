@@ -9,38 +9,72 @@ use super::waitqueue::{
 };
 use crate::mem;
 
-pub struct RwLock {
+pub struct RwLock(LazyBox<StaticRwLock>);
+
+impl RwLock {
+    #[inline]
+    pub const fn new() -> RwLock {
+        RwLock(LazyBox::new())
+    }
+
+    #[inline]
+    pub fn try_read(&self) -> bool {
+        self.0.try_read()
+    }
+
+    #[inline]
+    pub fn read(&self) {
+        self.0.read()
+    }
+
+    #[inline]
+    pub fn try_write(&self) -> bool {
+        self.0.try_write()
+    }
+
+    #[inline]
+    pub fn write(&self) {
+        self.0.write()
+    }
+
+    #[inline]
+    pub unsafe fn read_unlock(&self) {
+        unsafe { self.0.read_unlock() }
+    }
+
+    #[inline]
+    pub unsafe fn write_unlock(&self) {
+        unsafe { self.0.write_unlock() }
+    }
+}
+
+pub struct StaticRwLock {
     readers: SpinMutex<WaitVariable<Option<NonZeroUsize>>>,
     writer: SpinMutex<WaitVariable<bool>>,
 }
 
-pub(crate) type MovableRwLock = LazyBox<RwLock>;
-
-impl LazyInit for RwLock {
+impl LazyInit for StaticRwLock {
     fn init() -> Box<Self> {
-        Box::new(Self::new())
+        // Keep in sync with C definition.
+        Box::new(StaticRwLock {
+            readers: SpinMutex::new(WaitVariable::new(None)),
+            writer: SpinMutex::new(WaitVariable::new(false)),
+        })
     }
 }
 
-// Check at compile time that RwLock size matches C definition (see test_c_rwlock_initializer below)
+// Check at compile time that RwLock size matches C definition.
 //
 // # Safety
 // Never called, as it is a compile time check.
 #[allow(dead_code)]
-unsafe fn rw_lock_size_assert(r: RwLock) {
-    unsafe { mem::transmute::<RwLock, [u8; 144]>(r) };
+unsafe fn rw_lock_size_assert(r: StaticRwLock) {
+    unsafe { mem::transmute::<StaticRwLock, [u8; 144]>(r) };
 }
 
-impl RwLock {
-    pub const fn new() -> RwLock {
-        RwLock {
-            readers: SpinMutex::new(WaitVariable::new(None)),
-            writer: SpinMutex::new(WaitVariable::new(false)),
-        }
-    }
-
+impl StaticRwLock {
     #[inline]
-    pub unsafe fn read(&self) {
+    fn read(&self) {
         let mut rguard = self.readers.lock();
         let wguard = self.writer.lock();
         if *wguard.lock_var() || !wguard.queue_empty() {
@@ -56,7 +90,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn try_read(&self) -> bool {
+    fn try_read(&self) -> bool {
         let mut rguard = try_lock_or_false!(self.readers);
         let wguard = try_lock_or_false!(self.writer);
         if *wguard.lock_var() || !wguard.queue_empty() {
@@ -71,7 +105,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn write(&self) {
+    fn write(&self) {
         let rguard = self.readers.lock();
         let mut wguard = self.writer.lock();
         if *wguard.lock_var() || rguard.lock_var().is_some() {
@@ -86,7 +120,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn try_write(&self) -> bool {
+    fn try_write(&self) -> bool {
         let rguard = try_lock_or_false!(self.readers);
         let mut wguard = try_lock_or_false!(self.writer);
         if *wguard.lock_var() || rguard.lock_var().is_some() {
@@ -121,7 +155,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn read_unlock(&self) {
+    unsafe fn read_unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
         unsafe { self.__read_unlock(rguard, wguard) };
@@ -157,7 +191,7 @@ impl RwLock {
     }
 
     #[inline]
-    pub unsafe fn write_unlock(&self) {
+    unsafe fn write_unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
         unsafe { self.__write_unlock(rguard, wguard) };
@@ -184,7 +218,7 @@ const EINVAL: i32 = 22;
 
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RwLock) -> i32 {
+pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut StaticRwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
@@ -194,16 +228,17 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RwLock) -> i32 {
 
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RwLock) -> i32 {
+pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut StaticRwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
     unsafe { (*p).write() };
     return 0;
 }
+
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RwLock) -> i32 {
+pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut StaticRwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }

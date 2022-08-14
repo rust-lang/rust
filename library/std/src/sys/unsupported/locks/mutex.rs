@@ -5,8 +5,6 @@ pub struct Mutex {
     locked: Cell<bool>,
 }
 
-pub type MovableMutex = Mutex;
-
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on this platform
 
@@ -17,10 +15,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         assert_eq!(self.locked.replace(true), false, "cannot recursively acquire mutex");
     }
 
@@ -30,7 +25,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
+    pub fn try_lock(&self) -> bool {
         self.locked.replace(true) == false
     }
 }

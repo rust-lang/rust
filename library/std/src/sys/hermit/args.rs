@@ -57,12 +57,11 @@ mod imp {
     use crate::ffi::{CStr, OsString};
     use crate::os::unix::ffi::OsStringExt;
     use crate::ptr;
-
-    use crate::sys_common::mutex::StaticMutex;
+    use crate::sync::Mutex;
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
-    static LOCK: StaticMutex = StaticMutex::new();
+    static LOCK: Mutex<()> = Mutex::new(());
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
         let _guard = LOCK.lock();

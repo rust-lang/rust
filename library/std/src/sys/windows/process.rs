@@ -16,6 +16,7 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
+use crate::sync::Mutex;
 use crate::sys::args::{self, Arg};
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
@@ -25,7 +26,6 @@ use crate::sys::handle::Handle;
 use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
 
@@ -301,9 +301,9 @@ impl Command {
         //
         // For more information, msdn also has an article about this race:
         // https://support.microsoft.com/kb/315939
-        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
+        static CREATE_PROCESS_LOCK: Mutex<()> = Mutex::new(());
 
-        let _guard = unsafe { CREATE_PROCESS_LOCK.lock() };
+        let _guard = CREATE_PROCESS_LOCK.lock();
 
         let mut pipes = StdioPipes { stdin: None, stdout: None, stderr: None };
         let null = Stdio::Null;

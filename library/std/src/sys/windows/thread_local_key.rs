@@ -66,16 +66,6 @@ pub unsafe fn get(key: Key) -> *mut u8 {
     c::TlsGetValue(key) as *mut u8
 }
 
-#[inline]
-pub unsafe fn destroy(_key: Key) {
-    rtabort!("can't destroy tls keys on windows")
-}
-
-#[inline]
-pub fn requires_synchronized_create() -> bool {
-    true
-}
-
 // -------------------------------------------------------------------------
 // Dtor registration
 //

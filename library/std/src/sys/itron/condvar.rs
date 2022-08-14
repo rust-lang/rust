@@ -12,18 +12,13 @@ pub struct Condvar {
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
-pub type MovableCondvar = Condvar;
-
 impl Condvar {
     #[inline]
     pub const fn new() -> Condvar {
         Condvar { waiters: SpinMutex::new(waiter_queue::WaiterQueue::new()) }
     }
 
-    #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    pub unsafe fn notify_one(&self) {
+    pub fn notify_one(&self) {
         self.waiters.with_locked(|waiters| {
             if let Some(task) = waiters.pop_front() {
                 // Unpark the task
@@ -39,7 +34,7 @@ impl Condvar {
         });
     }
 
-    pub unsafe fn notify_all(&self) {
+    pub fn notify_all(&self) {
         self.waiters.with_locked(|waiters| {
             while let Some(task) = waiters.pop_front() {
                 // Unpark the task
@@ -76,7 +71,7 @@ impl Condvar {
             }
         }
 
-        unsafe { mutex.lock() };
+        mutex.lock();
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
@@ -114,7 +109,7 @@ impl Condvar {
         // we woke up because of `notify_*`.
         let success = self.waiters.with_locked(|waiters| unsafe { !waiters.remove(waiter) });
 
-        unsafe { mutex.lock() };
+        mutex.lock();
         success
     }
 }

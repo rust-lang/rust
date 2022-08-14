@@ -21,14 +21,11 @@ pub struct Mutex {
     srwlock: UnsafeCell<c::SRWLOCK>,
 }
 
-// Windows SRW Locks are movable (while not borrowed).
-pub type MovableMutex = Mutex;
-
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
 #[inline]
-pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
+pub fn raw(m: &Mutex) -> c::PSRWLOCK {
     m.srwlock.get()
 }
 
@@ -37,17 +34,17 @@ impl Mutex {
     pub const fn new() -> Mutex {
         Mutex { srwlock: UnsafeCell::new(c::SRWLOCK_INIT) }
     }
-    #[inline]
-    pub unsafe fn init(&mut self) {}
 
     #[inline]
-    pub unsafe fn lock(&self) {
-        c::AcquireSRWLockExclusive(raw(self));
+    pub fn lock(&self) {
+        unsafe {
+            c::AcquireSRWLockExclusive(raw(self));
+        }
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
-        c::TryAcquireSRWLockExclusive(raw(self)) != 0
+    pub fn try_lock(&self) -> bool {
+        unsafe { c::TryAcquireSRWLockExclusive(raw(self)) != 0 }
     }
 
     #[inline]

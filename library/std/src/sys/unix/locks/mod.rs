@@ -10,22 +10,22 @@ cfg_if::cfg_if! {
         mod futex_mutex;
         mod futex_rwlock;
         mod futex_condvar;
-        pub(crate) use futex_mutex::{Mutex, MovableMutex};
-        pub(crate) use futex_rwlock::{RwLock, MovableRwLock};
-        pub(crate) use futex_condvar::MovableCondvar;
+        pub(crate) use futex_mutex::Mutex;
+        pub(crate) use futex_rwlock::RwLock;
+        pub(crate) use futex_condvar::Condvar;
     } else if #[cfg(target_os = "fuchsia")] {
         mod fuchsia_mutex;
         mod futex_rwlock;
         mod futex_condvar;
-        pub(crate) use fuchsia_mutex::{Mutex, MovableMutex};
-        pub(crate) use futex_rwlock::{RwLock, MovableRwLock};
-        pub(crate) use futex_condvar::MovableCondvar;
+        pub(crate) use fuchsia_mutex::Mutex;
+        pub(crate) use futex_rwlock::RwLock;
+        pub(crate) use futex_condvar::Condvar;
     } else {
         mod pthread_mutex;
         mod pthread_rwlock;
         mod pthread_condvar;
-        pub(crate) use pthread_mutex::{Mutex, MovableMutex};
-        pub(crate) use pthread_rwlock::{RwLock, MovableRwLock};
-        pub(crate) use pthread_condvar::MovableCondvar;
+        pub(crate) use pthread_mutex::Mutex;
+        pub(crate) use pthread_rwlock::RwLock;
+        pub(crate) use pthread_condvar::Condvar;
     }
 }

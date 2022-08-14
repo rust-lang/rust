@@ -60,9 +60,11 @@ impl<T> Spinlock<T> {
     }
 
     #[inline]
-    pub unsafe fn lock(&self) -> SpinlockGuard<'_, T> {
-        self.obtain_lock();
-        SpinlockGuard { dequeue: &self.dequeue, data: &mut *self.data.get() }
+    pub fn lock(&self) -> SpinlockGuard<'_, T> {
+        unsafe {
+            self.obtain_lock();
+            SpinlockGuard { dequeue: &self.dequeue, data: &mut *self.data.get() }
+        }
     }
 }
 
@@ -164,34 +166,28 @@ pub struct Mutex {
     inner: Spinlock<MutexInner>,
 }
 
-pub type MovableMutex = Mutex;
-
-unsafe impl Send for Mutex {}
-unsafe impl Sync for Mutex {}
-
 impl Mutex {
     pub const fn new() -> Mutex {
         Mutex { inner: Spinlock::new(MutexInner::new()) }
     }
 
     #[inline]
-    pub unsafe fn init(&mut self) {}
-
-    #[inline]
-    pub unsafe fn lock(&self) {
+    pub fn lock(&self) {
         loop {
             let mut guard = self.inner.lock();
             if guard.locked == false {
                 guard.locked = true;
                 return;
             } else {
-                let prio = abi::get_priority();
-                let id = abi::getpid();
+                unsafe {
+                    let prio = abi::get_priority();
+                    let id = abi::getpid();
 
-                guard.blocked_task.push(prio, id);
-                abi::block_current_task();
-                drop(guard);
-                abi::yield_now();
+                    guard.blocked_task.push(prio, id);
+                    abi::block_current_task();
+                    drop(guard);
+                    abi::yield_now();
+                }
             }
         }
     }
@@ -206,7 +202,7 @@ impl Mutex {
     }
 
     #[inline]
-    pub unsafe fn try_lock(&self) -> bool {
+    pub fn try_lock(&self) -> bool {
         let mut guard = self.inner.lock();
         if guard.locked == false {
             guard.locked = true;
