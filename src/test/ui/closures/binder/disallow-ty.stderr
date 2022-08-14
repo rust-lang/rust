@@ -1,0 +1,8 @@
+error: only lifetime parameters can be used in this context
+  --> $DIR/disallow-ty.rs:4:9
+   |
+LL |     for<T> || -> () {};
+   |         ^
+
+error: aborting due to previous error
+

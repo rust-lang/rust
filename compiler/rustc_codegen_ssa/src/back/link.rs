@@ -20,7 +20,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_span::DebuggerVisualizerFile;
-use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use rustc_target::spec::crt_objects::{CrtObjects, LinkSelfContainedDefault};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
@@ -764,15 +764,15 @@ fn link_natively<'a>(
                 "Linker does not support -static-pie command line option. Retrying with -static instead."
             );
             // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
-            let self_contained = crt_objects_fallback(sess, crate_type);
+            let self_contained = self_contained(sess, crate_type);
             let opts = &sess.target;
             let pre_objects = if self_contained {
-                &opts.pre_link_objects_fallback
+                &opts.pre_link_objects_self_contained
             } else {
                 &opts.pre_link_objects
             };
             let post_objects = if self_contained {
-                &opts.post_link_objects_fallback
+                &opts.post_link_objects_self_contained
             } else {
                 &opts.post_link_objects
             };
@@ -1556,26 +1556,26 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
     true
 }
 
-/// Whether we link to our own CRT objects instead of relying on gcc to pull them.
+/// Various toolchain components used during linking are used from rustc distribution
+/// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
+fn self_contained(sess: &Session, crate_type: CrateType) -> bool {
     if let Some(self_contained) = sess.opts.cg.link_self_contained {
         return self_contained;
     }
 
-    match sess.target.crt_objects_fallback {
+    match sess.target.link_self_contained {
+        LinkSelfContainedDefault::False => false,
+        LinkSelfContainedDefault::True => true,
         // FIXME: Find a better heuristic for "native musl toolchain is available",
         // based on host and linker path, for example.
         // (https://github.com/rust-lang/rust/pull/71769#issuecomment-626330237).
-        Some(CrtObjectsFallback::Musl) => sess.crt_static(Some(crate_type)),
-        Some(CrtObjectsFallback::Mingw) => {
+        LinkSelfContainedDefault::Musl => sess.crt_static(Some(crate_type)),
+        LinkSelfContainedDefault::Mingw => {
             sess.host == sess.target
                 && sess.target.vendor != "uwp"
                 && detect_self_contained_mingw(&sess)
         }
-        // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
-        Some(CrtObjectsFallback::Wasm) => true,
-        None => false,
     }
 }
 
@@ -1592,7 +1592,7 @@ fn add_pre_link_objects(
     let opts = &sess.target;
     let empty = Default::default();
     let objects = if self_contained {
-        &opts.pre_link_objects_fallback
+        &opts.pre_link_objects_self_contained
     } else if !(sess.target.os == "fuchsia" && flavor == LinkerFlavor::Gcc) {
         &opts.pre_link_objects
     } else {
@@ -1610,9 +1610,11 @@ fn add_post_link_objects(
     link_output_kind: LinkOutputKind,
     self_contained: bool,
 ) {
-    let opts = &sess.target;
-    let objects =
-        if self_contained { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+    let objects = if self_contained {
+        &sess.target.post_link_objects_self_contained
+    } else {
+        &sess.target.post_link_objects
+    };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
         cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
@@ -1891,12 +1893,12 @@ fn linker_with_args<'a>(
     out_filename: &Path,
     codegen_results: &CodegenResults,
 ) -> Result<Command, ErrorGuaranteed> {
-    let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
+    let self_contained = self_contained(sess, crate_type);
     let cmd = &mut *super::linker::get_linker(
         sess,
         path,
         flavor,
-        crt_objects_fallback,
+        self_contained,
         &codegen_results.crate_info.target_cpu,
     );
     let link_output_kind = link_output_kind(sess, crate_type);
@@ -1923,7 +1925,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Pre-link CRT objects.
-    add_pre_link_objects(cmd, sess, flavor, link_output_kind, crt_objects_fallback);
+    add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained);
 
     add_linked_symbol_object(
         cmd,
@@ -2033,7 +2035,7 @@ fn linker_with_args<'a>(
         cmd,
         sess,
         link_output_kind,
-        crt_objects_fallback,
+        self_contained,
         flavor,
         crate_type,
         codegen_results,
@@ -2049,7 +2051,7 @@ fn linker_with_args<'a>(
     // ------------ Object code and libraries, order-dependent ------------
 
     // Post-link CRT objects.
-    add_post_link_objects(cmd, sess, link_output_kind, crt_objects_fallback);
+    add_post_link_objects(cmd, sess, link_output_kind, self_contained);
 
     // ------------ Late order-dependent options ------------
 
@@ -2066,7 +2068,7 @@ fn add_order_independent_options(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    crt_objects_fallback: bool,
+    self_contained: bool,
     flavor: LinkerFlavor,
     crate_type: CrateType,
     codegen_results: &CodegenResults,
@@ -2098,7 +2100,7 @@ fn add_order_independent_options(
     // Make the binary compatible with data execution prevention schemes.
     cmd.add_no_exec();
 
-    if crt_objects_fallback {
+    if self_contained {
         cmd.no_crt_objects();
     }
 
@@ -2127,7 +2129,7 @@ fn add_order_independent_options(
 
     cmd.linker_plugin_lto();
 
-    add_library_search_dirs(cmd, sess, crt_objects_fallback);
+    add_library_search_dirs(cmd, sess, self_contained);
 
     cmd.output_filename(out_filename);
 

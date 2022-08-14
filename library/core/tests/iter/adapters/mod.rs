@@ -1,3 +1,4 @@
+mod array_chunks;
 mod chain;
 mod cloned;
 mod copied;
@@ -181,5 +182,27 @@ impl Clone for CountClone {
         let n = self.0.get();
         self.0.set(n + 1);
         ret
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CountDrop<'a> {
+    dropped: bool,
+    count: &'a Cell<usize>,
+}
+
+impl<'a> CountDrop<'a> {
+    pub fn new(count: &'a Cell<usize>) -> Self {
+        Self { dropped: false, count }
+    }
+}
+
+impl Drop for CountDrop<'_> {
+    fn drop(&mut self) {
+        if self.dropped {
+            panic!("double drop");
+        }
+        self.dropped = true;
+        self.count.set(self.count.get() + 1);
     }
 }

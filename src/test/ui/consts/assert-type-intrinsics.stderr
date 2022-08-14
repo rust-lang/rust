@@ -13,7 +13,7 @@ LL |         MaybeUninit::<!>::uninit().assume_init();
 error: any use of this value will cause an error
   --> $DIR/assert-type-intrinsics.rs:17:9
    |
-LL |     const _BAD2: () = unsafe {
+LL |     const _BAD2: () = {
    |     ---------------
 LL |         intrinsics::assert_uninit_valid::<bool>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to leave type `bool` uninitialized, which is invalid
@@ -24,7 +24,7 @@ LL |         intrinsics::assert_uninit_valid::<bool>();
 error: any use of this value will cause an error
   --> $DIR/assert-type-intrinsics.rs:20:9
    |
-LL |     const _BAD3: () = unsafe {
+LL |     const _BAD3: () = {
    |     ---------------
 LL |         intrinsics::assert_zero_valid::<&'static i32>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to zero-initialize type `&i32`, which is invalid
@@ -51,7 +51,7 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/assert-type-intrinsics.rs:17:9
    |
-LL |     const _BAD2: () = unsafe {
+LL |     const _BAD2: () = {
    |     ---------------
 LL |         intrinsics::assert_uninit_valid::<bool>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to leave type `bool` uninitialized, which is invalid
@@ -64,7 +64,7 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/assert-type-intrinsics.rs:20:9
    |
-LL |     const _BAD3: () = unsafe {
+LL |     const _BAD3: () = {
    |     ---------------
 LL |         intrinsics::assert_zero_valid::<&'static i32>();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to zero-initialize type `&i32`, which is invalid

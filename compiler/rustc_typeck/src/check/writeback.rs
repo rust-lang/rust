@@ -292,6 +292,17 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         intravisit::walk_expr(self, e);
     }
 
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        match &p.kind {
+            hir::GenericParamKind::Lifetime { .. } => {
+                // Nothing to write back here
+            }
+            hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
+                self.tcx().sess.delay_span_bug(p.span, format!("unexpected generic param: {p:?}"));
+            }
+        }
+    }
+
     fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
         self.visit_node_id(b.span, b.hir_id);
         intravisit::walk_block(self, b);
