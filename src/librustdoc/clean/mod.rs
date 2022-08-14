@@ -44,10 +44,6 @@ use utils::*;
 pub(crate) use self::types::*;
 pub(crate) use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-pub(crate) trait Clean<'tcx, T> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> T;
-}
-
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
@@ -1925,7 +1921,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 }))
             }
             ItemKind::Enum(ref def, generics) => EnumItem(Enum {
-                variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
+                variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
             ItemKind::TraitAlias(generics, bounds) => TraitAliasItem(TraitAlias {
@@ -1978,14 +1974,12 @@ fn clean_maybe_renamed_item<'tcx>(
     })
 }
 
-impl<'tcx> Clean<'tcx, Item> for hir::Variant<'tcx> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> Item {
-        let kind = VariantItem(clean_variant_data(&self.data, cx));
-        let what_rustc_thinks =
-            Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
-        // don't show `pub` for variants, which are always public
-        Item { visibility: Inherited, ..what_rustc_thinks }
-    }
+fn clean_variant<'tcx>(variant: &hir::Variant<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
+    let kind = VariantItem(clean_variant_data(&variant.data, cx));
+    let what_rustc_thinks =
+        Item::from_hir_id_and_parts(variant.id, Some(variant.ident.name), kind, cx);
+    // don't show `pub` for variants, which are always public
+    Item { visibility: Inherited, ..what_rustc_thinks }
 }
 
 fn clean_impl<'tcx>(
