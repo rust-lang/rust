@@ -1526,7 +1526,7 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
     match flavor {
         LinkerFlavor::Ld => insert(LinkerFlavor::Lld(LldFlavor::Ld)),
         LinkerFlavor::Msvc => insert(LinkerFlavor::Lld(LldFlavor::Link)),
-        LinkerFlavor::Lld(LldFlavor::Wasm) => {}
+        LinkerFlavor::Lld(LldFlavor::Ld64) | LinkerFlavor::Lld(LldFlavor::Wasm) => {}
         LinkerFlavor::Lld(lld_flavor) => {
             panic!("add_link_args: use non-LLD flavor for {:?}", lld_flavor)
         }
