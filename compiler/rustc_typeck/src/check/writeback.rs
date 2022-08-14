@@ -18,7 +18,7 @@ use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
-use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt, Uint};
+use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::{self, ImplSource, SelectionContext};
@@ -195,6 +195,48 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    // (ouz-a #100498): Normally `[T] : std::ops::Index<usize>` should be normalized
+    // into [T] but currently `Where` clause stops the normalization process for it,
+    // here we check if the expr is `LangItem::Index` and index_ty is `usize` if so we don't
+    // `fix_index_builtin_expr`.
+    fn is_builtin_index(
+        &mut self,
+        e: &hir::Expr<'_>,
+        base: Ty<'tcx>,
+        index: Ty<'tcx>,
+        base_span: Span,
+        index_span: Span,
+    ) -> bool {
+        let mut ret = false;
+        if (&base).builtin_index().is_some() {
+            let resolved_base_ty = self.resolve(base, &base_span);
+            let resolved_index_ty = self.resolve(index, &index_span);
+            self.tcx().infer_ctxt().enter(|infcx| {
+                let mut selection_context = SelectionContext::new(&infcx);
+
+                let def_id = self.tcx().require_lang_item(LangItem::Index, Some(e.span));
+                let substs = self
+                    .tcx()
+                    .mk_substs([resolved_base_ty.into(), resolved_index_ty.into()].iter());
+                let trait_ref = ty::TraitRef { def_id, substs };
+                let binder = ty::Binder::dummy(trait_ref).without_const();
+                let obligation = traits::Obligation::new(
+                    traits::ObligationCause::dummy_with_span(e.span),
+                    self.fcx.param_env,
+                    binder,
+                );
+                let results = selection_context.select(&obligation);
+
+                if let Ok(Some(ImplSource::Param(..))) = results {
+                    ret = false;
+                } else {
+                    ret = true;
+                }
+            });
+        }
+        ret
+    }
+
     // Similar to operators, indexing is always assumed to be overloaded
     // Here, correct cases where an indexing expression can be simplified
     // to use builtin indexing because the index type is known to be
@@ -226,37 +268,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(index_ty);
 
-                let mut lang_index = false;
-
-                let resolved_base_ty = self.resolve(*base_ty, &base.span);
-                let resolved_index_ty = self.resolve(index_ty, &index.span);
-                // (ouz-a #100498): Normally `[T] : std::ops::Index<usize>` should be normalized
-                // into [T] but currently `Where` clause stops the normalization process for it,
-                // here we check if the expr is `LangItem::Index` and index_ty is `usize` if so we don't
-                // `fix_index_builtin_expr`.
-                self.tcx().infer_ctxt().enter(|infcx| {
-                    let mut selection_context = SelectionContext::new(&infcx);
-
-                    let def_id = self.tcx().require_lang_item(LangItem::Index, Some(e.span));
-                    let substs = self.tcx().mk_substs([resolved_base_ty.into(), resolved_index_ty.into()].iter());
-                    let trait_ref = ty::TraitRef { def_id, substs };
-                    let binder = ty::Binder::dummy(trait_ref).without_const();
-                    let obligation = traits::Obligation::new(
-                        traits::ObligationCause::dummy(),
-                        self.fcx.param_env,
-                        binder,
-                    );
-                    let results = selection_context.select(&obligation);
-
-                    if let Ok(Some(ImplSource::Param(..))) = results && matches!(index_ty.kind(), Uint(ty::UintTy::Usize)){
-                        lang_index = true;
-                    }
-
-                });
-
-                if base_ty.builtin_index().is_some()
+                if self.is_builtin_index(&e, *base_ty, index_ty, base.span, index.span)
                     && index_ty == self.fcx.tcx.types.usize
-                    && !lang_index
                 {
                     // Remove the method call record
                     typeck_results.type_dependent_defs_mut().remove(e.hir_id);
