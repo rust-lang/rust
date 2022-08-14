@@ -1,43 +1,15 @@
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
+use rustc_span::symbol::Symbol;
 
+use object::read::archive::ArchiveFile;
+
+use std::fmt::Display;
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
-
-pub(super) fn find_library(
-    name: &str,
-    verbatim: bool,
-    search_paths: &[PathBuf],
-    sess: &Session,
-) -> PathBuf {
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = if verbatim {
-        name.to_string()
-    } else {
-        format!("{}{}{}", sess.target.staticlib_prefix, name, sess.target.staticlib_suffix)
-    };
-    let unixlibname = format!("lib{}.a", name);
-
-    for path in search_paths {
-        debug!("looking for {} inside {:?}", name, path);
-        let test = path.join(&oslibname);
-        if test.exists() {
-            return test;
-        }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
-            if test.exists() {
-                return test;
-            }
-        }
-    }
-    sess.fatal(&format!(
-        "could not find native static library `{}`, \
-                         perhaps an -L flag is missing?",
-        name
-    ));
-}
 
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
@@ -54,6 +26,36 @@ pub trait ArchiveBuilderBuilder {
         dll_imports: &[DllImport],
         tmpdir: &Path,
     ) -> PathBuf;
+
+    fn extract_bundled_libs(
+        &self,
+        rlib: &Path,
+        outdir: &Path,
+        bundled_lib_file_names: &FxHashSet<Symbol>,
+    ) -> Result<(), String> {
+        let message = |msg: &str, e: &dyn Display| format!("{} '{}': {}", msg, &rlib.display(), e);
+        let archive_map = unsafe {
+            Mmap::map(File::open(rlib).map_err(|e| message("failed to open file", &e))?)
+                .map_err(|e| message("failed to mmap file", &e))?
+        };
+        let archive = ArchiveFile::parse(&*archive_map)
+            .map_err(|e| message("failed to parse archive", &e))?;
+
+        for entry in archive.members() {
+            let entry = entry.map_err(|e| message("failed to read entry", &e))?;
+            let data = entry
+                .data(&*archive_map)
+                .map_err(|e| message("failed to get data from archive member", &e))?;
+            let name = std::str::from_utf8(entry.name())
+                .map_err(|e| message("failed to convert name", &e))?;
+            if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
+                continue; // We need to extract only native libraries.
+            }
+            std::fs::write(&outdir.join(&name), data)
+                .map_err(|e| message("failed to write file", &e))?;
+        }
+        Ok(())
+    }
 }
 
 pub trait ArchiveBuilder<'a> {
