@@ -247,6 +247,22 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
+
+        if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
+            self.struct_span_err(
+                lo.to(self.token.span),
+                "`const` and `let` are mutually exclusive",
+            )
+            .span_suggestion(
+                lo.to(self.token.span),
+                "remove `let`",
+                "const",
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
+            self.bump();
+        }
+
         let (pat, colon) = self.parse_pat_before_ty(None, RecoverComma::Yes, "`let` bindings")?;
 
         let (err, ty) = if colon {

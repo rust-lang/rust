@@ -1162,6 +1162,16 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 )
                 .emit();
+        } else if self.eat_keyword(kw::Let) {
+            let span = self.prev_token.span;
+            self.struct_span_err(const_span.to(span), "`const` and `let` are mutually exclusive")
+                .span_suggestion(
+                    const_span.to(span),
+                    "remove `let`",
+                    "const",
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
         }
     }
 
