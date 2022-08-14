@@ -220,7 +220,20 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     }
 
     fn get_remapped_def_id(&self, mut local_def_id: LocalDefId) -> LocalDefId {
-        for map in &self.generics_def_id_map {
+        // `generics_def_id_map` is a stack of mappings. As we go deeper in impl traits nesting we
+        // push new mappings so we need to try first the latest mappings, hence `iter().rev()`.
+        //
+        // Consider:
+        //
+        // `fn test<'a, 'b>() -> impl Trait<&'a u8, Ty = impl Sized + 'b> {}`
+        //
+        // We would end with a generics_def_id_map like:
+        //
+        // `[[fn#'b -> impl_trait#'b], [fn#'b -> impl_sized#'b]]`
+        //
+        // for the opaque type generated on `impl Sized + 'b`, We want the result to be:
+        // impl_sized#'b, so iterating forward is the wrong thing to do.
+        for map in self.generics_def_id_map.iter().rev() {
             if let Some(r) = map.get(&local_def_id) {
                 debug!("def_id_remapper: remapping from `{local_def_id:?}` to `{r:?}`");
                 local_def_id = *r;
