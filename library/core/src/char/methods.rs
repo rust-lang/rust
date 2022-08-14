@@ -7,6 +7,41 @@ use crate::unicode::{self, conversions};
 
 use super::*;
 
+// This macro creates part of a function that handles up to eight strips of consecutive
+// matching codepoints. The strips must all be in separate 32-codepoint chunks
+// (codepoints 0 to 31, 32 to 63, 64 to 95, 96 to 127, 128 to 159, 160 to 191,
+// 192 to 223, or 224 to 255).
+#[allow_internal_unstable(const_slice_index)]
+macro_rules! handle_strip_of_each_chunk {
+    ($x: ident, $starting_codepoints: expr, $strip_lengths: expr) => {{
+        // 32-codepoint chunk number.
+        //
+        // SAFETY: Guaranteed by bit operations to be in `0..8`.
+        let chunk_number = ($x as u8 & 0b1110_0000).wrapping_shr(5) as usize;
+
+        // `const` to type check and to ensure all element evaluations are done at
+        // compile time
+        const STARTING_CODEPOINTS: [u8; 8] = $starting_codepoints;
+        // Subtract the starting codepoint of this chunk from the input codepoint. This
+        // will make sure that the matching codepoints in this strip are in
+        // `0..length_of_strip`.
+        //
+        // SAFETY: The array length is 8 and `chunk_number` is guaranteed to be in
+        // `0..8`.
+        let x = $x.wrapping_sub(*unsafe { STARTING_CODEPOINTS.get_unchecked(chunk_number) } as u32);
+
+        // `const` to type check and to ensure all element evaluations are done at
+        // compile time
+        const STRIP_LENGTHS: [u8; 8] = $strip_lengths;
+        // Check whether the adjusted value of the input codepoint is in
+        // `0..length_of_strip`.
+        //
+        // SAFETY: The array length is 8 and `chunk_number` is guaranteed to be in
+        // `0..8`.
+        x < *unsafe { STRIP_LENGTHS.get_unchecked(chunk_number) } as u32
+    }};
+}
+
 impl char {
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
     ///
@@ -1275,7 +1310,12 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
-        matches!(*self, 'A'..='Z' | 'a'..='z')
+        // `| 0b0010_0000` loses one bit of information, giving exactly two possible
+        // inputs for every output. The exact two possible inputs for outputs `'a'`
+        // through `'z'` are the lowercase and uppercase versions of each letter, so we
+        // only need to check whether it's a lowercase letter.
+        let x = ((*self as u32) | 0b0010_0000).wrapping_sub('a' as u32);
+        x < 26
     }
 
     /// Checks if the value is an ASCII uppercase character:
@@ -1380,7 +1420,12 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        matches!(*self, '0'..='9' | 'A'..='Z' | 'a'..='z')
+        let x = *self as u32;
+        handle_strip_of_each_chunk!(
+            x,
+            [0, b'0', b'A', b'a', 0, 0, 0, 0],
+            [0, 10, 26, 26, 0, 0, 0, 0]
+        )
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -1451,7 +1496,8 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        matches!(*self, '0'..='9' | 'A'..='F' | 'a'..='f')
+        let x = *self as u32;
+        handle_strip_of_each_chunk!(x, [0, b'0', b'A', b'a', 0, 0, 0, 0], [0, 10, 6, 6, 0, 0, 0, 0])
     }
 
     /// Checks if the value is an ASCII punctuation character:
@@ -1489,7 +1535,15 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
-        matches!(*self, '!'..='/' | ':'..='@' | '['..='`' | '{'..='~')
+        // Add 6 to the codepoint so that each strip of consecutive matching codepoints
+        // is in a separate 32-codepoint chunk. For more details, see the comment above
+        // the `handle_strip_of_each_chunk` macro definition.
+        let x = (*self as u32).wrapping_add(6);
+        handle_strip_of_each_chunk!(
+            x,
+            [0, b'!' + 6, b':' + 6, b'[' + 6, b'{' + 6, 0, 0, 0],
+            [0, 15, 7, 6, 4, 0, 0, 0]
+        )
     }
 
     /// Checks if the value is an ASCII graphic character:
