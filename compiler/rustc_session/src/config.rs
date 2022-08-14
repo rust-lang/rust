@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_target::abi::{Align, TargetDataLayout};
-use rustc_target::spec::{LinkerFlavor, SplitDebuginfo, Target, TargetTriple, TargetWarnings};
+use rustc_target::spec::{LinkerFlavorCli, SplitDebuginfo, Target, TargetTriple, TargetWarnings};
 use rustc_target::spec::{PanicStrategy, SanitizerSet, TARGETS};
 
 use crate::parse::{CrateCheckConfig, CrateConfig};
@@ -2379,7 +2379,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     }
 
-    if cg.linker_flavor == Some(LinkerFlavor::L4Bender)
+    if cg.linker_flavor == Some(LinkerFlavorCli::L4Bender)
         && !nightly_options::is_unstable_enabled(matches)
     {
         early_error(

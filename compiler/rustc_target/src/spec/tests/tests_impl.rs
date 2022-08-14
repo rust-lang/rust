@@ -2,9 +2,11 @@ use super::super::*;
 use std::assert_matches::assert_matches;
 
 // Test target self-consistency and JSON encoding/decoding roundtrip.
-pub(super) fn test_target(target: Target, triple: &str) {
+pub(super) fn test_target(mut target: Target, triple: &str) {
+    let recycled_target = Target::from_json(target.to_json()).map(|(j, _)| j);
+    target.update_to_cli();
     target.check_consistency(triple);
-    assert_eq!(Target::from_json(target.to_json()).map(|(j, _)| j), Ok(target));
+    assert_eq!(recycled_target, Ok(target));
 }
 
 impl Target {
