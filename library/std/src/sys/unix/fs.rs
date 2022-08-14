@@ -544,11 +544,11 @@ impl Default for FileTimes {
     fn default() -> Self {
         // Redox doesn't appear to support `UTIME_OMIT`, so we stub it out here, and always return
         // an error in `set_times`.
-        // ESP-IDF does not support `futimens` at all and the behavior for that OS is therefore
+        // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
         // the same as for Redox.
-        #[cfg(any(target_os = "redox", target_os = "espidf"))]
+        #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))]
         let omit = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-        #[cfg(not(any(target_os = "redox", target_os = "espidf")))]
+        #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
         let omit = libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ };
         Self([omit; 2])
     }
@@ -1083,9 +1083,9 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf"))] {
+            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {
                 // Redox doesn't appear to support `UTIME_OMIT`.
-                // ESP-IDF does not support `futimens` at all and the behavior for that OS is therefore
+                // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
                 drop(times);
                 Err(io::const_io_error!(
