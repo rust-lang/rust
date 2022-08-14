@@ -124,9 +124,7 @@ fn filter_dates(
 }
 
 fn main() {
-    let root_dir = env::args()
-        .nth(1)
-        .expect("expect root Markdown directory as CLI argument");
+    let root_dir = env::args().nth(1).unwrap_or(".".into());
     let root_dir_path = Path::new(&root_dir);
     let glob_pat = format!("{}/**/*.md", root_dir);
     let today_chrono = Utc::today();
@@ -167,7 +165,7 @@ fn main() {
         for (path, dates) in dates_by_file {
             println!(
                 "- [ ] {}",
-                path.strip_prefix(&root_dir_path).unwrap().display()
+                path.strip_prefix(&root_dir_path).unwrap_or(&path).display(),
             );
             for (line, date) in dates {
                 println!("  - [ ] line {}: {}", line, date);
