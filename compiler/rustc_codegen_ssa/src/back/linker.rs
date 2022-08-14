@@ -126,29 +126,26 @@ pub fn get_linker<'a>(
     // to the linker args construction.
     assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
     match flavor {
-        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
-            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
-        }
-        LinkerFlavor::Em => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::Gcc => {
             Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: false })
                 as Box<dyn Linker>
         }
-
+        LinkerFlavor::Ld if sess.target.os == "l4re" => {
+            Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
+        }
         LinkerFlavor::Lld(LldFlavor::Ld)
         | LinkerFlavor::Lld(LldFlavor::Ld64)
         | LinkerFlavor::Ld => {
             Box::new(GccLinker { cmd, sess, target_cpu, hinted_static: false, is_ld: true })
                 as Box<dyn Linker>
         }
-
+        LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
+            Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>
+        }
         LinkerFlavor::Lld(LldFlavor::Wasm) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
-
-        LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
-
-        LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
-
-        LinkerFlavor::L4Bender => Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>,
+        LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Bpf => Box::new(BpfLinker { cmd, sess }) as Box<dyn Linker>,
+        LinkerFlavor::Ptx => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
     }
 }
 

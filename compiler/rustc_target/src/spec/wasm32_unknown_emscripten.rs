@@ -5,13 +5,13 @@ pub fn target() -> Target {
     // Reset flags for non-Em flavors back to empty to satisfy sanity checking tests.
     let pre_link_args = LinkArgs::new();
     let post_link_args = TargetOptions::link_args(
-        LinkerFlavor::Em,
+        LinkerFlavor::EmCc,
         &["-sABORTING_MALLOC=0", "-Wl,--fatal-warnings"],
     );
 
     let opts = TargetOptions {
         os: "emscripten".into(),
-        linker_flavor: LinkerFlavor::Em,
+        linker_flavor: LinkerFlavor::EmCc,
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
         // functionality, and a .wasm file.
         exe_suffix: ".js".into(),
