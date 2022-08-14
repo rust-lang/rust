@@ -594,12 +594,12 @@ pub struct RecvError;
 pub enum TryRecvError {
     /// This **channel** is currently empty, but the **Sender**(s) have not yet
     /// disconnected, so data may yet become available.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Empty,
 
     /// The **channel**'s sending half has become disconnected, and there will
     /// never be any more data received on it.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Disconnected,
 }
 
@@ -613,11 +613,11 @@ pub enum TryRecvError {
 pub enum RecvTimeoutError {
     /// This **channel** is currently empty, but the **Sender**(s) have not yet
     /// disconnected, so data may yet become available.
-    #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
+    #[cfg_attr(bootstrap, stable(feature = "mpsc_recv_timeout", since = "1.12.0"))]
     Timeout,
     /// The **channel**'s sending half has become disconnected, and there will
     /// never be any more data received on it.
-    #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
+    #[cfg_attr(bootstrap, stable(feature = "mpsc_recv_timeout", since = "1.12.0"))]
     Disconnected,
 }
 
@@ -634,12 +634,12 @@ pub enum TrySendError<T> {
     /// If this is a buffered channel, then the buffer is full at this time. If
     /// this is not a buffered channel, then there is no [`Receiver`] available to
     /// acquire the data.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Full(#[stable(feature = "rust1", since = "1.0.0")] T),
 
     /// This [`sync_channel`]'s receiving half has disconnected, so the data could not be
     /// sent. The data is returned back to the callee in this case.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Disconnected(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
 

@@ -504,12 +504,12 @@ use crate::{convert, fmt, hint};
 pub enum Result<T, E> {
     /// Contains the success value
     #[lang = "Ok"]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
 
     /// Contains the error value
     #[lang = "Err"]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
 }
 

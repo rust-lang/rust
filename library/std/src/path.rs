@@ -145,7 +145,7 @@ pub enum Prefix<'a> {
     ///
     /// Verbatim prefixes consist of `\\?\` immediately followed by the given
     /// component.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Verbatim(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
     /// Verbatim prefix using Windows' _**U**niform **N**aming **C**onvention_,
@@ -153,7 +153,7 @@ pub enum Prefix<'a> {
     ///
     /// Verbatim UNC prefixes consist of `\\?\UNC\` immediately followed by the
     /// server's hostname and a share name.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     VerbatimUNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
@@ -163,28 +163,28 @@ pub enum Prefix<'a> {
     ///
     /// Verbatim disk prefixes consist of `\\?\` immediately followed by the
     /// drive letter and `:`.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
     /// Device namespace prefix, e.g., `\\.\COM42`.
     ///
     /// Device namespace prefixes consist of `\\.\` (possibly using `/`
     /// instead of `\`), immediately followed by the device name.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
     /// Prefix using Windows' _**U**niform **N**aming **C**onvention_, e.g.
     /// `\\server\share`.
     ///
     /// UNC prefixes consist of the server's hostname and a share name.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     UNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
     /// Prefix `C:` for the given disk drive.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Disk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 }
 
@@ -511,28 +511,28 @@ pub enum Component<'a> {
     /// for more.
     ///
     /// Does not occur on Unix.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Prefix(#[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>),
 
     /// The root directory component, appears after any prefix and before anything else.
     ///
     /// It represents a separator that designates that a path starts from root.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     RootDir,
 
     /// A reference to the current directory, i.e., `.`.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     CurDir,
 
     /// A reference to the parent directory, i.e., `..`.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     ParentDir,
 
     /// A normal component, e.g., `a` and `b` in `a/b`.
     ///
     /// This variant is the most common one, it represents references to files
     /// or directories.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Normal(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 }
 

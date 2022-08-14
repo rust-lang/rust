@@ -24,11 +24,11 @@ pub enum Entry<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     /// A vacant entry.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")] VacantEntry<'a, K, V, A>),
 
     /// An occupied entry.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")] OccupiedEntry<'a, K, V, A>),
 }
 

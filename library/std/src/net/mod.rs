@@ -53,19 +53,19 @@ pub enum Shutdown {
     /// All currently blocked and future [reads] will return <code>[Ok]\(0)</code>.
     ///
     /// [reads]: crate::io::Read "io::Read"
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Read,
     /// The writing portion of the [`TcpStream`] should be shut down.
     ///
     /// All currently blocked and future [writes] will return an error.
     ///
     /// [writes]: crate::io::Write "io::Write"
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Write,
     /// Both the reading and the writing portions of the [`TcpStream`] should be shut down.
     ///
     /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Both,
 }
 

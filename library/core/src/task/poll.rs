@@ -13,7 +13,7 @@ use crate::task::Ready;
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
     #[lang = "Ready"]
-    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[cfg_attr(bootstrap, stable(feature = "futures_api", since = "1.36.0"))]
     Ready(#[stable(feature = "futures_api", since = "1.36.0")] T),
 
     /// Represents that a value is not ready yet.
@@ -22,7 +22,7 @@ pub enum Poll<T> {
     /// ensure that the current task is scheduled to be awoken when
     /// progress can be made.
     #[lang = "Pending"]
-    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[cfg_attr(bootstrap, stable(feature = "futures_api", since = "1.36.0"))]
     Pending,
 }
 

@@ -82,11 +82,11 @@ use crate::{convert, ops};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ControlFlow<B, C = ()> {
     /// Move on to the next phase of the operation as normal.
-    #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
+    #[cfg_attr(bootstrap, stable(feature = "control_flow_enum_type", since = "1.55.0"))]
     #[lang = "Continue"]
     Continue(C),
     /// Exit the operation without running subsequent phases.
-    #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
+    #[cfg_attr(bootstrap, stable(feature = "control_flow_enum_type", since = "1.55.0"))]
     #[lang = "Break"]
     Break(B),
     // Yes, the order of the variants doesn't match the type parameters.

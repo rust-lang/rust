@@ -946,18 +946,18 @@ pub enum FpCategory {
     ///
     /// See [the documentation for `f32`](f32) for more information on the unusual properties
     /// of NaN.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Nan,
 
     /// Positive or negative infinity, which often results from dividing a nonzero number
     /// by zero.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Infinite,
 
     /// Positive or negative zero.
     ///
     /// See [the documentation for `f32`](f32) for more information on the signedness of zeroes.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Zero,
 
     /// “Subnormal” or “denormal” floating point representation (less precise, relative to
@@ -968,7 +968,7 @@ pub enum FpCategory {
     ///
     /// [`Normal`]: Self::Normal
     /// [`Zero`]: Self::Zero
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Subnormal,
 
     /// A regular floating point number, not any of the exceptional categories.
@@ -977,7 +977,7 @@ pub enum FpCategory {
     /// and the largest positive normal numbers are [`f32::MAX`] and [`f64::MAX`]. (Unlike signed
     /// integers, floating point numbers are symmetric in their range, so negating any of these
     /// constants will produce their negative counterpart.)
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, stable(feature = "rust1", since = "1.0.0"))]
     Normal,
 }
 
