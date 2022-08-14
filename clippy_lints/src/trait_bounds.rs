@@ -4,7 +4,7 @@ use clippy_utils::{SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -103,7 +103,6 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         self.check_type_repetition(cx, gen);
         check_trait_bound_duplication(cx, gen);
-        check_bounds_or_where_duplication(cx, gen);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
@@ -234,35 +233,61 @@ impl TraitBounds {
 }
 
 fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() || gen.params.is_empty() || gen.predicates.is_empty() {
+    if gen.span.from_expansion() {
         return;
     }
 
-    let mut map = FxHashMap::<_, Vec<_>>::default();
-    for predicate in gen.predicates {
+    // Explanation:
+    // fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
+    // where T: Clone + Default, { unimplemented!(); }
+    //       ^^^^^^^^^^^^^^^^^^
+    //       |
+    // collects each of these where clauses into a set keyed by generic name and comparable trait
+    // eg. (T, Clone)
+    let where_predicates = gen
+        .predicates
+        .iter()
+        .filter_map(|pred| {
+            if_chain! {
+                if pred.in_where_clause();
+                if let WherePredicate::BoundPredicate(bound_predicate) = pred;
+                if let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind;
+                then {
+                    return Some(
+                        rollup_traits(cx, bound_predicate.bounds, "these where clauses contain repeated elements")
+                        .into_keys().map(|trait_ref| (path.res, trait_ref)))
+                }
+            }
+            None
+        })
+        .flatten()
+        .collect::<FxHashSet<_>>();
+
+    // Explanation:
+    // fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z) ...
+    //            ^^^^^^^^^^^^^^^^^^  ^^^^^^^
+    //            |
+    // compare trait bounds keyed by generic name and comparable trait to collected where
+    // predicates eg. (T, Clone)
+    for predicate in gen.predicates.iter().filter(|pred| !pred.in_where_clause()) {
         if_chain! {
-            if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
+            if let WherePredicate::BoundPredicate(bound_predicate) = predicate;
             if bound_predicate.origin != PredicateOrigin::ImplTrait;
             if !bound_predicate.span.from_expansion();
-            if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
-            if let Some(segment) = segments.first();
+            if let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind;
             then {
-                for (res_where, _, span_where) in bound_predicate.bounds.iter().filter_map(get_trait_info_from_bound) {
-                    let trait_resolutions_direct = map.entry(segment.ident).or_default();
-                    if let Some((_, span_direct)) = trait_resolutions_direct
-                                                .iter()
-                                                .find(|(res_direct, _)| *res_direct == res_where) {
+                let traits = rollup_traits(cx, bound_predicate.bounds, "these bounds contain repeated elements");
+                for (trait_ref, span) in traits {
+                    let key = (path.res, trait_ref);
+                    if where_predicates.contains(&key) {
                         span_lint_and_help(
                             cx,
                             TRAIT_DUPLICATION_IN_BOUNDS,
-                            *span_direct,
+                            span,
                             "this trait bound is already specified in the where clause",
                             None,
                             "consider removing this trait bound",
-                        );
-                    }
-                    else {
-                        trait_resolutions_direct.push((res_where, span_where));
+                            );
                     }
                 }
             }
@@ -272,23 +297,6 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 struct ComparableTraitRef(Res, Vec<Res>);
-
-fn check_bounds_or_where_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() {
-        return;
-    }
-
-    for predicate in gen.predicates {
-        if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate {
-            let msg = if predicate.in_where_clause() {
-                "these where clauses contain repeated elements"
-            } else {
-                "these bounds contain repeated elements"
-            };
-            rollup_traits(cx, bound_predicate.bounds, msg);
-        }
-    }
-}
 
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
     if let GenericBound::Trait(t, tbm) = bound {
@@ -331,7 +339,7 @@ fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
     )
 }
 
-fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) {
+fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -> FxHashMap<ComparableTraitRef, Span> {
     let mut map = FxHashMap::default();
     let mut repeated_res = false;
 
@@ -373,4 +381,6 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) {
             );
         }
     }
+
+    map
 }
