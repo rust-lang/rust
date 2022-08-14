@@ -24,10 +24,9 @@ impl Target {
         assert_eq!(self.is_like_osx, matches!(self.lld_flavor, LldFlavor::Ld64));
         assert_eq!(self.is_like_msvc, matches!(self.lld_flavor, LldFlavor::Link));
         assert_eq!(self.is_like_wasm, matches!(self.lld_flavor, LldFlavor::Wasm));
-        assert_eq!(self.os == "l4re", matches!(self.linker_flavor, LinkerFlavor::L4Bender));
-        assert_eq!(self.os == "emscripten", matches!(self.linker_flavor, LinkerFlavor::Em));
-        assert_eq!(self.arch == "bpf", matches!(self.linker_flavor, LinkerFlavor::BpfLinker));
-        assert_eq!(self.arch == "nvptx64", matches!(self.linker_flavor, LinkerFlavor::PtxLinker));
+        assert_eq!(self.os == "emscripten", matches!(self.linker_flavor, LinkerFlavor::EmCc));
+        assert_eq!(self.arch == "bpf", matches!(self.linker_flavor, LinkerFlavor::Bpf));
+        assert_eq!(self.arch == "nvptx64", matches!(self.linker_flavor, LinkerFlavor::Ptx));
 
         for args in [
             &self.pre_link_args,
@@ -67,17 +66,14 @@ impl Target {
                             LinkerFlavor::Lld(LldFlavor::Wasm) | LinkerFlavor::Gcc
                         )
                     }
-                    (LinkerFlavor::L4Bender, LldFlavor::Ld) => {
-                        assert_matches!(flavor, LinkerFlavor::L4Bender)
+                    (LinkerFlavor::EmCc, LldFlavor::Wasm) => {
+                        assert_matches!(flavor, LinkerFlavor::EmCc)
                     }
-                    (LinkerFlavor::Em, LldFlavor::Wasm) => {
-                        assert_matches!(flavor, LinkerFlavor::Em)
+                    (LinkerFlavor::Bpf, LldFlavor::Ld) => {
+                        assert_matches!(flavor, LinkerFlavor::Bpf)
                     }
-                    (LinkerFlavor::BpfLinker, LldFlavor::Ld) => {
-                        assert_matches!(flavor, LinkerFlavor::BpfLinker)
-                    }
-                    (LinkerFlavor::PtxLinker, LldFlavor::Ld) => {
-                        assert_matches!(flavor, LinkerFlavor::PtxLinker)
+                    (LinkerFlavor::Ptx, LldFlavor::Ld) => {
+                        assert_matches!(flavor, LinkerFlavor::Ptx)
                     }
                     flavors => unreachable!("unexpected flavor combination: {:?}", flavors),
                 }

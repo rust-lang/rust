@@ -92,26 +92,24 @@ mod windows_uwp_msvc_base;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
-    Em,
     Gcc,
-    L4Bender,
     Ld,
-    Msvc,
     Lld(LldFlavor),
-    PtxLinker,
-    BpfLinker,
+    Msvc,
+    EmCc,
+    Bpf,
+    Ptx,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavorCli {
-    Em,
     Gcc,
-    L4Bender,
     Ld,
-    Msvc,
     Lld(LldFlavor),
-    PtxLinker,
+    Msvc,
+    Em,
     BpfLinker,
+    PtxLinker,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -152,39 +150,37 @@ impl ToJson for LldFlavor {
 impl LinkerFlavor {
     pub fn from_cli(cli: LinkerFlavorCli) -> LinkerFlavor {
         match cli {
-            LinkerFlavorCli::Em => LinkerFlavor::Em,
             LinkerFlavorCli::Gcc => LinkerFlavor::Gcc,
-            LinkerFlavorCli::L4Bender => LinkerFlavor::L4Bender,
             LinkerFlavorCli::Ld => LinkerFlavor::Ld,
-            LinkerFlavorCli::Msvc => LinkerFlavor::Msvc,
             LinkerFlavorCli::Lld(lld_flavor) => LinkerFlavor::Lld(lld_flavor),
-            LinkerFlavorCli::PtxLinker => LinkerFlavor::PtxLinker,
-            LinkerFlavorCli::BpfLinker => LinkerFlavor::BpfLinker,
+            LinkerFlavorCli::Msvc => LinkerFlavor::Msvc,
+            LinkerFlavorCli::Em => LinkerFlavor::EmCc,
+            LinkerFlavorCli::BpfLinker => LinkerFlavor::Bpf,
+            LinkerFlavorCli::PtxLinker => LinkerFlavor::Ptx,
         }
     }
 
     fn to_cli(self) -> LinkerFlavorCli {
         match self {
-            LinkerFlavor::Em => LinkerFlavorCli::Em,
             LinkerFlavor::Gcc => LinkerFlavorCli::Gcc,
-            LinkerFlavor::L4Bender => LinkerFlavorCli::L4Bender,
             LinkerFlavor::Ld => LinkerFlavorCli::Ld,
-            LinkerFlavor::Msvc => LinkerFlavorCli::Msvc,
             LinkerFlavor::Lld(lld_flavor) => LinkerFlavorCli::Lld(lld_flavor),
-            LinkerFlavor::PtxLinker => LinkerFlavorCli::PtxLinker,
-            LinkerFlavor::BpfLinker => LinkerFlavorCli::BpfLinker,
+            LinkerFlavor::Msvc => LinkerFlavorCli::Msvc,
+            LinkerFlavor::EmCc => LinkerFlavorCli::Em,
+            LinkerFlavor::Bpf => LinkerFlavorCli::BpfLinker,
+            LinkerFlavor::Ptx => LinkerFlavorCli::PtxLinker,
         }
     }
 }
 
-macro_rules! flavor_mappings {
-    ($((($($flavor:tt)*), $string:expr),)*) => (
+macro_rules! linker_flavor_cli_impls {
+    ($(($($flavor:tt)*) $string:literal)*) => (
         impl LinkerFlavorCli {
             pub const fn one_of() -> &'static str {
                 concat!("one of: ", $($string, " ",)*)
             }
 
-            pub fn from_str(s: &str) -> Option<Self> {
+            pub fn from_str(s: &str) -> Option<LinkerFlavorCli> {
                 Some(match s {
                     $($string => $($flavor)*,)*
                     _ => return None,
@@ -200,18 +196,17 @@ macro_rules! flavor_mappings {
     )
 }
 
-flavor_mappings! {
-    ((LinkerFlavorCli::Em), "em"),
-    ((LinkerFlavorCli::Gcc), "gcc"),
-    ((LinkerFlavorCli::L4Bender), "l4-bender"),
-    ((LinkerFlavorCli::Ld), "ld"),
-    ((LinkerFlavorCli::Msvc), "msvc"),
-    ((LinkerFlavorCli::PtxLinker), "ptx-linker"),
-    ((LinkerFlavorCli::BpfLinker), "bpf-linker"),
-    ((LinkerFlavorCli::Lld(LldFlavor::Wasm)), "wasm-ld"),
-    ((LinkerFlavorCli::Lld(LldFlavor::Ld64)), "ld64.lld"),
-    ((LinkerFlavorCli::Lld(LldFlavor::Ld)), "ld.lld"),
-    ((LinkerFlavorCli::Lld(LldFlavor::Link)), "lld-link"),
+linker_flavor_cli_impls! {
+    (LinkerFlavorCli::Gcc) "gcc"
+    (LinkerFlavorCli::Ld) "ld"
+    (LinkerFlavorCli::Lld(LldFlavor::Ld)) "ld.lld"
+    (LinkerFlavorCli::Lld(LldFlavor::Ld64)) "ld64.lld"
+    (LinkerFlavorCli::Lld(LldFlavor::Link)) "lld-link"
+    (LinkerFlavorCli::Lld(LldFlavor::Wasm)) "wasm-ld"
+    (LinkerFlavorCli::Msvc) "msvc"
+    (LinkerFlavorCli::Em) "em"
+    (LinkerFlavorCli::BpfLinker) "bpf-linker"
+    (LinkerFlavorCli::PtxLinker) "ptx-linker"
 }
 
 impl ToJson for LinkerFlavorCli {
@@ -1252,21 +1247,21 @@ pub struct TargetOptions {
     pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: StaticCow<str>,
+
+    /// Linker to invoke
+    pub linker: Option<StaticCow<str>>,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
     /// on the command line. Defaults to `LinkerFlavor::Gcc`.
     pub linker_flavor: LinkerFlavor,
     linker_flavor_json: LinkerFlavorCli,
-
-    /// Linker to invoke
-    pub linker: Option<StaticCow<str>>,
-
     /// LLD flavor used if `lld` (or `rust-lld`) is specified as a linker
     /// without clarifying its flavor in any way.
+    /// FIXME: Merge this into `LinkerFlavor`.
     pub lld_flavor: LldFlavor,
+    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
+    /// FIXME: Merge this into `LinkerFlavor`.
+    pub linker_is_gnu: bool,
 
-    /// Linker arguments that are passed *before* any user-defined libraries.
-    pub pre_link_args: LinkArgs,
-    pre_link_args_json: LinkArgsCli,
     /// Objects to link before and after all other object code.
     pub pre_link_objects: CrtObjects,
     pub post_link_objects: CrtObjects,
@@ -1275,6 +1270,9 @@ pub struct TargetOptions {
     pub post_link_objects_self_contained: CrtObjects,
     pub link_self_contained: LinkSelfContainedDefault,
 
+    /// Linker arguments that are passed *before* any user-defined libraries.
+    pub pre_link_args: LinkArgs,
+    pre_link_args_json: LinkArgsCli,
     /// Linker arguments that are unconditionally passed after any
     /// user-defined but before post-link objects. Standard platform
     /// libraries that should be always be linked to, usually go here.
@@ -1292,11 +1290,11 @@ pub struct TargetOptions {
     /// user-defined libraries.
     pub post_link_args: LinkArgs,
     post_link_args_json: LinkArgsCli,
+
     /// Optional link script applied to `dylib` and `executable` crate types.
     /// This is a string containing the script, not a path. Can only be applied
     /// to linkers where `linker_is_gnu` is true.
     pub link_script: Option<StaticCow<str>>,
-
     /// Environment variables to be set for the linker invocation.
     pub link_env: StaticCow<[(StaticCow<str>, StaticCow<str>)]>,
     /// Environment variables to be removed for the linker invocation.
@@ -1381,8 +1379,6 @@ pub struct TargetOptions {
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
-    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
-    pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
     /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
@@ -1580,11 +1576,7 @@ fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'stati
         LinkerFlavor::Lld(lld_flavor) => {
             panic!("add_link_args: use non-LLD flavor for {:?}", lld_flavor)
         }
-        LinkerFlavor::Gcc
-        | LinkerFlavor::Em
-        | LinkerFlavor::L4Bender
-        | LinkerFlavor::BpfLinker
-        | LinkerFlavor::PtxLinker => {}
+        LinkerFlavor::Gcc | LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => {}
     }
 }
 
@@ -1646,14 +1638,11 @@ impl Default for TargetOptions {
             env: "".into(),
             abi: "".into(),
             vendor: "unknown".into(),
+            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             linker_flavor: LinkerFlavor::Gcc,
             linker_flavor_json: LinkerFlavorCli::Gcc,
-            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             lld_flavor: LldFlavor::Ld,
-            pre_link_args: LinkArgs::new(),
-            pre_link_args_json: LinkArgsCli::new(),
-            post_link_args: LinkArgs::new(),
-            post_link_args_json: LinkArgsCli::new(),
+            linker_is_gnu: true,
             link_script: None,
             asm_args: cvs![],
             cpu: "generic".into(),
@@ -1680,7 +1669,6 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             default_dwarf_version: 4,
-            linker_is_gnu: true,
             allows_weak_linkage: true,
             has_rpath: false,
             no_default_libraries: true,
@@ -1693,12 +1681,16 @@ impl Default for TargetOptions {
             pre_link_objects_self_contained: Default::default(),
             post_link_objects_self_contained: Default::default(),
             link_self_contained: LinkSelfContainedDefault::False,
+            pre_link_args: LinkArgs::new(),
+            pre_link_args_json: LinkArgsCli::new(),
             late_link_args: LinkArgs::new(),
             late_link_args_json: LinkArgsCli::new(),
             late_link_args_dynamic: LinkArgs::new(),
             late_link_args_dynamic_json: LinkArgsCli::new(),
             late_link_args_static: LinkArgs::new(),
             late_link_args_static_json: LinkArgsCli::new(),
+            post_link_args: LinkArgs::new(),
+            post_link_args_json: LinkArgsCli::new(),
             link_env: cvs![],
             link_env_remove: cvs![],
             archive_format: "gnu".into(),
@@ -2283,9 +2275,10 @@ impl Target {
         key!(env);
         key!(abi);
         key!(vendor);
-        key!(linker_flavor_json = "linker-flavor", LinkerFlavor)?;
         key!(linker, optional);
+        key!(linker_flavor_json = "linker-flavor", LinkerFlavor)?;
         key!(lld_flavor, LldFlavor)?;
+        key!(linker_is_gnu, bool);
         key!(pre_link_objects = "pre-link-objects", link_objects);
         key!(post_link_objects = "post-link-objects", link_objects);
         key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
@@ -2323,7 +2316,6 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_wasm, bool);
         key!(default_dwarf_version, u32);
-        key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
@@ -2532,9 +2524,10 @@ impl ToJson for Target {
         target_option_val!(env);
         target_option_val!(abi);
         target_option_val!(vendor);
-        target_option_val!(linker_flavor_json, "linker-flavor");
         target_option_val!(linker);
+        target_option_val!(linker_flavor_json, "linker-flavor");
         target_option_val!(lld_flavor);
+        target_option_val!(linker_is_gnu);
         target_option_val!(pre_link_objects);
         target_option_val!(post_link_objects);
         target_option_val!(pre_link_objects_self_contained, "pre-link-objects-fallback");
@@ -2573,7 +2566,6 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(default_dwarf_version);
-        target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
