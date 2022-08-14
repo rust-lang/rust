@@ -111,6 +111,70 @@ fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>) {
     write!(out, "<code>");
 }
 
+/// Write all the pending elements sharing a same (or at mergeable) `Class`.
+///
+/// If there is a "parent" (if a `EnterSpan` event was encountered) and the parent can be merged
+/// with the elements' class, then we simply write the elements since the `ExitSpan` event will
+/// close the tag.
+///
+/// Otherwise, if there is only one pending element, we let the `string` function handle both
+/// opening and closing the tag, otherwise we do it into this function.
+fn write_pending_elems(
+    out: &mut Buffer,
+    href_context: &Option<HrefContext<'_, '_, '_>>,
+    pending_elems: &mut Vec<(&str, Option<Class>)>,
+    current_class: &mut Option<Class>,
+    closing_tags: &[(&str, Class)],
+) {
+    if pending_elems.is_empty() {
+        return;
+    }
+    let mut done = false;
+    if let Some((_, parent_class)) = closing_tags.last() {
+        if can_merge(*current_class, Some(*parent_class), "") {
+            for (text, class) in pending_elems.iter() {
+                string(out, Escape(text), *class, &href_context, false);
+            }
+            done = true;
+        }
+    }
+    if !done {
+        // We only want to "open" the tag ourselves if we have more than one pending and if the current
+        // parent tag is not the same as our pending content.
+        let open_tag_ourselves = pending_elems.len() > 1;
+        let close_tag = if open_tag_ourselves {
+            enter_span(out, current_class.unwrap(), &href_context)
+        } else {
+            ""
+        };
+        for (text, class) in pending_elems.iter() {
+            string(out, Escape(text), *class, &href_context, !open_tag_ourselves);
+        }
+        if open_tag_ourselves {
+            exit_span(out, close_tag);
+        }
+    }
+    pending_elems.clear();
+    *current_class = None;
+}
+
+/// Check if two `Class` can be merged together. In the following rules, "unclassified" means `None`
+/// basically (since it's `Option<Class>`). The following rules apply:
+///
+/// * If two `Class` have the same variant, then they can be merged.
+/// * If the other `Class` is unclassified and only contains white characters (backline,
+///   whitespace, etc), it can be merged.
+/// * `Class::Ident` is considered the same as unclassified (because it doesn't have an associated
+///    CSS class).
+fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
+    match (class1, class2) {
+        (Some(c1), Some(c2)) => c1.is_equal_to(c2),
+        (Some(Class::Ident(_)), None) | (None, Some(Class::Ident(_))) => true,
+        (Some(_), None) | (None, Some(_)) => text.trim().is_empty(),
+        _ => false,
+    }
+}
+
 /// Convert the given `src` source code into HTML by adding classes for highlighting.
 ///
 /// This code is used to render code blocks (in the documentation) as well as the source code pages.
@@ -130,7 +194,15 @@ fn write_code(
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    let mut closing_tags: Vec<&'static str> = Vec::new();
+    // It contains the closing tag and the associated `Class`.
+    let mut closing_tags: Vec<(&'static str, Class)> = Vec::new();
+    // The following two variables are used to group HTML elements with same `class` attributes
+    // to reduce the DOM size.
+    let mut current_class: Option<Class> = None;
+    // We need to keep the `Class` for each element because it could contain a `Span` which is
+    // used to generate links.
+    let mut pending_elems: Vec<(&str, Option<Class>)> = Vec::new();
+
     Classifier::new(
         &src,
         href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
@@ -138,15 +210,48 @@ fn write_code(
     )
     .highlight(&mut |highlight| {
         match highlight {
-            Highlight::Token { text, class } => string(out, Escape(text), class, &href_context),
+            Highlight::Token { text, class } => {
+                // If the two `Class` are different, time to flush the current content and start
+                // a new one.
+                if !can_merge(current_class, class, text) {
+                    write_pending_elems(
+                        out,
+                        &href_context,
+                        &mut pending_elems,
+                        &mut current_class,
+                        &closing_tags,
+                    );
+                    current_class = class.map(Class::dummy);
+                } else if current_class.is_none() {
+                    current_class = class.map(Class::dummy);
+                }
+                pending_elems.push((text, class));
+            }
             Highlight::EnterSpan { class } => {
-                closing_tags.push(enter_span(out, class, &href_context))
+                // We flush everything just in case...
+                write_pending_elems(
+                    out,
+                    &href_context,
+                    &mut pending_elems,
+                    &mut current_class,
+                    &closing_tags,
+                );
+                closing_tags.push((enter_span(out, class, &href_context), class))
             }
             Highlight::ExitSpan => {
-                exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan"))
+                // We flush everything just in case...
+                write_pending_elems(
+                    out,
+                    &href_context,
+                    &mut pending_elems,
+                    &mut current_class,
+                    &closing_tags,
+                );
+                exit_span(out, closing_tags.pop().expect("ExitSpan without EnterSpan").0)
             }
         };
     });
+    write_pending_elems(out, &href_context, &mut pending_elems, &mut current_class, &closing_tags);
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
@@ -160,7 +265,7 @@ enum Class {
     DocComment,
     Attribute,
     KeyWord,
-    // Keywords that do pointer/reference stuff.
+    /// Keywords that do pointer/reference stuff.
     RefKeyWord,
     Self_(Span),
     Macro(Span),
@@ -168,6 +273,7 @@ enum Class {
     String,
     Number,
     Bool,
+    /// `Ident` isn't rendered in the HTML but we still need it for the `Span` it contains.
     Ident(Span),
     Lifetime,
     PreludeTy,
@@ -177,6 +283,31 @@ enum Class {
 }
 
 impl Class {
+    /// It is only looking at the variant, not the variant content.
+    ///
+    /// It is used mostly to group multiple similar HTML elements into one `<span>` instead of
+    /// multiple ones.
+    fn is_equal_to(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Self_(_), Self::Self_(_))
+            | (Self::Macro(_), Self::Macro(_))
+            | (Self::Ident(_), Self::Ident(_))
+            | (Self::Decoration(_), Self::Decoration(_)) => true,
+            (x, y) => x == y,
+        }
+    }
+
+    /// If `self` contains a `Span`, it'll be replaced with `DUMMY_SP` to prevent creating links
+    /// on "empty content" (because of the attributes merge).
+    fn dummy(self) -> Self {
+        match self {
+            Self::Self_(_) => Self::Self_(DUMMY_SP),
+            Self::Macro(_) => Self::Macro(DUMMY_SP),
+            Self::Ident(_) => Self::Ident(DUMMY_SP),
+            s => s,
+        }
+    }
+
     /// Returns the css class expected by rustdoc for each `Class`.
     fn as_html(self) -> &'static str {
         match self {
@@ -191,7 +322,7 @@ impl Class {
             Class::String => "string",
             Class::Number => "number",
             Class::Bool => "bool-val",
-            Class::Ident(_) => "ident",
+            Class::Ident(_) => "",
             Class::Lifetime => "lifetime",
             Class::PreludeTy => "prelude-ty",
             Class::PreludeVal => "prelude-val",
@@ -630,7 +761,7 @@ impl<'a> Classifier<'a> {
             TokenKind::CloseBracket => {
                 if self.in_attribute {
                     self.in_attribute = false;
-                    sink(Highlight::Token { text: "]", class: None });
+                    sink(Highlight::Token { text: "]", class: Some(Class::Attribute) });
                     sink(Highlight::ExitSpan);
                     return;
                 }
@@ -701,7 +832,7 @@ fn enter_span(
     klass: Class,
     href_context: &Option<HrefContext<'_, '_, '_>>,
 ) -> &'static str {
-    string_without_closing_tag(out, "", Some(klass), href_context).expect(
+    string_without_closing_tag(out, "", Some(klass), href_context, true).expect(
         "internal error: enter_span was called with Some(klass) but did not return a \
             closing HTML tag",
     )
@@ -733,8 +864,10 @@ fn string<T: Display>(
     text: T,
     klass: Option<Class>,
     href_context: &Option<HrefContext<'_, '_, '_>>,
+    open_tag: bool,
 ) {
-    if let Some(closing_tag) = string_without_closing_tag(out, text, klass, href_context) {
+    if let Some(closing_tag) = string_without_closing_tag(out, text, klass, href_context, open_tag)
+    {
         out.write_str(closing_tag);
     }
 }
@@ -753,6 +886,7 @@ fn string_without_closing_tag<T: Display>(
     text: T,
     klass: Option<Class>,
     href_context: &Option<HrefContext<'_, '_, '_>>,
+    open_tag: bool,
 ) -> Option<&'static str> {
     let Some(klass) = klass
     else {
@@ -761,6 +895,10 @@ fn string_without_closing_tag<T: Display>(
     };
     let Some(def_span) = klass.get_span()
     else {
+        if !open_tag {
+            write!(out, "{}", text);
+            return None;
+        }
         write!(out, "<span class=\"{}\">{}", klass.as_html(), text);
         return Some("</span>");
     };
@@ -784,6 +922,7 @@ fn string_without_closing_tag<T: Display>(
             path
         });
     }
+
     if let Some(href_context) = href_context {
         if let Some(href) =
             href_context.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
@@ -812,12 +951,33 @@ fn string_without_closing_tag<T: Display>(
                 }
             })
         {
-            write!(out, "<a class=\"{}\" href=\"{}\">{}", klass.as_html(), href, text_s);
+            if !open_tag {
+                // We're already inside an element which has the same klass, no need to give it
+                // again.
+                write!(out, "<a href=\"{}\">{}", href, text_s);
+            } else {
+                let klass_s = klass.as_html();
+                if klass_s.is_empty() {
+                    write!(out, "<a href=\"{}\">{}", href, text_s);
+                } else {
+                    write!(out, "<a class=\"{}\" href=\"{}\">{}", klass_s, href, text_s);
+                }
+            }
             return Some("</a>");
         }
     }
-    write!(out, "<span class=\"{}\">{}", klass.as_html(), text_s);
-    Some("</span>")
+    if !open_tag {
+        write!(out, "{}", text_s);
+        return None;
+    }
+    let klass_s = klass.as_html();
+    if klass_s.is_empty() {
+        write!(out, "{}", text_s);
+        Some("")
+    } else {
+        write!(out, "<span class=\"{}\">{}", klass_s, text_s);
+        Some("</span>")
+    }
 }
 
 #[cfg(test)]

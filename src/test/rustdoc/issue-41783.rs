@@ -1,11 +1,9 @@
 // @has issue_41783/struct.Foo.html
 // @!hasraw - 'space'
 // @!hasraw - 'comment'
-// @hasraw - '# <span class="ident">single'
-// @hasraw - '## <span class="ident">double</span>'
-// @hasraw - '### <span class="ident">triple</span>'
-// @hasraw - '<span class="attribute">#[<span class="ident">outer</span>]</span>'
-// @hasraw - '<span class="attribute">#![<span class="ident">inner</span>]</span>'
+// @hasraw - '<span class="attribute">#[outer]</span>'
+// @hasraw - '<span class="attribute">#![inner]</span>'
+// @snapshot 'codeblock' - '//*[@class="rustdoc-toggle top-doc"]/*[@class="docblock"]//pre/code'
 
 /// ```no_run
 /// # # space

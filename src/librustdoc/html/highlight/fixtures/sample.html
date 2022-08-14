@@ -8,30 +8,30 @@
 .lifetime { color: #B76514; }
 .question-mark { color: #ff9011; }
 </style>
-<pre><code><span class="attribute">#![<span class="ident">crate_type</span> = <span class="string">&quot;lib&quot;</span>]</span>
+<pre><code><span class="attribute">#![crate_type = <span class="string">&quot;lib&quot;</span>]</span>
 
-<span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
+<span class="kw">use </span>std::path::{Path, PathBuf};
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> = <span class="string">&quot;linux&quot;</span>)]</span>
-<span class="kw">fn</span> <span class="ident">main</span>() -&gt; () {
-    <span class="kw">let</span> <span class="ident">foo</span> = <span class="bool-val">true</span> &amp;&amp; <span class="bool-val">false</span> || <span class="bool-val">true</span>;
-    <span class="kw">let</span> <span class="kw">_</span>: <span class="kw-2">*const</span> () = <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw">_</span> = <span class="kw-2">&amp;</span><span class="ident">foo</span>;
-    <span class="kw">let</span> <span class="kw">_</span> = &amp;&amp;<span class="ident">foo</span>;
-    <span class="kw">let</span> <span class="kw">_</span> = <span class="kw-2">*</span><span class="ident">foo</span>;
-    <span class="macro">mac!</span>(<span class="ident">foo</span>, <span class="kw-2">&amp;mut</span> <span class="ident">bar</span>);
-    <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">length</span> &lt; <span class="ident">N</span> &amp;&amp; <span class="ident">index</span> &lt;= <span class="self">self</span>.<span class="ident">length</span>);
-    <span class="ident">::std::env::var</span>(<span class="string">&quot;gateau&quot;</span>).<span class="ident">is_ok</span>();
-    <span class="attribute">#[<span class="ident">rustfmt::skip</span>]</span>
-    <span class="kw">let</span> <span class="ident">s</span>:<span class="ident">std::path::PathBuf</span> = <span class="ident">std::path::PathBuf::new</span>();
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> = <span class="ident">String::new</span>();
+<span class="attribute">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]</span>
+<span class="kw">fn </span>main() -&gt; () {
+    <span class="kw">let </span>foo = <span class="bool-val">true </span>&amp;&amp; <span class="bool-val">false </span>|| <span class="bool-val">true</span>;
+    <span class="kw">let _</span>: <span class="kw-2">*const </span>() = <span class="number">0</span>;
+    <span class="kw">let _ </span>= <span class="kw-2">&amp;</span>foo;
+    <span class="kw">let _ </span>= &amp;&amp;foo;
+    <span class="kw">let _ </span>= <span class="kw-2">*</span>foo;
+    <span class="macro">mac!</span>(foo, <span class="kw-2">&amp;mut </span>bar);
+    <span class="macro">assert!</span>(<span class="self">self</span>.length &lt; N &amp;&amp; index &lt;= <span class="self">self</span>.length);
+    ::std::env::var(<span class="string">&quot;gateau&quot;</span>).is_ok();
+    <span class="attribute">#[rustfmt::skip]</span>
+    <span class="kw">let </span>s:std::path::PathBuf = std::path::PathBuf::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>s = String::new();
 
-    <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">s</span> {
-        <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">x</span> =&gt; {}
+    <span class="kw">match </span><span class="kw-2">&amp;</span>s {
+        <span class="kw-2">ref mut </span>x =&gt; {}
     }
 }
 
-<span class="macro">macro_rules!</span> <span class="ident">bar</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">foo</span>:<span class="ident">tt</span>) =&gt; {};
+<span class="macro">macro_rules!</span> bar {
+    (<span class="macro-nonterminal">$foo</span>:tt) =&gt; {};
 }
 </code></pre>

@@ -5,14 +5,12 @@
 
 // @has 'foo/macro.todo.html'
 // @has - '//span[@class="macro"]' 'macro_rules!'
-// @has - '//span[@class="ident"]' 'todo'
+// @hasraw - ' todo {'
 
 // @hasraw - '{ () =&gt; { ... }; ($('
 // @has - '//span[@class="macro-nonterminal"]' '$'
 // @has - '//span[@class="macro-nonterminal"]' 'arg'
-// @hasraw - ':'
-// @has - '//span[@class="ident"]' 'tt'
-// @hasraw - ')+'
+// @hasraw - ':tt)+'
 // @hasraw - ') =&gt; { ... }; }'
 pub use std::todo;
 

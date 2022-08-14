@@ -250,9 +250,6 @@ pre.rust .self {
 pre.rust .attribute {
 	color: #e6e1cf;
 }
-pre.rust .attribute .ident {
-	color: #e6e1cf;
-}
 
 .example-wrap > pre.line-number {
 	color: #5c67736e;
@@ -398,8 +395,7 @@ pre.rust .comment {}
 .block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
 .content .fnname {}
 pre.rust .kw {}
-pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
-pre.rust .attribute .ident {}
+pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute {}
 .content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
 pre.rust .doccomment {}
 .stab.deprecated {}
