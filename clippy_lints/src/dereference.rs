@@ -760,7 +760,7 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                                     .and_then(|subs| subs.get(1..))
                                 {
                                     Some(subs) => cx.tcx.mk_substs(subs.iter().copied()),
-                                    None => cx.tcx.mk_substs([].iter()),
+                                    None => cx.tcx.mk_substs(std::iter::empty::<ty::subst::GenericArg<'_>>()),
                                 } && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
                                     // Trait methods taking `&self`
                                     sub_ty

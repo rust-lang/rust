@@ -315,6 +315,8 @@ store.register_lints(&[
     methods::ITER_NEXT_SLICE,
     methods::ITER_NTH,
     methods::ITER_NTH_ZERO,
+    methods::ITER_ON_EMPTY_COLLECTIONS,
+    methods::ITER_ON_SINGLE_ITEMS,
     methods::ITER_OVEREAGER_CLONED,
     methods::ITER_SKIP_NEXT,
     methods::ITER_WITH_DRAIN,
