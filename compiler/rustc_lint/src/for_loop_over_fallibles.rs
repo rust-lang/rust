@@ -10,43 +10,41 @@ use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::TraitEngineExt;
 
 declare_lint! {
-    /// ### What it does
-    ///
     /// Checks for `for` loops over `Option` or `Result` values.
     ///
-    /// ### Why is this bad?
-    /// Readability. This is more clearly expressed as an `if
-    /// let`.
+    /// ### Explanation
+    ///
+    /// Both `Option` and `Result` implement `IntoIterator` trait, which allows using them in a `for` loop.
+    /// `for` loop over `Option` or `Result` will iterate either 0 (if the value is `None`/`Err(_)`)
+    /// or 1 time (if the value is `Some(_)`/`Ok(_)`). This is not very useful and is more clearly expressed
+    /// via `if let`.
+    ///
+    /// `for` loop can also be accidentally written with the intention to call a function multiple times,
+    /// while the function returns `Some(_)`, in these cases `while let` loop should be used instead.
+    ///
+    /// The "intended" use of `IntoIterator` implementations for `Option` and `Result` is passing them to
+    /// generic code that expects something implementing `IntoIterator`. For example using `.chain(option)`
+    /// to optionally add a value to an iterator.
     ///
     /// ### Example
     ///
     /// ```rust
     /// # let opt = Some(1);
     /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// for x in opt {
-    ///     // ..
-    /// }
-    ///
-    /// for x in &res {
-    ///     // ..
-    /// }
-    ///
-    /// for x in res.iter() {
-    ///     // ..
-    /// }
+    /// # let recv = || Some(1);
+    /// for x in opt { /* ... */}
+    /// for x in res { /* ... */ }
+    /// for x in recv() { /* ... */ }
     /// ```
     ///
     /// Use instead:
     /// ```rust
     /// # let opt = Some(1);
     /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// if let Some(x) = opt {
-    ///     // ..
-    /// }
-    ///
-    /// if let Ok(x) = res {
-    ///     // ..
-    /// }
+    /// # let recv = || Some(1);
+    /// if let Some(x) = opt { /* ... */}
+    /// if let Ok(x) = res { /* ... */ }
+    /// while let Some(x) = recv() { /* ... */ }
     /// ```
     pub FOR_LOOP_OVER_FALLIBLES,
     Warn,
