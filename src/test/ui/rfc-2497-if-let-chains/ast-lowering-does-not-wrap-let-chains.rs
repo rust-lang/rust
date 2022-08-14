@@ -1,5 +1,6 @@
 // run-pass
 
+#![feature(let_chains)]
 #![allow(irrefutable_let_patterns)]
 
 fn main() {

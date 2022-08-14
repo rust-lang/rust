@@ -1,5 +1,7 @@
 // check-pass
 
+#![feature(let_chains)]
+
 fn main() {
     let x = Some(vec!["test"]);
 
