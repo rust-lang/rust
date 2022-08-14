@@ -734,7 +734,7 @@ impl<'a> Parser<'a> {
             let mut snapshot = self.create_snapshot_for_diagnostic();
             let path =
                 Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
-            let struct_expr = snapshot.parse_struct_expr(None, path, AttrVec::new(), false);
+            let struct_expr = snapshot.parse_struct_expr(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
                 (Ok(expr), Err(mut err)) => {
@@ -1188,8 +1188,7 @@ impl<'a> Parser<'a> {
             outer_op.node,
         );
 
-        let mk_err_expr =
-            |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())));
+        let mk_err_expr = |this: &Self, span| Ok(Some(this.mk_expr(span, ExprKind::Err)));
 
         match inner_op.kind {
             ExprKind::Binary(op, ref l1, ref r1) if op.node.is_comparison() => {
@@ -1647,7 +1646,6 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         await_sp: Span,
-        attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Not {
             // Handle `await!(<expr>)`.
@@ -1662,7 +1660,7 @@ impl<'a> Parser<'a> {
             ExprKind::Try(_) => ExprKind::Err,
             _ => ExprKind::Await(expr),
         };
-        let expr = self.mk_expr(lo.to(sp), kind, attrs);
+        let expr = self.mk_expr(lo.to(sp), kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
@@ -1680,7 +1678,7 @@ impl<'a> Parser<'a> {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
-            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default, AttrVec::new())
+            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default)
         } else {
             self.parse_expr()
         }
@@ -1823,7 +1821,7 @@ impl<'a> Parser<'a> {
                 err.emit();
                 // Recover from parse error, callers expect the closing delim to be consumed.
                 self.consume_block(delim, ConsumeClosingDelim::Yes);
-                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err, AttrVec::new())
+                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
             }
         }
     }
