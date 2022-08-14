@@ -27,6 +27,7 @@ Libraries
 - [Extend `ptr::null` and `null_mut` to all thin (including extern) types.][94954]
 - [`impl Read and Write for VecDeque<u8>`.][95632]
 - [STD support for the Nintendo 3DS.][95897]
+- [Use rounding in float to Duration conversion methods.][96051]
 - [Make write/print macros eagerly drop temporaries.][96455]
 - [Implement internal traits that enable `[OsStr]::join`.][96881]
 - [Implement `Hash` for `core::alloc::Layout`.][97034]
@@ -99,6 +100,8 @@ Compatibility Notes
 
 - [`#[link]` attributes are now checked more strictly,][96885] which may introduce
   errors for invalid attribute arguments that were previously ignored.
+- [Rounding is now used when converting a float to a `Duration`.][96051] The converted
+  duration can differ slightly from what it was.
 
 Internal Changes
 ----------------
@@ -118,6 +121,7 @@ and related tools.
 [95818]: https://github.com/rust-lang/rust/pull/95818/
 [95897]: https://github.com/rust-lang/rust/pull/95897/
 [95953]: https://github.com/rust-lang/rust/pull/95953/
+[96051]: https://github.com/rust-lang/rust/pull/96051/
 [96296]: https://github.com/rust-lang/rust/pull/96296/
 [96455]: https://github.com/rust-lang/rust/pull/96455/
 [96737]: https://github.com/rust-lang/rust/pull/96737/
