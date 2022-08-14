@@ -1193,7 +1193,7 @@ rustc_queries! {
 
     // robert-trait: provided by the resolver outputs.
     /// Return all `impl` blocks in the current crate.
-    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxHashMap<DefId, Vec<LocalDefId>> {
+    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 
@@ -1752,7 +1752,7 @@ rustc_queries! {
     // FxIndexMap<DefId, Vec<LocalDefId>>,
     /// A list of all impls in a crate.
     //use rustc_middle::ty::fast_reject::SimplifiedTypeGen;
-    query impls_in_crate(_: CrateNum) -> &'tcx FxHashMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<DefId>>)>> {
+    query impls_in_crate(_: CrateNum) -> &'tcx FxIndexMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<DefId>>)>> {
         desc { "fetching trait to impl map in a crate" }
         separate_provide_extern
     }

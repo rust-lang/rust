@@ -3,7 +3,7 @@ use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
@@ -2297,7 +2297,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         all_local_trait_impls: |tcx, _| {
-            let o: FxHashMap<_, _> = tcx
+            let o: FxIndexMap<_, _> = tcx
                 .impls_in_crate(LOCAL_CRATE)
                 .iter()
                 .map(|(trait_id, impls)| {
@@ -2341,8 +2341,8 @@ pub fn provide(providers: &mut Providers) {
 
             tcx.arena.alloc_slice(&impls) // no need to sort, source-code order is fine.
             */
-            let mut fx_hash_map: FxHashMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> =
-                FxHashMap::default();
+            let mut fx_hash_map: FxIndexMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> =
+                FxIndexMap::default();
 
             for id in tcx.hir().items() {
                 if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {

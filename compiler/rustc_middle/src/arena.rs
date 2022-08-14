@@ -77,8 +77,8 @@ macro_rules! arena_types {
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
             [] all_traits: Vec<rustc_hir::def_id::DefId>,
-            [] trait_to_impl_and_ty: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, Vec<(rustc_hir::def_id::DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<rustc_hir::def_id::DefId>>)>>,
-            [] trait_to_impl: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, Vec<rustc_hir::def_id::LocalDefId>>,
+            [] trait_to_impl_and_ty: rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, Vec<(rustc_hir::def_id::DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<rustc_hir::def_id::DefId>>)>>,
+            [] trait_to_impl: rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, Vec<rustc_hir::def_id::LocalDefId>>,
             [] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
             [] foreign_module: rustc_session::cstore::ForeignModule,
             [] foreign_modules: Vec<rustc_session::cstore::ForeignModule>,

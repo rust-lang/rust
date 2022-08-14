@@ -6,7 +6,7 @@ use crate::rmeta::*;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
@@ -1262,7 +1262,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_trait_impl_map(self) -> FxHashMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> {
+    fn get_trait_impl_map(self) -> FxIndexMap<DefId, Vec<(DefId, Option<SimplifiedType>)>> {
         self.cdata
             .trait_impls
             .iter()
