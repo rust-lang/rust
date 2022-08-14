@@ -2,67 +2,75 @@
 
 #![warn(clippy::collapsible_str_replace)]
 
-fn get_filter() -> &'static str {
-    "u"
+fn get_filter() -> char {
+    'u'
 }
 
 fn main() {
-    let misspelled = "hesuo worpd";
-
+    let d = 'd';
     let p = 'p';
     let s = 's';
     let u = 'u';
     let l = "l";
 
+    let mut iter = ["l", "z"].iter();
+
     // LINT CASES
-    let _ = misspelled.replace('s', "l").replace('u', "l");
+    let _ = "hesuo worpd".replace('s', "l").replace('u', "l");
 
-    let _ = misspelled.replace('s', l).replace('u', l);
+    let _ = "hesuo worpd".replace('s', l).replace('u', l);
 
-    let _ = misspelled.replace('s', "l").replace('u', "l").replace('p', "l");
+    let _ = "hesuo worpd".replace('s', "l").replace('u', "l").replace('p', "l");
 
-    let _ = misspelled
+    let _ = "hesuo worpd"
         .replace('s', "l")
         .replace('u', "l")
         .replace('p', "l")
         .replace('d', "l");
 
-    // FALLBACK CASES
-    // If there are consecutive calls to `str::replace` and all or any chars are variables,
-    // recommend the fallback `misspelled.replace(&[s, u, p], "l")`
-    let _ = misspelled.replace(s, "l").replace('u', "l");
+    let _ = "hesuo world".replace(s, "l").replace('u', "l");
 
-    let _ = misspelled.replace(s, "l").replace('u', "l").replace('p', "l");
+    let _ = "hesuo worpd".replace(s, "l").replace('u', "l").replace('p', "l");
 
-    let _ = misspelled.replace(s, "l").replace(u, "l").replace('p', "l");
+    let _ = "hesuo worpd".replace(s, "l").replace(u, "l").replace('p', "l");
 
-    let _ = misspelled.replace(s, "l").replace(u, "l").replace(p, "l");
+    let _ = "hesuo worpd".replace(s, "l").replace(u, "l").replace(p, "l");
+
+    let _ = "hesuo worlp".replace('s', "l").replace('u', "l").replace('p', "d");
+
+    let _ = "hesuo worpd".replace('s', "x").replace('u', "l").replace('p', "l");
+
+    // Note: Future iterations could lint `replace(|c| matches!(c, "su" | 'd' | 'p'), "l")`
+    let _ = "hesudo worpd".replace("su", "l").replace('d', "l").replace('p', "l");
+
+    let _ = "hesudo worpd".replace(d, "l").replace('p', "l").replace("su", "l");
+
+    let _ = "hesuo world".replace(get_filter(), "l").replace('s', "l");
 
     // NO LINT CASES
-    let _ = misspelled.replace('s', "l");
+    let _ = "hesuo world".replace('s', "l").replace('u', "p");
 
-    let _ = misspelled.replace(s, "l");
+    let _ = "hesuo worpd".replace('s', "l").replace('p', l);
 
-    // If the consecutive `str::replace` calls have different `to` arguments, do not lint
-    let _ = misspelled.replace('s', "l").replace('u', "p");
+    let _ = "hesudo worpd".replace('d', "l").replace("su", "l").replace('p', "l");
 
-    let _ = misspelled.replace(&get_filter(), "l");
+    // Note: Future iterations of `collapsible_str_replace` might lint this and combine to `[s, u, p]`
+    let _ = "hesuo worpd".replace([s, u], "l").replace([u, p], "l");
 
-    let _ = misspelled.replace(&['s', 'u', 'p'], "l");
+    let _ = "hesuo worpd".replace(['s', 'u'], "l").replace(['u', 'p'], "l");
 
-    let _ = misspelled.replace(&['s', 'u', 'p'], l);
+    let _ = "hesuo worpd".replace('s', "l").replace(['u', 'p'], "l");
 
-    let _ = misspelled.replace(&['s', 'u'], "l").replace(&['u', 'p'], "l");
+    let _ = "hesuo worpd".replace(['s', 'u', 'p'], "l").replace('r', "l");
 
-    let _ = misspelled.replace('s', "l").replace(&['u', 'p'], "l");
+    let _ = "hesuo worpd".replace(['s', 'u', 'p'], l).replace('r', l);
 
-    let _ = misspelled.replace(&['s', 'u'], "l").replace('p', "l");
+    let _ = "hesuo worpd".replace(['s', u, 'p'], "l").replace('r', "l");
 
-    let _ = misspelled.replace(&['s', u, 'p'], "l");
+    let _ = "hesuo worpd".replace([s, u], "l").replace(p, "l");
 
-    let _ = misspelled.replace(&[s, u, 'p'], "l");
-
-    let _ = misspelled.replace(&[s, u, p], "l");
-
-    let _ = misspelled.replace(&[s, u], "l").replace(&[u, p], "l");
+    // Regression test
+    let _ = "hesuo worpd"
+        .replace('u', iter.next().unwrap())
+        .replace('s', iter.next().unwrap());
 }

@@ -156,7 +156,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// let hello = "hesuo worpd".replace(|c| matches!(c, 's' | 'u' | 'p'), "l");
+    /// let hello = "hesuo worpd".replace(&['s', 'u', 'p'], "l");
     /// ```
     #[clippy::version = "1.64.0"]
     pub COLLAPSIBLE_STR_REPLACE,
@@ -3507,6 +3507,14 @@ impl Methods {
                 ("repeat", [arg]) => {
                     repeat_once::check(cx, expr, recv, arg);
                 },
+                (name @ ("replace" | "replacen"), [arg1, arg2] | [arg1, arg2, _]) => {
+                    no_effect_replace::check(cx, expr, arg1, arg2);
+
+                    // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
+                    if name == "replace" && let Some(("replace", ..)) = method_call(recv) {
+                        collapsible_str_replace::check(cx, expr, arg1, arg2);
+                    }
+                },
                 ("resize", [count_arg, default_arg]) => {
                     vec_resize_to_zero::check(cx, expr, count_arg, default_arg, span);
                 },
@@ -3518,10 +3526,6 @@ impl Methods {
                 },
                 ("sort_unstable_by", [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
-                },
-                ("replace" | "replacen", [arg1, arg2] | [arg1, arg2, _]) => {
-                    no_effect_replace::check(cx, expr, arg1, arg2);
-                    collapsible_str_replace::check(cx, expr, name, recv);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
