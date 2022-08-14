@@ -1510,34 +1510,31 @@ impl<'a> Parser<'a> {
         } else {
             (None, self.parse_path(PathStyle::Expr)?)
         };
-        let lo = path.span;
 
         // `!`, as an operator, is prefix, so we know this isn't that.
-        let (hi, kind) = if self.eat(&token::Not) {
+        let (span, kind) = if self.eat(&token::Not) {
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.struct_span_err(path.span, "macros cannot use qualified paths").emit();
             }
+            let lo = path.span;
             let mac = MacCall {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
             };
-            (self.prev_token.span, ExprKind::MacCall(mac))
-        } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
-            if let Some(expr) = self.maybe_parse_struct_expr(qself.as_ref(), &path, &attrs) {
+            (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
+        } else if self.check(&token::OpenDelim(Delimiter::Brace)) &&
+            let Some(expr) = self.maybe_parse_struct_expr(qself.as_ref(), &path, &attrs) {
                 if qself.is_some() {
                     self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
                 }
                 return expr;
-            } else {
-                (path.span, ExprKind::Path(qself, path))
-            }
         } else {
             (path.span, ExprKind::Path(qself, path))
         };
 
-        let expr = self.mk_expr(lo.to(hi), kind, attrs);
+        let expr = self.mk_expr(span, kind, attrs);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
