@@ -460,7 +460,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         InheritConstStability::No,
-                        InheritStability::No,
+                        InheritStability::Yes,
                         |_| {},
                     );
                 }
@@ -600,6 +600,9 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
         self.check_missing_stability(self.tcx.hir().local_def_id(var.id), var.span);
+        if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
+            self.check_missing_stability(self.tcx.hir().local_def_id(ctor_hir_id), var.span);
+        }
         intravisit::walk_variant(self, var);
     }
 

@@ -440,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &hir::Expr<'tcx>,
     ) {
         // Next, let's construct the error
-        let (error_span, full_call_span, ctor_of) = match &call_expr.kind {
+        let (error_span, full_call_span, ctor_of, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
                 hir::Expr { hir_id, span, kind: hir::ExprKind::Path(qpath), .. },
                 _,
@@ -448,12 +448,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Res::Def(DefKind::Ctor(of, _), _) =
                     self.typeck_results.borrow().qpath_res(qpath, *hir_id)
                 {
-                    (call_span, *span, Some(of))
+                    (call_span, *span, Some(of), false)
                 } else {
-                    (call_span, *span, None)
+                    (call_span, *span, None, false)
                 }
             }
-            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None),
+            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None, false),
             hir::ExprKind::MethodCall(path_segment, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
@@ -461,9 +461,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     ident_span
                 };
-                (
-                    *span, ident_span, None, // methods are never ctors
-                )
+                // methods are never ctors
+                (*span, ident_span, None, true)
             }
             k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
         };
@@ -545,7 +544,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
             let can_coerce = self.can_coerce(arg_ty, coerced_ty);
             if !can_coerce {
-                return Compatibility::Incompatible(None);
+                return Compatibility::Incompatible(Some(ty::error::TypeError::Sorts(
+                    ty::error::ExpectedFound::new(true, coerced_ty, arg_ty),
+                )));
             }
 
             // Using probe here, since we don't want this subtyping to affect inference.
@@ -659,7 +660,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::MachineApplicable,
                         );
                     };
-                    self.label_fn_like(&mut err, fn_def_id, callee_ty);
+                    self.label_fn_like(&mut err, fn_def_id, callee_ty, Some(mismatch_idx), is_method);
                     err.emit();
                     return;
                 }
@@ -701,16 +702,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         errors.drain_filter(|error| {
-                let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(error)) = error else { return false };
+                let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
                 let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
                 let (expected_ty, _) = formal_and_expected_inputs[*expected_idx];
                 let cause = &self.misc(provided_span);
                 let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                if let Some(e) = error {
-                    if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
-                        self.report_and_explain_type_error(trace, e).emit();
-                        return true;
-                    }
+                if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
+                    self.report_and_explain_type_error(trace, e).emit();
+                    return true;
                 }
                 false
             });
@@ -749,7 +748,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 format!("arguments to this {} are incorrect", call_name),
             );
             // Call out where the function is defined
-            self.label_fn_like(&mut err, fn_def_id, callee_ty);
+            self.label_fn_like(
+                &mut err,
+                fn_def_id,
+                callee_ty,
+                Some(expected_idx.as_usize()),
+                is_method,
+            );
             err.emit();
             return;
         }
@@ -1031,7 +1036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Call out where the function is defined
-        self.label_fn_like(&mut err, fn_def_id, callee_ty);
+        self.label_fn_like(&mut err, fn_def_id, callee_ty, None, is_method);
 
         // And add a suggestion block for all of the parameters
         let suggestion_text = match suggestion_text {
@@ -1781,6 +1786,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         callable_def_id: Option<DefId>,
         callee_ty: Option<Ty<'tcx>>,
+        // A specific argument should be labeled, instead of all of them
+        expected_idx: Option<usize>,
+        is_method: bool,
     ) {
         let Some(mut def_id) = callable_def_id else {
             return;
@@ -1881,14 +1889,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .get_if_local(def_id)
                 .and_then(|node| node.body_id())
                 .into_iter()
-                .flat_map(|id| self.tcx.hir().body(id).params);
+                .flat_map(|id| self.tcx.hir().body(id).params)
+                .skip(if is_method { 1 } else { 0 });
 
-            for param in params {
+            for (_, param) in params
+                .into_iter()
+                .enumerate()
+                .filter(|(idx, _)| expected_idx.map_or(true, |expected_idx| expected_idx == *idx))
+            {
                 spans.push_span_label(param.span, "");
             }
 
             let def_kind = self.tcx.def_kind(def_id);
             err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+        } else if let Some(hir::Node::Expr(e)) = self.tcx.hir().get_if_local(def_id)
+            && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
+        {
+            let param = expected_idx
+                .and_then(|expected_idx| self.tcx.hir().body(*body).params.get(expected_idx));
+            let (kind, span) = if let Some(param) = param {
+                ("closure parameter", param.span)
+            } else {
+                ("closure", self.tcx.def_span(def_id))
+            };
+            err.span_note(span, &format!("{} defined here", kind));
         } else {
             let def_kind = self.tcx.def_kind(def_id);
             err.span_note(

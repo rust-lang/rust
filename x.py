@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Some systems don't have `python3` in their PATH. This isn't supported by x.py directly;
-# they should use `x.sh` or `x.ps1` instead.
+# they should use `x` or `x.ps1` instead.
 
 # This file is only a "symlink" to bootstrap.py, all logic should go there.
 

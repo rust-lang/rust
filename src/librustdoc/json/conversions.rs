@@ -59,7 +59,7 @@ impl JsonRenderer<'_> {
             id: from_item_id_with_name(item_id, self.tcx, name),
             crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
-            span: self.convert_span(span),
+            span: span.and_then(|span| self.convert_span(span)),
             visibility: self.convert_visibility(visibility),
             docs,
             attrs,
@@ -428,10 +428,8 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
         use clean::GenericBound::*;
         match bound {
             TraitBound(clean::PolyTrait { trait_, generic_params }, modifier) => {
-                // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-                let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 GenericBound::TraitBound {
-                    trait_,
+                    trait_: trait_.into_tcx(tcx),
                     generic_params: generic_params.into_tcx(tcx),
                     modifier: from_trait_bound_modifier(modifier),
                 }
@@ -460,12 +458,7 @@ impl FromWithTcx<clean::Type> for Type {
         };
 
         match ty {
-            clean::Type::Path { path } => Type::ResolvedPath {
-                name: path.whole_name(),
-                id: from_item_id(path.def_id().into(), tcx),
-                args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
-                param_names: Vec::new(),
-            },
+            clean::Type::Path { path } => Type::ResolvedPath(path.into_tcx(tcx)),
             clean::Type::DynTrait(bounds, lt) => Type::DynTrait(DynTrait {
                 lifetime: lt.map(convert_lifetime),
                 traits: bounds.into_tcx(tcx),
@@ -487,16 +480,22 @@ impl FromWithTcx<clean::Type> for Type {
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
-            QPath { assoc, self_type, trait_, .. } => {
-                // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-                let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
-                Type::QualifiedPath {
-                    name: assoc.name.to_string(),
-                    args: Box::new(assoc.args.clone().into_tcx(tcx)),
-                    self_type: Box::new((*self_type).into_tcx(tcx)),
-                    trait_: Box::new(trait_),
-                }
-            }
+            QPath { assoc, self_type, trait_, .. } => Type::QualifiedPath {
+                name: assoc.name.to_string(),
+                args: Box::new(assoc.args.clone().into_tcx(tcx)),
+                self_type: Box::new((*self_type).into_tcx(tcx)),
+                trait_: trait_.into_tcx(tcx),
+            },
+        }
+    }
+}
+
+impl FromWithTcx<clean::Path> for Path {
+    fn from_tcx(path: clean::Path, tcx: TyCtxt<'_>) -> Path {
+        Path {
+            name: path.whole_name(),
+            id: from_item_id(path.def_id().into(), tcx),
+            args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
         }
     }
 }
@@ -565,10 +564,7 @@ impl FromWithTcx<clean::PolyTrait> for PolyTrait {
         clean::PolyTrait { trait_, generic_params }: clean::PolyTrait,
         tcx: TyCtxt<'_>,
     ) -> Self {
-        PolyTrait {
-            trait_: clean::Type::Path { path: trait_ }.into_tcx(tcx),
-            generic_params: generic_params.into_tcx(tcx),
-        }
+        PolyTrait { trait_: trait_.into_tcx(tcx), generic_params: generic_params.into_tcx(tcx) }
     }
 }
 
@@ -576,8 +572,6 @@ impl FromWithTcx<clean::Impl> for Impl {
     fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
         let provided_trait_methods = impl_.provided_trait_methods(tcx);
         let clean::Impl { unsafety, generics, trait_, for_, items, polarity, kind } = impl_;
-        // FIXME: should `trait_` be a clean::Path equivalent in JSON?
-        let trait_ = trait_.map(|path| clean::Type::Path { path }.into_tcx(tcx));
         // FIXME: use something like ImplKind in JSON?
         let (synthetic, blanket_impl) = match kind {
             clean::ImplKind::Normal | clean::ImplKind::FakeVaradic => (false, None),
@@ -595,7 +589,7 @@ impl FromWithTcx<clean::Impl> for Impl {
                 .into_iter()
                 .map(|x| x.to_string())
                 .collect(),
-            trait_,
+            trait_: trait_.map(|path| path.into_tcx(tcx)),
             for_: for_.into_tcx(tcx),
             items: ids(items, tcx),
             negative: negative_polarity,

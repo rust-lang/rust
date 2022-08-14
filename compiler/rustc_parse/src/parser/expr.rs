@@ -2268,7 +2268,7 @@ impl<'a> Parser<'a> {
                     attrs: attrs.into(),
                     ty,
                     pat,
-                    span: lo.to(this.token.span),
+                    span: lo.to(this.prev_token.span),
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
