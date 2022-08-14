@@ -44,10 +44,6 @@ use utils::*;
 pub(crate) use self::types::*;
 pub(crate) use self::utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-pub(crate) trait Clean<'tcx, T> {
-    fn clean(&self, cx: &mut DocContext<'tcx>) -> T;
-}
-
 pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<'tcx>) -> Item {
     let mut items: Vec<Item> = vec![];
     let mut inserted = FxHashSet::default();
