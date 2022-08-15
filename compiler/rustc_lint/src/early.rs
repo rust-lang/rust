@@ -101,6 +101,12 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_pat_post, p);
     }
 
+    fn visit_pat_field(&mut self, field: &'a ast::PatField) {
+        self.with_lint_attrs(field.id, &field.attrs, |cx| {
+            ast_visit::walk_pat_field(cx, field);
+        });
+    }
+
     fn visit_anon_const(&mut self, c: &'a ast::AnonConst) {
         self.check_id(c.id);
         ast_visit::walk_anon_const(self, c);
@@ -219,9 +225,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
-        run_early_pass!(self, check_generic_param, param);
-        self.check_id(param.id);
-        ast_visit::walk_generic_param(self, param);
+        self.with_lint_attrs(param.id, &param.attrs, |cx| {
+            run_early_pass!(cx, check_generic_param, param);
+            ast_visit::walk_generic_param(cx, param);
+        });
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {

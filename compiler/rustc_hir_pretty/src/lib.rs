@@ -83,12 +83,14 @@ impl<'a> State<'a> {
             Node::Variant(a) => self.print_variant(a),
             Node::AnonConst(a) => self.print_anon_const(a),
             Node::Expr(a) => self.print_expr(a),
+            Node::ExprField(a) => self.print_expr_field(&a),
             Node::Stmt(a) => self.print_stmt(a),
             Node::PathSegment(a) => self.print_path_segment(a),
             Node::Ty(a) => self.print_type(a),
             Node::TypeBinding(a) => self.print_type_binding(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
             Node::Pat(a) => self.print_pat(a),
+            Node::PatField(a) => self.print_patfield(&a),
             Node::Arm(a) => self.print_arm(a),
             Node::Infer(_) => self.word("_"),
             Node::Block(a) => {
@@ -1127,20 +1129,7 @@ impl<'a> State<'a> {
     ) {
         self.print_qpath(qpath, true);
         self.word("{");
-        self.commasep_cmnt(
-            Consistent,
-            fields,
-            |s, field| {
-                s.ibox(INDENT_UNIT);
-                if !field.is_shorthand {
-                    s.print_ident(field.ident);
-                    s.word_space(":");
-                }
-                s.print_expr(field.expr);
-                s.end()
-            },
-            |f| f.span,
-        );
+        self.commasep_cmnt(Consistent, fields, |s, field| s.print_expr_field(field), |f| f.span);
         if let Some(expr) = wth {
             self.ibox(INDENT_UNIT);
             if !fields.is_empty() {
@@ -1155,6 +1144,20 @@ impl<'a> State<'a> {
         }
 
         self.word("}");
+    }
+
+    fn print_expr_field(&mut self, field: &hir::ExprField<'_>) {
+        if self.attrs(field.hir_id).is_empty() {
+            self.space();
+        }
+        self.cbox(INDENT_UNIT);
+        self.print_outer_attributes(&self.attrs(field.hir_id));
+        if !field.is_shorthand {
+            self.print_ident(field.ident);
+            self.word_space(":");
+        }
+        self.print_expr(&field.expr);
+        self.end()
     }
 
     fn print_expr_tup(&mut self, exprs: &[hir::Expr<'_>]) {
@@ -1803,20 +1806,7 @@ impl<'a> State<'a> {
                 if !empty {
                     self.space();
                 }
-                self.commasep_cmnt(
-                    Consistent,
-                    fields,
-                    |s, f| {
-                        s.cbox(INDENT_UNIT);
-                        if !f.is_shorthand {
-                            s.print_ident(f.ident);
-                            s.word_nbsp(":");
-                        }
-                        s.print_pat(f.pat);
-                        s.end()
-                    },
-                    |f| f.pat.span,
-                );
+                self.commasep_cmnt(Consistent, &fields, |s, f| s.print_patfield(f), |f| f.pat.span);
                 if etc {
                     if !fields.is_empty() {
                         self.word_space(",");
@@ -1909,6 +1899,20 @@ impl<'a> State<'a> {
             }
         }
         self.ann.post(self, AnnNode::Pat(pat))
+    }
+
+    pub fn print_patfield(&mut self, field: &hir::PatField<'_>) {
+        if self.attrs(field.hir_id).is_empty() {
+            self.space();
+        }
+        self.cbox(INDENT_UNIT);
+        self.print_outer_attributes(&self.attrs(field.hir_id));
+        if !field.is_shorthand {
+            self.print_ident(field.ident);
+            self.word_nbsp(":");
+        }
+        self.print_pat(field.pat);
+        self.end();
     }
 
     pub fn print_param(&mut self, arg: &hir::Param<'_>) {

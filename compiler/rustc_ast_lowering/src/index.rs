@@ -199,6 +199,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::PatField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_pat_field(this, field);
+        });
+    }
+
     fn visit_arm(&mut self, arm: &'hir Arm<'hir>) {
         let node = Node::Arm(arm);
 
@@ -222,6 +229,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(expr.hir_id, |this| {
             intravisit::walk_expr(this, expr);
+        });
+    }
+
+    fn visit_expr_field(&mut self, field: &'hir ExprField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::ExprField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_expr_field(this, field);
         });
     }
 

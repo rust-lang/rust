@@ -638,11 +638,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }?;
 
         match hir.find(hir.get_parent_node(expr.hir_id))? {
-            Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(_, fields, ..), .. }) => {
-                for field in *fields {
-                    if field.ident.name == local.name && field.is_shorthand {
-                        return Some(local.name);
-                    }
+            Node::ExprField(field) => {
+                if field.ident.name == local.name && field.is_shorthand {
+                    return Some(local.name);
                 }
             }
             _ => {}
@@ -1073,21 +1071,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut sugg = vec![];
 
-        if let Some(hir::Node::Expr(hir::Expr {
-            kind: hir::ExprKind::Struct(_, fields, _), ..
-        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+        if let Some(hir::Node::ExprField(field)) =
+            self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
-            match (*fields)
-                .iter()
-                .find(|field| field.expr.hir_id == expr.hir_id && field.is_shorthand)
-            {
+            if field.is_shorthand {
                 // This is a field literal
-                Some(field) => {
-                    sugg.push((field.ident.span.shrink_to_lo(), format!("{}: ", field.ident)));
-                }
+                sugg.push((field.ident.span.shrink_to_lo(), format!("{}: ", field.ident)));
+            } else {
                 // Likely a field was meant, but this field wasn't found. Do not suggest anything.
-                None => return false,
+                return false;
             }
         };
 

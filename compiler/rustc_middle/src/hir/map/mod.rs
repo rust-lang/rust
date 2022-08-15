@@ -297,6 +297,8 @@ impl<'hir> Map<'hir> {
             | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
+            | Node::PatField(_)
+            | Node::ExprField(_)
             | Node::Local(_)
             | Node::Param(_)
             | Node::Arm(_)
@@ -1020,6 +1022,7 @@ impl<'hir> Map<'hir> {
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => self.body(constant.body).value.span,
             Node::Expr(expr) => expr.span,
+            Node::ExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
             Node::PathSegment(seg) => {
                 let ident_span = seg.ident.span;
@@ -1030,6 +1033,7 @@ impl<'hir> Map<'hir> {
             Node::TypeBinding(tb) => tb.span,
             Node::TraitRef(tr) => tr.path.span,
             Node::Pat(pat) => pat.span,
+            Node::PatField(field) => field.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
             Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
@@ -1241,12 +1245,14 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         }
         Some(Node::AnonConst(_)) => node_str("const"),
         Some(Node::Expr(_)) => node_str("expr"),
+        Some(Node::ExprField(_)) => node_str("expr field"),
         Some(Node::Stmt(_)) => node_str("stmt"),
         Some(Node::PathSegment(_)) => node_str("path segment"),
         Some(Node::Ty(_)) => node_str("type"),
         Some(Node::TypeBinding(_)) => node_str("type binding"),
         Some(Node::TraitRef(_)) => node_str("trait ref"),
         Some(Node::Pat(_)) => node_str("pat"),
+        Some(Node::PatField(_)) => node_str("pattern field"),
         Some(Node::Param(_)) => node_str("param"),
         Some(Node::Arm(_)) => node_str("arm"),
         Some(Node::Block(_)) => node_str("block"),

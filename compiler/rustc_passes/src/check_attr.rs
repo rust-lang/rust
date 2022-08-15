@@ -652,7 +652,9 @@ impl CheckAttrVisitor<'_> {
             | Target::ForeignStatic
             | Target::ForeignTy
             | Target::GenericParam(..)
-            | Target::MacroDef => None,
+            | Target::MacroDef
+            | Target::PatField
+            | Target::ExprField => None,
         } {
             tcx.sess.emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return false;
@@ -2066,6 +2068,11 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_expr(self, expr)
     }
 
+    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
+        self.check_attributes(field.hir_id, field.span, Target::ExprField, None);
+        intravisit::walk_expr_field(self, field)
+    }
+
     fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) {
         self.check_attributes(variant.id, variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant)
@@ -2075,6 +2082,11 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         self.check_attributes(param.hir_id, param.span, Target::Param, None);
 
         intravisit::walk_param(self, param);
+    }
+
+    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) {
+        self.check_attributes(field.hir_id, field.span, Target::PatField, None);
+        intravisit::walk_pat_field(self, field);
     }
 }
 

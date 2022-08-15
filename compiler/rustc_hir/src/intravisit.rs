@@ -325,6 +325,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat(&mut self, p: &'v Pat<'v>) {
         walk_pat(self, p)
     }
+    fn visit_pat_field(&mut self, f: &'v PatField<'v>) {
+        walk_pat_field(self, f)
+    }
     fn visit_array_length(&mut self, len: &'v ArrayLen) {
         walk_array_len(self, len)
     }
@@ -336,6 +339,9 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
         walk_let_expr(self, lex)
+    }
+    fn visit_expr_field(&mut self, field: &'v ExprField<'v>) {
+        walk_expr_field(self, field)
     }
     fn visit_ty(&mut self, t: &'v Ty<'v>) {
         walk_ty(self, t)
@@ -761,11 +767,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
         }
         PatKind::Struct(ref qpath, fields, _) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
-            for field in fields {
-                visitor.visit_id(field.hir_id);
-                visitor.visit_ident(field.ident);
-                visitor.visit_pat(&field.pat)
-            }
+            walk_list!(visitor, visit_pat_field, fields);
         }
         PatKind::Or(pats) => walk_list!(visitor, visit_pat, pats),
         PatKind::Tuple(tuple_elements, _) => {
@@ -790,6 +792,12 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
             walk_list!(visitor, visit_pat, postpatterns);
         }
     }
+}
+
+pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'v>) {
+    visitor.visit_id(field.hir_id);
+    visitor.visit_ident(field.ident);
+    visitor.visit_pat(&field.pat)
 }
 
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem<'v>) {
@@ -1059,6 +1067,12 @@ pub fn walk_let_expr<'v, V: Visitor<'v>>(visitor: &mut V, let_expr: &'v Let<'v>)
     walk_list!(visitor, visit_ty, let_expr.ty);
 }
 
+pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField<'v>) {
+    visitor.visit_id(field.hir_id);
+    visitor.visit_ident(field.ident);
+    visitor.visit_expr(&field.expr)
+}
+
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     match expression.kind {
@@ -1073,11 +1087,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::Struct(ref qpath, fields, ref optional_base) => {
             visitor.visit_qpath(qpath, expression.hir_id, expression.span);
-            for field in fields {
-                visitor.visit_id(field.hir_id);
-                visitor.visit_ident(field.ident);
-                visitor.visit_expr(&field.expr)
-            }
+            walk_list!(visitor, visit_expr_field, fields);
             walk_list!(visitor, visit_expr, optional_base);
         }
         ExprKind::Tup(subexpressions) => {

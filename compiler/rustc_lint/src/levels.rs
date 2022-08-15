@@ -766,6 +766,12 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
         })
     }
 
+    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
+        self.with_lint_attrs(field.hir_id, |builder| {
+            intravisit::walk_expr_field(builder, field);
+        })
+    }
+
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
         self.with_lint_attrs(s.hir_id, |builder| {
             intravisit::walk_field_def(builder, s);
@@ -799,6 +805,18 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.with_lint_attrs(impl_item.hir_id(), |builder| {
             intravisit::walk_impl_item(builder, impl_item);
+        });
+    }
+
+    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) {
+        self.with_lint_attrs(field.hir_id, |builder| {
+            intravisit::walk_pat_field(builder, field);
+        })
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        self.with_lint_attrs(p.hir_id, |builder| {
+            intravisit::walk_generic_param(builder, p);
         });
     }
 }

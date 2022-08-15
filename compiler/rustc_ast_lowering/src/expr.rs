@@ -1406,8 +1406,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
+        let hir_id = self.lower_node_id(f.id);
+        self.lower_attrs(hir_id, &f.attrs);
         hir::ExprField {
-            hir_id: self.next_id(),
+            hir_id,
             ident: self.lower_ident(f.ident),
             expr: self.lower_expr(&f.expr),
             span: self.lower_span(f.span),

@@ -927,7 +927,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ),
                 );
                 match self.tcx.hir().get(self.tcx.hir().get_parent_node(pat.hir_id)) {
-                    hir::Node::Pat(Pat { kind: hir::PatKind::Struct(..), .. }) => {
+                    hir::Node::PatField(..) => {
                         e.span_suggestion_verbose(
                             ident.span.shrink_to_hi(),
                             "bind the struct field to a different name instead",

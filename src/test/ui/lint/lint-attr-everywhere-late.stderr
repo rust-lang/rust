@@ -1,0 +1,428 @@
+error: missing documentation for a type alias
+  --> $DIR/lint-attr-everywhere-late.rs:35:1
+   |
+LL | pub type MissingDocType = i32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:34:8
+   |
+LL | #[deny(missing_docs)]
+   |        ^^^^^^^^^^^^
+
+error: missing documentation for a struct
+  --> $DIR/lint-attr-everywhere-late.rs:43:1
+   |
+LL | pub struct ItemOuter;
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:42:8
+   |
+LL | #[deny(missing_docs)]
+   |        ^^^^^^^^^^^^
+
+error: missing documentation for a module
+  --> $DIR/lint-attr-everywhere-late.rs:45:1
+   |
+LL | pub mod module_inner {
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:46:13
+   |
+LL |     #![deny(missing_docs)]
+   |             ^^^^^^^^^^^^
+
+error: missing documentation for a function
+  --> $DIR/lint-attr-everywhere-late.rs:47:5
+   |
+LL |     pub fn missing_inner() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-attr-everywhere-late.rs:54:5
+   |
+LL |     pub fn inherent_denied_from_inner() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:52:13
+   |
+LL |     #![deny(missing_docs)]
+   |             ^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-attr-everywhere-late.rs:59:5
+   |
+LL |     pub fn inherent_fn() {}
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:58:12
+   |
+LL |     #[deny(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+error: missing documentation for an associated constant
+  --> $DIR/lint-attr-everywhere-late.rs:62:5
+   |
+LL |     pub const INHERENT_CONST: i32 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:61:12
+   |
+LL |     #[deny(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+error: missing documentation for a trait
+  --> $DIR/lint-attr-everywhere-late.rs:65:1
+   |
+LL | pub trait TraitInner {
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:66:13
+   |
+LL |     #![deny(missing_docs)]
+   |             ^^^^^^^^^^^^
+
+error: missing documentation for a trait
+  --> $DIR/lint-attr-everywhere-late.rs:69:1
+   |
+LL | pub trait AssociatedTraitInner {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:70:13
+   |
+LL |     #![deny(missing_docs)]
+   |             ^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-attr-everywhere-late.rs:72:5
+   |
+LL |     fn denied_from_inner() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing documentation for an associated function
+  --> $DIR/lint-attr-everywhere-late.rs:79:5
+   |
+LL |     fn assoc_fn() {}
+   |     ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:78:12
+   |
+LL |     #[deny(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+error: missing documentation for an associated constant
+  --> $DIR/lint-attr-everywhere-late.rs:82:5
+   |
+LL |     const ASSOC_CONST: u8 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:81:12
+   |
+LL |     #[deny(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+error: missing documentation for an associated type
+  --> $DIR/lint-attr-everywhere-late.rs:85:5
+   |
+LL |     type AssocType;
+   |     ^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:84:12
+   |
+LL |     #[deny(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+error: missing documentation for a variant
+  --> $DIR/lint-attr-everywhere-late.rs:112:5
+   |
+LL |     Variant1,
+   |     ^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:111:12
+   |
+LL |     #[deny(missing_docs)]
+   |            ^^^^^^^^^^^^
+
+error: `clashing1` redeclared with a different signature
+  --> $DIR/lint-attr-everywhere-late.rs:123:5
+   |
+LL |         fn clashing1();
+   |         --------------- `clashing1` previously declared here
+...
+LL |     fn clashing1(_: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:122:13
+   |
+LL |     #![deny(clashing_extern_declarations)]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `unsafe extern "C" fn()`
+              found `unsafe extern "C" fn(i32)`
+
+error: `clashing2` redeclared with a different signature
+  --> $DIR/lint-attr-everywhere-late.rs:128:5
+   |
+LL |         fn clashing2();
+   |         --------------- `clashing2` previously declared here
+...
+LL |     fn clashing2(_: i32);
+   |     ^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:127:12
+   |
+LL |     #[deny(clashing_extern_declarations)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected `unsafe extern "C" fn()`
+              found `unsafe extern "C" fn(i32)`
+
+error: types that do not implement `Drop` can still have drop glue, consider instead using `std::mem::needs_drop` to detect whether a type is trivially dropped
+  --> $DIR/lint-attr-everywhere-late.rs:93:38
+   |
+LL |     fn denied_from_inner(_x: Box<dyn Drop>) {}
+   |                                      ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:91:13
+   |
+LL |     #![deny(dyn_drop)]
+   |             ^^^^^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:96:21
+   |
+LL |     fn assoc_fn() { discriminant::<i32>(&123); }
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:95:12
+   |
+LL |     #[deny(enum_intrinsics_non_enums)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:96:41
+   |
+LL |     fn assoc_fn() { discriminant::<i32>(&123); }
+   |                                         ^^^^
+
+error: literal out of range for `u8`
+  --> $DIR/lint-attr-everywhere-late.rs:98:59
+   |
+LL |     #[deny(overflowing_literals)] const ASSOC_CONST: u8 = 1000;
+   |                                                           ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:98:12
+   |
+LL |     #[deny(overflowing_literals)] const ASSOC_CONST: u8 = 1000;
+   |            ^^^^^^^^^^^^^^^^^^^^
+   = note: the literal `1000` does not fit into the type `u8` whose range is `0..=255`
+
+error: variable `PARAM` should have a snake case name
+  --> $DIR/lint-attr-everywhere-late.rs:131:37
+   |
+LL | fn function(#[deny(non_snake_case)] PARAM: i32) {}
+   |                                     ^^^^^ help: convert the identifier to snake case: `param`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:131:20
+   |
+LL | fn function(#[deny(non_snake_case)] PARAM: i32) {}
+   |                    ^^^^^^^^^^^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:139:13
+   |
+LL |     let _ = discriminant::<i32>(&123);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:138:12
+   |
+LL |     #[deny(enum_intrinsics_non_enums)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:139:33
+   |
+LL |     let _ = discriminant::<i32>(&123);
+   |                                 ^^^^
+
+error: variable `PARAM` should have a snake case name
+  --> $DIR/lint-attr-everywhere-late.rs:145:44
+   |
+LL |     let closure = |#[deny(non_snake_case)] PARAM: i32| {};
+   |                                            ^^^^^ help: convert the identifier to snake case: `param`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:145:27
+   |
+LL |     let closure = |#[deny(non_snake_case)] PARAM: i32| {};
+   |                           ^^^^^^^^^^^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:155:13
+   |
+LL |             discriminant::<i32>(&123);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:153:17
+   |
+LL |         #![deny(enum_intrinsics_non_enums)]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:155:33
+   |
+LL |             discriminant::<i32>(&123);
+   |                                 ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:161:13
+   |
+LL |             discriminant::<i32>(&123);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:159:16
+   |
+LL |         #[deny(enum_intrinsics_non_enums)]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:161:33
+   |
+LL |             discriminant::<i32>(&123);
+   |                                 ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:168:9
+   |
+LL |         discriminant::<i32>(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:167:17
+   |
+LL |         #![deny(enum_intrinsics_non_enums)]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:168:29
+   |
+LL |         discriminant::<i32>(&123);
+   |                             ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:172:9
+   |
+LL |         discriminant::<i32>(&123);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:171:16
+   |
+LL |         #[deny(enum_intrinsics_non_enums)]
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:172:29
+   |
+LL |         discriminant::<i32>(&123);
+   |                             ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:177:5
+   |
+LL |     discriminant::<i32>(&123);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:176:12
+   |
+LL |     #[deny(enum_intrinsics_non_enums)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:177:25
+   |
+LL |     discriminant::<i32>(&123);
+   |                         ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:179:41
+   |
+LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:179:13
+   |
+LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:179:61
+   |
+LL |     [#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123)];
+   |                                                             ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:180:41
+   |
+LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:180:13
+   |
+LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:180:61
+   |
+LL |     (#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123),);
+   |                                                             ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:182:45
+   |
+LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:182:17
+   |
+LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:182:65
+   |
+LL |     call(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
+   |                                                                 ^^^^
+
+error: the return value of `mem::discriminant` is unspecified when called with a non-enum type
+  --> $DIR/lint-attr-everywhere-late.rs:184:52
+   |
+LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-attr-everywhere-late.rs:184:24
+   |
+LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `i32`, which is not an enum.
+  --> $DIR/lint-attr-everywhere-late.rs:184:72
+   |
+LL |     TupleStruct(#[deny(enum_intrinsics_non_enums)] discriminant::<i32>(&123));
+   |                                                                        ^^^^
+
+error: aborting due to 31 previous errors
+
