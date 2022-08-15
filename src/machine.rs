@@ -780,7 +780,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn memory_read(
+    fn before_memory_read(
         _tcx: TyCtxt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra,
@@ -796,7 +796,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             )?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-            stacked_borrows.borrow_mut().memory_read(
+            stacked_borrows.borrow_mut().before_memory_read(
                 alloc_id,
                 prov_extra,
                 range,
@@ -812,7 +812,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn memory_written(
+    fn before_memory_write(
         _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
@@ -828,7 +828,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             )?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.get_mut().memory_written(
+            stacked_borrows.get_mut().before_memory_write(
                 alloc_id,
                 prov_extra,
                 range,
@@ -844,7 +844,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn memory_deallocated(
+    fn before_memory_deallocation(
         _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
@@ -863,7 +863,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             )?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.get_mut().memory_deallocated(
+            stacked_borrows.get_mut().before_memory_deallocation(
                 alloc_id,
                 prove_extra,
                 range,

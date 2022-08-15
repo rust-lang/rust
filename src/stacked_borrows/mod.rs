@@ -657,7 +657,7 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn memory_read<'tcx>(
+    pub fn before_memory_read<'tcx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
@@ -688,7 +688,7 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn memory_written<'tcx>(
+    pub fn before_memory_write<'tcx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
@@ -719,7 +719,7 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn memory_deallocated<'tcx>(
+    pub fn before_memory_deallocation<'tcx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
