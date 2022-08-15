@@ -329,3 +329,31 @@ mod issue_8759_variant {
         rw.set_view(&rw.default_view().to_owned());
     }
 }
+
+mod issue_9317 {
+    #![allow(dead_code)]
+
+    struct Bytes {}
+
+    impl ToString for Bytes {
+        fn to_string(&self) -> String {
+            "123".to_string()
+        }
+    }
+
+    impl AsRef<[u8]> for Bytes {
+        fn as_ref(&self) -> &[u8] {
+            &[1, 2, 3]
+        }
+    }
+
+    fn consume<C: AsRef<[u8]>>(c: C) {
+        let _ = c;
+    }
+
+    pub fn main() {
+        let b = Bytes {};
+        // Should not lint.
+        consume(b.to_string());
+    }
+}

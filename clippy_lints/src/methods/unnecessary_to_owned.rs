@@ -3,7 +3,8 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{
-    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
+    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item,
+    peel_mid_ty_refs,
 };
 use clippy_utils::{meets_msrv, msrvs};
 
@@ -279,7 +280,19 @@ fn check_other_call_arg<'tcx>(
                 &trait_predicate.trait_ref.substs.iter().skip(1).collect::<Vec<_>>()[..],
                 call_substs,
             );
-            implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
+            // if `expr` is a `String` and generic target is [u8], skip
+            // (https://github.com/rust-lang/rust-clippy/issues/9317).
+            if let [subst] = composed_substs[..]
+                && let GenericArgKind::Type(arg_ty) = subst.unpack()
+                && arg_ty.is_slice()
+                && let inner_ty = arg_ty.builtin_index().unwrap()
+                && let ty::Uint(ty::UintTy::U8) = inner_ty.kind()
+                && let self_ty = cx.typeck_results().expr_ty(expr).peel_refs()
+                && is_type_diagnostic_item(cx, self_ty, sym::String) {
+                false
+            } else {
+                implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
+            }
         } else {
             false
         };
