@@ -688,7 +688,7 @@ impl f32 {
     ///  - if `self` is [`MAX`] or [`INFINITY`], this returns [`INFINITY`];
     ///  - otherwise the unique least value greater than `self` is returned.
     ///
-    /// The identity `x.next_up() == -(-x).next_down()` holds for all `x`. When `x`
+    /// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
     /// is finite `x == x.next_up().next_down()` also holds.
     ///
     /// ```rust
@@ -738,7 +738,7 @@ impl f32 {
     ///  - if `self` is [`MIN`] or [`NEG_INFINITY`], this returns [`NEG_INFINITY`];
     ///  - otherwise the unique greatest value less than `self` is returned.
     ///
-    /// The identity `x.next_down() == -(-x).next_up()` holds for all `x`. When `x`
+    /// The identity `x.next_down() == -(-x).next_up()` holds for all non-NaN `x`. When `x`
     /// is finite `x == x.next_down().next_up()` also holds.
     ///
     /// ```rust
