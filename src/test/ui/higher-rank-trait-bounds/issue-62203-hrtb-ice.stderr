@@ -1,8 +1,16 @@
 error[E0271]: type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
-  --> $DIR/issue-62203-hrtb-ice.rs:38:19
+  --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
-LL |     let v = Unit2.m(
-   |                   ^ type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
+LL |       let v = Unit2.m(
+   |                     - required by a bound introduced by this call
+LL | /         L {
+LL | |
+LL | |
+LL | |             f: |x| {
+...  |
+LL | |             },
+LL | |         },
+   | |_________^ type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
    |
 note: expected this to be `<_ as Ty<'_>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:21:14
@@ -23,16 +31,15 @@ LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |                                                   ^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
 
 error[E0271]: expected `[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]` to be a closure that returns `Unit3`, but it returns `Unit4`
-  --> $DIR/issue-62203-hrtb-ice.rs:40:9
+  --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
 LL |       let v = Unit2.m(
    |                     - required by a bound introduced by this call
-LL |
 LL | /         L {
 LL | |
+LL | |
 LL | |             f: |x| {
-LL | |                 drop(x);
-LL | |                 Unit4
+...  |
 LL | |             },
 LL | |         },
    | |_________^ expected struct `Unit3`, found struct `Unit4`

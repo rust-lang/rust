@@ -1027,6 +1027,11 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return false;
     }
 
+    if let DefKind::Static(_) = tcx.def_kind(def_id) {
+        // We cannot monomorphize statics from upstream crates.
+        return false;
+    }
+
     if !tcx.is_mir_available(def_id) {
         bug!("no MIR available for {:?}", def_id);
     }
