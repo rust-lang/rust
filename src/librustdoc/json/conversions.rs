@@ -662,12 +662,10 @@ impl FromWithTcx<clean::Variant> for Variant {
             Tuple(fields) => Variant::Tuple(
                 fields
                     .into_iter()
-                    .map(|f| {
-                        if let clean::StructFieldItem(ty) = *f.kind {
-                            ty.into_tcx(tcx)
-                        } else {
-                            unreachable!()
-                        }
+                    .filter_map(|f| match *f.kind {
+                        clean::StructFieldItem(ty) => Some(ty.into_tcx(tcx)),
+                        clean::StrippedItem(_) => None,
+                        _ => unreachable!(),
                     })
                     .collect(),
             ),
