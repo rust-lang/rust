@@ -1749,7 +1749,9 @@ fn deny_equality_constraints(
                                     // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
                                     let mut assoc_path = full_path.clone();
                                     // Remove `Bar` from `Foo::Bar`.
-                                    assoc_path.segments.pop();
+                                    let mut segments = assoc_path.segments.to_vec();
+                                    segments.pop();
+                                    assoc_path.segments = segments.into_boxed_slice();
                                     let len = assoc_path.segments.len() - 1;
                                     let gen_args = args.as_ref().map(|p| (**p).clone());
                                     // Build `<Bar = RhsTy>`.

@@ -230,7 +230,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::ExternCrate(orig_name) => hir::ItemKind::ExternCrate(orig_name),
             ItemKind::Use(ref use_tree) => {
                 // Start with an empty prefix.
-                let prefix = Path { segments: vec![], span: use_tree.span, tokens: None };
+                let prefix = Path { segments: Box::new([]), span: use_tree.span, tokens: None };
 
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
@@ -489,24 +489,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: Option<&'hir [Attribute]>,
     ) -> hir::ItemKind<'hir> {
         let path = &tree.prefix;
-        let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
+        let mut segments: Vec<_> =
+            prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
 
         match tree.kind {
             UseTreeKind::Simple(rename, id1, id2) => {
                 *ident = tree.ident();
 
-                // First, apply the prefix to the path.
-                let mut path = Path { segments, span: path.span, tokens: None };
-
-                // Correctly resolve `self` imports.
-                if path.segments.len() > 1
-                    && path.segments.last().unwrap().ident.name == kw::SelfLower
-                {
-                    let _ = path.segments.pop();
+                // Having applied the prefix to the path, correctly resolve
+                // `self` imports.
+                if segments.len() > 1 && segments.last().unwrap().ident.name == kw::SelfLower {
+                    let _ = segments.pop();
                     if rename.is_none() {
-                        *ident = path.segments.last().unwrap().ident;
+                        *ident = segments.last().unwrap().ident;
                     }
                 }
+
+                let path =
+                    Path { segments: segments.into_boxed_slice(), span: path.span, tokens: None };
 
                 let mut resolutions = self.expect_full_res_from_use(id).fuse();
                 // We want to return *something* from this function, so hold onto the first item
@@ -531,7 +531,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     };
                     let ident = *ident;
                     let mut path = path.clone();
-                    for seg in &mut path.segments {
+                    for seg in path.segments.iter_mut() {
                         seg.id = self.next_node_id();
                     }
                     let span = path.span;
@@ -561,7 +561,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             UseTreeKind::Glob => {
                 let path = self.lower_path(
                     id,
-                    &Path { segments, span: path.span, tokens: None },
+                    &Path { segments: segments.into_boxed_slice(), span: path.span, tokens: None },
                     ParamMode::Explicit,
                 );
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
@@ -591,7 +591,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // for that we return the `{}` import (called the
                 // `ListStem`).
 
-                let prefix = Path { segments, span: prefix.span.to(path.span), tokens: None };
+                let prefix = Path {
+                    segments: segments.into_boxed_slice(),
+                    span: prefix.span.to(path.span),
+                    tokens: None,
+                };
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
@@ -600,7 +604,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let mut prefix = prefix.clone();
 
                     // Give the segments new node-ids since they are being cloned.
-                    for seg in &mut prefix.segments {
+                    for seg in prefix.segments.iter_mut() {
                         seg.id = self.next_node_id();
                     }
 

@@ -1323,7 +1323,7 @@ impl<'a> Resolver<'a> {
                     let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
-                        let mut segms = path_segments.clone();
+                        let mut segms = path_segments.clone().to_vec();
                         if lookup_ident.span.rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
@@ -1331,7 +1331,11 @@ impl<'a> Resolver<'a> {
                         }
 
                         segms.push(ast::PathSegment::from_ident(ident));
-                        let path = Path { span: name_binding.span, segments: segms, tokens: None };
+                        let path = Path {
+                            span: name_binding.span,
+                            segments: segms.into_boxed_slice(),
+                            tokens: None,
+                        };
                         let did = match res {
                             Res::Def(DefKind::Ctor(..), did) => this.opt_parent(did),
                             _ => res.opt_def_id(),

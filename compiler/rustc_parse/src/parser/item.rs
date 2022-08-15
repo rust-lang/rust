@@ -895,29 +895,34 @@ impl<'a> Parser<'a> {
     fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
-        let mut prefix = ast::Path { segments: Vec::new(), span: lo.shrink_to_lo(), tokens: None };
-        let kind = if self.check(&token::OpenDelim(Delimiter::Brace))
+        let mut segments = vec![];
+        let (prefix, kind) = if self.check(&token::OpenDelim(Delimiter::Brace))
             || self.check(&token::BinOp(token::Star))
             || self.is_import_coupler()
         {
             // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
             let mod_sep_ctxt = self.token.span.ctxt();
             if self.eat(&token::ModSep) {
-                prefix
-                    .segments
-                    .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
+                segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
             }
 
-            self.parse_use_tree_glob_or_nested()?
+            let prefix = ast::Path {
+                segments: segments.into_boxed_slice(),
+                span: lo.shrink_to_lo(),
+                tokens: None,
+            };
+            let kind = self.parse_use_tree_glob_or_nested()?;
+            (prefix, kind)
         } else {
             // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
-            prefix = self.parse_path(PathStyle::Mod)?;
+            let prefix = self.parse_path(PathStyle::Mod)?;
 
-            if self.eat(&token::ModSep) {
+            let kind = if self.eat(&token::ModSep) {
                 self.parse_use_tree_glob_or_nested()?
             } else {
                 UseTreeKind::Simple(self.parse_rename()?, DUMMY_NODE_ID, DUMMY_NODE_ID)
-            }
+            };
+            (prefix, kind)
         };
 
         Ok(UseTree { prefix, kind, span: lo.to(self.prev_token.span) })

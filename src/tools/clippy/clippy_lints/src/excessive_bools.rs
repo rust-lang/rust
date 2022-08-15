@@ -123,7 +123,7 @@ impl_lint_pass!(ExcessiveBools => [STRUCT_EXCESSIVE_BOOLS, FN_PARAMS_EXCESSIVE_B
 
 fn is_bool_ty(ty: &Ty) -> bool {
     if let TyKind::Path(None, path) = &ty.kind {
-        if let [name] = path.segments.as_slice() {
+        if let [name] = &path.segments[..] {
             return name.ident.name == sym::bool;
         }
     }

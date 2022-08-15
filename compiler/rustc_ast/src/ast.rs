@@ -93,7 +93,7 @@ pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
-    pub segments: Vec<PathSegment>,
+    pub segments: Box<[PathSegment]>,
     pub tokens: Option<LazyTokenStream>,
 }
 
@@ -107,7 +107,7 @@ impl PartialEq<Symbol> for Path {
 impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
-        for segment in &self.segments {
+        for segment in self.segments.iter() {
             segment.ident.hash_stable(hcx, hasher);
         }
     }
@@ -117,7 +117,11 @@ impl Path {
     // Convert a span and an identifier to the corresponding
     // one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
+        Path {
+            segments: vec![PathSegment::from_ident(ident)].into_boxed_slice(),
+            span: ident.span,
+            tokens: None,
+        }
     }
 
     pub fn is_global(&self) -> bool {
@@ -3031,23 +3035,23 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(AssocItem, 160);
-    static_assert_size!(AssocItemKind, 72);
-    static_assert_size!(Attribute, 152);
+    static_assert_size!(AssocItem, 152);
+    static_assert_size!(AssocItemKind, 64);
+    static_assert_size!(Attribute, 144);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
     static_assert_size!(Fn, 192);
-    static_assert_size!(ForeignItem, 160);
-    static_assert_size!(ForeignItemKind, 72);
-    static_assert_size!(GenericBound, 88);
+    static_assert_size!(ForeignItem, 152);
+    static_assert_size!(ForeignItemKind, 64);
+    static_assert_size!(GenericBound, 80);
     static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 200);
+    static_assert_size!(Impl, 192);
     static_assert_size!(Item, 200);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
-    static_assert_size!(Pat, 120);
-    static_assert_size!(Path, 40);
+    static_assert_size!(Pat, 112);
+    static_assert_size!(Path, 32);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
-    static_assert_size!(Ty, 96);
+    static_assert_size!(Ty, 88);
 }

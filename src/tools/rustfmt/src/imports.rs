@@ -437,7 +437,7 @@ impl UseTree {
 
         let mut modsep = leading_modsep;
 
-        for p in &a.prefix.segments {
+        for p in a.prefix.segments.iter() {
             if let Some(use_segment) = UseSegment::from_path_segment(context, p, modsep) {
                 result.path.push(use_segment);
                 modsep = false;

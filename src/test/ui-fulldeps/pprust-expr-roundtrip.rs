@@ -52,7 +52,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
 
 fn make_x() -> P<Expr> {
     let seg = PathSegment::from_ident(Ident::from_str("x"));
-    let path = Path { segments: vec![seg], span: DUMMY_SP, tokens: None };
+    let path = Path { segments: vec![seg].into_boxed_slice(), span: DUMMY_SP, tokens: None };
     expr(ExprKind::Path(None, path))
 }
 

@@ -17,7 +17,7 @@ pub fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> ast::MacCall {
         ast::MacCall {
-            path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
+            path: ast::Path { span: DUMMY_SP, segments: Box::new([]), tokens: None },
             args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
         }

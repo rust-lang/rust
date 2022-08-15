@@ -434,7 +434,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
 }
 
 pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) {
-    for segment in &path.segments {
+    for segment in path.segments.iter() {
         visitor.visit_path_segment(path.span, segment);
     }
 }

@@ -732,8 +732,11 @@ impl<'a> Parser<'a> {
             //     field: value,
             // }
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path =
-                Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
+            let path = Path {
+                segments: Box::new([]),
+                span: self.prev_token.span.shrink_to_lo(),
+                tokens: None,
+            };
             let struct_expr = snapshot.parse_struct_expr(None, path, AttrVec::new(), false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1541,9 +1544,13 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<T>> {
         self.expect(&token::ModSep)?;
 
-        let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP, tokens: None };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
-        path.span = ty_span.to(self.prev_token.span);
+        let mut segments = vec![];
+        self.parse_path_segments(&mut segments, T::PATH_STYLE, None)?;
+        let path = ast::Path {
+            segments: segments.into_boxed_slice(),
+            span: ty_span.to(self.prev_token.span),
+            tokens: None,
+        };
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
         self.sess.emit_err(BadQPathStage2 {
@@ -2558,7 +2565,9 @@ impl<'a> Parser<'a> {
                             | PatKind::TupleStruct(qself @ None, path, _)
                             | PatKind::Path(qself @ None, path) => match &first_pat.kind {
                                 PatKind::Ident(_, ident, _) => {
-                                    path.segments.insert(0, PathSegment::from_ident(*ident));
+                                    let mut segments = path.segments.to_vec();
+                                    segments.insert(0, PathSegment::from_ident(*ident));
+                                    path.segments = segments.into_boxed_slice();
                                     path.span = new_span;
                                     show_sugg = true;
                                     first_pat = pat;
@@ -2568,7 +2577,7 @@ impl<'a> Parser<'a> {
                                         .segments
                                         .iter()
                                         .cloned()
-                                        .chain(take(&mut path.segments))
+                                        .chain(take(&mut path.segments).to_vec())
                                         .collect();
                                     path.span = new_span;
                                     *qself = old_qself.clone();
@@ -2587,7 +2596,8 @@ impl<'a> Parser<'a> {
                                                 segments: vec![
                                                     PathSegment::from_ident(*old_ident),
                                                     PathSegment::from_ident(*ident),
-                                                ],
+                                                ]
+                                                .into_boxed_slice(),
                                                 tokens: None,
                                             },
                                         );
@@ -2595,11 +2605,15 @@ impl<'a> Parser<'a> {
                                         show_sugg = true;
                                     }
                                     PatKind::Path(old_qself, old_path) => {
-                                        let mut segments = old_path.segments.clone();
+                                        let mut segments = old_path.segments.to_vec();
                                         segments.push(PathSegment::from_ident(*ident));
                                         let path = PatKind::Path(
                                             old_qself.clone(),
-                                            Path { span: new_span, segments, tokens: None },
+                                            Path {
+                                                span: new_span,
+                                                segments: segments.into_boxed_slice(),
+                                                tokens: None,
+                                            },
                                         );
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;

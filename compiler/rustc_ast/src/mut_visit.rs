@@ -521,7 +521,7 @@ pub fn noop_visit_ident<T: MutVisitor>(Ident { name: _, span }: &mut Ident, vis:
 
 pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path, vis: &mut T) {
     vis.visit_span(span);
-    for PathSegment { ident, id, args } in segments {
+    for PathSegment { ident, id, args } in segments.iter_mut() {
         vis.visit_ident(ident);
         vis.visit_id(id);
         visit_opt(args, |args| vis.visit_generic_args(args));

@@ -506,7 +506,7 @@ impl<'a> Resolver<'a> {
         };
 
         // Report errors for the resolved macro.
-        for segment in &path.segments {
+        for segment in path.segments.iter() {
             if let Some(args) = &segment.args {
                 self.session.span_err(args.span(), "generic arguments in macro path");
             }

@@ -366,7 +366,10 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
                 };
                 let tool_ident = if meta_item.path.segments.len() > 1 {
-                    Some(meta_item.path.segments.remove(0).ident)
+                    let mut segments = meta_item.path.segments.to_vec();
+                    let removed = segments.remove(0);
+                    meta_item.path.segments = segments.into_boxed_slice();
+                    Some(removed.ident)
                 } else {
                     None
                 };

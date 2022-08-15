@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
             path_span = path_lo.to(self.prev_token.span);
         } else {
             path_span = self.token.span.to(self.token.span);
-            path = ast::Path { segments: Vec::new(), span: path_span, tokens: None };
+            path = ast::Path { segments: Box::new([]), span: path_span, tokens: None };
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
@@ -79,7 +79,9 @@ impl<'a> Parser<'a> {
         }
 
         let qself = QSelf { ty, path_span, position: path.segments.len() };
-        self.parse_path_segments(&mut path.segments, style, None)?;
+        let mut segments = path.segments.to_vec();
+        self.parse_path_segments(&mut segments, style, None)?;
+        path.segments = segments.into_boxed_slice();
 
         Ok((
             qself,
@@ -187,7 +189,11 @@ impl<'a> Parser<'a> {
         }
         self.parse_path_segments(&mut segments, style, ty_generics)?;
 
-        Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
+        Ok(Path {
+            segments: segments.into_boxed_slice(),
+            span: lo.to(self.prev_token.span),
+            tokens: None,
+        })
     }
 
     pub(super) fn parse_path_segments(
@@ -734,13 +740,13 @@ impl<'a> Parser<'a> {
         if let GenericArg::Type(ty) = gen_arg {
             if let ast::TyKind::Path(qself, path) = &ty.kind
                 && qself.is_none()
-                && let [seg] = path.segments.as_slice()
+                && let [seg] = &path.segments[..]
             {
                 return Ok((None, seg.ident, seg.args.as_deref().cloned()));
             } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
                 && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
                     bounds.as_slice()
-                && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
+                && let [seg] = &trait_ref.trait_ref.path.segments[..]
             {
                 return Ok((
                     Some(trait_ref.bound_generic_params.clone()),

@@ -74,7 +74,7 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let path_len = suggestion.path.segments.len();
     let enum_path = ast::Path {
         span: suggestion.path.span,
-        segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+        segments: suggestion.path.segments[0..path_len - 1].to_vec().into_boxed_slice(),
         tokens: None,
     };
     let enum_path_string = path_names_to_string(&enum_path);
@@ -704,7 +704,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn detect_assoct_type_constraint_meant_as_path(&self, base_span: Span, err: &mut Diagnostic) {
         let Some(ty) = self.diagnostic_metadata.current_type_path else { return; };
         let TyKind::Path(_, path) = &ty.kind else { return; };
-        for segment in &path.segments {
+        for segment in path.segments.iter() {
             let Some(params) = &segment.args else { continue; };
             let ast::GenericArgs::AngleBracketed(ref params) = params.deref() else { continue; };
             for param in &params.args {
@@ -1626,8 +1626,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     path_segments.push(ast::PathSegment::from_ident(ident));
                     let module_def_id = module.def_id();
                     if module_def_id == def_id {
-                        let path =
-                            Path { span: name_binding.span, segments: path_segments, tokens: None };
+                        let path = Path {
+                            span: name_binding.span,
+                            segments: path_segments.into_boxed_slice(),
+                            tokens: None,
+                        };
                         result = Some((
                             module,
                             ImportSuggestion {
@@ -1656,9 +1659,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let mut variants = Vec::new();
             enum_module.for_each_child(self.r, |_, ident, _, name_binding| {
                 if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
-                    let mut segms = enum_import_suggestion.path.segments.clone();
+                    let mut segms = enum_import_suggestion.path.segments.to_vec();
                     segms.push(ast::PathSegment::from_ident(ident));
-                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+                    let path = Path {
+                        span: name_binding.span,
+                        segments: segms.into_boxed_slice(),
+                        tokens: None,
+                    };
                     variants.push((path, def_id, kind));
                 }
             });
