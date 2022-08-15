@@ -582,7 +582,7 @@ mod parse {
     pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
         match v.and_then(|s| s.parse().ok()) {
             Some(0) => {
-                *slot = ::num_cpus::get();
+                *slot = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
                 true
             }
             Some(i) => {
