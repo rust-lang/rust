@@ -392,8 +392,6 @@ declare_features! (
     (active, ffi_pure, "1.45.0", Some(58329), None),
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
-    /// Allows using `#[repr(align(...))]` on function items
-    (active, fn_align, "1.53.0", Some(82232), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.

@@ -157,6 +157,8 @@ declare_features! (
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340), None),
+    /// Allows using `#[repr(align(...))]` on function items
+    (accepted, fn_align, "1.53.0", Some(82232), None),
     /// Allows `#[must_use]` on functions, and introduces must-use operators (RFC 1940).
     (accepted, fn_must_use, "1.27.0", Some(43302), None),
     /// Allows capturing variables in scope using format_args!
