@@ -1328,9 +1328,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
                     Some(mut err) => {
-                        err.span_suggestion_verbose(
+                        err.span_suggestion(
                             span,
-                            "consider adding an array length",
+                            "consider specifying the array length",
                             array_len,
                             Applicability::MaybeIncorrect,
                         );
