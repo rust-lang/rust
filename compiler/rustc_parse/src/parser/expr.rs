@@ -1077,7 +1077,7 @@ impl<'a> Parser<'a> {
                 }
                 components.push(Punct(c));
             } else {
-                panic!("unexpected character in a float token: {:?}", c)
+                panic!("unexpected character in a float token: {c:?}")
             }
         }
         if !ident_like.is_empty() {
@@ -1149,7 +1149,7 @@ impl<'a> Parser<'a> {
                 self.error_unexpected_after_dot();
                 base
             }
-            _ => panic!("unexpected components in a float token: {:?}", components),
+            _ => panic!("unexpected components in a float token: {components:?}"),
         }
     }
 
@@ -1981,9 +1981,8 @@ impl<'a> Parser<'a> {
                     .span_diagnostic
                     .struct_span_warn(sp, &format!("suffixes on {kind} are invalid"));
                 err.note(&format!(
-                    "`{}` is *temporarily* accepted on tuple index fields as it was \
-                        incorrectly accepted on stable for a few releases",
-                    suf,
+                    "`{suf}` is *temporarily* accepted on tuple index fields as it was \
+                        incorrectly accepted on stable for a few releases"
                 ));
                 err.help(
                     "on proc macros, you'll want to use `syn::Index::from` or \
