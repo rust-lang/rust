@@ -712,16 +712,28 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             *c_r = self.scc_representatives[scc];
         }
 
-        // The 'member region' in a member constraint is part of the
-        // hidden type, which must be in the root universe. Therefore,
-        // it cannot have any placeholders in its value.
-        assert!(self.scc_universes[scc] == ty::UniverseIndex::ROOT);
-        debug_assert!(
-            self.scc_values.placeholders_contained_in(scc).next().is_none(),
-            "scc {:?} in a member constraint has placeholder value: {:?}",
-            scc,
-            self.scc_values.region_value_str(scc),
-        );
+        // The 'member region' may have a placeholder region in its value.
+        // Consider the inner opaque type `impl Sized` in:
+        // `fn test() -> impl for<'a> Trait<'a, Ty = impl Sized + 'a>`.
+        //  Here choice_regions = ['static, Placeholder('a, U1)].
+        if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+            let Some(&choice) = choice_regions
+                .iter()
+                .find(|&&choice| self.eval_equal(choice, self.scc_representatives[scc]))
+            else {
+                debug!("failed higher-ranked member constraint");
+                return false;
+            };
+
+            self.member_constraints_applied.push(AppliedMemberConstraint {
+                member_region_scc: scc,
+                min_choice: choice,
+                member_constraint_index,
+            });
+
+            debug!(?choice, "higher-ranked");
+            return true;
+        }
 
         // The existing value for `scc` is a lower-bound. This will
         // consist of some set `{P} + {LB}` of points `{P}` and
