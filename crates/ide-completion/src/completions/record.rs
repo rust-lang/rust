@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn literal_struct_completion_edit() {
         check_edit(
-            "FooDesc {…}",
+            "FooDesc{}",
             r#"
 struct FooDesc { pub bar: bool }
 
@@ -154,7 +154,7 @@ fn baz() {
     #[test]
     fn literal_struct_impl_self_completion() {
         check_edit(
-            "Self {…}",
+            "Self{}",
             r#"
 struct Foo {
     bar: u64,
@@ -180,7 +180,7 @@ impl Foo {
         );
 
         check_edit(
-            "Self(…)",
+            "Self()",
             r#"
 mod submod {
     pub struct Foo(pub u64);
@@ -209,7 +209,7 @@ impl submod::Foo {
     #[test]
     fn literal_struct_completion_from_sub_modules() {
         check_edit(
-            "submod::Struct {…}",
+            "submod::Struct{}",
             r#"
 mod submod {
     pub struct Struct {
@@ -238,7 +238,7 @@ fn f() -> submod::Struct {
     #[test]
     fn literal_struct_complexion_module() {
         check_edit(
-            "FooDesc {…}",
+            "FooDesc{}",
             r#"
 mod _69latrick {
     pub struct FooDesc { pub six: bool, pub neuf: Vec<String>, pub bar: bool }
