@@ -5,11 +5,12 @@ set -x
 # Determine configuration
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
-export CARGO_EXTRA_FLAGS="--all-features"
 
 # Prepare
 echo "Build and install miri"
 ./miri install # implicitly locked
+./miri check --no-default-features # make sure this can be built
+./miri check --all-features # and this, too
 ./miri build --all-targets --locked # the build that all the `./miri test` below will use
 echo
 
