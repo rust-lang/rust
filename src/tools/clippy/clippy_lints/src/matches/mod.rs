@@ -1112,7 +1112,7 @@ fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
     let mut pos = 0usize;
     let mut iter = tokenize(&snip).map(|t| {
         let start = pos;
-        pos += t.len;
+        pos += t.len as usize;
         (t.kind, start..pos)
     });
 
