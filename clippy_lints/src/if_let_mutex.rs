@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
                     let diag = |diag: &mut Diagnostic| {
                         diag.span_label(
                             op_mutex.span,
-                            "This Mutex will remain locked for the entire `if let`-block...",
+                            "this Mutex will remain locked for the entire `if let`-block...",
                         );
                         diag.span_label(
                             arm_mutex.span,

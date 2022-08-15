@@ -2,7 +2,7 @@ error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a 
   --> $DIR/if_let_mutex.rs:10:5
    |
 LL |       if let Err(locked) = m.lock() {
-   |       ^                    - This Mutex will remain locked for the entire `if let`-block...
+   |       ^                    - this Mutex will remain locked for the entire `if let`-block...
    |  _____|
    | |
 LL | |         do_stuff(locked);
@@ -20,7 +20,7 @@ error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a 
   --> $DIR/if_let_mutex.rs:22:5
    |
 LL |       if let Some(locked) = m.lock().unwrap().deref() {
-   |       ^                     - This Mutex will remain locked for the entire `if let`-block...
+   |       ^                     - this Mutex will remain locked for the entire `if let`-block...
    |  _____|
    | |
 LL | |         do_stuff(locked);
@@ -37,7 +37,7 @@ error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a 
   --> $DIR/if_let_mutex.rs:43:5
    |
 LL |       if let Ok(i) = mutex.lock() {
-   |       ^              ----- This Mutex will remain locked for the entire `if let`-block...
+   |       ^              ----- this Mutex will remain locked for the entire `if let`-block...
    |  _____|
    | |
 LL | |         do_stuff(i);
