@@ -28,7 +28,8 @@ macro_rules! t {
 macro_rules! tidy_error {
     ($bad:expr, $fmt:expr) => ({
         *$bad = true;
-        eprintln!("tidy error: {}", $fmt);
+        eprint!("tidy error: ");
+        eprintln!($fmt);
     });
     ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
         *$bad = true;
