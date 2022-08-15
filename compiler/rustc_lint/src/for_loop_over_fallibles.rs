@@ -31,7 +31,7 @@ declare_lint! {
     /// ```rust
     /// # let opt = Some(1);
     /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// # let recv = || Some(1);
+    /// # let recv = || None::<i32>;
     /// for x in opt { /* ... */}
     /// for x in res { /* ... */ }
     /// for x in recv() { /* ... */ }
@@ -41,7 +41,7 @@ declare_lint! {
     /// ```rust
     /// # let opt = Some(1);
     /// # let res: Result<i32, std::io::Error> = Ok(1);
-    /// # let recv = || Some(1);
+    /// # let recv = || None::<i32>;
     /// if let Some(x) = opt { /* ... */}
     /// if let Ok(x) = res { /* ... */ }
     /// while let Some(x) = recv() { /* ... */ }
