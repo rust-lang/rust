@@ -38,7 +38,6 @@ test = false
 cmake = "0.1.38"
 fd-lock = "3.0.6"
 filetime = "0.2"
-num_cpus = "1.0"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"
