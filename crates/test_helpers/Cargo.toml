@@ -8,3 +8,6 @@ publish = false
 version = "0.10"
 default-features = false
 features = ["alloc"]
+
+[features]
+all_lane_counts = []
