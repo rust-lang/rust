@@ -72,7 +72,7 @@ use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
-use stdx::{format_to, impl_from, never};
+use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
@@ -1136,6 +1136,20 @@ impl DefWithBody {
         }
     }
 
+    fn id(&self) -> DefWithBodyId {
+        match self {
+            DefWithBody::Function(it) => it.id.into(),
+            DefWithBody::Static(it) => it.id.into(),
+            DefWithBody::Const(it) => it.id.into(),
+        }
+    }
+
+    /// A textual representation of the HIR of this def's body for debugging purposes.
+    pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
+        let body = db.body(self.id());
+        body.pretty_print(db.upcast(), self.id())
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
@@ -1469,19 +1483,6 @@ impl Function {
         let loc = self.id.lookup(db.upcast());
         let def_map = db.crate_def_map(loc.krate(db).into());
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
-    }
-
-    /// A textual representation of the HIR of this function for debugging purposes.
-    pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
-        let body = db.body(self.id.into());
-
-        let mut result = String::new();
-        format_to!(result, "HIR expressions in the body of `{}`:\n", self.name(db));
-        for (id, expr) in body.exprs.iter() {
-            format_to!(result, "{:?}: {:?}\n", id, expr);
-        }
-
-        result
     }
 }
 
