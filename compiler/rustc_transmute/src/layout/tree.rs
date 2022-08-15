@@ -1,4 +1,5 @@
 use super::{Byte, Def, Ref};
+use std::ops::ControlFlow;
 
 #[cfg(test)]
 mod tests;
@@ -90,13 +91,13 @@ where
                 Tree::unit(),
                 |elts, elt| {
                     if elt == Tree::uninhabited() {
-                        Err(Tree::uninhabited())
+                        ControlFlow::Break(Tree::uninhabited())
                     } else {
-                        Ok(elts.then(elt))
+                        ControlFlow::Continue(elts.then(elt))
                     }
                 },
             ) {
-                Err(node) | Ok(node) => node,
+                ControlFlow::Break(node) | ControlFlow::Continue(node) => node,
             },
             Self::Alt(alts) => alts
                 .into_iter()
