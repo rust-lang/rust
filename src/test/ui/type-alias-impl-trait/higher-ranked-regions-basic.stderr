@@ -1,0 +1,49 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/higher-ranked-regions-basic.rs:22:58
+   |
+LL |     fn test() -> impl for<'a> Trait<'a, Ty = impl Sized> {}
+   |                           --                             ^^
+   |                           |
+   |                           hidden type `&'a ()` captures the lifetime `'a` as defined here
+
+error[E0700]: hidden type for `capture_tait::Opq0` captures lifetime that does not appear in bounds
+  --> $DIR/higher-ranked-regions-basic.rs:31:23
+   |
+LL |     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0>;
+   |                              -- hidden type `&'b ()` captures the lifetime `'b` as defined here
+LL |     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
+LL |     fn test() -> Opq2 {}
+   |                       ^^
+
+error[E0700]: hidden type for `capture_tait_complex_fail::Opq0<'a>` captures lifetime that does not appear in bounds
+  --> $DIR/higher-ranked-regions-basic.rs:49:23
+   |
+LL |     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'a>>; // <- Note 'a
+   |                              -- hidden type `&'b ()` captures the lifetime `'b` as defined here
+LL |     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
+LL |     fn test() -> Opq2 {}
+   |                       ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/higher-ranked-regions-basic.rs:57:65
+   |
+LL |     type Opq0<'a, 'b> = impl Sized;
+   |                   -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
+   |                                                                 ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/higher-ranked-regions-basic.rs:65:60
+   |
+LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
+   |                                                            ^^
+   |
+note: lifetime used multiple times
+  --> $DIR/higher-ranked-regions-basic.rs:64:15
+   |
+LL |     type Opq0<'a, 'b> = impl Sized;
+   |               ^^  ^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

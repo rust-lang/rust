@@ -2682,6 +2682,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     hidden_type.ty = self.infcx.tcx.ty_error();
                 }
 
+                // Convert all regions to nll vars.
+                let (opaque_type_key, hidden_type) =
+                    self.infcx.tcx.fold_regions((opaque_type_key, hidden_type), |region, _| {
+                        match region.kind() {
+                            ty::ReVar(_) => region,
+                            ty::RePlaceholder(placeholder) => self
+                                .borrowck_context
+                                .constraints
+                                .placeholder_region(self.infcx, placeholder),
+                            _ => self.infcx.tcx.mk_region(ty::ReVar(
+                                self.borrowck_context.universal_regions.to_region_vid(region),
+                            )),
+                        }
+                    });
+
                 (opaque_type_key, OpaqueTypeDecl { hidden_type, ..decl })
             })
             .collect()

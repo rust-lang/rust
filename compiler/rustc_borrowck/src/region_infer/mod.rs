@@ -167,7 +167,23 @@ pub(crate) struct RegionDefinition<'tcx> {
 
     /// If this is 'static or an early-bound region, then this is
     /// `Some(X)` where `X` is the name of the region.
+    ///
+    /// Use the method `Self::external_name` for more flexibility.
     pub(crate) external_name: Option<ty::Region<'tcx>>,
+}
+
+impl<'tcx> RegionDefinition<'tcx> {
+    /// Gets the name of a universal region (including placeholders).
+    /// Returns `None` if this is an existential variable.
+    pub fn external_name(&self, tcx: TyCtxt<'tcx>) -> Option<ty::Region<'tcx>> {
+        match self.origin {
+            NllRegionVariableOrigin::FreeRegion => self.external_name,
+            NllRegionVariableOrigin::Placeholder(placeholder) => {
+                Some(tcx.mk_region(ty::RePlaceholder(placeholder)))
+            }
+            NllRegionVariableOrigin::Existential { .. } => None,
+        }
+    }
 }
 
 /// N.B., the variants in `Cause` are intentionally ordered. Lower

@@ -72,14 +72,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
             let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
-                if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
-                    return region;
+                let (vid, scc) = match region.kind() {
+                    ty::ReVar(vid) => (vid, self.constraint_sccs.scc(vid)),
+                    _ => bug!("expected nll var"),
+                };
+                trace!(?vid, ?scc);
+
+                // Special handling of higher-ranked regions. These appear in the substs of the
+                // inner opaque type `impl Sized` in:
+                // `fn test() -> impl for<'a> Trait<'a, Ty = impl Sized + 'a>`
+                if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+                    subst_regions.push(vid);
+                    return self.definitions[vid]
+                        .external_name(infcx.tcx)
+                        .expect("higher-ranked existential region found in opaque type substs");
                 }
-                let vid = self.to_region_vid(region);
-                trace!(?vid);
-                let scc = self.constraint_sccs.scc(vid);
-                trace!(?scc);
+
                 match self.scc_values.universal_regions_outlived_by(scc).find_map(|lb| {
                     self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?)
                 }) {
@@ -107,9 +115,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     ty::ReVar(vid) => subst_regions
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
-                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
+                        .and_then(|ur_vid| self.definitions[*ur_vid].external_name(infcx.tcx))
                         .unwrap_or(infcx.tcx.lifetimes.re_root_empty),
-                    _ => region,
+                    _ => bug!("expected nll var"),
                 });
 
             debug!(?universal_concrete_type, ?universal_substs);
@@ -160,6 +168,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     {
         tcx.fold_regions(ty, |region, _| match *region {
             ty::ReVar(vid) => {
+                let scc = self.constraint_sccs.scc(vid);
+
+                // Special handling of higher-ranked regions.
+                if self.scc_universes[scc] != ty::UniverseIndex::ROOT {
+                    // If the region contains a single placeholder then they're equal.
+                    if let Some((0, placeholder)) =
+                        self.scc_values.placeholders_contained_in(scc).enumerate().last()
+                    {
+                        // HACK: we convert named placeholders to free regions for better errors.
+                        // Otherwise, this is incorrect.
+                        if let bound_region @ ty::BrNamed(scope, _) = placeholder.name {
+                            return tcx
+                                .mk_region(ty::ReFree(ty::FreeRegion { scope, bound_region }));
+                        }
+                    }
+                    // Fallback: this will produce a cryptic error message.
+                    return region;
+                }
+
                 // Find something that we can name
                 let upper_bound = self.approx_universal_upper_bound(vid);
                 let upper_bound = &self.definitions[upper_bound];
@@ -385,7 +412,7 @@ fn check_opaque_type_parameter_valid(
                 return false;
             }
             GenericArgKind::Lifetime(lt) => {
-                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_) | ty::RePlaceholder(_))
             }
             GenericArgKind::Const(ct) => matches!(ct.kind(), ty::ConstKind::Param(_)),
         };
@@ -495,9 +522,12 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             ty::ReErased => return r,
 
             // The regions that we expect from borrow checking.
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
+            ty::ReEarlyBound(_)
+            | ty::ReFree(_)
+            | ty::RePlaceholder(_)
+            | ty::ReEmpty(ty::UniverseIndex::ROOT) => {}
 
-            ty::ReEmpty(_) | ty::RePlaceholder(_) | ty::ReVar(_) => {
+            ty::ReEmpty(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been
                 // erased by writeback, or mapped back to named regions by
                 // borrow checking.
