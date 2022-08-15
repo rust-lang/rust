@@ -11,6 +11,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -423,6 +424,7 @@ impl<'tcx> Inliner<'tcx> {
             instance: callsite.callee,
             callee_body,
             cost: 0,
+            validation: Ok(()),
         };
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
@@ -457,6 +459,9 @@ impl<'tcx> Inliner<'tcx> {
         for v in callee_body.vars_and_temps_iter() {
             checker.visit_local_decl(v, &callee_body.local_decls[v]);
         }
+
+        // Abort if type validation found anything fishy.
+        checker.validation?;
 
         let cost = checker.cost;
         if let InlineAttr::Always = callee_attrs.inline {
@@ -738,6 +743,7 @@ struct CostChecker<'b, 'tcx> {
     cost: usize,
     callee_body: &'b Body<'tcx>,
     instance: ty::Instance<'tcx>,
+    validation: Result<(), &'static str>,
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
@@ -817,6 +823,100 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         }
 
         self.super_local_decl(local, local_decl)
+    }
+
+    /// This method duplicates code from MIR validation in an attempt to detect type mismatches due
+    /// to normalization failure.
+    fn visit_projection_elem(
+        &mut self,
+        local: Local,
+        proj_base: &[PlaceElem<'tcx>],
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        if let ProjectionElem::Field(f, ty) = elem {
+            let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
+            let parent_ty = parent.ty(&self.callee_body.local_decls, self.tcx);
+            let check_equal = |this: &mut Self, f_ty| {
+                if !equal_up_to_regions(this.tcx, this.param_env, ty, f_ty) {
+                    trace!(?ty, ?f_ty);
+                    this.validation = Err("failed to normalize projection type");
+                    return;
+                }
+            };
+
+            let kind = match parent_ty.ty.kind() {
+                &ty::Opaque(def_id, substs) => {
+                    self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
+                }
+                kind => kind,
+            };
+
+            match kind {
+                ty::Tuple(fields) => {
+                    let Some(f_ty) = fields.get(f.as_usize()) else {
+                        self.validation = Err("malformed MIR");
+                        return;
+                    };
+                    check_equal(self, *f_ty);
+                }
+                ty::Adt(adt_def, substs) => {
+                    let var = parent_ty.variant_index.unwrap_or(VariantIdx::from_u32(0));
+                    let Some(field) = adt_def.variant(var).fields.get(f.as_usize()) else {
+                        self.validation = Err("malformed MIR");
+                        return;
+                    };
+                    check_equal(self, field.ty(self.tcx, substs));
+                }
+                ty::Closure(_, substs) => {
+                    let substs = substs.as_closure();
+                    let Some(f_ty) = substs.upvar_tys().nth(f.as_usize()) else {
+                        self.validation = Err("malformed MIR");
+                        return;
+                    };
+                    check_equal(self, f_ty);
+                }
+                &ty::Generator(def_id, substs, _) => {
+                    let f_ty = if let Some(var) = parent_ty.variant_index {
+                        let gen_body = if def_id == self.callee_body.source.def_id() {
+                            self.callee_body
+                        } else {
+                            self.tcx.optimized_mir(def_id)
+                        };
+
+                        let Some(layout) = gen_body.generator_layout() else {
+                            self.validation = Err("malformed MIR");
+                            return;
+                        };
+
+                        let Some(&local) = layout.variant_fields[var].get(f) else {
+                            self.validation = Err("malformed MIR");
+                            return;
+                        };
+
+                        let Some(&f_ty) = layout.field_tys.get(local) else {
+                            self.validation = Err("malformed MIR");
+                            return;
+                        };
+
+                        f_ty
+                    } else {
+                        let Some(f_ty) = substs.as_generator().prefix_tys().nth(f.index()) else {
+                            self.validation = Err("malformed MIR");
+                            return;
+                        };
+
+                        f_ty
+                    };
+
+                    check_equal(self, f_ty);
+                }
+                _ => self.validation = Err("malformed MIR"),
+            }
+        }
+
+        self.super_projection_elem(local, proj_base, elem, context, location);
     }
 }
 
