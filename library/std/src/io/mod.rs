@@ -1396,8 +1396,9 @@ pub trait Write {
     /// It is **not** considered an error if the entire buffer could not be
     /// written to this writer.
     ///
-    /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the
-    /// write operation should be retried if there is nothing else to do.
+    /// An error of kind [`ErrorKind::Interrupted`] or [`ErrorKind::WouldBlock`]
+    /// is non-fatal and the write operation should be retried if there is
+    /// nothing else to do.
     ///
     /// # Examples
     ///
@@ -1498,18 +1499,19 @@ pub trait Write {
     /// Attempts to write an entire buffer into this writer.
     ///
     /// This method will continuously call [`write`] until there is no more data
-    /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is
-    /// returned. This method will not return until the entire buffer has been
-    /// successfully written or such an error occurs. The first error that is
-    /// not of [`ErrorKind::Interrupted`] kind generated from this method will be
-    /// returned.
+    /// to be written or an error is returned that is not of kind [`ErrorKind::Interrupted`]
+    /// or [`ErrorKind::WouldBlock`]. This method will not return until the
+    /// entire buffer has been successfully written or such an error occurs. The
+    /// first error that is not of kind [`ErrorKind::Interrupted`] or
+    /// [`ErrorKind::WouldBlock`] generated from this method will be returned.
     ///
     /// If the buffer contains no data, this will never call [`write`].
     ///
     /// # Errors
     ///
     /// This function will return the first error of
-    /// non-[`ErrorKind::Interrupted`] kind that [`write`] returns.
+    /// that [`write`] returns which is not of kind [`ErrorKind::Interrupted`]
+    /// or [`ErrorKind::WouldBlock`].
     ///
     /// [`write`]: Write::write
     ///
@@ -1537,20 +1539,23 @@ pub trait Write {
                     ));
                 }
                 Ok(n) => buf = &buf[n..],
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(ref e)
+                    if e.kind() == ErrorKind::Interrupted || e.kind() == ErrorKind::WouldBlock => {}
                 Err(e) => return Err(e),
             }
         }
+
         Ok(())
     }
 
     /// Attempts to write multiple buffers into this writer.
     ///
     /// This method will continuously call [`write_vectored`] until there is no
-    /// more data to be written or an error of non-[`ErrorKind::Interrupted`]
-    /// kind is returned. This method will not return until all buffers have
-    /// been successfully written or such an error occurs. The first error that
-    /// is not of [`ErrorKind::Interrupted`] kind generated from this method
+    /// more data to be written or an error is returned that is not of kind
+    /// [`ErrorKind::Interrupted`] or [`ErrorKind::WouldBlock`]. This method will
+    /// not return until all buffers have been successfully written or such an
+    /// error occurs. The first error that is not of kind [`ErrorKind::Interrupted`]
+    /// or [`ErrorKind::WouldBlock`] generated from this method
     /// will be returned.
     ///
     /// If the buffer contains no data, this will never call [`write_vectored`].
@@ -1605,7 +1610,8 @@ pub trait Write {
                     ));
                 }
                 Ok(n) => IoSlice::advance_slices(&mut bufs, n),
-                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(ref e)
+                    if e.kind() == ErrorKind::Interrupted || e.kind() == ErrorKind::WouldBlock => {}
                 Err(e) => return Err(e),
             }
         }
