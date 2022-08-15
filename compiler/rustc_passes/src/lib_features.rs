@@ -54,6 +54,14 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                         }
                     }
                 }
+                const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
+
+                if let Some(s) = since && s.as_str() == VERSION_PLACEHOLDER {
+                    let version = option_env!("CFG_VERSION").unwrap_or("<current>");
+                    let version = version.split(' ').next().unwrap();
+                    since = Some(Symbol::intern(&version));
+                }
+
                 if let Some(feature) = feature {
                     // This additional check for stability is to make sure we
                     // don't emit additional, irrelevant errors for malformed
