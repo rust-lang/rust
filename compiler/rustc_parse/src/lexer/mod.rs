@@ -131,7 +131,7 @@ impl<'a> StringReader<'a> {
     ) -> DiagnosticBuilder<'a, !> {
         self.sess
             .span_diagnostic
-            .struct_span_fatal(self.mk_sp(from_pos, to_pos), &format!("{}: {}", m, escaped_char(c)))
+            .struct_span_fatal(self.mk_sp(from_pos, to_pos), &format!("{m}: {}", escaped_char(c)))
     }
 
     fn struct_err_span_char(
@@ -143,7 +143,7 @@ impl<'a> StringReader<'a> {
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess
             .span_diagnostic
-            .struct_span_err(self.mk_sp(from_pos, to_pos), &format!("{}: {}", m, escaped_char(c)))
+            .struct_span_err(self.mk_sp(from_pos, to_pos), &format!("{m}: {}", escaped_char(c)))
     }
 
     /// Detect usages of Unicode codepoints changing the direction of the text on screen and loudly
@@ -217,7 +217,7 @@ impl<'a> StringReader<'a> {
                 self.sess.symbol_gallery.insert(sym, span);
                 if is_raw_ident {
                     if !sym.can_be_raw() {
-                        self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
+                        self.err_span(span, &format!("`{sym}` cannot be a raw identifier"));
                     }
                     self.sess.raw_identifier_spans.borrow_mut().push(span);
                 }
@@ -481,7 +481,7 @@ impl<'a> StringReader<'a> {
 
     /// As symbol_from, with an explicit endpoint.
     fn symbol_from_to(&self, start: BytePos, end: BytePos) -> Symbol {
-        debug!("taking an ident from {:?} to {:?}", start, end);
+        debug!("taking an ident from {start:?} to {end:?}");
         Symbol::intern(self.str_from_to(start, end))
     }
 
@@ -607,7 +607,7 @@ impl<'a> StringReader<'a> {
     fn report_unknown_prefix(&self, start: BytePos) {
         let prefix_span = self.mk_sp(start, self.pos);
         let prefix_str = self.str_from_to(start, self.pos);
-        let msg = format!("prefix `{}` is unknown", prefix_str);
+        let msg = format!("prefix `{prefix_str}` is unknown");
 
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
@@ -650,8 +650,7 @@ impl<'a> StringReader<'a> {
             self.pos,
             &format!(
                 "too many `#` symbols: raw strings may be delimited \
-                by up to 255 `#` symbols, but found {}",
-                found
+                by up to 255 `#` symbols, but found {found}"
             ),
         )
     }
@@ -699,7 +698,7 @@ impl<'a> StringReader<'a> {
             if c != '_' && c.to_digit(base).is_none() {
                 let lo = content_start + BytePos(2 + idx);
                 let hi = content_start + BytePos(2 + idx + c.len_utf8() as u32);
-                self.err_span_(lo, hi, &format!("invalid digit for a base {} literal", base));
+                self.err_span_(lo, hi, &format!("invalid digit for a base {base} literal"));
             }
         }
     }
