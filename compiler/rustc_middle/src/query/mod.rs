@@ -301,6 +301,32 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Checks whether a type is representable or infinitely sized
+    query representability(_: LocalDefId) -> rustc_middle::ty::Representability {
+        desc { "checking if {:?} is representable", tcx.def_path_str(key.to_def_id()) }
+        // infinitely sized types will cause a cycle
+        cycle_delay_bug
+        // we don't want recursive representability calls to be forced with
+        // incremental compilation because, if a cycle occurs, we need the
+        // entire cycle to be in memory for diagnostics
+        anon
+    }
+
+    /// An implementation detail for the `representability` query
+    query representability_adt_ty(_: Ty<'tcx>) -> rustc_middle::ty::Representability {
+        desc { "checking if {:?} is representable", key }
+        cycle_delay_bug
+        anon
+    }
+
+    /// Set of param indexes for type params that are in the type's representation
+    query params_in_repr(key: DefId) -> rustc_index::bit_set::BitSet<u32> {
+        desc { "finding type parameters in the representation" }
+        arena_cache
+        no_hash
+        separate_provide_extern
+    }
+
     /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
     query thir_body(key: ty::WithOptConstParam<LocalDefId>)
         -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed>

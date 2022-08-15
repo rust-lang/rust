@@ -210,6 +210,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_const_stability => { table }
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
+    params_in_repr => { table }
     unused_generic_params => { table }
     opt_def_kind => { table_direct }
     impl_parent => { table }

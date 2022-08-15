@@ -3,10 +3,8 @@ error[E0072]: recursive type `List` has infinite size
    |
 LL | enum List<T> { Cons(T, List<T>), Nil }
    | ^^^^^^^^^^^^           ------- recursive without indirection
-   | |
-   | recursive type has infinite size
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `List` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL | enum List<T> { Cons(T, Box<List<T>>), Nil }
    |                        ++++       +

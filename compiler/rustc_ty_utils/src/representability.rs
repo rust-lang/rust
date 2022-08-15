@@ -1,386 +1,119 @@
-//! Check whether a type is representable.
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
-use std::cmp;
+#![allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
 
-/// Describes whether a type is representable. For types that are not
-/// representable, 'SelfRecursive' and 'ContainsRecursive' are used to
-/// distinguish between types that are recursive with themselves and types that
-/// contain a different recursive type. These cases can therefore be treated
-/// differently when reporting errors.
-///
-/// The ordering of the cases is significant. They are sorted so that cmp::max
-/// will keep the "more erroneous" of two values.
-#[derive(Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
-pub enum Representability {
-    Representable,
-    ContainsRecursive,
-    /// Return a list of types that are included in themselves:
-    /// the spans where they are self-included, and (if found)
-    /// the HirId of the FieldDef that defines the self-inclusion.
-    SelfRecursive(Vec<(Span, Option<hir::HirId>)>),
+use rustc_hir::def::DefKind;
+use rustc_index::bit_set::BitSet;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
+use rustc_span::def_id::{DefId, LocalDefId};
+
+pub fn provide(providers: &mut Providers) {
+    *providers =
+        Providers { representability, representability_adt_ty, params_in_repr, ..*providers };
 }
 
-/// Check whether a type is representable. This means it cannot contain unboxed
-/// structural recursion. This check is needed for structs and enums.
-pub fn ty_is_representable<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    sp: Span,
-    field_id: Option<hir::HirId>,
-) -> Representability {
-    debug!("is_type_representable: {:?}", ty);
-    // To avoid a stack overflow when checking an enum variant or struct that
-    // contains a different, structurally recursive type, maintain a stack of
-    // seen types and check recursion for each of them (issues #3008, #3779,
-    // #74224, #84611). `shadow_seen` contains the full stack and `seen` only
-    // the one for the current type (e.g. if we have structs A and B, B contains
-    // a field of type A, and we're currently looking at B, then `seen` will be
-    // cleared when recursing to check A, but `shadow_seen` won't, so that we
-    // can catch cases of mutual recursion where A also contains B).
-    let mut seen: Vec<Ty<'_>> = Vec::new();
-    let mut shadow_seen: Vec<ty::AdtDef<'tcx>> = Vec::new();
-    let mut representable_cache = FxHashMap::default();
-    let mut force_result = false;
-    let r = is_type_structurally_recursive(
-        tcx,
-        &mut seen,
-        &mut shadow_seen,
-        &mut representable_cache,
-        ty,
-        sp,
-        field_id,
-        &mut force_result,
-    );
-    debug!("is_type_representable: {:?} is {:?}", ty, r);
-    r
-}
-
-// Iterate until something non-representable is found
-fn fold_repr<It: Iterator<Item = Representability>>(iter: It) -> Representability {
-    iter.fold(Representability::Representable, |r1, r2| match (r1, r2) {
-        (Representability::SelfRecursive(v1), Representability::SelfRecursive(v2)) => {
-            Representability::SelfRecursive(v1.into_iter().chain(v2).collect())
+macro_rules! rtry {
+    ($e:expr) => {
+        match $e {
+            e @ Representability::Infinite => return e,
+            Representability::Representable => {}
         }
-        (r1, r2) => cmp::max(r1, r2),
-    })
+    };
 }
 
-fn are_inner_types_recursive<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<ty::AdtDef<'tcx>>,
-    representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-    ty: Ty<'tcx>,
-    sp: Span,
-    field_id: Option<hir::HirId>,
-    force_result: &mut bool,
-) -> Representability {
-    debug!("are_inner_types_recursive({:?}, {:?}, {:?})", ty, seen, shadow_seen);
-    match ty.kind() {
-        ty::Tuple(fields) => {
-            // Find non representable
-            fold_repr(fields.iter().map(|ty| {
-                is_type_structurally_recursive(
-                    tcx,
-                    seen,
-                    shadow_seen,
-                    representable_cache,
-                    ty,
-                    sp,
-                    field_id,
-                    force_result,
-                )
-            }))
-        }
-        // Fixed-length vectors.
-        // FIXME(#11924) Behavior undecided for zero-length vectors.
-        ty::Array(ty, _) => is_type_structurally_recursive(
-            tcx,
-            seen,
-            shadow_seen,
-            representable_cache,
-            *ty,
-            sp,
-            field_id,
-            force_result,
-        ),
-        ty::Adt(def, substs) => {
-            // Find non representable fields with their spans
-            fold_repr(def.all_fields().map(|field| {
-                let ty = field.ty(tcx, substs);
-                let (sp, field_id) = match field
-                    .did
-                    .as_local()
-                    .map(|id| tcx.hir().local_def_id_to_hir_id(id))
-                    .and_then(|id| tcx.hir().find(id))
-                {
-                    Some(hir::Node::Field(field)) => (field.ty.span, Some(field.hir_id)),
-                    _ => (sp, field_id),
-                };
-
-                let mut result = None;
-
-                // First, we check whether the field type per se is representable.
-                // This catches cases as in #74224 and #84611. There is a special
-                // case related to mutual recursion, though; consider this example:
-                //
-                //   struct A<T> {
-                //       z: T,
-                //       x: B<T>,
-                //   }
-                //
-                //   struct B<T> {
-                //       y: A<T>
-                //   }
-                //
-                // Here, without the following special case, both A and B are
-                // ContainsRecursive, which is a problem because we only report
-                // errors for SelfRecursive. We fix this by detecting this special
-                // case (shadow_seen.first() is the type we are originally
-                // interested in, and if we ever encounter the same AdtDef again,
-                // we know that it must be SelfRecursive) and "forcibly" returning
-                // SelfRecursive (by setting force_result, which tells the calling
-                // invocations of are_inner_types_representable to forward the
-                // result without adjusting).
-                if shadow_seen.len() > seen.len() && shadow_seen.first() == Some(def) {
-                    *force_result = true;
-                    result = Some(Representability::SelfRecursive(vec![(sp, field_id)]));
+fn representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
+    match tcx.def_kind(def_id) {
+        DefKind::Struct | DefKind::Union | DefKind::Enum => {
+            let adt_def = tcx.adt_def(def_id);
+            for variant in adt_def.variants() {
+                for field in variant.fields.iter() {
+                    rtry!(tcx.representability(field.did.expect_local()));
                 }
-
-                if result == None {
-                    result = Some(Representability::Representable);
-
-                    // Now, we check whether the field types per se are representable, e.g.
-                    // for struct Foo { x: Option<Foo> }, we first check whether Option<_>
-                    // by itself is representable (which it is), and the nesting of Foo
-                    // will be detected later. This is necessary for #74224 and #84611.
-
-                    // If we have encountered an ADT definition that we have not seen
-                    // before (no need to check them twice), recurse to see whether that
-                    // definition is SelfRecursive. If so, we must be ContainsRecursive.
-                    if shadow_seen.len() > 1
-                        && !shadow_seen
-                            .iter()
-                            .take(shadow_seen.len() - 1)
-                            .any(|seen_def| seen_def == def)
-                    {
-                        let adt_def_id = def.did();
-                        let raw_adt_ty = tcx.type_of(adt_def_id);
-                        debug!("are_inner_types_recursive: checking nested type: {:?}", raw_adt_ty);
-
-                        // Check independently whether the ADT is SelfRecursive. If so,
-                        // we must be ContainsRecursive (except for the special case
-                        // mentioned above).
-                        let mut nested_seen: Vec<Ty<'_>> = vec![];
-                        result = Some(
-                            match is_type_structurally_recursive(
-                                tcx,
-                                &mut nested_seen,
-                                shadow_seen,
-                                representable_cache,
-                                raw_adt_ty,
-                                sp,
-                                field_id,
-                                force_result,
-                            ) {
-                                Representability::SelfRecursive(_) => {
-                                    if *force_result {
-                                        Representability::SelfRecursive(vec![(sp, field_id)])
-                                    } else {
-                                        Representability::ContainsRecursive
-                                    }
-                                }
-                                x => x,
-                            },
-                        );
-                    }
-
-                    // We only enter the following block if the type looks representable
-                    // so far. This is necessary for cases such as this one (#74224):
-                    //
-                    //   struct A<T> {
-                    //       x: T,
-                    //       y: A<A<T>>,
-                    //   }
-                    //
-                    //   struct B {
-                    //       z: A<usize>
-                    //   }
-                    //
-                    // When checking B, we recurse into A and check field y of type
-                    // A<A<usize>>. We haven't seen this exact type before, so we recurse
-                    // into A<A<usize>>, which contains, A<A<A<usize>>>, and so forth,
-                    // ad infinitum. We can prevent this from happening by first checking
-                    // A separately (the code above) and only checking for nested Bs if
-                    // A actually looks representable (which it wouldn't in this example).
-                    if result == Some(Representability::Representable) {
-                        // Now, even if the type is representable (e.g. Option<_>),
-                        // it might still contribute to a recursive type, e.g.:
-                        //   struct Foo { x: Option<Option<Foo>> }
-                        // These cases are handled by passing the full `seen`
-                        // stack to is_type_structurally_recursive (instead of the
-                        // empty `nested_seen` above):
-                        result = Some(
-                            match is_type_structurally_recursive(
-                                tcx,
-                                seen,
-                                shadow_seen,
-                                representable_cache,
-                                ty,
-                                sp,
-                                field_id,
-                                force_result,
-                            ) {
-                                Representability::SelfRecursive(_) => {
-                                    Representability::SelfRecursive(vec![(sp, field_id)])
-                                }
-                                x => x,
-                            },
-                        );
-                    }
-                }
-
-                result.unwrap()
-            }))
+            }
+            Representability::Representable
         }
-        ty::Closure(..) => {
-            // this check is run on type definitions, so we don't expect
-            // to see closure types
-            bug!("requires check invoked on inapplicable type: {:?}", ty)
+        DefKind::Field => representability_ty(tcx, tcx.type_of(def_id)),
+        def_kind => bug!("unexpected {def_kind:?}"),
+    }
+}
+
+fn representability_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
+    match *ty.kind() {
+        ty::Adt(..) => tcx.representability_adt_ty(ty),
+        // FIXME(#11924) allow zero-length arrays?
+        ty::Array(ty, _) => representability_ty(tcx, ty),
+        ty::Tuple(tys) => {
+            for ty in tys {
+                rtry!(representability_ty(tcx, ty));
+            }
+            Representability::Representable
         }
         _ => Representability::Representable,
     }
 }
 
-fn same_adt<'tcx>(ty: Ty<'tcx>, def: ty::AdtDef<'tcx>) -> bool {
+/*
+The reason for this being a separate query is very subtle:
+Consider this infinitely sized struct: `struct Foo(Box<Foo>, Bar<Foo>)`:
+When calling representability(Foo), a query cycle will occur:
+  representability(Foo)
+    -> representability_adt_ty(Bar<Foo>)
+    -> representability(Foo)
+For the diagnostic output (in `Value::from_cycle_error`), we want to detect that
+the `Foo` in the *second* field of the struct is culpable. This requires
+traversing the HIR of the struct and calling `params_in_repr(Bar)`. But we can't
+call params_in_repr for a given type unless it is known to be representable.
+params_in_repr will cycle/panic on infinitely sized types. Looking at the query
+cycle above, we know that `Bar` is representable because
+representability_adt_ty(Bar<..>) is in the cycle and representability(Bar) is
+*not* in the cycle.
+*/
+fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representability {
+    let ty::Adt(adt, substs) = ty.kind() else { bug!("expected adt") };
+    if let Some(def_id) = adt.did().as_local() {
+        rtry!(tcx.representability(def_id));
+    }
+    // At this point, we know that the item of the ADT type is representable;
+    // but the type parameters may cause a cycle with an upstream type
+    let params_in_repr = tcx.params_in_repr(adt.did());
+    for (i, subst) in substs.iter().enumerate() {
+        if let ty::GenericArgKind::Type(ty) = subst.unpack() {
+            if params_in_repr.contains(i as u32) {
+                rtry!(representability_ty(tcx, ty));
+            }
+        }
+    }
+    Representability::Representable
+}
+
+fn params_in_repr(tcx: TyCtxt<'_>, def_id: DefId) -> BitSet<u32> {
+    let adt_def = tcx.adt_def(def_id);
+    let generics = tcx.generics_of(def_id);
+    let mut params_in_repr = BitSet::new_empty(generics.params.len());
+    for variant in adt_def.variants() {
+        for field in variant.fields.iter() {
+            params_in_repr_ty(tcx, tcx.type_of(field.did), &mut params_in_repr);
+        }
+    }
+    params_in_repr
+}
+
+fn params_in_repr_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, params_in_repr: &mut BitSet<u32>) {
     match *ty.kind() {
-        ty::Adt(ty_def, _) => ty_def == def,
-        _ => false,
-    }
-}
-
-// Does the type `ty` directly (without indirection through a pointer)
-// contain any types on stack `seen`?
-fn is_type_structurally_recursive<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<ty::AdtDef<'tcx>>,
-    representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-    ty: Ty<'tcx>,
-    sp: Span,
-    field_id: Option<hir::HirId>,
-    force_result: &mut bool,
-) -> Representability {
-    debug!("is_type_structurally_recursive: {:?} {:?} {:?}", ty, sp, field_id);
-    if let Some(representability) = representable_cache.get(&ty) {
-        debug!(
-            "is_type_structurally_recursive: {:?} {:?} {:?} - (cached) {:?}",
-            ty, sp, field_id, representability
-        );
-        return representability.clone();
-    }
-
-    let representability = is_type_structurally_recursive_inner(
-        tcx,
-        seen,
-        shadow_seen,
-        representable_cache,
-        ty,
-        sp,
-        field_id,
-        force_result,
-    );
-
-    representable_cache.insert(ty, representability.clone());
-    representability
-}
-
-fn is_type_structurally_recursive_inner<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<ty::AdtDef<'tcx>>,
-    representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-    ty: Ty<'tcx>,
-    sp: Span,
-    field_id: Option<hir::HirId>,
-    force_result: &mut bool,
-) -> Representability {
-    match ty.kind() {
-        ty::Adt(def, _) => {
-            {
-                debug!("is_type_structurally_recursive_inner: adt: {:?}, seen: {:?}", ty, seen);
-
-                // Iterate through stack of previously seen types.
-                let mut iter = seen.iter();
-
-                // The first item in `seen` is the type we are actually curious about.
-                // We want to return SelfRecursive if this type contains itself.
-                // It is important that we DON'T take generic parameters into account
-                // for this check, so that Bar<T> in this example counts as SelfRecursive:
-                //
-                // struct Foo;
-                // struct Bar<T> { x: Bar<Foo> }
-
-                if let Some(&seen_adt) = iter.next() {
-                    if same_adt(seen_adt, *def) {
-                        debug!("SelfRecursive: {:?} contains {:?}", seen_adt, ty);
-                        return Representability::SelfRecursive(vec![(sp, field_id)]);
-                    }
-                }
-
-                // We also need to know whether the first item contains other types
-                // that are structurally recursive. If we don't catch this case, we
-                // will recurse infinitely for some inputs.
-                //
-                // It is important that we DO take generic parameters into account
-                // here, because nesting e.g. Options is allowed (as long as the
-                // definition of Option doesn't itself include an Option field, which
-                // would be a case of SelfRecursive above). The following, too, counts
-                // as SelfRecursive:
-                //
-                // struct Foo { Option<Option<Foo>> }
-
-                for &seen_adt in iter {
-                    if ty == seen_adt {
-                        debug!("ContainsRecursive: {:?} contains {:?}", seen_adt, ty);
-                        return Representability::ContainsRecursive;
+        ty::Adt(adt, substs) => {
+            let inner_params_in_repr = tcx.params_in_repr(adt.did());
+            for (i, subst) in substs.iter().enumerate() {
+                if let ty::GenericArgKind::Type(ty) = subst.unpack() {
+                    if inner_params_in_repr.contains(i as u32) {
+                        params_in_repr_ty(tcx, ty, params_in_repr);
                     }
                 }
             }
-
-            // For structs and enums, track all previously seen types by pushing them
-            // onto the 'seen' stack.
-            seen.push(ty);
-            shadow_seen.push(*def);
-            let out = are_inner_types_recursive(
-                tcx,
-                seen,
-                shadow_seen,
-                representable_cache,
-                ty,
-                sp,
-                field_id,
-                force_result,
-            );
-            shadow_seen.pop();
-            seen.pop();
-            out
         }
-        _ => {
-            // No need to push in other cases.
-            are_inner_types_recursive(
-                tcx,
-                seen,
-                shadow_seen,
-                representable_cache,
-                ty,
-                sp,
-                field_id,
-                force_result,
-            )
+        ty::Array(ty, _) => params_in_repr_ty(tcx, ty, params_in_repr),
+        ty::Tuple(tys) => tys.iter().for_each(|ty| params_in_repr_ty(tcx, ty, params_in_repr)),
+        ty::Param(param) => {
+            params_in_repr.insert(param.index);
         }
+        _ => {}
     }
 }

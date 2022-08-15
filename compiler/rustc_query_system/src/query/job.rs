@@ -551,7 +551,7 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
 #[cold]
 pub(crate) fn report_cycle<'a>(
     sess: &'a Session,
-    CycleError { usage, cycle: stack }: CycleError,
+    CycleError { usage, cycle: stack }: &CycleError,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     assert!(!stack.is_empty());
 
@@ -569,10 +569,10 @@ pub(crate) fn report_cycle<'a>(
     }
 
     let mut cycle_usage = None;
-    if let Some((span, query)) = usage {
+    if let Some((span, ref query)) = *usage {
         cycle_usage = Some(crate::error::CycleUsage {
             span: query.default_span(span),
-            usage: query.description,
+            usage: query.description.to_string(),
         });
     }
 

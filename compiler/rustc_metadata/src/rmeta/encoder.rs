@@ -1156,6 +1156,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Trait | DefKind::TraitAlias = def_kind {
                 record!(self.tables.super_predicates_of[def_id] <- self.tcx.super_predicates_of(def_id));
             }
+            if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
+                let params_in_repr = self.tcx.params_in_repr(def_id);
+                record!(self.tables.params_in_repr[def_id] <- params_in_repr);
+            }
             if should_encode_trait_impl_trait_tys(tcx, def_id)
                 && let Ok(table) = self.tcx.collect_trait_impl_trait_tys(def_id)
             {

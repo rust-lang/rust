@@ -119,7 +119,7 @@ where
 #[inline(never)]
 fn mk_cycle<CTX, V, R>(
     tcx: CTX,
-    error: CycleError,
+    cycle_error: CycleError,
     handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
@@ -128,13 +128,14 @@ where
     V: std::fmt::Debug + Value<CTX::DepContext>,
     R: Clone,
 {
-    let error = report_cycle(tcx.dep_context().sess(), error);
-    let value = handle_cycle_error(*tcx.dep_context(), error, handler);
+    let error = report_cycle(tcx.dep_context().sess(), &cycle_error);
+    let value = handle_cycle_error(*tcx.dep_context(), &cycle_error, error, handler);
     cache.store_nocache(value)
 }
 
 fn handle_cycle_error<CTX, V>(
     tcx: CTX,
+    cycle_error: &CycleError,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
     handler: HandleCycleError,
 ) -> V
@@ -146,7 +147,7 @@ where
     match handler {
         Error => {
             error.emit();
-            Value::from_cycle_error(tcx)
+            Value::from_cycle_error(tcx, &cycle_error.cycle)
         }
         Fatal => {
             error.emit();
@@ -155,7 +156,7 @@ where
         }
         DelayBug => {
             error.delay_as_bug();
-            Value::from_cycle_error(tcx)
+            Value::from_cycle_error(tcx, &cycle_error.cycle)
         }
     }
 }

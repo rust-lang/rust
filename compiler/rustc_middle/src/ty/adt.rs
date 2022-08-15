@@ -566,3 +566,10 @@ impl<'tcx> AdtDef<'tcx> {
         ty::EarlyBinder(tcx.adt_sized_constraint(self.did()).0)
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+#[derive(HashStable)]
+pub enum Representability {
+    Representable,
+    Infinite,
+}
