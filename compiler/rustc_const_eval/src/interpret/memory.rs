@@ -327,7 +327,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Let the machine take some extra action
         let size = alloc.size();
-        M::memory_deallocated(
+        M::before_memory_deallocation(
             *self.tcx,
             &mut self.machine,
             &mut alloc.extra,
@@ -575,7 +575,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )?;
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            M::memory_read(*self.tcx, &self.machine, &alloc.extra, (alloc_id, prov), range)?;
+            M::before_memory_read(*self.tcx, &self.machine, &alloc.extra, (alloc_id, prov), range)?;
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
             // Even in this branch we have to be sure that we actually access the allocation, in
@@ -641,7 +641,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
             let (alloc, machine) = self.get_alloc_raw_mut(alloc_id)?;
             let range = alloc_range(offset, size);
-            M::memory_written(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
+            M::before_memory_write(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
             Ok(Some(AllocRefMut { alloc, range, tcx, alloc_id }))
         } else {
             Ok(None)
@@ -1078,7 +1078,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
-        M::memory_read(*tcx, &self.machine, &src_alloc.extra, (src_alloc_id, src_prov), src_range)?;
+        M::before_memory_read(
+            *tcx,
+            &self.machine,
+            &src_alloc.extra,
+            (src_alloc_id, src_prov),
+            src_range,
+        )?;
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
         let Some((dest_alloc_id, dest_offset, dest_prov)) = dest_parts else {
@@ -1103,7 +1109,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
-        M::memory_written(
+        M::before_memory_write(
             *tcx,
             extra,
             &mut dest_alloc.extra,
