@@ -837,7 +837,7 @@ impl<'a> Parser<'a> {
                                     expect_err
                                         .span_suggestion_short(
                                             sp,
-                                            &format!("missing `{}`", token_str),
+                                            &format!("missing `{token_str}`"),
                                             token_str,
                                             Applicability::MaybeIncorrect,
                                         )
@@ -1347,12 +1347,12 @@ impl<'a> Parser<'a> {
 
         let path_str = pprust::path_to_string(&path);
 
-        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
+        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{msg}")
             .help(suggestion)
             .span_suggestion(
                 path.span,
-                &format!("make this visible only to module `{}` with `in`", path_str),
-                format!("in {}", path_str),
+                &format!("make this visible only to module `{path_str}` with `in`"),
+                format!("in {path_str}"),
                 Applicability::MachineApplicable,
             )
             .emit();
