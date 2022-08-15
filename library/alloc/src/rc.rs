@@ -952,8 +952,9 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[unstable(feature = "rc_as_weak", issue = "100472")]
     #[must_use]
-    pub const fn as_weak<'a>(this: &'a Self) -> &'a Weak<T> {
-        unsafe { mem::transmute::<&'a Rc<T>, &'a Weak<T>>(this) }
+    pub const fn as_weak(this: &Self) -> &Weak<T> {
+        let weak = this as *const Self as *const Weak<T>;
+        unsafe { &*weak }
     }
 
     /// Gets the number of [`Weak`] pointers to this allocation.
