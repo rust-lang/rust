@@ -413,3 +413,58 @@ fn eu_iterator_specializations() {
     check('\u{12340}');
     check('\u{10FFFF}');
 }
+
+macro_rules! is_ascii_tests {
+    ($x: ident $(, $test_name: ident, $method_name: ident, $original_version: expr)+ $(,)?) => {
+        $(
+            #[test]
+            fn $test_name() {
+                for $x in ('\0'..='\u{d7ff}').chain('\u{e000}'..='\u{10ffff}') {
+                    // Test current version against simple Rust 1.63.0 version
+                    assert!(
+                        $x.$method_name() == ($original_version),
+                        concat!("`{:?}.", stringify!($variant), "()` is incorrect"),
+                        $x
+                    );
+                }
+            }
+        )*
+    };
+}
+
+is_ascii_tests!(
+    x,
+    test_is_ascii,
+    is_ascii,
+    x as u32 <= 0x7F,
+    test_is_ascii_alphabetic,
+    is_ascii_alphabetic,
+    matches!(x, 'A'..='Z' | 'a'..='z'),
+    test_is_ascii_alphanumeric,
+    is_ascii_alphanumeric,
+    matches!(x, '0'..='9' | 'A'..='Z' | 'a'..='z'),
+    test_is_ascii_control,
+    is_ascii_control,
+    matches!(x, '\0'..='\x1F' | '\x7F'),
+    test_is_ascii_digit,
+    is_ascii_digit,
+    matches!(x, '0'..='9'),
+    test_is_ascii_graphic,
+    is_ascii_graphic,
+    matches!(x, '!'..='~'),
+    test_is_ascii_hexdigit,
+    is_ascii_hexdigit,
+    matches!(x, '0'..='9' | 'A'..='F' | 'a'..='f'),
+    test_is_ascii_lowercase,
+    is_ascii_lowercase,
+    matches!(x, 'a'..='z'),
+    test_is_ascii_punctuation,
+    is_ascii_punctuation,
+    matches!(x, '!'..='/' | ':'..='@' | '['..='`' | '{'..='~'),
+    test_is_ascii_uppercase,
+    is_ascii_uppercase,
+    matches!(x, 'A'..='Z'),
+    test_is_ascii_whitespace,
+    is_ascii_whitespace,
+    matches!(x, '\t' | '\n' | '\x0C' | '\r' | ' '),
+);
