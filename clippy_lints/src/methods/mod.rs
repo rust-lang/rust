@@ -174,7 +174,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `.unwrap()` calls on `Option`s and on `Result`s.
+    /// Checks for `.unwrap()` or `.unwrap_err()` calls on `Result`s and `.unwrap()` call on `Option`s.
     ///
     /// ### Why is this bad?
     /// It is better to handle the `None` or `Err` case,
@@ -224,7 +224,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `.expect()` calls on `Option`s and `Result`s.
+    /// Checks for `.expect()` or `.expect_err()` calls on `Result`s and `.expect()` call on `Option`s.
     ///
     /// ### Why is this bad?
     /// Usually it is better to handle the `None` or `Err` case.
@@ -2740,8 +2740,9 @@ impl Methods {
                 ("expect", [_]) => match method_call(recv) {
                     Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
                     Some(("err", [recv], err_span)) => err_expect::check(cx, expr, recv, self.msrv, span, err_span),
-                    _ => expect_used::check(cx, expr, recv, self.allow_expect_in_tests),
+                    _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
                 },
+                ("expect_err", [_]) => expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests),
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
@@ -2874,8 +2875,9 @@ impl Methods {
                         },
                         _ => {},
                     }
-                    unwrap_used::check(cx, expr, recv, self.allow_unwrap_in_tests);
+                    unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
+                ("unwrap_err", []) => unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests),
                 ("unwrap_or", [u_arg]) => match method_call(recv) {
                     Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), [lhs, rhs], _)) => {
                         manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);

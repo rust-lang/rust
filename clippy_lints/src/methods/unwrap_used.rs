@@ -7,17 +7,25 @@ use rustc_span::sym;
 
 use super::{EXPECT_USED, UNWRAP_USED};
 
-/// lint use of `unwrap()` for `Option`s and `Result`s
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, allow_unwrap_in_tests: bool) {
+/// lint use of `unwrap()` or `unwrap_err` for `Result` and `unwrap()` for `Option`.
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    recv: &hir::Expr<'_>,
+    is_err: bool,
+    allow_unwrap_in_tests: bool,
+) {
     let obj_ty = cx.typeck_results().expr_ty(recv).peel_refs();
 
-    let mess = if is_type_diagnostic_item(cx, obj_ty, sym::Option) {
+    let mess = if is_type_diagnostic_item(cx, obj_ty, sym::Option) && !is_err {
         Some((UNWRAP_USED, "an Option", "None", ""))
     } else if is_type_diagnostic_item(cx, obj_ty, sym::Result) {
-        Some((UNWRAP_USED, "a Result", "Err", "an "))
+        Some((UNWRAP_USED, "a Result", if is_err { "Ok" } else { "Err" }, "an "))
     } else {
         None
     };
+
+    let method = if is_err { "unwrap_err" } else { "unwrap" };
 
     if allow_unwrap_in_tests && is_in_test_function(cx.tcx, expr.hir_id) {
         return;
@@ -37,7 +45,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
             cx,
             lint,
             expr.span,
-            &format!("used `unwrap()` on `{kind}` value"),
+            &format!("used `{method}()` on `{kind}` value"),
             None,
             &help,
         );
