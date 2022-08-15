@@ -674,12 +674,7 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
             | ty::Never
             | ty::Tuple(..) => self.found_non_local_ty(ty),
 
-            ty::Param(..) => self.found_uncovered_ty(ty),
-
-            ty::Projection(..) => {
-                self.found_non_local_ty(ty);
-                self.found_uncovered_ty(ty)
-            }
+            ty::Param(..) | ty::Projection(..) => self.found_uncovered_ty(ty),
 
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match self.in_crate {
                 InCrate::Local => self.found_non_local_ty(ty),
