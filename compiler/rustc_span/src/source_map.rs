@@ -722,7 +722,7 @@ impl SourceMap {
         })
     }
 
-    /// Extends the given `Span` to just after the next occurrence of `c`.
+    /// Extends the given `Span` to just before the next occurrence of `c`.
     pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(next_source) = self.span_to_next_source(sp) {
             let next_source = next_source.split(c).next().unwrap_or("");
