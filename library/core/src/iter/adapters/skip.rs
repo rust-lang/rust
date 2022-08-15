@@ -33,21 +33,32 @@ where
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
         if unlikely(self.n > 0) {
-            self.iter.nth(crate::mem::take(&mut self.n) - 1)?;
+            self.iter.nth(crate::mem::take(&mut self.n))
+        } else {
+            self.iter.next()
         }
-        self.iter.next()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        // Can't just add n + self.n due to overflow.
         if self.n > 0 {
-            let to_skip = self.n;
-            self.n = 0;
-            // nth(n) skips n+1
-            self.iter.nth(to_skip - 1)?;
+            let skip: usize = crate::mem::take(&mut self.n);
+            // Checked add to handle overflow case.
+            let n = match skip.checked_add(n) {
+                Some(nth) => nth,
+                None => {
+                    // In case of overflow, load skip value, before loading `n`.
+                    // Because the amount of elements to iterate is beyond `usize::MAX`, this
+                    // is split into two `nth` calls where the `skip` `nth` call is discarded.
+                    self.iter.nth(skip - 1)?;
+                    n
+                }
+            };
+            // Load nth element including skip.
+            self.iter.nth(n)
+        } else {
+            self.iter.nth(n)
         }
-        self.iter.nth(n)
     }
 
     #[inline]
