@@ -299,7 +299,7 @@ fn emit_orphan_check_error<'tcx>(
                                 tcx.sess,
                                 sp,
                                 E0210,
-                                "type projection `{}` must be covered by another type \
+                                "associated type `{}` must be covered by another type \
                                 when it appears before the first local type (`{}`)",
                                 param_ty,
                                 local_type
@@ -307,7 +307,7 @@ fn emit_orphan_check_error<'tcx>(
                             err.span_label(
                                 sp,
                                 format!(
-                                    "type projection `{}` must be covered by another type \
+                                    "associated type `{}` must be covered by another type \
                                     when it appears before the first local type (`{}`)",
                                     param_ty, local_type
                                 ),
@@ -339,8 +339,8 @@ fn emit_orphan_check_error<'tcx>(
                     err.note(
                         "implementing a foreign trait is only possible if at \
                         least one of the types for which it is implemented is local, \
-                        and no uncovered type parameters or projections appear before that first \
-                        local type",
+                        and no uncovered type parameters or associated types appear \
+                        before that first local type",
                     )
                     .note(
                         "in this case, 'before' refers to the following order: \
