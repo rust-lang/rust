@@ -88,7 +88,17 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem { .. } | clean::ImportItem(..) => {}
+            clean::ExternCrateItem { .. } => {}
+            clean::ImportItem(ref imp) => {
+                // Because json doesn't inline imports from private modules, we need to mark
+                // the imported item as retained so it's impls won't be stripped.i
+                //
+                // FIXME: Is it necessary to check for json output here: See
+                // https://github.com/rust-lang/rust/pull/100325#discussion_r941495215
+                if let Some(did) = imp.source.did && self.is_json_output {
+                    self.retained.insert(did.into());
+                }
+            }
 
             clean::ImplItem(..) => {}
 
