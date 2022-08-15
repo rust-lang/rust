@@ -1,101 +1,101 @@
-typeck-field-multiply-specified-in-initializer =
+typeck_field_multiply_specified_in_initializer =
     field `{$ident}` specified more than once
     .label = used more than once
-    .previous-use-label = first use of `{$ident}`
+    .previous_use_label = first use of `{$ident}`
 
-typeck-unrecognized-atomic-operation =
+typeck_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`
     .label = unrecognized atomic operation
 
-typeck-wrong-number-of-generic-arguments-to-intrinsic =
+typeck_wrong_number_of_generic_arguments_to_intrinsic =
     intrinsic has wrong number of {$descr} parameters: found {$found}, expected {$expected}
     .label = expected {$expected} {$descr} {$expected ->
         [one] parameter
         *[other] parameters
     }
 
-typeck-unrecognized-intrinsic-function =
+typeck_unrecognized_intrinsic_function =
     unrecognized intrinsic function: `{$name}`
     .label = unrecognized intrinsic
 
-typeck-lifetimes-or-bounds-mismatch-on-trait =
+typeck_lifetimes_or_bounds_mismatch_on_trait =
     lifetime parameters or bounds on {$item_kind} `{$ident}` do not match the trait declaration
     .label = lifetimes do not match {$item_kind} in trait
-    .generics-label = lifetimes in impl do not match this {$item_kind} in trait
+    .generics_label = lifetimes in impl do not match this {$item_kind} in trait
 
-typeck-drop-impl-on-wrong-item =
+typeck_drop_impl_on_wrong_item =
     the `Drop` trait may only be implemented for structs, enums, and unions
     .label = must be a struct, enum, or union
 
-typeck-field-already-declared =
+typeck_field_already_declared =
     field `{$field_name}` is already declared
     .label = field already declared
-    .previous-decl-label = `{$field_name}` first declared here
+    .previous_decl_label = `{$field_name}` first declared here
 
-typeck-copy-impl-on-type-with-dtor =
+typeck_copy_impl_on_type_with_dtor =
     the trait `Copy` may not be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
 
-typeck-multiple-relaxed-default-bounds =
+typeck_multiple_relaxed_default_bounds =
     type parameter has more than one relaxed default bound, only one is supported
 
-typeck-copy-impl-on-non-adt =
+typeck_copy_impl_on_non_adt =
     the trait `Copy` may not be implemented for this type
     .label = type is not a structure or enumeration
 
-typeck-trait-object-declared-with-no-traits =
+typeck_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
-    .alias-span = this alias does not contain a trait
+    .alias_span = this alias does not contain a trait
 
-typeck-ambiguous-lifetime-bound =
+typeck_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
-typeck-assoc-type-binding-not-allowed =
+typeck_assoc_type_binding_not_allowed =
     associated type bindings are not allowed here
     .label = associated type not allowed here
 
-typeck-functional-record-update-on-non-struct =
+typeck_functional_record_update_on_non_struct =
     functional record update syntax requires a struct
 
-typeck-typeof-reserved-keyword-used =
+typeck_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
     .suggestion = consider replacing `typeof(...)` with an actual type
     .label = reserved keyword
 
-typeck-return-stmt-outside-of-fn-body =
+typeck_return_stmt_outside_of_fn_body =
     return statement outside of function body
-    .encl-body-label = the return is part of this body...
-    .encl-fn-label = ...not the enclosing function body
+    .encl_body_label = the return is part of this body...
+    .encl_fn_label = ...not the enclosing function body
 
-typeck-yield-expr-outside-of-generator =
+typeck_yield_expr_outside_of_generator =
     yield expression outside of generator literal
 
-typeck-struct-expr-non-exhaustive =
+typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression
 
-typeck-method-call-on-unknown-type =
+typeck_method_call_on_unknown_type =
     the type of this value must be known to call a method on a raw pointer on it
 
-typeck-value-of-associated-struct-already-specified =
+typeck_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` (from trait `{$def_path}`) is already specified
     .label = re-bound here
-    .previous-bound-label = `{$item_name}` bound here first
+    .previous_bound_label = `{$item_name}` bound here first
 
-typeck-address-of-temporary-taken = cannot take address of a temporary
+typeck_address_of_temporary_taken = cannot take address of a temporary
     .label = temporary value
 
-typeck-add-return-type-add = try adding a return type
+typeck_add_return_type_add = try adding a return type
 
-typeck-add-return-type-missing-here = a return type might be missing here
+typeck_add_return_type_missing_here = a return type might be missing here
 
-typeck-expected-default-return-type = expected `()` because of default return type
+typeck_expected_default_return_type = expected `()` because of default return type
 
-typeck-expected-return-type = expected `{$expected}` because of return type
+typeck_expected_return_type = expected `{$expected}` because of return type
 
-typeck-unconstrained-opaque-type = unconstrained opaque type
+typeck_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same module
 
-typeck-missing-type-params =
+typeck_missing_type_params =
     the type {$parameterCount ->
         [one] parameter
         *[other] parameters
@@ -111,15 +111,15 @@ typeck-missing-type-params =
         [one] type
         *[other] types
     }
-    .no-suggestion-label = missing {$parameterCount ->
+    .no_suggestion_label = missing {$parameterCount ->
         [one] reference
         *[other] references
     } to {$parameters}
     .note = because of the default `Self` reference, type parameters must be specified on object types
 
-typeck-manual-implementation =
+typeck_manual_implementation =
     manual implementations of `{$trait_name}` are experimental
     .label = manual implementations of `{$trait_name}` are experimental
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-typeck-substs-on-overridden-impl = could not resolve substs on overridden impl
+typeck_substs_on_overridden_impl = could not resolve substs on overridden impl

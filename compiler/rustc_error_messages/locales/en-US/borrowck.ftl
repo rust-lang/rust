@@ -1,18 +1,18 @@
-borrowck-move-unsized =
+borrowck_move_unsized =
     cannot move a value of type `{$ty}`
     .label = the size of `{$ty}` cannot be statically determined
 
-borrowck-higher-ranked-lifetime-error =
+borrowck_higher_ranked_lifetime_error =
     higher-ranked lifetime error
 
-borrowck-could-not-prove =
+borrowck_could_not_prove =
     could not prove `{$predicate}`
 
-borrowck-could-not-normalize =
+borrowck_could_not_normalize =
     could not normalize `{$value}`
 
-borrowck-higher-ranked-subtype-error =
+borrowck_higher_ranked_subtype_error =
     higher-ranked subtype error
   
-generic-does-not-live-long-enough =
+generic_does_not_live_long_enough =
     `{$kind}` does not live long enough

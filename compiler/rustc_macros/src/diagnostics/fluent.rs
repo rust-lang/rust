@@ -189,13 +189,25 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
             if let Entry::Message(Message { id: Identifier { name }, attributes, .. }) = entry {
                 let _ = previous_defns.entry(name.to_string()).or_insert(ident_span);
 
-                // `typeck-foo-bar` => `foo_bar` (in `typeck.ftl`)
-                // `const-eval-baz` => `baz` (in `const_eval.ftl`)
+                if name.contains('-') {
+                    Diagnostic::spanned(
+                        ident_span,
+                        Level::Error,
+                        format!("name `{name}` contains a '-' character"),
+                    )
+                    .help("replace any '-'s with '_'s")
+                    .emit();
+                }
+
+                // `typeck_foo_bar` => `foo_bar` (in `typeck.ftl`)
+                // `const_eval_baz` => `baz` (in `const_eval.ftl`)
+                // `const-eval-hyphen-having` => `hyphen_having` (in `const_eval.ftl`)
+                // The last case we error about above, but we want to fall back gracefully
+                // so that only the error is being emitted and not also one about the macro
+                // failing.
                 let snake_name = Ident::new(
                     // FIXME: should probably trim prefix, not replace all occurrences
-                    &name
-                        .replace(&format!("{}-", res.ident).replace('_', "-"), "")
-                        .replace('-', "_"),
+                    &name.replace('-', "_").replace(&format!("{}_", res.ident), ""),
                     span,
                 );
                 constants.extend(quote! {
@@ -210,6 +222,16 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                     let snake_name = Ident::new(&attr_name.replace('-', "_"), span);
                     if !previous_attrs.insert(snake_name.clone()) {
                         continue;
+                    }
+
+                    if attr_name.contains('-') {
+                        Diagnostic::spanned(
+                            ident_span,
+                            Level::Error,
+                            format!("attribute `{attr_name}` contains a '-' character"),
+                        )
+                        .help("replace any '-'s with '_'s")
+                        .emit();
                     }
 
                     constants.extend(quote! {
