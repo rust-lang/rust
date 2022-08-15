@@ -54,11 +54,8 @@ use std::io::{BufWriter, Write};
 
 #[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
-    println!("demping dep graph 1!!");
     tcx.dep_graph.with_ignore(|| {
-        println!("demping dep graph 2!!");
         if tcx.sess.opts.unstable_opts.dump_dep_graph || true {
-            println!("demping dep graph 3!!");
             tcx.dep_graph.with_query(dump_graph);
         }
 

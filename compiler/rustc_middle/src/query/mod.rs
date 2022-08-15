@@ -1742,6 +1742,7 @@ rustc_queries! {
     /// A list of all traits in a crate, used by rustdoc and error reporting.
     /// NOTE: Not named just `traits` due to a naming conflict.
     query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
+        eval_always
         desc { "fetching all traits in a crate" }
         separate_provide_extern
     }
@@ -1753,6 +1754,7 @@ rustc_queries! {
     /// A list of all impls in a crate.
     //use rustc_middle::ty::fast_reject::SimplifiedTypeGen;
     query impls_in_crate(_: CrateNum) -> &'tcx FxIndexMap<DefId, Vec<(DefId, Option<rustc_middle::ty::fast_reject::SimplifiedTypeGen<DefId>>)>> {
+        eval_always
         desc { "fetching trait to impl map in a crate" }
         separate_provide_extern
     }

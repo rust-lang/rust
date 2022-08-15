@@ -2297,6 +2297,11 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         all_local_trait_impls: |tcx, _| {
+            // with just top live, error.
+            // with just bottom live, success.
+            // with both live, fails.
+            // so although the top has no impact on the output, it causes the failure.
+
             let o: FxIndexMap<_, _> = tcx
                 .impls_in_crate(LOCAL_CRATE)
                 .iter()
@@ -2309,6 +2314,9 @@ pub fn provide(providers: &mut Providers) {
                 .collect();
 
             tcx.arena.alloc(o)
+
+            //providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
+            //&tcx.resolutions(()).trait_impls
         },
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -2316,12 +2324,13 @@ pub fn provide(providers: &mut Providers) {
             let mut traits = Vec::new();
             for id in tcx.hir().items() {
                 if matches!(tcx.def_kind(id.def_id), DefKind::Trait | DefKind::TraitAlias) {
+                    //println!("matches b");
                     traits.push(id.def_id.to_def_id())
                 }
             }
 
             // Bring everything into deterministic order.
-            // traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
+            //traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
             // This is not necessary, since the default order is source-code order.
             // The source code is hashed into crate_hash, so if crate_hash is stable then it must be stable too.
 
@@ -2345,7 +2354,9 @@ pub fn provide(providers: &mut Providers) {
                 FxIndexMap::default();
 
             for id in tcx.hir().items() {
+                //println!("{:?}", id);
                 if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
+                    //println!("matches a");
                     if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
                         let simplified_self_ty = fast_reject::simplify_type(
                             tcx,
