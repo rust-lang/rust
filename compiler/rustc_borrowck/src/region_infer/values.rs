@@ -303,6 +303,22 @@ impl<N: Idx> RegionValues<N> {
         }
     }
 
+    /// Returns `true` if `sup_region` contains all the placeholder elements that
+    /// `sub_region` contains.
+    pub(crate) fn contains_placeholders(&self, sup_region: N, sub_region: N) -> bool {
+        if let Some(sub_row) = self.placeholders.row(sub_region) {
+            if let Some(sup_row) = self.placeholders.row(sup_region) {
+                sup_row.superset(sub_row)
+            } else {
+                // sup row is empty, so sub row must be empty
+                sub_row.is_empty()
+            }
+        } else {
+            // sub row is empty, always true
+            true
+        }
+    }
+
     /// Returns the locations contained within a given region `r`.
     pub(crate) fn locations_outlived_by<'a>(&'a self, r: N) -> impl Iterator<Item = Location> + 'a {
         self.points.row(r).into_iter().flat_map(move |set| {

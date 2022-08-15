@@ -1360,6 +1360,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return self.eval_outlives(sup_region, self.universal_regions.fr_static);
         }
 
+        // Check `sup_region` contains all the placeholder regions in `sub_region`.
+        if !self.scc_values.contains_placeholders(sup_region_scc, sub_region_scc) {
+            debug!(
+                "eval_outlives: returning false because sub region contains a placeholder region not present in super"
+            );
+            return false;
+        }
+
         // Both the `sub_region` and `sup_region` consist of the union
         // of some number of universal regions (along with the union
         // of various points in the CFG; ignore those points for
