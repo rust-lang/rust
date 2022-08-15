@@ -590,7 +590,7 @@ impl<'a> Parser<'a> {
             )
         } else if expected.is_empty() {
             (
-                format!("unexpected token: {}", actual),
+                format!("unexpected token: {actual}"),
                 (self.prev_token.span, "unexpected token after this".to_string()),
             )
         } else {
@@ -1497,7 +1497,7 @@ impl<'a> Parser<'a> {
         MultiSugg {
             msg: format!("use `{}= 1` instead", kind.op.chr()),
             patches: vec![
-                (pre_span, format!("{{ let {} = ", tmp_var)),
+                (pre_span, format!("{{ let {tmp_var} = ")),
                 (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
             ],
             applicability: Applicability::HasPlaceholders,
