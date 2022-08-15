@@ -4,7 +4,7 @@ error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
 LL | impl<T: Grault> Grault for (T,)
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: required because of the requirements on the impl of `Grault` for `(T,)`
+note: required for `(T,)` to implement `Grault`
   --> $DIR/impl-wf-cycle-2.rs:7:17
    |
 LL | impl<T: Grault> Grault for (T,)

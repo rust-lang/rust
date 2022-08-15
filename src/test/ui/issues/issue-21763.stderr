@@ -6,7 +6,7 @@ LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
    |
    = help: within `(Rc<()>, Rc<()>)`, the trait `Send` is not implemented for `Rc<()>`
    = note: required because it appears within the type `(Rc<()>, Rc<()>)`
-   = note: required because of the requirements on the impl of `Send` for `hashbrown::raw::RawTable<(Rc<()>, Rc<()>)>`
+   = note: required for `hashbrown::raw::RawTable<(Rc<()>, Rc<()>)>` to implement `Send`
    = note: required because it appears within the type `hashbrown::map::HashMap<Rc<()>, Rc<()>, RandomState>`
    = note: required because it appears within the type `HashMap<Rc<()>, Rc<()>>`
 note: required by a bound in `foo`

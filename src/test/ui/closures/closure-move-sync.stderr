@@ -5,7 +5,7 @@ LL |     let t = thread::spawn(|| {
    |             ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
-   = note: required because of the requirements on the impl of `Send` for `&std::sync::mpsc::Receiver<()>`
+   = note: required for `&std::sync::mpsc::Receiver<()>` to implement `Send`
 note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:6:27
    |
@@ -24,7 +24,7 @@ LL |     thread::spawn(|| tx.send(()).unwrap());
    |     ^^^^^^^^^^^^^ `Sender<()>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `Sender<()>`
-   = note: required because of the requirements on the impl of `Send` for `&Sender<()>`
+   = note: required for `&Sender<()>` to implement `Send`
 note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:18:19
    |

@@ -43,7 +43,7 @@ LL | pub trait SuperTrait {
 LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
    = help: consider moving `SubType` to another trait
-   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn SuperTrait<SubType = SubStruct<'_>>>>` for `Box<SuperStruct>`
+   = note: required for `Box<SuperStruct>` to implement `CoerceUnsized<Box<dyn SuperTrait<SubType = SubStruct<'_>>>>`
    = note: required by cast to type `Box<dyn SuperTrait<SubType = SubStruct<'_>>>`
 
 error: aborting due to 3 previous errors

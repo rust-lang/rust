@@ -15,7 +15,7 @@ LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `bool`
-   = note: required because of the requirements on the impl of `IntoIterator` for `bool`
+   = note: required for `bool` to implement `IntoIterator`
 
 error[E0277]: `()` is not an iterator
   --> $DIR/issue-28098.rs:8:28
@@ -54,7 +54,7 @@ LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `bool`
-   = note: required because of the requirements on the impl of `IntoIterator` for `bool`
+   = note: required for `bool` to implement `IntoIterator`
 
 error: aborting due to 6 previous errors
 

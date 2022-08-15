@@ -20,8 +20,8 @@ LL |     for _ in HashMap::new().iter().cloned() {}
    |
    = note:  expected tuple `(&_, &_)`
            found reference `&_`
-   = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
-   = note: required because of the requirements on the impl of `IntoIterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
+   = note: required for `Cloned<std::collections::hash_map::Iter<'_, _, _>>` to implement `Iterator`
+   = note: required for `Cloned<std::collections::hash_map::Iter<'_, _, _>>` to implement `IntoIterator`
 
 error[E0271]: expected `std::collections::hash_map::Iter<'_, _, _>` to be an iterator that yields `&_`, but it yields `(&_, &_)`
   --> $DIR/issue-33941.rs:6:14
@@ -31,7 +31,7 @@ LL |     for _ in HashMap::new().iter().cloned() {}
    |
    = note:  expected tuple `(&_, &_)`
            found reference `&_`
-   = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
+   = note: required for `Cloned<std::collections::hash_map::Iter<'_, _, _>>` to implement `Iterator`
 
 error: aborting due to 3 previous errors
 

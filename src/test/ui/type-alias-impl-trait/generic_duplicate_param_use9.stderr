@@ -15,7 +15,7 @@ error[E0277]: `A` doesn't implement `Debug`
 LL |     (t, u, T::BAR)
    |     ^^^^^^^^^^^^^^ `A` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(A, B, _)`
+   = note: required for `(A, B, _)` to implement `Debug`
 help: consider restricting type parameter `A`
    |
 LL | type Two<A: std::fmt::Debug, B> = impl Debug;
@@ -27,7 +27,7 @@ error[E0277]: `B` doesn't implement `Debug`
 LL |     (t, u, T::BAR)
    |     ^^^^^^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(A, B, _)`
+   = note: required for `(A, B, _)` to implement `Debug`
 help: consider restricting type parameter `B`
    |
 LL | type Two<A, B: std::fmt::Debug> = impl Debug;
@@ -39,7 +39,7 @@ error[E0277]: `A` doesn't implement `Debug`
 LL |     (t, u, 42)
    |     ^^^^^^^^^^ `A` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(A, B, i32)`
+   = note: required for `(A, B, i32)` to implement `Debug`
 help: consider restricting type parameter `A`
    |
 LL | type Two<A: std::fmt::Debug, B> = impl Debug;
@@ -51,7 +51,7 @@ error[E0277]: `B` doesn't implement `Debug`
 LL |     (t, u, 42)
    |     ^^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(A, B, i32)`
+   = note: required for `(A, B, i32)` to implement `Debug`
 help: consider restricting type parameter `B`
    |
 LL | type Two<A, B: std::fmt::Debug> = impl Debug;

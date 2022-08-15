@@ -54,13 +54,13 @@ LL |         const _: () = check($exp);
 LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an implementor of trait `~const Destruct`
    |
-note: required because of the requirements on the impl of `~const Destruct` for `ConstDropImplWithBounds<NonTrivialDrop>`
+note: required for `ConstDropImplWithBounds<NonTrivialDrop>` to implement `~const Destruct`
   --> $DIR/const-drop-fail.rs:28:25
    |
 LL | impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
    |                         ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: 1 redundant requirement hidden
-   = note: required because of the requirements on the impl of `~const Destruct` for `ConstDropImplWithBounds<NonTrivialDrop>`
+   = note: required for `ConstDropImplWithBounds<NonTrivialDrop>` to implement `~const Destruct`
 note: required by a bound in `check`
   --> $DIR/const-drop-fail.rs:34:19
    |

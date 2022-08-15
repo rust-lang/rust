@@ -25,7 +25,7 @@ LL | trait Foo where u32: Q<Self> {
    |       ---            ^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
-   = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Foo>>` for `Box<()>`
+   = note: required for `Box<()>` to implement `CoerceUnsized<Box<dyn Foo>>`
    = note: required by cast to type `Box<dyn Foo>`
 
 error: aborting due to 2 previous errors

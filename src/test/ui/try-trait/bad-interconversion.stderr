@@ -17,7 +17,7 @@ LL |     Ok(Err(123_i32)?)
              <f64 as From<i32>>
              <f64 as From<i8>>
            and 67 others
-   = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, i32>>` for `Result<u64, u8>`
+   = note: required for `Result<u64, u8>` to implement `FromResidual<Result<Infallible, i32>>`
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
   --> $DIR/bad-interconversion.rs:11:12

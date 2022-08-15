@@ -5,7 +5,7 @@ LL |     for item in *things { *item = 0 }
    |                 ^^^^^^^ expected an implementor of trait `IntoIterator`
    |
    = note: the trait bound `dyn Iterator<Item = &'a mut u8>: IntoIterator` is not satisfied
-   = note: required because of the requirements on the impl of `IntoIterator` for `dyn Iterator<Item = &'a mut u8>`
+   = note: required for `dyn Iterator<Item = &'a mut u8>` to implement `IntoIterator`
 help: consider mutably borrowing here
    |
 LL |     for item in &mut *things { *item = 0 }

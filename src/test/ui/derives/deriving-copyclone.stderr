@@ -6,7 +6,7 @@ LL |     is_copy(B { a: 1, b: C });
    |     |
    |     required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Copy` for `B<C>`
+note: required for `B<C>` to implement `Copy`
   --> $DIR/deriving-copyclone.rs:9:10
    |
 LL | #[derive(Copy, Clone)]
@@ -30,7 +30,7 @@ LL |     is_clone(B { a: 1, b: C });
    |     |
    |     required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Clone` for `B<C>`
+note: required for `B<C>` to implement `Clone`
   --> $DIR/deriving-copyclone.rs:9:16
    |
 LL | #[derive(Copy, Clone)]
@@ -54,7 +54,7 @@ LL |     is_copy(B { a: 1, b: D });
    |     |
    |     required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Copy` for `B<D>`
+note: required for `B<D>` to implement `Copy`
   --> $DIR/deriving-copyclone.rs:9:10
    |
 LL | #[derive(Copy, Clone)]

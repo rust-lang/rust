@@ -4,7 +4,7 @@ error[E0277]: the trait bound `String: From<impl ToString>` is not satisfied
 LL |             bar: bar.into(),
    |                      ^^^^ the trait `From<impl ToString>` is not implemented for `String`
    |
-   = note: required because of the requirements on the impl of `Into<String>` for `impl ToString`
+   = note: required for `impl ToString` to implement `Into<String>`
 
 error: aborting due to previous error
 

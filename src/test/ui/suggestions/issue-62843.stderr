@@ -7,7 +7,7 @@ LL |     println!("{:?}", line.find(pattern));
    |                           required by a bound introduced by this call
    |
    = note: the trait bound `String: Pattern<'_>` is not satisfied
-   = note: required because of the requirements on the impl of `Pattern<'_>` for `String`
+   = note: required for `String` to implement `Pattern<'_>`
 note: required by a bound in `core::str::<impl str>::find`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
    |

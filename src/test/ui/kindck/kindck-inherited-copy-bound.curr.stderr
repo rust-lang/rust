@@ -6,7 +6,7 @@ LL |     take_param(&x);
    |     |
    |     required by a bound introduced by this call
    |
-note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
+note: required for `Box<{integer}>` to implement `Foo`
   --> $DIR/kindck-inherited-copy-bound.rs:14:14
    |
 LL | impl<T:Copy> Foo for T {
@@ -44,7 +44,7 @@ LL | trait Foo : Copy {
    |       ---   ^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-   = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Foo>` for `&Box<{integer}>`
+   = note: required for `&Box<{integer}>` to implement `CoerceUnsized<&dyn Foo>`
    = note: required by cast to type `&dyn Foo`
 
 error: aborting due to 3 previous errors

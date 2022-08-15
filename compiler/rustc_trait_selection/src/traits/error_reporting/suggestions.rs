@@ -2537,9 +2537,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
                 let msg = format!(
-                    "required because of the requirements on the impl of `{}` for `{}`",
-                    parent_trait_pred.print_modifiers_and_trait_path(),
-                    parent_trait_pred.skip_binder().self_ty()
+                    "required for `{}` to implement `{}`",
+                    parent_trait_pred.skip_binder().self_ty(),
+                    parent_trait_pred.print_modifiers_and_trait_path()
                 );
                 let mut is_auto_trait = false;
                 match self.tcx.hir().get_if_local(data.impl_def_id) {
@@ -2608,9 +2608,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         pluralize!(count)
                     ));
                     err.note(&format!(
-                        "required because of the requirements on the impl of `{}` for `{}`",
-                        parent_trait_pred.print_modifiers_and_trait_path(),
-                        parent_trait_pred.skip_binder().self_ty()
+                        "required for `{}` to implement `{}`",
+                        parent_trait_pred.skip_binder().self_ty(),
+                        parent_trait_pred.print_modifiers_and_trait_path()
                     ));
                 }
                 // #74711: avoid a stack overflow
