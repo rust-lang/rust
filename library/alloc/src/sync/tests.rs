@@ -314,7 +314,7 @@ fn test_weak_count() {
     let w = Arc::downgrade(&a);
     assert!(Arc::strong_count(&a) == 1);
     assert!(Arc::weak_count(&a) == 1);
-    let r = Arc::as_weak(&a);
+    let r: &Weak<i32> = Arc::as_weak(&a);
     assert!(Arc::strong_count(&a) == 1);
     assert!(Arc::weak_count(&a) == 1);
     assert!(r.as_ptr() == Arc::as_ptr(&a));

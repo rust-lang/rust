@@ -103,7 +103,7 @@ fn test_weak_count() {
     let w = Rc::downgrade(&a);
     assert!(Rc::strong_count(&a) == 1);
     assert!(Rc::weak_count(&a) == 1);
-    let r = Rc::as_weak(&a);
+    let r: &Weak<i32> = Rc::as_weak(&a);
     assert!(Rc::strong_count(&a) == 1);
     assert!(Rc::weak_count(&a) == 1);
     assert!(r.as_ptr() == Rc::as_ptr(&a));
