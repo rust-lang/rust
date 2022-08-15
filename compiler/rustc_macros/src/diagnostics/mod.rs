@@ -38,9 +38,9 @@ use synstructure::Structure;
 /// ```
 ///
 /// ```fluent
-/// move-out-of-borrow = cannot move out of {$name} because it is borrowed
+/// move_out_of_borrow = cannot move out of {$name} because it is borrowed
 ///     .label = cannot move out of borrow
-///     .first-borrow-label = `{$ty}` first borrowed here
+///     .first_borrow_label = `{$ty}` first borrowed here
 ///     .suggestion = consider cloning here
 /// ```
 ///
@@ -84,9 +84,9 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```
 ///
 /// ```fluent
-/// lint-atomic-ordering-invalid-fail-success = `{$method}`'s success ordering must be at least as strong as its failure ordering
-///     .fail-label = `{$fail_ordering}` failure ordering
-///     .success-label = `{$success_ordering}` success ordering
+/// lint_atomic_ordering_invalid_fail_success = `{$method}`'s success ordering must be at least as strong as its failure ordering
+///     .fail_label = `{$fail_ordering}` failure ordering
+///     .success_label = `{$success_ordering}` success ordering
 ///     .suggestion = consider using `{$success_suggestion}` success ordering instead
 /// ```
 ///
@@ -140,11 +140,11 @@ pub fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// ```
 ///
 /// ```fluent
-/// parser-expected-identifier = expected identifier
+/// parser_expected_identifier = expected identifier
 ///
-/// parser-expected-identifier-found = expected identifier, found {$found}
+/// parser_expected_identifier-found = expected identifier, found {$found}
 ///
-/// parser-raw-identifier = escape `{$ident}` to use it as an identifier
+/// parser_raw_identifier = escape `{$ident}` to use it as an identifier
 /// ```
 ///
 /// Then, later, to add the subdiagnostic:

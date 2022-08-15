@@ -55,6 +55,24 @@ mod duplicate {
     }
 }
 
+mod slug_with_hyphens {
+    use super::fluent_messages;
+
+    fluent_messages! {
+        slug_with_hyphens => "./slug-with-hyphens.ftl",
+//~^ ERROR name `this-slug-has-hyphens` contains a '-' character
+    }
+}
+
+mod label_with_hyphens {
+    use super::fluent_messages;
+
+    fluent_messages! {
+        label_with_hyphens => "./label-with-hyphens.ftl",
+//~^ ERROR attribute `label-has-hyphens` contains a '-' character
+    }
+}
+
 mod valid {
     use super::fluent_messages;
 
