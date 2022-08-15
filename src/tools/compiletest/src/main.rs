@@ -545,6 +545,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&path);
     }
 
+    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
+
     stamp.add_dir(&config.run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {

@@ -88,7 +88,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                     variant_name: Cow::from(enum_adt_def.variant(variant_index).name.as_str()),
                     variant_struct_type_di_node: super::build_enum_variant_struct_type_di_node(
                         cx,
-                        enum_type,
+                        enum_type_and_layout,
                         enum_type_di_node,
                         variant_index,
                         enum_adt_def.variant(variant_index),
@@ -413,7 +413,13 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             enum_type_and_layout.size.bits(),
             enum_type_and_layout.align.abi.bits() as u32,
             Size::ZERO.bits(),
-            discr_value.map(|v| cx.const_u64(v)),
+            discr_value.opt_single_val().map(|value| {
+                // NOTE(eddyb) do *NOT* remove this assert, until
+                // we pass the full 128-bit value to LLVM, otherwise
+                // truncation will be silent and remain undetected.
+                assert_eq!(value as u64 as u128, value);
+                cx.const_u64(value as u64)
+            }),
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )

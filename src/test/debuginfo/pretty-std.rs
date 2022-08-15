@@ -39,7 +39,6 @@
 // gdb-command: print some_string
 // gdb-check:$8 = Some = {"IAMA "...}
 
-
 // === LLDB TESTS ==================================================================================
 
 // lldb-command: run
@@ -64,7 +63,6 @@
 
 // lldb-command: print os_string
 // lldb-check:[...]$6 = "IAMA OS string 😃"[...]
-
 
 // === CDB TESTS ==================================================================================
 
@@ -118,20 +116,17 @@
 // cdb-check:    [chars]          : "IAMA OS string [...]"
 
 // cdb-command: dx some
-// cdb-check:some             : Some [Type: enum$<core::option::Option<i16> >]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<i16> >]
-// cdb-check:    [variant]        : Some
+// cdb-check:some             : Some [Type: enum2$<core::option::Option<i16> >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<i16> >]
 // cdb-check:    [+0x002] __0              : 8 [Type: short]
 
 // cdb-command: dx none
-// cdb-check:none             : None [Type: enum$<core::option::Option<i64> >]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<i64> >]
-// cdb-check:    [variant]        : None
+// cdb-check:none             : None [Type: enum2$<core::option::Option<i64> >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<i64> >]
 
 // cdb-command: dx some_string
-// cdb-check:some_string      :  Some({...}) [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
-// cdb-check:    [variant]        :  Some
+// cdb-check:some_string      : Some [Type: enum2$<core::option::Option<alloc::string::String> >]
+// cdb-check:    [<Raw View>]     [Type: enum2$<core::option::Option<alloc::string::String> >]
 // cdb-check:    [+0x000] __0              : "IAMA optional string!" [Type: alloc::string::String]
 
 // cdb-command: dx linkedlist
@@ -153,7 +148,6 @@ use std::collections::{LinkedList, VecDeque};
 use std::ffi::OsString;
 
 fn main() {
-
     // &[]
     let slice: &[i32] = &[0, 1, 2, 3];
 
@@ -188,4 +182,6 @@ fn main() {
     zzz(); // #break
 }
 
-fn zzz() { () }
+fn zzz() {
+    ()
+}

@@ -2079,6 +2079,19 @@ extern "C" {
         Ty: &'a DIType,
     ) -> &'a DIType;
 
+    pub fn LLVMRustDIBuilderCreateStaticMemberType<'a>(
+        Builder: &DIBuilder<'a>,
+        Scope: &'a DIDescriptor,
+        Name: *const c_char,
+        NameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        Ty: &'a DIType,
+        Flags: DIFlags,
+        val: Option<&'a Value>,
+        AlignInBits: u32,
+    ) -> &'a DIDerivedType;
+
     pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,

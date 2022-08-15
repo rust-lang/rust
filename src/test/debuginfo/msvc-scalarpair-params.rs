@@ -18,12 +18,10 @@
 // cdb-command: g
 
 // cdb-command: dx o1
-// cdb-check:o1               : Some [Type: enum$<core::option::Option<u32> >]
-// cdb-check:    [variant]        : Some
+// cdb-check:o1               : Some [Type: enum2$<core::option::Option<u32> >]
 // cdb-check:    [+0x004] __0              : 0x4d2 [Type: [...]]
 // cdb-command: dx o2
-// cdb-check:o2               : Some [Type: enum$<core::option::Option<u64> >]
-// cdb-check:    [variant]        : Some
+// cdb-check:o2               : Some [Type: enum2$<core::option::Option<u64> >]
 // cdb-check:    [+0x008] __0              : 0x162e [Type: unsigned __int64]
 
 // cdb-command: g
@@ -89,7 +87,7 @@ fn slice(s: &[u8]) {
     zzz(); // #break
 }
 
-fn zzz() { }
+fn zzz() {}
 
 fn main() {
     range(10..12, 20..30);

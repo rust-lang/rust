@@ -924,6 +924,30 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
                                                fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
+    LLVMRustDIBuilderRef Builder,
+    LLVMMetadataRef Scope,
+    const char *Name,
+    size_t NameLen,
+    LLVMMetadataRef File,
+    unsigned LineNo,
+    LLVMMetadataRef Ty,
+    LLVMRustDIFlags Flags,
+    LLVMValueRef val,
+    uint32_t AlignInBits
+) {
+  return wrap(Builder->createStaticMemberType(
+    unwrapDI<DIDescriptor>(Scope),
+    StringRef(Name, NameLen),
+    unwrapDI<DIFile>(File),
+    LineNo,
+    unwrapDI<DIType>(Ty),
+    fromRust(Flags),
+    unwrap<llvm::ConstantInt>(val),
+    AlignInBits
+  ));
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlock(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
     LLVMMetadataRef File, unsigned Line, unsigned Col) {
