@@ -55,7 +55,7 @@ use std::io::{BufWriter, Write};
 #[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
-        if tcx.sess.opts.unstable_opts.dump_dep_graph || true {
+        if tcx.sess.opts.unstable_opts.dump_dep_graph {
             tcx.dep_graph.with_query(dump_graph);
         }
 
