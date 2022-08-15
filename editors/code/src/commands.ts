@@ -433,7 +433,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
 // The contents of the file come from the `TextDocumentContentProvider`
 export function viewHir(ctx: Ctx): Cmd {
     const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer-hir://viewHir/hir.txt");
+        readonly uri = vscode.Uri.parse("rust-analyzer-hir://viewHir/hir.rs");
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(

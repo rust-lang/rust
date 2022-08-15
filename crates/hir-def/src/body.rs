@@ -4,6 +4,7 @@ mod lower;
 #[cfg(test)]
 mod tests;
 pub mod scope;
+mod pretty;
 
 use std::{ops::Index, sync::Arc};
 
@@ -350,6 +351,10 @@ impl Body {
             Some(pats) => &**pats,
             None => std::slice::from_ref(pat),
         }
+    }
+
+    pub fn pretty_print(&self, db: &dyn DefDatabase, owner: DefWithBodyId) -> String {
+        pretty::print_body_hir(db, self, owner)
     }
 
     fn new(
