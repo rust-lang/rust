@@ -237,7 +237,6 @@ macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
-        use rustc_middle::opt_remap_env_constness;
         define_queries_struct! {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
@@ -249,7 +248,6 @@ macro_rules! define_queries {
             // Create an eponymous constructor for each query.
             $(#[allow(nonstandard_style)] $(#[$attr])*
             pub fn $name<$tcx>(tcx: QueryCtxt<$tcx>, key: query_keys::$name<$tcx>) -> QueryStackFrame {
-                opt_remap_env_constness!([$($modifiers)*][key]);
                 let kind = dep_graph::DepKind::$name;
                 let name = stringify!($name);
                 // Disable visible paths printing for performance reasons.
@@ -539,7 +537,6 @@ macro_rules! define_queries_struct {
                 key: query_keys::$name<$tcx>,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>> {
-                opt_remap_env_constness!([$($modifiers)*][key]);
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<$tcx>, _>(qcx, span, key, mode)
             })*
