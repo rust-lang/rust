@@ -2618,9 +2618,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 opt_trait_reference.as_ref(),
                                 self_type,
                                 |this, trait_id| {
-                                    let item_def_id = this.r.local_def_id(item_id);
-
-                                    let item_def_id = item_def_id.to_def_id();
+                                    let item_def_id = this.r.local_def_id(item_id).to_def_id();
                                     let res = Res::SelfTy {
                                         trait_: trait_id,
                                         alias_to: Some((item_def_id, false)),
