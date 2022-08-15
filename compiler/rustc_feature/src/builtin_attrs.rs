@@ -277,7 +277,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(ignore, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing),
     ungated!(
         should_panic, Normal,
-        template!(Word, List: r#"expected = "reason"#, NameValueStr: "reason"), FutureWarnFollowing,
+        template!(Word, List: r#"expected = "reason""#, NameValueStr: "reason"), FutureWarnFollowing,
     ),
     // FIXME(Centril): This can be used on stable but shouldn't.
     ungated!(reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing),
