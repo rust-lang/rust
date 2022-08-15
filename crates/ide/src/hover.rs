@@ -119,6 +119,8 @@ pub(crate) fn hover(
     }
 
     let in_attr = matches!(original_token.parent().and_then(ast::TokenTree::cast), Some(tt) if tt.syntax().ancestors().any(|it| ast::Meta::can_cast(it.kind())));
+    // prefer descending the same token kind in attribute expansions, in normal macros text
+    // equivalency is more important
     let descended = if in_attr {
         [sema.descend_into_macros_with_kind_preference(original_token.clone())].into()
     } else {

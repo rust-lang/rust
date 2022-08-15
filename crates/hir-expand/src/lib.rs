@@ -130,7 +130,6 @@ pub struct MacroDefId {
 pub enum MacroDefKind {
     Declarative(AstId<ast::Macro>),
     BuiltIn(BuiltinFnLikeExpander, AstId<ast::Macro>),
-    // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
     BuiltInAttr(BuiltinAttrExpander, AstId<ast::Macro>),
     BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
     BuiltInEager(EagerExpander, AstId<ast::Macro>),
