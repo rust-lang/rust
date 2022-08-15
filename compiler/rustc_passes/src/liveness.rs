@@ -98,7 +98,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use std::collections::VecDeque;
 use std::io;
@@ -1549,6 +1549,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 .or_insert_with(|| (ln, var, vec![id_and_sp]));
         });
 
+        let can_remove = matches!(&pat.kind, hir::PatKind::Struct(_, _, true));
+
         for (_, (ln, var, hir_ids_and_spans)) in vars {
             if self.used_on_entry(ln, var) {
                 let id = hir_ids_and_spans[0].0;
@@ -1556,16 +1558,18 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     hir_ids_and_spans.into_iter().map(|(_, _, ident_span)| ident_span).collect();
                 on_used_on_entry(spans, id, ln, var);
             } else {
-                self.report_unused(hir_ids_and_spans, ln, var);
+                self.report_unused(hir_ids_and_spans, ln, var, can_remove);
             }
         }
     }
 
+    #[tracing::instrument(skip(self), level = "INFO")]
     fn report_unused(
         &self,
         hir_ids_and_spans: Vec<(HirId, Span, Span)>,
         ln: LiveNode,
         var: Variable,
+        can_remove: bool,
     ) {
         let first_hir_id = hir_ids_and_spans[0].0;
 
@@ -1590,6 +1594,32 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .emit();
                     },
                 )
+            } else if can_remove {
+                self.ir.tcx.struct_span_lint_hir(
+                    lint::builtin::UNUSED_VARIABLES,
+                    first_hir_id,
+                    hir_ids_and_spans.iter().map(|(_, pat_span, _)| *pat_span).collect::<Vec<_>>(),
+                    |lint| {
+                        let mut err = lint.build(&format!("unused variable: `{}`", name));
+                        err.multipart_suggestion(
+                            "try removing the field",
+                            hir_ids_and_spans
+                                .iter()
+                                .map(|(_, pat_span, _)| {
+                                    let span = self
+                                        .ir
+                                        .tcx
+                                        .sess
+                                        .source_map()
+                                        .span_extend_to_next_char(*pat_span, ',', true);
+                                    (span.with_hi(BytePos(span.hi().0 + 1)), String::new())
+                                })
+                                .collect(),
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                    },
+                );
             } else {
                 let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
                     hir_ids_and_spans.iter().copied().partition(|(hir_id, _, ident_span)| {

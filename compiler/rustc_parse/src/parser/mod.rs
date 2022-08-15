@@ -1116,10 +1116,14 @@ impl<'a> Parser<'a> {
         let (attrs, blk) = self.parse_inner_attrs_and_block()?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
-            value: self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()),
+            value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
         };
         let blk_span = anon_const.value.span;
-        Ok(self.mk_expr(span.to(blk_span), ExprKind::ConstBlock(anon_const), AttrVec::from(attrs)))
+        Ok(self.mk_expr_with_attrs(
+            span.to(blk_span),
+            ExprKind::ConstBlock(anon_const),
+            AttrVec::from(attrs),
+        ))
     }
 
     /// Parses mutability (`mut` or nothing).

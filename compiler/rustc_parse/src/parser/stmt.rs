@@ -143,10 +143,10 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if this.eat(&token::OpenDelim(Delimiter::Brace)) {
-                this.parse_struct_expr(None, path, AttrVec::new(), true)?
+                this.parse_struct_expr(None, path, true)?
             } else {
                 let hi = this.prev_token.span;
-                this.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
+                this.mk_expr(lo.to(hi), ExprKind::Path(None, path))
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
             StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
-            let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac), AttrVec::new());
+            let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
             let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
             let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;

@@ -257,7 +257,6 @@ dependencies = [
  "anyhow",
  "flate2",
  "hex 0.4.2",
- "num_cpus",
  "rayon",
  "serde",
  "serde_json",
@@ -2140,9 +2139,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.129"
+version = "0.2.131"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64de3cc433455c14174d42e554d4027ee631c4d046d43e3ecc6efc4636cdc7a7"
+checksum = "04c3b4822ccebfa39c02fc03d1534441b22ead323fa0f48bb7ddd8e6ba076a40"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -4442,7 +4441,6 @@ name = "rustc_session"
 version = "0.0.0"
 dependencies = [
  "getopts",
- "num_cpus",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",

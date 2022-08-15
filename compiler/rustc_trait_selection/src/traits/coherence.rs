@@ -307,7 +307,13 @@ fn negative_impl<'cx, 'tcx>(
             tcx.impl_subject(impl1_def_id),
         ) {
             Ok(s) => s,
-            Err(err) => bug!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+            Err(err) => {
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(impl1_def_id),
+                    format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
+                );
+                return false;
+            }
         };
 
         // Attempt to prove that impl2 applies, given all of the above.

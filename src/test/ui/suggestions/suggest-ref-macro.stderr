@@ -10,14 +10,8 @@ LL | #[hello]
 note: function defined here
   --> $DIR/suggest-ref-macro.rs:8:1
    |
-LL |   #[hello]
-   |  _-^^^^^^^
-LL | | fn abc() {}
-LL | |
-LL | | fn x(_: &mut i32) {}
-LL | |
-LL | | macro_rules! bla {
-   | |_____________-
+LL | #[hello]
+   | ^^^^^^^^
    = note: this error originates in the attribute macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
