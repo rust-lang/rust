@@ -4,8 +4,8 @@ use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::{
-    self as ast, AttrVec, Attribute, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat,
-    PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+    self as ast, Attribute, BindingMode, Expr, ExprKind, MacCall, Mutability, Pat, PatField,
+    PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
@@ -385,7 +385,7 @@ impl<'a> Parser<'a> {
             if qself.is_none() && self.check(&token::Not) {
                 self.parse_pat_mac_invoc(path)?
             } else if let Some(form) = self.parse_range_end() {
-                let begin = self.mk_expr(span, ExprKind::Path(qself, path), AttrVec::new());
+                let begin = self.mk_expr(span, ExprKind::Path(qself, path));
                 self.parse_pat_range_begin_with(begin, form)?
             } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_pat_struct(qself, path)?
@@ -807,7 +807,7 @@ impl<'a> Parser<'a> {
                 (None, self.parse_path(PathStyle::Expr)?)
             };
             let hi = self.prev_token.span;
-            Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path), AttrVec::new()))
+            Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))
         } else {
             self.parse_literal_maybe_minus()
         }
