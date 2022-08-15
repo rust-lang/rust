@@ -160,8 +160,8 @@ enum NicheLayoutWithFields1<'a> {
 }
 
 enum NicheLayoutWithFields2 {
-    A(NonZeroU32, usize),
-    B(usize),
+    A(NonZeroU32, u64),
+    B(u64),
 }
 
 enum NicheLayoutWithFields3 {
