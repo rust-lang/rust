@@ -214,10 +214,7 @@ pub(crate) fn emit_unescape_error(
             };
             let c = escaped_char(c);
 
-            handler
-                .struct_span_err(span, &format!("{msg}: `{c}`"))
-                .span_label(span, msg)
-                .emit();
+            handler.struct_span_err(span, &format!("{msg}: `{c}`")).span_label(span, msg).emit();
         }
         EscapeError::NonAsciiCharInByte => {
             assert!(mode.is_bytes());
@@ -246,9 +243,7 @@ pub(crate) fn emit_unescape_error(
                 utf8.push(c);
                 err.span_suggestion(
                     span,
-                    &format!(
-                        "if you meant to use the UTF-8 encoding of {c:?}, use \\xHH escapes"
-                    ),
+                    &format!("if you meant to use the UTF-8 encoding of {c:?}, use \\xHH escapes"),
                     utf8.as_bytes()
                         .iter()
                         .map(|b: &u8| format!("\\x{:X}", *b))
@@ -280,10 +275,7 @@ pub(crate) fn emit_unescape_error(
         EscapeError::LeadingUnderscoreUnicodeEscape => {
             let (c, span) = last_char();
             let msg = "invalid start of unicode escape";
-            handler
-                .struct_span_err(span, &format!("{msg}: `{c}`"))
-                .span_label(span, msg)
-                .emit();
+            handler.struct_span_err(span, &format!("{msg}: `{c}`")).span_label(span, msg).emit();
         }
         EscapeError::OverlongUnicodeEscape => {
             handler
