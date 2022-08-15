@@ -457,6 +457,7 @@ struct HandlerInner {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum StashKey {
     ItemNoType,
+    UnderscoreForArrayLengths,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}

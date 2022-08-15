@@ -9,6 +9,12 @@ LL |     async fn new() -> [u8; _];
    = note: `async` trait functions are not currently supported
    = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
 
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/issue-95307.rs:7:28
+   |
+LL |     async fn new() -> [u8; _];
+   |                            ^ `_` not allowed here
+
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/issue-95307.rs:7:28
    |
@@ -17,12 +23,6 @@ LL |     async fn new() -> [u8; _];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
-
-error: in expressions, `_` can only be used on the left-hand side of an assignment
-  --> $DIR/issue-95307.rs:7:28
-   |
-LL |     async fn new() -> [u8; _];
-   |                            ^ `_` not allowed here
 
 error: aborting due to 3 previous errors
 
