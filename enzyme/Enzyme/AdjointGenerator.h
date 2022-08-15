@@ -5791,7 +5791,7 @@ public:
                        (!ycache &&
                         !gutils->isConstantValue(call.getArgOperand(1)))) {
               if (Mode != DerivativeMode::ForwardModeSplit)
-                trueXinc = lookup(trueXinc, Builder2);
+                trueYinc = lookup(trueYinc, Builder2);
             }
           } else if (Mode != DerivativeMode::ForwardModeSplit) {
             count = lookup(count, Builder2);
