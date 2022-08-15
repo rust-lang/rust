@@ -3554,7 +3554,6 @@ dependencies = [
  "crossbeam-utils",
  "libc",
  "libz-sys",
- "memchr",
  "proc-macro2",
  "quote",
  "rand_core 0.5.1",
