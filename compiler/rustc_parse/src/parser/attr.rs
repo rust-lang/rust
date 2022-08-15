@@ -117,8 +117,8 @@ impl<'a> Parser<'a> {
         inner_parse_policy: InnerAttrPolicy<'_>,
     ) -> PResult<'a, ast::Attribute> {
         debug!(
-            "parse_attribute: inner_parse_policy={:?} self.token={:?}",
-            inner_parse_policy, self.token
+            "parse_attribute: inner_parse_policy={inner_parse_policy:?} self.token={:?}",
+            self.token
         );
         let lo = self.token.span;
         // Attributes can't have attributes of their own [Editor's note: not with that attitude]
@@ -191,7 +191,7 @@ impl<'a> Parser<'a> {
                 };
                 err.span_label(
                     item.span,
-                    &format!("the inner {} doesn't annotate this {}", attr_name, item.kind.descr()),
+                    &format!("the inner {attr_name} doesn't annotate this {}", item.kind.descr()),
                 );
                 err.span_suggestion_verbose(
                     replacement_span,
@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
-        debug!("checking if {:?} is unusuffixed", lit);
+        debug!("checking if {lit:?} is unusuffixed");
 
         if !lit.kind.is_unsuffixed() {
             self.struct_span_err(lit.span, "suffixed literals are not allowed in attributes")
