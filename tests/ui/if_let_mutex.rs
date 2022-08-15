@@ -39,4 +39,12 @@ fn if_let_different_mutex() {
     };
 }
 
+fn mutex_ref(mutex: &Mutex<i32>) {
+    if let Ok(i) = mutex.lock() {
+        do_stuff(i);
+    } else {
+        let _x = mutex.lock();
+    };
+}
+
 fn main() {}

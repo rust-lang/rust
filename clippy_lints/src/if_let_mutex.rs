@@ -1,8 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::SpanlessEq;
 use if_chain::if_chain;
+use rustc_errors::Diagnostic;
 use rustc_hir::intravisit::{self as visit, Visitor};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -45,16 +46,8 @@ declare_lint_pass!(IfLetMutex => [IF_LET_MUTEX]);
 
 impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        let mut arm_visit = ArmVisitor {
-            mutex_lock_called: false,
-            found_mutex: None,
-            cx,
-        };
-        let mut op_visit = OppVisitor {
-            mutex_lock_called: false,
-            found_mutex: None,
-            cx,
-        };
+        let mut arm_visit = ArmVisitor { found_mutex: None, cx };
+        let mut op_visit = OppVisitor { found_mutex: None, cx };
         if let Some(higher::IfLet {
             let_expr,
             if_then,
@@ -63,18 +56,28 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
         }) = higher::IfLet::hir(cx, expr)
         {
             op_visit.visit_expr(let_expr);
-            if op_visit.mutex_lock_called {
+            if let Some(op_mutex) = op_visit.found_mutex {
                 arm_visit.visit_expr(if_then);
                 arm_visit.visit_expr(if_else);
 
-                if arm_visit.mutex_lock_called && arm_visit.same_mutex(cx, op_visit.found_mutex.unwrap()) {
-                    span_lint_and_help(
+                if let Some(arm_mutex) = arm_visit.found_mutex_if_same_as(op_mutex) {
+                    let diag = |diag: &mut Diagnostic| {
+                        diag.span_label(
+                            op_mutex.span,
+                            "this Mutex will remain locked for the entire `if let`-block...",
+                        );
+                        diag.span_label(
+                            arm_mutex.span,
+                            "... and is tried to lock again here, which will always deadlock.",
+                        );
+                        diag.help("move the lock call outside of the `if let ...` expression");
+                    };
+                    span_lint_and_then(
                         cx,
                         IF_LET_MUTEX,
                         expr.span,
                         "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
-                        None,
-                        "move the lock call outside of the `if let ...` expression",
+                        diag,
                     );
                 }
             }
@@ -84,7 +87,6 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
 
 /// Checks if `Mutex::lock` is called in the `if let` expr.
 pub struct OppVisitor<'a, 'tcx> {
-    mutex_lock_called: bool,
     found_mutex: Option<&'tcx Expr<'tcx>>,
     cx: &'a LateContext<'tcx>,
 }
@@ -93,7 +95,6 @@ impl<'tcx> Visitor<'tcx> for OppVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let Some(mutex) = is_mutex_lock_call(self.cx, expr) {
             self.found_mutex = Some(mutex);
-            self.mutex_lock_called = true;
             return;
         }
         visit::walk_expr(self, expr);
@@ -102,7 +103,6 @@ impl<'tcx> Visitor<'tcx> for OppVisitor<'_, 'tcx> {
 
 /// Checks if `Mutex::lock` is called in any of the branches.
 pub struct ArmVisitor<'a, 'tcx> {
-    mutex_lock_called: bool,
     found_mutex: Option<&'tcx Expr<'tcx>>,
     cx: &'a LateContext<'tcx>,
 }
@@ -111,7 +111,6 @@ impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if let Some(mutex) = is_mutex_lock_call(self.cx, expr) {
             self.found_mutex = Some(mutex);
-            self.mutex_lock_called = true;
             return;
         }
         visit::walk_expr(self, expr);
@@ -119,9 +118,12 @@ impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
 }
 
 impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
-    fn same_mutex(&self, cx: &LateContext<'_>, op_mutex: &Expr<'_>) -> bool {
-        self.found_mutex
-            .map_or(false, |arm_mutex| SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex))
+    fn found_mutex_if_same_as(&self, op_mutex: &Expr<'_>) -> Option<&Expr<'_>> {
+        self.found_mutex.and_then(|arm_mutex| {
+            SpanlessEq::new(self.cx)
+                .eq_expr(op_mutex, arm_mutex)
+                .then_some(arm_mutex)
+        })
     }
 }
 
@@ -129,7 +131,7 @@ fn is_mutex_lock_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Opt
     if_chain! {
         if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
         if path.ident.as_str() == "lock";
-        let ty = cx.typeck_results().expr_ty(self_arg);
+        let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
         if is_type_diagnostic_item(cx, ty, sym::Mutex);
         then {
             Some(self_arg)
