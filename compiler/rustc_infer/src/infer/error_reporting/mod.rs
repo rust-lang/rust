@@ -457,7 +457,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Adds a note if the types come from similarly named crates
-    fn check_and_note_conflicting_crates(&self, err: &mut Diagnostic, terr: &TypeError<'tcx>) {
+    fn check_and_note_conflicting_crates(&self, err: &mut Diagnostic, terr: TypeError<'tcx>) {
         use hir::def_id::CrateNum;
         use rustc_hir::definitions::DisambiguatedDefPathData;
         use ty::print::Printer;
@@ -561,7 +561,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         };
-        match *terr {
+        match terr {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
@@ -583,7 +583,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         cause: &ObligationCause<'tcx>,
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
-        terr: &TypeError<'tcx>,
+        terr: TypeError<'tcx>,
     ) {
         match *cause.code() {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         secondary_span: Option<(Span, String)>,
         mut values: Option<ValuePairs<'tcx>>,
-        terr: &TypeError<'tcx>,
+        terr: TypeError<'tcx>,
         swap_secondary_and_primary: bool,
         prefer_label: bool,
     ) {
@@ -1713,7 +1713,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ty::error::TypeError::Sorts(terr)
                 if exp_found.map_or(false, |ef| terr.found == ef.found) =>
             {
-                Some(*terr)
+                Some(terr)
             }
             _ => exp_found,
         };
@@ -2091,7 +2091,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_and_explain_type_error(
         &self,
         trace: TypeTrace<'tcx>,
-        terr: &TypeError<'tcx>,
+        terr: TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         use crate::traits::ObligationCauseCode::MatchExpressionArm;
 
@@ -2781,12 +2781,12 @@ pub enum FailureCode {
 }
 
 pub trait ObligationCauseExt<'tcx> {
-    fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode;
+    fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode;
     fn as_requirement_str(&self) -> &'static str;
 }
 
 impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
-    fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode {
+    fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
         use crate::traits::ObligationCauseCode::*;
         match self.code() {
@@ -2823,7 +2823,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
                 TypeError::IntrinsicCast => {
                     Error0308("cannot coerce intrinsics to function pointers")
                 }
-                TypeError::ObjectUnsafeCoercion(did) => Error0038(*did),
+                TypeError::ObjectUnsafeCoercion(did) => Error0038(did),
                 _ => Error0308("mismatched types"),
             },
         }

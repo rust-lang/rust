@@ -578,7 +578,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, check if we just need to wrap some arguments in a tuple.
         if let Some((mismatch_idx, terr)) =
             compatibility_diagonal.iter().enumerate().find_map(|(i, c)| {
-                if let Compatibility::Incompatible(Some(terr)) = c { Some((i, terr)) } else { None }
+                if let Compatibility::Incompatible(Some(terr)) = c {
+                    Some((i, *terr))
+                } else {
+                    None
+                }
             })
         {
             // Is the first bad expected argument a tuple?
@@ -707,8 +711,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (expected_ty, _) = formal_and_expected_inputs[*expected_idx];
                 let cause = &self.misc(provided_span);
                 let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-                if !matches!(trace.cause.as_failure_code(e), FailureCode::Error0308(_)) {
-                    self.report_and_explain_type_error(trace, e).emit();
+                if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
+                    self.report_and_explain_type_error(trace, *e).emit();
                     return true;
                 }
                 false
@@ -732,7 +736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
             let cause = &self.misc(provided_arg_span);
             let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
-            let mut err = self.report_and_explain_type_error(trace, err);
+            let mut err = self.report_and_explain_type_error(trace, *err);
             self.emit_coerce_suggestions(
                 &mut err,
                 &provided_args[*provided_idx],
@@ -802,7 +806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Error::Invalid(provided_idx, expected_idx, compatibility) => {
                     let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
                     let (provided_ty, provided_span) = provided_arg_tys[provided_idx];
-                    if let Compatibility::Incompatible(error) = &compatibility {
+                    if let Compatibility::Incompatible(error) = compatibility {
                         let cause = &self.misc(provided_span);
                         let trace = TypeTrace::types(cause, true, expected_ty, provided_ty);
                         if let Some(e) = error {

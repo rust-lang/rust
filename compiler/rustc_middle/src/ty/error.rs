@@ -30,7 +30,8 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[rustc_pass_by_value]
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),
@@ -211,7 +212,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 }
 
 impl<'tcx> TypeError<'tcx> {
-    pub fn must_include_note(&self) -> bool {
+    pub fn must_include_note(self) -> bool {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | ConstnessMismatch(_)
@@ -347,7 +348,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_type_err(
         self,
         diag: &mut Diagnostic,
-        err: &TypeError<'tcx>,
+        err: TypeError<'tcx>,
         cause: &ObligationCause<'tcx>,
         sp: Span,
         body_owner_def_id: DefId,
@@ -568,7 +569,7 @@ impl<T> Trait<T> for X {
             }
             TargetFeatureCast(def_id) => {
                 let target_spans =
-                    self.get_attrs(*def_id, sym::target_feature).map(|attr| attr.span);
+                    self.get_attrs(def_id, sym::target_feature).map(|attr| attr.span);
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );
@@ -640,7 +641,7 @@ impl<T> Trait<T> for X {
         self,
         diag: &mut Diagnostic,
         proj_ty: &ty::ProjectionTy<'tcx>,
-        values: &ExpectedFound<Ty<'tcx>>,
+        values: ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
         cause_code: &ObligationCauseCode<'_>,
     ) {
