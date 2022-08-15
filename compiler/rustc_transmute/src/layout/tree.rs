@@ -86,17 +86,18 @@ where
         F: Fn(D) -> bool,
     {
         match self {
-            Self::Seq(elts) => elts
-                .into_iter()
-                .map(|elt| elt.prune(f))
-                .try_fold(Tree::unit(), |elts, elt| {
+            Self::Seq(elts) => match elts.into_iter().map(|elt| elt.prune(f)).try_fold(
+                Tree::unit(),
+                |elts, elt| {
                     if elt == Tree::uninhabited() {
                         Err(Tree::uninhabited())
                     } else {
                         Ok(elts.then(elt))
                     }
-                })
-                .into_ok_or_err(),
+                },
+            ) {
+                Err(node) | Ok(node) => node,
+            },
             Self::Alt(alts) => alts
                 .into_iter()
                 .map(|alt| alt.prune(f))

@@ -75,7 +75,6 @@
 #![feature(const_pin)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(result_into_ok_or_err)]
 #![feature(pointer_byte_offsets)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
