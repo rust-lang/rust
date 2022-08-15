@@ -84,7 +84,7 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
                 .field("additional_ids", additional_ids)
-                .finish(),
+                .finish_non_exhaustive(),
             Glob { ref is_prelude, ref max_vis } => f
                 .debug_struct("Glob")
                 .field("is_prelude", is_prelude)
