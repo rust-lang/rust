@@ -343,7 +343,7 @@ pub(super) fn check_for_substitution<'a>(
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 
     let Some((_ascii_char, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) else {
-        let msg = format!("substitution character not found for '{}'", ch);
+        let msg = format!("substitution character not found for '{ch}'");
         reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
         return None;
     };
@@ -352,8 +352,7 @@ pub(super) fn check_for_substitution<'a>(
     if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
         let msg = format!(
             "Unicode characters '“' (Left Double Quotation Mark) and \
-             '”' (Right Double Quotation Mark) look like '{}' ({}), but are not",
-            ascii_char, ascii_name
+             '”' (Right Double Quotation Mark) look like '{ascii_char}' ({ascii_name}), but are not"
         );
         err.span_suggestion(
             Span::with_root_ctxt(
@@ -366,8 +365,7 @@ pub(super) fn check_for_substitution<'a>(
         );
     } else {
         let msg = format!(
-            "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
-            ch, u_name, ascii_char, ascii_name
+            "Unicode character '{ch}' ({u_name}) looks like '{ascii_char}' ({ascii_name}), but it is not"
         );
         err.span_suggestion(span, &msg, ascii_char, Applicability::MaybeIncorrect);
     }
