@@ -262,7 +262,6 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 // matching codepoints. The strips must all be in separate 32-codepoint chunks
 // (codepoints 0 to 31, 32 to 63, 64 to 95, 96 to 127, 128 to 159, 160 to 191,
 // 192 to 223, or 224 to 255).
-#[allow_internal_unstable(const_slice_index)]
 macro_rules! handle_strip_of_each_chunk {
     ($x: ident, $starting_codepoints: expr, $strip_lengths: expr) => {{
         // 32-codepoint chunk number.
