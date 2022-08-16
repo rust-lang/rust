@@ -1,6 +1,5 @@
 use rustc_ast as ast;
 use rustc_ast::{ptr::P, tokenstream::TokenStream};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use rustc_expand::base::{self, DummyResult};
 
@@ -185,5 +184,5 @@ pub fn expand_concat_bytes(
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));
     }
     let sp = cx.with_def_site_ctxt(sp);
-    base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::from(accumulator))))
+    base::MacEager::expr(cx.expr_byte_str(sp, accumulator))
 }

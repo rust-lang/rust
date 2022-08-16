@@ -1750,8 +1750,8 @@ impl<'a> Parser<'a> {
             Some(lit) => match lit.kind {
                 ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
                     style,
-                    symbol: lit.token.symbol,
-                    suffix: lit.token.suffix,
+                    symbol: lit.token_lit.symbol,
+                    suffix: lit.token_lit.suffix,
                     span: lit.span,
                     symbol_unescaped,
                 }),
@@ -1828,7 +1828,7 @@ impl<'a> Parser<'a> {
                 let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
                 let symbol = Symbol::intern(&suffixless_lit.to_string());
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                Some(Lit::from_lit_token(lit, span).unwrap_or_else(|_| unreachable!()))
+                Some(Lit::from_token_lit(lit, span).unwrap_or_else(|_| unreachable!()))
             }
         }
     }
