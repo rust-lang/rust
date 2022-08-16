@@ -1,5 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
@@ -19,14 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
-
-# We are intentionally allowing an old toolchain on this builder (and that's
-# incompatible with LLVM downloads today).
+# We are disabling CI LLVM since distcheck is an offline build.
 ENV NO_DOWNLOAD_CI_LLVM 1
 
-ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --set rust.ignore-git=false \
-    --set llvm.allow-old-toolchain
+ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --set rust.ignore-git=false
 ENV SCRIPT python3 ../x.py --stage 2 test distcheck
 ENV DIST_SRC 1

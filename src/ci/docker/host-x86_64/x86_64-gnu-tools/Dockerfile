@@ -1,5 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
@@ -27,6 +28,7 @@ RUN apt-get install -y \
   libdbus-1-3 \
   libexpat1 \
   libfontconfig1 \
+  libgbm1 \
   libgcc1 \
   libgconf-2-4 \
   libgdk-pixbuf2.0-0 \
@@ -59,9 +61,6 @@ RUN apt-get install -y \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
-
 COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
 
 RUN curl -sL https://nodejs.org/dist/v14.4.0/node-v14.4.0-linux-x64.tar.xz | tar -xJ
@@ -80,12 +79,7 @@ COPY host-x86_64/x86_64-gnu-tools/browser-ui-test.version /tmp/
 # the local version of the package is different than the one used by the CI.
 RUN npm install -g browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --unsafe-perm=true
 
-# We are intentionally allowing an old toolchain on this builder (and that's
-# incompatible with LLVM downloads today).
-ENV NO_DOWNLOAD_CI_LLVM 1
-
 ENV RUST_CONFIGURE_ARGS \
-  --set llvm.allow-old-toolchain \
   --build=x86_64-unknown-linux-gnu \
   --save-toolstates=/tmp/toolstate/toolstates.json
 
