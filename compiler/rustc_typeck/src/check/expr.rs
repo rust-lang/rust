@@ -2184,10 +2184,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let suffix = chars.collect::<String>();
                 suffix.is_empty() || suffix == "f32" || suffix == "f64"
             };
-            let is_likely_suffix = |fist_chars: &[char], field: &str| {
-                field.len() >= 1
-                    && field.to_lowercase().starts_with(fist_chars)
+            let maybe_partial_suffix = |field: &str| -> Option<&str> {
+                let first_chars = ['f', 'l'];
+                if field.len() >= 1
+                    && field.to_lowercase().starts_with(first_chars)
                     && field[1..].chars().all(|c| c.is_ascii_digit())
+                {
+                    if field.to_lowercase().starts_with(['f']) { Some("f32") } else { Some("f64") }
+                } else {
+                    None
+                }
             };
             if let ty::Infer(ty::IntVar(_)) = expr_t.kind()
                 && let ExprKind::Lit(Spanned {
@@ -2196,19 +2202,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }) = base.kind
                 && !base.span.from_expansion()
             {
-                let msg = "If the number is meant to be a floating point number, consider adding a `0` after the period";
                 if is_valid_suffix(&field_name) {
                     err.span_suggestion_verbose(
                         field.span.shrink_to_lo(),
-                        msg,
+                        "if intended to be a floating point literal, consider adding a `0` after the period",
                         '0',
                         Applicability::MaybeIncorrect,
                     );
-                } else if is_likely_suffix(&['f', 'l'], &field_name) {
+                } else if let Some(correct_suffix) = maybe_partial_suffix(&field_name) {
                     err.span_suggestion_verbose(
                         field.span,
-                        format!("{}, valid float format are `f32` and `f64`", msg),
-                        "0f32",
+                        format!("if intended to be a floating point literal, consider adding a `0` after the period and a `{correct_suffix}` suffix"),
+                        format!("0{correct_suffix}"),
                         Applicability::MaybeIncorrect,
                     );
                 }

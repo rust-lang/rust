@@ -16,7 +16,7 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 LL |     let _ = 0.f;
    |               ^
    |
-help: If the number is meant to be a floating point number, consider adding a `0` after the period, valid float format are `f32` and `f64`
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f32` suffix
    |
 LL |     let _ = 0.0f32;
    |               ~~~~
@@ -27,9 +27,9 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 LL |     let _ = 2.l;
    |               ^
    |
-help: If the number is meant to be a floating point number, consider adding a `0` after the period, valid float format are `f32` and `f64`
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f64` suffix
    |
-LL |     let _ = 2.0f32;
+LL |     let _ = 2.0f64;
    |               ~~~~
 
 error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
@@ -38,7 +38,7 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 LL |     let _ = 12.F;
    |                ^
    |
-help: If the number is meant to be a floating point number, consider adding a `0` after the period, valid float format are `f32` and `f64`
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f32` suffix
    |
 LL |     let _ = 12.0f32;
    |                ~~~~
@@ -49,9 +49,9 @@ error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
 LL |     let _ = 34.L;
    |                ^
    |
-help: If the number is meant to be a floating point number, consider adding a `0` after the period, valid float format are `f32` and `f64`
+help: if intended to be a floating point literal, consider adding a `0` after the period and a `f64` suffix
    |
-LL |     let _ = 34.0f32;
+LL |     let _ = 34.0f64;
    |                ~~~~
 
 error: aborting due to 6 previous errors
