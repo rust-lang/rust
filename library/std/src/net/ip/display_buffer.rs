@@ -9,12 +9,12 @@ pub struct IpDisplayBuffer<const SIZE: usize> {
 }
 
 impl<const SIZE: usize> IpDisplayBuffer<SIZE> {
-    #[inline(always)]
-    pub const fn new(_ip: &[u8; SIZE]) -> Self {
-        Self { buf: MaybeUninit::uninit_array::<SIZE>(), len: 0 }
+    #[inline]
+    pub const fn new() -> Self {
+        Self { buf: MaybeUninit::uninit_array(), len: 0 }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn as_str(&self) -> &str {
         // SAFETY: `buf` is only written to by the `fmt::Write::write_str` implementation
         // which writes a valid UTF-8 string to `buf` and correctly sets `len`.

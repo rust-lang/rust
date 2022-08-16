@@ -999,7 +999,9 @@ impl fmt::Display for Ipv4Addr {
         if fmt.precision().is_none() && fmt.width().is_none() {
             write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
         } else {
-            let mut buf = IpDisplayBuffer::new(b"255.255.255.255");
+            const LONGEST_IPV4_ADDR: &str = "255.255.255.255";
+
+            let mut buf = IpDisplayBuffer::<{ LONGEST_IPV4_ADDR.len() }>::new();
             // Buffer is long enough for the longest possible IPv4 address, so this should never fail.
             write!(buf, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
 
@@ -1778,7 +1780,9 @@ impl fmt::Display for Ipv6Addr {
                 }
             }
         } else {
-            let mut buf = IpDisplayBuffer::new(b"ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+            const LONGEST_IPV6_ADDR: &str = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
+
+            let mut buf = IpDisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
             // Buffer is long enough for the longest possible IPv6 address, so this should never fail.
             write!(buf, "{}", self).unwrap();
 
