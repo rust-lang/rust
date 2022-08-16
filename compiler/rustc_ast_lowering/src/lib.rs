@@ -643,14 +643,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> (Fingerprint, Fingerprint) {
         self.tcx.with_stable_hashing_context(|mut hcx| {
             let mut stable_hasher = StableHasher::new();
-            hcx.with_hir_bodies(true, node.def_id(), bodies, |hcx| {
+            hcx.with_hir_bodies(node.def_id(), bodies, |hcx| {
                 node.hash_stable(hcx, &mut stable_hasher)
             });
             let hash_including_bodies = stable_hasher.finish();
             let mut stable_hasher = StableHasher::new();
-            hcx.with_hir_bodies(false, node.def_id(), bodies, |hcx| {
-                node.hash_stable(hcx, &mut stable_hasher)
-            });
+            hcx.without_hir_bodies(|hcx| node.hash_stable(hcx, &mut stable_hasher));
             let hash_without_bodies = stable_hasher.finish();
             (hash_including_bodies, hash_without_bodies)
         })

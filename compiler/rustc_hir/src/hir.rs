@@ -1626,7 +1626,7 @@ pub struct AnonConst {
 }
 
 /// An expression.
-#[derive(Debug)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Expr<'hir> {
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
@@ -2380,7 +2380,7 @@ impl TypeBinding<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable_Generic)]
 pub struct Ty<'hir> {
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,

@@ -40,11 +40,8 @@ pub struct StableHashingContext<'a> {
 #[derive(Clone, Copy)]
 pub(super) enum BodyResolver<'tcx> {
     Forbidden,
-    Traverse {
-        hash_bodies: bool,
-        owner: LocalDefId,
-        bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>>,
-    },
+    Ignore,
+    Traverse { owner: LocalDefId, bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>> },
 }
 
 impl<'a> StableHashingContext<'a> {
@@ -98,32 +95,20 @@ impl<'a> StableHashingContext<'a> {
         Self::new_with_or_without_spans(sess, definitions, cstore, source_span, always_ignore_spans)
     }
 
-    /// Allow hashing
     #[inline]
-    pub fn while_hashing_hir_bodies(&mut self, hb: bool, f: impl FnOnce(&mut Self)) {
-        let prev = match &mut self.body_resolver {
-            BodyResolver::Forbidden => panic!("Hashing HIR bodies is forbidden."),
-            BodyResolver::Traverse { ref mut hash_bodies, .. } => {
-                std::mem::replace(hash_bodies, hb)
-            }
-        };
-        f(self);
-        match &mut self.body_resolver {
-            BodyResolver::Forbidden => unreachable!(),
-            BodyResolver::Traverse { ref mut hash_bodies, .. } => *hash_bodies = prev,
-        }
+    pub fn without_hir_bodies(&mut self, f: impl FnOnce(&mut StableHashingContext<'_>)) {
+        f(&mut StableHashingContext { body_resolver: BodyResolver::Ignore, ..self.clone() });
     }
 
     #[inline]
     pub fn with_hir_bodies(
         &mut self,
-        hash_bodies: bool,
         owner: LocalDefId,
         bodies: &SortedMap<hir::ItemLocalId, &hir::Body<'_>>,
         f: impl FnOnce(&mut StableHashingContext<'_>),
     ) {
         f(&mut StableHashingContext {
-            body_resolver: BodyResolver::Traverse { hash_bodies, owner, bodies },
+            body_resolver: BodyResolver::Traverse { owner, bodies },
             ..self.clone()
         });
     }
