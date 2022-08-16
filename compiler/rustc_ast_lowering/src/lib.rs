@@ -75,6 +75,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod errors;
 mod expr;
 mod index;
 mod item;
