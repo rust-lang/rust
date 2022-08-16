@@ -81,40 +81,8 @@ error: unnecessary `unsafe` block
 LL |     unsafe { unsafe { unsf() } }
    |     ^^^^^^ unnecessary `unsafe` block
 
-error: unnecessary `unsafe` block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:60:5
-   |
-LL | unsafe fn allow_level() {
-   | ----------------------- because it's nested under this `unsafe` fn
-...
-LL |     unsafe { unsf() }
-   |     ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-note: the lint level is defined here
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:53:9
-   |
-LL | #[allow(unsafe_op_in_unsafe_fn)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
-
-error: unnecessary `unsafe` block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:72:9
-   |
-LL | unsafe fn nested_allow_level() {
-   | ------------------------------ because it's nested under this `unsafe` fn
-...
-LL |         unsafe { unsf() }
-   |         ^^^^^^ unnecessary `unsafe` block
-   |
-   = note: this `unsafe` block does contain unsafe operations, but those are already allowed in an `unsafe fn`
-note: the lint level is defined here
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:65:13
-   |
-LL |     #[allow(unsafe_op_in_unsafe_fn)]
-   |             ^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0133]: call to unsafe function is unsafe and requires unsafe block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:78:5
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:76:5
    |
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
@@ -122,13 +90,13 @@ LL |     unsf();
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:83:9
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:81:9
    |
 LL |         unsf();
    |         ^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
