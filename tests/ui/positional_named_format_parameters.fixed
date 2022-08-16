@@ -1,0 +1,56 @@
+// run-rustfix
+#![allow(unused_must_use)]
+#![allow(named_arguments_used_positionally)] // Unstable at time of writing.
+#![warn(clippy::positional_named_format_parameters)]
+
+use std::io::Write;
+
+fn main() {
+    let mut v = Vec::new();
+    let hello = "Hello";
+
+    println!("{hello:.foo$}", foo = 2);
+    writeln!(v, "{hello:.foo$}", foo = 2);
+
+    // Warnings
+    println!("{zero} {one:?}", zero = 0, one = 1);
+    println!("This is a test {zero} {one:?}", zero = 0, one = 1);
+    println!("Hello {one} is {two:.zero$}", zero = 5, one = hello, two = 0.01);
+    println!("Hello {one:zero$}!", zero = 5, one = 1);
+    println!("Hello {zero:one$}!", zero = 4, one = 1);
+    println!("Hello {zero:0one$}!", zero = 4, one = 1);
+    println!("Hello is {one:.zero$}", zero = 5, one = 0.01);
+    println!("Hello is {one:<6.zero$}", zero = 5, one = 0.01);
+    println!("{zero}, `{two:>8.one$}` has 3", zero = hello, one = 3, two = hello);
+    println!("Hello {one} is {two:.zero$}", zero = 5, one = hello, two = 0.01);
+    println!("Hello {world} {world}!", world = 5);
+
+    writeln!(v, "{zero} {one:?}", zero = 0, one = 1);
+    writeln!(v, "This is a test {zero} {one:?}", zero = 0, one = 1);
+    writeln!(v, "Hello {one} is {two:.zero$}", zero = 5, one = hello, two = 0.01);
+    writeln!(v, "Hello {one:zero$}!", zero = 4, one = 1);
+    writeln!(v, "Hello {zero:one$}!", zero = 4, one = 1);
+    writeln!(v, "Hello {zero:0one$}!", zero = 4, one = 1);
+    writeln!(v, "Hello is {one:.zero$}", zero = 3, one = 0.01);
+    writeln!(v, "Hello is {one:<6.zero$}", zero = 2, one = 0.01);
+    writeln!(v, "{zero}, `{two:>8.one$}` has 3", zero = hello, one = 3, two = hello);
+    writeln!(v, "Hello {one} is {two:.zero$}", zero = 1, one = hello, two = 0.01);
+    writeln!(v, "Hello {world} {world}!", world = 0);
+
+    // Tests from other files
+    println!("{w:w$}", w = 1);
+    println!("{p:.p$}", p = 1);
+    println!("{v}", v = 1);
+    println!("{v:v$}", v = 1);
+    println!("{v:v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{v:v$.v$}", v = 1);
+    println!("{w:w$}", w = 1);
+    println!("{p:.p$}", p = 1);
+    println!("{:p$.w$}", 1, w = 1, p = 1);
+}
