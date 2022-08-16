@@ -22,7 +22,8 @@ pub(super) fn check<'tcx>(
     name: &str,
     args: &'tcx [hir::Expr<'_>],
 ) {
-    /// Checks for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
+    /// Checks for `unwrap_or(T::new())`, `unwrap_or(T::default())`,
+    /// `or_insert(T::new())` or `or_insert(T::default())`.
     #[allow(clippy::too_many_arguments)]
     fn check_unwrap_or_default(
         cx: &LateContext<'_>,
@@ -42,7 +43,11 @@ pub(super) fn check<'tcx>(
 
         if_chain! {
             if !or_has_args;
-            if name == "unwrap_or";
+            if let Some(sugg) = match name {
+                "unwrap_or" => Some("unwrap_or_default"),
+                "or_insert" => Some("or_default"),
+                _ => None,
+            };
             if let hir::ExprKind::Path(ref qpath) = fun.kind;
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
             let path = last_path_segment(qpath).ident.name;
@@ -58,7 +63,7 @@ pub(super) fn check<'tcx>(
                     method_span.with_hi(span.hi()),
                     &format!("use of `{}` followed by a call to `{}`", name, path),
                     "try this",
-                    "unwrap_or_default()".to_string(),
+                    format!("{}()", sugg),
                     Applicability::MachineApplicable,
                 );
 
@@ -82,7 +87,7 @@ pub(super) fn check<'tcx>(
         fun_span: Option<Span>,
     ) {
         // (path, fn_has_argument, methods, suffix)
-        static KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
+        const KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
             (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
             (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
             (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),

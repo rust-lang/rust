@@ -825,8 +825,9 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
-    /// etc., and suggests to use `or_else`, `unwrap_or_else`, etc., or
-    /// `unwrap_or_default` instead.
+    /// `.or_insert(foo(..))` etc., and suggests to use `.or_else(|| foo(..))`,
+    /// `.unwrap_or_else(|| foo(..))`, `.unwrap_or_default()` or `.or_default()`
+    /// etc. instead.
     ///
     /// ### Why is this bad?
     /// The function will always be called and potentially
