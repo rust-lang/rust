@@ -1309,12 +1309,7 @@ impl char {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
-        // `| 0b0010_0000` loses one bit of information, giving exactly two possible
-        // inputs for every output. The exact two possible inputs for outputs `'a'`
-        // through `'z'` are the lowercase and uppercase versions of each letter, so we
-        // only need to check whether it's a lowercase letter.
-        let x = ((*self as u32) | 0b0010_0000).wrapping_sub('a' as u32);
-        x < 26
+        matches!(*self, 'A'..='Z' | 'a'..='z')
     }
 
     /// Checks if the value is an ASCII uppercase character:
