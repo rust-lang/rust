@@ -1,7 +1,6 @@
 //! Handles dynamic library loading for proc macro
 
 use std::{
-    convert::TryInto,
     fmt,
     fs::File,
     io,

@@ -87,7 +87,7 @@ fn foo() { bar.; blub }
 fn foo() { bar.; blub }
 
 fn foo() {
-    bar. ;
+    bar.;
     blub
 }"##]],
     );

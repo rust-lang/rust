@@ -316,6 +316,51 @@ fn infer_pattern_match_string_literal() {
 }
 
 #[test]
+fn infer_pattern_match_byte_string_literal() {
+    check_infer_with_mismatches(
+        r#"
+        //- minicore: index
+        struct S;
+        impl<T, const N: usize> core::ops::Index<S> for [T; N] {
+            type Output = [u8];
+            fn index(&self, index: core::ops::RangeFull) -> &Self::Output {
+                loop {}
+            }
+        }
+        fn test(v: [u8; 3]) {
+            if let b"foo" = &v[S] {}
+            if let b"foo" = &v {}
+        }
+        "#,
+        expect![[r#"
+            105..109 'self': &[T; N]
+            111..116 'index': {unknown}
+            157..180 '{     ...     }': &[u8]
+            167..174 'loop {}': !
+            172..174 '{}': ()
+            191..192 'v': [u8; 3]
+            203..261 '{     ...v {} }': ()
+            209..233 'if let...[S] {}': ()
+            212..230 'let b"... &v[S]': bool
+            216..222 'b"foo"': &[u8]
+            216..222 'b"foo"': &[u8]
+            225..230 '&v[S]': &[u8]
+            226..227 'v': [u8; 3]
+            226..230 'v[S]': [u8]
+            228..229 'S': S
+            231..233 '{}': ()
+            238..259 'if let... &v {}': ()
+            241..256 'let b"foo" = &v': bool
+            245..251 'b"foo"': &[u8; 3]
+            245..251 'b"foo"': &[u8; 3]
+            254..256 '&v': &[u8; 3]
+            255..256 'v': [u8; 3]
+            257..259 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
 fn infer_pattern_match_or() {
     check_infer_with_mismatches(
         r#"

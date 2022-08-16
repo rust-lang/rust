@@ -6,7 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, iter::FromIterator, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
+use std::{fmt, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
 use rustc_hash::{FxHashMap, FxHashSet};
