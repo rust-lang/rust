@@ -22,6 +22,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
+use rustc_infer::infer::TypeTrace;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -941,9 +942,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 self.reported_closure_mismatch.borrow_mut().insert((span, found_span));
 
+                let mut not_tupled = false;
+
                 let found = match found_trait_ref.skip_binder().substs.type_at(1).kind() {
                     ty::Tuple(ref tys) => vec![ArgKind::empty(); tys.len()],
-                    _ => vec![ArgKind::empty()],
+                    _ => {
+                        not_tupled = true;
+                        vec![ArgKind::empty()]
+                    }
                 };
 
                 let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
@@ -951,10 +957,28 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ty::Tuple(ref tys) => {
                         tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
                     }
-                    _ => vec![ArgKind::Arg("_".to_owned(), expected_ty.to_string())],
+                    _ => {
+                        not_tupled = true;
+                        vec![ArgKind::Arg("_".to_owned(), expected_ty.to_string())]
+                    }
                 };
 
-                if found.len() == expected.len() {
+                // If this is a `Fn` family trait and either the expected or found
+                // is not tupled, then fall back to just a regular mismatch error.
+                // This shouldn't be common unless manually implementing one of the
+                // traits manually, but don't make it more confusing when it does
+                // happen.
+                if Some(expected_trait_ref.def_id()) != tcx.lang_items().gen_trait() && not_tupled {
+                    self.report_and_explain_type_error(
+                        TypeTrace::poly_trait_refs(
+                            &obligation.cause,
+                            true,
+                            expected_trait_ref,
+                            found_trait_ref,
+                        ),
+                        ty::error::TypeError::Mismatch,
+                    )
+                } else if found.len() == expected.len() {
                     self.report_closure_arg_mismatch(
                         span,
                         found_span,
