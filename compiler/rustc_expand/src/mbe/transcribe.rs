@@ -9,6 +9,7 @@ use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
+use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
@@ -51,6 +52,13 @@ impl<'a> Iterator for Frame<'a> {
             }
         }
     }
+}
+
+#[derive(SessionDiagnostic)]
+#[error(expand::expr_repeat_no_syntax_vars)]
+struct NoSyntaxVarsExprRepeat {
+    #[primary_span]
+    span: Span,
 }
 
 /// This can do Macro-By-Example transcription.
@@ -165,11 +173,7 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(_, delimited) => {
                 match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx.struct_span_err(
-                            seq.span(), /* blame macro writer */
-                            "attempted to repeat an expression containing no syntax variables \
-                             matched as repeating at this depth",
-                        ));
+                        return Err(cx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
                     LockstepIterSize::Contradiction(msg) => {
