@@ -28,7 +28,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    ErrorGuaranteed,
+    ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -1307,7 +1307,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span: expr.span,
             })
         };
-        self.tcx.mk_array(element_ty, args.len() as u64)
+        let array_len = args.len() as u64;
+        self.suggest_array_len(expr, array_len);
+        self.tcx.mk_array(element_ty, array_len)
+    }
+
+    fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
+        if let Some(parent_hir_id) = self.tcx.hir().find_parent_node(expr.hir_id) {
+            let ty = match self.tcx.hir().find(parent_hir_id) {
+                Some(
+                    hir::Node::Local(hir::Local { ty: Some(ty), .. })
+                    | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _), .. }),
+                ) => Some(ty),
+                _ => None,
+            };
+            if let Some(ty) = ty
+                && let hir::TyKind::Array(_, length) = ty.kind
+                && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+                && let Some(span) = self.tcx.hir().opt_span(hir_id)
+            {
+                match self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
+                    Some(mut err) => {
+                        err.span_suggestion(
+                            span,
+                            "consider specifying the array length",
+                            array_len,
+                            Applicability::MaybeIncorrect,
+                        );
+                        err.emit();
+                    }
+                    None => ()
+                }
+            }
+        }
     }
 
     fn check_expr_const_block(
@@ -1333,10 +1365,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         element: &'tcx hir::Expr<'tcx>,
         count: &'tcx hir::ArrayLen,
         expected: Expectation<'tcx>,
-        _expr: &'tcx hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let count = self.array_length_to_const(count);
+        if let Some(count) = count.try_eval_usize(tcx, self.param_env) {
+            self.suggest_array_len(expr, count);
+        }
 
         let uty = match expected {
             ExpectHasType(uty) => match *uty.kind() {
