@@ -27,6 +27,7 @@ use crate::{
 pub struct HoverConfig {
     pub links_in_hover: bool,
     pub documentation: Option<HoverDocFormat>,
+    pub keywords: bool,
 }
 
 impl HoverConfig {
