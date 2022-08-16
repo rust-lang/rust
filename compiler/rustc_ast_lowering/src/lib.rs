@@ -48,7 +48,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability, Handler};
+use rustc_errors::{struct_span_err, Applicability, Handler, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -2233,7 +2233,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         c.value.span,
                         "using `_` for array lengths is unstable",
                     )
-                    .emit();
+                    .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
                     hir::ArrayLen::Body(self.lower_anon_const(c))
                 }
             }

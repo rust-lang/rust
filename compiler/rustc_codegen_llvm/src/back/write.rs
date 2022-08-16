@@ -5,7 +5,7 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
+use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
@@ -304,7 +304,6 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_passes.as_ptr(),
                 remark_passes.len(),
             );
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
             DiagnosticHandlers { data, llcx, old_handler }
         }
     }
@@ -312,9 +311,7 @@ impl<'a> DiagnosticHandlers<'a> {
 
 impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
-        use std::ptr::null_mut;
         unsafe {
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, null_mut());
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
             drop(Box::from_raw(self.data));
         }
@@ -340,16 +337,6 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
-}
-
-unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void, cookie: c_uint) {
-    if user.is_null() {
-        return;
-    }
-    let (cgcx, _) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &Handler));
-
-    let smdiag = llvm::diagnostic::SrcMgrDiagnostic::unpack(diag);
-    report_inline_asm(cgcx, smdiag.message, smdiag.level, cookie, smdiag.source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -423,6 +410,14 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
         .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
 }
 
+fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
+    if config.instrument_coverage {
+        Some(CString::new("default_%m_%p.profraw").unwrap())
+    } else {
+        None
+    }
+}
+
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
@@ -438,6 +433,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     let pgo_use_path = get_pgo_use_path(config);
     let pgo_sample_use_path = get_pgo_sample_use_path(config);
     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+    let instr_profile_output_path = get_instr_profile_output_path(config);
     // Sanitizer instrumentation is only inserted during the pre-link optimization stage.
     let sanitizer_options = if !is_lto {
         Some(llvm::SanitizerOptions {
@@ -488,6 +484,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_coverage,
+        instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_gcov,
         pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.debug_info_for_profiling,

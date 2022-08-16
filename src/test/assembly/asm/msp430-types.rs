@@ -1,4 +1,3 @@
-// min-llvm-version: 13.0
 // assembly-output: emit-asm
 // compile-flags: --target msp430-none-elf
 // needs-llvm-components: msp430

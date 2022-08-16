@@ -822,7 +822,8 @@ LLVMRustOptimizeWithNewPassManager(
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
-    bool InstrumentCoverage, bool InstrumentGCOV,
+    bool InstrumentCoverage, const char *InstrProfileOutput,
+    bool InstrumentGCOV,
     const char *PGOSampleUsePath, bool DebugInfoForProfiling,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
@@ -869,19 +870,11 @@ LLVMRustOptimizeWithNewPassManager(
                         PGOOptions::NoCSAction, DebugInfoForProfiling);
   }
 
-#if LLVM_VERSION_GE(13, 0)
   PassBuilder PB(TM, PTO, PGOOpt, &PIC);
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
-#else
-  PassBuilder PB(DebugPassManager, TM, PTO, PGOOpt, &PIC);
-  LoopAnalysisManager LAM(DebugPassManager);
-  FunctionAnalysisManager FAM(DebugPassManager);
-  CGSCCAnalysisManager CGAM(DebugPassManager);
-  ModuleAnalysisManager MAM(DebugPassManager);
-#endif
 
   FAM.registerPass([&] { return PB.buildDefaultAAPipeline(); });
 
@@ -922,8 +915,11 @@ LLVMRustOptimizeWithNewPassManager(
 
   if (InstrumentCoverage) {
     PipelineStartEPCallbacks.push_back(
-      [](ModulePassManager &MPM, OptimizationLevel Level) {
+      [InstrProfileOutput](ModulePassManager &MPM, OptimizationLevel Level) {
         InstrProfOptions Options;
+        if (InstrProfileOutput) {
+          Options.InstrProfileOutput = InstrProfileOutput;
+        }
         MPM.addPass(InstrProfiling(Options, false));
       }
     );
@@ -1015,11 +1011,7 @@ LLVMRustOptimizeWithNewPassManager(
     }
   }
 
-#if LLVM_VERSION_GE(13, 0)
   ModulePassManager MPM;
-#else
-  ModulePassManager MPM(DebugPassManager);
-#endif
   bool NeedThinLTOBufferPasses = UseThinLTOBuffers;
   if (!NoPrepopulatePasses) {
     // The pre-link pipelines don't support O0 and require using budilO0DefaultPipeline() instead.
@@ -1434,17 +1426,13 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
 
-#if LLVM_VERSION_GE(13,0)
   // Uses FromPrevailing visibility scheme which works for many binary
   // formats. We probably could and should use ELF visibility scheme for many of
   // our targets, however.
   lto::Config conf;
   thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
-#else
-  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
-                                  Ret->GUIDPreservedSymbols);
-#endif
+
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all
   // summaries in the index, and we basically just only want to ensure that dead

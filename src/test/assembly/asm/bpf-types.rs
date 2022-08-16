@@ -1,4 +1,3 @@
-// min-llvm-version: 13.0
 // assembly-output: emit-asm
 // compile-flags: --target bpfel-unknown-none -C target_feature=+alu32
 // needs-llvm-components: bpf

@@ -3,7 +3,6 @@ use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, False};
 use crate::llvm::{AtomicOrdering, AtomicRmwBinOp, SynchronizationScope};
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -1038,25 +1037,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         dst: &'ll Value,
         cmp: &'ll Value,
         src: &'ll Value,
-        mut order: rustc_codegen_ssa::common::AtomicOrdering,
+        order: rustc_codegen_ssa::common::AtomicOrdering,
         failure_order: rustc_codegen_ssa::common::AtomicOrdering,
         weak: bool,
     ) -> &'ll Value {
         let weak = if weak { llvm::True } else { llvm::False };
-        if llvm_util::get_version() < (13, 0, 0) {
-            use rustc_codegen_ssa::common::AtomicOrdering::*;
-            // Older llvm has the pre-C++17 restriction on
-            // success and failure memory ordering,
-            // requiring the former to be at least as strong as the latter.
-            // So, for llvm 12, we upgrade the success ordering to a stronger
-            // one if necessary.
-            match (order, failure_order) {
-                (Relaxed, Acquire) => order = Acquire,
-                (Release, Acquire) => order = AcquireRelease,
-                (_, SequentiallyConsistent) => order = SequentiallyConsistent,
-                _ => {}
-            }
-        }
         unsafe {
             llvm::LLVMRustBuildAtomicCmpXchg(
                 self.llbuilder,
@@ -1444,51 +1429,37 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn fptoint_sat_broken_in_llvm(&self) -> bool {
-        match self.tcx.sess.target.arch.as_ref() {
-            // FIXME - https://bugs.llvm.org/show_bug.cgi?id=50083
-            "riscv64" => llvm_util::get_version() < (13, 0, 0),
-            _ => false,
-        }
-    }
-
     fn fptoint_sat(
         &mut self,
         signed: bool,
         val: &'ll Value,
         dest_ty: &'ll Type,
     ) -> Option<&'ll Value> {
-        if !self.fptoint_sat_broken_in_llvm() {
-            let src_ty = self.cx.val_ty(val);
-            let (float_ty, int_ty, vector_length) = if self.cx.type_kind(src_ty) == TypeKind::Vector
-            {
-                assert_eq!(self.cx.vector_length(src_ty), self.cx.vector_length(dest_ty));
-                (
-                    self.cx.element_type(src_ty),
-                    self.cx.element_type(dest_ty),
-                    Some(self.cx.vector_length(src_ty)),
-                )
-            } else {
-                (src_ty, dest_ty, None)
-            };
-            let float_width = self.cx.float_width(float_ty);
-            let int_width = self.cx.int_width(int_ty);
-
-            let instr = if signed { "fptosi" } else { "fptoui" };
-            let name = if let Some(vector_length) = vector_length {
-                format!(
-                    "llvm.{}.sat.v{}i{}.v{}f{}",
-                    instr, vector_length, int_width, vector_length, float_width
-                )
-            } else {
-                format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
-            };
-            let f =
-                self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-            Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None))
+        let src_ty = self.cx.val_ty(val);
+        let (float_ty, int_ty, vector_length) = if self.cx.type_kind(src_ty) == TypeKind::Vector {
+            assert_eq!(self.cx.vector_length(src_ty), self.cx.vector_length(dest_ty));
+            (
+                self.cx.element_type(src_ty),
+                self.cx.element_type(dest_ty),
+                Some(self.cx.vector_length(src_ty)),
+            )
         } else {
-            None
-        }
+            (src_ty, dest_ty, None)
+        };
+        let float_width = self.cx.float_width(float_ty);
+        let int_width = self.cx.int_width(int_ty);
+
+        let instr = if signed { "fptosi" } else { "fptoui" };
+        let name = if let Some(vector_length) = vector_length {
+            format!(
+                "llvm.{}.sat.v{}i{}.v{}f{}",
+                instr, vector_length, int_width, vector_length, float_width
+            )
+        } else {
+            format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
+        };
+        let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
+        Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None))
     }
 
     pub(crate) fn landing_pad(

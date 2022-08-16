@@ -2360,6 +2360,7 @@ extern "C" {
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
         InstrumentCoverage: bool,
+        InstrProfileOutput: *const c_char,
         InstrumentGCOV: bool,
         PGOSampleUsePath: *const c_char,
         DebugInfoForProfiling: bool,
@@ -2422,12 +2423,6 @@ extern "C" {
         DI: &'a DiagnosticInfo,
         cookie_out: &mut c_uint,
     ) -> &'a SMDiagnostic;
-
-    pub fn LLVMRustSetInlineAsmDiagnosticHandler(
-        C: &Context,
-        H: InlineAsmDiagHandlerTy,
-        CX: *mut c_void,
-    );
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackSMDiagnostic(
