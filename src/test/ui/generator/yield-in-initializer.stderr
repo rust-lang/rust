@@ -8,7 +8,7 @@ LL | |             // See https://github.com/rust-lang/rust/issues/52792
 ...  |
 LL | |         }
 LL | |     };
-   | |______^
+   | |_____^
    |
    = note: generators are lazy and do nothing unless resumed
    = note: `#[warn(unused_must_use)]` on by default
