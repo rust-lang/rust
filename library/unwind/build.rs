@@ -2,8 +2,14 @@ use std::env;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    let target = env::var("TARGET").expect("TARGET was not set");
+    println!("cargo:rerun-if-env-changed=CARGO_CFG_MIRI");
 
+    if env::var_os("CARGO_CFG_MIRI").is_some() {
+        // Miri doesn't need the linker flags or a libunwind build.
+        return;
+    }
+
+    let target = env::var("TARGET").expect("TARGET was not set");
     if target.contains("android") {
         let build = cc::Build::new();
 
