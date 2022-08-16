@@ -265,8 +265,6 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 macro_rules! handle_strip_of_each_chunk {
     ($x: ident, $starting_codepoints: expr, $strip_lengths: expr) => {{
         // 32-codepoint chunk number.
-        //
-        // SAFETY: Guaranteed by bit operations to be in `0..8`.
         let chunk_number = ($x >> 5) as usize;
 
         // `const` to type check and to ensure all element evaluations are done at
@@ -275,9 +273,6 @@ macro_rules! handle_strip_of_each_chunk {
         // Subtract the starting codepoint of this chunk from the input codepoint. This
         // will make sure that the matching codepoints in this strip are in
         // `0..length_of_strip`.
-        //
-        // SAFETY: The array length is 8 and `chunk_number` is guaranteed to be in
-        // `0..8`.
         let x = $x.wrapping_sub(STARTING_CODEPOINTS[chunk_number]);
 
         // `const` to type check and to ensure all element evaluations are done at
@@ -285,9 +280,6 @@ macro_rules! handle_strip_of_each_chunk {
         const STRIP_LENGTHS: [u8; 8] = $strip_lengths;
         // Check whether the adjusted value of the input codepoint is in
         // `0..length_of_strip`.
-        //
-        // SAFETY: The array length is 8 and `chunk_number` is guaranteed to be in
-        // `0..8`.
         x < STRIP_LENGTHS[chunk_number]
     }};
 }
