@@ -21,8 +21,8 @@ pub(crate) fn render_union_literal(
     let name = local_name.unwrap_or_else(|| un.name(ctx.db()));
 
     let (qualified_name, escaped_qualified_name) = match path {
-        Some(p) => (p.to_string(), p.escaped().to_string()),
-        None => (name.to_string(), name.escaped().to_string()),
+        Some(p) => (p.unescaped().to_string(), p.to_string()),
+        None => (name.unescaped().to_string(), name.to_string()),
     };
 
     let mut item = CompletionItem::new(
@@ -42,15 +42,15 @@ pub(crate) fn render_union_literal(
         format!(
             "{} {{ ${{1|{}|}}: ${{2:()}} }}$0",
             escaped_qualified_name,
-            fields.iter().map(|field| field.name(ctx.db()).escaped().to_smol_str()).format(",")
+            fields.iter().map(|field| field.name(ctx.db()).to_smol_str()).format(",")
         )
     } else {
         format!(
             "{} {{ {} }}",
             escaped_qualified_name,
-            fields.iter().format_with(", ", |field, f| {
-                f(&format_args!("{}: ()", field.name(ctx.db()).escaped()))
-            })
+            fields
+                .iter()
+                .format_with(", ", |field, f| { f(&format_args!("{}: ()", field.name(ctx.db()))) })
         )
     };
 

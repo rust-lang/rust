@@ -1,8 +1,10 @@
 //! Completion of names from the current scope in expression position.
 
 use hir::ScopeDef;
+use syntax::ast;
 
 use crate::{
+    completions::record::add_default_update,
     context::{ExprCtx, PathCompletionCtx, Qualified},
     CompletionContext, Completions,
 };
@@ -219,60 +221,78 @@ pub(crate) fn complete_expr_path(
                 _ => (),
             });
 
-            if is_func_update.is_none() {
-                let mut add_keyword =
-                    |kw, snippet| acc.add_keyword_snippet_expr(ctx, incomplete_let, kw, snippet);
+            match is_func_update {
+                Some(record_expr) => {
+                    let ty = ctx.sema.type_of_expr(&ast::Expr::RecordExpr(record_expr.clone()));
 
-                if !in_block_expr {
-                    add_keyword("unsafe", "unsafe {\n    $0\n}");
+                    match ty.as_ref().and_then(|t| t.original.as_adt()) {
+                        Some(hir::Adt::Union(_)) => (),
+                        _ => {
+                            cov_mark::hit!(functional_update);
+                            let missing_fields =
+                                ctx.sema.record_literal_missing_fields(record_expr);
+                            if !missing_fields.is_empty() {
+                                add_default_update(acc, ctx, ty);
+                            }
+                        }
+                    };
                 }
-                add_keyword("match", "match $1 {\n    $0\n}");
-                add_keyword("while", "while $1 {\n    $0\n}");
-                add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
-                add_keyword("loop", "loop {\n    $0\n}");
-                if in_match_guard {
-                    add_keyword("if", "if $0");
-                } else {
-                    add_keyword("if", "if $1 {\n    $0\n}");
-                }
-                add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
-                add_keyword("for", "for $1 in $2 {\n    $0\n}");
-                add_keyword("true", "true");
-                add_keyword("false", "false");
+                None => {
+                    let mut add_keyword = |kw, snippet| {
+                        acc.add_keyword_snippet_expr(ctx, incomplete_let, kw, snippet)
+                    };
 
-                if in_condition || in_block_expr {
-                    add_keyword("let", "let");
-                }
-
-                if after_if_expr {
-                    add_keyword("else", "else {\n    $0\n}");
-                    add_keyword("else if", "else if $1 {\n    $0\n}");
-                }
-
-                if wants_mut_token {
-                    add_keyword("mut", "mut ");
-                }
-
-                if in_loop_body {
-                    if in_block_expr {
-                        add_keyword("continue", "continue;");
-                        add_keyword("break", "break;");
-                    } else {
-                        add_keyword("continue", "continue");
-                        add_keyword("break", "break");
+                    if !in_block_expr {
+                        add_keyword("unsafe", "unsafe {\n    $0\n}");
                     }
-                }
+                    add_keyword("match", "match $1 {\n    $0\n}");
+                    add_keyword("while", "while $1 {\n    $0\n}");
+                    add_keyword("while let", "while let $1 = $2 {\n    $0\n}");
+                    add_keyword("loop", "loop {\n    $0\n}");
+                    if in_match_guard {
+                        add_keyword("if", "if $0");
+                    } else {
+                        add_keyword("if", "if $1 {\n    $0\n}");
+                    }
+                    add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
+                    add_keyword("for", "for $1 in $2 {\n    $0\n}");
+                    add_keyword("true", "true");
+                    add_keyword("false", "false");
 
-                if let Some(ty) = innermost_ret_ty {
-                    add_keyword(
-                        "return",
-                        match (in_block_expr, ty.is_unit()) {
-                            (true, true) => "return ;",
-                            (true, false) => "return;",
-                            (false, true) => "return $0",
-                            (false, false) => "return",
-                        },
-                    );
+                    if in_condition || in_block_expr {
+                        add_keyword("let", "let");
+                    }
+
+                    if after_if_expr {
+                        add_keyword("else", "else {\n    $0\n}");
+                        add_keyword("else if", "else if $1 {\n    $0\n}");
+                    }
+
+                    if wants_mut_token {
+                        add_keyword("mut", "mut ");
+                    }
+
+                    if in_loop_body {
+                        if in_block_expr {
+                            add_keyword("continue", "continue;");
+                            add_keyword("break", "break;");
+                        } else {
+                            add_keyword("continue", "continue");
+                            add_keyword("break", "break");
+                        }
+                    }
+
+                    if let Some(ty) = innermost_ret_ty {
+                        add_keyword(
+                            "return",
+                            match (in_block_expr, ty.is_unit()) {
+                                (true, true) => "return ;",
+                                (true, false) => "return;",
+                                (false, true) => "return $0",
+                                (false, false) => "return",
+                            },
+                        );
+                    }
                 }
             }
         }

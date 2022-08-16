@@ -12,7 +12,6 @@ use super::proc_macro::bridge::{self, server};
 
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::iter::FromIterator;
 use std::ops::Bound;
 use std::{ascii, vec::IntoIter};
 

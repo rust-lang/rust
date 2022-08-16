@@ -1,27 +1,19 @@
 //! See [`AssistContext`].
 
-use std::mem;
-
 use hir::Semantics;
-use ide_db::{
-    base_db::{AnchoredPathBuf, FileId, FileRange},
-    SnippetCap,
-};
-use ide_db::{
-    label::Label,
-    source_change::{FileSystemEdit, SourceChange},
-    RootDatabase,
-};
+use ide_db::base_db::{FileId, FileRange};
+use ide_db::{label::Label, RootDatabase};
 use syntax::{
     algo::{self, find_node_at_offset, find_node_at_range},
-    AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
-    SyntaxToken, TextRange, TextSize, TokenAtOffset,
+    AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange,
+    TextSize, TokenAtOffset,
 };
-use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     assist_config::AssistConfig, Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel,
 };
+
+pub(crate) use ide_db::source_change::{SourceChangeBuilder, TreeMutator};
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -163,7 +155,7 @@ impl Assists {
         id: AssistId,
         label: impl Into<String>,
         target: TextRange,
-        f: impl FnOnce(&mut AssistBuilder),
+        f: impl FnOnce(&mut SourceChangeBuilder),
     ) -> Option<()> {
         let mut f = Some(f);
         self.add_impl(None, id, label.into(), target, &mut |it| f.take().unwrap()(it))
@@ -175,7 +167,7 @@ impl Assists {
         id: AssistId,
         label: impl Into<String>,
         target: TextRange,
-        f: impl FnOnce(&mut AssistBuilder),
+        f: impl FnOnce(&mut SourceChangeBuilder),
     ) -> Option<()> {
         let mut f = Some(f);
         self.add_impl(Some(group), id, label.into(), target, &mut |it| f.take().unwrap()(it))
@@ -187,7 +179,7 @@ impl Assists {
         id: AssistId,
         label: String,
         target: TextRange,
-        f: &mut dyn FnMut(&mut AssistBuilder),
+        f: &mut dyn FnMut(&mut SourceChangeBuilder),
     ) -> Option<()> {
         if !self.is_allowed(&id) {
             return None;
@@ -195,7 +187,7 @@ impl Assists {
 
         let mut trigger_signature_help = false;
         let source_change = if self.resolve.should_resolve(&id) {
-            let mut builder = AssistBuilder::new(self.file);
+            let mut builder = SourceChangeBuilder::new(self.file);
             f(&mut builder);
             trigger_signature_help = builder.trigger_signature_help;
             Some(builder.finish())
@@ -214,134 +206,5 @@ impl Assists {
             Some(allowed) => allowed.iter().any(|kind| kind.contains(id.1)),
             None => true,
         }
-    }
-}
-
-pub(crate) struct AssistBuilder {
-    edit: TextEditBuilder,
-    file_id: FileId,
-    source_change: SourceChange,
-    trigger_signature_help: bool,
-
-    /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
-    mutated_tree: Option<TreeMutator>,
-}
-
-pub(crate) struct TreeMutator {
-    immutable: SyntaxNode,
-    mutable_clone: SyntaxNode,
-}
-
-impl TreeMutator {
-    pub(crate) fn new(immutable: &SyntaxNode) -> TreeMutator {
-        let immutable = immutable.ancestors().last().unwrap();
-        let mutable_clone = immutable.clone_for_update();
-        TreeMutator { immutable, mutable_clone }
-    }
-
-    pub(crate) fn make_mut<N: AstNode>(&self, node: &N) -> N {
-        N::cast(self.make_syntax_mut(node.syntax())).unwrap()
-    }
-
-    pub(crate) fn make_syntax_mut(&self, node: &SyntaxNode) -> SyntaxNode {
-        let ptr = SyntaxNodePtr::new(node);
-        ptr.to_node(&self.mutable_clone)
-    }
-}
-
-impl AssistBuilder {
-    pub(crate) fn new(file_id: FileId) -> AssistBuilder {
-        AssistBuilder {
-            edit: TextEdit::builder(),
-            file_id,
-            source_change: SourceChange::default(),
-            trigger_signature_help: false,
-            mutated_tree: None,
-        }
-    }
-
-    pub(crate) fn edit_file(&mut self, file_id: FileId) {
-        self.commit();
-        self.file_id = file_id;
-    }
-
-    fn commit(&mut self) {
-        if let Some(tm) = self.mutated_tree.take() {
-            algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit)
-        }
-
-        let edit = mem::take(&mut self.edit).finish();
-        if !edit.is_empty() {
-            self.source_change.insert_source_edit(self.file_id, edit);
-        }
-    }
-
-    pub(crate) fn make_mut<N: AstNode>(&mut self, node: N) -> N {
-        self.mutated_tree.get_or_insert_with(|| TreeMutator::new(node.syntax())).make_mut(&node)
-    }
-    /// Returns a copy of the `node`, suitable for mutation.
-    ///
-    /// Syntax trees in rust-analyzer are typically immutable, and mutating
-    /// operations panic at runtime. However, it is possible to make a copy of
-    /// the tree and mutate the copy freely. Mutation is based on interior
-    /// mutability, and different nodes in the same tree see the same mutations.
-    ///
-    /// The typical pattern for an assist is to find specific nodes in the read
-    /// phase, and then get their mutable couterparts using `make_mut` in the
-    /// mutable state.
-    pub(crate) fn make_syntax_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
-        self.mutated_tree.get_or_insert_with(|| TreeMutator::new(&node)).make_syntax_mut(&node)
-    }
-
-    /// Remove specified `range` of text.
-    pub(crate) fn delete(&mut self, range: TextRange) {
-        self.edit.delete(range)
-    }
-    /// Append specified `text` at the given `offset`
-    pub(crate) fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
-        self.edit.insert(offset, text.into())
-    }
-    /// Append specified `snippet` at the given `offset`
-    pub(crate) fn insert_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        offset: TextSize,
-        snippet: impl Into<String>,
-    ) {
-        self.source_change.is_snippet = true;
-        self.insert(offset, snippet);
-    }
-    /// Replaces specified `range` of text with a given string.
-    pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
-        self.edit.replace(range, replace_with.into())
-    }
-    /// Replaces specified `range` of text with a given `snippet`.
-    pub(crate) fn replace_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        range: TextRange,
-        snippet: impl Into<String>,
-    ) {
-        self.source_change.is_snippet = true;
-        self.replace(range, snippet);
-    }
-    pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
-        algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
-    }
-    pub(crate) fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
-        let file_system_edit = FileSystemEdit::CreateFile { dst, initial_contents: content.into() };
-        self.source_change.push_file_system_edit(file_system_edit);
-    }
-    pub(crate) fn move_file(&mut self, src: FileId, dst: AnchoredPathBuf) {
-        let file_system_edit = FileSystemEdit::MoveFile { src, dst };
-        self.source_change.push_file_system_edit(file_system_edit);
-    }
-    pub(crate) fn trigger_signature_help(&mut self) {
-        self.trigger_signature_help = true;
-    }
-
-    fn finish(mut self) -> SourceChange {
-        self.commit();
-        mem::take(&mut self.source_change)
     }
 }

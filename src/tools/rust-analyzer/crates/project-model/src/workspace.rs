@@ -12,6 +12,7 @@ use base_db::{
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
+use semver::Version;
 use stdx::always;
 
 use crate::{
@@ -77,6 +78,7 @@ pub enum ProjectWorkspace {
         /// different target.
         rustc_cfg: Vec<CfgFlag>,
         cfg_overrides: CfgOverrides,
+        toolchain: Option<Version>,
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
@@ -105,6 +107,7 @@ impl fmt::Debug for ProjectWorkspace {
                 rustc,
                 rustc_cfg,
                 cfg_overrides,
+                toolchain,
             } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
@@ -116,6 +119,7 @@ impl fmt::Debug for ProjectWorkspace {
                 )
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
+                .field("toolchain", &toolchain)
                 .finish(),
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => {
                 let mut debug_struct = f.debug_struct("Json");
@@ -160,6 +164,9 @@ impl ProjectWorkspace {
                     cmd.arg("--version");
                     cmd
                 })?;
+                let toolchain = cargo_version
+                    .get("cargo ".len()..)
+                    .and_then(|it| Version::parse(it.split_whitespace().next()?).ok());
 
                 let meta = CargoWorkspace::fetch_metadata(
                     &cargo_toml,
@@ -169,9 +176,9 @@ impl ProjectWorkspace {
                 )
                 .with_context(|| {
                     format!(
-                        "Failed to read Cargo metadata from Cargo.toml file {}, {}",
+                        "Failed to read Cargo metadata from Cargo.toml file {}, {:?}",
                         cargo_toml.display(),
-                        cargo_version
+                        toolchain
                     )
                 })?;
                 let cargo = CargoWorkspace::new(meta);
@@ -219,6 +226,7 @@ impl ProjectWorkspace {
                     rustc,
                     rustc_cfg,
                     cfg_overrides,
+                    toolchain,
                 }
             }
         };
@@ -271,8 +279,8 @@ impl ProjectWorkspace {
         progress: &dyn Fn(String),
     ) -> Result<WorkspaceBuildScripts> {
         match self {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                WorkspaceBuildScripts::run(config, cargo, progress).with_context(|| {
+            ProjectWorkspace::Cargo { cargo, toolchain, .. } => {
+                WorkspaceBuildScripts::run(config, cargo, progress, toolchain).with_context(|| {
                     format!("Failed to run build scripts for {}", &cargo.workspace_root().display())
                 })
             }
@@ -320,6 +328,7 @@ impl ProjectWorkspace {
                 rustc_cfg: _,
                 cfg_overrides: _,
                 build_scripts,
+                toolchain: _,
             } => {
                 cargo
                     .packages()
@@ -425,6 +434,7 @@ impl ProjectWorkspace {
                 rustc_cfg,
                 cfg_overrides,
                 build_scripts,
+                toolchain: _,
             } => cargo_to_crate_graph(
                 rustc_cfg.clone(),
                 cfg_overrides,
