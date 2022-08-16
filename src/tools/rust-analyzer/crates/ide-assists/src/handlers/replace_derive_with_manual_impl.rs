@@ -10,7 +10,7 @@ use syntax::{
 };
 
 use crate::{
-    assist_context::{AssistBuilder, AssistContext, Assists},
+    assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::{
         add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body,
         generate_trait_impl_text, render_snippet, Cursor, DefaultMethods,
@@ -224,7 +224,7 @@ fn impl_def_from_trait(
 }
 
 fn update_attribute(
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     old_derives: &[ast::Path],
     old_tree: &ast::TokenTree,
     old_trait_path: &ast::Path,

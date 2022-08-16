@@ -78,7 +78,7 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--disable-extension", "matklad.rust-analyzer",
+        "--disable-extension", "rust-lang.rust-analyzer",
         "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
       ],
       "outFiles": [

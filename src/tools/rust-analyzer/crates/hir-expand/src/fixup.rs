@@ -67,7 +67,6 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
             preorder.skip_subtree();
             continue;
         }
-
         // In some other situations, we can fix things by just appending some tokens.
         let end_range = TextRange::empty(node.text_range().end());
         match_ast! {
@@ -194,7 +193,75 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                     }
                 },
                 // FIXME: foo::
-                // FIXME: for, match etc.
+                ast::MatchExpr(it) => {
+                    if it.expr().is_none() {
+                        let match_token = match it.match_token() {
+                            Some(t) => t,
+                            None => continue
+                        };
+                        append.insert(match_token.into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::IDENT,
+                                text: "__ra_fixup".into(),
+                                range: end_range,
+                                id: EMPTY_ID
+                            },
+                        ]);
+                    }
+                    if it.match_arm_list().is_none() {
+                        // No match arms
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
+                ast::ForExpr(it) => {
+                    let for_token = match it.for_token() {
+                        Some(token) => token,
+                        None => continue
+                    };
+
+                    let [pat, in_token, iter] = [
+                        (SyntaxKind::UNDERSCORE, "_"),
+                        (SyntaxKind::IN_KW, "in"),
+                        (SyntaxKind::IDENT, "__ra_fixup")
+                    ].map(|(kind, text)| SyntheticToken { kind, text: text.into(), range: end_range, id: EMPTY_ID});
+
+                    if it.pat().is_none() && it.in_token().is_none() && it.iterable().is_none() {
+                        append.insert(for_token.into(), vec![pat, in_token, iter]);
+                    // does something funky -- see test case for_no_pat
+                    } else if it.pat().is_none() {
+                        append.insert(for_token.into(), vec![pat]);
+                    }
+
+                    if it.loop_body().is_none() {
+                        append.insert(node.clone().into(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::L_CURLY,
+                                text: "{".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                            SyntheticToken {
+                                kind: SyntaxKind::R_CURLY,
+                                text: "}".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
                 _ => (),
             }
         }
@@ -288,6 +355,111 @@ mod tests {
     }
 
     #[test]
+    fn just_for_token() {
+        check(
+            r#"
+fn foo() {
+    for
+}
+"#,
+            expect![[r#"
+fn foo () {for _ in __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn for_no_iter_pattern() {
+        check(
+            r#"
+fn foo() {
+    for {}
+}
+"#,
+            expect![[r#"
+fn foo () {for _ in __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn for_no_body() {
+        check(
+            r#"
+fn foo() {
+    for bar in qux
+}
+"#,
+            expect![[r#"
+fn foo () {for bar in qux {}}
+"#]],
+        )
+    }
+
+    // FIXME: https://github.com/rust-lang/rust-analyzer/pull/12937#discussion_r937633695
+    #[test]
+    fn for_no_pat() {
+        check(
+            r#"
+fn foo() {
+    for in qux {
+
+    }
+}
+"#,
+            expect![[r#"
+fn foo () {__ra_fixup}
+"#]],
+        )
+    }
+
+    #[test]
+    fn match_no_expr_no_arms() {
+        check(
+            r#"
+fn foo() {
+    match
+}
+"#,
+            expect![[r#"
+fn foo () {match __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn match_expr_no_arms() {
+        check(
+            r#"
+fn foo() {
+    match x {
+
+    }
+}
+"#,
+            expect![[r#"
+fn foo () {match x {}}
+"#]],
+        )
+    }
+
+    #[test]
+    fn match_no_expr() {
+        check(
+            r#"
+fn foo() {
+    match {
+        _ => {}
+    }
+}
+"#,
+            expect![[r#"
+fn foo () {match __ra_fixup {}}
+"#]],
+        )
+    }
+
+    #[test]
     fn incomplete_field_expr_1() {
         check(
             r#"
@@ -296,7 +468,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a . __ra_fixup}
+fn foo () {a .__ra_fixup}
 "#]],
         )
     }
@@ -306,11 +478,11 @@ fn foo () {a . __ra_fixup}
         check(
             r#"
 fn foo() {
-    a. ;
+    a.;
 }
 "#,
             expect![[r#"
-fn foo () {a . __ra_fixup ;}
+fn foo () {a .__ra_fixup ;}
 "#]],
         )
     }
@@ -320,12 +492,12 @@ fn foo () {a . __ra_fixup ;}
         check(
             r#"
 fn foo() {
-    a. ;
+    a.;
     bar();
 }
 "#,
             expect![[r#"
-fn foo () {a . __ra_fixup ; bar () ;}
+fn foo () {a .__ra_fixup ; bar () ;}
 "#]],
         )
     }
@@ -353,7 +525,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {let x = a . __ra_fixup ;}
+fn foo () {let x = a .__ra_fixup ;}
 "#]],
         )
     }
@@ -369,7 +541,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {a . b ; bar () ;}
+fn foo () {a .b ; bar () ;}
 "#]],
         )
     }
