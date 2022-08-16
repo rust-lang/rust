@@ -964,6 +964,9 @@ impl<T: ?Sized> Arc<T> {
     /// Convert a reference to an [`Arc`] into a reference to a [`Weak`] of the same type.
     ///
     /// This is a type-only operation; it doesn't modify the inner reference counts.
+    /// Therefore if you call [`Weak::weak_count()`] on the returned `&Weak<T>`,
+    /// it is possible to get a result of `0`, which is otherwise only possible
+    /// when there are no remaining strong references and the value has been dropped.
     ///
     /// # Examples
     ///
@@ -980,6 +983,15 @@ impl<T: ?Sized> Arc<T> {
     #[unstable(feature = "rc_as_weak", issue = "100472")]
     #[must_use]
     pub const fn as_weak(this: &Self) -> &Weak<T> {
+        // SAFETY: `Arc<T>` and `Weak<T>` are guaranteed to have the same representation
+        // because both are `#[repr(transparent)]` with their only (non-ZST) field being
+        // being a `NonNull<ArcInner<T>>`. The static guarantees carried by a `Weak<T>` (that
+        // the pointer will point to a live `ArcInner<T>` allocation _unless_ it is the sentinel
+        // value of `usize::MAX`) are strictly weaker than those carried by an `Arc<T>` (that
+        // the pointer will always point to a live `ArcInner<T>` allocation containing a live `T`).
+        // The different drop in their drop behaviour is not relevant because this function
+        // is only concerned with shared references, not owned values. Therefore no safety
+        // invariants are violated by interpreting an `&Arc<T>` as a `&Weak<T>`.
         let weak = this as *const Self as *const Weak<T>;
         unsafe { &*weak }
     }
