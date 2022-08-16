@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::util::elaborate_predicates_with_span;
 use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
@@ -90,6 +90,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         let hir::StmtKind::Semi(expr) = s.kind else { return; };
 
         if let hir::ExprKind::Ret(..) = expr.kind {
+            return;
+        }
+
+        if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
+            && let ty = cx.typeck_results().expr_ty(&await_expr)
+            && let ty::Opaque(def_id, _) = ty.kind()
+            && cx.tcx.ty_is_opaque_future(ty)
+            && let parent = cx.tcx.parent(*def_id)
+            && check_must_use_def(cx, parent, expr.span, "awaited future returned by ", "")
+        {
+            // We have a bare `foo().await;` on an opaque type from an async function that was
+            // annotated with `#[must_use]`.
             return;
         }
 
