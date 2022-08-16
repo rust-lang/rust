@@ -268,7 +268,7 @@ macro_rules! handle_strip_of_each_chunk {
         // 32-codepoint chunk number.
         //
         // SAFETY: Guaranteed by bit operations to be in `0..8`.
-        let chunk_number = ($x as u8 & 0b1110_0000).wrapping_shr(5) as usize;
+        let chunk_number = ($x >> 5) as usize;
 
         // `const` to type check and to ensure all element evaluations are done at
         // compile time
@@ -279,7 +279,7 @@ macro_rules! handle_strip_of_each_chunk {
         //
         // SAFETY: The array length is 8 and `chunk_number` is guaranteed to be in
         // `0..8`.
-        let x = $x.wrapping_sub(*unsafe { STARTING_CODEPOINTS.get_unchecked(chunk_number) });
+        let x = $x.wrapping_sub(STARTING_CODEPOINTS[chunk_number]);
 
         // `const` to type check and to ensure all element evaluations are done at
         // compile time
@@ -289,7 +289,7 @@ macro_rules! handle_strip_of_each_chunk {
         //
         // SAFETY: The array length is 8 and `chunk_number` is guaranteed to be in
         // `0..8`.
-        x < *unsafe { STRIP_LENGTHS.get_unchecked(chunk_number) }
+        x < STRIP_LENGTHS[chunk_number]
     }};
 }
 
