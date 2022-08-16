@@ -209,11 +209,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 }
 
                 types::ItemEnum::Method(_)
+                | types::ItemEnum::Module(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. }
                 | types::ItemEnum::PrimitiveType(_) => true,
-                types::ItemEnum::Module(_)
-                | types::ItemEnum::ExternCrate { .. }
+                types::ItemEnum::ExternCrate { .. }
                 | types::ItemEnum::Import(_)
                 | types::ItemEnum::StructField(_)
                 | types::ItemEnum::Variant(_)

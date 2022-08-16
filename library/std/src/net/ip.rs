@@ -3,11 +3,13 @@
 mod tests;
 
 use crate::cmp::Ordering;
-use crate::fmt::{self, Write as FmtWrite};
-use crate::io::Write as IoWrite;
+use crate::fmt::{self, Write};
 use crate::mem::transmute;
 use crate::sys::net::netc as c;
 use crate::sys_common::{FromInner, IntoInner};
+
+mod display_buffer;
+use display_buffer::IpDisplayBuffer;
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -991,21 +993,19 @@ impl From<Ipv6Addr> for IpAddr {
 impl fmt::Display for Ipv4Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let octets = self.octets();
-        // Fast Path: if there's no alignment stuff, write directly to the buffer
+
+        // If there are no alignment requirements, write the IP address directly to `f`.
+        // Otherwise, write it to a local buffer and then use `f.pad`.
         if fmt.precision().is_none() && fmt.width().is_none() {
             write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
         } else {
-            const IPV4_BUF_LEN: usize = 15; // Long enough for the longest possible IPv4 address
-            let mut buf = [0u8; IPV4_BUF_LEN];
-            let mut buf_slice = &mut buf[..];
+            const LONGEST_IPV4_ADDR: &str = "255.255.255.255";
 
-            // Note: The call to write should never fail, hence the unwrap
-            write!(buf_slice, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
-            let len = IPV4_BUF_LEN - buf_slice.len();
+            let mut buf = IpDisplayBuffer::<{ LONGEST_IPV4_ADDR.len() }>::new();
+            // Buffer is long enough for the longest possible IPv4 address, so this should never fail.
+            write!(buf, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
 
-            // This unsafe is OK because we know what is being written to the buffer
-            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
-            fmt.pad(buf)
+            fmt.pad(buf.as_str())
         }
     }
 }
@@ -1708,8 +1708,8 @@ impl Ipv6Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // If there are no alignment requirements, write out the IP address to
-        // f. Otherwise, write it to a local buffer, then use f.pad.
+        // If there are no alignment requirements, write the IP address directly to `f`.
+        // Otherwise, write it to a local buffer and then use `f.pad`.
         if f.precision().is_none() && f.width().is_none() {
             let segments = self.segments();
 
@@ -1780,22 +1780,13 @@ impl fmt::Display for Ipv6Addr {
                 }
             }
         } else {
-            // Slow path: write the address to a local buffer, then use f.pad.
-            // Defined recursively by using the fast path to write to the
-            // buffer.
+            const LONGEST_IPV6_ADDR: &str = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
 
-            // This is the largest possible size of an IPv6 address
-            const IPV6_BUF_LEN: usize = (4 * 8) + 7;
-            let mut buf = [0u8; IPV6_BUF_LEN];
-            let mut buf_slice = &mut buf[..];
+            let mut buf = IpDisplayBuffer::<{ LONGEST_IPV6_ADDR.len() }>::new();
+            // Buffer is long enough for the longest possible IPv6 address, so this should never fail.
+            write!(buf, "{}", self).unwrap();
 
-            // Note: This call to write should never fail, so unwrap is okay.
-            write!(buf_slice, "{}", self).unwrap();
-            let len = IPV6_BUF_LEN - buf_slice.len();
-
-            // This is safe because we know exactly what can be in this buffer
-            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
-            f.pad(buf)
+            f.pad(buf.as_str())
         }
     }
 }
