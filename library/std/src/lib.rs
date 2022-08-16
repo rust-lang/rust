@@ -294,6 +294,8 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
+#![feature(maybe_uninit_uninit_array)]
+#![feature(const_maybe_uninit_uninit_array)]
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
