@@ -176,10 +176,16 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     if parent_generics.is_some() && matches!(def, GenericDefId::TypeAliasId(_)) {
         let params = db.generic_params(def);
+        let parent_params = &parent_generics.as_ref().unwrap().params;
         let has_consts =
             params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
-        return if has_consts {
-            // XXX: treat const generic associated types as not existing to avoid crashes (#11769)
+        let parent_has_consts =
+            parent_params.iter().any(|(_, x)| matches!(x, TypeOrConstParamData::ConstParamData(_)));
+        return if has_consts || parent_has_consts {
+            // XXX: treat const generic associated types as not existing to avoid crashes
+            // (#11769, #12193)
+            // Note: also crashes when the parent has const generics (also even if the GAT
+            // doesn't use them), see `tests::regression::gat_crash_3` for an example.
             //
             // Chalk expects the inner associated type's parameters to come
             // *before*, not after the trait's generics as we've always done it.
@@ -264,12 +270,8 @@ impl Generics {
 
     fn find_param(&self, param: TypeOrConstParamId) -> Option<(usize, &TypeOrConstParamData)> {
         if param.parent == self.def {
-            let (idx, (_local_id, data)) = self
-                .params
-                .iter()
-                .enumerate()
-                .find(|(_, (idx, _))| *idx == param.local_id)
-                .unwrap();
+            let (idx, (_local_id, data)) =
+                self.params.iter().enumerate().find(|(_, (idx, _))| *idx == param.local_id)?;
             let parent_len = self.parent_generics().map_or(0, Generics::len);
             Some((parent_len + idx, data))
         } else {

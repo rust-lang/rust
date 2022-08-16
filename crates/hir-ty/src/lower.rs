@@ -509,7 +509,14 @@ impl<'a> TyLoweringContext<'a> {
                         TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
                     }
                     ParamLoweringMode::Variable => {
-                        let idx = generics.param_idx(param_id.into()).expect("matching generics");
+                        let idx = match generics.param_idx(param_id.into()) {
+                            None => {
+                                never!("no matching generics");
+                                return (TyKind::Error.intern(Interner), None);
+                            }
+                            Some(idx) => idx,
+                        };
+
                         TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
                     }
                 }

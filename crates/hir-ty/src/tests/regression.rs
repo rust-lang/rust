@@ -1527,6 +1527,27 @@ unsafe impl Storage for InlineStorage {
 }
 
 #[test]
+fn gat_crash_3() {
+    cov_mark::check!(ignore_gats);
+    check_no_mismatches(
+        r#"
+trait Collection {
+    type Item;
+    type Member<T>: Collection<Item = T>;
+    fn add(&mut self, value: Self::Item) -> Result<(), Self::Error>;
+}
+struct ConstGen<T, const N: usize> {
+    data: [T; N],
+}
+impl<T, const N: usize> Collection for ConstGen<T, N> {
+    type Item = T;
+    type Member<U> = ConstGen<U, N>;
+}
+        "#,
+    );
+}
+
+#[test]
 fn cfgd_out_self_param() {
     cov_mark::check!(cfgd_out_self_param);
     check_no_mismatches(
