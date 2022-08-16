@@ -2,16 +2,18 @@
 set -euo pipefail
 set -x
 
-# Determine configuration
+# Determine configuration for installed build
+echo "Installing release version of Miri"
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
-
-# Prepare
-echo "Build and install miri"
 ./miri install # implicitly locked
+
+# Prepare debug build for direct `./miri` invocations
+echo "Building debug version of Miri"
+export CARGO_EXTRA_FLAGS="--locked"
 ./miri check --no-default-features # make sure this can be built
 ./miri check --all-features # and this, too
-./miri build --all-targets --locked # the build that all the `./miri test` below will use
+./miri build --all-targets # the build that all the `./miri test` below will use
 echo
 
 # Test
@@ -23,13 +25,13 @@ function run_tests {
   fi
 
   ## ui test suite
-  ./miri test --locked
+  ./miri test
   if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with optimizations (`-O` is what cargo passes, but crank MIR
     # optimizations up all the way).
     # Optimizations change diagnostics (mostly backtraces), so we don't check them
     #FIXME(#2155): we want to only run the pass and panic tests here, not the fail tests.
-    MIRIFLAGS="-O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test --locked -- tests/{pass,panic}
+    MIRIFLAGS="-O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
   fi
 
   ## test-cargo-miri
@@ -70,7 +72,7 @@ function run_tests_minimal {
     echo "Testing MINIMAL host architecture: only testing $@"
   fi
 
-  ./miri test --locked -- "$@"
+  ./miri test -- "$@"
 }
 
 # host
