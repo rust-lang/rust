@@ -546,6 +546,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
              executing...",
         );
         diag.note("...therefore, they cannot allow references to captured variables to escape");
+        self.suggest_move_on_borrowing_closure(&mut diag);
 
         diag
     }
@@ -716,6 +717,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
+        self.suggest_move_on_borrowing_closure(&mut diag);
 
         diag
     }
@@ -900,5 +902,40 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
 
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
+    }
+
+    fn suggest_move_on_borrowing_closure(&self, diag: &mut Diagnostic) {
+        let map = self.infcx.tcx.hir();
+        let body_id = map.body_owned_by(self.mir_def_id());
+        let expr = &map.body(body_id).value;
+        let mut closure_span = None::<rustc_span::Span>;
+        match expr.kind {
+            hir::ExprKind::MethodCall(.., args, _) => {
+                // only the first closre parameter of the method. args[0] is MethodCall PathSegment
+                for i in 1..args.len() {
+                    if let hir::ExprKind::Closure(..) = args[i].kind {
+                        closure_span = Some(args[i].span.shrink_to_lo());
+                        break;
+                    }
+                }
+            }
+            hir::ExprKind::Block(blk, _) => {
+                if let Some(ref expr) = blk.expr {
+                    // only when the block is a closure
+                    if let hir::ExprKind::Closure(..) = expr.kind {
+                        closure_span = Some(expr.span.shrink_to_lo());
+                    }
+                }
+            }
+            _ => {}
+        }
+        if let Some(closure_span) = closure_span {
+            diag.span_suggestion_verbose(
+                closure_span,
+                format!("consider adding 'move' keyword before the nested closure"),
+                "move ",
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 }

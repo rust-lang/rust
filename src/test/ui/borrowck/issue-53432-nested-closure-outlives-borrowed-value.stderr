@@ -10,6 +10,10 @@ LL |         || f() // The `nested` closure
    |         ^^^^^^ returning this value requires that `'1` must outlive `'2`
    |
    = note: closure implements `Fn`, so references to captured variables can't escape the closure
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |         move || f() // The `nested` closure
+   |         ++++
 
 error: aborting due to previous error
 
