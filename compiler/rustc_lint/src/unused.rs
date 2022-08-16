@@ -87,17 +87,14 @@ declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let expr = match s.kind {
-            hir::StmtKind::Semi(ref expr) => &**expr,
-            _ => return,
-        };
+        let hir::StmtKind::Semi(expr) = s.kind else { return; };
 
         if let hir::ExprKind::Ret(..) = expr.kind {
             return;
         }
 
         let ty = cx.typeck_results().expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, expr.span, "", "", 1);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -119,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
+            fn_warned = check_must_use_def(cx, def_id, expr.span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
