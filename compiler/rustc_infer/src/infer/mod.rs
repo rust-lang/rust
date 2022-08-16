@@ -1935,6 +1935,18 @@ impl<'tcx> TypeTrace<'tcx> {
         }
     }
 
+    pub fn poly_trait_refs(
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: ty::PolyTraitRef<'tcx>,
+        b: ty::PolyTraitRef<'tcx>,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+
     pub fn consts(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,

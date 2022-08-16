@@ -326,8 +326,22 @@ export function toggleInlayHints(_ctx: Ctx): Cmd {
         const config = vscode.workspace.getConfiguration("editor.inlayHints", {
             languageId: "rust",
         });
-        const value = !config.get("enabled");
-        await config.update("enabled", value, vscode.ConfigurationTarget.Global);
+
+        const value = config.get("enabled");
+        let stringValue;
+        if (typeof value === "string") {
+            stringValue = value;
+        } else {
+            stringValue = value ? "on" : "off";
+        }
+        const nextValues: Record<string, string> = {
+            on: "off",
+            off: "on",
+            onUnlessPressed: "offUnlessPressed",
+            offUnlessPressed: "onUnlessPressed",
+        };
+        const nextValue = nextValues[stringValue] ?? "on";
+        await config.update("enabled", nextValue, vscode.ConfigurationTarget.Global);
     };
 }
 

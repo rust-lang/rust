@@ -20,7 +20,7 @@ use syntax::{
     SyntaxNode, TextRange, TextSize, T,
 };
 
-use crate::assist_context::{AssistBuilder, AssistContext};
+use crate::assist_context::{AssistContext, SourceChangeBuilder};
 
 pub(crate) mod suggest_name;
 mod gen_trait_fn_body;
@@ -484,7 +484,7 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
 }
 
 pub(crate) fn add_method_to_adt(
-    builder: &mut AssistBuilder,
+    builder: &mut SourceChangeBuilder,
     adt: &ast::Adt,
     impl_def: Option<ast::Impl>,
     method: &str,

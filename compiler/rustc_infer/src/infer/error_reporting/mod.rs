@@ -1750,6 +1750,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
             && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()
             && let Some(def_id) = def_id.as_local()
+            && terr.involves_regions()
         {
             let span = self.tcx.def_span(def_id);
             diag.span_note(span, "this closure does not fulfill the lifetime requirements");
