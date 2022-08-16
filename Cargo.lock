@@ -3721,7 +3721,6 @@ dependencies = [
  "object 0.29.0",
  "pathdiff",
  "regex",
- "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",

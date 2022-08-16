@@ -1,6 +1,5 @@
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
-use super::consts::ConstMethods;
 use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
@@ -15,7 +14,6 @@ use crate::mir::operand::OperandRef;
 use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
-use rustc_apfloat::{ieee, Float, Round, Status};
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -188,8 +186,8 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
-    fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Option<Self::Value>;
-    fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Option<Self::Value>;
+    fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptoui(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptosi(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn uitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
@@ -223,156 +221,7 @@ pub trait BuilderMethods<'a, 'tcx>:
             return if signed { self.fptosi(x, dest_ty) } else { self.fptoui(x, dest_ty) };
         }
 
-        let try_sat_result =
-            if signed { self.fptosi_sat(x, dest_ty) } else { self.fptoui_sat(x, dest_ty) };
-        if let Some(try_sat_result) = try_sat_result {
-            return try_sat_result;
-        }
-
-        let int_width = self.cx().int_width(int_ty);
-        let float_width = self.cx().float_width(float_ty);
-        // LLVM's fpto[su]i returns undef when the input x is infinite, NaN, or does not fit into the
-        // destination integer type after rounding towards zero. This `undef` value can cause UB in
-        // safe code (see issue #10184), so we implement a saturating conversion on top of it:
-        // Semantically, the mathematical value of the input is rounded towards zero to the next
-        // mathematical integer, and then the result is clamped into the range of the destination
-        // integer type. Positive and negative infinity are mapped to the maximum and minimum value of
-        // the destination integer type. NaN is mapped to 0.
-        //
-        // Define f_min and f_max as the largest and smallest (finite) floats that are exactly equal to
-        // a value representable in int_ty.
-        // They are exactly equal to int_ty::{MIN,MAX} if float_ty has enough significand bits.
-        // Otherwise, int_ty::MAX must be rounded towards zero, as it is one less than a power of two.
-        // int_ty::MIN, however, is either zero or a negative power of two and is thus exactly
-        // representable. Note that this only works if float_ty's exponent range is sufficiently large.
-        // f16 or 256 bit integers would break this property. Right now the smallest float type is f32
-        // with exponents ranging up to 127, which is barely enough for i128::MIN = -2^127.
-        // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
-        // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
-        // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-        let int_max = |signed: bool, int_width: u64| -> u128 {
-            let shift_amount = 128 - int_width;
-            if signed { i128::MAX as u128 >> shift_amount } else { u128::MAX >> shift_amount }
-        };
-        let int_min = |signed: bool, int_width: u64| -> i128 {
-            if signed { i128::MIN >> (128 - int_width) } else { 0 }
-        };
-
-        let compute_clamp_bounds_single = |signed: bool, int_width: u64| -> (u128, u128) {
-            let rounded_min =
-                ieee::Single::from_i128_r(int_min(signed, int_width), Round::TowardZero);
-            assert_eq!(rounded_min.status, Status::OK);
-            let rounded_max =
-                ieee::Single::from_u128_r(int_max(signed, int_width), Round::TowardZero);
-            assert!(rounded_max.value.is_finite());
-            (rounded_min.value.to_bits(), rounded_max.value.to_bits())
-        };
-        let compute_clamp_bounds_double = |signed: bool, int_width: u64| -> (u128, u128) {
-            let rounded_min =
-                ieee::Double::from_i128_r(int_min(signed, int_width), Round::TowardZero);
-            assert_eq!(rounded_min.status, Status::OK);
-            let rounded_max =
-                ieee::Double::from_u128_r(int_max(signed, int_width), Round::TowardZero);
-            assert!(rounded_max.value.is_finite());
-            (rounded_min.value.to_bits(), rounded_max.value.to_bits())
-        };
-        // To implement saturation, we perform the following steps:
-        //
-        // 1. Cast x to an integer with fpto[su]i. This may result in undef.
-        // 2. Compare x to f_min and f_max, and use the comparison results to select:
-        //  a) int_ty::MIN if x < f_min or x is NaN
-        //  b) int_ty::MAX if x > f_max
-        //  c) the result of fpto[su]i otherwise
-        // 3. If x is NaN, return 0.0, otherwise return the result of step 2.
-        //
-        // This avoids resulting undef because values in range [f_min, f_max] by definition fit into the
-        // destination type. It creates an undef temporary, but *producing* undef is not UB. Our use of
-        // undef does not introduce any non-determinism either.
-        // More importantly, the above procedure correctly implements saturating conversion.
-        // Proof (sketch):
-        // If x is NaN, 0 is returned by definition.
-        // Otherwise, x is finite or infinite and thus can be compared with f_min and f_max.
-        // This yields three cases to consider:
-        // (1) if x in [f_min, f_max], the result of fpto[su]i is returned, which agrees with
-        //     saturating conversion for inputs in that range.
-        // (2) if x > f_max, then x is larger than int_ty::MAX. This holds even if f_max is rounded
-        //     (i.e., if f_max < int_ty::MAX) because in those cases, nextUp(f_max) is already larger
-        //     than int_ty::MAX. Because x is larger than int_ty::MAX, the return value of int_ty::MAX
-        //     is correct.
-        // (3) if x < f_min, then x is smaller than int_ty::MIN. As shown earlier, f_min exactly equals
-        //     int_ty::MIN and therefore the return value of int_ty::MIN is correct.
-        // QED.
-
-        let float_bits_to_llval = |bx: &mut Self, bits| {
-            let bits_llval = match float_width {
-                32 => bx.cx().const_u32(bits as u32),
-                64 => bx.cx().const_u64(bits as u64),
-                n => bug!("unsupported float width {}", n),
-            };
-            bx.bitcast(bits_llval, float_ty)
-        };
-        let (f_min, f_max) = match float_width {
-            32 => compute_clamp_bounds_single(signed, int_width),
-            64 => compute_clamp_bounds_double(signed, int_width),
-            n => bug!("unsupported float width {}", n),
-        };
-        let f_min = float_bits_to_llval(self, f_min);
-        let f_max = float_bits_to_llval(self, f_max);
-        let int_max = self.cx().const_uint_big(int_ty, int_max(signed, int_width));
-        let int_min = self.cx().const_uint_big(int_ty, int_min(signed, int_width) as u128);
-        let zero = self.cx().const_uint(int_ty, 0);
-
-        // If we're working with vectors, constants must be "splatted": the constant is duplicated
-        // into each lane of the vector.  The algorithm stays the same, we are just using the
-        // same constant across all lanes.
-        let maybe_splat = |bx: &mut Self, val| {
-            if bx.cx().type_kind(dest_ty) == TypeKind::Vector {
-                bx.vector_splat(bx.vector_length(dest_ty), val)
-            } else {
-                val
-            }
-        };
-        let f_min = maybe_splat(self, f_min);
-        let f_max = maybe_splat(self, f_max);
-        let int_max = maybe_splat(self, int_max);
-        let int_min = maybe_splat(self, int_min);
-        let zero = maybe_splat(self, zero);
-
-        // Step 1 ...
-        let fptosui_result = if signed { self.fptosi(x, dest_ty) } else { self.fptoui(x, dest_ty) };
-        let less_or_nan = self.fcmp(RealPredicate::RealULT, x, f_min);
-        let greater = self.fcmp(RealPredicate::RealOGT, x, f_max);
-
-        // Step 2: We use two comparisons and two selects, with %s1 being the
-        // result:
-        //     %less_or_nan = fcmp ult %x, %f_min
-        //     %greater = fcmp olt %x, %f_max
-        //     %s0 = select %less_or_nan, int_ty::MIN, %fptosi_result
-        //     %s1 = select %greater, int_ty::MAX, %s0
-        // Note that %less_or_nan uses an *unordered* comparison. This
-        // comparison is true if the operands are not comparable (i.e., if x is
-        // NaN). The unordered comparison ensures that s1 becomes int_ty::MIN if
-        // x is NaN.
-        //
-        // Performance note: Unordered comparison can be lowered to a "flipped"
-        // comparison and a negation, and the negation can be merged into the
-        // select. Therefore, it not necessarily any more expensive than an
-        // ordered ("normal") comparison. Whether these optimizations will be
-        // performed is ultimately up to the backend, but at least x86 does
-        // perform them.
-        let s0 = self.select(less_or_nan, int_min, fptosui_result);
-        let s1 = self.select(greater, int_max, s0);
-
-        // Step 3: NaN replacement.
-        // For unsigned types, the above step already yielded int_ty::MIN == 0 if x is NaN.
-        // Therefore we only need to execute this step for signed integer types.
-        if signed {
-            // LLVM has no isNaN predicate, so we use (x == x) instead
-            let cmp = self.fcmp(RealPredicate::RealOEQ, x, x);
-            self.select(cmp, s1, zero)
-        } else {
-            s1
-        }
+        if signed { self.fptosi_sat(x, dest_ty) } else { self.fptoui_sat(x, dest_ty) }
     }
 
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;

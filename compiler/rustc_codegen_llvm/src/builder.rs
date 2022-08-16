@@ -725,11 +725,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildSExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+    fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.fptoint_sat(false, val, dest_ty)
     }
 
-    fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+    fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         self.fptoint_sat(true, val, dest_ty)
     }
 
@@ -1429,12 +1429,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn fptoint_sat(
-        &mut self,
-        signed: bool,
-        val: &'ll Value,
-        dest_ty: &'ll Type,
-    ) -> Option<&'ll Value> {
+    fn fptoint_sat(&mut self, signed: bool, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         let src_ty = self.cx.val_ty(val);
         let (float_ty, int_ty, vector_length) = if self.cx.type_kind(src_ty) == TypeKind::Vector {
             assert_eq!(self.cx.vector_length(src_ty), self.cx.vector_length(dest_ty));
@@ -1459,7 +1454,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             format!("llvm.{}.sat.i{}.f{}", instr, int_width, float_width)
         };
         let f = self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-        Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None))
+        self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None)
     }
 
     pub(crate) fn landing_pad(

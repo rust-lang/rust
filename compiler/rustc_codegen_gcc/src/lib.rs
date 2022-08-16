@@ -19,6 +19,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 
+extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
