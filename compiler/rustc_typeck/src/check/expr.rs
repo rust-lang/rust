@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 E0610,
                 "`{expr_t}` is a primitive type and therefore doesn't have fields",
             );
-            let is_valid_suffix = |field: String| {
+            let is_valid_suffix = |field: &str| {
                 if field == "f32" || field == "f64" {
                     return true;
                 }
@@ -2184,20 +2184,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let suffix = chars.collect::<String>();
                 suffix.is_empty() || suffix == "f32" || suffix == "f64"
             };
+            let is_likely_suffix = |fist_chars: &[char], field: &str| {
+                field.len() >= 1
+                    && field.to_lowercase().starts_with(fist_chars)
+                    && field[1..].chars().all(|c| c.is_ascii_digit())
+            };
             if let ty::Infer(ty::IntVar(_)) = expr_t.kind()
                 && let ExprKind::Lit(Spanned {
                     node: ast::LitKind::Int(_, ast::LitIntType::Unsuffixed),
                     ..
                 }) = base.kind
                 && !base.span.from_expansion()
-                && is_valid_suffix(field_name)
             {
-                err.span_suggestion_verbose(
-                    field.span.shrink_to_lo(),
-                    "If the number is meant to be a floating point number, consider adding a `0` after the period",
-                    '0',
-                    Applicability::MaybeIncorrect,
-                );
+                let msg = "If the number is meant to be a floating point number, consider adding a `0` after the period";
+                if is_valid_suffix(&field_name) {
+                    err.span_suggestion_verbose(
+                        field.span.shrink_to_lo(),
+                        msg,
+                        '0',
+                        Applicability::MaybeIncorrect,
+                    );
+                } else if is_likely_suffix(&['f', 'l'], &field_name) {
+                    err.span_suggestion_verbose(
+                        field.span,
+                        format!("{}, valid float format are `f32` and `f64`", msg),
+                        "0f32",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             err.emit();
         }
