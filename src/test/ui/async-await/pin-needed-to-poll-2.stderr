@@ -1,8 +1,10 @@
 error[E0277]: `PhantomPinned` cannot be unpinned
-  --> $DIR/pin-needed-to-poll-2.rs:43:9
+  --> $DIR/pin-needed-to-poll-2.rs:43:18
    |
 LL |         Pin::new(&mut self.sleep).poll(cx)
-   |         ^^^^^^^^ within `Sleep`, the trait `Unpin` is not implemented for `PhantomPinned`
+   |         -------- ^^^^^^^^^^^^^^^ within `Sleep`, the trait `Unpin` is not implemented for `PhantomPinned`
+   |         |
+   |         required by a bound introduced by this call
    |
    = note: consider using `Box::pin`
 note: required because it appears within the type `Sleep`

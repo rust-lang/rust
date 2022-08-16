@@ -1645,7 +1645,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             })
         });
-
         let fallback_param_to_point_at = predicate_substs.types().find_map(|ty| {
             ty.walk().find_map(|arg| {
                 if let ty::GenericArgKind::Type(ty) = arg.unpack()
@@ -1660,8 +1659,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         let hir = self.tcx.hir();
+
         match hir.get(hir_id) {
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Path(hir::QPath::Resolved(_, path)), hir_id, .. }) => {
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Path(qpath), hir_id, .. }) => {
                 if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Call(callee, args), hir_id: call_hir_id, .. })
                     = hir.get(hir.get_parent_node(*hir_id))
                     && callee.hir_id == *hir_id
@@ -1677,8 +1677,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return;
                     }
 
-                    if let Some(param_to_point_at) = param_to_point_at
+                    if let hir::QPath::Resolved(_, path) = qpath
+                        && let Some(param_to_point_at) = param_to_point_at
                         && let Some(segment) = path.segments.last()
+                        && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
+                    {
+                        return;
+                    }
+
+                    if let hir::QPath::TypeRelative(_, segment) = qpath
+                        && let Some(param_to_point_at) = param_to_point_at
                         && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
                     {
                         return;
@@ -1727,6 +1735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .enumerate()
             .filter(|(_, ty)| ty.walk().any(|arg| arg == param_to_point_at))
             .collect();
+
         if let [(idx, _)] = args_referencing_param.as_slice()
             && let Some(arg) = args.get(*idx)
         {

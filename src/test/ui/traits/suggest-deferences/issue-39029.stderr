@@ -1,21 +1,11 @@
 error[E0277]: the trait bound `NoToSocketAddrs: ToSocketAddrs` is not satisfied
-  --> $DIR/issue-39029.rs:16:19
+  --> $DIR/issue-39029.rs:16:37
    |
 LL |     let _errors = TcpListener::bind(&bad);
    |                   ----------------- ^^^^ the trait `ToSocketAddrs` is not implemented for `NoToSocketAddrs`
    |                   |
    |                   required by a bound introduced by this call
    |
-   = help: the following other types implement trait `ToSocketAddrs`:
-             &'a [std::net::SocketAddr]
-             &T
-             (&str, u16)
-             (IpAddr, u16)
-             (Ipv4Addr, u16)
-             (Ipv6Addr, u16)
-             (String, u16)
-             SocketAddrV4
-           and 4 others
    = note: required for `&NoToSocketAddrs` to implement `ToSocketAddrs`
 note: required by a bound in `TcpListener::bind`
   --> $SRC_DIR/std/src/net/tcp.rs:LL:COL
