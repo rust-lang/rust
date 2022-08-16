@@ -7,7 +7,7 @@ use crate::spec::{LinkerFlavor, Target};
 pub fn target() -> Target {
     let mut base = uefi_msvc_base::opts();
 
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(128);
     base.add_pre_link_args(LinkerFlavor::Msvc, &["/machine:arm64"]);
 
     Target {
