@@ -1951,12 +1951,12 @@ fn clean_maybe_renamed_item<'tcx>(
                     .map(|ti| clean_trait_item(cx.tcx.hir().trait_item(ti.id), cx))
                     .collect();
 
-                TraitItem(Trait {
+                TraitItem(Box::new(Trait {
                     def_id,
                     items,
                     generics: clean_generics(generics, cx),
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
-                })
+                }))
             }
             ItemKind::ExternCrate(orig_name) => {
                 return clean_extern_crate(item, name, orig_name, cx);

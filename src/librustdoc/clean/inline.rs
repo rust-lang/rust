@@ -62,7 +62,7 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, ItemType::Trait);
             build_impls(cx, Some(parent_module), did, attrs, &mut ret);
-            clean::TraitItem(build_external_trait(cx, did))
+            clean::TraitItem(Box::new(build_external_trait(cx, did)))
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, ItemType::Function);

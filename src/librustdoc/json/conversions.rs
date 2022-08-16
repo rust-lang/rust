@@ -248,7 +248,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
         FunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
         ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
-        TraitItem(t) => ItemEnum::Trait(t.into_tcx(tcx)),
+        TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
         MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, header.unwrap(), tcx)),
         TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, header.unwrap(), tcx)),

@@ -727,7 +727,7 @@ pub(crate) enum ItemKind {
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
-    TraitItem(Trait),
+    TraitItem(Box<Trait>),
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
@@ -2497,7 +2497,7 @@ mod size_asserts {
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Item, 56);
-    static_assert_size!(ItemKind, 112);
+    static_assert_size!(ItemKind, 96);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 56);
 }
