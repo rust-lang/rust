@@ -527,7 +527,7 @@ impl<'a> Parser<'a> {
                         Ok(ident_gen_args) => ident_gen_args,
                         Err(()) => return Ok(Some(AngleBracketedArg::Arg(arg))),
                     };
-                    if binder.is_some() {
+                    if binder {
                         // FIXME(compiler-errors): this could be improved by suggesting lifting
                         // this up to the trait, at least before this becomes real syntax.
                         // e.g. `Trait<for<'a> Assoc = Ty>` -> `for<'a> Trait<Assoc = Ty>`
@@ -720,28 +720,24 @@ impl<'a> Parser<'a> {
 
     /// Given a arg inside of generics, we try to destructure it as if it were the LHS in
     /// `LHS = ...`, i.e. an associated type binding.
-    /// This returns (optionally, if they are present) any `for<'a, 'b>` binder args, the
+    /// This returns a bool indicating if there are any `for<'a, 'b>` binder args, the
     /// identifier, and any GAT arguments.
     fn get_ident_from_generic_arg(
         &self,
         gen_arg: &GenericArg,
-    ) -> Result<(Option<Vec<ast::GenericParam>>, Ident, Option<GenericArgs>), ()> {
+    ) -> Result<(bool, Ident, Option<GenericArgs>), ()> {
         if let GenericArg::Type(ty) = gen_arg {
             if let ast::TyKind::Path(qself, path) = &ty.kind
                 && qself.is_none()
                 && let [seg] = path.segments.as_slice()
             {
-                return Ok((None, seg.ident, seg.args.as_deref().cloned()));
+                return Ok((false, seg.ident, seg.args.as_deref().cloned()));
             } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
                 && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
                     bounds.as_slice()
                 && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
             {
-                return Ok((
-                    Some(trait_ref.bound_generic_params.clone()),
-                    seg.ident,
-                    seg.args.as_deref().cloned(),
-                ));
+                return Ok((true, seg.ident, seg.args.as_deref().cloned()));
             }
         }
         Err(())
