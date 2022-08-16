@@ -414,57 +414,67 @@ fn eu_iterator_specializations() {
     check('\u{10FFFF}');
 }
 
-macro_rules! is_ascii_tests {
-    ($x: ident $(, $test_name: ident, $method_name: ident, $original_version: expr)+ $(,)?) => {
-        $(
-            #[test]
-            fn $test_name() {
-                for $x in ('\0'..='\u{d7ff}').chain('\u{e000}'..='\u{10ffff}') {
-                    // Test current version against simple Rust 1.63.0 version
-                    assert!(
-                        $x.$method_name() == ($original_version),
-                        concat!("`{:?}.", stringify!($variant), "()` is incorrect"),
-                        $x
-                    );
-                }
-            }
-        )*
-    };
-}
+#[test]
+fn is_ascii_tests() {
+    for ch in '\0'..=char::MAX {
+        let ascii = matches!(ch, '\0'..='\x7f');
+        let control = matches!(ch, '\0'..='\x1f' | '\x7f');
+        let digit = matches!(ch, '0'..='9');
+        let graphic = matches!(ch, '!'..='~');
+        let hex_letter = matches!(ch, 'A'..='F' | 'a'..='f');
+        let lowercase = matches!(ch, 'a'..='z');
+        let punctuation = matches!(ch, '!'..='/' | ':'..='@' | '['..='`' | '{'..='~');
+        let uppercase = matches!(ch, 'A'..='Z');
+        let whitespace = matches!(ch, '\t' | '\n' | '\r' | '\x0c' | ' ');
 
-is_ascii_tests!(
-    x,
-    test_is_ascii,
-    is_ascii,
-    matches!(x, '\0'..='\x7f'),
-    test_is_ascii_alphabetic,
-    is_ascii_alphabetic,
-    matches!(x, 'A'..='Z' | 'a'..='z'),
-    test_is_ascii_alphanumeric,
-    is_ascii_alphanumeric,
-    matches!(x, '0'..='9' | 'A'..='Z' | 'a'..='z'),
-    test_is_ascii_control,
-    is_ascii_control,
-    matches!(x, '\0'..='\x1F' | '\x7F'),
-    test_is_ascii_digit,
-    is_ascii_digit,
-    matches!(x, '0'..='9'),
-    test_is_ascii_graphic,
-    is_ascii_graphic,
-    matches!(x, '!'..='~'),
-    test_is_ascii_hexdigit,
-    is_ascii_hexdigit,
-    matches!(x, '0'..='9' | 'A'..='F' | 'a'..='f'),
-    test_is_ascii_lowercase,
-    is_ascii_lowercase,
-    matches!(x, 'a'..='z'),
-    test_is_ascii_punctuation,
-    is_ascii_punctuation,
-    matches!(x, '!'..='/' | ':'..='@' | '['..='`' | '{'..='~'),
-    test_is_ascii_uppercase,
-    is_ascii_uppercase,
-    matches!(x, 'A'..='Z'),
-    test_is_ascii_whitespace,
-    is_ascii_whitespace,
-    matches!(x, '\t' | '\n' | '\x0C' | '\r' | ' '),
-);
+        let escaped_ch = ch.escape_default();
+
+        assert_eq!(ch.is_ascii(), ascii, "'{escaped_ch}'.is_ascii() is incorrect");
+        assert_eq!(
+            ch.is_ascii_alphabetic(),
+            uppercase | lowercase,
+            "'{escaped_ch}'.is_ascii_alphabetic() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_alphanumeric(),
+            uppercase | lowercase | digit,
+            "'{escaped_ch}'.is_ascii_alphanumeric() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_control(),
+            control,
+            "'{escaped_ch}'.is_ascii_control() is incorrect"
+        );
+        assert_eq!(ch.is_ascii_digit(), digit, "'{escaped_ch}'.is_ascii_digit() is incorrect");
+        assert_eq!(
+            ch.is_ascii_graphic(),
+            graphic,
+            "'{escaped_ch}'.is_ascii_graphic() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_hexdigit(),
+            digit | hex_letter,
+            "'{escaped_ch}'.is_ascii_hexdigit() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_lowercase(),
+            lowercase,
+            "'{escaped_ch}'.is_ascii_lowercase() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_punctuation(),
+            punctuation,
+            "'{escaped_ch}'.is_ascii_punctuation() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_uppercase(),
+            uppercase,
+            "'{escaped_ch}'.is_ascii_uppercase() is incorrect"
+        );
+        assert_eq!(
+            ch.is_ascii_whitespace(),
+            whitespace,
+            "'{escaped_ch}'.is_ascii_whitespace() is incorrect"
+        );
+    }
+}
