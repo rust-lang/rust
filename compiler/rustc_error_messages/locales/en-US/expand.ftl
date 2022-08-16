@@ -6,3 +6,9 @@ expand_explain_doc_comment_inner =
 
 expand_expr_repeat_no_syntax_vars = 
     attempted to repeat an expression containing no syntax variables matched as repeating at this depth
+
+expand_must_repeat_once = 
+    this must repeat at least once
+
+count_repetition_misplaced =
+    `count` can not be placed inside the inner-most repetition

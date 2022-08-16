@@ -7,9 +7,9 @@ use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_macros::SessionDiagnostic;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_macros::SessionDiagnostic;
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
@@ -57,6 +57,13 @@ impl<'a> Iterator for Frame<'a> {
 #[derive(SessionDiagnostic)]
 #[error(expand::expr_repeat_no_syntax_vars)]
 struct NoSyntaxVarsExprRepeat {
+    #[primary_span]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(expand::must_repeat_once)]
+struct MustRepeatOnce {
     #[primary_span]
     span: Span,
 }
@@ -197,10 +204,7 @@ pub(super) fn transcribe<'a>(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx.struct_span_err(
-                                    sp.entire(),
-                                    "this must repeat at least once",
-                                ));
+                                return Err(cx.create_err(MustRepeatOnce { span: sp.entire() }));
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repetitions so far). `len`
@@ -424,6 +428,13 @@ fn lockstep_iter_size(
     }
 }
 
+#[derive(SessionDiagnostic)]
+#[error(expand::count_repetition_misplaced)]
+struct CountRepetitionMisplaced {
+    #[primary_span]
+    span: Span,
+}
+
 /// Used solely by the `count` meta-variable expression, counts the outer-most repetitions at a
 /// given optional nested depth.
 ///
@@ -452,10 +463,7 @@ fn count_repetitions<'a>(
         match matched {
             MatchedTokenTree(_) | MatchedNonterminal(_) => {
                 if declared_lhs_depth == 0 {
-                    return Err(cx.struct_span_err(
-                        sp.entire(),
-                        "`count` can not be placed inside the inner-most repetition",
-                    ));
+                    return Err(cx.create_err( CountRepetitionMisplaced { span: sp.entire()} ));
                 }
                 match depth_opt {
                     None => Ok(1),
