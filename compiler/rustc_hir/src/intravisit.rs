@@ -876,10 +876,7 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             visitor.visit_lifetime(lifetime);
             walk_list!(visitor, visit_param_bound, bounds);
         }
-        WherePredicate::EqPredicate(WhereEqPredicate {
-            hir_id, ref lhs_ty, ref rhs_ty, ..
-        }) => {
-            visitor.visit_id(hir_id);
+        WherePredicate::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty, .. }) => {
             visitor.visit_ty(lhs_ty);
             visitor.visit_ty(rhs_ty);
         }
