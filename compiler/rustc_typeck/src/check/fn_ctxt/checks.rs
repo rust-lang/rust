@@ -1622,6 +1622,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
             = *error.obligation.cause.code().peel_derives() else { return; };
+
+        // Skip over mentioning async lang item
+        if Some(def_id) == self.tcx.lang_items().from_generator_fn()
+            && error.obligation.cause.span.desugaring_kind()
+                == Some(rustc_span::DesugaringKind::Async)
+        {
+            return;
+        }
+
         let Some(unsubstituted_pred) =
             self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx) else { return; };
 
