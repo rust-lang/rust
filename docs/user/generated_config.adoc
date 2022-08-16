@@ -318,6 +318,12 @@ Whether to show `Run` action. Only applies when
 --
 Whether to show documentation on hover.
 --
+[[rust-analyzer.hover.documentation.keywords.enable]]rust-analyzer.hover.documentation.keywords.enable (default: `true`)::
++
+--
+Whether to show keyword hover popups. Only applies when
+`#rust-analyzer.hover.documentation.enable#` is set.
+--
 [[rust-analyzer.hover.links.enable]]rust-analyzer.hover.links.enable (default: `true`)::
 +
 --

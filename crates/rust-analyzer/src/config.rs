@@ -243,7 +243,10 @@ config_data! {
         hover_actions_run_enable: bool             = "true",
 
         /// Whether to show documentation on hover.
-        hover_documentation_enable: bool       = "true",
+        hover_documentation_enable: bool           = "true",
+        /// Whether to show keyword hover popups. Only applies when
+        /// `#rust-analyzer.hover.documentation.enable#` is set.
+        hover_documentation_keywords_enable: bool  = "true",
         /// Use markdown syntax for links in hover.
         hover_links_enable: bool = "true",
 
@@ -1187,6 +1190,7 @@ impl Config {
                     HoverDocFormat::PlainText
                 }
             }),
+            keywords: self.data.hover_documentation_keywords_enable,
         }
     }
 
