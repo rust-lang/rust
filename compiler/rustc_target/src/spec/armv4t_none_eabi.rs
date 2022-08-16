@@ -38,7 +38,9 @@ pub fn target() -> Target {
             linker_flavor: LinkerFlavor::Ld,
             linker: Some("arm-none-eabi-ld".into()),
             asm_args: cvs!["-mthumb-interwork", "-march=armv4t", "-mlittle-endian",],
-            features: "+soft-float,+strict-align".into(),
+            // Force-enable 32-bit atomics, which allows the use of atomic load/store only.
+            // The resulting atomics are ABI incompatible with atomics backed by libatomic.
+            features: "+soft-float,+strict-align,+atomics-32".into(),
             main_needs_argc_argv: false,
             atomic_cas: false,
             has_thumb_interworking: true,
