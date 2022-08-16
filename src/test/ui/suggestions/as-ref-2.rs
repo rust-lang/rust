@@ -1,5 +1,3 @@
-// run-rustfix
-
 struct Struct;
 
 fn bar(_: &Struct) -> Struct {
