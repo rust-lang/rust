@@ -436,7 +436,7 @@ is_ascii_tests!(
     x,
     test_is_ascii,
     is_ascii,
-    x as u32 <= 0x7F,
+    matches!(x, '\0'..='\x7f'),
     test_is_ascii_alphabetic,
     is_ascii_alphabetic,
     matches!(x, 'A'..='Z' | 'a'..='z'),

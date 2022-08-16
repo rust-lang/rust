@@ -24,7 +24,7 @@ mod u8_specific_tests {
         x,
         test_is_ascii,
         is_ascii,
-        x & 128 == 0,
+        matches!(x, b'\0'..=b'\x7f'),
         test_is_ascii_alphabetic,
         is_ascii_alphabetic,
         matches!(x, b'A'..=b'Z' | b'a'..=b'z'),
