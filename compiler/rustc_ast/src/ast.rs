@@ -3035,6 +3035,7 @@ mod size_asserts {
     static_assert_size!(Attribute, 152);
     static_assert_size!(Block, 48);
     static_assert_size!(Expr, 104);
+    static_assert_size!(ExprKind, 72);
     static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 160);
     static_assert_size!(ForeignItemKind, 72);
@@ -3044,9 +3045,13 @@ mod size_asserts {
     static_assert_size!(Item, 200);
     static_assert_size!(ItemKind, 112);
     static_assert_size!(Lit, 48);
+    static_assert_size!(LitKind, 24);
     static_assert_size!(Pat, 120);
+    static_assert_size!(PatKind, 96);
     static_assert_size!(Path, 40);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
+    static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 96);
+    static_assert_size!(TyKind, 72);
 }
