@@ -31,7 +31,7 @@ are implemented diferently depending on whether `parallel-compiler` is true.
 | -------------------------------- | --------------------------------------------------- | ------------ |
 | Lrc                              | std::sync::Arc | std::rc::Rc |
 | Weak                             | std::sync::Weak                                     | std::rc::Weak |
-| Atomic{Bool}/{Usize}/{U32}/{U64} | std::sync::atomic::Atomic{Bool}/{Usize}/{U32}/{U64} | (std::cell::Cell<Bool/Usize/U32/U64>) |
+| Atomic{Bool}/{Usize}/{U32}/{U64} | std::sync::atomic::Atomic{Bool}/{Usize}/{U32}/{U64} | (std::cell::Cell<bool/usize/u32/u64>) |
 | OnceCell                         | std::sync::OnceLock                                 | std::cell::OnceCell |
 | Lock\<T> | (parking_lot::Mutex\<T>) | (std::cell::RefCell) |
 | RwLock\<T> | (parking_lot::RwLock\<T>) | (std::cell::RefCell) |
@@ -39,7 +39,7 @@ are implemented diferently depending on whether `parallel-compiler` is true.
 | MTLock\<T> | (Lock\<T>) | (T) |
 | ReadGuard | parking_lot::RwLockReadGuard | std::cell::Ref |
 | MappedReadGuard | parking_lot::MappedRwLockReadGuard | std::cell::Ref |
-| WriteGuard | parking_lot::MappedWriteGuard | std::cell::RefMut |
+| WriteGuard | parking_lot::RwLockWriteGuard | std::cell::RefMut |
 | MappedWriteGuard | parking_lot::MappedRwLockWriteGuard | std::cell::RefMut |
 | LockGuard | parking_lot::MutexGuard | std::cell::RefMut |
 | MappedLockGuard | parking_lot::MappedMutexGuard | std::cell::RefMut |
