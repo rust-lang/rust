@@ -8,7 +8,7 @@ parallelism at other stages (for example, macro expansion) also represents
 an opportunity for improving compiler performance.
 
 **To try out the current parallel compiler**, one can install rustc from 
-source code with enable `parallel-compiler = true` in the `config.toml`.
+source code with `parallel-compiler = true` in the `config.toml`.
 
 These next few sections describe where and how parallelism is currently used,
 and the current status of making parallel compilation the default in `rustc`.
@@ -31,7 +31,7 @@ are implemented diferently depending on whether `parallel-compiler` is true.
 | -------------------------------- | --------------------------------------------------- | ------------ |
 | Lrc                              | std::sync::Arc | std::rc::Rc |
 | Weak                             | std::sync::Weak                                     | std::rc::Weak |
-| Atomic{Bool}/{Usize}/{U32}/{U64} | std::sync::atomic::Atomic{Bool}/{Usize}/{U32}/{U64} | (Cell\<Bool/Usize/U32/U64>) |
+| Atomic{Bool}/{Usize}/{U32}/{U64} | std::sync::atomic::Atomic{Bool}/{Usize}/{U32}/{U64} | (std::cell::Cell<Bool/Usize/U32/U64>) |
 | OnceCell                         | std::sync::OnceLock                                 | std::cell::OnceCell |
 | Lock\<T> | (parking_lot::Mutex\<T>) | (std::cell::RefCell) |
 | RwLock\<T> | (parking_lot::RwLock\<T>) | (std::cell::RefCell) |
@@ -39,7 +39,7 @@ are implemented diferently depending on whether `parallel-compiler` is true.
 | MTLock\<T> | (Lock\<T>) | (T) |
 | ReadGuard | parking_lot::RwLockReadGuard | std::cell::Ref |
 | MappedReadGuard | parking_lot::MappedRwLockReadGuard | std::cell::Ref |
-| WriteGuard | MappedWriteGuard | std::cell::RefMut |
+| WriteGuard | parking_lot::MappedWriteGuard | std::cell::RefMut |
 | MappedWriteGuard | parking_lot::MappedRwLockWriteGuard | std::cell::RefMut |
 | LockGuard | parking_lot::MutexGuard | std::cell::RefMut |
 | MappedLockGuard | parking_lot::MappedMutexGuard | std::cell::RefMut |
@@ -58,15 +58,15 @@ was constructed on. It will panic otherwise.
 
 `WorkLocal` is used to implement the `Arena` allocator in the parallel 
 environment, which is critical in parallel queries. Its implementation 
-locals in the `rustc-rayon-core::worker_local` module. However, in the 
-non-parallel compiler, it is implemented as `(OneThread<T>)`, which `T` 
+is located in the `rustc-rayon-core::worker_local` module. However, in the 
+non-parallel compiler, it is implemented as `(OneThread<T>)`, whose `T` 
 can be accessed directly through `Deref::deref`.
 
 ## Parallel Iterator
 
 The parallel iterators provided by the [`rayon`] crate are efficient 
 ways to achieve parallelization. The current nightly rustc uses (a custom 
-ork of) [`rayon`] to run tasks in parallel. The custom fork allows the 
+fork of) [`rayon`] to run tasks in parallel. The custom fork allows the 
 execution of DAGs of tasks, not just trees.
 
 Some iterator functions are implemented in the current nightly compiler to
@@ -101,10 +101,9 @@ are as follows:
 | rustc_interface::passes::analysis                       | Deathness checking                                           | Map::par_for_each_module |
 | rustc_interface::passes::analysis                       | Privacy checking                                             | Map::par_for_each_module |
 | rustc_lint::late::check_crate                           | Run per-module lints                                         | Map::par_for_each_module |
-| rustc_typeck::check_crate                               | well formed checking                                         | Map::par_for_each_module |
+| rustc_typeck::check_crate                               | Well formed checking                                         | Map::par_for_each_module |
 
-And There are still many loops that have the potential to use 
-parallel iterators.
+There are still many loops that have the potential to use parallel iterators.
 
 ## Query System
 
@@ -129,7 +128,7 @@ When a query `foo` is evaluated, the cache table for `foo` is locked.
   case `rustc_query_system::query::job::deadlock()` will be called to detect
   and remove the deadlock and then return cycle error as the query result.
 
-Parallel query still has a lot of work to do, most of which are related to 
+Parallel query still has a lot of work to do, most of which is related to 
 the previous `Data Structures` and `Parallel Iterators`. See [this tracking issue][tracking].
 
 ## Rustdoc
