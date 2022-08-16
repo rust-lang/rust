@@ -975,7 +975,7 @@ fn foo() {
         }
 
         #[test]
-        fn inline_uses_across_files_fails() {
+        fn inline_uses_across_files_2() {
             check_assist(
                 inline_type_alias_uses,
                 r#"
@@ -990,11 +990,6 @@ fn foo() {
 }
 "#,
                 r#"
-//- /lib.rs
-mod foo;
-type I = i32;
-
-//- /foo.rs
 use super::I;
 fn foo() {
     let _: i32 = 0;
