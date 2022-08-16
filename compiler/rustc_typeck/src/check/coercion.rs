@@ -1594,7 +1594,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let hir::ExprKind::Loop(_, _, _, loop_span) = expr.kind else { return;};
         let mut span: MultiSpan = vec![loop_span].into();
         span.push_span_label(loop_span, "this might have zero elements to iterate on");
-        for ret_expr in ret_exprs {
+        const MAXITER: usize = 3;
+        let iter = ret_exprs.iter().take(MAXITER);
+        for ret_expr in iter {
             span.push_span_label(
                 ret_expr.span,
                 "if the loop doesn't execute, this value would never get returned",
@@ -1604,6 +1606,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             span,
             "the function expects a value to always be returned, but loops might run zero times",
         );
+        if MAXITER < ret_exprs.len() {
+            err.note(&format!(
+                "if the loop doesn't execute, {} other values would never get returned",
+                ret_exprs.len() - MAXITER
+            ));
+        }
         err.help(
             "return a value for the case when the loop has zero elements to iterate on, or \
            consider changing the return type to account for that possibility",
