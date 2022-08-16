@@ -25,10 +25,10 @@ LL + fn foo2<T>() { not_sized::<Foo<T>>() }
    |
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/unsized-struct.rs:13:24
+  --> $DIR/unsized-struct.rs:13:35
    |
 LL | fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
-   |         -              ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |         -                         ^^^^^^ doesn't have a size known at compile-time
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |

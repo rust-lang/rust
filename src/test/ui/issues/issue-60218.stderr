@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `&u32: Foo` is not satisfied
-  --> $DIR/issue-60218.rs:18:27
+  --> $DIR/issue-60218.rs:18:19
    |
 LL |     trigger_error(vec![], |x: &u32| x)
-   |     -------------         ^^^^^^^^^^^ the trait `Foo` is not implemented for `&u32`
+   |     ------------- ^^^^^^ the trait `Foo` is not implemented for `&u32`
    |     |
    |     required by a bound introduced by this call
    |
@@ -14,6 +14,7 @@ LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
 ...
 LL | for<'t> <Map<<&'t I as IntoIterator>::IntoIter, F> as Iterator>::Item: Foo,
    |                                                                        ^^^ required by this bound in `trigger_error`
+   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

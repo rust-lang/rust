@@ -1,8 +1,15 @@
 error: generator cannot be sent between threads safely
-  --> $DIR/partial-drop.rs:14:5
+  --> $DIR/partial-drop.rs:14:17
    |
-LL |     assert_send(|| {
-   |     ^^^^^^^^^^^ generator is not `Send`
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         // FIXME: it would be nice to make this work.
+LL | |         let guard = Bar { foo: Foo, x: 42 };
+LL | |         drop(guard.foo);
+LL | |         yield;
+LL | |     });
+   | |_____^ generator is not `Send`
    |
    = help: within `[generator@$DIR/partial-drop.rs:14:17: 14:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
@@ -22,10 +29,17 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
 error: generator cannot be sent between threads safely
-  --> $DIR/partial-drop.rs:22:5
+  --> $DIR/partial-drop.rs:22:17
    |
-LL |     assert_send(|| {
-   |     ^^^^^^^^^^^ generator is not `Send`
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         // FIXME: it would be nice to make this work.
+LL | |         let guard = Bar { foo: Foo, x: 42 };
+...  |
+LL | |         yield;
+LL | |     });
+   | |_____^ generator is not `Send`
    |
    = help: within `[generator@$DIR/partial-drop.rs:22:17: 22:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield
@@ -45,10 +59,17 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
 error: generator cannot be sent between threads safely
-  --> $DIR/partial-drop.rs:32:5
+  --> $DIR/partial-drop.rs:32:17
    |
-LL |     assert_send(|| {
-   |     ^^^^^^^^^^^ generator is not `Send`
+LL |       assert_send(|| {
+   |  _________________^
+LL | |
+LL | |         // FIXME: it would be nice to make this work.
+LL | |         let guard = Bar { foo: Foo, x: 42 };
+...  |
+LL | |         yield;
+LL | |     });
+   | |_____^ generator is not `Send`
    |
    = help: within `[generator@$DIR/partial-drop.rs:32:17: 32:19]`, the trait `Send` is not implemented for `Foo`
 note: generator is not `Send` as this value is used across a yield

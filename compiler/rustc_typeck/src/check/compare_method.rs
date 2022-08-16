@@ -1463,7 +1463,7 @@ pub fn check_type_bounds<'tcx>(
         );
         let mk_cause = |span: Span| {
             let code = if span.is_dummy() {
-                traits::MiscObligation
+                traits::ItemObligation(trait_ty.def_id)
             } else {
                 traits::BindingObligation(trait_ty.def_id, span)
             };

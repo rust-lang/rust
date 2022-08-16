@@ -7,7 +7,7 @@ LL |         farewell.push_str("!!!");
    |         -------- closure is `FnMut` because it mutates the variable `farewell` here
 ...
 LL |     apply(diary);
-   |     ----- the requirement to implement `Fn` derives from here
+   |           ----- the requirement to implement `Fn` derives from here
 
 error: aborting due to previous error
 

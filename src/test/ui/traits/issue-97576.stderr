@@ -1,8 +1,10 @@
 error[E0277]: the trait bound `String: From<impl ToString>` is not satisfied
-  --> $DIR/issue-97576.rs:8:22
+  --> $DIR/issue-97576.rs:8:18
    |
 LL |             bar: bar.into(),
-   |                      ^^^^ the trait `From<impl ToString>` is not implemented for `String`
+   |                  ^^^ ---- required by a bound introduced by this call
+   |                  |
+   |                  the trait `From<impl ToString>` is not implemented for `String`
    |
    = note: required for `impl ToString` to implement `Into<String>`
 

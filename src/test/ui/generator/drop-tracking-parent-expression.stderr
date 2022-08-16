@@ -1,8 +1,8 @@
 error: generator cannot be sent between threads safely
-  --> $DIR/drop-tracking-parent-expression.rs:24:13
+  --> $DIR/drop-tracking-parent-expression.rs:24:25
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ generator is not `Send`
+   |                           ^ generator is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -41,10 +41,10 @@ LL | fn assert_send<T: Send>(_thing: T) {}
    = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: generator cannot be sent between threads safely
-  --> $DIR/drop-tracking-parent-expression.rs:24:13
+  --> $DIR/drop-tracking-parent-expression.rs:24:25
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ generator is not `Send`
+   |                           ^ generator is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -83,10 +83,10 @@ LL | fn assert_send<T: Send>(_thing: T) {}
    = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: generator cannot be sent between threads safely
-  --> $DIR/drop-tracking-parent-expression.rs:24:13
+  --> $DIR/drop-tracking-parent-expression.rs:24:25
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ generator is not `Send`
+   |                           ^ generator is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK

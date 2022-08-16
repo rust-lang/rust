@@ -6,7 +6,7 @@ LL |     let c = || drop(y.0);
    |             |
    |             this closure implements `FnOnce`, not `Fn`
 LL |     foo(c);
-   |     --- the requirement to implement `Fn` derives from here
+   |         - the requirement to implement `Fn` derives from here
 
 error: aborting due to previous error
 

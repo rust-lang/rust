@@ -1022,7 +1022,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let ObligationCauseCode::ImplDerivedObligation(cause) = &*code {
             try_borrowing(cause.derived.parent_trait_pred, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
-        | ObligationCauseCode::ItemObligation(..) = code
+        | ObligationCauseCode::ItemObligation(_)
+        | ObligationCauseCode::ExprItemObligation(..)
+        | ObligationCauseCode::ExprBindingObligation(..) = code
         {
             try_borrowing(poly_trait_pred, &never_suggest_borrow)
         } else {
@@ -2244,11 +2246,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     region, object_ty,
                 ));
             }
-            ObligationCauseCode::ItemObligation(_item_def_id) => {
+            ObligationCauseCode::ItemObligation(_)
+            | ObligationCauseCode::ExprItemObligation(..) => {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
-            ObligationCauseCode::BindingObligation(item_def_id, span) => {
+            ObligationCauseCode::BindingObligation(item_def_id, span)
+            | ObligationCauseCode::ExprBindingObligation(item_def_id, span, ..) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let mut multispan = MultiSpan::from(span);
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {

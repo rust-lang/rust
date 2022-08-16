@@ -12,7 +12,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:7:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -39,7 +41,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:12:26
    |
 LL |     |x| String::from("x".as_ref());
-   |                          ^^^^^^
+   |                      --- ^^^^^^
+   |                      |
+   |                      type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -55,7 +59,9 @@ error[E0283]: type annotations needed for `&T`
   --> $DIR/issue-72690.rs:17:9
    |
 LL |     let _ = "x".as_ref();
-   |         ^       ------ type must be known at this point
+   |         ^   --- ------ required by a bound introduced by this call
+   |             |
+   |             type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -81,7 +87,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:21:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -107,7 +115,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:28:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -133,7 +143,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:37:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -159,7 +171,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:46:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -185,7 +199,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:53:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;
@@ -211,7 +227,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:62:22
    |
 LL |     String::from("x".as_ref());
-   |                      ^^^^^^
+   |                  --- ^^^^^^
+   |                  |
+   |                  type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
            - impl AsRef<OsStr> for str;

@@ -12,11 +12,24 @@ help: use a fully-qualified path to a specific available implementation (2 found
 LL |     let cont: u32 = <::Impl as Generator>::create();
    |                     ++++++++++          +
 
-error[E0283]: type annotations needed
+error[E0282]: type annotations needed
   --> $DIR/E0283.rs:35:24
    |
 LL |     let bar = foo_impl.into() * 1u32;
    |                        ^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
+   |               ++++++++++++++++++++++++        ~
+
+error[E0283]: type annotations needed
+  --> $DIR/E0283.rs:35:24
+   |
+LL |     let bar = foo_impl.into() * 1u32;
+   |               -------- ^^^^
+   |               |
+   |               type must be known at this point
    |
 note: multiple `impl`s satisfying `Impl: Into<_>` found
   --> $DIR/E0283.rs:17:1
@@ -31,7 +44,7 @@ help: try using a fully qualified path to specify the expected types
 LL |     let bar = <Impl as Into<T>>::into(foo_impl) * 1u32;
    |               ++++++++++++++++++++++++        ~
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0283, E0790.
-For more information about an error, try `rustc --explain E0283`.
+Some errors have detailed explanations: E0282, E0283, E0790.
+For more information about an error, try `rustc --explain E0282`.

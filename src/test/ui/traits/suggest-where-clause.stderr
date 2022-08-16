@@ -19,13 +19,13 @@ LL + fn check<T: Iterator, U>() {
    |
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
-  --> $DIR/suggest-where-clause.rs:10:5
+  --> $DIR/suggest-where-clause.rs:10:20
    |
 LL | fn check<T: Iterator, U: ?Sized>() {
    |                       - this type parameter needs to be `std::marker::Sized`
 ...
 LL |     mem::size_of::<Misc<U>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                    ^^^^^^^ doesn't have a size known at compile-time
    |
 note: required because it appears within the type `Misc<U>`
   --> $DIR/suggest-where-clause.rs:3:8

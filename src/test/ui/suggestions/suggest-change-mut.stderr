@@ -1,29 +1,19 @@
 error[E0277]: the trait bound `&T: std::io::Read` is not satisfied
-  --> $DIR/suggest-change-mut.rs:12:48
+  --> $DIR/suggest-change-mut.rs:12:33
    |
 LL |         let mut stream_reader = BufReader::new(&stream);
-   |                                 -------------- ^^^^^^^ the trait `std::io::Read` is not implemented for `&T`
-   |                                 |
-   |                                 required by a bound introduced by this call
+   |                                 ^^^^^^^^^^^^^^ the trait `std::io::Read` is not implemented for `&T`
    |
+   = note: `std::io::Read` is implemented for `&mut T`, but not for `&T`
 note: required by a bound in `BufReader::<R>::new`
   --> $SRC_DIR/std/src/io/buffered/bufreader.rs:LL:COL
    |
 LL | impl<R: Read> BufReader<R> {
    |         ^^^^ required by this bound in `BufReader::<R>::new`
-help: consider removing the leading `&`-reference
-   |
-LL -         let mut stream_reader = BufReader::new(&stream);
-LL +         let mut stream_reader = BufReader::new(stream);
-   |
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
 LL | fn issue_81421<T: Read + Write>(mut stream: T) where &T: std::io::Read {
    |                                                +++++++++++++++++++++++
-help: consider changing this borrow's mutability
-   |
-LL |         let mut stream_reader = BufReader::new(&mut stream);
-   |                                                ~~~~
 
 error[E0599]: the method `read_until` exists for struct `BufReader<&T>`, but its trait bounds were not satisfied
   --> $DIR/suggest-change-mut.rs:16:23

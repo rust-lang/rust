@@ -2,7 +2,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:8:10
    |
 LL |     opts.get(opt.as_ref());
-   |          ^^^ cannot infer type of the type parameter `Q` declared on the associated function `get`
+   |          ^^^ ------------ type must be known at this point
+   |          |
+   |          cannot infer type of the type parameter `Q` declared on the associated function `get`
    |
    = note: multiple `impl`s satisfying `String: Borrow<_>` found in the following crates: `alloc`, `core`:
            - impl Borrow<str> for String;
@@ -13,7 +15,7 @@ note: required by a bound in `HashMap::<K, V, S>::get`
    |
 LL |         K: Borrow<Q>,
    |            ^^^^^^^^^ required by this bound in `HashMap::<K, V, S>::get`
-help: consider specifying the type argument in the function call
+help: consider specifying the generic argument
    |
 LL |     opts.get::<Q>(opt.as_ref());
    |             +++++
@@ -22,8 +24,9 @@ error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:8:10
    |
 LL |     opts.get(opt.as_ref());
-   |          ^^^     ------ type must be known at this point
-   |          |
+   |          ^^^ --- ------ required by a bound introduced by this call
+   |          |   |
+   |          |   type must be known at this point
    |          cannot infer type of the type parameter `Q` declared on the associated function `get`
    |
    = note: multiple `impl`s satisfying `String: AsRef<_>` found in the following crates: `alloc`, `std`:
@@ -59,7 +62,9 @@ error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:36:9
    |
 LL |     let _ = ().foo();
-   |         ^      --- type must be known at this point
+   |         ^   -- --- required by a bound introduced by this call
+   |             |
+   |             type must be known at this point
    |
 note: multiple `impl`s satisfying `(): Foo<'_, _>` found
   --> $DIR/issue-77982.rs:29:1
@@ -77,7 +82,9 @@ error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:40:9
    |
 LL |     let _ = (&()).bar();
-   |         ^         --- type must be known at this point
+   |         ^   ----- --- required by a bound introduced by this call
+   |             |
+   |             type must be known at this point
    |
 note: multiple `impl`s satisfying `&(): Bar<'_, _>` found
   --> $DIR/issue-77982.rs:32:1

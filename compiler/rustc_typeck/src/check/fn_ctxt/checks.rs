@@ -247,17 +247,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Cause selection errors caused by resolving a single argument to point at the
             // argument and not the call. This lets us customize the span pointed to in the
             // fulfillment error to be more accurate.
-            let coerced_ty =
-                self.resolve_vars_with_obligations_and_mutate_fulfillment(coerced_ty, |errors| {
-                    self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
-                    self.point_at_arg_instead_of_call_if_possible(
-                        errors,
-                        call_expr,
-                        call_span,
-                        provided_args,
-                        &expected_input_tys,
-                    );
-                });
+            let coerced_ty = self.resolve_vars_with_obligations(coerced_ty);
 
             let coerce_error = self
                 .try_coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes, None)
@@ -312,16 +302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible(false, |errors| {
-                    self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
-                    self.point_at_arg_instead_of_call_if_possible(
-                        errors,
-                        call_expr,
-                        call_span,
-                        &provided_args,
-                        &expected_input_tys,
-                    );
-                })
+                self.select_obligations_where_possible(false, |_| {})
             }
 
             // Check each argument, to satisfy the input it was provided for
@@ -1183,7 +1164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
 
             // Check bounds on type arguments used in the path.
-            self.add_required_obligations(path_span, did, substs);
+            self.add_required_obligations_for_hir(path_span, did, substs, hir_id);
 
             Some((variant, ty))
         } else {
@@ -1626,177 +1607,172 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// can be not easily comparable with predicate type (because of coercion). If the types match
     /// for either checked or coerced type, and there's only *one* argument that does, we point at
     /// the corresponding argument's expression span instead of the `fn` call path span.
-    fn point_at_arg_instead_of_call_if_possible(
+    pub(super) fn adjust_fulfillment_errors_for_expr_obligation(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
-        expr: &'tcx hir::Expr<'tcx>,
-        call_sp: Span,
-        args: &'tcx [hir::Expr<'tcx>],
-        expected_tys: &[Ty<'tcx>],
     ) {
-        // We *do not* do this for desugared call spans to keep good diagnostics when involving
-        // the `?` operator.
-        if call_sp.desugaring_kind().is_some() {
-            return;
-        }
-
-        'outer: for error in errors {
-            // Only if the cause is somewhere inside the expression we want try to point at arg.
-            // Otherwise, it means that the cause is somewhere else and we should not change
-            // anything because we can break the correct span.
-            if !call_sp.contains(error.obligation.cause.span) {
-                continue;
-            }
-
-            // Peel derived obligation, because it's the type that originally
-            // started this inference chain that matters, not the one we wound
-            // up with at the end.
-            fn unpeel_to_top<'a, 'tcx>(
-                mut code: &'a ObligationCauseCode<'tcx>,
-            ) -> &'a ObligationCauseCode<'tcx> {
-                let mut result_code = code;
-                loop {
-                    let parent = match code {
-                        ObligationCauseCode::ImplDerivedObligation(c) => &c.derived.parent_code,
-                        ObligationCauseCode::BuiltinDerivedObligation(c)
-                        | ObligationCauseCode::DerivedObligation(c) => &c.parent_code,
-                        _ => break result_code,
-                    };
-                    (result_code, code) = (code, parent);
-                }
-            }
-            let self_: ty::subst::GenericArg<'_> =
-                match unpeel_to_top(error.obligation.cause.code()) {
-                    ObligationCauseCode::BuiltinDerivedObligation(code)
-                    | ObligationCauseCode::DerivedObligation(code) => {
-                        code.parent_trait_pred.self_ty().skip_binder().into()
-                    }
-                    ObligationCauseCode::ImplDerivedObligation(code) => {
-                        code.derived.parent_trait_pred.self_ty().skip_binder().into()
-                    }
-                    _ => match error.obligation.predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(predicate) => predicate.self_ty().into(),
-                        ty::PredicateKind::Projection(predicate) => {
-                            predicate.projection_ty.self_ty().into()
-                        }
-                        _ => continue,
-                    },
-                };
-            let self_ = self.resolve_vars_if_possible(self_);
-            let ty_matches_self = |ty: Ty<'tcx>| ty.walk().any(|arg| arg == self_);
-
-            let typeck_results = self.typeck_results.borrow();
-
-            for (idx, arg) in args.iter().enumerate() {
-                // Don't adjust the span if we already have a more precise span
-                // within one of the args.
-                if arg.span.contains(error.obligation.cause.span) {
-                    let references_arg =
-                        typeck_results.expr_ty_opt(arg).map_or(false, &ty_matches_self)
-                            || expected_tys.get(idx).copied().map_or(false, &ty_matches_self);
-                    if references_arg && !arg.span.from_expansion() {
-                        error.obligation.cause.map_code(|parent_code| {
-                            ObligationCauseCode::FunctionArgumentObligation {
-                                arg_hir_id: args[idx].hir_id,
-                                call_hir_id: expr.hir_id,
-                                parent_code,
-                            }
-                        })
-                    }
-                    continue 'outer;
-                }
-            }
-
-            // Collect the argument position for all arguments that could have caused this
-            // `FulfillmentError`.
-            let mut referenced_in: Vec<_> = std::iter::zip(expected_tys, args)
-                .enumerate()
-                .flat_map(|(idx, (expected_ty, arg))| {
-                    if let Some(arg_ty) = typeck_results.expr_ty_opt(arg) {
-                        vec![(idx, arg_ty), (idx, *expected_ty)]
-                    } else {
-                        vec![]
-                    }
-                })
-                .filter_map(|(i, ty)| {
-                    let ty = self.resolve_vars_if_possible(ty);
-                    // We walk the argument type because the argument's type could have
-                    // been `Option<T>`, but the `FulfillmentError` references `T`.
-                    if ty_matches_self(ty) { Some(i) } else { None }
-                })
-                .collect();
-
-            // Both checked and coerced types could have matched, thus we need to remove
-            // duplicates.
-
-            // We sort primitive type usize here and can use unstable sort
-            referenced_in.sort_unstable();
-            referenced_in.dedup();
-
-            if let &[idx] = &referenced_in[..] {
-                // Do not point at the inside of a macro.
-                // That would often result in poor error messages.
-                if args[idx].span.from_expansion() {
-                    continue;
-                }
-                // We make sure that only *one* argument matches the obligation failure
-                // and we assign the obligation's span to its expression's.
-                error.obligation.cause.span = args[idx].span;
-                error.obligation.cause.map_code(|parent_code| {
-                    ObligationCauseCode::FunctionArgumentObligation {
-                        arg_hir_id: args[idx].hir_id,
-                        call_hir_id: expr.hir_id,
-                        parent_code,
-                    }
-                });
-            } else if error.obligation.cause.span == call_sp {
-                // Make function calls point at the callee, not the whole thing.
-                if let hir::ExprKind::Call(callee, _) = expr.kind {
-                    error.obligation.cause.span = callee.span;
-                }
-            }
+        for error in errors {
+            self.adjust_fulfillment_error_for_expr_obligation(error);
         }
     }
 
-    /// Given a vec of evaluated `FulfillmentError`s and an `fn` call expression, we walk the
-    /// `PathSegment`s and resolve their type parameters to see if any of the `FulfillmentError`s
-    /// were caused by them. If they were, we point at the corresponding type argument's span
-    /// instead of the `fn` call path span.
-    fn point_at_type_arg_instead_of_call_if_possible(
+    fn adjust_fulfillment_error_for_expr_obligation(
         &self,
-        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
-        call_expr: &'tcx hir::Expr<'tcx>,
+        error: &mut traits::FulfillmentError<'tcx>,
     ) {
-        if let hir::ExprKind::Call(path, _) = &call_expr.kind {
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &path.kind {
-                for error in errors {
-                    let self_ty = match error.obligation.predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(predicate) => predicate.self_ty(),
-                        ty::PredicateKind::Projection(predicate) => {
-                            predicate.projection_ty.self_ty()
-                        }
-                        _ => continue,
-                    };
-                    // If any of the type arguments in this path segment caused the
-                    // `FulfillmentError`, point at its span (#61860).
-                    for arg in path
-                        .segments
-                        .iter()
-                        .filter_map(|seg| seg.args.as_ref())
-                        .flat_map(|a| a.args.iter())
+        let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
+            = *error.obligation.cause.code().peel_derives() else { return; };
+        let Some(unsubstituted_pred) =
+            self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx) else { return; };
+
+        let generics = self.tcx.generics_of(def_id);
+        let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
+            ty::PredicateKind::Trait(pred) => pred.trait_ref.substs,
+            ty::PredicateKind::Projection(pred) => pred.projection_ty.substs,
+            _ => ty::List::empty(),
+        };
+        let param_to_point_at = predicate_substs.types().find_map(|ty| {
+            ty.walk().find_map(|arg| {
+                if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    && let ty::Param(param_ty) = ty.kind()
+                    // Look for a param ty that is local to this method/fn
+                    // and not inherited from an impl, for example.
+                    && self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) == def_id
+                {
+                    Some(arg)
+                } else {
+                    None
+                }
+            })
+        });
+
+        let fallback_param_to_point_at = predicate_substs.types().find_map(|ty| {
+            ty.walk().find_map(|arg| {
+                if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    && let ty::Param(param_ty) = ty.kind()
+                    && self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) != def_id
+                {
+                    Some(arg)
+                } else {
+                    None
+                }
+            })
+        });
+
+        let hir = self.tcx.hir();
+        match hir.get(hir_id) {
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Path(hir::QPath::Resolved(_, path)), hir_id, .. }) => {
+                if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Call(callee, args), hir_id: call_hir_id, .. })
+                    = hir.get(hir.get_parent_node(*hir_id))
+                    && callee.hir_id == *hir_id
+                {
+                    if let Some(param_to_point_at) = param_to_point_at
+                        && self.point_at_args_if_possible(error, def_id, param_to_point_at, *call_hir_id, callee.span, args) {
+                        return;
+                    }
+
+                    if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
+                        && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, *call_hir_id, callee.span, args)
                     {
-                        if let hir::GenericArg::Type(hir_ty) = &arg
-                            && let Some(ty) =
-                                self.typeck_results.borrow().node_type_opt(hir_ty.hir_id)
-                            && self.resolve_vars_if_possible(ty) == self_ty
-                        {
-                            error.obligation.cause.span = hir_ty.span;
-                            break;
-                        }
+                        return;
+                    }
+
+                    if let Some(param_to_point_at) = param_to_point_at
+                        && let Some(segment) = path.segments.last()
+                        && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
+                    {
+                        return;
                     }
                 }
             }
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::MethodCall(segment, args, ..), .. }) => {
+                if let Some(param_to_point_at) = param_to_point_at
+                    && self.point_at_args_if_possible(error, def_id, param_to_point_at, hir_id, segment.ident.span, args)
+                {
+                    return;
+                }
+
+                if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
+                    && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, hir_id, segment.ident.span, args)
+                {
+                    return;
+                }
+
+                if let Some(param_to_point_at) = param_to_point_at
+                    && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
+                {
+                    return;
+                }
+            }
+            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(..), .. }) => {
+                // fixme
+            }
+            _ => {}
         }
+    }
+
+    fn point_at_args_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        def_id: DefId,
+        param_to_point_at: ty::GenericArg<'tcx>,
+        call_hir_id: hir::HirId,
+        callee_span: Span,
+        args: &[hir::Expr<'tcx>],
+    ) -> bool {
+        let sig = self.tcx.fn_sig(def_id).skip_binder();
+        let args_referencing_param: Vec<_> = sig
+            .inputs()
+            .iter()
+            .enumerate()
+            .filter(|(_, ty)| ty.walk().any(|arg| arg == param_to_point_at))
+            .collect();
+        if let [(idx, _)] = args_referencing_param.as_slice()
+            && let Some(arg) = args.get(*idx)
+        {
+            error.obligation.cause.span = arg.span;
+            error.obligation.cause.map_code(|parent_code| {
+                ObligationCauseCode::FunctionArgumentObligation {
+                    arg_hir_id: arg.hir_id,
+                    call_hir_id,
+                    parent_code,
+                }
+            });
+            true
+        } else if args_referencing_param.len() > 0 {
+            // If more than one argument applies, then point to the callee
+            // We have chance to fix this up further in `point_at_generics_if_possible`
+            error.obligation.cause.span = callee_span;
+            false
+        } else {
+            false
+        }
+    }
+
+    fn point_at_generics_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        def_id: DefId,
+        param_to_point_at: ty::GenericArg<'tcx>,
+        segment: &hir::PathSegment<'tcx>,
+    ) -> bool {
+        let own_substs = self
+            .tcx
+            .generics_of(def_id)
+            .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
+        let Some((index, _)) = own_substs
+            .iter()
+            .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
+            .enumerate()
+            .find(|(_, arg)| **arg == param_to_point_at) else { return false };
+        let Some(arg) = segment
+            .args()
+            .args
+            .iter()
+            .filter(|arg| matches!(arg, hir::GenericArg::Type(_)))
+            .nth(index) else { return false; };
+        error.obligation.cause.span = arg.span();
+        true
     }
 
     fn label_fn_like(

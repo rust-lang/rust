@@ -14,7 +14,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-69683.rs:30:10
    |
 LL |     0u16.foo(b);
-   |          ^^^
+   |          ^^^ - type must be known at this point
    |
 note: multiple `impl`s satisfying `u8: Element<_>` found
   --> $DIR/issue-69683.rs:5:1
@@ -37,7 +37,33 @@ help: try using a fully qualified path to specify the expected types
 LL |     <u16 as Foo<I>>::foo(0u16, b);
    |     +++++++++++++++++++++    ~
 
-error: aborting due to 2 previous errors
+error[E0283]: type annotations needed
+  --> $DIR/issue-69683.rs:30:10
+   |
+LL |     0u16.foo(b);
+   |     ---- ^^^
+   |     |
+   |     type must be known at this point
+   |
+note: multiple `impl`s satisfying `u8: Element<_>` found
+  --> $DIR/issue-69683.rs:5:1
+   |
+LL | impl<T> Element<()> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<T: Element<S>, S> Element<[S; 3]> for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required for `u16` to implement `Foo<_>`
+  --> $DIR/issue-69683.rs:20:9
+   |
+LL | impl<I> Foo<I> for u16
+   |         ^^^^^^     ^^^
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <u16 as Foo<I>>::foo(0u16, b);
+   |     +++++++++++++++++++++    ~
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0283, E0284.
 For more information about an error, try `rustc --explain E0283`.

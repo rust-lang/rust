@@ -1,8 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/non-tupled-arg-mismatch.rs:6:5
+  --> $DIR/non-tupled-arg-mismatch.rs:6:7
    |
 LL |     a(|_: usize| {});
-   |     ^ types differ
+   |     - ^^^^^^^^^^^^^ types differ
+   |     |
+   |     required by a bound introduced by this call
    |
    = note: expected trait `Fn<usize>`
               found trait `Fn<(usize,)>`

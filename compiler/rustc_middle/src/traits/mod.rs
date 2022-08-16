@@ -238,8 +238,12 @@ pub enum ObligationCauseCode<'tcx> {
     /// also implement all supertraits of `X`.
     ItemObligation(DefId),
 
+    ExprItemObligation(DefId, rustc_hir::HirId, usize),
+
     /// Like `ItemObligation`, but with extra detail on the source of the obligation.
     BindingObligation(DefId, Span),
+
+    ExprBindingObligation(DefId, Span, rustc_hir::HirId, usize),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),

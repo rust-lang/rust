@@ -13,7 +13,9 @@ error[E0283]: type annotations needed
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
    |
 LL |     a.method();
-   |       ^^^^^^
+   |     - ^^^^^^
+   |     |
+   |     type must be known at this point
    |
 note: multiple `impl`s satisfying `B: I<_>` found
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:5:1

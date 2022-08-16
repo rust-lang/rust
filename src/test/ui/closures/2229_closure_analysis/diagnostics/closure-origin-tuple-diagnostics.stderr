@@ -7,7 +7,7 @@ LL |         let s = s.1;
    |                 --- closure is `FnOnce` because it moves the variable `s.1` out of its environment
 LL |     };
 LL |     expect_fn(c);
-   |     --------- the requirement to implement `Fn` derives from here
+   |               - the requirement to implement `Fn` derives from here
 
 error: aborting due to previous error
 

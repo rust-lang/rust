@@ -19,8 +19,12 @@ LL |     assert_eq!(foo, y);
    |     ^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
-   = help: use parentheses to call the function: `foo(s)`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use parentheses to call the function
+  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+   |
+LL |                     $crate::panicking::assert_failed(kind, &*left_val(s), &*right_val, $crate::option::Option::None);
+   |                                                                      +++
 
 error: aborting due to 2 previous errors
 
