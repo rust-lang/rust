@@ -2360,6 +2360,7 @@ extern "C" {
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
         InstrumentCoverage: bool,
+        InstrProfileOutput: *const c_char,
         InstrumentGCOV: bool,
         PGOSampleUsePath: *const c_char,
         DebugInfoForProfiling: bool,
