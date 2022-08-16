@@ -5,7 +5,7 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
+use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
@@ -304,7 +304,6 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_passes.as_ptr(),
                 remark_passes.len(),
             );
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
             DiagnosticHandlers { data, llcx, old_handler }
         }
     }
@@ -312,9 +311,7 @@ impl<'a> DiagnosticHandlers<'a> {
 
 impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
-        use std::ptr::null_mut;
         unsafe {
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, null_mut());
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
             drop(Box::from_raw(self.data));
         }
@@ -340,16 +337,6 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
-}
-
-unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void, cookie: c_uint) {
-    if user.is_null() {
-        return;
-    }
-    let (cgcx, _) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &Handler));
-
-    let smdiag = llvm::diagnostic::SrcMgrDiagnostic::unpack(diag);
-    report_inline_asm(cgcx, smdiag.message, smdiag.level, cookie, smdiag.source);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {

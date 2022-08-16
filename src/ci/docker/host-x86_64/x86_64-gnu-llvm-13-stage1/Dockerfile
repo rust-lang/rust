@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     sudo \
     gdb \
-    llvm-12-tools \
-    llvm-12-dev \
+    llvm-13-tools \
+    llvm-13-dev \
     libedit-dev \
     libssl-dev \
     pkg-config \
@@ -29,7 +29,7 @@ RUN sh /scripts/sccache.sh
 # using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
     --build=x86_64-unknown-linux-gnu \
-    --llvm-root=/usr/lib/llvm-12 \
+    --llvm-root=/usr/lib/llvm-13 \
     --enable-llvm-link-shared \
     --set rust.thin-lto-import-instr-limit=10
 
