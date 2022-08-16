@@ -463,7 +463,7 @@ fn count_repetitions<'a>(
         match matched {
             MatchedTokenTree(_) | MatchedNonterminal(_) => {
                 if declared_lhs_depth == 0 {
-                    return Err(cx.create_err( CountRepetitionMisplaced { span: sp.entire()} ));
+                    return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
                 }
                 match depth_opt {
                     None => Ok(1),
