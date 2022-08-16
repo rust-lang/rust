@@ -1665,6 +1665,40 @@ fn f() {
     }
 
     #[test]
+    fn goto_await_into_future_poll() {
+        check(
+            r#"
+//- minicore: future
+
+struct Futurable;
+
+impl core::future::IntoFuture for Futurable {
+    type IntoFuture = MyFut;
+}
+
+struct MyFut;
+
+impl core::future::Future for MyFut {
+    type Output = ();
+
+    fn poll(
+     //^^^^
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>
+    ) -> std::task::Poll<Self::Output>
+    {
+        ()
+    }
+}
+
+fn f() {
+    Futurable.await$0;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn goto_try_op() {
         check(
             r#"

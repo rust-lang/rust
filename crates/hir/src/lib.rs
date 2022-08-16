@@ -2777,9 +2777,10 @@ impl Type {
         self.ty.is_unknown()
     }
 
-    /// Checks that particular type `ty` implements `std::future::Future`.
+    /// Checks that particular type `ty` implements `std::future::IntoFuture` or
+    /// `std::future::Future`.
     /// This function is used in `.await` syntax completion.
-    pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
+    pub fn impls_into_future(&self, db: &dyn HirDatabase) -> bool {
         let trait_ = db
             .lang_item(self.env.krate, SmolStr::new_inline("into_future"))
             .and_then(|it| {
