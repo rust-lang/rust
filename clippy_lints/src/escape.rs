@@ -30,18 +30,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// # fn foo(bar: usize) {}
-    /// let x = Box::new(1);
-    /// foo(*x);
-    /// println!("{}", *x);
+    /// fn foo(x: Box<u32>) {}
     /// ```
     ///
     /// Use instead:
     /// ```rust
-    /// # fn foo(bar: usize) {}
-    /// let x = 1;
-    /// foo(x);
-    /// println!("{}", x);
+    /// fn foo(x: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub BOXED_LOCAL,
