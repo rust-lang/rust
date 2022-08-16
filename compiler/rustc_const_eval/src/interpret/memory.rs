@@ -207,7 +207,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         addr: u64,
         len: usize,
-        _size: Size,
         align: Align,
         mutability: Mutability,
         kind: MemoryKind<M::MemoryKind>,

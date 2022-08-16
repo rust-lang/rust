@@ -318,7 +318,7 @@ impl<Prov> Allocation<Prov> {
         Self {
             bytes: AllocBytes::Addr(addr_len),
             relocations: Relocations::new(),
-            init_mask: InitMask::new(size, false),
+            init_mask: InitMask::new(size, true),
             align,
             mutability,
             extra: (),
