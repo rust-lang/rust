@@ -566,7 +566,7 @@ impl Drop for DiagnosticBuilderInner<'_> {
                         ),
                     ));
                     handler.emit_diagnostic(&mut self.diagnostic);
-                    panic!();
+                    panic!("error was constructed but not emitted");
                 }
             }
             // `.emit()` was previously called, or maybe we're during `.cancel()`.
