@@ -296,6 +296,19 @@ impl<'tcx> Stack {
             return Ok(());
         }
 
+        // We store tags twice, once in global.protected_tags and once in each call frame.
+        // We do this because consulting a single global set in this function is faster
+        // than attempting to search all call frames in the program for the `FrameExtra`
+        // (if any) which is protecting the popped tag.
+        //
+        // This duplication trades off making `end_call` slower to make this function faster. This
+        // trade-off is profitable in practice for a combination of two reasons.
+        // 1. A single protected tag can (and does in some programs) protect thousands of `Item`s.
+        //    Therefore, adding overhead in function call/return is profitable even if it only
+        //    saves a little work in this function.
+        // 2. Most frames protect only one or two tags. So this duplicative global turns a search
+        //    which ends up about linear in the number of protected tags in the program into a
+        //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
         if global.protected_tags.contains(&item.tag()) {
             return Err(dcx.protector_error(item).into());
         }
@@ -622,6 +635,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         protect: bool,
     ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
+        let current_span = this.machine.current_span(*this.tcx);
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
@@ -674,8 +688,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(())
         };
 
-        let current_span = this.machine.current_span(*this.tcx);
-
         if size == Size::ZERO {
             trace!(
                 "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
@@ -726,19 +738,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         );
 
         if protect {
-            // We store tags twice, once in global.protected_tags and once in each call frame.
-            // We do this because consulting a single global set in this function is faster
-            // than attempting to search all call frames in the program for the `FrameExtra`
-            // (if any) which is protecting the popped tag.
-            //
-            // This duplication trades off making `end_call` slower to make this function faster. This
-            // trade-off is profitable in practice for a combination of two reasons.
-            // 1. A single protected tag can (and does in some programs) protect thousands of `Item`s.
-            //    Therefore, adding overhead to in function call/return is profitable even if it only
-            //    saves a little work in this function.
-            // 2. Most frames protect only one or two tags. So this duplicative global turns a search
-            //    which ends up about linear in the number of protected tags in the program into a
-            //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
+            // See comment in `Stack::item_popped` for why we store the tag twice.
             this.frame_mut().extra.stacked_borrows.as_mut().unwrap().protected_tags.push(new_tag);
             this.machine.stacked_borrows.as_mut().unwrap().get_mut().protected_tags.insert(new_tag);
         }
@@ -818,7 +818,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
         let dcx = DiagnosticCxBuilder::retag(
-            machine.current_span(tcx),
+            machine.current_span(tcx), // `get_alloc_extra_mut` invalidated our old `current_span`
             &machine.threads,
             retag_cause,
             new_tag,
