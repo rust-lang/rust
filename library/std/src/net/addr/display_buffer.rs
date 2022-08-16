@@ -3,12 +3,12 @@ use crate::mem::MaybeUninit;
 use crate::str;
 
 /// Used for slow path in `Display` implementations when alignment is required.
-pub struct IpDisplayBuffer<const SIZE: usize> {
+pub struct DisplayBuffer<const SIZE: usize> {
     buf: [MaybeUninit<u8>; SIZE],
     len: usize,
 }
 
-impl<const SIZE: usize> IpDisplayBuffer<SIZE> {
+impl<const SIZE: usize> DisplayBuffer<SIZE> {
     #[inline]
     pub const fn new() -> Self {
         Self { buf: MaybeUninit::uninit_array(), len: 0 }
@@ -25,7 +25,7 @@ impl<const SIZE: usize> IpDisplayBuffer<SIZE> {
     }
 }
 
-impl<const SIZE: usize> fmt::Write for IpDisplayBuffer<SIZE> {
+impl<const SIZE: usize> fmt::Write for DisplayBuffer<SIZE> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let bytes = s.as_bytes();
 
