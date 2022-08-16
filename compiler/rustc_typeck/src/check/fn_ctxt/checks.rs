@@ -1742,7 +1742,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .inputs()
             .iter()
             .enumerate()
-            .filter(|(_, ty)| ty.walk().any(|arg| arg == param_to_point_at))
+            .filter(|(_, ty)| {
+                let mut walk = ty.walk();
+                while let Some(arg) = walk.next() {
+                    if arg == param_to_point_at {
+                        return true;
+                    } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                        && let ty::Projection(..) = ty.kind()
+                    {
+                        // This logic may seem a bit strange, but typically when
+                        // we have a projection type in a function signature, the
+                        // argument that's being passed into that signature is
+                        // not actually constraining that projection in a meaningful
+                        // way. So we skip it, and see improvements in some UI tests
+                        // due to it.
+                        walk.skip_current_subtree();
+                    }
+                }
+                false
+            })
             .collect();
 
         if let [(idx, _)] = args_referencing_param.as_slice()

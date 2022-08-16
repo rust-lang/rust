@@ -14,7 +14,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-69683.rs:30:10
    |
 LL |     0u16.foo(b);
-   |          ^^^ - type must be known at this point
+   |          ^^^
    |
 note: multiple `impl`s satisfying `u8: Element<_>` found
   --> $DIR/issue-69683.rs:5:1
