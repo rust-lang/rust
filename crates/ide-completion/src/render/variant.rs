@@ -24,9 +24,9 @@ pub(crate) fn render_record_lit(
 ) -> RenderedLiteral {
     let completions = fields.iter().enumerate().format_with(", ", |(idx, field), f| {
         if snippet_cap.is_some() {
-            f(&format_args!("{}: ${{{}:()}}", field.name(db).escaped(), idx + 1))
+            f(&format_args!("{}: ${{{}:()}}", field.name(db), idx + 1))
         } else {
-            f(&format_args!("{}: ()", field.name(db).escaped()))
+            f(&format_args!("{}: ()", field.name(db)))
         }
     });
 

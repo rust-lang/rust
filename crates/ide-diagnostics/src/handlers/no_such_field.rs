@@ -68,7 +68,7 @@ fn missing_record_expr_field_fixes(
     }
     let new_field = make::record_field(
         None,
-        make::name(&record_expr_field.field_name()?.text()),
+        make::name(&record_expr_field.field_name()?.ident_token()?.text()),
         make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
     );
 
@@ -109,7 +109,7 @@ fn missing_record_expr_field_fixes(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
 
     #[test]
     fn no_such_field_diagnostics() {
@@ -276,6 +276,20 @@ struct Foo {
 struct Foo {
     bar: i32,
     pub(crate) baz: bool
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_tuple_field_on_record_struct() {
+        check_no_fix(
+            r#"
+struct Struct {}
+fn main() {
+    Struct {
+        0$0: 0
+    }
 }
 "#,
         )

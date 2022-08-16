@@ -20,7 +20,7 @@ use token_stream::TokenStreamBuilder;
 mod symbol;
 pub use symbol::*;
 
-use std::{iter::FromIterator, ops::Bound};
+use std::ops::Bound;
 
 type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;

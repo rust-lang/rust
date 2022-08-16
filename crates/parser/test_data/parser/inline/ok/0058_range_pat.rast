@@ -172,6 +172,122 @@ SOURCE_FILE
               WHITESPACE "\n    "
               R_CURLY "}"
         WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RECORD_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  WHITESPACE " "
+                  RECORD_PAT_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_PAT_FIELD
+                      NAME_REF
+                        IDENT "a"
+                      COLON ":"
+                      WHITESPACE " "
+                      LITERAL_PAT
+                        LITERAL
+                          INT_NUMBER "0"
+                    WHITESPACE " "
+                    R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                RECORD_PAT
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  WHITESPACE " "
+                  RECORD_PAT_FIELD_LIST
+                    L_CURLY "{"
+                    WHITESPACE " "
+                    RECORD_PAT_FIELD
+                      NAME_REF
+                        IDENT "a"
+                      COLON ":"
+                      WHITESPACE " "
+                      RANGE_PAT
+                        LITERAL_PAT
+                          LITERAL
+                            INT_NUMBER "1"
+                        DOT2 ".."
+                    WHITESPACE " "
+                    R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                SLICE_PAT
+                  L_BRACK "["
+                  LITERAL_PAT
+                    LITERAL
+                      INT_NUMBER "0"
+                  R_BRACK "]"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                SLICE_PAT
+                  L_BRACK "["
+                  RANGE_PAT
+                    LITERAL_PAT
+                      LITERAL
+                        INT_NUMBER "1"
+                    DOT2 ".."
+                  R_BRACK "]"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
         MATCH_EXPR
           MATCH_KW "match"
           WHITESPACE " "
