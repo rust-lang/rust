@@ -81,7 +81,7 @@ impl<'tcx> Stack {
     /// Panics if any of the caching mechanisms have broken,
     /// - The StackCache indices don't refer to the parallel items,
     /// - There are no Unique items outside of first_unique..last_unique
-    #[cfg(debug_assertions)]
+    #[cfg(all(feature = "stack-cache", debug_assertions))]
     fn verify_cache_consistency(&self) {
         // Only a full cache needs to be valid. Also see the comments in find_granting_cache
         // and set_unknown_bottom.
@@ -128,7 +128,7 @@ impl<'tcx> Stack {
         tag: ProvenanceExtra,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> Result<Option<usize>, ()> {
-        #[cfg(debug_assertions)]
+        #[cfg(all(feature = "stack-cache", debug_assertions))]
         self.verify_cache_consistency();
 
         let ProvenanceExtra::Concrete(tag) = tag else {
@@ -320,13 +320,14 @@ impl<'tcx> Stack {
 
         if disable_start <= unique_range.end {
             let lower = unique_range.start.max(disable_start);
-            let upper = self.unique_range.end;
+            let upper = unique_range.end;
             for item in &mut self.borrows[lower..upper] {
                 if item.perm() == Permission::Unique {
                     log::trace!("access: disabling item {:?}", item);
                     visitor(*item)?;
                     item.set_permission(Permission::Disabled);
                     // Also update all copies of this item in the cache.
+                    #[cfg(feature = "stack-cache")]
                     for it in &mut self.cache.items {
                         if it.tag() == item.tag() {
                             it.set_permission(Permission::Disabled);
@@ -347,7 +348,7 @@ impl<'tcx> Stack {
             self.unique_range.end = self.unique_range.end.min(disable_start);
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(all(feature = "stack-cache", debug_assertions))]
         self.verify_cache_consistency();
 
         Ok(())
@@ -402,7 +403,7 @@ impl<'tcx> Stack {
             self.unique_range = 0..0;
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(all(feature = "stack-cache", debug_assertions))]
         self.verify_cache_consistency();
         Ok(())
     }
