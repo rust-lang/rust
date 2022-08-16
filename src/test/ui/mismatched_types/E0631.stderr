@@ -1,12 +1,10 @@
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/E0631.rs:7:9
+  --> $DIR/E0631.rs:7:5
    |
 LL |     foo(|_: isize| {});
-   |     --- ----------^^^
-   |     |   |
-   |     |   expected due to this
-   |     |   found signature defined here
-   |     required by a bound introduced by this call
+   |     ^^^ ---------- found signature defined here
+   |     |
+   |     expected due to this
    |
    = note: expected closure signature `fn(usize) -> _`
               found closure signature `fn(isize) -> _`
@@ -17,14 +15,12 @@ LL | fn foo<F: Fn(usize)>(_: F) {}
    |           ^^^^^^^^^ required by this bound in `foo`
 
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/E0631.rs:8:9
+  --> $DIR/E0631.rs:8:5
    |
 LL |     bar(|_: isize| {});
-   |     --- ----------^^^
-   |     |   |
-   |     |   expected due to this
-   |     |   found signature defined here
-   |     required by a bound introduced by this call
+   |     ^^^ ---------- found signature defined here
+   |     |
+   |     expected due to this
    |
    = note: expected closure signature `fn(usize) -> _`
               found closure signature `fn(isize) -> _`

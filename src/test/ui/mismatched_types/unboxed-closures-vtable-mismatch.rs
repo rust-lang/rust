@@ -17,6 +17,5 @@ pub fn main() {
     //~^ ERROR type mismatch
     //~| NOTE expected due to this
     //~| NOTE expected closure signature `fn(isize, _) -> _`
-    //~| NOTE required by a bound introduced by this call
     println!("{}", z);
 }

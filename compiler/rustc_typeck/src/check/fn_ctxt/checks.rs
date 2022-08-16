@@ -1630,6 +1630,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             return;
         }
+        // Skip over closure arg mismatch, which has a better heuristic
+        // to determine what span to point at.
+        if let traits::FulfillmentErrorCode::CodeSelectionError(
+            traits::SelectionError::OutputTypeParameterMismatch(_, expected, _),
+        ) = error.code
+            && let ty::Closure(..) | ty::Generator(..) = expected.skip_binder().self_ty().kind()
+        {
+            return;
+        }
 
         let Some(unsubstituted_pred) =
             self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx) else { return; };

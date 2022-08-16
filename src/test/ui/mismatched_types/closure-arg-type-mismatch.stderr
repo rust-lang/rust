@@ -1,12 +1,10 @@
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:3:18
+  --> $DIR/closure-arg-type-mismatch.rs:3:14
    |
 LL |     a.iter().map(|_: (u32, u32)| 45);
-   |              --- ---------------^^^
-   |              |   |
-   |              |   expected due to this
-   |              |   found signature defined here
-   |              required by a bound introduced by this call
+   |              ^^^ --------------- found signature defined here
+   |              |
+   |              expected due to this
    |
    = note: expected closure signature `fn(&(u32, u32)) -> _`
               found closure signature `fn((u32, u32)) -> _`
@@ -17,14 +15,12 @@ LL |         F: FnMut(Self::Item) -> B,
    |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:4:18
+  --> $DIR/closure-arg-type-mismatch.rs:4:14
    |
 LL |     a.iter().map(|_: &(u16, u16)| 45);
-   |              --- ----------------^^^
-   |              |   |
-   |              |   expected due to this
-   |              |   found signature defined here
-   |              required by a bound introduced by this call
+   |              ^^^ ---------------- found signature defined here
+   |              |
+   |              expected due to this
    |
    = note: expected closure signature `fn(&(u32, u32)) -> _`
               found closure signature `for<'r> fn(&'r (u16, u16)) -> _`
@@ -35,14 +31,12 @@ LL |         F: FnMut(Self::Item) -> B,
    |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/closure-arg-type-mismatch.rs:5:18
+  --> $DIR/closure-arg-type-mismatch.rs:5:14
    |
 LL |     a.iter().map(|_: (u16, u16)| 45);
-   |              --- ---------------^^^
-   |              |   |
-   |              |   expected due to this
-   |              |   found signature defined here
-   |              required by a bound introduced by this call
+   |              ^^^ --------------- found signature defined here
+   |              |
+   |              expected due to this
    |
    = note: expected closure signature `fn(&(u32, u32)) -> _`
               found closure signature `fn((u16, u16)) -> _`

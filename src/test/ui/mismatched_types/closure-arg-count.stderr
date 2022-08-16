@@ -46,14 +46,12 @@ LL |     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |                       ~~~~~~~~~~~~~~~
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:13:7
+  --> $DIR/closure-arg-count.rs:13:5
    |
 LL |     f(|| panic!());
-   |     - --^^^^^^^^^
-   |     | |
-   |     | expected closure that takes 1 argument
-   |     | takes 0 arguments
-   |     required by a bound introduced by this call
+   |     ^ -- takes 0 arguments
+   |     |
+   |     expected closure that takes 1 argument
    |
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
@@ -66,14 +64,12 @@ LL |     f(|_| panic!());
    |       ~~~
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:15:9
+  --> $DIR/closure-arg-count.rs:15:5
    |
 LL |     f(  move    || panic!());
-   |     -   ----------^^^^^^^^^
-   |     |   |
-   |     |   expected closure that takes 1 argument
-   |     |   takes 0 arguments
-   |     required by a bound introduced by this call
+   |     ^   ---------- takes 0 arguments
+   |     |
+   |     expected closure that takes 1 argument
    |
 note: required by a bound in `f`
   --> $DIR/closure-arg-count.rs:3:9
@@ -137,14 +133,12 @@ LL |         F: FnMut(Self::Item) -> B,
    |            ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `map`
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
-  --> $DIR/closure-arg-count.rs:27:57
+  --> $DIR/closure-arg-count.rs:27:53
    |
 LL |     let bar = |i, x, y| i;
    |               --------- takes 3 distinct arguments
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
-   |                                                     --- ^^^ expected closure that takes a single 2-tuple as argument
-   |                                                     |
-   |                                                     required by a bound introduced by this call
+   |                                                     ^^^ expected closure that takes a single 2-tuple as argument
    |
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
