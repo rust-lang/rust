@@ -268,7 +268,7 @@ macro_rules! handle_strip_of_each_chunk {
         let chunk_number = ($x >> 5) as usize;
 
         // `const` to type check and to ensure all element evaluations are done at
-        // compile time
+        // compile time.
         const STARTING_CODEPOINTS: [u8; 8] = $starting_codepoints;
         // Subtract the starting codepoint of this chunk from the input codepoint. This
         // will make sure that the matching codepoints in this strip are in
@@ -276,7 +276,7 @@ macro_rules! handle_strip_of_each_chunk {
         let x = $x.wrapping_sub(STARTING_CODEPOINTS[chunk_number]);
 
         // `const` to type check and to ensure all element evaluations are done at
-        // compile time
+        // compile time.
         const STRIP_LENGTHS: [u8; 8] = $strip_lengths;
         // Check whether the adjusted value of the input codepoint is in
         // `0..length_of_strip`.
