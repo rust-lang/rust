@@ -1488,14 +1488,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     // `break`, we want to call the `()` "expected"
                     // since it is implied by the syntax.
                     // (Note: not all force-units work this way.)"
-                    (expression_ty, self.final_ty.unwrap_or(self.expected_ty))
+                    (expression_ty, self.merged_ty())
                 } else {
                     // Otherwise, the "expected" type for error
                     // reporting is the current unification type,
                     // which is basically the LUB of the expressions
                     // we've seen so far (combined with the expected
                     // type)
-                    (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
+                    (self.merged_ty(), expression_ty)
                 };
                 let (expected, found) = fcx.resolve_vars_if_possible((expected, found));
 
