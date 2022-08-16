@@ -1689,7 +1689,7 @@ pub enum StrStyle {
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Lit {
     /// The original literal token as written in source code.
-    pub token: token::Lit,
+    pub token_lit: token::Lit,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
@@ -1717,7 +1717,7 @@ impl StrLit {
             StrStyle::Raw(n) => token::StrRaw(n),
         };
         Lit {
-            token: token::Lit::new(token_kind, self.symbol, self.suffix),
+            token_lit: token::Lit::new(token_kind, self.symbol, self.suffix),
             span: self.span,
             kind: LitKind::Str(self.symbol_unescaped, self.style),
         }

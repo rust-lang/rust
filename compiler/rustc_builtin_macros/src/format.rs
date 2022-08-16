@@ -923,7 +923,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
 
                 // Build the format
-                let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
+                let fill = self.ecx.expr_char(sp, fill);
                 let align = |name| {
                     let mut p = Context::rtpath(self.ecx, sym::Alignment);
                     p.push(Ident::new(name, sp));

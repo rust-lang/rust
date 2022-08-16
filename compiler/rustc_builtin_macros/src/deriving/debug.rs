@@ -52,7 +52,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = cx.with_def_site_ctxt(span);
-    let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
+    let name = cx.expr_str(span, ident.name);
     let fmt = substr.nonselflike_args[0].clone();
 
     // Struct and tuples are similar enough that we use the same code for both,
@@ -89,10 +89,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         for i in 0..fields.len() {
             let field = &fields[i];
             if is_struct {
-                let name = cx.expr_lit(
-                    field.span,
-                    ast::LitKind::Str(field.name.unwrap().name, ast::StrStyle::Cooked),
-                );
+                let name = cx.expr_str(field.span, field.name.unwrap().name);
                 args.push(name);
             }
             // Use an extra indirection to make sure this works for unsized types.
@@ -108,10 +105,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
         for field in fields {
             if is_struct {
-                name_exprs.push(cx.expr_lit(
-                    field.span,
-                    ast::LitKind::Str(field.name.unwrap().name, ast::StrStyle::Cooked),
-                ));
+                name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
             }
 
             // Use an extra indirection to make sure this works for unsized types.

@@ -57,10 +57,10 @@ impl EarlyLintPass for OctalEscapes {
         }
 
         if let ExprKind::Lit(lit) = &expr.kind {
-            if matches!(lit.token.kind, LitKind::Str) {
-                check_lit(cx, &lit.token, lit.span, true);
-            } else if matches!(lit.token.kind, LitKind::ByteStr) {
-                check_lit(cx, &lit.token, lit.span, false);
+            if matches!(lit.token_lit.kind, LitKind::Str) {
+                check_lit(cx, &lit.token_lit, lit.span, true);
+            } else if matches!(lit.token_lit.kind, LitKind::ByteStr) {
+                check_lit(cx, &lit.token_lit, lit.span, false);
             }
         }
     }
