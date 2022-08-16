@@ -343,7 +343,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
     /// need to mutate.
     #[inline(always)]
-    fn memory_read(
+    fn before_memory_read(
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
@@ -355,7 +355,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Hook for performing extra checks on a memory write access.
     #[inline(always)]
-    fn memory_written(
+    fn before_memory_write(
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
@@ -367,7 +367,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Hook for performing extra operations on a memory deallocation.
     #[inline(always)]
-    fn memory_deallocated(
+    fn before_memory_deallocation(
         _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
