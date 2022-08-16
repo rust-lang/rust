@@ -114,7 +114,7 @@ impl Attribute {
     #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item.path == name,
+            AttrKind::Normal(ref normal) => normal.item.path == name,
             AttrKind::DocComment(..) => false,
         }
     }
@@ -122,9 +122,9 @@ impl Attribute {
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => {
-                if item.path.segments.len() == 1 {
-                    Some(item.path.segments[0].ident)
+            AttrKind::Normal(ref normal) => {
+                if normal.item.path.segments.len() == 1 {
+                    Some(normal.item.path.segments[0].ident)
                 } else {
                     None
                 }
@@ -138,14 +138,16 @@ impl Attribute {
 
     pub fn value_str(&self) -> Option<Symbol> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item.meta_kind().and_then(|kind| kind.value_str()),
+            AttrKind::Normal(ref normal) => {
+                normal.item.meta_kind().and_then(|kind| kind.value_str())
+            }
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => match item.meta_kind() {
+            AttrKind::Normal(ref normal) => match normal.item.meta_kind() {
                 Some(MetaItemKind::List(list)) => Some(list),
                 _ => None,
             },
@@ -154,8 +156,8 @@ impl Attribute {
     }
 
     pub fn is_word(&self) -> bool {
-        if let AttrKind::Normal(item, _) = &self.kind {
-            matches!(item.args, MacArgs::Empty)
+        if let AttrKind::Normal(normal) = &self.kind {
+            matches!(normal.item.args, MacArgs::Empty)
         } else {
             false
         }
@@ -247,7 +249,8 @@ impl Attribute {
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match self.kind {
             AttrKind::DocComment(kind, data) => Some((data, kind)),
-            AttrKind::Normal(ref item, _) if item.path == sym::doc => item
+            AttrKind::Normal(ref normal) if normal.item.path == sym::doc => normal
+                .item
                 .meta_kind()
                 .and_then(|kind| kind.value_str())
                 .map(|data| (data, CommentKind::Line)),
@@ -258,8 +261,8 @@ impl Attribute {
     pub fn doc_str(&self) -> Option<Symbol> {
         match self.kind {
             AttrKind::DocComment(.., data) => Some(data),
-            AttrKind::Normal(ref item, _) if item.path == sym::doc => {
-                item.meta_kind().and_then(|kind| kind.value_str())
+            AttrKind::Normal(ref normal) if normal.item.path == sym::doc => {
+                normal.item.meta_kind().and_then(|kind| kind.value_str())
             }
             _ => None,
         }
@@ -271,14 +274,14 @@ impl Attribute {
 
     pub fn get_normal_item(&self) -> &AttrItem {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item,
+            AttrKind::Normal(ref normal) => &normal.item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
-            AttrKind::Normal(item, _) => item,
+            AttrKind::Normal(normal) => normal.into_inner().item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
@@ -286,21 +289,22 @@ impl Attribute {
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item.meta(self.span),
+            AttrKind::Normal(ref normal) => normal.item.meta(self.span),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item.meta_kind(),
+            AttrKind::Normal(ref normal) => normal.item.meta_kind(),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn tokens(&self) -> AttrAnnotatedTokenStream {
         match self.kind {
-            AttrKind::Normal(_, ref tokens) => tokens
+            AttrKind::Normal(ref normal) => normal
+                .tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
                 .create_token_stream(),
@@ -361,7 +365,12 @@ pub fn mk_attr_from_item(
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
-    Attribute { kind: AttrKind::Normal(item, tokens), id: mk_attr_id(), style, span }
+    Attribute {
+        kind: AttrKind::Normal(P(ast::NormalAttr { item, tokens })),
+        id: mk_attr_id(),
+        style,
+        span,
+    }
 }
 
 /// Returns an inner attribute with the given value and span.

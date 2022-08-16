@@ -39,6 +39,7 @@
 #[macro_use]
 extern crate tracing;
 
+use rustc_ast::ptr::P;
 use rustc_ast::visit;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
@@ -871,14 +872,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         // Tokens are also not needed after macro expansion and parsing.
         let kind = match attr.kind {
-            AttrKind::Normal(ref item, _) => AttrKind::Normal(
-                AttrItem {
-                    path: item.path.clone(),
-                    args: self.lower_mac_args(&item.args),
+            AttrKind::Normal(ref normal) => AttrKind::Normal(P(NormalAttr {
+                item: AttrItem {
+                    path: normal.item.path.clone(),
+                    args: self.lower_mac_args(&normal.item.args),
                     tokens: None,
                 },
-                None,
-            ),
+                tokens: None,
+            })),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
