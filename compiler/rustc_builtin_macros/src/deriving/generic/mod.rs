@@ -640,11 +640,7 @@ impl<'a> TraitDef<'a> {
                 }
                 ast::WherePredicate::EqPredicate(we) => {
                     let span = we.span.with_ctxt(ctxt);
-                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                        id: ast::DUMMY_NODE_ID,
-                        span,
-                        ..we.clone()
-                    })
+                    ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { span, ..we.clone() })
                 }
             }
         }));

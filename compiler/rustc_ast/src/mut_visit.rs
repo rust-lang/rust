@@ -935,8 +935,7 @@ pub fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis:
             visit_vec(bounds, |bound| noop_visit_param_bound(bound, vis));
         }
         WherePredicate::EqPredicate(ep) => {
-            let WhereEqPredicate { id, span, lhs_ty, rhs_ty } = ep;
-            vis.visit_id(id);
+            let WhereEqPredicate { span, lhs_ty, rhs_ty } = ep;
             vis.visit_span(span);
             vis.visit_ty(lhs_ty);
             vis.visit_ty(rhs_ty);

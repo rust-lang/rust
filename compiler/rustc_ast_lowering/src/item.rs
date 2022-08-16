@@ -1498,9 +1498,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 in_where_clause: true,
             }),
-            WherePredicate::EqPredicate(WhereEqPredicate { id, ref lhs_ty, ref rhs_ty, span }) => {
+            WherePredicate::EqPredicate(WhereEqPredicate { ref lhs_ty, ref rhs_ty, span }) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    hir_id: self.lower_node_id(id),
                     lhs_ty: self
                         .lower_ty(lhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
                     rhs_ty: self
