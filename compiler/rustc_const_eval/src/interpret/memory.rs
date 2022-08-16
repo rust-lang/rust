@@ -206,12 +206,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn allocate_ptr_raw_addr(
         &mut self,
         addr: u64,
+        type_size: usize,
         len: usize,
         align: Align,
         mutability: Mutability,
         kind: MemoryKind<M::MemoryKind>,
     ) -> Pointer<M::Provenance> {
-        let alloc = Allocation::from_raw_addr((addr, len), align, mutability);
+        let alloc = Allocation::from_raw_addr(addr, type_size, len, align, mutability);
         self.allocate_raw_ptr(alloc, kind).unwrap()
     }
 

@@ -12,6 +12,7 @@ use std::mem::MaybeUninit;
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
@@ -22,37 +23,74 @@ use super::{
 };
 use crate::ty;
 
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(TyEncodable, TyDecodable)]
+pub struct AddrAllocBytes {
+    pub addr: u64,
+    pub type_size: usize,
+    /// Length of the allocation, in multiples of `type_size`; 
+    /// it's in a `RefCell` since it can change depending on how it's used
+    /// in the program. UNSAFE
+    pub len: std::cell::RefCell<usize>,
+}
+
+impl AddrAllocBytes {
+    pub fn total_len(&self) -> usize {
+        self.type_size * *self.len.borrow()
+    }
+}
+
+impl hash::Hash for AddrAllocBytes {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.addr.hash(state);
+        self.type_size.hash(state);
+    }
+}   
+
+impl<CTX> HashStable<CTX> for AddrAllocBytes {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.addr.hash_stable(hcx, hasher);
+        self.type_size.hash_stable(hcx, hasher);
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum AllocBytes {
     Boxed(Box<[u8]>),
-    /// Address and length of the allocation.
-    Addr((u64, usize)),
+    /// Address, size of the type stored, and length of the allocation.
+    Addr(AddrAllocBytes),
 }
 
 impl AllocBytes {
     pub fn len(&self) -> usize {
         match self {
             Self::Boxed(b) => b.len(),
-            Self::Addr((_, len)) => *len,
+            Self::Addr(addr_alloc_bytes) => addr_alloc_bytes.total_len(),
         }
     }
 
     pub fn get_addr(&self) -> u64 {
         match self {
             Self::Boxed(b) => b.as_ptr() as u64,
-            Self::Addr((addr, _)) => *addr,
+            Self::Addr(AddrAllocBytes{ addr, ..}) => *addr,
         }
     }
 
     pub fn get_slice_from_range(&self, range: Range<usize>) -> &[u8] {
         match &self {
             Self::Boxed(b) => &b[range],
-            Self::Addr((addr, len)) => {
+            Self::Addr(AddrAllocBytes { addr, type_size, len }) => {
                 unsafe {
                     let addr = *addr as *const u8;
-                    std::slice::from_raw_parts(addr, *len)
+                    let max_len = range.end;
+                    let mut cur_len = len.borrow_mut();
+                    if max_len/(*type_size) > *cur_len {
+                        *cur_len = max_len/(*type_size);
+                    }
+                    let whole_slice = std::slice::from_raw_parts(addr, (*type_size)*(*cur_len));
+                    &whole_slice[range]
                 }
             }
         }
@@ -61,7 +99,7 @@ impl AllocBytes {
     pub fn get_slice_from_range_mut<'a>(&'a mut self, range: Range<usize>) -> &'a mut [u8]{
         match self {
             AllocBytes::Boxed(ref mut b) => &mut b[range],
-            AllocBytes::Addr((_addr, _len)) => {
+            AllocBytes::Addr(AddrAllocBytes{..}) => {
                 // unsafe {
                 //     let addr = *addr as *const u8;
                 //     &mut std::slice::from_raw_parts(addr, *len)[range]
@@ -71,12 +109,12 @@ impl AllocBytes {
         }
     }
 
-    pub fn add_ptr(&mut self, to_add: usize) -> *mut u8{
+    pub fn add_ptr(&mut self, to_add: usize) -> *mut u8 {
         match self {
             AllocBytes::Boxed(b) => {
                 b.as_mut_ptr().wrapping_add(to_add)
             },
-            AllocBytes::Addr((_addr, _len)) => {
+            AllocBytes::Addr(AddrAllocBytes{..}) => {
                 // TODO!
                 todo!();
             }
@@ -88,10 +126,11 @@ impl AllocBytes {
             AllocBytes::Boxed(ref b) => {
                 MaybeUninit::write_slice(boxed, &b);
             },
-            AllocBytes::Addr((addr, len)) => {
+            AllocBytes::Addr(AddrAllocBytes{addr, ..}) => {
                 unsafe {
                     let addr = *addr as *const u8;
-                    MaybeUninit::write_slice(boxed, std::slice::from_raw_parts(addr, *len));
+                    let boxed_len = boxed.len();
+                    MaybeUninit::write_slice(boxed, std::slice::from_raw_parts(addr, boxed_len));
                 }
             }
         }
@@ -310,13 +349,16 @@ impl<Prov> Allocation<Prov> {
     }
 
     pub fn from_raw_addr(
-        addr_len: (u64, usize),
+        addr: u64,
+        type_size: usize,
+        len: usize,
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let size = Size::from_bytes(addr_len.1);
+        let addr_alloc_bytes = AddrAllocBytes { addr, type_size, len: std::cell::RefCell::new(len)};
+        let size = Size::from_bytes(addr_alloc_bytes.total_len());
         Self {
-            bytes: AllocBytes::Addr(addr_len),
+            bytes: AllocBytes::Addr(addr_alloc_bytes),
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, true),
             align,
