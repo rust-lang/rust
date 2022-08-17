@@ -1669,6 +1669,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::GenericArgKind::Type(ty) = arg.unpack()
                     && let ty::Param(param_ty) = ty.kind()
                     && self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) != def_id
+                    && param_ty.name != rustc_span::symbol::kw::SelfUpper
+                {
+                    Some(arg)
+                } else {
+                    None
+                }
+            })
+        });
+        let mut self_param_to_point_at = predicate_substs.types().find_map(|ty| {
+            ty.walk().find_map(|arg| {
+                if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    && let ty::Param(param_ty) = ty.kind()
+                    && param_ty.name == rustc_span::symbol::kw::SelfUpper
                 {
                     Some(arg)
                 } else {
@@ -1681,6 +1694,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // to print a relevant error.
         if let traits::FulfillmentErrorCode::CodeAmbiguity = error.code {
             fallback_param_to_point_at = None;
+            self_param_to_point_at = None;
             param_to_point_at =
                 self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
         }
@@ -1700,6 +1714,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
                         && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, *call_hir_id, callee.span, args)
+                    {
+                        return;
+                    }
+
+                    if let Some(self_param_to_point_at) = self_param_to_point_at
+                        && self.point_at_args_if_possible(error, def_id, self_param_to_point_at, *call_hir_id, callee.span, args)
                     {
                         return;
                     }
@@ -1729,6 +1749,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
                     && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, hir_id, segment.ident.span, args)
+                {
+                    return;
+                }
+
+                if let Some(self_param_to_point_at) = self_param_to_point_at
+                    && self.point_at_args_if_possible(error, def_id, self_param_to_point_at, hir_id, segment.ident.span, args)
                 {
                     return;
                 }
