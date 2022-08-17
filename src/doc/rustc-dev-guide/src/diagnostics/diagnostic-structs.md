@@ -23,7 +23,7 @@ pub struct FieldAlreadyDeclared {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label = "previous-decl-label"]
+    #[label(typeck::previous_decl_label)]
     pub prev_span: Span,
 }
 ```
@@ -49,13 +49,13 @@ In our example, the Fluent message for the "field already declared" diagnostic
 looks like this:
 
 ```fluent
-typeck-field-already-declared =
+typeck_field_already_declared =
     field `{$field_name}` is already declared
     .label = field already declared
-    .previous-decl-label = `{$field_name}` first declared here
+    .previous_decl_label = `{$field_name}` first declared here
 ```
 
-`typeck-field-already-declared` is the slug from our example and is followed
+`typeck_field_already_declared` is the slug from our example and is followed
 by the diagnostic message.
 
 Every field of the `SessionDiagnostic` which does not have an annotation is
@@ -75,10 +75,10 @@ type `Span`. Applying any of these attributes will create the corresponding
 subdiagnostic with that `Span`. These attributes will look for their
 diagnostic message in a Fluent attribute attached to the primary Fluent
 message. In our example, `#[label]` will look for
-`typeck-field-already-declared.label` (which has the message "field already
+`typeck_field_already_declared.label` (which has the message "field already
 declared"). If there is more than one subdiagnostic of the same type, then
 these attributes can also take a value that is the attribute name to look for
-(e.g. `previous-decl-label` in our example).
+(e.g. `previous_decl_label` in our example).
 
 Other types have special behavior when used in a `SessionDiagnostic` derive:
 
@@ -115,18 +115,15 @@ In the end, the `SessionDiagnostic` derive will generate an implementation of
 ```rust,ignore
 impl SessionDiagnostic for FieldAlreadyDeclared {
     fn into_diagnostic(self, sess: &'_ rustc_session::Session) -> DiagnosticBuilder<'_> {
-        let mut diag = sess.struct_err_with_code(
-            rustc_errors::DiagnosticMessage::fluent("typeck-field-already-declared"),
-            rustc_errors::DiagnosticId::Error("E0124")
-        );
+        let mut diag = sess.struct_err(rustc_errors::fluent::typeck::field_already_declared);
         diag.set_span(self.span);
         diag.span_label(
             self.span,
-            rustc_errors::DiagnosticMessage::fluent_attr("typeck-field-already-declared", "label")
+            rustc_errors::fluent::typeck::label
         );
         diag.span_label(
             self.prev_span,
-            rustc_errors::DiagnosticMessage::fluent_attr("typeck-field-already-declared", "previous-decl-label")
+            rustc_errors::fluent::typeck::previous_decl_label
         );
         diag
     }
@@ -258,9 +255,9 @@ In our example, the Fluent message for the "expected return type" label
 looks like this:
 
 ```fluent
-typeck-expected-default-return-type = expected `()` because of default return type
+typeck_expected_default_return_type = expected `()` because of default return type
 
-typeck-expected-return-type = expected `{$expected}` because of return type
+typeck_expected_return_type = expected `{$expected}` because of return type
 ```
 
 Using the `#[primary_span]` attribute on a field (with type `Span`) will denote
@@ -304,11 +301,11 @@ impl<'tcx> AddToDiagnostic for ExpectedReturnTypeLabel<'tcx> {
         use rustc_errors::{Applicability, IntoDiagnosticArg};
         match self {
             ExpectedReturnTypeLabel::Unit { span } => {
-                diag.span_label(span, DiagnosticMessage::fluent("typeck-expected-default-return-type"))
+                diag.span_label(span, rustc_errors::fluent::typeck::expected_default_return_type)
             }
             ExpectedReturnTypeLabel::Other { span, expected } => {
                 diag.set_arg("expected", expected);
-                diag.span_label(span, DiagnosticMessage::fluent("typeck-expected-return-type"))
+                diag.span_label(span, rustc_errors::fluent::typeck::expected_return_type)
             }
 
         }

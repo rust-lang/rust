@@ -32,23 +32,23 @@ Diagnostic messages are defined in Fluent resources. A combined set of Fluent
 resources for a given locale (e.g. `en-US`) is known as Fluent bundle.
 
 ```fluent
-typeck-address-of-temporary-taken = cannot take address of a temporary
+typeck_address_of_temporary_taken = cannot take address of a temporary
 ```
 
-In the above example, `typeck-address-of-temporary-taken` is the identifier for
+In the above example, `typeck_address_of_temporary_taken` is the identifier for
 a Fluent message and corresponds to the diagnostic message in English. Other
 Fluent resources can be written which would correspond to a message in another
 language. Each diagnostic therefore has at least one Fluent message.
 
 ```fluent
-typeck-address-of-temporary-taken = cannot take address of a temporary
+typeck_address_of_temporary_taken = cannot take address of a temporary
     .label = temporary value
 ```
 
 By convention, diagnostic messages for subdiagnostics are specified as
 "attributes" on Fluent messages (additional related messages, denoted by the
 `.<attribute-name>` syntax). In the above example, `label` is an attribute of
-`typeck-address-of-temporary-taken` which corresponds to the message for the
+`typeck_address_of_temporary_taken` which corresponds to the message for the
 label added to this diagnostic.
 
 Diagnostic messages often interpolate additional context into the message shown
@@ -56,7 +56,7 @@ to the user, such as the name of a type or of a variable. Additional context to
 Fluent messages is provided as an "argument" to the diagnostic.
 
 ```fluent
-typeck-struct-expr-non-exhaustive =
+typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression
 ```
 
@@ -66,6 +66,13 @@ discussed in detail later).
 
 You can consult the [Fluent] documentation for other usage examples of Fluent
 and its syntax.
+
+### Guideline for message naming
+Usually, fluent uses `-` for separating words inside a message name. However,
+`_` is accepted by fluent as well. As `_` fits Rust's use cases better, due to
+the identifiers on the Rust side using `_` as well, inside rustc, `-` is not
+allowed for separating words, and instead `_` is recommended. The only exception
+is for leading `-`s, for message names like `-passes_see_issue`.
 
 ### Guidelines for writing translatable messages
 For a message to be translatable into different languages, all of the
@@ -106,10 +113,10 @@ fluent_messages! {
 For example, given the following Fluent...
 
 ```fluent
-typeck-field-multiply-specified-in-initializer =
+typeck_field_multiply_specified_in_initializer =
     field `{$ident}` specified more than once
     .label = used more than once
-    .label-previous-use = first use of `{$ident}`
+    .label_previous_use = first use of `{$ident}`
 ```
 
 ...then the `fluent_messages` macro will generate:
@@ -122,11 +129,11 @@ pub static DEFAULT_LOCALE_RESOURCES: &'static [&'static str] = &[
 mod fluent_generated {
     mod typeck {
         pub const field_multiply_specified_in_initializer: DiagnosticMessage =
-            DiagnosticMessage::new("typeck-field-multiply-specified-in-initializer");
+            DiagnosticMessage::new("typeck_field_multiply_specified_in_initializer");
         pub const label: SubdiagnosticMessage =
             SubdiagnosticMessage::attr("label");
         pub const label_previous_use: SubdiagnosticMessage =
-            SubdiagnosticMessage::attr("previous-use-label");
+            SubdiagnosticMessage::attr("previous_use_label");
     }
 }
 ```
