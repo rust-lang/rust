@@ -328,7 +328,6 @@ pub struct SubstsOnOverriddenImpl {
 #[derive(LintDiagnostic)]
 #[lint(typeck::unused_extern_crate)]
 pub struct UnusedExternCrate {
-    #[primary_span]
     #[suggestion(applicability = "machine-applicable", code = "")]
     pub span: Span,
 }
@@ -336,7 +335,6 @@ pub struct UnusedExternCrate {
 #[derive(LintDiagnostic)]
 #[lint(typeck::extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
-    #[primary_span]
     #[suggestion_short(applicability = "machine-applicable", code = "{suggestion_code}")]
     pub span: Span,
     pub msg_code: String,
