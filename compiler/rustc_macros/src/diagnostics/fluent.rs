@@ -187,11 +187,11 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
         for entry in resource.entries() {
             let span = res.ident.span();
             if let Entry::Message(Message { id: Identifier { name }, attributes, .. }) = entry {
-                let _ = previous_defns.entry(name.to_string()).or_insert(ident_span);
+                let _ = previous_defns.entry(name.to_string()).or_insert(path_span);
 
                 if name.contains('-') {
                     Diagnostic::spanned(
-                        ident_span,
+                        path_span,
                         Level::Error,
                         format!("name `{name}` contains a '-' character"),
                     )
@@ -212,7 +212,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                     Some(rest) => Ident::new(rest, span),
                     None => {
                         Diagnostic::spanned(
-                            ident_span,
+                            path_span,
                             Level::Error,
                             format!("name `{name}` does not start with the crate name"),
                         )
@@ -238,7 +238,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
 
                     if attr_name.contains('-') {
                         Diagnostic::spanned(
-                            ident_span,
+                            path_span,
                             Level::Error,
                             format!("attribute `{attr_name}` contains a '-' character"),
                         )
@@ -261,7 +261,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 match e {
                     FluentError::Overriding { kind, id } => {
                         Diagnostic::spanned(
-                            ident_span,
+                            path_span,
                             Level::Error,
                             format!("overrides existing {}: `{}`", kind, id),
                         )
