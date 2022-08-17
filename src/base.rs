@@ -148,7 +148,7 @@ fn compile_fn<'tcx>(
 ) {
     let tcx = cx.tcx;
 
-    let mut clif_comments = codegened_func.clif_comments;
+    let clif_comments = codegened_func.clif_comments;
 
     // Store function in context
     let context = cached_context;
@@ -164,17 +164,6 @@ fn compile_fn<'tcx>(
     // Some Cranelift optimizations expect the domtree to not yet be computed and as such don't
     // invalidate it when it would change.
     context.domtree.clear();
-
-    // Perform rust specific optimizations
-    tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(
-            tcx,
-            module.isa(),
-            codegened_func.instance,
-            context,
-            &mut clif_comments,
-        );
-    });
 
     #[cfg(any())] // This is never true
     let _clif_guard = {
