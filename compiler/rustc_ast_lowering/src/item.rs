@@ -1,3 +1,4 @@
+use super::errors::InvalidAbi;
 use super::ResolverAstLoweringExt;
 use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
@@ -7,7 +8,6 @@ use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -1260,10 +1260,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn error_on_invalid_abi(&self, abi: StrLit) {
-        struct_span_err!(self.tcx.sess, abi.span, E0703, "invalid ABI: found `{}`", abi.symbol)
-            .span_label(abi.span, "invalid ABI")
-            .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
-            .emit();
+        self.tcx.sess.emit_err(InvalidAbi {
+            span: abi.span,
+            abi: abi.symbol,
+            valid_abis: abi::all_names().join(", "),
+        });
     }
 
     fn lower_asyncness(&mut self, a: Async) -> hir::IsAsync {
