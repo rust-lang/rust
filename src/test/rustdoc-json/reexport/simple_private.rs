@@ -10,6 +10,8 @@ mod inner {
 }
 
 // @is - "$.index[*][?(@.kind=='import')].inner.name" \"Public\"
+// @set use_id = - "$.index[*][?(@.kind=='import')].id"
 pub use inner::Public;
 
-// @has - "$.index[*][?(@.name=='inner')].inner.items[*]" $pub_id
+// @ismany - "$.index[*][?(@.name=='inner')].inner.items[*]" $pub_id
+// @ismany - "$.index[*][?(@.name=='simple_private')].inner.items[*]" $use_id

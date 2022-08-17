@@ -50,6 +50,7 @@ pub enum CommandKind {
     Has,
     Count,
     Is,
+    IsMany,
     Set,
 }
 
@@ -57,6 +58,7 @@ impl CommandKind {
     fn validate(&self, args: &[String], command_num: usize, lineno: usize) -> bool {
         let count = match self {
             CommandKind::Has => (1..=3).contains(&args.len()),
+            CommandKind::IsMany => args.len() >= 3,
             CommandKind::Count | CommandKind::Is => 3 == args.len(),
             CommandKind::Set => 4 == args.len(),
         };
@@ -89,6 +91,7 @@ impl fmt::Display for CommandKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let text = match self {
             CommandKind::Has => "has",
+            CommandKind::IsMany => "ismany",
             CommandKind::Count => "count",
             CommandKind::Is => "is",
             CommandKind::Set => "set",
@@ -137,6 +140,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             "has" => CommandKind::Has,
             "count" => CommandKind::Count,
             "is" => CommandKind::Is,
+            "ismany" => CommandKind::IsMany,
             "set" => CommandKind::Set,
             _ => {
                 print_err(&format!("Unrecognized command name `@{}`", cmd), lineno);
@@ -226,6 +230,44 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 }
                 _ => unreachable!(),
             }
+        }
+        CommandKind::IsMany => {
+            // @ismany <path> <jsonpath> <value>...
+            let (path, query, values) = if let [path, query, values @ ..] = &command.args[..] {
+                (path, query, values)
+            } else {
+                unreachable!("Checked in CommandKind::validate")
+            };
+            let val = cache.get_value(path)?;
+            let got_values = select(&val, &query).unwrap();
+            assert!(!command.negated, "`@!ismany` is not supported");
+
+            // Serde json doesn't implement Ord or Hash for Value, so we must
+            // use a Vec here. While in theory that makes setwize equality
+            // O(n^2), in practice n will never be large enought to matter.
+            let expected_values =
+                values.iter().map(|v| string_to_value(v, cache)).collect::<Vec<_>>();
+            if expected_values.len() != got_values.len() {
+                return Err(CkError::FailedCheck(
+                    format!(
+                        "Expected {} values, but `{}` matched to {} values ({:?})",
+                        expected_values.len(),
+                        query,
+                        got_values.len(),
+                        got_values
+                    ),
+                    command,
+                ));
+            };
+            for got_value in got_values {
+                if !expected_values.iter().any(|exp| &**exp == got_value) {
+                    return Err(CkError::FailedCheck(
+                        format!("`{}` has match {:?}, which was not expected", query, got_value),
+                        command,
+                    ));
+                }
+            }
+            true
         }
         CommandKind::Count => {
             // @count <path> <jsonpath> <count> = Check that the jsonpath matches exactly [count] times

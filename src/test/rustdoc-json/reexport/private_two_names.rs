@@ -1,4 +1,6 @@
-// Test for the ICE in rust/83720
+// ignore-tidy-linelength
+
+// Test for the ICE in https://github.com/rust-lang/rust/issues/83720
 // A pub-in-private type re-exported under two different names shouldn't cause an error
 
 #![no_core]
@@ -7,11 +9,15 @@
 // @is private_two_names.json "$.index[*][?(@.name=='style')].kind" \"module\"
 // @is private_two_names.json "$.index[*][?(@.name=='style')].inner.is_stripped" "true"
 mod style {
-    // @has - "$.index[*](?(@.name=='Color'))"
+    // @set color_struct_id = - "$.index[*][?(@.kind=='struct' && @.name=='Color')].id"
     pub struct Color;
 }
 
-// @has - "$.index[*][?(@.kind=='import' && @.inner.name=='Color')]"
+// @is - "$.index[*][?(@.kind=='import' && @.inner.name=='Color')].inner.id" $color_struct_id
+// @set color_export_id = - "$.index[*][?(@.kind=='import' && @.inner.name=='Color')].id"
 pub use style::Color;
-// @has - "$.index[*][?(@.kind=='import' && @.inner.name=='Colour')]"
+// @is - "$.index[*][?(@.kind=='import' && @.inner.name=='Colour')].inner.id" $color_struct_id
+// @set colour_export_id = - "$.index[*][?(@.kind=='import' && @.inner.name=='Colour')].id"
 pub use style::Color as Colour;
+
+// @ismany - "$.index[*][?(@.name=='private_two_names')].inner.items[*]" $color_export_id $colour_export_id
