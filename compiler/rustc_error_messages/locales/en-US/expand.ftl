@@ -10,5 +10,13 @@ expand_expr_repeat_no_syntax_vars =
 expand_must_repeat_once = 
     this must repeat at least once
 
-count_repetition_misplaced =
+expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
+
+expand_meta_var_expr_unrecognized_var =
+    variable `{$key}` is not recognized in meta-variable expression
+
+expand_var_still_repeating =
+    variable '{$ident}' is still repeating at this depth
+
+expand_meta_var_dif_seq_matchers = {$msg}

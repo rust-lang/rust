@@ -1,4 +1,8 @@
 use crate::base::ExtCtxt;
+use crate::errors::{
+    CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
+    NoSyntaxVarsExprRepeat, VarStillRepeating,
+};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
@@ -7,7 +11,6 @@ use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
-use rustc_macros::SessionDiagnostic;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
@@ -52,20 +55,6 @@ impl<'a> Iterator for Frame<'a> {
             }
         }
     }
-}
-
-#[derive(SessionDiagnostic)]
-#[error(expand::expr_repeat_no_syntax_vars)]
-struct NoSyntaxVarsExprRepeat {
-    #[primary_span]
-    span: Span,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(expand::must_repeat_once)]
-struct MustRepeatOnce {
-    #[primary_span]
-    span: Span,
 }
 
 /// This can do Macro-By-Example transcription.
@@ -188,7 +177,7 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx.struct_span_err(seq.span(), &msg));
+                        return Err(cx.create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -247,10 +236,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
-                            return Err(cx.struct_span_err(
-                                sp, /* blame the macro writer */
-                                &format!("variable '{}' is still repeating at this depth", ident),
-                            ));
+                            return Err(cx.create_err(VarStillRepeating { span: sp, ident }));
                         }
                     }
                 } else {
@@ -428,13 +414,6 @@ fn lockstep_iter_size(
     }
 }
 
-#[derive(SessionDiagnostic)]
-#[error(expand::count_repetition_misplaced)]
-struct CountRepetitionMisplaced {
-    #[primary_span]
-    span: Span,
-}
-
 /// Used solely by the `count` meta-variable expression, counts the outer-most repetitions at a
 /// given optional nested depth.
 ///
@@ -511,12 +490,7 @@ where
 {
     let span = ident.span;
     let key = MacroRulesNormalizedIdent::new(ident);
-    interp.get(&key).ok_or_else(|| {
-        cx.struct_span_err(
-            span,
-            &format!("variable `{}` is not recognized in meta-variable expression", key),
-        )
-    })
+    interp.get(&key).ok_or_else(|| cx.create_err(MetaVarExprUnrecognizedVar { span, key }))
 }
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
