@@ -14,7 +14,6 @@ LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
 ...
 LL | for<'t> <Map<<&'t I as IntoIterator>::IntoIter, F> as Iterator>::Item: Foo,
    |                                                                        ^^^ required by this bound in `trigger_error`
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

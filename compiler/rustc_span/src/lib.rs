@@ -664,6 +664,13 @@ impl Span {
         Some(self)
     }
 
+    pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
+        while !Span::eq_ctxt(self, other) {
+            self = self.parent_callsite()?;
+        }
+        Some(self)
+    }
+
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
         self.ctxt().edition()

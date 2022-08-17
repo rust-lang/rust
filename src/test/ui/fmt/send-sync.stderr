@@ -17,7 +17,6 @@ note: required by a bound in `send`
    |
 LL | fn send<T: Send>(_: T) {}
    |            ^^^^ required by this bound in `send`
-   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `core::fmt::Opaque` cannot be shared between threads safely
   --> $DIR/send-sync.rs:9:10
@@ -38,7 +37,6 @@ note: required by a bound in `sync`
    |
 LL | fn sync<T: Sync>(_: T) {}
    |            ^^^^ required by this bound in `sync`
-   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
