@@ -30,10 +30,10 @@ impl Wowee {
 async fn test() {
     foo(); //~ ERROR unused return value of `foo` that must be used
     //~^ ERROR unused implementer of `Future` that must be used
-    foo().await; //~ ERROR unused awaited future returned by `foo` that must be used
+    foo().await; //~ ERROR unused output of future returned by `foo` that must be used
     bar(); //~ ERROR unused return value of `bar` that must be used
     //~^ ERROR unused implementer of `Future` that must be used
-    bar().await; //~ ERROR unused awaited future returned by `bar` that must be used
+    bar().await; //~ ERROR unused output of future returned by `bar` that must be used
     baz(); //~ ERROR unused implementer of `Future` that must be used
     baz().await; // ok
 }

@@ -95,10 +95,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
             && let ty = cx.typeck_results().expr_ty(&await_expr)
-            && let ty::Opaque(def_id, _) = ty.kind()
+            && let ty::Opaque(future_def_id, _) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
-            && let parent = cx.tcx.parent(*def_id)
-            && check_must_use_def(cx, parent, expr.span, "awaited future returned by ", "")
+            // FIXME: This also includes non-async fns that return `impl Future`.
+            && let async_fn_def_id = cx.tcx.parent(*future_def_id)
+            && check_must_use_def(
+                cx,
+                async_fn_def_id,
+                expr.span,
+                "output of future returned by ",
+                "",
+            )
         {
             // We have a bare `foo().await;` on an opaque type from an async function that was
             // annotated with `#[must_use]`.
