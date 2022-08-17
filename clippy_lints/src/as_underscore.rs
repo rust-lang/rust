@@ -12,7 +12,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// The conversion might include lossy conversion and dangerous cast that might go
-    /// undetected du to the type being inferred.
+    /// undetected due to the type being inferred.
     ///
     /// The lint is allowed by default as using `_` is less wordy than always specifying the type.
     ///
