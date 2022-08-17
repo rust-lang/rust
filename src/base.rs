@@ -24,30 +24,29 @@ struct CodegenedFunction<'tcx> {
 }
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx<'tcx>,
     cached_context: &mut Context,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
-    let tcx = cx.tcx;
     let _inst_guard =
         crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
 
     let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
-    let codegened_func = codegen_fn(cx, cached_func, module, instance);
+    let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
 
-    compile_fn(cx, cached_context, module, codegened_func);
+    compile_fn(tcx, cx, cached_context, module, codegened_func);
 }
 
 fn codegen_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx<'tcx>,
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) -> CodegenedFunction<'tcx> {
     debug_assert!(!instance.substs.needs_infer());
-
-    let tcx = cx.tcx;
 
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
@@ -117,14 +116,16 @@ fn codegen_fn<'tcx>(
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
-    crate::pretty_clif::write_clif_file(
-        tcx,
-        symbol_name.name,
-        "unopt",
-        module.isa(),
-        &func,
-        &clif_comments,
-    );
+    if cx.should_write_ir {
+        crate::pretty_clif::write_clif_file(
+            tcx.output_filenames(()),
+            symbol_name.name,
+            "unopt",
+            module.isa(),
+            &func,
+            &clif_comments,
+        );
+    }
 
     // Verify function
     verify_func(tcx, &clif_comments, &func);
@@ -141,13 +142,12 @@ fn codegen_fn<'tcx>(
 }
 
 fn compile_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx<'tcx>,
     cached_context: &mut Context,
     module: &mut dyn Module,
     codegened_func: CodegenedFunction<'tcx>,
 ) {
-    let tcx = cx.tcx;
-
     let clif_comments = codegened_func.clif_comments;
 
     // Store function in context
@@ -194,26 +194,28 @@ fn compile_fn<'tcx>(
 
     // Define function
     tcx.sess.time("define function", || {
-        context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
+        context.want_disasm = cx.should_write_ir;
         module.define_function(codegened_func.func_id, context).unwrap();
     });
 
-    // Write optimized function to file for debugging
-    crate::pretty_clif::write_clif_file(
-        tcx,
-        codegened_func.symbol_name.name,
-        "opt",
-        module.isa(),
-        &context.func,
-        &clif_comments,
-    );
+    if cx.should_write_ir {
+        // Write optimized function to file for debugging
+        crate::pretty_clif::write_clif_file(
+            &cx.output_filenames,
+            codegened_func.symbol_name.name,
+            "opt",
+            module.isa(),
+            &context.func,
+            &clif_comments,
+        );
 
-    if let Some(disasm) = &context.mach_compile_result.as_ref().unwrap().disasm {
-        crate::pretty_clif::write_ir_file(
-            tcx,
-            || format!("{}.vcode", codegened_func.symbol_name.name),
-            |file| file.write_all(disasm.as_bytes()),
-        )
+        if let Some(disasm) = &context.mach_compile_result.as_ref().unwrap().disasm {
+            crate::pretty_clif::write_ir_file(
+                &cx.output_filenames,
+                &format!("{}.vcode", codegened_func.symbol_name.name),
+                |file| file.write_all(disasm.as_bytes()),
+            )
+        }
     }
 
     // Define debuginfo for function

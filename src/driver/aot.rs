@@ -256,8 +256,9 @@ fn module_codegen(
     for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
-                cx.tcx.sess.time("codegen fn", || {
+                tcx.sess.time("codegen fn", || {
                     crate::base::codegen_and_compile_fn(
+                        tcx,
                         &mut cx,
                         &mut cached_context,
                         &mut module,

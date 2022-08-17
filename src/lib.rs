@@ -26,6 +26,7 @@ extern crate rustc_driver;
 
 use std::any::Any;
 use std::cell::{Cell, RefCell};
+use std::sync::Arc;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -121,7 +122,8 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// The codegen context holds any information shared between the codegen of individual functions
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx<'tcx> {
-    tcx: TyCtxt<'tcx>,
+    output_filenames: Arc<OutputFilenames>,
+    should_write_ir: bool,
     global_asm: String,
     inline_asm_index: Cell<usize>,
     debug_context: Option<DebugContext<'tcx>>,
@@ -147,7 +149,8 @@ impl<'tcx> CodegenCx<'tcx> {
             None
         };
         CodegenCx {
-            tcx,
+            output_filenames: tcx.output_filenames(()).clone(),
+            should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
             inline_asm_index: Cell::new(0),
             debug_context,
