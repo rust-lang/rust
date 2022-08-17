@@ -105,10 +105,13 @@ impl<'tcx> Inherited<'_, 'tcx> {
                         let mut fulfillment_ctxt = FulfillmentContext::new_in_snapshot();
                         fulfillment_ctxt.register_predicate_obligations(infcx, obligations);
                         if fulfillment_ctxt.select_all_or_error(infcx).is_empty() {
-                            infcx.resolve_vars_if_possible(normalized_fn_sig)
-                        } else {
-                            fn_sig
+                            let normalized_fn_sig =
+                                infcx.resolve_vars_if_possible(normalized_fn_sig);
+                            if !normalized_fn_sig.needs_infer() {
+                                return normalized_fn_sig;
+                            }
                         }
+                        fn_sig
                     })
                 })),
             def_id,
