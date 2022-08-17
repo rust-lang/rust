@@ -23,7 +23,6 @@ pub fn expand_deriving_eq(
     let attrs = vec![cx.attribute(inline), cx.attribute(doc), cx.attribute(no_coverage)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(cmp::Eq),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

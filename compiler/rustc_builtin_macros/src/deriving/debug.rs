@@ -19,7 +19,6 @@ pub fn expand_deriving_debug(
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(fmt::Debug),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

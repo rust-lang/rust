@@ -36,7 +36,6 @@ pub fn expand_deriving_partial_ord(
 
     let trait_def = TraitDef {
         span,
-        attributes: vec![],
         path: path_std!(cmp::PartialOrd),
         additional_bounds: vec![],
         generics: Bounds::empty(),
