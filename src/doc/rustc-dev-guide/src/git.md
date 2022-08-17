@@ -157,9 +157,12 @@ no changes added to commit (use "git add" and/or "git commit -a")
 These changes are not changes to files: they are changes to submodules (more on
 this [later](#git-submodules)). To get rid of those, run `git submodule update`
 (or run any `x.py` command, which will automatically update the submodules).
-Note that there is (as of <!-- date-check --> February 2022) a [bug][#77620] if you use
-worktrees, submodules, and `x.py` in a commit hook. If you run into an error
-like:
+Note that,
+as of <!-- date-check --> Aug 2022,
+there is a [bug][#77620] if you use worktrees,
+submodules, and `x.py` in a commit hook.
+If you run into an error like the following,
+it's not anything you did wrong:
 
 ```
 error: failed to read `/home/joshua/rustc-worktree/src/tools/miri/cargo-miri/Cargo.toml`
@@ -167,7 +170,8 @@ error: failed to read `/home/joshua/rustc-worktree/src/tools/miri/cargo-miri/Car
 Caused by:
   No such file or directory (os error 2)
 ```
-it's not anything you did wrong. There is a workaround in [the issue][#77620-workaround].
+
+There is a workaround in [the issue][#77620-workaround].
 
 [#77620]: https://github.com/rust-lang/rust/issues/77620
 [#77620-workaround]: https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229
