@@ -231,16 +231,16 @@ pub(crate) fn write_ir_file(
 
 pub(crate) fn write_clif_file<'tcx>(
     tcx: TyCtxt<'tcx>,
+    symbol_name: &str,
     postfix: &str,
     isa: &dyn cranelift_codegen::isa::TargetIsa,
-    instance: Instance<'tcx>,
     func: &cranelift_codegen::ir::Function,
     mut clif_comments: &CommentWriter,
 ) {
     // FIXME work around filename too long errors
     write_ir_file(
         tcx,
-        || format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),
+        || format!("{}.{}.clif", symbol_name, postfix),
         |file| {
             let mut clif = String::new();
             cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func)

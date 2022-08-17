@@ -119,9 +119,9 @@ fn codegen_fn<'tcx>(
 
     crate::pretty_clif::write_clif_file(
         tcx,
+        symbol_name.name,
         "unopt",
         module.isa(),
-        instance,
         &func,
         &clif_comments,
     );
@@ -201,9 +201,9 @@ fn compile_fn<'tcx>(
     // Write optimized function to file for debugging
     crate::pretty_clif::write_clif_file(
         tcx,
+        codegened_func.symbol_name.name,
         "opt",
         module.isa(),
-        codegened_func.instance,
         &context.func,
         &clif_comments,
     );
@@ -211,7 +211,7 @@ fn compile_fn<'tcx>(
     if let Some(disasm) = &context.mach_compile_result.as_ref().unwrap().disasm {
         crate::pretty_clif::write_ir_file(
             tcx,
-            || format!("{}.vcode", tcx.symbol_name(codegened_func.instance).name),
+            || format!("{}.vcode", codegened_func.symbol_name.name),
             |file| file.write_all(disasm.as_bytes()),
         )
     }
