@@ -205,11 +205,23 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 // The last case we error about above, but we want to fall back gracefully
                 // so that only the error is being emitted and not also one about the macro
                 // failing.
-                let snake_name = Ident::new(
-                    // FIXME: should probably trim prefix, not replace all occurrences
-                    &name.replace('-', "_").replace(&format!("{}_", res.ident), ""),
-                    span,
-                );
+                let crate_prefix = format!("{}_", res.ident);
+
+                let snake_name = name.replace('-', "_");
+                let snake_name = match snake_name.strip_prefix(&crate_prefix) {
+                    Some(rest) => Ident::new(rest, span),
+                    None => {
+                        Diagnostic::spanned(
+                            ident_span,
+                            Level::Error,
+                            format!("name `{name}` does not start with the crate name"),
+                        )
+                        .help(format!("prepend `{crate_prefix}` to the slug name: `{crate_prefix}{snake_name}`"))
+                        .emit();
+                        Ident::new(&snake_name, span)
+                    }
+                };
+
                 constants.extend(quote! {
                     pub const #snake_name: crate::DiagnosticMessage =
                         crate::DiagnosticMessage::FluentIdentifier(

@@ -14,7 +14,7 @@ privacy_in_public_interface = {$vis_descr} {$kind} `{$descr}` in public interfac
 privacy_from_private_dep_in_public_interface =
     {$kind} `{$descr}` from private dependency '{$krate}' in public interface
 
-private_in_public_lint =
+privacy_private_in_public_lint =
     {$vis_descr} {$kind} `{$descr}` in public interface (error {$kind ->
         [trait] E0445
         *[other] E0446
