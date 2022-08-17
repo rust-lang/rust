@@ -603,7 +603,7 @@ impl<'a> TraitDef<'a> {
                         param.bounds.iter().cloned()
                     ).collect();
 
-                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, vec![], bounds, None)
+                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
             }
             GenericParamKind::Const { ty, kw_span, .. } => {
                 let const_nodefault_kind = GenericParamKind::Const {
