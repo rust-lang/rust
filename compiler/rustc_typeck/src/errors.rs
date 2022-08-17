@@ -337,7 +337,7 @@ pub struct UnusedExternCrate {
 #[lint(typeck::extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
     #[primary_span]
-    #[suggestion(applicability = "machine-applicable", code = "{suggestion_code}")]
+    #[suggestion_short(applicability = "machine-applicable", code = "{suggestion_code}")]
     pub span: Span,
     pub msg_code: String,
     pub suggestion_code: String,
