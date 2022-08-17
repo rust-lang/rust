@@ -16,7 +16,7 @@ pub fn clamp_demo(a: f32, x: f32, y: f32) -> f32 {
 // CHECK-LABEL: clamp12_demo:
 #[no_mangle]
 pub fn clamp12_demo(a: f32) -> f32 {
-    // CHECK-NEXT: movss   xmm1
+    // CHECK: movss   xmm1
     // CHECK-NEXT: maxss   xmm1, xmm0
     // CHECK-NEXT: movss   xmm0
     // CHECK-NEXT: minss   xmm0, xmm1
