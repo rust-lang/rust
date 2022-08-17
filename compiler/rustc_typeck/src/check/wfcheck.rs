@@ -90,15 +90,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     tcx.infer_ctxt().enter(|ref infcx| {
         let ocx = ObligationCtxt::new(infcx);
 
-        let assumed_wf_types = tcx.assumed_wf_types(body_def_id);
-        let mut implied_bounds = FxHashSet::default();
-        let cause = ObligationCause::misc(span, body_id);
-        for ty in assumed_wf_types {
-            implied_bounds.insert(ty);
-            let normalized = ocx.normalize(cause.clone(), param_env, ty);
-            implied_bounds.insert(normalized);
-        }
-        let implied_bounds = implied_bounds;
+        let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
 
         let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
 
@@ -113,7 +105,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
         }
 
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(infcx, implied_bounds, body_id);
+        outlives_environment.add_implied_bounds(infcx, assumed_wf_types, body_id);
         infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
     })
 }

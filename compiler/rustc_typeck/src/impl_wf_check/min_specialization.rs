@@ -74,7 +74,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::specialization_graph::Node;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -145,15 +144,8 @@ fn get_impl_substs<'tcx>(
         let param_env = tcx.param_env(impl1_def_id);
         let impl1_hir_id = tcx.hir().local_def_id_to_hir_id(impl1_def_id);
 
-        let assumed_wf_types = tcx.assumed_wf_types(impl1_def_id);
-        let mut implied_bounds = FxHashSet::default();
-        let cause = ObligationCause::misc(tcx.def_span(impl1_def_id), impl1_hir_id);
-        for ty in assumed_wf_types {
-            implied_bounds.insert(ty);
-            let normalized = ocx.normalize(cause.clone(), param_env, ty);
-            implied_bounds.insert(normalized);
-        }
-        let implied_bounds = implied_bounds;
+        let assumed_wf_types =
+            ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
 
         let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
         let impl2_substs =
@@ -166,7 +158,7 @@ fn get_impl_substs<'tcx>(
         }
 
         let mut outlives_env = OutlivesEnvironment::new(param_env);
-        outlives_env.add_implied_bounds(infcx, implied_bounds, impl1_hir_id);
+        outlives_env.add_implied_bounds(infcx, assumed_wf_types, impl1_hir_id);
         infcx.check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
         let Ok(impl2_substs) = infcx.fully_resolve(impl2_substs) else {
             let span = tcx.def_span(impl1_def_id);
