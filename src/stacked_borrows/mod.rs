@@ -286,7 +286,7 @@ impl<'tcx> Stack {
     fn item_popped(
         item: &Item,
         global: &GlobalStateInner,
-        dcx: &mut DiagnosticCx<'_, '_, 'tcx, '_>,
+        dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
     ) -> InterpResult<'tcx> {
         if !global.tracked_pointer_tags.is_empty() {
             dcx.check_tracked_tag_popped(item, global);
@@ -324,7 +324,7 @@ impl<'tcx> Stack {
         access: AccessKind,
         tag: ProvenanceExtra,
         global: &mut GlobalStateInner,
-        dcx: &mut DiagnosticCx<'_, '_, 'tcx, '_>,
+        dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
@@ -410,7 +410,7 @@ impl<'tcx> Stack {
         &mut self,
         tag: ProvenanceExtra,
         global: &GlobalStateInner,
-        dcx: &mut DiagnosticCx<'_, '_, 'tcx, '_>,
+        dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
         // Step 1: Make sure there is a granting item.
@@ -436,7 +436,7 @@ impl<'tcx> Stack {
         derived_from: ProvenanceExtra,
         new: Item,
         global: &mut GlobalStateInner,
-        dcx: &mut DiagnosticCx<'_, '_, 'tcx, '_>,
+        dcx: &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
         exposed_tags: &FxHashSet<SbTag>,
     ) -> InterpResult<'tcx> {
         dcx.start_grant(new.perm());
@@ -515,10 +515,10 @@ impl<'tcx> Stacks {
     fn for_each(
         &mut self,
         range: AllocRange,
-        mut dcx_builder: DiagnosticCxBuilder<'_, '_, 'tcx>,
+        mut dcx_builder: DiagnosticCxBuilder<'_, '_, '_, 'tcx>,
         mut f: impl FnMut(
             &mut Stack,
-            &mut DiagnosticCx<'_, '_, 'tcx, '_>,
+            &mut DiagnosticCx<'_, '_, '_, '_, 'tcx>,
             &mut FxHashSet<SbTag>,
         ) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -554,22 +554,25 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn before_memory_read<'tcx, 'mir>(
+    pub fn before_memory_read<'tcx, 'mir, 'ecx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
         state: &GlobalState,
-        current_span: CurrentSpan<'_, 'mir, 'tcx>,
-        threads: &ThreadManager<'mir, 'tcx>,
-    ) -> InterpResult<'tcx> {
+        mut current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        threads: &'ecx ThreadManager<'mir, 'tcx>,
+    ) -> InterpResult<'tcx>
+    where
+        'tcx: 'ecx,
+    {
         trace!(
             "read access with tag {:?}: {:?}, size {}",
             tag,
             Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
-        let dcx = DiagnosticCxBuilder::read(current_span, threads, tag, range);
+        let dcx = DiagnosticCxBuilder::read(&mut current_span, threads, tag, range);
         let mut state = state.borrow_mut();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.access(AccessKind::Read, tag, &mut state, dcx, exposed_tags)
@@ -577,14 +580,14 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn before_memory_write<'tcx, 'mir>(
+    pub fn before_memory_write<'tcx, 'mir, 'ecx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
         state: &GlobalState,
-        current_span: CurrentSpan<'_, 'mir, 'tcx>,
-        threads: &ThreadManager<'mir, 'tcx>,
+        mut current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        threads: &'ecx ThreadManager<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -592,7 +595,7 @@ impl Stacks {
             Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
-        let dcx = DiagnosticCxBuilder::write(current_span, threads, tag, range);
+        let dcx = DiagnosticCxBuilder::write(&mut current_span, threads, tag, range);
         let mut state = state.borrow_mut();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.access(AccessKind::Write, tag, &mut state, dcx, exposed_tags)
@@ -600,17 +603,17 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn before_memory_deallocation<'tcx, 'mir>(
+    pub fn before_memory_deallocation<'tcx, 'mir, 'ecx>(
         &mut self,
         alloc_id: AllocId,
         tag: ProvenanceExtra,
         range: AllocRange,
         state: &GlobalState,
-        current_span: CurrentSpan<'_, 'mir, 'tcx>,
-        threads: &ThreadManager<'mir, 'tcx>,
+        mut current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        threads: &'ecx ThreadManager<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
-        let dcx = DiagnosticCxBuilder::dealloc(current_span, threads, tag);
+        let dcx = DiagnosticCxBuilder::dealloc(&mut current_span, threads, tag);
         let state = state.borrow();
         self.for_each(range, dcx, |stack, dcx, exposed_tags| {
             stack.dealloc(tag, &state, dcx, exposed_tags)
@@ -621,8 +624,11 @@ impl Stacks {
 
 /// Retagging/reborrowing.  There is some policy in here, such as which permissions
 /// to grant for which references, and when to add protectors.
-impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+impl<'mir: 'ecx, 'tcx: 'mir, 'ecx> EvalContextPrivExt<'mir, 'tcx, 'ecx>
+    for crate::MiriEvalContext<'mir, 'tcx>
+{
+}
+trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Returns the `AllocId` the reborrow was done in, if some actual borrow stack manipulation
     /// happened.
     fn reborrow(
@@ -635,11 +641,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         protect: bool,
     ) -> InterpResult<'tcx, Option<AllocId>> {
         let this = self.eval_context_mut();
-        let current_span = this.machine.current_span(*this.tcx);
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriEvalContext<'mir, 'tcx>,
-                            current_span: CurrentSpan<'_, 'mir, 'tcx>,
                             loc: Option<(AllocId, Size, ProvenanceExtra)>| // alloc_id, base_offset, orig_tag
          -> InterpResult<'tcx> {
             let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
@@ -658,6 +662,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let (_size, _align, alloc_kind) = this.get_alloc_info(alloc_id);
             match alloc_kind {
                 AllocKind::LiveData => {
+                    let current_span = &mut this.machine.current_span(*this.tcx);
                     // This should have alloc_extra data, but `get_alloc_extra` can still fail
                     // if converting this alloc_id from a global to a local one
                     // uncovers a non-supported `extern static`.
@@ -667,9 +672,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         .as_ref()
                         .expect("we should have Stacked Borrows data")
                         .borrow_mut();
-                    let  dcx = DiagnosticCxBuilder::retag(
+                    let threads = &this.machine.threads;
+                    // Note that we create a *second* `DiagnosticCxBuilder` below for the actual retag.
+                    // FIXME: can this be done cleaner?
+                    let dcx = DiagnosticCxBuilder::retag(
                         current_span,
-                        &this.machine.threads,
+                        threads,
                         retag_cause,
                         new_tag,
                         orig_tag,
@@ -704,16 +712,16 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Dangling slices are a common case here; it's valid to get their length but with raw
             // pointer tagging for example all calls to get_unchecked on them are invalid.
             if let Ok((alloc_id, base_offset, orig_tag)) = this.ptr_try_get_alloc_id(place.ptr) {
-                log_creation(this, current_span, Some((alloc_id, base_offset, orig_tag)))?;
+                log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
                 return Ok(Some(alloc_id));
             }
             // This pointer doesn't come with an AllocId. :shrug:
-            log_creation(this, current_span, None)?;
+            log_creation(this, None)?;
             return Ok(None);
         }
 
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
-        log_creation(this, current_span, Some((alloc_id, base_offset, orig_tag)))?;
+        log_creation(this, Some((alloc_id, base_offset, orig_tag)))?;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         let (alloc_size, _) = this.get_live_alloc_size_and_align(alloc_id)?;
@@ -770,6 +778,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .as_ref()
                     .expect("we should have Stacked Borrows data")
                     .borrow_mut();
+                // FIXME: can't share this with the current_span inside log_creation
+                let mut current_span = this.machine.current_span(*this.tcx);
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -789,7 +799,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let item = Item::new(new_tag, perm, protected);
                     let mut global = this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
                     let dcx = DiagnosticCxBuilder::retag(
-                        this.machine.current_span(*this.tcx),
+                        &mut current_span, // FIXME avoid this `clone`
                         &this.machine.threads,
                         retag_cause,
                         new_tag,
@@ -817,8 +827,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let item = Item::new(new_tag, perm, protect);
         let range = alloc_range(base_offset, size);
         let mut global = machine.stacked_borrows.as_ref().unwrap().borrow_mut();
+        // FIXME: can't share this with the current_span inside log_creation
+        let current_span = &mut machine.current_span(tcx);
         let dcx = DiagnosticCxBuilder::retag(
-            machine.current_span(tcx), // `get_alloc_extra_mut` invalidated our old `current_span`
+            current_span,
             &machine.threads,
             retag_cause,
             new_tag,

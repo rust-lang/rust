@@ -103,26 +103,30 @@ pub struct TagHistory {
     pub protected: Option<([(String, SpanData); 2])>,
 }
 
-pub struct DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+pub struct DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
     operation: Operation,
-    current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+    // 'span cannot be merged with any other lifetime since they appear invariantly, under the
+    // mutable ref.
+    current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
     threads: &'ecx ThreadManager<'mir, 'tcx>,
 }
 
-pub struct DiagnosticCx<'ecx, 'mir, 'tcx, 'history> {
+pub struct DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
     operation: Operation,
-    current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+    // 'span and 'history cannot be merged, since when we call `unbuild` we need
+    // to return the exact 'span that was used when calling `build`.
+    current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
     threads: &'ecx ThreadManager<'mir, 'tcx>,
     history: &'history mut AllocHistory,
     offset: Size,
 }
 
-impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
-    pub fn build(
+impl<'span, 'ecx, 'mir, 'tcx> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
+    pub fn build<'history>(
         self,
         history: &'history mut AllocHistory,
         offset: Size,
-    ) -> DiagnosticCx<'ecx, 'mir, 'tcx, 'history> {
+    ) -> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
         DiagnosticCx {
             operation: self.operation,
             current_span: self.current_span,
@@ -133,7 +137,7 @@ impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 
     pub fn retag(
-        current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
         threads: &'ecx ThreadManager<'mir, 'tcx>,
         cause: RetagCause,
         new_tag: SbTag,
@@ -147,7 +151,7 @@ impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 
     pub fn read(
-        current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
         threads: &'ecx ThreadManager<'mir, 'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
@@ -157,7 +161,7 @@ impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 
     pub fn write(
-        current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
         threads: &'ecx ThreadManager<'mir, 'tcx>,
         tag: ProvenanceExtra,
         range: AllocRange,
@@ -167,7 +171,7 @@ impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 
     pub fn dealloc(
-        current_span: CurrentSpan<'ecx, 'mir, 'tcx>,
+        current_span: &'span mut CurrentSpan<'ecx, 'mir, 'tcx>,
         threads: &'ecx ThreadManager<'mir, 'tcx>,
         tag: ProvenanceExtra,
     ) -> Self {
@@ -176,8 +180,8 @@ impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
     }
 }
 
-impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCx<'ecx, 'mir, 'tcx, 'history> {
-    pub fn unbuild(self) -> DiagnosticCxBuilder<'ecx, 'mir, 'tcx> {
+impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
+    pub fn unbuild(self) -> DiagnosticCxBuilder<'span, 'ecx, 'mir, 'tcx> {
         DiagnosticCxBuilder {
             operation: self.operation,
             current_span: self.current_span,
@@ -233,7 +237,7 @@ impl AllocHistory {
     }
 }
 
-impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCx<'ecx, 'mir, 'tcx, 'history> {
+impl<'span, 'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'span, 'history, 'ecx, 'mir, 'tcx> {
     pub fn start_grant(&mut self, perm: Permission) {
         let Operation::Retag(op) = &mut self.operation else {
             unreachable!("start_grant must only be called during a retag, this is: {:?}", self.operation)
@@ -247,6 +251,7 @@ impl<'ecx, 'mir, 'tcx, 'history> DiagnosticCx<'ecx, 'mir, 'tcx, 'history> {
             }
             Some(previous) =>
                 if previous != perm {
+                    // 'Split up' the creation event.
                     let previous_range = last_creation.retag.range;
                     last_creation.retag.range = alloc_range(previous_range.start, self.offset);
                     let mut new_event = last_creation.clone();
