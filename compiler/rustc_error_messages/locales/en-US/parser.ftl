@@ -32,3 +32,12 @@ parser_incorrect_use_of_await =
 parser_in_in_typo =
     expected iterable, found keyword `in`
     .suggestion = remove the duplicated `in`
+
+parser_invalid_variable_declaration =
+    invalid variable declaration
+
+parser_switch_mut_let_order =
+    switch the order of `mut` and `let`
+parser_missing_let_before_mut = missing keyword
+parser_use_let_not_auto = write `let` instead of `auto` to introduce a new variable
+parser_use_let_not_var = write `let` instead of `var` to introduce a new variable
