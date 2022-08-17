@@ -13,9 +13,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:45:15
    |
 LL |     ref_thing.method();
-   |     --------- ^^^^^^
-   |     |
-   |     type must be known at this point
+   |               ^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -34,9 +32,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:48:15
    |
 LL |     ref_thing.by_self();
-   |     --------- ^^^^^^^
-   |     |
-   |     type must be known at this point
+   |               ^^^^^^^
    |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
@@ -55,9 +51,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:51:15
    |
 LL |     mut_thing.method();
-   |     --------- ^^^^^^
-   |     |
-   |     type must be known at this point
+   |               ^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -76,9 +70,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:52:15
    |
 LL |     mut_thing.mut_method();
-   |     --------- ^^^^^^^^^^
-   |     |
-   |     type must be known at this point
+   |               ^^^^^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -97,9 +89,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:53:15
    |
 LL |     mut_thing.by_self();
-   |     --------- ^^^^^^^
-   |     |
-   |     type must be known at this point
+   |               ^^^^^^^
    |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
@@ -118,9 +108,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:56:14
    |
 LL |     deref_to.method();
-   |     -------- ^^^^^^
-   |     |
-   |     type must be known at this point
+   |              ^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -139,9 +127,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:57:14
    |
 LL |     deref_to.mut_method();
-   |     -------- ^^^^^^^^^^
-   |     |
-   |     type must be known at this point
+   |              ^^^^^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -160,9 +146,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:58:14
    |
 LL |     deref_to.by_self();
-   |     -------- ^^^^^^^
-   |     |
-   |     type must be known at this point
+   |              ^^^^^^^
    |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1
@@ -181,9 +165,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:61:20
    |
 LL |     deref_deref_to.method();
-   |     -------------- ^^^^^^
-   |     |
-   |     type must be known at this point
+   |                    ^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -202,9 +184,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:62:20
    |
 LL |     deref_deref_to.mut_method();
-   |     -------------- ^^^^^^^^^^
-   |     |
-   |     type must be known at this point
+   |                    ^^^^^^^^^^
    |
 note: multiple `impl`s satisfying `Thing: Method<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:10:1
@@ -223,9 +203,7 @@ error[E0283]: type annotations needed
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:63:20
    |
 LL |     deref_deref_to.by_self();
-   |     -------------- ^^^^^^^
-   |     |
-   |     type must be known at this point
+   |                    ^^^^^^^
    |
 note: multiple `impl`s satisfying `&Thing: MethodRef<_>` found
   --> $DIR/suggest-fully-qualified-path-without-adjustment.rs:23:1

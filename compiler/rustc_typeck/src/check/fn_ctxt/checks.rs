@@ -27,13 +27,14 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
+use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty, TypeSuperVisitable, TypeVisitor};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
+use std::ops::ControlFlow;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1649,7 +1650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::PredicateKind::Projection(pred) => pred.projection_ty.substs,
             _ => ty::List::empty(),
         };
-        let param_to_point_at = predicate_substs.types().find_map(|ty| {
+        let mut param_to_point_at = predicate_substs.types().find_map(|ty| {
             ty.walk().find_map(|arg| {
                 if let ty::GenericArgKind::Type(ty) = arg.unpack()
                     && let ty::Param(param_ty) = ty.kind()
@@ -1663,7 +1664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             })
         });
-        let fallback_param_to_point_at = predicate_substs.types().find_map(|ty| {
+        let mut fallback_param_to_point_at = predicate_substs.types().find_map(|ty| {
             ty.walk().find_map(|arg| {
                 if let ty::GenericArgKind::Type(ty) = arg.unpack()
                     && let ty::Param(param_ty) = ty.kind()
@@ -1675,6 +1676,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             })
         });
+
+        // Also skip over ambiguity errors, which have their own machinery
+        // to print a relevant error.
+        if let traits::FulfillmentErrorCode::CodeAmbiguity = error.code {
+            fallback_param_to_point_at = None;
+            param_to_point_at =
+                self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
+        }
 
         let hir = self.tcx.hir();
 
@@ -1735,6 +1744,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
+        &self,
+        item_def_id: DefId,
+        t: T,
+    ) -> Option<ty::GenericArg<'tcx>> {
+        struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
+        impl<'tcx> TypeVisitor<'tcx> for FindAmbiguousParameter<'_, 'tcx> {
+            type BreakTy = ty::GenericArg<'tcx>;
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+                if let Some(origin) = self.0.type_var_origin(ty)
+                    && let TypeVariableOriginKind::TypeParameterDefinition(_, Some(def_id))
+                        = origin.kind
+                    && let generics = self.0.tcx.generics_of(self.1)
+                    && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
+                    && let Some(subst) = ty::InternalSubsts::identity_for_item(self.0.tcx, self.1).get(index as usize)
+                {
+                    ControlFlow::Break(*subst)
+                } else {
+                    ty.super_visit_with(self)
+                }
+            }
+        }
+        t.visit_with(&mut FindAmbiguousParameter(self, item_def_id)).break_value()
     }
 
     fn point_at_args_if_possible(

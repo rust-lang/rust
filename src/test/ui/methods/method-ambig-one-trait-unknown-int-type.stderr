@@ -13,9 +13,7 @@ error[E0283]: type annotations needed
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:26:7
    |
 LL |     x.foo();
-   |     - ^^^
-   |     |
-   |     type must be known at this point
+   |       ^^^
    |
 note: multiple `impl`s satisfying `Vec<_>: Foo` found
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:9:1
