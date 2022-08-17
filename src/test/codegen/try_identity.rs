@@ -1,21 +1,48 @@
-// compile-flags: -C no-prepopulate-passes -O -Z mir-opt-level=3 -Zunsound-mir-opts
+// compile-flags: -O --edition=2021 -Z merge-functions=disabled
 
-// Ensure that `x?` has no overhead on `Result<T, E>` due to identity `match`es in lowering.
-// This requires inlining to trigger the MIR optimizations in `SimplifyArmIdentity`.
+// Ensure that common patterns for identity matching results have no overhead.
+
+#![feature(try_blocks)]
 
 #![crate_type = "lib"]
 
-type R = Result<u64, i32>;
-
-// This was written to the `?` from `try_trait`, but `try_trait_v2` uses a different structure,
-// so the relevant desugar is copied inline in order to keep the test testing the same thing.
-// FIXME(#85133): while this might be useful for `r#try!`, it would be nice to have a MIR
-// optimization that picks up the `?` desugaring, as `SimplifyArmIdentity` does not.
 #[no_mangle]
-pub fn try_identity(x: R) -> R {
+pub fn result_nop_match(x: Result<i32, u32>) -> Result<i32, u32> {
 // CHECK: start:
-// FIXME(JakobDegen): Broken by deaggregation change CHECK-NOT\: br {{.*}}
-// CHECK ret void
+// CHECK-NEXT: ret i64 %0
+    match x {
+        Ok(x) => Ok(x),
+        Err(x) => Err(x),
+    }
+}
+
+#[no_mangle]
+pub fn result_nop_try_block(x: Result<i32, u32>) -> Result<i32, u32> {
+// CHECK: start:
+// CHECK-NEXT: ret i64 %0
+    try {
+        x?
+    }
+}
+
+#[no_mangle]
+pub fn result_nop_try_macro(x: Result<i32, u32>) -> Result<i32, u32> {
+// CHECK: start:
+// CHECK-NEXT: ret i64 %0
+    Ok(r#try!(x))
+}
+
+#[no_mangle]
+pub fn result_nop_try_expr(x: Result<i32, u32>) -> Result<i32, u32> {
+// CHECK: start:
+// CHECK-NEXT: ret i64 %0
+    Ok(x?)
+}
+
+#[no_mangle]
+pub fn result_match_with_inlined_call(x: Result<i32, u32>) -> Result<i32, u32> {
+// CHECK: start:
+// CHECK-NEXT: ret i64 %0
     let y = match into_result(x) {
         Err(e) => return from_error(From::from(e)),
         Ok(v) => v,
