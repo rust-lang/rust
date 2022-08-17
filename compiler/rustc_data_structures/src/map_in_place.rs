@@ -1,6 +1,6 @@
-use crate::thin_vec::ThinVec;
 use smallvec::{Array, SmallVec};
 use std::ptr;
+use thin_vec::ThinVec;
 
 pub trait MapInPlace<T>: Sized {
     fn map_in_place<F>(&mut self, mut f: F)

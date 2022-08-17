@@ -123,7 +123,7 @@ where
             kind: Box::new(ImplItem(Box::new(Impl {
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
-                trait_: Some(clean_trait_ref_with_bindings(self.cx, trait_ref, &[])),
+                trait_: Some(clean_trait_ref_with_bindings(self.cx, trait_ref, ThinVec::new())),
                 for_: clean_middle_ty(ty, self.cx, None),
                 items: Vec::new(),
                 polarity,

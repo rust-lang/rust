@@ -7,12 +7,13 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-rustc_serialize = { path = "../rustc_serialize" }
-tracing = "0.1"
-rustc_span = { path = "../rustc_span" }
+bitflags = "1.2.1"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-bitflags = "1.2.1"
+thin-vec = "0.2.8"
+tracing = "0.1"

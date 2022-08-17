@@ -7,20 +7,21 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-rustc_parse_format = { path = "../rustc_parse_format" }
-tracing = "0.1"
+rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
+rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_parse = { path = "../rustc_parse" }
-rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-rustc_ast = { path = "../rustc_ast" }
-rustc_expand = { path = "../rustc_expand" }
 rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.8"
+tracing = "0.1"

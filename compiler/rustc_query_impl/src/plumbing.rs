@@ -3,18 +3,16 @@
 //! manage the caches, and so forth.
 
 use crate::{on_disk_cache, Queries};
+use rustc_data_structures::sync::Lock;
+use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::HasDepContext;
 use rustc_query_system::query::{QueryContext, QueryJobId, QueryMap, QuerySideEffects};
-
-use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{Diagnostic, Handler};
-
 use std::any::Any;
 use std::num::NonZeroU64;
+use thin_vec::ThinVec;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {

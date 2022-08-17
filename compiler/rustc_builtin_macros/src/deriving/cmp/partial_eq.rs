@@ -1,12 +1,12 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_local, path_std};
-
 use rustc_ast::ptr::P;
 use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_partial_eq(
     cx: &mut ExtCtxt<'_>,
@@ -68,7 +68,7 @@ pub fn expand_deriving_partial_eq(
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)].into();
+    let attrs = thin_vec![cx.attribute(inline)];
     let methods = vec![MethodDef {
         name: sym::eq,
         generics: Bounds::empty(),

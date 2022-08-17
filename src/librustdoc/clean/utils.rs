@@ -12,7 +12,6 @@ use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -23,6 +22,7 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
+use thin_vec::ThinVec;
 
 #[cfg(test)]
 mod tests;
@@ -102,7 +102,7 @@ fn external_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: Vec<TypeBinding>,
+    bindings: ThinVec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> GenericArgs {
     let args = substs_to_args(cx, substs, has_self);
@@ -112,7 +112,7 @@ fn external_generic_args<'tcx>(
             // The trait's first substitution is the one after self, if there is one.
             match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
                 ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() },
+                _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -130,7 +130,7 @@ pub(super) fn external_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    bindings: Vec<TypeBinding>,
+    bindings: ThinVec<TypeBinding>,
     substs: SubstsRef<'tcx>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);

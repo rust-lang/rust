@@ -1,11 +1,11 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_std, pathvec_std};
-
 use rustc_ast::MetaItem;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_partial_ord(
     cx: &mut ExtCtxt<'_>,
@@ -19,7 +19,7 @@ pub fn expand_deriving_partial_ord(
         Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)].into();
+    let attrs = thin_vec![cx.attribute(inline)];
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,

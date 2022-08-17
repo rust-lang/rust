@@ -25,21 +25,19 @@ pub use UnsafeSource::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
-
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 use std::mem;
+use thin_vec::ThinVec;
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:

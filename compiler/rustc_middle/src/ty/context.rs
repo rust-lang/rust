@@ -1829,9 +1829,9 @@ pub mod tls {
     use crate::dep_graph::TaskDepsRef;
     use crate::ty::query;
     use rustc_data_structures::sync::{self, Lock};
-    use rustc_data_structures::thin_vec::ThinVec;
     use rustc_errors::Diagnostic;
     use std::mem;
+    use thin_vec::ThinVec;
 
     #[cfg(not(parallel_compiler))]
     use std::cell::Cell;

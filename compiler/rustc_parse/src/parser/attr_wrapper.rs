@@ -355,7 +355,7 @@ impl<'a> Parser<'a> {
             && matches!(self.capture_state.capturing, Capturing::Yes)
             && has_cfg_or_cfg_attr(final_attrs)
         {
-            let attr_data = AttributesData { attrs: final_attrs.to_vec().into(), tokens };
+            let attr_data = AttributesData { attrs: final_attrs.iter().cloned().collect(), tokens };
 
             // Replace the entire AST node that we just parsed, including attributes,
             // with a `FlatToken::AttrTarget`. If this AST node is inside an item

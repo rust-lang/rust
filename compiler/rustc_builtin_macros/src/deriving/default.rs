@@ -1,6 +1,5 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-
 use rustc_ast as ast;
 use rustc_ast::{walk_list, EnumDef, VariantData};
 use rustc_errors::Applicability;
@@ -9,6 +8,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::SmallVec;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_default(
     cx: &mut ExtCtxt<'_>,
@@ -20,7 +20,7 @@ pub fn expand_deriving_default(
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)].into();
+    let attrs = thin_vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),

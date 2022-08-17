@@ -1,13 +1,12 @@
 //! Implementations of serialization for structures found in liballoc
 
-use std::hash::{BuildHasher, Hash};
-
 use crate::{Decodable, Decoder, Encodable, Encoder};
+use smallvec::{Array, SmallVec};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
+use std::hash::{BuildHasher, Hash};
 use std::rc::Rc;
 use std::sync::Arc;
-
-use smallvec::{Array, SmallVec};
+use thin_vec::ThinVec;
 
 impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
     fn encode(&self, s: &mut S) {
@@ -18,6 +17,19 @@ impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
 
 impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
     fn decode(d: &mut D) -> SmallVec<A> {
+        let len = d.read_usize();
+        (0..len).map(|_| Decodable::decode(d)).collect()
+    }
+}
+
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for ThinVec<T> {
+    fn encode(&self, s: &mut S) {
+        self.as_slice().encode(s);
+    }
+}
+
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for ThinVec<T> {
+    fn decode(d: &mut D) -> ThinVec<T> {
         let len = d.read_usize();
         (0..len).map(|_| Decodable::decode(d)).collect()
     }
