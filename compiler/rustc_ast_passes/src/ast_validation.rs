@@ -13,7 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{error_code, pluralize, struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{error_code, fluent, pluralize, struct_span_err, Applicability, Diagnostic};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -27,7 +27,7 @@ use rustc_target::spec::abi;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
-use crate::errors::ForbiddenLet;
+use crate::errors::*;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -149,7 +149,7 @@ impl<'a> AstValidator<'a> {
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 id,
                 where_clauses.0.1,
-                "where clause not allowed here",
+                fluent::ast_passes::deprecated_where_clause_location,
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
                     where_clauses.1.1.shrink_to_hi(),
                     suggestion,
@@ -179,10 +179,7 @@ impl<'a> AstValidator<'a> {
             AssocConstraintKind::Equality { .. } => {}
             AssocConstraintKind::Bound { .. } => {
                 if self.is_assoc_ty_bound_banned {
-                    self.err_handler().span_err(
-                        constraint.span,
-                        "associated type bounds are not allowed within structs, enums, or unions",
-                    );
+                    self.session.emit_err(ForbiddenAssocConstraint { span: constraint.span });
                 }
             }
         }
@@ -254,31 +251,26 @@ impl<'a> AstValidator<'a> {
     fn check_lifetime(&self, ident: Ident) {
         let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
         if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
-            self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
+            self.session.emit_err(KeywordLifetime { span: ident.span });
         }
     }
 
     fn check_label(&self, ident: Ident) {
         if ident.without_first_quote().is_reserved() {
-            self.err_handler()
-                .span_err(ident.span, &format!("invalid label name `{}`", ident.name));
+            self.session.emit_err(InvalidLabel { span: ident.span, name: ident.name });
         }
     }
 
-    fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
+    fn invalid_visibility(&self, vis: &Visibility, note: Option<InvalidVisibilityNote>) {
         if let VisibilityKind::Inherited = vis.kind {
             return;
         }
 
-        let mut err =
-            struct_span_err!(self.session, vis.span, E0449, "unnecessary visibility qualifier");
-        if vis.kind.is_pub() {
-            err.span_label(vis.span, "`pub` not permitted here because it's implied");
-        }
-        if let Some(note) = note {
-            err.note(note);
-        }
-        err.emit();
+        self.session.emit_err(InvalidVisibility {
+            span: vis.span,
+            implied: if vis.kind.is_pub() { Some(vis.span) } else { None },
+            note,
+        });
     }
 
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
@@ -1154,7 +1146,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 self.invalid_visibility(
                     &item.vis,
-                    Some("place qualifiers on individual impl items instead"),
+                    Some(InvalidVisibilityNote::IndividualImplItems),
                 );
                 if let Unsafe::Yes(span) = unsafety {
                     error(span, "unsafe").code(error_code!(E0197)).emit();
@@ -1222,7 +1214,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let old_item = mem::replace(&mut self.extern_mod, Some(item));
                 self.invalid_visibility(
                     &item.vis,
-                    Some("place qualifiers on individual foreign items instead"),
+                    Some(InvalidVisibilityNote::IndividualForeignItems),
                 );
                 if let Unsafe::Yes(span) = unsafety {
                     self.err_handler().span_err(span, "extern block cannot be declared unsafe");

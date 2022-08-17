@@ -537,7 +537,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) {
         self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
     }
@@ -547,7 +547,7 @@ impl LintBuffer {
         lint: &'static Lint,
         id: NodeId,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.add_lint(lint, id, sp.into(), msg, diagnostic)

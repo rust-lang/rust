@@ -2,8 +2,8 @@
 
 use rustc_errors::fluent;
 use rustc_errors::{AddSubdiagnostic, Diagnostic};
-use rustc_macros::SessionDiagnostic;
-use rustc_span::Span;
+use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
+use rustc_span::{Span, Symbol};
 
 use crate::ast_validation::ForbiddenLetReason;
 
@@ -29,4 +29,45 @@ impl AddSubdiagnostic for ForbiddenLetReason {
             },
         }
     }
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::forbidden_assoc_constraint)]
+pub struct ForbiddenAssocConstraint {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::keyword_lifetime)]
+pub struct KeywordLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::invalid_label)]
+pub struct InvalidLabel {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::invalid_visibility, code = "E0449")]
+pub struct InvalidVisibility {
+    #[primary_span]
+    pub span: Span,
+    #[label(ast_passes::implied)]
+    pub implied: Option<Span>,
+    #[subdiagnostic]
+    pub note: Option<InvalidVisibilityNote>,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum InvalidVisibilityNote {
+    #[note(ast_passes::individual_impl_items)]
+    IndividualImplItems,
+    #[note(ast_passes::individual_foreign_items)]
+    IndividualForeignItems,
 }
