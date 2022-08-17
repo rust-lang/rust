@@ -589,12 +589,12 @@ impl Write {
                 },
             };
 
-            let replacement: String = match lit.token.kind {
+            let replacement: String = match lit.token_lit.kind {
                 LitKind::StrRaw(_) | LitKind::ByteStrRaw(_) if matches!(fmtstr.style, StrStyle::Raw(_)) => {
-                    lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
+                    lit.token_lit.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
                 LitKind::Str | LitKind::ByteStr if matches!(fmtstr.style, StrStyle::Cooked) => {
-                    lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
+                    lit.token_lit.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
                 LitKind::StrRaw(_)
                 | LitKind::Str
@@ -603,7 +603,7 @@ impl Write {
                 | LitKind::Integer
                 | LitKind::Float
                 | LitKind::Err => continue,
-                LitKind::Byte | LitKind::Char => match lit.token.symbol.as_str() {
+                LitKind::Byte | LitKind::Char => match lit.token_lit.symbol.as_str() {
                     "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
                     "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,
                     "\\\\" if matches!(fmtstr.style, StrStyle::Raw(_)) => "\\",
@@ -614,7 +614,7 @@ impl Write {
                     x => x,
                 }
                 .into(),
-                LitKind::Bool => lit.token.symbol.as_str().deref().into(),
+                LitKind::Bool => lit.token_lit.symbol.as_str().deref().into(),
             };
 
             if !fmt_spans.is_empty() {
