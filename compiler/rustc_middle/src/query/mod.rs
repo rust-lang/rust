@@ -770,6 +770,7 @@ rustc_queries! {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        cycle_delay_bug
     }
 
     /// Performs lint checking for the module.
