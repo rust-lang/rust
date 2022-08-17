@@ -3595,6 +3595,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
+ "rustc_macros",
  "rustc_parse",
  "rustc_session",
  "rustc_span",
