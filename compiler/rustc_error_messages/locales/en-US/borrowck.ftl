@@ -13,6 +13,6 @@ borrowck_could_not_normalize =
 
 borrowck_higher_ranked_subtype_error =
     higher-ranked subtype error
-  
-generic_does_not_live_long_enough =
+
+borrowck_generic_does_not_live_long_enough =
     `{$kind}` does not live long enough
