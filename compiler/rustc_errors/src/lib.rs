@@ -58,6 +58,7 @@ mod lock;
 pub mod registry;
 mod snippet;
 mod styled_buffer;
+pub mod translation;
 
 pub use snippet::Style;
 
