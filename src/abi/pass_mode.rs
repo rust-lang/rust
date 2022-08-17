@@ -193,7 +193,7 @@ pub(super) fn from_casted_value<'tcx>(
         // larger alignment than the integer.
         size: (std::cmp::max(abi_param_size, layout_size) + 15) / 16 * 16,
     });
-    let ptr = Pointer::new(fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0));
+    let ptr = Pointer::stack_slot(stack_slot);
     let mut offset = 0;
     let mut block_params_iter = block_params.iter().copied();
     for param in abi_params {
