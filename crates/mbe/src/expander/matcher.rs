@@ -321,7 +321,7 @@ struct MatchState<'t> {
     /// The KleeneOp of this sequence if we are in a repetition.
     sep_kind: Option<RepeatKind>,
 
-    /// Number of tokens of seperator parsed
+    /// Number of tokens of separator parsed
     sep_parsed: Option<usize>,
 
     /// Matched meta variables bindings

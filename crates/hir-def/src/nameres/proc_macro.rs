@@ -45,7 +45,7 @@ impl Attrs {
                     kind: ProcMacroKind::CustomDerive { helpers: Box::new([]) },
                 }),
 
-                // `#[proc_macro_derive(Trait, attibutes(helper1, helper2, ...))]`
+                // `#[proc_macro_derive(Trait, attributes(helper1, helper2, ...))]`
                 [
                     TokenTree::Leaf(Leaf::Ident(trait_name)),
                     TokenTree::Leaf(Leaf::Punct(comma)),
