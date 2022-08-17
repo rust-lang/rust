@@ -21,6 +21,7 @@ use rustc_middle::ty::query::Providers;
 mod assoc;
 mod common_traits;
 mod consts;
+mod implied_bounds;
 pub mod instance;
 mod needs_drop;
 pub mod representability;
@@ -30,6 +31,7 @@ pub fn provide(providers: &mut Providers) {
     assoc::provide(providers);
     common_traits::provide(providers);
     consts::provide(providers);
+    implied_bounds::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);
     instance::provide(providers);

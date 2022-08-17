@@ -1,6 +1,5 @@
 use super::potentially_plural_count;
 use crate::check::regionck::OutlivesEnvironmentExt;
-use crate::check::wfcheck;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
@@ -1445,14 +1444,24 @@ pub fn check_type_bounds<'tcx>(
     };
     debug!(?normalize_param_env);
 
+    let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
     let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
     let rebased_substs = impl_ty_substs.rebase_onto(tcx, container_id, impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
         let ocx = ObligationCtxt::new(&infcx);
 
+        let assumed_wf_types = tcx.assumed_wf_types(impl_ty.def_id);
+        let mut implied_bounds = FxHashSet::default();
+        let cause = ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
+        for ty in assumed_wf_types {
+            implied_bounds.insert(ty);
+            let normalized = ocx.normalize(cause.clone(), param_env, ty);
+            implied_bounds.insert(normalized);
+        }
+        let implied_bounds = implied_bounds;
+
         let mut selcx = traits::SelectionContext::new(&infcx);
-        let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = ObligationCause::new(
             impl_ty_span,
             impl_ty_hir_id,
@@ -1508,15 +1517,6 @@ pub fn check_type_bounds<'tcx>(
 
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
-        let implied_bounds = match impl_ty.container {
-            ty::TraitContainer => FxHashSet::default(),
-            ty::ImplContainer => wfcheck::impl_implied_bounds(
-                tcx,
-                param_env,
-                container_id.expect_local(),
-                impl_ty_span,
-            ),
-        };
         let mut outlives_environment = OutlivesEnvironment::new(param_env);
         outlives_environment.add_implied_bounds(&infcx, implied_bounds, impl_ty_hir_id);
         infcx.check_region_obligations_and_report_errors(
