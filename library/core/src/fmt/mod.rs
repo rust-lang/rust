@@ -189,7 +189,7 @@ pub trait Write {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(mut self: &mut Self, args: Arguments<'_>) -> Result {
-        write(&mut self, args)
+        if let Some(s) = args.as_str() { self.write_str(s) } else { write(&mut self, args) }
     }
 }
 

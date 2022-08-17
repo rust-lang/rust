@@ -1649,6 +1649,10 @@ pub trait Write {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> Result<()> {
+        if let Some(s) = fmt.as_str() {
+            return self.write_all(s.as_bytes());
+        }
+
         // Create a shim which translates a Write to a fmt::Write and saves
         // off I/O errors. instead of discarding them
         struct Adapter<'a, T: ?Sized + 'a> {
