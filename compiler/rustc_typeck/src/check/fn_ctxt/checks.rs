@@ -1680,48 +1680,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::PredicateKind::Projection(pred) => pred.projection_ty.substs,
             _ => ty::List::empty(),
         };
-        let mut param_to_point_at = predicate_substs.types().find_map(|ty| {
-            ty.walk().find_map(|arg| {
-                if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                    && let ty::Param(param_ty) = ty.kind()
-                    // Look for a param ty that is local to this method/fn
-                    // and not inherited from an impl, for example.
-                    && self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) == def_id
-                {
-                    Some(arg)
-                } else {
-                    None
-                }
-            })
-        });
-        let mut fallback_param_to_point_at = predicate_substs.types().find_map(|ty| {
-            ty.walk().find_map(|arg| {
-                if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                    && let ty::Param(param_ty) = ty.kind()
-                    && self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) != def_id
-                    && param_ty.name != rustc_span::symbol::kw::SelfUpper
-                {
-                    Some(arg)
-                } else {
-                    None
-                }
-            })
-        });
-        let mut self_param_to_point_at = predicate_substs.types().find_map(|ty| {
-            ty.walk().find_map(|arg| {
-                if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                    && let ty::Param(param_ty) = ty.kind()
-                    && param_ty.name == rustc_span::symbol::kw::SelfUpper
-                {
-                    Some(arg)
-                } else {
-                    None
-                }
-            })
-        });
 
-        // Also skip over ambiguity errors, which have their own machinery
-        // to print a relevant error.
+        let find_param_matching = |matches: &dyn Fn(&ty::ParamTy) -> bool| {
+            predicate_substs.types().find_map(|ty| {
+                ty.walk().find_map(|arg| {
+                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                        && let ty::Param(param_ty) = ty.kind()
+                        && matches(param_ty)
+                    {
+                        Some(arg)
+                    } else {
+                        None
+                    }
+                })
+            })
+        };
+
+        // Prefer generics that are local to the fn item, since these are likely
+        // to be the cause of the unsatisfied predicaete.
+        let mut param_to_point_at = find_param_matching(&|param_ty| {
+            self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) == def_id
+        });
+        // Fall back to generic that isn't local to the fn item. This will come
+        // from a trait or impl, for example.
+        let mut fallback_param_to_point_at = find_param_matching(&|param_ty| {
+            self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) != def_id
+                && param_ty.name != rustc_span::symbol::kw::SelfUpper
+        });
+        // Finally, the `Self` parameter is possibly the reason that the predicate
+        // is unsatisfied. This is less likely to be true for methods, because the
+        // method probe means that we already kinda check that the predicates due
+        // to the `Self` type are true.
+        let mut self_param_to_point_at =
+            find_param_matching(&|param_ty| param_ty.name == rustc_span::symbol::kw::SelfUpper);
+
+        // For ambiguity errors, we actually want to look for a parameter that is
+        // the source of the inference type left over in this predicate.
         if let traits::FulfillmentErrorCode::CodeAmbiguity = error.code {
             fallback_param_to_point_at = None;
             self_param_to_point_at = None;
@@ -1737,71 +1731,198 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     = hir.get(hir.get_parent_node(*hir_id))
                     && callee.hir_id == *hir_id
                 {
+                    for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at] {
+                        if let Some(param) = param
+                            && self.point_at_arg_if_possible(error, def_id, param, *call_hir_id, callee.span, args)
+                        {
+                            return true;
+                        }
+                    }
+
+                    // Notably, we only point to params that are local to the
+                    // item we're checking, since those are the ones we are able
+                    // to look in the hir::PathSegment for. Everything else
+                    // would require a deeper search into the qpath than I think
+                    // is worthwhile.
                     if let Some(param_to_point_at) = param_to_point_at
-                        && self.point_at_args_if_possible(error, def_id, param_to_point_at, *call_hir_id, callee.span, args) {
-                        return true;
-                    }
-
-                    if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
-                        && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, *call_hir_id, callee.span, args)
-                    {
-                        return true;
-                    }
-
-                    if let Some(self_param_to_point_at) = self_param_to_point_at
-                        && self.point_at_args_if_possible(error, def_id, self_param_to_point_at, *call_hir_id, callee.span, args)
-                    {
-                        return true;
-                    }
-
-                    if let hir::QPath::Resolved(_, path) = qpath
-                        && let Some(param_to_point_at) = param_to_point_at
-                        && let Some(segment) = path.segments.last()
-                        && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
-                    {
-                        return true;
-                    }
-
-                    if let hir::QPath::TypeRelative(_, segment) = qpath
-                        && let Some(param_to_point_at) = param_to_point_at
-                        && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
+                        && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
                     {
                         return true;
                     }
                 }
             }
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::MethodCall(segment, args, ..), .. }) => {
-                if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_args_if_possible(error, def_id, param_to_point_at, hir_id, segment.ident.span, args)
+            hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::MethodCall(segment, args, ..),
+                ..
+            }) => {
+                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                 {
-                    return true;
-                }
-
-                if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
-                    && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, hir_id, segment.ident.span, args)
-                {
-                    return true;
-                }
-
-                if let Some(self_param_to_point_at) = self_param_to_point_at
-                    && self.point_at_args_if_possible(error, def_id, self_param_to_point_at, hir_id, segment.ident.span, args)
-                {
-                    return true;
+                    if let Some(param) = param
+                        && self.point_at_arg_if_possible(error, def_id, param, hir_id, segment.ident.span, args)
+                    {
+                        return true;
+                    }
                 }
 
                 if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
+                    && self.point_at_generic_if_possible(error, def_id, param_to_point_at, segment)
                 {
                     return true;
                 }
             }
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(..), .. }) => {
-                // fixme
+            hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Struct(qpath, fields, ..), ..
+            }) => {
+                if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
+                    self.typeck_results.borrow().qpath_res(qpath, hir_id)
+                {
+                    for param in
+                        [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
+                    {
+                        if let Some(param) = param
+                            && self.point_at_field_if_possible(error, def_id, param, variant_def_id, fields)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                if let Some(param_to_point_at) = param_to_point_at
+                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
+                {
+                    return true;
+                }
             }
             _ => {}
         }
 
         false
+    }
+
+    fn point_at_path_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        def_id: DefId,
+        param: ty::GenericArg<'tcx>,
+        qpath: &QPath<'tcx>,
+    ) -> bool {
+        match qpath {
+            hir::QPath::Resolved(_, path) => {
+                if let Some(segment) = path.segments.last()
+                    && self.point_at_generic_if_possible(error, def_id, param, segment)
+                {
+                    return true;
+                }
+            }
+            hir::QPath::TypeRelative(_, segment) => {
+                if self.point_at_generic_if_possible(error, def_id, param, segment) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+
+        false
+    }
+
+    fn point_at_arg_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        def_id: DefId,
+        param_to_point_at: ty::GenericArg<'tcx>,
+        call_hir_id: hir::HirId,
+        callee_span: Span,
+        args: &[hir::Expr<'tcx>],
+    ) -> bool {
+        let sig = self.tcx.fn_sig(def_id).skip_binder();
+        let args_referencing_param: Vec<_> = sig
+            .inputs()
+            .iter()
+            .enumerate()
+            .filter(|(_, ty)| find_param_in_ty(ty, param_to_point_at))
+            .collect();
+
+        if let [(idx, _)] = args_referencing_param.as_slice()
+            && let Some(arg) = args.get(*idx)
+        {
+            error.obligation.cause.span = arg.span;
+            error.obligation.cause.map_code(|parent_code| {
+                ObligationCauseCode::FunctionArgumentObligation {
+                    arg_hir_id: arg.hir_id,
+                    call_hir_id,
+                    parent_code,
+                }
+            });
+            true
+        } else if args_referencing_param.len() > 0 {
+            // If more than one argument applies, then point to the callee
+            // We have chance to fix this up further in `point_at_generics_if_possible`
+            error.obligation.cause.span = callee_span;
+            false
+        } else {
+            false
+        }
+    }
+
+    fn point_at_field_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        def_id: DefId,
+        param_to_point_at: ty::GenericArg<'tcx>,
+        variant_def_id: DefId,
+        expr_fields: &[hir::ExprField<'tcx>],
+    ) -> bool {
+        let def = self.tcx.adt_def(def_id);
+        let identity_substs = ty::InternalSubsts::identity_for_item(self.tcx, def_id);
+        let fields_referencing_param: Vec<_> = def
+            .variant_with_id(variant_def_id)
+            .fields
+            .iter()
+            .filter(|field| {
+                let field_ty = field.ty(self.tcx, identity_substs);
+                match find_param_in_ty(field_ty, param_to_point_at) {
+                    Ok(value) => value,
+                    Err(value) => return value,
+                }
+            })
+            .collect();
+        if let [field] = fields_referencing_param.as_slice() {
+            for expr_field in expr_fields {
+                if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
+                {
+                    error.obligation.cause.span = expr_field.span;
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fn point_at_generic_if_possible(
+        &self,
+        error: &mut traits::FulfillmentError<'tcx>,
+        def_id: DefId,
+        param_to_point_at: ty::GenericArg<'tcx>,
+        segment: &hir::PathSegment<'tcx>,
+    ) -> bool {
+        let own_substs = self
+            .tcx
+            .generics_of(def_id)
+            .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
+        let Some((index, _)) = own_substs
+            .iter()
+            .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
+            .enumerate()
+            .find(|(_, arg)| **arg == param_to_point_at) else { return false };
+        let Some(arg) = segment
+            .args()
+            .args
+            .iter()
+            .filter(|arg| matches!(arg, hir::GenericArg::Type(_)))
+            .nth(index) else { return false; };
+        error.obligation.cause.span = arg.span();
+        true
     }
 
     fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
@@ -1827,89 +1948,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         t.visit_with(&mut FindAmbiguousParameter(self, item_def_id)).break_value()
-    }
-
-    fn point_at_args_if_possible(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-        def_id: DefId,
-        param_to_point_at: ty::GenericArg<'tcx>,
-        call_hir_id: hir::HirId,
-        callee_span: Span,
-        args: &[hir::Expr<'tcx>],
-    ) -> bool {
-        let sig = self.tcx.fn_sig(def_id).skip_binder();
-        let args_referencing_param: Vec<_> = sig
-            .inputs()
-            .iter()
-            .enumerate()
-            .filter(|(_, ty)| {
-                let mut walk = ty.walk();
-                while let Some(arg) = walk.next() {
-                    if arg == param_to_point_at {
-                        return true;
-                    } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Projection(..) = ty.kind()
-                    {
-                        // This logic may seem a bit strange, but typically when
-                        // we have a projection type in a function signature, the
-                        // argument that's being passed into that signature is
-                        // not actually constraining that projection in a meaningful
-                        // way. So we skip it, and see improvements in some UI tests
-                        // due to it.
-                        walk.skip_current_subtree();
-                    }
-                }
-                false
-            })
-            .collect();
-
-        if let [(idx, _)] = args_referencing_param.as_slice()
-            && let Some(arg) = args.get(*idx)
-        {
-            error.obligation.cause.span = arg.span;
-            error.obligation.cause.map_code(|parent_code| {
-                ObligationCauseCode::FunctionArgumentObligation {
-                    arg_hir_id: arg.hir_id,
-                    call_hir_id,
-                    parent_code,
-                }
-            });
-            true
-        } else if args_referencing_param.len() > 0 {
-            // If more than one argument applies, then point to the callee
-            // We have chance to fix this up further in `point_at_generics_if_possible`
-            error.obligation.cause.span = callee_span;
-            false
-        } else {
-            false
-        }
-    }
-
-    fn point_at_generics_if_possible(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-        def_id: DefId,
-        param_to_point_at: ty::GenericArg<'tcx>,
-        segment: &hir::PathSegment<'tcx>,
-    ) -> bool {
-        let own_substs = self
-            .tcx
-            .generics_of(def_id)
-            .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
-        let Some((index, _)) = own_substs
-            .iter()
-            .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
-            .enumerate()
-            .find(|(_, arg)| **arg == param_to_point_at) else { return false };
-        let Some(arg) = segment
-            .args()
-            .args
-            .iter()
-            .filter(|arg| matches!(arg, hir::GenericArg::Type(_)))
-            .nth(index) else { return false; };
-        error.obligation.cause.span = arg.span();
-        true
     }
 
     fn label_fn_like(
@@ -2052,4 +2090,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
     }
+}
+
+fn find_param_in_ty(ty: Ty, param_to_point_at: ty::GenericArg) -> bool {
+    let mut walk = ty.walk();
+    while let Some(arg) = walk.next() {
+        if arg == param_to_point_at {
+        return true;
+    } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
+        && let ty::Projection(..) = ty.kind()
+    {
+        // This logic may seem a bit strange, but typically when
+        // we have a projection type in a function signature, the
+        // argument that's being passed into that signature is
+        // not actually constraining that projection's substs in
+        // a meaningful way. So we skip it, and see improvements
+        // in some UI tests.
+        walk.skip_current_subtree();
+    }
+    }
+    false
 }
