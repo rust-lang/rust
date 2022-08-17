@@ -404,12 +404,12 @@ fn resolve_negative_obligation<'cx, 'tcx>(
 pub fn trait_ref_is_knowable<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
-) -> Option<Conflict> {
+) -> Result<(), Conflict> {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
     if orphan_check_trait_ref(tcx, trait_ref, InCrate::Remote).is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.
-        return Some(Conflict::Downstream);
+        return Err(Conflict::Downstream);
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
@@ -418,7 +418,7 @@ pub fn trait_ref_is_knowable<'tcx>(
         // allowed to implement a substitution of this trait ref, which
         // means impls could only come from dependencies of this crate,
         // which we already know about.
-        return None;
+        return Ok(());
     }
 
     // This is a remote non-fundamental trait, so if another crate
@@ -431,10 +431,10 @@ pub fn trait_ref_is_knowable<'tcx>(
     // we are an owner.
     if orphan_check_trait_ref(tcx, trait_ref, InCrate::Local).is_ok() {
         debug!("trait_ref_is_knowable: orphan check passed");
-        None
+        Ok(())
     } else {
         debug!("trait_ref_is_knowable: nonlocal, nonfundamental, unowned");
-        Some(Conflict::Upstream)
+        Err(Conflict::Upstream)
     }
 }
 

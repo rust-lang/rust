@@ -21,5 +21,4 @@ impl Index<usize> for [i32] {
 fn main() {
     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
     //~^ ERROR E0277
-    //~| ERROR E0277
 }

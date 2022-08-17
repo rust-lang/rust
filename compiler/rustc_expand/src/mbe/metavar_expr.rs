@@ -112,7 +112,7 @@ fn parse_depth<'sess>(
             "meta-variable expression depth must be a literal"
         ));
     };
-    if let Ok(lit_kind) = LitKind::from_lit_token(*lit)
+    if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
         && let LitKind::Int(n_u128, LitIntType::Unsuffixed) = lit_kind
         && let Ok(n_usize) = usize::try_from(n_u128)
     {

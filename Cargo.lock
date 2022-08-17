@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.65.0"
+version = "0.66.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -4011,6 +4011,7 @@ dependencies = [
  "rustc_hir",
  "rustc_incremental",
  "rustc_lint",
+ "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
  "rustc_mir_build",
@@ -4359,6 +4360,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "rustc_target",
  "tracing",
 ]
 

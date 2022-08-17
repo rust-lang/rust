@@ -9,7 +9,6 @@ where
     use std::convert::TryFrom;
     <[T; N.get()]>::try_from(())
     //~^ error: the trait bound
-    //~| error: the trait bound
     //~| error: mismatched types
 }
 

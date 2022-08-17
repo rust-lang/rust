@@ -184,13 +184,7 @@ impl MetaItem {
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
-        match self.kind {
-            MetaItemKind::NameValue(ref v) => match v.kind {
-                LitKind::Str(ref s, _) => Some(*s),
-                _ => None,
-            },
-            _ => None,
-        }
+        self.kind.value_str()
     }
 
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
