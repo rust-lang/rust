@@ -734,6 +734,7 @@ impl<'a> InferenceContext<'a> {
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(strukt.into()));
                     }
+                    ValueNs::ImplSelf(impl_id) => (TypeNs::SelfType(impl_id), None),
                     _ => return (self.err_ty(), None),
                 },
                 Some(ResolveValueResult::Partial(typens, unresolved)) => (typens, Some(unresolved)),
