@@ -1453,16 +1453,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .enumerate()
                     .skip(1) // Remove `Self` for `ExistentialPredicate`.
                     .map(|(index, arg)| {
-                        if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-                            debug!(?ty);
-                            if ty == dummy_self {
-                                let param = &generics.params[index];
-                                missing_type_params.push(param.name);
-                                return tcx.ty_error().into();
-                            } else if ty.walk().any(|arg| arg == dummy_self.into()) {
-                                references_self = true;
-                                return tcx.ty_error().into();
-                            }
+                        if arg == dummy_self.into() {
+                            let param = &generics.params[index];
+                            missing_type_params.push(param.name);
+                            return tcx.ty_error().into();
+                        } else if arg.walk().any(|arg| arg == dummy_self.into()) {
+                            references_self = true;
+                            return tcx.ty_error().into();
                         }
                         arg
                     })
@@ -1509,10 +1506,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Like for trait refs, verify that `dummy_self` did not leak inside default type
                 // parameters.
                 let references_self = b.projection_ty.substs.iter().skip(1).any(|arg| {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack() {
-                        if ty == dummy_self || ty.walk().any(|arg| arg == dummy_self.into()) {
-                            return true;
-                        }
+                    if arg.walk().any(|arg| arg == dummy_self.into()) {
+                        return true;
                     }
                     false
                 });
@@ -1524,7 +1519,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .substs
                         .iter()
                         .map(|arg| {
-                            if let ty::GenericArgKind::Type(_) = arg.unpack() {
+                            if arg.walk().any(|arg| arg == dummy_self.into()) {
                                 return tcx.ty_error().into();
                             }
                             arg
