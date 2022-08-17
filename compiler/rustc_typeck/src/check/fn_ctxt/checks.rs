@@ -15,6 +15,7 @@ use crate::check::{
 use crate::structured_errors::StructuredDiagnostic;
 
 use rustc_ast as ast;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticId, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1612,24 +1613,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
     ) {
+        let mut remap_cause = FxHashSet::default();
+        let mut not_adjusted = vec![];
+
         for error in errors {
-            self.adjust_fulfillment_error_for_expr_obligation(error);
+            let before_span = error.obligation.cause.span;
+            if self.adjust_fulfillment_error_for_expr_obligation(error) {
+                remap_cause.insert((
+                    before_span,
+                    error.obligation.predicate,
+                    error.obligation.cause.clone(),
+                ));
+                remap_cause.insert((
+                    before_span,
+                    error.obligation.predicate.without_const(self.tcx),
+                    error.obligation.cause.clone(),
+                ));
+            } else {
+                not_adjusted.push(error);
+            }
+        }
+
+        for error in not_adjusted {
+            for (span, predicate, cause) in &remap_cause {
+                if *predicate == error.obligation.predicate
+                    && span.contains(error.obligation.cause.span)
+                {
+                    error.obligation.cause = cause.clone();
+                    continue;
+                }
+            }
         }
     }
 
     fn adjust_fulfillment_error_for_expr_obligation(
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
-    ) {
+    ) -> bool {
         let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
-            = *error.obligation.cause.code().peel_derives() else { return; };
+            = *error.obligation.cause.code().peel_derives() else { return false; };
 
         // Skip over mentioning async lang item
         if Some(def_id) == self.tcx.lang_items().from_generator_fn()
             && error.obligation.cause.span.desugaring_kind()
                 == Some(rustc_span::DesugaringKind::Async)
         {
-            return;
+            return false;
         }
         // Skip over closure arg mismatch, which has a better heuristic
         // to determine what span to point at.
@@ -1638,11 +1667,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) = error.code
             && let ty::Closure(..) | ty::Generator(..) = expected.skip_binder().self_ty().kind()
         {
-            return;
+            return false;
         }
 
         let Some(unsubstituted_pred) =
-            self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx) else { return; };
+            self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx)
+            else { return false; };
 
         let generics = self.tcx.generics_of(def_id);
         let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
@@ -1709,19 +1739,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if let Some(param_to_point_at) = param_to_point_at
                         && self.point_at_args_if_possible(error, def_id, param_to_point_at, *call_hir_id, callee.span, args) {
-                        return;
+                        return true;
                     }
 
                     if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
                         && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, *call_hir_id, callee.span, args)
                     {
-                        return;
+                        return true;
                     }
 
                     if let Some(self_param_to_point_at) = self_param_to_point_at
                         && self.point_at_args_if_possible(error, def_id, self_param_to_point_at, *call_hir_id, callee.span, args)
                     {
-                        return;
+                        return true;
                     }
 
                     if let hir::QPath::Resolved(_, path) = qpath
@@ -1729,14 +1759,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && let Some(segment) = path.segments.last()
                         && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
                     {
-                        return;
+                        return true;
                     }
 
                     if let hir::QPath::TypeRelative(_, segment) = qpath
                         && let Some(param_to_point_at) = param_to_point_at
                         && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
                     {
-                        return;
+                        return true;
                     }
                 }
             }
@@ -1744,25 +1774,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(param_to_point_at) = param_to_point_at
                     && self.point_at_args_if_possible(error, def_id, param_to_point_at, hir_id, segment.ident.span, args)
                 {
-                    return;
+                    return true;
                 }
 
                 if let Some(fallback_param_to_point_at) = fallback_param_to_point_at
                     && self.point_at_args_if_possible(error, def_id, fallback_param_to_point_at, hir_id, segment.ident.span, args)
                 {
-                    return;
+                    return true;
                 }
 
                 if let Some(self_param_to_point_at) = self_param_to_point_at
                     && self.point_at_args_if_possible(error, def_id, self_param_to_point_at, hir_id, segment.ident.span, args)
                 {
-                    return;
+                    return true;
                 }
 
                 if let Some(param_to_point_at) = param_to_point_at
                     && self.point_at_generics_if_possible(error, def_id, param_to_point_at, segment)
                 {
-                    return;
+                    return true;
                 }
             }
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(..), .. }) => {
@@ -1770,6 +1800,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+
+        false
     }
 
     fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
