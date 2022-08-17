@@ -3299,3 +3299,47 @@ fn modulo() {
         assert_eq!(status, Status::INVALID_OP);
     }
 }
+
+#[test]
+fn roundtrip() {
+    let f1 = Half::from_str_r("3.14159265358979323", Round::TowardZero).unwrap().value;
+    let bits1 = Half::to_bits(f1);
+    let f2 = Half::from_bits(bits1);
+    let bits2 = Half::to_bits(f2);
+    assert_eq!(bits1, bits2);
+    assert_eq!(f1, f2);
+
+    let f1 = Single::from_str_r("3.14159265358979323", Round::TowardZero).unwrap().value;
+    let bits1 = Single::to_bits(f1);
+    let f2 = Single::from_bits(bits1);
+    let bits2 = Single::to_bits(f2);
+    assert_eq!(bits1, bits2);
+    assert_eq!(f1, f2);
+
+    let f1 = Double::from_str_r("3.14159265358979323", Round::TowardZero).unwrap().value;
+    let bits1 = Double::to_bits(f1);
+    let f2 = Double::from_bits(bits1);
+    let bits2 = Double::to_bits(f2);
+    assert_eq!(bits1, bits2);
+    assert_eq!(f1, f2);
+
+    let f1 = Quad::from_str_r("3.14159265358979323", Round::TowardZero).unwrap().value;
+    let bits1 = Quad::to_bits(f1);
+    let f2 = Quad::from_bits(bits1);
+    let bits2 = Quad::to_bits(f2);
+    assert_eq!(bits1, bits2);
+    assert_eq!(f1, f2);
+
+    let f1 = X87DoubleExtended::from_str_r("3.14159265358979323", Round::TowardZero).unwrap().value;
+    let bits1 = X87DoubleExtended::to_bits(f1);
+    let f2 = X87DoubleExtended::from_bits(bits1);
+    let bits2 = X87DoubleExtended::to_bits(f2);
+    assert_eq!(bits1, bits2);
+    assert_eq!(f1, f2);
+}
+
+#[test]
+fn from_bits() {
+    let f1 = X87DoubleExtended::from_bits(0x4000C90FDAA22168C235);
+    assert_eq!(&f1.to_string(), "3.14159265358979323851");
+}

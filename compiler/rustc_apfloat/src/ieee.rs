@@ -192,7 +192,7 @@ impl Semantics for X87DoubleExtendedS {
         let sign = bits & (1 << (Self::BITS - 1));
         let exponent = (bits & !sign) >> Self::PRECISION;
         let mut r = IeeeFloat {
-            sig: [bits & ((1 << (Self::PRECISION - 1)) - 1)],
+            sig: [bits & ((1 << Self::PRECISION) - 1)],
             // Convert the exponent from its bias representation to a signed integer.
             exp: (exponent as ExpInt) - Self::MAX_EXP,
             category: Category::Zero,
