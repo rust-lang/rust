@@ -671,11 +671,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         // It only make sense when suggesting dereferences for arguments
-        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() else {
-            return false;
-        };
-        let param_env = obligation.param_env;
-        let body_id = obligation.cause.body_id;
+        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code()
+            else { return false; };
+        let Some(typeck_results) = self.in_progress_typeck_results
+            else { return false; };
+        let typeck_results = typeck_results.borrow();
+        let hir::Node::Expr(expr) = self.tcx.hir().get(*arg_hir_id)
+            else { return false; };
+        let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(expr)
+            else { return false; };
+
         let span = obligation.cause.span;
         let mut real_trait_pred = trait_pred;
         let mut code = obligation.cause.code();
@@ -687,9 +692,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
             // Skipping binder here, remapping below
             let real_ty = real_trait_pred.self_ty().skip_binder();
+            if self.can_eq(obligation.param_env, real_ty, arg_ty).is_err() {
+                continue;
+            }
 
             if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
-                let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
+                let mut autoderef = Autoderef::new(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.body_id,
+                    span,
+                    base_ty,
+                    span,
+                );
                 if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                     // Re-add the `&`
                     let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
@@ -697,8 +712,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Remapping bound vars here
                     let real_trait_pred_and_ty =
                         real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, ty));
-                    let obligation = self
-                        .mk_trait_obligation_with_new_self_ty(param_env, real_trait_pred_and_ty);
+                    let obligation = self.mk_trait_obligation_with_new_self_ty(
+                        obligation.param_env,
+                        real_trait_pred_and_ty,
+                    );
                     Some(steps).filter(|_| self.predicate_may_hold(&obligation))
                 }) {
                     if steps > 0 {
@@ -727,7 +744,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let real_trait_pred_and_base_ty =
                         real_trait_pred.map_bound(|inner_trait_pred| (inner_trait_pred, base_ty));
                     let obligation = self.mk_trait_obligation_with_new_self_ty(
-                        param_env,
+                        obligation.param_env,
                         real_trait_pred_and_base_ty,
                     );
                     if self.predicate_may_hold(&obligation) {
@@ -855,6 +872,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => return false,
         };
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
+            && obligation.cause.span.can_be_used_for_suggestions()
         {
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression
