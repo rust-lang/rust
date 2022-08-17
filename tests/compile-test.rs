@@ -403,8 +403,12 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
 ];
 
 fn check_rustfix_coverage() {
-    let target_dir = PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap());
-    let missing_coverage_path = target_dir.join("debug/test/ui/rustfix_missing_coverage.txt");
+    let missing_coverage_path = Path::new("debug/test/ui/rustfix_missing_coverage.txt");
+    let missing_coverage_path = if let Ok(target_dir) = std::env::var("CARGO_TARGET_DIR") {
+        PathBuf::from(target_dir).join(missing_coverage_path)
+    } else {
+        missing_coverage_path.to_path_buf()
+    };
 
     if let Ok(missing_coverage_contents) = std::fs::read_to_string(missing_coverage_path) {
         assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new));
