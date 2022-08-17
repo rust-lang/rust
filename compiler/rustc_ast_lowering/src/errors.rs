@@ -78,3 +78,73 @@ pub struct MisplacedImplTrait {
     pub span: Span,
     pub position: String,
 }
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::rustc_box_attribute_error)]
+pub struct RustcBoxAttributeError {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::underscore_expr_lhs_assign)]
+pub struct UnderscoreExprLhsAssign {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::base_expression_double_dot)]
+pub struct BaseExpressionDoubleDot {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::await_only_in_async_fn_and_blocks, code = "E0728")]
+pub struct AwaitOnlyInAsyncFnAndBlocks {
+    #[primary_span]
+    #[label]
+    pub dot_await_span: Span,
+    #[label(ast_lowering::this_not_async)]
+    pub item_span: Option<Span>,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::generator_too_many_parameters, code = "E0628")]
+pub struct GeneratorTooManyParameters {
+    #[primary_span]
+    pub fn_decl_span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::closure_cannot_be_static, code = "E0697")]
+pub struct ClosureCannotBeStatic {
+    #[primary_span]
+    pub fn_decl_span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[help]
+#[error(ast_lowering::async_non_move_closure_not_supported, code = "E0708")]
+pub struct AsyncNonMoveClosureNotSupported {
+    #[primary_span]
+    pub fn_decl_span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::functional_record_update_destructuring_assignment)]
+pub struct FunctionalRecordUpdateDestructuringAssignemnt {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::async_generators_not_supported, code = "E0727")]
+pub struct AsyncGeneratorsNotSupported {
+    #[primary_span]
+    pub span: Span,
+}
