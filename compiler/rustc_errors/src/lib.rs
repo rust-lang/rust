@@ -458,6 +458,7 @@ struct HandlerInner {
 pub enum StashKey {
     ItemNoType,
     UnderscoreForArrayLengths,
+    EarlySyntaxWarning,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
