@@ -25,7 +25,7 @@ pub(super) fn check(
         None
     };
 
-    let method = if is_err { "unwrap_err" } else { "unwrap" };
+    let method_suffix = if is_err { "_err" } else { "" };
 
     if allow_unwrap_in_tests && is_in_test_function(cx.tcx, expr.hir_id) {
         return;
@@ -35,7 +35,7 @@ pub(super) fn check(
         let help = if is_lint_allowed(cx, EXPECT_USED, expr.hir_id) {
             format!(
                 "if you don't want to handle the `{none_value}` case gracefully, consider \
-                using `expect()` to provide a better panic message"
+                using `expect{method_suffix}()` to provide a better panic message"
             )
         } else {
             format!("if this value is {none_prefix}`{none_value}`, it will panic")
@@ -45,7 +45,7 @@ pub(super) fn check(
             cx,
             lint,
             expr.span,
-            &format!("used `{method}()` on `{kind}` value"),
+            &format!("used `unwrap{method_suffix}()` on `{kind}` value"),
             None,
             &help,
         );
