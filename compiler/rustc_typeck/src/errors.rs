@@ -324,3 +324,20 @@ pub struct SubstsOnOverriddenImpl {
     #[primary_span]
     pub span: Span,
 }
+
+pub struct RustcOutlives {
+    pub span: Span,
+    pub pred: Vec<String>,
+}
+
+impl SessionDiagnostic<'_> for RustcOutlives {
+    fn into_diagnostic(self, sess: &ParseSess) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = sess
+            .span_diagnostic
+            .struct_span_err(self.span, rustc_errors::fluent::typeck::rustc_outlives);
+        for p in self.pred {
+            diag.note(p);
+        }
+        diag
+    }
+}

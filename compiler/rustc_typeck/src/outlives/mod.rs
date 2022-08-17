@@ -7,6 +7,8 @@ use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
+use crate::errors::RustcOutlives;
+
 mod explicit;
 mod implicit_infer;
 pub(crate) mod outlives_bounds;
@@ -59,12 +61,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
                         .collect();
                     pred.sort();
 
-                    let span = tcx.def_span(item_def_id);
-                    let mut err = tcx.sess.struct_span_err(span, "rustc_outlives");
-                    for p in &pred {
-                        err.note(p);
-                    }
-                    err.emit();
+                    tcx.sess.emit_err(RustcOutlives { span: tcx.def_span(item_def_id), pred });
                 }
 
                 debug!("inferred_outlives_of({:?}) = {:?}", item_def_id, predicates);

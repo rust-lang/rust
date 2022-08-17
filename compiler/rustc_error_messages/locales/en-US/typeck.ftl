@@ -123,3 +123,5 @@ typeck_manual_implementation =
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 typeck_substs_on_overridden_impl = could not resolve substs on overridden impl
+
+typeck_rustc_outlives = rustc_outlives
