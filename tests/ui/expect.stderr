@@ -15,5 +15,13 @@ LL |     let _ = res.expect("");
    |
    = help: if this value is an `Err`, it will panic
 
-error: aborting due to 2 previous errors
+error: used `expect_err()` on `a Result` value
+  --> $DIR/expect.rs:11:13
+   |
+LL |     let _ = res.expect_err("");
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this value is an `Ok`, it will panic
+
+error: aborting due to 3 previous errors
 

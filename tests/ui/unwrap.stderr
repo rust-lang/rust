@@ -15,5 +15,13 @@ LL |     let _ = res.unwrap();
    |
    = help: if you don't want to handle the `Err` case gracefully, consider using `expect()` to provide a better panic message
 
-error: aborting due to 2 previous errors
+error: used `unwrap_err()` on `a Result` value
+  --> $DIR/unwrap.rs:11:13
+   |
+LL |     let _ = res.unwrap_err();
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: if you don't want to handle the `Ok` case gracefully, consider using `expect_err()` to provide a better panic message
+
+error: aborting due to 3 previous errors
 
