@@ -123,3 +123,11 @@ typeck_manual_implementation =
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 typeck_substs_on_overridden_impl = could not resolve substs on overridden impl
+
+typeck_unused_extern_crate =
+    unused extern crate
+    .suggestion = remove it
+
+typeck_extern_crate_not_idiomatic =
+    `extern crate` is not idiomatic in the new edition
+    .suggestion = convert it to a `{$msg_code}`
