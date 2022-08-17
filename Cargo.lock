@@ -4011,6 +4011,7 @@ dependencies = [
  "rustc_hir",
  "rustc_incremental",
  "rustc_lint",
+ "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
  "rustc_mir_build",
