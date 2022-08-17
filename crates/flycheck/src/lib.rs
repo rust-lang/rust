@@ -345,7 +345,7 @@ impl CargoActor {
         //
         // Because cargo only outputs one JSON object per line, we can
         // simply skip a line if it doesn't parse, which just ignores any
-        // erroneus output.
+        // erroneous output.
 
         let mut error = String::new();
         let mut read_at_least_one_message = false;

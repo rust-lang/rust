@@ -29,7 +29,7 @@ use super::remove_unused_param::range_to_remove;
 
 // Assist: extract_module
 //
-// Extracts a selected region as seperate module. All the references, visibility and imports are
+// Extracts a selected region as separate module. All the references, visibility and imports are
 // resolved.
 //
 // ```
@@ -105,7 +105,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             //
             //- Thirdly, resolving all the imports this includes removing paths from imports
             //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
-            //  new import statemnts
+            //  new import statements
 
             //We are getting item usages and record_fields together, record_fields
             //for change_visibility and usages for first point mentioned above in the process
@@ -661,7 +661,7 @@ fn check_intersection_and_push(
     import_path: TextRange,
 ) {
     if import_paths_to_be_removed.len() > 0 {
-        // Text ranges recieved here for imports are extended to the
+        // Text ranges received here for imports are extended to the
         // next/previous comma which can cause intersections among them
         // and later deletion of these can cause panics similar
         // to reported in #11766. So to mitigate it, we

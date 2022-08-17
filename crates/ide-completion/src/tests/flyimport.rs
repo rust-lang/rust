@@ -159,7 +159,7 @@ pub mod some_module {
     pub struct ThiiiiiirdStruct;
     // contains all letters from the query, but not in the beginning, displayed second
     pub struct AfterThirdStruct;
-    // contains all letters from the query in the begginning, displayed first
+    // contains all letters from the query in the beginning, displayed first
     pub struct ThirdStruct;
 }
 

@@ -3,7 +3,7 @@
 //!
 //! Pure model is represented by the [`base_db::CrateGraph`] from another crate.
 //!
-//! In this crate, we are conserned with "real world" project models.
+//! In this crate, we are concerned with "real world" project models.
 //!
 //! Specifically, here we have a representation for a Cargo project
 //! ([`CargoWorkspace`]) and for manually specified layout ([`ProjectJson`]).

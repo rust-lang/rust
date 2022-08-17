@@ -655,7 +655,7 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
                     html, body { margin:0; padding:0; overflow:hidden }
                     svg { position:fixed; top:0; left:0; height:100%; width:100% }
 
-                    /* Disable the graphviz backgroud and fill the polygons */
+                    /* Disable the graphviz background and fill the polygons */
                     .graph > polygon { display:none; }
                     :is(.node,.edge) polygon { fill: white; }
 
