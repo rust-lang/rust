@@ -1,5 +1,5 @@
 use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic};
-use rustc_macros::SessionDiagnostic;
+use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(SessionDiagnostic, Clone, Copy)]
@@ -147,4 +147,126 @@ pub struct FunctionalRecordUpdateDestructuringAssignemnt {
 pub struct AsyncGeneratorsNotSupported {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::inline_asm_unsupported_target, code = "E0472")]
+pub struct InlineAsmUnsupportedTarget {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::att_syntax_only_x86)]
+pub struct AttSyntaxOnlyX86 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::abi_specified_multiple_times)]
+pub struct AbiSpecifiedMultipleTimes {
+    #[primary_span]
+    pub abi_span: Span,
+    pub prev_name: Symbol,
+    #[label]
+    pub prev_span: Span,
+    #[note]
+    pub equivalent: Option<()>,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::clobber_abi_not_supported)]
+pub struct ClobberAbiNotSupported {
+    #[primary_span]
+    pub abi_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[note]
+#[error(ast_lowering::invalid_abi_clobber_abi)]
+pub struct InvalidAbiClobberAbi {
+    #[primary_span]
+    pub abi_span: Span,
+    pub supported_abis: String,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::invalid_register)]
+pub struct InvalidRegister<'a> {
+    #[primary_span]
+    pub op_span: Span,
+    pub s: Symbol,
+    pub e: &'a str,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::invalid_register_class)]
+pub struct InvalidRegisterClass<'a> {
+    #[primary_span]
+    pub op_span: Span,
+    pub s: Symbol,
+    pub e: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_lowering::invalid_asm_template_modifier_reg_class)]
+pub struct InvalidAsmTemplateModifierRegClass {
+    #[primary_span]
+    #[label(ast_lowering::template_modifier)]
+    pub placeholder_span: Span,
+    #[label(ast_lowering::argument)]
+    pub op_span: Span,
+    #[subdiagnostic]
+    pub sub: InvalidAsmTemplateModifierRegClassSub,
+}
+
+#[derive(SessionSubdiagnostic)]
+pub enum InvalidAsmTemplateModifierRegClassSub {
+    #[note(ast_lowering::support_modifiers)]
+    SupportModifier { class_name: Symbol, modifiers: String },
+    #[note(ast_lowering::does_not_support_modifiers)]
+    DoesNotSupportModifier { class_name: Symbol },
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::invalid_asm_template_modifier_const)]
+pub struct InvalidAsmTemplateModifierConst {
+    #[primary_span]
+    #[label(ast_lowering::template_modifier)]
+    pub placeholder_span: Span,
+    #[label(ast_lowering::argument)]
+    pub op_span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::invalid_asm_template_modifier_sym)]
+pub struct InvalidAsmTemplateModifierSym {
+    #[primary_span]
+    #[label(ast_lowering::template_modifier)]
+    pub placeholder_span: Span,
+    #[label(ast_lowering::argument)]
+    pub op_span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::register_class_only_clobber)]
+pub struct RegisterClassOnlyClobber {
+    #[primary_span]
+    pub op_span: Span,
+    pub reg_class_name: Symbol,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::register_conflict)]
+pub struct RegisterConflict<'a> {
+    #[primary_span]
+    #[label(ast_lowering::register1)]
+    pub op_span1: Span,
+    #[label(ast_lowering::register2)]
+    pub op_span2: Span,
+    pub reg1_name: &'a str,
+    pub reg2_name: &'a str,
+    #[help]
+    pub in_out: Option<Span>,
 }

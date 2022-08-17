@@ -49,3 +49,57 @@ ast_lowering_functional_record_update_destructuring_assignment =
 
 ast_lowering_async_generators_not_supported =
     `async` generators are not yet supported
+
+ast_lowering_inline_asm_unsupported_target =
+    inline assembly is unsupported on this target
+
+ast_lowering_att_syntax_only_x86 =
+    the `att_syntax` option is only supported on x86
+
+ast_lowering_abi_specified_multiple_times =
+    `{$prev_name}` ABI specified multiple times
+    .label = previously specified here
+    .note = these ABIs are equivalent on the current target
+
+ast_lowering_clobber_abi_not_supported =
+    `clobber_abi` is not supported on this target
+
+ast_lowering_invalid_abi_clobber_abi =
+    invalid ABI for `clobber_abi`
+    .note = the following ABIs are supported on this target: {$supported_abis}
+
+ast_lowering_invalid_register =
+    invalid register `{$s}`: {$e}
+
+ast_lowering_invalid_register_class =
+    invalid register class `{$s}`: {$e}
+
+ast_lowering_invalid_asm_template_modifier_reg_class =
+    invalid asm template modifier for this register class
+
+ast_lowering_argument = argument
+
+ast_lowering_template_modifier = template modifier
+
+ast_lowering_support_modifiers =
+    the `{$class_name}` register class supports the following template modifiers: {$modifiers}
+
+ast_lowering_does_not_support_modifiers =
+    the `{$class_name}` register class does not support template modifiers
+
+ast_lowering_invalid_asm_template_modifier_const =
+    asm template modifiers are not allowed for `const` arguments
+
+ast_lowering_invalid_asm_template_modifier_sym =
+    asm template modifiers are not allowed for `sym` arguments
+
+ast_lowering_register_class_only_clobber =
+    register class `{$reg_class_name}` can only be used as a clobber, not as an input or output
+
+ast_lowering_register_conflict =
+    register `{$reg1_name}` conflicts with register `{$reg2_name}`
+    .help = use `lateout` instead of `out` to avoid conflict
+
+ast_lowering_register1 = register `{$reg1_name}`
+
+ast_lowering_register2 = register `{$reg2_name}`
