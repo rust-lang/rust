@@ -40,7 +40,7 @@ pub(crate) struct VarStillRepeating {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(expand::var_still_repeating)]
+#[error(expand::meta_var_dif_seq_matchers)]
 pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
