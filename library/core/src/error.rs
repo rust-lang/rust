@@ -1,5 +1,4 @@
-//! Interfaces for working with Errors.
-// FIXME(yaahc): link to std docs or common docs and try to figure out intradoc issue
+#![doc = include_str!("error.md")]
 #![unstable(feature = "error_in_core", issue = "none")]
 
 // A note about crates and the facade:
