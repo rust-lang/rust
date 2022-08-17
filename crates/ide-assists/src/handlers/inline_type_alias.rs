@@ -66,7 +66,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                     .into_iter()
                     .filter_map(|file_ref| match file_ref.name {
                         ast::NameLike::NameRef(path_type) => {
-                            path_type.syntax().ancestors().find_map(ast::PathType::cast)
+                            path_type.syntax().ancestors().nth(3).and_then(ast::PathType::cast)
                         }
                         _ => None,
                     })
