@@ -8,11 +8,12 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, PResult};
+use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::StableCrateId;
 use rustc_hir::definitions::Definitions;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
+use rustc_macros::SessionDiagnostic;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -30,7 +31,7 @@ use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::FileName;
+use rustc_span::{FileName, Span};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tracing::{info, warn};
@@ -263,6 +264,23 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
     }
 }
 
+#[derive(SessionDiagnostic)]
+#[error(interface::ferris_identifier)]
+struct FerrisIdentifier {
+    #[primary_span]
+    spans: Vec<Span>,
+    #[suggestion(code = "ferris", applicability = "maybe-incorrect")]
+    first_span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(interface::emoji_identifier)]
+struct EmojiIdentifier {
+    #[primary_span]
+    spans: Vec<Span>,
+    ident: Symbol,
+}
+
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
@@ -443,23 +461,9 @@ pub fn configure_and_expand(
             spans.sort();
             if ident == sym::ferris {
                 let first_span = spans[0];
-                sess.diagnostic()
-                    .struct_span_err(
-                        MultiSpan::from(spans),
-                        "Ferris cannot be used as an identifier",
-                    )
-                    .span_suggestion(
-                        first_span,
-                        "try using their name instead",
-                        "ferris",
-                        Applicability::MaybeIncorrect,
-                    )
-                    .emit();
+                sess.emit_err(FerrisIdentifier { spans, first_span });
             } else {
-                sess.diagnostic().span_err(
-                    MultiSpan::from(spans),
-                    &format!("identifiers cannot contain emoji: `{}`", ident),
-                );
+                sess.emit_err(EmojiIdentifier { spans, ident });
             }
         }
     });
