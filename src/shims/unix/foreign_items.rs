@@ -186,27 +186,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 // Align must be power of 2, and also at least ptr-sized (POSIX rules).
-                if !align.is_power_of_two() {
-                    throw_ub_format!("posix_memalign: alignment must be a power of two, but is {}", align);
-                }
-                if align < this.pointer_size().bytes() {
-                    throw_ub_format!(
-                        "posix_memalign: alignment must be at least the size of a pointer, but is {}",
-                        align,
-                    );
-                }
-
-                if size == 0 {
-                    this.write_null(&ret.into())?;
+                // But failure to adhere to this is not UB, it's an error condition.
+                if !align.is_power_of_two() || align < this.pointer_size().bytes() {
+                    let einval = this.eval_libc_i32("EINVAL")?;
+                    this.write_int(einval, dest)?;
                 } else {
-                    let ptr = this.allocate_ptr(
-                        Size::from_bytes(size),
-                        Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::C.into(),
-                    )?;
-                    this.write_pointer(ptr, &ret.into())?;
+                    if size == 0 {
+                        this.write_null(&ret.into())?;
+                    } else {
+                        let ptr = this.allocate_ptr(
+                            Size::from_bytes(size),
+                            Align::from_bytes(align).unwrap(),
+                            MiriMemoryKind::C.into(),
+                        )?;
+                        this.write_pointer(ptr, &ret.into())?;
+                    }
+                    this.write_null(dest)?;
                 }
-                this.write_null(dest)?;
             }
 
             // Dynamic symbol loading
