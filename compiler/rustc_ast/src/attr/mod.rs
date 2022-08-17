@@ -12,7 +12,6 @@ use crate::tokenstream::{DelimSpan, Spacing, TokenTree};
 use crate::tokenstream::{LazyTokenStream, TokenStream};
 use crate::util::comments;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -487,7 +486,7 @@ impl MetaItemKind {
                     id: ast::DUMMY_NODE_ID,
                     kind: ast::ExprKind::Lit(lit.clone()),
                     span: lit.span,
-                    attrs: ThinVec::new(),
+                    attrs: ast::AttrVec::new(),
                     tokens: None,
                 });
                 MacArgs::Eq(span, MacArgsEq::Ast(expr))

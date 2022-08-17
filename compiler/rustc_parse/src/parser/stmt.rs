@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
             let path = this.parse_path(PathStyle::Expr)?;
 
             if this.eat(&token::Not) {
-                let stmt_mac = this.parse_stmt_mac(lo, attrs.into(), path)?;
+                let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
                 if this.token == token::Semi {
                     return Ok((stmt_mac, TrailingToken::Semi));
                 } else {
@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
             // Since none of the above applied, this is an expression statement macro.
             let e = self.mk_expr(lo.to(hi), ExprKind::MacCall(mac));
             let e = self.maybe_recover_from_bad_qpath(e)?;
-            let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
+            let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
             let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
             StmtKind::Expr(e)
         };
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Stmt> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
-            let local = this.parse_local(attrs.into())?;
+            let local = this.parse_local(attrs)?;
             let trailing = if capture_semi && this.token.kind == token::Semi {
                 TrailingToken::Semi
             } else {
@@ -241,7 +241,7 @@ impl<'a> Parser<'a> {
 
     fn recover_local_after_let(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
-            let local = this.parse_local(attrs.into())?;
+            let local = this.parse_local(attrs)?;
             // FIXME - maybe capture semicolon in recovery?
             Ok((
                 this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)),
@@ -509,9 +509,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. Inner attributes are allowed.
-    pub(super) fn parse_inner_attrs_and_block(
-        &mut self,
-    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
+    pub(super) fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (AttrVec, P<Block>)> {
         self.parse_block_common(self.token.span, BlockCheckMode::Default)
     }
 
@@ -520,8 +518,8 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         blk_mode: BlockCheckMode,
-    ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
-        maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
+    ) -> PResult<'a, (AttrVec, P<Block>)> {
+        maybe_whole!(self, NtBlock, |x| (AttrVec::new(), x));
 
         self.maybe_recover_unexpected_block_label();
         if !self.eat(&token::OpenDelim(Delimiter::Brace)) {

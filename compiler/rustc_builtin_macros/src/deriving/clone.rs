@@ -68,7 +68,7 @@ pub fn expand_deriving_clone(
     }
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = vec![cx.attribute(inline)].into();
     let trait_def = TraitDef {
         span,
         path: path_std!(clone::Clone),

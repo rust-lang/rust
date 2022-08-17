@@ -575,7 +575,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         name: Ident,
-        attrs: Vec<ast::Attribute>,
+        attrs: ast::AttrVec,
         kind: ast::ItemKind,
     ) -> P<ast::Item> {
         // FIXME: Would be nice if our generated code didn't violate
@@ -603,7 +603,7 @@ impl<'a> ExtCtxt<'a> {
         mutbl: ast::Mutability,
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, Some(expr)))
+        self.item(span, name, AttrVec::new(), ast::ItemKind::Static(ty, mutbl, Some(expr)))
     }
 
     pub fn item_const(
@@ -614,7 +614,7 @@ impl<'a> ExtCtxt<'a> {
         expr: P<ast::Expr>,
     ) -> P<ast::Item> {
         let def = ast::Defaultness::Final;
-        self.item(span, name, Vec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
+        self.item(span, name, AttrVec::new(), ast::ItemKind::Const(def, ty, Some(expr)))
     }
 
     pub fn attribute(&self, mi: ast::MetaItem) -> ast::Attribute {

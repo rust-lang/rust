@@ -950,15 +950,15 @@ impl<'a> Parser<'a> {
         &mut self,
         e0: P<Expr>,
         lo: Span,
-        mut attrs: Vec<ast::Attribute>,
+        mut attrs: ast::AttrVec,
     ) -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
         self.parse_dot_or_call_expr_with_(e0, lo).map(|expr| {
             expr.map(|mut expr| {
-                attrs.extend::<Vec<_>>(expr.attrs.into());
-                expr.attrs = attrs.into();
+                attrs.extend(expr.attrs);
+                expr.attrs = attrs;
                 expr
             })
         })
@@ -2224,7 +2224,7 @@ impl<'a> Parser<'a> {
 
             Ok((
                 Param {
-                    attrs: attrs.into(),
+                    attrs,
                     ty,
                     pat,
                     span: lo.to(this.prev_token.span),
@@ -2732,7 +2732,7 @@ impl<'a> Parser<'a> {
                     let span = body.span;
                     return Ok((
                         ast::Arm {
-                            attrs: attrs.into(),
+                            attrs,
                             pat,
                             guard,
                             body,
@@ -2810,7 +2810,7 @@ impl<'a> Parser<'a> {
 
             Ok((
                 ast::Arm {
-                    attrs: attrs.into(),
+                    attrs,
                     pat,
                     guard,
                     body: expr,
@@ -3123,7 +3123,7 @@ impl<'a> Parser<'a> {
                     span: lo.to(expr.span),
                     expr,
                     is_shorthand,
-                    attrs: attrs.into(),
+                    attrs,
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
                 },
@@ -3219,14 +3219,10 @@ impl<'a> Parser<'a> {
         await_expr
     }
 
-    pub(crate) fn mk_expr_with_attrs<A>(&self, span: Span, kind: ExprKind, attrs: A) -> P<Expr>
-    where
-        A: Into<AttrVec>,
-    {
-        P(Expr { kind, span, attrs: attrs.into(), id: DUMMY_NODE_ID, tokens: None })
+    pub(crate) fn mk_expr_with_attrs(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
+        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
 
-    // njn: rename
     pub(crate) fn mk_expr(&self, span: Span, kind: ExprKind) -> P<Expr> {
         P(Expr { kind, span, attrs: AttrVec::new(), id: DUMMY_NODE_ID, tokens: None })
     }
@@ -3248,7 +3244,7 @@ impl<'a> Parser<'a> {
     fn collect_tokens_for_expr(
         &mut self,
         attrs: AttrWrapper,
-        f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, P<Expr>>,
+        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, P<Expr>>,
     ) -> PResult<'a, P<Expr>> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;

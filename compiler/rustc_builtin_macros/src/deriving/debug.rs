@@ -29,7 +29,7 @@ pub fn expand_deriving_debug(
             explicit_self: true,
             nonself_args: vec![(fmtr, sym::f)],
             ret_ty: Path(path_std!(fmt::Result)),
-            attributes: Vec::new(),
+            attributes: ast::AttrVec::new(),
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 show_substructure(a, b, c)

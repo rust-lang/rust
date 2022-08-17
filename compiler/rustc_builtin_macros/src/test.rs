@@ -227,7 +227,8 @@ pub fn expand_test_or_bench(
             )),
             // #[rustc_test_marker]
             cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
-        ],
+        ]
+        .into(),
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
             ast::Defaultness::Final,
@@ -334,7 +335,7 @@ pub fn expand_test_or_bench(
     });
 
     // extern crate test
-    let test_extern = cx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None));
+    let test_extern = cx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
 
     tracing::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 

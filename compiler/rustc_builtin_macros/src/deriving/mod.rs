@@ -164,7 +164,7 @@ fn inject_impl_of_structural_trait(
 
     // Keep the lint and stability attributes of the original item, to control
     // how the generated implementation is linted.
-    let mut attrs = Vec::new();
+    let mut attrs = ast::AttrVec::new();
     attrs.extend(
         item.attrs
             .iter()

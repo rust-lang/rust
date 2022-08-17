@@ -19,7 +19,7 @@ pub fn expand_deriving_partial_ord(
         Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
     let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = vec![cx.attribute(inline)].into();
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
