@@ -36,7 +36,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
     let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
 
-    compile_fn(tcx, cx, cached_context, module, codegened_func);
+    compile_fn(cx, cached_context, module, codegened_func);
 }
 
 fn codegen_fn<'tcx>(
@@ -142,7 +142,6 @@ fn codegen_fn<'tcx>(
 }
 
 fn compile_fn<'tcx>(
-    tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx<'tcx>,
     cached_context: &mut Context,
     module: &mut dyn Module,
@@ -193,7 +192,7 @@ fn compile_fn<'tcx>(
     };
 
     // Define function
-    tcx.sess.time("define function", || {
+    cx.profiler.verbose_generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
         module.define_function(codegened_func.func_id, context).unwrap();
     });
@@ -222,7 +221,7 @@ fn compile_fn<'tcx>(
     let isa = module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
-    tcx.sess.time("generate debug info", || {
+    cx.profiler.verbose_generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             debug_context.define_function(
                 codegened_func.instance,
