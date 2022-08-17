@@ -664,6 +664,9 @@ impl Span {
         Some(self)
     }
 
+    /// Like `find_ancestor_inside`, but specifically for when spans might not
+    /// overlaps. Take care when using this, and prefer `find_ancestor_inside`
+    /// when you know that the spans are nested (modulo macro expansion).
     pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
         while !Span::eq_ctxt(self, other) {
             self = self.parent_callsite()?;
