@@ -1,6 +1,6 @@
 use rustc_macros::SessionDiagnostic;
+use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
-use rustc_span::symbol::{MacroRulesNormalizedIdent};
 
 #[derive(SessionDiagnostic)]
 #[error(expand::expr_repeat_no_syntax_vars)]
@@ -46,5 +46,3 @@ pub(crate) struct MetaVarsDifSeqMatchers {
     pub span: Span,
     pub msg: String,
 }
-
-
