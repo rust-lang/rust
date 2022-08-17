@@ -26,7 +26,7 @@ type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 pub(crate) struct Module<'a> {
     ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
     pub(crate) items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-    inner_attr: Vec<ast::Attribute>,
+    inner_attr: ast::AttrVec,
     pub(crate) span: Span,
 }
 
@@ -35,7 +35,7 @@ impl<'a> Module<'a> {
         mod_span: Span,
         ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
         mod_items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-        mod_attrs: Cow<'a, Vec<ast::Attribute>>,
+        mod_attrs: Cow<'a, ast::AttrVec>,
     ) -> Self {
         let inner_attr = mod_attrs
             .iter()
@@ -158,7 +158,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         module_item.item.span,
                         Some(Cow::Owned(sub_mod_kind.clone())),
                         Cow::Owned(vec![]),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ast::AttrVec::new()),
                     ),
                 )?;
             }
@@ -185,7 +185,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         span,
                         Some(Cow::Owned(sub_mod_kind.clone())),
                         Cow::Owned(vec![]),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ast::AttrVec::new()),
                     ),
                 )?;
             }
