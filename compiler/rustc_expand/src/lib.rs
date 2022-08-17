@@ -25,6 +25,7 @@ pub mod base;
 pub mod build;
 #[macro_use]
 pub mod config;
+pub mod errors;
 pub mod expand;
 pub mod module;
 pub mod proc_macro;
