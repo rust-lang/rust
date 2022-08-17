@@ -56,9 +56,7 @@ cfg_if! {
             pub fn new(v: T) -> Self {
                 Atomic(Cell::new(v))
             }
-        }
 
-        impl<T: Copy> Atomic<T> {
             #[inline]
             pub fn into_inner(self) -> T {
                 self.0.into_inner()
