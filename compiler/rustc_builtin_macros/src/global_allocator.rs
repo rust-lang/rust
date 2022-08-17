@@ -9,6 +9,7 @@ use rustc_ast::{Fn, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -116,7 +117,7 @@ impl AllocFnFactory<'_, '_> {
     fn attrs(&self) -> AttrVec {
         let special = sym::rustc_std_internal_symbol;
         let special = self.cx.meta_word(self.span, special);
-        vec![self.cx.attribute(special)].into()
+        thin_vec![self.cx.attribute(special)]
     }
 
     fn arg_ty(

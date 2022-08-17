@@ -8,17 +8,18 @@ doctest = false
 
 [dependencies]
 rustc_arena = { path = "../rustc_arena" }
-tracing = "0.1"
+rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_hir = { path = "../rustc_hir" }
-rustc_target = { path = "../rustc_target" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_query_system = { path = "../rustc_query_system" }
-rustc_span = { path = "../rustc_span" }
-rustc_errors = { path = "../rustc_errors" }
 rustc_session = { path = "../rustc_session" }
-rustc_ast = { path = "../rustc_ast" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.8"
+tracing = "0.1"

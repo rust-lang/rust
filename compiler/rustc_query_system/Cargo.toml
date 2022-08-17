@@ -7,9 +7,8 @@ edition = "2021"
 doctest = false
 
 [dependencies]
+parking_lot = "0.11"
 rustc_arena = { path = "../rustc_arena" }
-tracing = "0.1"
-rustc-rayon-core = { version = "0.4.0", optional = true }
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
@@ -17,12 +16,14 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
+rustc-rayon-core = { version = "0.4.0", optional = true }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-parking_lot = "0.11"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.8"
+tracing = "0.1"
 
 [features]
 rustc_use_parallel_compiler = ["rustc-rayon-core"]

@@ -14,7 +14,6 @@ use rustc_data_structures::profiling::TimingGuard;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
@@ -24,6 +23,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 use std::ptr;
+use thin_vec::ThinVec;
 
 pub struct QueryState<K> {
     #[cfg(parallel_compiler)]

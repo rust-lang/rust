@@ -8,6 +8,7 @@ use std::sync::OnceLock as OnceCell;
 use std::{cmp, fmt, iter};
 
 use arrayvec::ArrayVec;
+use thin_vec::ThinVec;
 
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
@@ -15,7 +16,6 @@ use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -1303,7 +1303,7 @@ impl GenericBound {
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, did, false, vec![], empty);
+        let path = external_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
             PolyTrait { trait_: path, generic_params: Vec::new() },
