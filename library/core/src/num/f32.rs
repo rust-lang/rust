@@ -394,7 +394,7 @@ impl f32 {
 
     /// Not a Number (NaN).
     ///
-    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// Note that IEEE-754 doesn't define just a single NaN value;
     /// a plethora of bit patterns are considered to be NaN.
     /// Furthermore, the standard makes a difference
     /// between a "signaling" and a "quiet" NaN,
@@ -632,7 +632,7 @@ impl f32 {
     }
 
     /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
-    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
+    /// positive sign bit and positive infinity. Note that IEEE-754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
@@ -654,7 +654,7 @@ impl f32 {
     }
 
     /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
-    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
+    /// negative sign bit and negative infinity. Note that IEEE-754 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
     /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
