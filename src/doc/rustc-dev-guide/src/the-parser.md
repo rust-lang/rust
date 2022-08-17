@@ -35,9 +35,10 @@ The main entrypoint to the parser is via the various `parse_*` functions and oth
 the token stream, and then execute the parser to get a `Crate` (the root AST
 node).
 
-To minimise the amount of copying that is done, both the `StringReader` and
-`Parser` have lifetimes which bind them to the parent `ParseSess`. This contains
-all the information needed while parsing, as well as the `SourceMap` itself.
+To minimise the amount of copying that is done,
+both [`StringReader`] and [`Parser`] have lifetimes which bind them to the parent `ParseSess`.
+This contains all the information needed while parsing,
+as well as the [`SourceMap`] itself.
 
 Note that while parsing, we may encounter macro definitions or invocations. We
 set these aside to be expanded (see [this chapter](./macro-expansion.md)).
@@ -52,9 +53,9 @@ Code for lexical analysis is split between two crates:
   constituting tokens. Although it is popular to implement lexers as generated
   finite state machines, the lexer in `rustc_lexer` is hand-written.
 
-- [`StringReader`] from [`rustc_ast`][rustc_ast] integrates `rustc_lexer` with `rustc`
-  specific data structures. Specifically, it adds `Span` information to tokens
-  returned by `rustc_lexer` and interns identifiers.
+- [`StringReader`] integrates `rustc_lexer` with data structures specific to `rustc`.
+  Specifically,
+  it adds `Span` information to tokens returned by `rustc_lexer` and interns identifiers.
 
 [rustc_ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
 [rustc_errors]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/index.html
