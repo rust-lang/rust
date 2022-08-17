@@ -174,15 +174,13 @@ to `.vscode/settings.json` in your local Miri clone:
         "check",
         "--message-format=json"
     ],
-    "rust-analyzer.buildScripts.overrideCommand": [
+    // Contrary to what the name suggests, this also affects proc macros.
+    "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "env",
         "MIRI_AUTO_OPS=no",
         "./miri",
         "check",
         "--message-format=json",
-    ],
-    "rust-analyzer.rustfmt.extraArgs": [
-        "+nightly"
     ],
 }
 ```
