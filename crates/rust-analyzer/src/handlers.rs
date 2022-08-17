@@ -703,10 +703,8 @@ pub(crate) fn handle_runnables(
 
     let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
-        if let Some(offset) = offset {
-            if !runnable.nav.full_range.contains_inclusive(offset) {
-                continue;
-            }
+        if should_skip_for_offset(&runnable, offset) {
+            continue;
         }
         if should_skip_target(&runnable, cargo_spec.as_ref()) {
             continue;
@@ -770,6 +768,14 @@ pub(crate) fn handle_runnables(
         }
     }
     Ok(res)
+}
+
+fn should_skip_for_offset(runnable: &Runnable, offset: Option<TextSize>) -> bool {
+    match offset {
+        None => false,
+        _ if matches!(&runnable.kind, RunnableKind::TestMod { .. }) => false,
+        Some(offset) => !runnable.nav.full_range.contains_inclusive(offset),
+    }
 }
 
 pub(crate) fn handle_related_tests(
