@@ -16,7 +16,7 @@ mod mod1 {
         struct Mod2Private;
     }
 
-    // @has - "$.index[*][?(@.kind=='import' && @.inner.name=='mod2')]"
+    // @set mod2_use_id = - "$.index[*][?(@.kind=='import' && @.inner.name=='mod2')].id"
     pub use self::mod2::*;
 
     // @set m1pub_id = - "$.index[*][?(@.name=='Mod1Public')].id"
@@ -25,8 +25,9 @@ mod mod1 {
     struct Mod1Private;
 }
 
-// @has - "$.index[*][?(@.kind=='import' && @.inner.name=='mod1')]"
+// @set mod1_use_id = - "$.index[*][?(@.kind=='import' && @.inner.name=='mod1')].id"
 pub use mod1::*;
 
-// @has - "$.index[*][?(@.name=='mod2')].inner.items[*]" $m2pub_id
-// @has - "$.index[*][?(@.name=='mod1')].inner.items[*]" $m1pub_id
+// @ismany - "$.index[*][?(@.name=='mod2')].inner.items[*]" $m2pub_id
+// @ismany - "$.index[*][?(@.name=='mod1')].inner.items[*]" $m1pub_id $mod2_use_id
+// @ismany - "$.index[*][?(@.name=='glob_private')].inner.items[*]" $mod1_use_id

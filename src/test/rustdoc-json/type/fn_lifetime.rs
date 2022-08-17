@@ -2,8 +2,7 @@
 
 // @is fn_lifetime.json "$.index[*][?(@.name=='GenericFn')].kind" \"typedef\"
 
-// @count - "$.index[*][?(@.name=='GenericFn')].inner.generics.params[*]" 1
-// @is    - "$.index[*][?(@.name=='GenericFn')].inner.generics.params[*].name" \"\'a\"
+// @ismany    - "$.index[*][?(@.name=='GenericFn')].inner.generics.params[*].name" \"\'a\"
 // @has   - "$.index[*][?(@.name=='GenericFn')].inner.generics.params[*].kind.lifetime"
 // @count - "$.index[*][?(@.name=='GenericFn')].inner.generics.params[*].kind.lifetime.outlives[*]" 0
 // @count - "$.index[*][?(@.name=='GenericFn')].inner.generics.where_predicates[*]" 0
