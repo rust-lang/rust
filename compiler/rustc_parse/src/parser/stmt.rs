@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// If `force_capture` is true, forces collection of tokens regardless of whether
+    /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of whether
     /// or not we have attributes
     pub(crate) fn parse_stmt_without_recovery(
         &mut self,
