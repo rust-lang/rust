@@ -3,10 +3,10 @@
 #![no_core]
 #![feature(no_core)]
 
-// @has enum_variant_hidden.json "$.index[*][?(@.name=='ParseError')]"
-// @has - "$.index[*][?(@.name=='UnexpectedEndTag')]"
-// @is - "$.index[*][?(@.name=='UnexpectedEndTag')].inner.variant_kind" '"tuple"'
-// @is - "$.index[*][?(@.name=='UnexpectedEndTag')].inner.variant_inner" []
+// @has "$.index[*][?(@.name=='ParseError')]"
+// @has "$.index[*][?(@.name=='UnexpectedEndTag')]"
+// @is "$.index[*][?(@.name=='UnexpectedEndTag')].inner.variant_kind" '"tuple"'
+// @is "$.index[*][?(@.name=='UnexpectedEndTag')].inner.variant_inner" []
 
 pub enum ParseError {
     UnexpectedEndTag(#[doc(hidden)] u32),

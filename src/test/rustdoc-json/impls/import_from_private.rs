@@ -4,21 +4,21 @@
 #![no_core]
 
 mod bar {
-    // @set baz = import_from_private.json "$.index[*][?(@.kind=='struct')].id"
+    // @set baz = "$.index[*][?(@.kind=='struct')].id"
     pub struct Baz;
-    // @set impl = - "$.index[*][?(@.kind=='impl')].id"
+    // @set impl = "$.index[*][?(@.kind=='impl')].id"
     impl Baz {
-        // @set doit = - "$.index[*][?(@.kind=='method')].id"
+        // @set doit = "$.index[*][?(@.kind=='method')].id"
         pub fn doit() {}
     }
 }
 
-// @set import = - "$.index[*][?(@.kind=='import')].id"
+// @set import = "$.index[*][?(@.kind=='import')].id"
 pub use bar::Baz;
 
 // FIXME(adotinthevoid): Use hasexact once #99474 lands
 
-// @has - "$.index[*][?(@.kind=='module')].inner.items[*]" $import
-// @is  - "$.index[*][?(@.kind=='import')].inner.id" $baz
-// @has - "$.index[*][?(@.kind=='struct')].inner.impls[*]" $impl
-// @has - "$.index[*][?(@.kind=='impl')].inner.items[*]" $doit
+// @has "$.index[*][?(@.kind=='module')].inner.items[*]" $import
+// @is  "$.index[*][?(@.kind=='import')].inner.id" $baz
+// @has "$.index[*][?(@.kind=='struct')].inner.impls[*]" $impl
+// @has "$.index[*][?(@.kind=='impl')].inner.items[*]" $doit

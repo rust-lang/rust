@@ -14,7 +14,7 @@ mod auto {
     }
 }
 
-// @count doc_hidden_failure.json "$.index[*][?(@.name=='builders')]" 2
+// @count "$.index[*][?(@.name=='builders')]" 2
 pub use auto::*;
 
 pub mod builders {
