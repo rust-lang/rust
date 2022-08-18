@@ -437,6 +437,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.extraEnv": {
+                    "markdownDescription": "Extra environment variables that will be set when running cargo, rustc\nor other commands within the workspace. Useful for setting RUSTFLAGS.",
+                    "default": {},
+                    "type": "object"
+                },
                 "rust-analyzer.cargo.features": {
                     "markdownDescription": "List of features to activate.\n\nSet this to `\"all\"` to pass `--all-features` to cargo.",
                     "default": [],
@@ -508,6 +513,11 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "rust-analyzer.checkOnSave.extraEnv": {
+                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.",
+                    "default": {},
+                    "type": "object"
                 },
                 "rust-analyzer.checkOnSave.features": {
                     "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to Cargo.",

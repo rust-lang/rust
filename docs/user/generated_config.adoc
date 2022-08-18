@@ -46,6 +46,12 @@ cargo check --quiet --workspace --message-format=json --all-targets
 Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
 avoid checking unnecessary things.
 --
+[[rust-analyzer.cargo.extraEnv]]rust-analyzer.cargo.extraEnv (default: `{}`)::
++
+--
+Extra environment variables that will be set when running cargo, rustc
+or other commands within the workspace. Useful for setting RUSTFLAGS.
+--
 [[rust-analyzer.cargo.features]]rust-analyzer.cargo.features (default: `[]`)::
 +
 --
@@ -92,6 +98,11 @@ Run specified `cargo check` command for diagnostics on save.
 +
 --
 Extra arguments for `cargo check`.
+--
+[[rust-analyzer.checkOnSave.extraEnv]]rust-analyzer.checkOnSave.extraEnv (default: `{}`)::
++
+--
+Extra environment variables that will be set when running `cargo check`.
 --
 [[rust-analyzer.checkOnSave.features]]rust-analyzer.checkOnSave.features (default: `null`)::
 +
