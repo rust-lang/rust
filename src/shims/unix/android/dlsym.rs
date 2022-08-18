@@ -13,7 +13,7 @@ impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
     // should become a NULL pointer (pretend it does not exist).
     pub fn from_str<'tcx>(name: &str) -> InterpResult<'tcx, Option<Dlsym>> {
-        Ok(match &*name {
+        Ok(match name {
             "signal" => Some(Dlsym::signal),
             "android_set_abort_message" => None,
             _ => throw_unsup_format!("unsupported Android dlsym: {}", name),

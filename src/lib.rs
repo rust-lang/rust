@@ -24,6 +24,7 @@
     clippy::derive_hash_xor_eq,
     clippy::too_many_arguments,
     clippy::type_complexity,
+    clippy::single_element_loop,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability
 )]

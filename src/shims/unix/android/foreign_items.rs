@@ -15,9 +15,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         _dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let _this = self.eval_context_mut();
+        #[allow(clippy::match_single_binding)]
         match link_name.as_str() {
             _ => return Ok(EmulateByNameResult::NotSupported),
         }
-        //Ok(EmulateByNameResult::NeedsJumping)
+
+        #[allow(unreachable_code)]
+        Ok(EmulateByNameResult::NeedsJumping)
     }
 }
