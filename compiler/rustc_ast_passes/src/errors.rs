@@ -26,7 +26,7 @@ impl AddSubdiagnostic for ForbiddenLetReason {
             }
             Self::NotSupportedParentheses(span) => {
                 diag.span_note(span, fluent::ast_passes::not_supported_parentheses);
-            },
+            }
         }
     }
 }

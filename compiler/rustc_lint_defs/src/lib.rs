@@ -9,7 +9,7 @@ pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_error_messages::{MultiSpan, DiagnosticMessage};
+use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
 use rustc_span::edition::Edition;
