@@ -8,7 +8,7 @@ use rustc_error_messages::FluentValue;
 use rustc_hir as hir;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_span::edition::LATEST_STABLE_EDITION;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::{edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
@@ -87,6 +87,7 @@ into_diagnostic_arg_using_display!(
     hir::Target,
     Edition,
     Ident,
+    MacroRulesNormalizedIdent,
 );
 
 impl IntoDiagnosticArg for bool {
