@@ -31,3 +31,18 @@ ast_passes_trait_fn_async =
 ast_passes_trait_fn_const =
     functions in traits cannot be declared const
     .label = functions in traits cannot be const
+
+ast_passes_forbidden_lifetime_bound =
+    lifetime bounds cannot be used in this context
+
+ast_passes_forbidden_non_lifetime_param =
+    only lifetime parameters can be used in this context
+
+ast_passes_too_many_params =
+    function can not have more than {$max_num_args} arguments
+
+ast_passes_c_var_args_without_named_arg =
+    C-variadic function must be declared with at least one named argument
+
+ast_passes_c_var_args_not_last =
+    `...` must be the last argument of a C-variadic function

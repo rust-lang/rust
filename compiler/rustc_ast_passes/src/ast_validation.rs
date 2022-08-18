@@ -293,14 +293,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_const(&self, constness: Const) {
         if let Const::Yes(span) = constness {
-            struct_span_err!(
-                self.session,
-                span,
-                E0379,
-                "functions in traits cannot be declared const"
-            )
-            .span_label(span, "functions in traits cannot be const")
-            .emit();
+            self.session.emit_err(TraitFnConst { span });
         }
     }
 
@@ -313,8 +306,7 @@ impl<'a> AstValidator<'a> {
                 GenericParamKind::Lifetime { .. } => {
                     if !param.bounds.is_empty() {
                         let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                        self.err_handler()
-                            .span_err(spans, "lifetime bounds cannot be used in this context");
+                        self.session.emit_err(ForbiddenLifetimeBound { spans });
                     }
                     None
                 }
@@ -322,10 +314,7 @@ impl<'a> AstValidator<'a> {
             })
             .collect();
         if !non_lt_param_spans.is_empty() {
-            self.err_handler().span_err(
-                non_lt_param_spans,
-                "only lifetime parameters can be used in this context",
-            );
+            self.session.emit_err(ForbiddenNonLifetimeParam { spans: non_lt_param_spans });
         }
     }
 
@@ -342,10 +331,7 @@ impl<'a> AstValidator<'a> {
         let max_num_args: usize = u16::MAX.into();
         if fn_decl.inputs.len() > max_num_args {
             let Param { span, .. } = fn_decl.inputs[0];
-            self.err_handler().span_fatal(
-                span,
-                &format!("function can not have more than {} arguments", max_num_args),
-            );
+            self.session.emit_err(TooManyParams { span, max_num_args });
         }
     }
 
@@ -353,19 +339,13 @@ impl<'a> AstValidator<'a> {
         match &*fn_decl.inputs {
             [Param { ty, span, .. }] => {
                 if let TyKind::CVarArgs = ty.kind {
-                    self.err_handler().span_err(
-                        *span,
-                        "C-variadic function must be declared with at least one named argument",
-                    );
+                    self.session.emit_err(CVarArgsWithoutNamedArg { span: *span });
                 }
             }
             [ps @ .., _] => {
                 for Param { ty, span, .. } in ps {
                     if let TyKind::CVarArgs = ty.kind {
-                        self.err_handler().span_err(
-                            *span,
-                            "`...` must be the last argument of a C-variadic function",
-                        );
+                        self.session.emit_err(CVarArgsNotLast { span: *span });
                     }
                 }
             }

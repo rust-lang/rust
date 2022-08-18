@@ -90,3 +90,39 @@ pub struct TraitFnConst {
     #[label]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::forbidden_lifetime_bound)]
+pub struct ForbiddenLifetimeBound {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::forbidden_non_lifetime_param)]
+pub struct ForbiddenNonLifetimeParam {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::too_many_params)]
+pub struct TooManyParams {
+    #[primary_span]
+    pub span: Span,
+    pub max_num_args: usize,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::c_var_args_without_named_arg)]
+pub struct CVarArgsWithoutNamedArg {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::c_var_args_not_last)]
+pub struct CVarArgsNotLast {
+    #[primary_span]
+    pub span: Span,
+}
