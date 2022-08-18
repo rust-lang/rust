@@ -860,8 +860,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         }
 
-                        err.emit();
-                        return;
+                        err
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {

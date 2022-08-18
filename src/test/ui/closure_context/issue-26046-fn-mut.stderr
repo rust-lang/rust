@@ -8,6 +8,8 @@ LL |         num += 1;
 ...
 LL |     Box::new(closure)
    |     ----------------- the requirement to implement `Fn` derives from here
+   |
+   = note: required for the cast from `[closure@$DIR/issue-26046-fn-mut.rs:4:19: 4:21]` to the object type `dyn Fn()`
 
 error: aborting due to previous error
 
