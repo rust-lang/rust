@@ -82,3 +82,11 @@ pub struct TraitFnAsync {
     #[label]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::trait_fn_const, code = "E0379")]
+pub struct TraitFnConst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
