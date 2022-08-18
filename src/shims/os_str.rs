@@ -74,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'mir: 'a,
     {
         #[cfg(windows)]
-        pub fn u16vec_to_osstring<'tcx, 'a>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
+        pub fn u16vec_to_osstring<'tcx>(u16_vec: Vec<u16>) -> InterpResult<'tcx, OsString> {
             Ok(OsString::from_wide(&u16_vec[..]))
         }
         #[cfg(not(windows))]

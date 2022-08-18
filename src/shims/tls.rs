@@ -229,25 +229,28 @@ impl<'tcx> TlsData<'tcx> {
 
 impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Schedule TLS destructors for the main thread on Windows. The
-    /// implementation assumes that we do not support concurrency on Windows
-    /// yet.
+    /// Schedule TLS destructors for Windows.
+    /// On windows, TLS destructors are managed by std.
     fn schedule_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread();
-        assert_eq!(this.get_total_thread_count(), 1, "concurrency on Windows is not supported");
+
         // Windows has a special magic linker section that is run on certain events.
         // Instead of searching for that section and supporting arbitrary hooks in there
         // (that would be basically https://github.com/rust-lang/miri/issues/450),
         // we specifically look up the static in libstd that we know is placed
         // in that section.
-        let thread_callback = this
-            .eval_path_scalar(&["std", "sys", "windows", "thread_local_key", "p_thread_callback"])?
-            .to_pointer(this)?;
+        let thread_callback =
+            this.eval_windows("thread_local_key", "p_thread_callback")?.to_pointer(this)?;
         let thread_callback = this.get_ptr_fn(thread_callback)?.as_instance()?;
 
+        // FIXME: Technically, the reason should be `DLL_PROCESS_DETACH` when the main thread exits
+        // but std treats both the same.
+        let reason = this.eval_windows("c", "DLL_THREAD_DETACH")?;
+
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
-        let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_THREAD_DETACH"])?;
+        // FIXME: `h` should be a handle to the current module and what `pv` should be is unknown
+        // but both are ignored by std
         this.call_function(
             thread_callback,
             Abi::System { unwind: false },

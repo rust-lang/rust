@@ -1,5 +1,3 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
-
 //! Ensure that thread-local statics get deallocated when the thread dies.
 
 #![feature(thread_local)]

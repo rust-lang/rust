@@ -21,7 +21,7 @@ fn main() {
         let mut native_copy: libc::pthread_t = mem::zeroed();
         ptr::copy_nonoverlapping(&native, &mut native_copy, 1);
         let handle = thread::spawn(move || {
-            assert_eq!(libc::pthread_join(native_copy, ptr::null_mut()), 0); //~ ERROR: Undefined Behavior: trying to join a detached or already joined thread
+            assert_eq!(libc::pthread_join(native_copy, ptr::null_mut()), 0); //~ ERROR: Undefined Behavior: trying to join an already joined thread
         });
         assert_eq!(libc::pthread_join(native, ptr::null_mut()), 0);
         handle.join().unwrap();

@@ -11,6 +11,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
+use rustc_middle::ty::layout::TyAndLayout;
+use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
 use crate::sync::SynchronizationState;
@@ -238,10 +240,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         // Create the main thread and add it to the list of threads.
-        let mut main_thread = Thread::new("main");
-        // The main thread can *not* be joined on.
-        main_thread.join_status = ThreadJoinStatus::Detached;
-        threads.push(main_thread);
+        threads.push(Thread::new("main"));
         Self {
             active_thread: ThreadId::new(0),
             threads,
@@ -254,6 +253,13 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
+    pub(crate) fn init(ecx: &mut MiriEvalContext<'mir, 'tcx>) {
+        if ecx.tcx.sess.target.os.as_ref() != "windows" {
+            // The main thread can *not* be joined on except on windows.
+            ecx.machine.threads.threads[ThreadId::new(0)].join_status = ThreadJoinStatus::Detached;
+        }
+    }
+
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
     fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<Pointer<Provenance>> {
@@ -348,10 +354,26 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Mark the thread as detached, which means that no other thread will try
     /// to join it and the thread is responsible for cleaning up.
-    fn detach_thread(&mut self, id: ThreadId) -> InterpResult<'tcx> {
-        if self.threads[id].join_status != ThreadJoinStatus::Joinable {
+    ///
+    /// `allow_terminated_joined` allows detaching joined threads that have already terminated.
+    /// This matches Windows's behavior for `CloseHandle`.
+    ///
+    /// See <https://docs.microsoft.com/en-us/windows/win32/procthread/thread-handles-and-identifiers>:
+    /// > The handle is valid until closed, even after the thread it represents has been terminated.
+    fn detach_thread(&mut self, id: ThreadId, allow_terminated_joined: bool) -> InterpResult<'tcx> {
+        trace!("detaching {:?}", id);
+
+        let is_ub = if allow_terminated_joined && self.threads[id].state == ThreadState::Terminated
+        {
+            // "Detached" in particular means "not yet joined". Redundant detaching is still UB.
+            self.threads[id].join_status == ThreadJoinStatus::Detached
+        } else {
+            self.threads[id].join_status != ThreadJoinStatus::Joinable
+        };
+        if is_ub {
             throw_ub_format!("trying to detach thread that was already detached or joined");
         }
+
         self.threads[id].join_status = ThreadJoinStatus::Detached;
         Ok(())
     }
@@ -362,18 +384,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         joined_thread_id: ThreadId,
         data_race: Option<&mut data_race::GlobalState>,
     ) -> InterpResult<'tcx> {
-        if self.threads[joined_thread_id].join_status != ThreadJoinStatus::Joinable {
-            throw_ub_format!("trying to join a detached or already joined thread");
+        if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Detached {
+            throw_ub_format!("trying to join a detached thread");
         }
-        if joined_thread_id == self.active_thread {
-            throw_ub_format!("trying to join itself");
-        }
-        assert!(
-            self.threads
-                .iter()
-                .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
-            "a joinable thread already has threads waiting for its termination"
-        );
+
         // Mark the joined thread as being joined so that we detect if other
         // threads try to join it.
         self.threads[joined_thread_id].join_status = ThreadJoinStatus::Joined;
@@ -392,6 +406,31 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             }
         }
         Ok(())
+    }
+
+    /// Mark that the active thread tries to exclusively join the thread with `joined_thread_id`.
+    /// If the thread is already joined by another thread, it will throw UB
+    fn join_thread_exclusive(
+        &mut self,
+        joined_thread_id: ThreadId,
+        data_race: Option<&mut data_race::GlobalState>,
+    ) -> InterpResult<'tcx> {
+        if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Joined {
+            throw_ub_format!("trying to join an already joined thread");
+        }
+
+        if joined_thread_id == self.active_thread {
+            throw_ub_format!("trying to join itself");
+        }
+
+        assert!(
+            self.threads
+                .iter()
+                .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
+            "this thread already has threads waiting for its termination"
+        );
+
+        self.join_thread(joined_thread_id, data_race)
     }
 
     /// Set the name of the given thread.
@@ -624,15 +663,77 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn detach_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx> {
+    fn start_thread(
+        &mut self,
+        thread: Option<MPlaceTy<'tcx, Provenance>>,
+        start_routine: Pointer<Option<Provenance>>,
+        start_abi: Abi,
+        func_arg: ImmTy<'tcx, Provenance>,
+        ret_layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
-        this.machine.threads.detach_thread(thread_id)
+
+        // Create the new thread
+        let new_thread_id = this.create_thread();
+
+        // Write the current thread-id, switch to the next thread later
+        // to treat this write operation as occuring on the current thread.
+        if let Some(thread_info_place) = thread {
+            this.write_scalar(
+                Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
+                &thread_info_place.into(),
+            )?;
+        }
+
+        // Finally switch to new thread so that we can push the first stackframe.
+        // After this all accesses will be treated as occuring in the new thread.
+        let old_thread_id = this.set_active_thread(new_thread_id);
+
+        // Perform the function pointer load in the new thread frame.
+        let instance = this.get_ptr_fn(start_routine)?.as_instance()?;
+
+        // Note: the returned value is currently ignored (see the FIXME in
+        // pthread_join in shims/unix/thread.rs) because the Rust standard library does not use
+        // it.
+        let ret_place = this.allocate(ret_layout, MiriMemoryKind::Machine.into())?;
+
+        this.call_function(
+            instance,
+            start_abi,
+            &[*func_arg],
+            Some(&ret_place.into()),
+            StackPopCleanup::Root { cleanup: true },
+        )?;
+
+        // Restore the old active thread frame.
+        this.set_active_thread(old_thread_id);
+
+        Ok(new_thread_id)
+    }
+
+    #[inline]
+    fn detach_thread(
+        &mut self,
+        thread_id: ThreadId,
+        allow_terminated_joined: bool,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.detach_thread(thread_id, allow_terminated_joined)
     }
 
     #[inline]
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.join_thread(joined_thread_id, this.machine.data_race.as_mut())?;
+        Ok(())
+    }
+
+    #[inline]
+    fn join_thread_exclusive(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine
+            .threads
+            .join_thread_exclusive(joined_thread_id, this.machine.data_race.as_mut())?;
         Ok(())
     }
 
@@ -702,6 +803,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn set_thread_name(&mut self, thread: ThreadId, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
         this.machine.threads.set_thread_name(thread, new_thread_name);
+    }
+
+    #[inline]
+    fn set_thread_name_wide(&mut self, thread: ThreadId, new_thread_name: &[u16]) {
+        let this = self.eval_context_mut();
+
+        // The Windows `GetThreadDescription` shim to get the thread name isn't implemented, so being lossy is okay.
+        // This is only read by diagnostics, which already use `from_utf8_lossy`.
+        this.machine
+            .threads
+            .set_thread_name(thread, String::from_utf16_lossy(new_thread_name).into_bytes());
     }
 
     #[inline]

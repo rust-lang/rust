@@ -421,6 +421,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         EnvVars::init(this, config)?;
         Evaluator::init_extern_statics(this)?;
+        ThreadManager::init(this);
         Ok(())
     }
 
