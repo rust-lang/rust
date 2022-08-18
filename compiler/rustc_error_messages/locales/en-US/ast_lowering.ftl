@@ -120,3 +120,12 @@ ast_lowering_previously_used_here = previously used here
 ast_lowering_misplaced_double_dot =
     `..` patterns are not allowed here
     .note = only allowed in tuple, tuple struct, and slice patterns
+
+ast_lowering_misplaced_relax_trait_bound =
+    `?Trait` bounds are only permitted at the point where a type parameter is declared
+
+ast_lowering_not_supported_for_lifetime_binder_async_closure =
+    `for<...>` binders on `async` closures are not currently supported
+
+ast_lowering_arbitrary_expression_in_pattern =
+    arbitrary expressions aren't allowed in patterns

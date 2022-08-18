@@ -306,3 +306,24 @@ pub struct MisplacedDoubleDot {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::misplaced_relax_trait_bound)]
+pub struct MisplacedRelaxTraitBound {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::not_supported_for_lifetime_binder_async_closure)]
+pub struct NotSupportedForLifetimeBinderAsyncClosure {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::arbitrary_expression_in_pattern)]
+pub struct ArbitraryExpressionInPattern {
+    #[primary_span]
+    pub span: Span,
+}
