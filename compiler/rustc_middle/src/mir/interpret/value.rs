@@ -79,7 +79,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
-        Some(self.try_to_scalar()?.assert_int())
+        self.try_to_scalar()?.try_to_int().ok()
     }
 
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
@@ -368,6 +368,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_int(self) -> ScalarInt {
         self.try_to_int().unwrap()
     }
@@ -389,6 +390,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     }
 
     #[inline(always)]
+    #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_bits(self, target_size: Size) -> u128 {
         self.to_bits(target_size).unwrap()
     }
