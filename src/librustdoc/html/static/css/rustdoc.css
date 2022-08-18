@@ -840,20 +840,6 @@ nav.sub {
 .source nav.sub {
 	margin-left: 32px;
 }
-nav.main {
-	padding: 20px 0;
-	text-align: center;
-}
-nav.main .current {
-	border-top: 1px solid var(--border-color);
-	border-bottom: 1px solid var(--border-color);
-}
-nav.main .separator {
-	border: 1px solid var(--border-color);
-	display: inline-block;
-	height: 23px;
-	margin: 0 20px;
-}
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
 
