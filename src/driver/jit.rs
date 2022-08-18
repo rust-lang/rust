@@ -140,7 +140,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                         });
                     }
                     CodegenMode::JitLazy => {
-                        codegen_shim(tcx, &mut cached_context, &mut jit_module, inst)
+                        codegen_shim(tcx, &mut cx, &mut cached_context, &mut jit_module, inst)
                     }
                 },
                 MonoItem::Static(def_id) => {
@@ -353,6 +353,7 @@ fn load_imported_symbols_for_jit(
 
 fn codegen_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
+    cx: &mut CodegenCx<'tcx>,
     cached_context: &mut Context,
     module: &mut JITModule,
     inst: Instance<'tcx>,
@@ -403,4 +404,5 @@ fn codegen_shim<'tcx>(
     trampoline_builder.ins().return_(&ret_vals);
 
     module.define_function(func_id, context).unwrap();
+    cx.unwind_context.add_function(func_id, context, module.isa());
 }
