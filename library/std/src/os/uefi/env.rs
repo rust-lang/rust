@@ -50,8 +50,7 @@ pub fn get_runtime_services() -> Option<NonNull<RuntimeServices>> {
 
 /// Open Protocol on a handle
 /// Implemented using `EFI_BOOT_SERVICES.OpenProtocol()`
-#[unstable(feature = "uefi_std", issue = "100499")]
-pub fn open_protocol<T>(
+pub(crate) fn open_protocol<T>(
     handle: NonNull<c_void>,
     mut protocol_guid: Guid,
 ) -> io::Result<NonNull<T>> {
@@ -82,8 +81,7 @@ pub fn open_protocol<T>(
 
 // Locate handles with a particular protocol GUID
 /// Implemented using `EFI_BOOT_SERVICES.LocateHandles()`
-#[unstable(feature = "uefi_std", issue = "100499")]
-pub fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
+pub(crate) fn locate_handles(mut guid: Guid) -> io::Result<Vec<NonNull<c_void>>> {
     fn inner(
         guid: &mut Guid,
         boot_services: NonNull<BootServices>,

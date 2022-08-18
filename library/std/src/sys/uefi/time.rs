@@ -1,9 +1,10 @@
-//! Time is implemeted using `EFI_RUNTIME_SERVICES.GetTime()`
-//! While this is  not technically monotonic, the single-threaded nature of UEFI might make it fine
-//! to use for Instant. Still, maybe revisit this in future.
-
+use crate::mem::MaybeUninit;
 use crate::os::uefi;
+use crate::ptr::NonNull;
+use crate::sys_common::mul_div_u64;
 use crate::time::Duration;
+
+use r_efi::protocols::timestamp;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
@@ -12,10 +13,41 @@ pub struct Instant(Duration);
 pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::ZERO);
+const NS_PER_SEC: u64 = 1_000_000_000;
 
 impl Instant {
     pub fn now() -> Instant {
+        if let Ok(handles) = crate::os::uefi::env::locate_handles(timestamp::PROTOCOL_GUID) {
+            // First try using `EFI_TIMESTAMP_PROTOCOL` if present
+            for handle in handles {
+                let protocol: NonNull<timestamp::Protocol> =
+                    match uefi::env::open_protocol(handle, timestamp::PROTOCOL_GUID) {
+                        Ok(x) => x,
+                        Err(_) => continue,
+                    };
+                let mut properties: MaybeUninit<timestamp::Properties> = MaybeUninit::uninit();
+                let r = unsafe { ((*protocol.as_ptr()).get_properties)(properties.as_mut_ptr()) };
+                if r.is_error() {
+                    continue;
+                } else {
+                    let properties = unsafe { properties.assume_init() };
+                    let ts = unsafe { ((*protocol.as_ptr()).get_timestamp)() };
+                    let frequency = properties.frequency;
+                    let ns = mul_div_u64(ts, NS_PER_SEC, frequency);
+                    return Instant(Duration::from_nanos(ns));
+                }
+            }
+        }
+
+        // Try using raw CPU Registers
+        // Currently only implemeted for x86_64 using CPUID (0x15) and TSC register
+        #[cfg(target_arch = "x86_64")]
+        if let Some(ns) = get_timestamp() {
+            return Instant(Duration::from_nanos(ns));
+        }
+
         if let Some(runtime_services) = uefi::env::get_runtime_services() {
+            // Finally just use `EFI_RUNTIME_SERVICES.GetTime()`
             let mut t = r_efi::efi::Time::default();
             let r =
                 unsafe { ((*runtime_services.as_ptr()).get_time)(&mut t, crate::ptr::null_mut()) };
@@ -23,11 +55,12 @@ impl Instant {
             if r.is_error() {
                 panic!("time not implemented on this platform")
             } else {
-                Instant(uefi_time_to_duration(t))
+                return Instant(uefi_time_to_duration(t));
             }
-        } else {
-            panic!("Runtime Services are needed for Time to work")
         }
+
+        // Panic if nothing works
+        panic!("Failed to create Instant")
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
@@ -99,4 +132,44 @@ fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
     let utc_epoch: u64 = ((localtime_epoch as i64) + timezone_epoch) as u64;
 
     Duration::new(utc_epoch, t.nanosecond)
+}
+
+// Returns the Frequency in Mhz
+// Mostly based on [`edk2/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c`](https://github.com/tianocore/edk2/blob/master/UefiCpuPkg/Library/CpuTimerLib/CpuTimerLib.c)
+// Currently implemented only for x86_64 but can be extended for other arch if they ever support
+// std.
+#[cfg(target_arch = "x86_64")]
+fn frequency() -> Option<u64> {
+    use crate::sync::atomic::{AtomicU64, Ordering};
+
+    static FREQUENCY: AtomicU64 = AtomicU64::new(0);
+
+    let cached = FREQUENCY.load(Ordering::Relaxed);
+    if cached != 0 {
+        return Some(cached);
+    }
+
+    if crate::arch::x86_64::has_cpuid() {
+        let cpuid = unsafe { crate::arch::x86_64::__cpuid(0x15) };
+
+        if cpuid.eax == 0 || cpuid.ebx == 0 || cpuid.ecx == 0 {
+            return None;
+        }
+
+        let freq = mul_div_u64(cpuid.ecx as u64, cpuid.ebx as u64, cpuid.eax as u64);
+        FREQUENCY.store(freq, Ordering::Relaxed);
+        return Some(freq);
+    }
+
+    None
+}
+
+// Currently implemented only for x86_64 but can be extended for other arch if they ever support
+// std.
+#[cfg(target_arch = "x86_64")]
+fn get_timestamp() -> Option<u64> {
+    let freq = frequency()?;
+    let ts = unsafe { crate::arch::x86_64::_rdtsc() };
+    let ns = mul_div_u64(ts, 1000, freq);
+    Some(ns)
 }
