@@ -161,7 +161,7 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
     - See [translation documentation](./translation.md).
   - `code = "..."` (_Optional_)
     - Specifies the error code.
-- `#[note]` or `#[note = "..."]` (_Optional_)
+- `#[note]` or `#[note(...)]` (_Optional_)
   - _Applied to struct or `Span`/`()` fields._
   - Adds a note subdiagnostic.
   - Value is the Fluent attribute (relative to the Fluent message specified by
