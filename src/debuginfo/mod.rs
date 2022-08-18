@@ -16,17 +16,15 @@ use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
 pub(crate) use emit::{DebugReloc, DebugRelocName};
 pub(crate) use unwind::UnwindContext;
 
-pub(crate) struct DebugContext<'tcx> {
-    tcx: TyCtxt<'tcx>,
-
+pub(crate) struct DebugContext {
     endian: RunTimeEndian,
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
 }
 
-impl<'tcx> DebugContext<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
+impl DebugContext {
+    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
             // FIXME this should be configurable
@@ -92,11 +90,12 @@ impl<'tcx> DebugContext<'tcx> {
             root.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
         }
 
-        DebugContext { tcx, endian, dwarf, unit_range_list: RangeList(Vec::new()) }
+        DebugContext { endian, dwarf, unit_range_list: RangeList(Vec::new()) }
     }
 
     pub(crate) fn define_function(
         &mut self,
+        tcx: TyCtxt<'_>,
         func_id: FuncId,
         name: &str,
         context: &Context,
@@ -116,7 +115,7 @@ impl<'tcx> DebugContext<'tcx> {
         entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
 
         let end =
-            self.create_debug_lines(symbol, entry_id, context, function_span, source_info_set);
+            self.create_debug_lines(tcx, symbol, entry_id, context, function_span, source_info_set);
 
         self.unit_range_list.0.push(Range::StartLength {
             begin: Address::Symbol { symbol, addend: 0 },

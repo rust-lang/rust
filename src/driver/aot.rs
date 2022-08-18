@@ -120,7 +120,7 @@ fn emit_cgu(
     prof: &SelfProfilerRef,
     name: String,
     module: ObjectModule,
-    debug: Option<DebugContext<'_>>,
+    debug: Option<DebugContext>,
     unwind_context: UnwindContext,
     global_asm_object_file: Option<PathBuf>,
 ) -> Result<ModuleCodegenResult, String> {

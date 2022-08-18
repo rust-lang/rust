@@ -61,11 +61,11 @@ impl UnsafeMessage {
     }
 }
 
-fn create_jit_module<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn create_jit_module(
+    tcx: TyCtxt<'_>,
     backend_config: &BackendConfig,
     hotswap: bool,
-) -> (JITModule, CodegenCx<'tcx>) {
+) -> (JITModule, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
     let imported_symbols = load_imported_symbols_for_jit(tcx.sess, crate_info);
 
@@ -353,7 +353,7 @@ fn load_imported_symbols_for_jit(
 
 fn codegen_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cx: &mut CodegenCx<'tcx>,
+    cx: &mut CodegenCx,
     cached_context: &mut Context,
     module: &mut JITModule,
     inst: Instance<'tcx>,

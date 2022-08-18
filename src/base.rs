@@ -24,7 +24,7 @@ struct CodegenedFunction<'tcx> {
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cx: &mut crate::CodegenCx<'tcx>,
+    cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
@@ -35,12 +35,12 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
     let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
 
-    compile_fn(cx, cached_context, module, codegened_func);
+    compile_fn(tcx, cx, cached_context, module, codegened_func);
 }
 
 fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cx: &mut crate::CodegenCx<'tcx>,
+    cx: &mut crate::CodegenCx,
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
@@ -132,7 +132,8 @@ fn codegen_fn<'tcx>(
 }
 
 fn compile_fn<'tcx>(
-    cx: &mut crate::CodegenCx<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
     codegened_func: CodegenedFunction<'tcx>,
@@ -214,6 +215,7 @@ fn compile_fn<'tcx>(
     cx.profiler.verbose_generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             debug_context.define_function(
+                tcx,
                 codegened_func.func_id,
                 codegened_func.symbol_name.name,
                 context,

@@ -96,9 +96,9 @@ fn line_program_add_file(
     }
 }
 
-impl<'tcx> DebugContext<'tcx> {
-    pub(super) fn emit_location(&mut self, entry_id: UnitEntryId, span: Span) {
-        let loc = self.tcx.sess.source_map().lookup_char_pos(span.lo());
+impl DebugContext {
+    fn emit_location(&mut self, tcx: TyCtxt<'_>, entry_id: UnitEntryId, span: Span) {
+        let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
 
         let file_id = line_program_add_file(
             &mut self.dwarf.unit.line_program,
@@ -115,13 +115,13 @@ impl<'tcx> DebugContext<'tcx> {
 
     pub(super) fn create_debug_lines(
         &mut self,
+        tcx: TyCtxt<'_>,
         symbol: usize,
         entry_id: UnitEntryId,
         context: &Context,
         function_span: Span,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
-        let tcx = self.tcx;
         let line_program = &mut self.dwarf.unit.line_program;
 
         let line_strings = &mut self.dwarf.line_strings;
@@ -211,7 +211,7 @@ impl<'tcx> DebugContext<'tcx> {
         );
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
 
-        self.emit_location(entry_id, function_span);
+        self.emit_location(tcx, entry_id, function_span);
 
         func_end
     }

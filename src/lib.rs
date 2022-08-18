@@ -122,20 +122,20 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 
 /// The codegen context holds any information shared between the codegen of individual functions
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
-struct CodegenCx<'tcx> {
+struct CodegenCx {
     profiler: SelfProfilerRef,
     output_filenames: Arc<OutputFilenames>,
     should_write_ir: bool,
     global_asm: String,
     inline_asm_index: Cell<usize>,
-    debug_context: Option<DebugContext<'tcx>>,
+    debug_context: Option<DebugContext>,
     unwind_context: UnwindContext,
     cgu_name: Symbol,
 }
 
-impl<'tcx> CodegenCx<'tcx> {
+impl CodegenCx {
     fn new(
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         backend_config: BackendConfig,
         isa: &dyn TargetIsa,
         debug_info: bool,
