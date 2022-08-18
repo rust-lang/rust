@@ -214,11 +214,8 @@ pub(super) fn load_synch_functions() {
         Some(())
     }
 
-    // Shortcut if we've already tried (and failed) to load the library.
+    // Try to load the module but skip loading if a previous attempt failed.
     static LOAD_MODULE: AtomicBool = AtomicBool::new(true);
-    if LOAD_MODULE.load(Ordering::Acquire) {
-        if try_load().is_none() {
-            LOAD_MODULE.store(false, Ordering::Release);
-        }
-    }
+    let module_loaded = LOAD_MODULE.load(Ordering::Acquire) && try_load().is_some();
+    LOAD_MODULE.store(module_loaded, Ordering::Release)
 }
