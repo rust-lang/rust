@@ -38,18 +38,23 @@ ast_passes_forbidden_lifetime_bound =
 ast_passes_forbidden_non_lifetime_param =
     only lifetime parameters can be used in this context
 
-ast_passes_too_many_params =
+ast_passes_fn_param_too_many =
     function can not have more than {$max_num_args} arguments
 
-ast_passes_c_var_args_is_sole_param =
+ast_passes_fn_param_c_var_args_only =
     C-variadic function must be declared with at least one named argument
 
-ast_passes_c_var_args_not_last =
+ast_passes_fn_param_c_var_args_not_last =
     `...` must be the last argument of a C-variadic function
 
-ast_passes_doc_comment_on_fn_param =
+ast_passes_fn_param_doc_comment =
     documentation comments cannot be applied to function parameters
     .label = doc comments are not allowed here
 
-ast_passes_forbidden_attr_on_fn_param =
+ast_passes_fn_param_forbidden_attr =
     allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+
+ast_passes_fn_param_forbidden_self =
+    `self` parameter is only allowed in associated functions
+    .label = not semantically valid as function parameter
+    .note = associated functions are those in `impl` or `trait` definitions

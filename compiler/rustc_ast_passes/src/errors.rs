@@ -106,38 +106,47 @@ pub struct ForbiddenNonLifetimeParam {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::too_many_params)]
-pub struct TooManyParams {
+#[error(ast_passes::fn_param_too_many)]
+pub struct FnParamTooMany {
     #[primary_span]
     pub span: Span,
     pub max_num_args: usize,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::c_var_args_is_sole_param)]
-pub struct CVarArgsIsSoleParam {
+#[error(ast_passes::fn_param_c_var_args_only)]
+pub struct FnParamCVarArgsOnly {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::c_var_args_not_last)]
-pub struct CVarArgsNotLast {
+#[error(ast_passes::fn_param_c_var_args_not_last)]
+pub struct FnParamCVarArgsNotLast {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::doc_comment_on_fn_param)]
-pub struct DocCommentOnFnParam {
+#[error(ast_passes::fn_param_doc_comment)]
+pub struct FnParamDocComment {
     #[primary_span]
     #[label]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::forbidden_attr_on_fn_param)]
-pub struct ForbiddenAttrOnFnParam {
+#[error(ast_passes::fn_param_forbidden_attr)]
+pub struct FnParamForbiddenAttr {
     #[primary_span]
+    pub span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::fn_param_forbidden_self)]
+#[note]
+pub struct FnParamForbiddenSelf {
+    #[primary_span]
+    #[label]
     pub span: Span,
 }

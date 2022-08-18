@@ -331,7 +331,7 @@ impl<'a> AstValidator<'a> {
         let max_num_args: usize = u16::MAX.into();
         if fn_decl.inputs.len() > max_num_args {
             let Param { span, .. } = fn_decl.inputs[0];
-            self.session.emit_err(TooManyParams { span, max_num_args });
+            self.session.emit_err(FnParamTooMany { span, max_num_args });
         }
     }
 
@@ -339,13 +339,13 @@ impl<'a> AstValidator<'a> {
         match &*fn_decl.inputs {
             [Param { ty, span, .. }] => {
                 if let TyKind::CVarArgs = ty.kind {
-                    self.session.emit_err(CVarArgsIsSoleParam { span: *span });
+                    self.session.emit_err(FnParamCVarArgsOnly { span: *span });
                 }
             }
             [ps @ .., _] => {
                 for Param { ty, span, .. } in ps {
                     if let TyKind::CVarArgs = ty.kind {
-                        self.session.emit_err(CVarArgsNotLast { span: *span });
+                        self.session.emit_err(FnParamCVarArgsNotLast { span: *span });
                     }
                 }
             }
@@ -372,9 +372,9 @@ impl<'a> AstValidator<'a> {
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
-                    self.session.emit_err(DocCommentOnFnParam { span: attr.span });
+                    self.session.emit_err(FnParamDocComment { span: attr.span });
                 } else {
-                    self.session.emit_err(ForbiddenAttrOnFnParam { span: attr.span });
+                    self.session.emit_err(FnParamForbiddenAttr { span: attr.span });
                 }
             });
     }
@@ -382,14 +382,7 @@ impl<'a> AstValidator<'a> {
     fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
         if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
             if param.is_self() {
-                self.err_handler()
-                    .struct_span_err(
-                        param.span,
-                        "`self` parameter is only allowed in associated functions",
-                    )
-                    .span_label(param.span, "not semantically valid as function parameter")
-                    .note("associated functions are those in `impl` or `trait` definitions")
-                    .emit();
+                self.session.emit_err(FnParamForbiddenSelf { span: param.span });
             }
         }
     }
