@@ -339,7 +339,7 @@ impl<'a> AstValidator<'a> {
         match &*fn_decl.inputs {
             [Param { ty, span, .. }] => {
                 if let TyKind::CVarArgs = ty.kind {
-                    self.session.emit_err(CVarArgsWithoutNamedArg { span: *span });
+                    self.session.emit_err(CVarArgsIsSoleParam { span: *span });
                 }
             }
             [ps @ .., _] => {

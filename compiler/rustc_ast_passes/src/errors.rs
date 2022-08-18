@@ -114,8 +114,8 @@ pub struct TooManyParams {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::c_var_args_without_named_arg)]
-pub struct CVarArgsWithoutNamedArg {
+#[error(ast_passes::c_var_args_is_sole_param)]
+pub struct CVarArgsIsSoleParam {
     #[primary_span]
     pub span: Span,
 }

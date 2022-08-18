@@ -41,7 +41,7 @@ ast_passes_forbidden_non_lifetime_param =
 ast_passes_too_many_params =
     function can not have more than {$max_num_args} arguments
 
-ast_passes_c_var_args_without_named_arg =
+ast_passes_c_var_args_is_sole_param =
     C-variadic function must be declared with at least one named argument
 
 ast_passes_c_var_args_not_last =
