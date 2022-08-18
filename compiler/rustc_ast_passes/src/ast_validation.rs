@@ -331,7 +331,7 @@ impl<'a> AstValidator<'a> {
         let max_num_args: usize = u16::MAX.into();
         if fn_decl.inputs.len() > max_num_args {
             let Param { span, .. } = fn_decl.inputs[0];
-            self.session.emit_err(FnParamTooMany { span, max_num_args });
+            self.session.emit_fatal(FnParamTooMany { span, max_num_args });
         }
     }
 

@@ -106,7 +106,7 @@ pub struct ForbiddenNonLifetimeParam {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(ast_passes::fn_param_too_many)]
+#[fatal(ast_passes::fn_param_too_many)]
 pub struct FnParamTooMany {
     #[primary_span]
     pub span: Span,
