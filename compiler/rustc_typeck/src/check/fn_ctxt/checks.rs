@@ -1669,20 +1669,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
             = *error.obligation.cause.code().peel_derives() else { return false; };
+        let hir = self.tcx.hir();
+        let hir::Node::Expr(expr) = hir.get(hir_id) else { return false; };
 
         // Skip over mentioning async lang item
         if Some(def_id) == self.tcx.lang_items().from_generator_fn()
             && error.obligation.cause.span.desugaring_kind()
                 == Some(rustc_span::DesugaringKind::Async)
-        {
-            return false;
-        }
-        // Skip over closure arg mismatch, which has a better heuristic
-        // to determine what span to point at.
-        if let traits::FulfillmentErrorCode::CodeSelectionError(
-            traits::SelectionError::OutputTypeParameterMismatch(_, expected, _),
-        ) = error.code
-            && let ty::Closure(..) | ty::Generator(..) = expected.skip_binder().self_ty().kind()
         {
             return false;
         }
@@ -1741,16 +1734,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
         }
 
-        let hir = self.tcx.hir();
-        match hir.get(hir_id) {
-            hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Path(qpath), hir_id, .. }) => {
+        if self.closure_span_overlaps_error(error, expr.span) {
+            return false;
+        }
+
+        match &expr.kind {
+            hir::ExprKind::Path(qpath) => {
                 if let hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Call(callee, args),
                     hir_id: call_hir_id,
+                    span: call_span,
                     ..
-                }) = hir.get(hir.get_parent_node(*hir_id))
-                    && callee.hir_id == *hir_id
+                }) = hir.get(hir.get_parent_node(expr.hir_id))
+                    && callee.hir_id == expr.hir_id
                 {
+                    if self.closure_span_overlaps_error(error, *call_span) {
+                        return false;
+                    }
+
                     for param in
                         [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                         .into_iter()
@@ -1780,10 +1781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::MethodCall(segment, args, ..),
-                ..
-            }) => {
+            hir::ExprKind::MethodCall(segment, args, ..) => {
                 for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
                     .into_iter()
                     .flatten()
@@ -1805,9 +1803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
             }
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Struct(qpath, fields, ..), ..
-            }) => {
+            hir::ExprKind::Struct(qpath, fields, ..) => {
                 if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
                     self.typeck_results.borrow().qpath_res(qpath, hir_id)
                 {
@@ -1837,6 +1833,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         false
+    }
+
+    fn closure_span_overlaps_error(
+        &self,
+        error: &traits::FulfillmentError<'tcx>,
+        span: Span,
+    ) -> bool {
+        if let traits::FulfillmentErrorCode::CodeSelectionError(
+            traits::SelectionError::OutputTypeParameterMismatch(_, expected, _),
+        ) = error.code
+            && let ty::Closure(def_id, _) | ty::Generator(def_id, ..) = expected.skip_binder().self_ty().kind()
+            && span.overlaps(self.tcx.def_span(*def_id))
+        {
+            true
+        } else {
+            false
+        }
     }
 
     fn point_at_arg_if_possible(
