@@ -4,6 +4,7 @@
 fn a() {
     if let x = 1 && i = 2 {}
     //~^ ERROR cannot find value `i` in this scope
+    //~| ERROR `let` expressions in this position are unstable
     //~| ERROR mismatched types
     //~| ERROR `let` expressions are not supported here
 }

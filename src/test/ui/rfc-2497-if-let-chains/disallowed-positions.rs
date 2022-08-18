@@ -17,6 +17,8 @@
 //
 // To that end, we check some positions which is not part of the language above.
 
+#![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
+
 #![allow(irrefutable_let_patterns)]
 
 use std::ops::Range;
@@ -102,12 +104,6 @@ fn _macros() {
     //~^ ERROR `let` expressions are not supported here
     //~| ERROR `let` expressions are not supported here
     //~| ERROR expected expression, found `let` statement
-    use_expr!(true && let 0 = 1);
-    //~^ ERROR expected expression, found `let` statement
-
-    macro_rules! noop_expr { ($e:expr) => {}; }
-    noop_expr!((let 0 = 1));
-    //~^ ERROR expected expression, found `let` statement
 }
 
 fn nested_within_if_expr() {
@@ -481,7 +477,4 @@ fn with_parenthesis() {
         ([1, 2, 3][let _ = ()])
         //~^ ERROR expected expression, found `let` statement
     }
-
-    #[cfg(FALSE)] (let 0 = 1);
-    //~^ ERROR expected expression, found `let` statement
 }
