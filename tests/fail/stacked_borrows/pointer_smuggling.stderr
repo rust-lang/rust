@@ -9,12 +9,12 @@ LL |     let _x = unsafe { *PTR };
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a retag at offsets [0x0..0x1]
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
   --> $DIR/pointer_smuggling.rs:LL:CC
    |
 LL |         PTR = x;
    |               ^
-help: <TAG> was later invalidated at offsets [0x0..0x1]
+help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
   --> $DIR/pointer_smuggling.rs:LL:CC
    |
 LL |     *val = 2; // this invalidates any raw ptrs `fun1` might have created.

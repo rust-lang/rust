@@ -9,12 +9,12 @@ LL |     v1[1] = 5;
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a retag at offsets [0x0..0xc]
+help: <TAG> was created by a Unique retag at offsets [0x0..0xc]
   --> $DIR/buggy_as_mut_slice.rs:LL:CC
    |
 LL |     let v1 = safe::as_mut_slice(&v);
    |              ^^^^^^^^^^^^^^^^^^^^^^
-help: <TAG> was later invalidated at offsets [0x0..0xc]
+help: <TAG> was later invalidated at offsets [0x0..0xc] by a Unique retag
   --> $DIR/buggy_as_mut_slice.rs:LL:CC
    |
 LL |         unsafe { from_raw_parts_mut(self_.as_ptr() as *mut T, self_.len()) }

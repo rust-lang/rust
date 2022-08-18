@@ -876,8 +876,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
-    pub fn current_span(&self) -> CurrentSpan<'_, 'mir, 'tcx> {
-        CurrentSpan { span: None, machine: self }
+    pub fn current_span(&self, tcx: TyCtxt<'tcx>) -> CurrentSpan<'_, 'mir, 'tcx> {
+        CurrentSpan { current_frame_idx: None, machine: self, tcx }
     }
 }
 
@@ -887,28 +887,63 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
 /// The result of that search is cached so that later calls are approximately free.
 #[derive(Clone)]
 pub struct CurrentSpan<'a, 'mir, 'tcx> {
-    span: Option<Span>,
+    current_frame_idx: Option<usize>,
+    tcx: TyCtxt<'tcx>,
     machine: &'a Evaluator<'mir, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx> CurrentSpan<'a, 'mir, 'tcx> {
+impl<'a, 'mir: 'a, 'tcx: 'a + 'mir> CurrentSpan<'a, 'mir, 'tcx> {
+    /// Get the current span, skipping non-local frames.
+    /// This function is backed by a cache, and can be assumed to be very fast.
     pub fn get(&mut self) -> Span {
-        *self.span.get_or_insert_with(|| Self::current_span(self.machine))
+        let idx = self.current_frame_idx();
+        Self::frame_span(self.machine, idx)
     }
 
+    /// Similar to `CurrentSpan::get`, but retrieves the parent frame of the first non-local frame.
+    /// This is useful when we are processing something which occurs on function-entry and we want
+    /// to point at the call to the function, not the function definition generally.
+    pub fn get_parent(&mut self) -> Span {
+        let idx = self.current_frame_idx();
+        Self::frame_span(self.machine, idx.wrapping_sub(1))
+    }
+
+    fn frame_span(machine: &Evaluator<'_, '_>, idx: usize) -> Span {
+        machine
+            .threads
+            .active_thread_stack()
+            .get(idx)
+            .map(Frame::current_span)
+            .unwrap_or(rustc_span::DUMMY_SP)
+    }
+
+    fn current_frame_idx(&mut self) -> usize {
+        *self
+            .current_frame_idx
+            .get_or_insert_with(|| Self::compute_current_frame_index(self.tcx, self.machine))
+    }
+
+    // Find the position of the inner-most frame which is part of the crate being
+    // compiled/executed, part of the Cargo workspace, and is also not #[track_caller].
     #[inline(never)]
-    fn current_span(machine: &Evaluator<'_, '_>) -> Span {
+    fn compute_current_frame_index(tcx: TyCtxt<'_>, machine: &Evaluator<'_, '_>) -> usize {
         machine
             .threads
             .active_thread_stack()
             .iter()
+            .enumerate()
             .rev()
-            .find(|frame| {
+            .find_map(|(idx, frame)| {
                 let def_id = frame.instance.def_id();
-                def_id.is_local() || machine.local_crates.contains(&def_id.krate)
+                if (def_id.is_local() || machine.local_crates.contains(&def_id.krate))
+                    && !frame.instance.def.requires_caller_location(tcx)
+                {
+                    Some(idx)
+                } else {
+                    None
+                }
             })
-            .map(|frame| frame.current_span())
-            .unwrap_or(rustc_span::DUMMY_SP)
+            .unwrap_or(0)
     }
 }
 

@@ -9,7 +9,7 @@ LL |     let _val = unsafe { *ptr_to_first.add(1) };
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a retag at offsets [0x0..0x1]
+help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x1]
   --> $DIR/unescaped_static.rs:LL:CC
    |
 LL |     let ptr_to_first = &ARRAY[0] as *const u8;
