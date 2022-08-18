@@ -174,7 +174,14 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        if pattern == value { Ok(pattern) } else { relate::super_relate_tys(self, pattern, value) }
+        if let ty::Error(_) = pattern.kind() {
+            // Unlike normal `TypeRelation` rules, `ty::Error` does not equal any type.
+            self.no_match()
+        } else if pattern == value {
+            Ok(pattern)
+        } else {
+            relate::super_relate_tys(self, pattern, value)
+        }
     }
 
     #[instrument(skip(self), level = "debug")]
