@@ -197,12 +197,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn nanosleep(
         &mut self,
         req_op: &OpTy<'tcx, Provenance>,
-        _rem: &OpTy<'tcx, Provenance>,
+        _rem: &OpTy<'tcx, Provenance>, // Signal handlers are not supported, so rem will never be written to.
     ) -> InterpResult<'tcx, i32> {
-        // Signal handlers are not supported, so rem will never be written to.
-
         let this = self.eval_context_mut();
 
+        this.assert_target_os_is_unix("nanosleep");
         this.check_no_isolation("`nanosleep`")?;
 
         let duration = match this.read_timespec(&this.deref_operand(req_op)?)? {
@@ -238,6 +237,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn Sleep(&mut self, timeout: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
+        this.assert_target_os("windows", "Sleep");
         this.check_no_isolation("`Sleep`")?;
 
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
