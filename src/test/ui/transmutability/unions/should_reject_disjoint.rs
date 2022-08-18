@@ -5,13 +5,12 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
     pub struct Context;
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, false, false, true, true>
-        // validity IS assumed --------------------------------^^^^
+        Dst: BikeshedIntrinsicFrom<Src, Context, { Assume::SAFETY.and(Assume::VALIDITY) }>
     {}
 }
 

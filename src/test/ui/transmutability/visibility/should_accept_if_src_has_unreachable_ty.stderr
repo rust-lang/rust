@@ -1,11 +1,11 @@
 error[E0603]: struct `Src` is private
-  --> $DIR/should_accept_if_src_has_unreachable_ty.rs:38:36
+  --> $DIR/should_accept_if_src_has_unreachable_ty.rs:37:36
    |
 LL |     assert::is_transmutable::<src::Src, dst::Dst, Context>();
    |                                    ^^^ private struct
    |
 note: the struct `Src` is defined here
-  --> $DIR/should_accept_if_src_has_unreachable_ty.rs:23:16
+  --> $DIR/should_accept_if_src_has_unreachable_ty.rs:22:16
    |
 LL |     #[repr(C)] pub(self) struct Src {
    |                ^^^^^^^^^^^^^^^^^^^^

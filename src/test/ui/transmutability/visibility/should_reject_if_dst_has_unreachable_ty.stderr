@@ -1,30 +1,30 @@
 error[E0603]: struct `Dst` is private
-  --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:39:46
+  --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:38:46
    |
 LL |     assert::is_transmutable::<src::Src, dst::Dst, Context>();
    |                                              ^^^ private struct
    |
 note: the struct `Dst` is defined here
-  --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:32:16
+  --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:31:16
    |
 LL |     #[repr(C)] pub(self) struct Dst {
    |                ^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `Src` cannot be safely transmuted into `Dst` in the defining scope of `test::Context`.
-  --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:39:41
+  --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:38:41
    |
 LL |     assert::is_transmutable::<src::Src, dst::Dst, Context>();
    |                                         ^^^^^^^^ `Src` cannot be safely transmuted into `Dst` in the defining scope of `test::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<Src, test::Context, false, false, false, false>` is not implemented for `Dst`
+   = help: the trait `BikeshedIntrinsicFrom<Src, test::Context, Assume { alignment: false, lifetimes: false, safety: false, validity: false }>` is not implemented for `Dst`
 note: required by a bound in `is_transmutable`
   --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:15:14
    |
 LL |     pub fn is_transmutable<Src, Dst, Context>()
    |            --------------- required by a bound in this
 LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context> // safety is NOT assumed
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
 
 error: aborting due to 2 previous errors
 

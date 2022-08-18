@@ -5,11 +5,18 @@
 #![allow(dead_code)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::{Assume, BikeshedIntrinsicFrom};
 
     pub fn is_transmutable<Src, Dst, Context>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
+        Dst: BikeshedIntrinsicFrom<Src, Context, {
+            Assume {
+                alignment: true,
+                lifetimes: true,
+                safety: true,
+                validity: true,
+            }
+        }>
     {}
 }
 

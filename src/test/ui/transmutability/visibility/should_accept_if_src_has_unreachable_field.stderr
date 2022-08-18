@@ -1,5 +1,5 @@
 error[E0446]: private type `src::Zst` in public interface
-  --> $DIR/should_accept_if_src_has_unreachable_field.rs:23:9
+  --> $DIR/should_accept_if_src_has_unreachable_field.rs:22:9
    |
 LL |     #[repr(C)] pub(self) struct Zst; // <- unreachable type
    |                -------------------- `src::Zst` declared as private

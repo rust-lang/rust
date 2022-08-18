@@ -279,29 +279,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let predicate = obligation.predicate;
 
         let type_at = |i| predicate.map_bound(|p| p.trait_ref.substs.type_at(i));
-        let bool_at = |i| {
-            predicate
-                .skip_binder()
-                .trait_ref
-                .substs
-                .const_at(i)
-                .try_eval_bool(self.tcx(), obligation.param_env)
-                .unwrap_or(true)
-        };
+        let const_at = |i| predicate.skip_binder().trait_ref.substs.const_at(i);
 
         let src_and_dst = predicate.map_bound(|p| rustc_transmute::Types {
-            src: p.trait_ref.substs.type_at(1),
             dst: p.trait_ref.substs.type_at(0),
+            src: p.trait_ref.substs.type_at(1),
         });
 
         let scope = type_at(2).skip_binder();
 
-        let assume = rustc_transmute::Assume {
-            alignment: bool_at(3),
-            lifetimes: bool_at(4),
-            validity: bool_at(5),
-            visibility: bool_at(6),
-        };
+        let assume =
+            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, const_at(3));
 
         let cause = obligation.cause.clone();
 

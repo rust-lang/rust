@@ -1,34 +1,48 @@
 error[E0277]: `should_reject_repr_rust::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
-  --> $DIR/should_require_well_defined_layout.rs:23:48
+  --> $DIR/should_require_well_defined_layout.rs:30:48
    |
 LL |     assert::is_maybe_transmutable::<repr_rust, ()>();
    |                                                ^^ `should_reject_repr_rust::repr_rust` cannot be safely transmuted into `()` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<should_reject_repr_rust::repr_rust, assert::Context, true, true, true, true>` is not implemented for `()`
+   = help: the trait `BikeshedIntrinsicFrom<should_reject_repr_rust::repr_rust, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `()`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |     pub fn is_maybe_transmutable<Src, Dst>()
-   |            --------------------- required by a bound in this
-LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
 
 error[E0277]: `u128` cannot be safely transmuted into `should_reject_repr_rust::repr_rust` in the defining scope of `assert::Context`.
-  --> $DIR/should_require_well_defined_layout.rs:24:43
+  --> $DIR/should_require_well_defined_layout.rs:31:43
    |
 LL |     assert::is_maybe_transmutable::<u128, repr_rust>();
    |                                           ^^^^^^^^^ `u128` cannot be safely transmuted into `should_reject_repr_rust::repr_rust` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, true, true, true, true>` is not implemented for `should_reject_repr_rust::repr_rust`
+   = help: the trait `BikeshedIntrinsicFrom<u128, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `should_reject_repr_rust::repr_rust`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/should_require_well_defined_layout.rs:13:14
    |
-LL |     pub fn is_maybe_transmutable<Src, Dst>()
-   |            --------------------- required by a bound in this
-LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
 
 error: aborting due to 2 previous errors
 

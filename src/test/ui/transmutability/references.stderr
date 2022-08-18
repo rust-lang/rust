@@ -1,18 +1,25 @@
 error[E0277]: `&'static Unit` cannot be safely transmuted into `&'static Unit` in the defining scope of `assert::Context`.
-  --> $DIR/references.rs:19:52
+  --> $DIR/references.rs:26:52
    |
 LL |     assert::is_maybe_transmutable::<&'static Unit, &'static Unit>();
    |                                                    ^^^^^^^^^^^^^ `&'static Unit` cannot be safely transmuted into `&'static Unit` in the defining scope of `assert::Context`.
    |
-   = help: the trait `BikeshedIntrinsicFrom<&'static Unit, assert::Context, true, true, true, true>` is not implemented for `&'static Unit`
+   = help: the trait `BikeshedIntrinsicFrom<&'static Unit, assert::Context, Assume { alignment: true, lifetimes: true, safety: true, validity: true }>` is not implemented for `&'static Unit`
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/references.rs:13:14
    |
-LL |     pub fn is_maybe_transmutable<Src, Dst>()
-   |            --------------------- required by a bound in this
-LL |     where
-LL |         Dst: BikeshedIntrinsicFrom<Src, Context, true, true, true, true>
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+LL |       pub fn is_maybe_transmutable<Src, Dst>()
+   |              --------------------- required by a bound in this
+LL |       where
+LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
+   |  ______________^
+LL | |             Assume {
+LL | |                 alignment: true,
+LL | |                 lifetimes: true,
+...  |
+LL | |             }
+LL | |         }>
+   | |__________^ required by this bound in `is_maybe_transmutable`
 
 error: aborting due to previous error
 

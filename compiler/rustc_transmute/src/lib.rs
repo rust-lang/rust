@@ -26,8 +26,8 @@ pub(crate) mod maybe_transmutable;
 pub struct Assume {
     pub alignment: bool,
     pub lifetimes: bool,
+    pub safety: bool,
     pub validity: bool,
-    pub visibility: bool,
 }
 
 /// The type encodes answers to the question: "Are these types transmutable?"
@@ -69,11 +69,17 @@ pub enum Reason {
 
 #[cfg(feature = "rustc")]
 mod rustc {
+    use super::*;
+
+    use rustc_hir::lang_items::LangItem;
     use rustc_infer::infer::InferCtxt;
     use rustc_macros::{TypeFoldable, TypeVisitable};
     use rustc_middle::traits::ObligationCause;
     use rustc_middle::ty::Binder;
+    use rustc_middle::ty::Const;
+    use rustc_middle::ty::ParamEnv;
     use rustc_middle::ty::Ty;
+    use rustc_middle::ty::TyCtxt;
 
     /// The source and destination types of a transmutation.
     #[derive(TypeFoldable, TypeVisitable, Debug, Clone, Copy)]
@@ -111,6 +117,57 @@ mod rustc {
                 self.infcx.tcx,
             )
             .answer()
+        }
+    }
+
+    impl Assume {
+        /// Constructs an `Assume` from a given const-`Assume`.
+        pub fn from_const<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            param_env: ParamEnv<'tcx>,
+            c: Const<'tcx>,
+        ) -> Self {
+            use rustc_middle::ty::DestructuredConst;
+            use rustc_middle::ty::TypeVisitable;
+            use rustc_span::symbol::sym;
+
+            let c = c.eval(tcx, param_env);
+
+            if let Some(err) = c.error_reported() {
+                return Self { alignment: true, lifetimes: true, safety: true, validity: true };
+            }
+
+            let adt_def = c.ty().ty_adt_def().expect("The given `Const` must be an ADT.");
+
+            assert_eq!(
+                tcx.require_lang_item(LangItem::TransmuteOpts, None),
+                adt_def.did(),
+                "The given `Const` was not marked with the `{}` lang item.",
+                LangItem::TransmuteOpts.name(),
+            );
+
+            let DestructuredConst { variant, fields } = tcx.destructure_const(c);
+            let variant_idx = variant.expect("The given `Const` must be an ADT.");
+            let variant = adt_def.variant(variant_idx);
+
+            let get_field = |name| {
+                let (field_idx, _) = variant
+                    .fields
+                    .iter()
+                    .enumerate()
+                    .find(|(_, field_def)| name == field_def.name)
+                    .expect(&format!("There were no fields named `{name}`."));
+                fields[field_idx].try_eval_bool(tcx, param_env).expect(&format!(
+                    "The field named `{name}` lang item could not be evaluated to a bool."
+                ))
+            };
+
+            Self {
+                alignment: get_field(sym::alignment),
+                lifetimes: get_field(sym::lifetimes),
+                safety: get_field(sym::safety),
+                validity: get_field(sym::validity),
+            }
         }
     }
 }

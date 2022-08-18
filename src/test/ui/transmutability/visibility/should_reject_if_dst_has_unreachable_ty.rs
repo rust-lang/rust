@@ -12,8 +12,7 @@ mod assert {
 
     pub fn is_transmutable<Src, Dst, Context>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, false, false, false, false>
-        // visibility is NOT assumed ---------------------------------^^^^^
+        Dst: BikeshedIntrinsicFrom<Src, Context> // safety is NOT assumed
     {}
 }
 

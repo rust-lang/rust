@@ -93,6 +93,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
+#![allow(incomplete_features)]
 //
 // Library features:
 #![feature(const_align_offset)]
@@ -160,6 +161,7 @@
 //
 // Language features:
 #![feature(abi_unadjusted)]
+#![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
