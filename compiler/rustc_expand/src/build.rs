@@ -107,14 +107,13 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         ident: Ident,
-        attrs: Vec<ast::Attribute>,
         bounds: ast::GenericBounds,
         default: Option<P<ast::Ty>>,
     ) -> ast::GenericParam {
         ast::GenericParam {
             ident: ident.with_span_pos(span),
             id: ast::DUMMY_NODE_ID,
-            attrs: attrs.into(),
+            attrs: AttrVec::new(),
             bounds,
             kind: ast::GenericParamKind::Type { default },
             is_placeholder: false,

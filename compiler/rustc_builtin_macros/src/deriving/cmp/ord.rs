@@ -18,7 +18,6 @@ pub fn expand_deriving_ord(
     let attrs = vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: path_std!(cmp::Ord),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

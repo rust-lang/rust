@@ -106,7 +106,6 @@ pub fn expand_deriving_rustc_encodable(
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: Path::new_(vec![krate, sym::Encodable], vec![], PathKind::Global),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),

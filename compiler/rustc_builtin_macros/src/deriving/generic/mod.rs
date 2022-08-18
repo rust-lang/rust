@@ -184,8 +184,6 @@ pub struct TraitDef<'a> {
     /// The span for the current #[derive(Foo)] header.
     pub span: Span,
 
-    pub attributes: Vec<ast::Attribute>,
-
     /// Path of the trait, including any type parameters
     pub path: Path,
 
@@ -605,7 +603,7 @@ impl<'a> TraitDef<'a> {
                         param.bounds.iter().cloned()
                     ).collect();
 
-                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, vec![], bounds, None)
+                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, bounds, None)
             }
             GenericParamKind::Const { ty, kw_span, .. } => {
                 let const_nodefault_kind = GenericParamKind::Const {
@@ -718,15 +716,13 @@ impl<'a> TraitDef<'a> {
         let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
+        let attrs = vec![attr];
         let opt_trait_ref = Some(trait_ref);
-
-        let mut a = vec![attr];
-        a.extend(self.attributes.iter().cloned());
 
         cx.item(
             self.span,
             Ident::empty(),
-            a,
+            attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 unsafety: ast::Unsafe::No,
                 polarity: ast::ImplPolarity::Positive,
