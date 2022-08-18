@@ -1,6 +1,6 @@
 use rustc_errors::{fluent, AddSubdiagnostic, Applicability, Diagnostic};
 use rustc_macros::{SessionDiagnostic, SessionSubdiagnostic};
-use rustc_span::{Span, Symbol};
+use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic, Clone, Copy)]
 #[diag(ast_lowering::generic_type_with_parentheses, code = "E0214")]
@@ -269,4 +269,40 @@ pub struct RegisterConflict<'a> {
     pub reg2_name: &'a str,
     #[help]
     pub in_out: Option<Span>,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[help]
+#[error(ast_lowering::sub_tuple_binding)]
+pub struct SubTupleBinding<'a> {
+    #[primary_span]
+    #[label]
+    #[suggestion_verbose(
+        ast_lowering::sub_tuple_binding_suggestion,
+        code = "..",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+    pub ident: Ident,
+    pub ident_name: Symbol,
+    pub ctx: &'a str,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[error(ast_lowering::extra_double_dot)]
+pub struct ExtraDoubleDot<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(ast_lowering::previously_used_here)]
+    pub prev_span: Span,
+    pub ctx: &'a str,
+}
+
+#[derive(SessionDiagnostic, Clone, Copy)]
+#[note]
+#[error(ast_lowering::misplaced_double_dot)]
+pub struct MisplacedDoubleDot {
+    #[primary_span]
+    pub span: Span,
 }
