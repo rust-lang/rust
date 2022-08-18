@@ -73,7 +73,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
                 if let hir::Adt::Enum(_) = adt {
                     // Don't suggest generating function if the name starts with an uppercase letter
-                    if name_ref.text().starts_with(char::is_uppercase) {
+                    if fn_name.starts_with(char::is_uppercase) {
                         return None;
                     }
                 }
