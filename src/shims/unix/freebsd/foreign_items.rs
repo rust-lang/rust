@@ -3,6 +3,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
+use shims::unix::thread::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
@@ -16,11 +17,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
-            // Linux's `pthread_getattr_np` equivalent
+            // Threading
             "pthread_attr_get_np" if this.frame_in_std() => {
                 let [_thread, _attr] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_null(dest)?;
+            }
+            "pthread_set_name_np" => {
+                let [thread, name] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?.check_init()?,
+                    this.read_scalar(name)?.check_init()?,
+                )?;
+                this.write_scalar(res, dest)?;
             }
 
             // errno
