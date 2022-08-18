@@ -86,6 +86,18 @@ struct TargetInfo {
     insert_offset: TextSize,
 }
 
+impl TargetInfo {
+    fn new(
+        target_module: Option<Module>,
+        adt_name: Option<hir::Name>,
+        target: GeneratedFunctionTarget,
+        file: FileId,
+        insert_offset: TextSize,
+    ) -> Self {
+        Self { target_module, adt_name, target, file, insert_offset }
+    }
+}
+
 fn fn_target_info(
     ctx: &AssistContext<'_>,
     path: ast::Path,
@@ -123,7 +135,7 @@ fn fn_target_info(
             get_fn_target(ctx, &target_module, call.clone())?
         }
     };
-    Some(TargetInfo { target_module, adt_name, target, file, insert_offset })
+    Some(TargetInfo::new(target_module, adt_name, target, file, insert_offset))
 }
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
@@ -427,7 +439,7 @@ fn assoc_fn_target_info(
     let (impl_, file) = get_adt_source(ctx, &adt, fn_name)?;
     let (target, insert_offset) = get_method_target(ctx, &module, &impl_)?;
     let adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
-    Some(TargetInfo { target_module, adt_name, target, file, insert_offset })
+    Some(TargetInfo::new(target_module, adt_name, target, file, insert_offset))
 }
 
 fn get_insert_offset(target: &GeneratedFunctionTarget) -> TextSize {
