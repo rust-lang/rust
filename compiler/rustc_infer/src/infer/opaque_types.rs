@@ -40,15 +40,17 @@ pub struct OpaqueTypeDecl<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn replace_opaque_types_with_inference_vars(
+    /// This is a backwards compatibility hack to prevent breaking changes from
+    /// lazy TAIT around RPIT handling.
+    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
         &self,
-        ty: Ty<'tcx>,
+        value: T,
         body_id: HirId,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> InferOk<'tcx, Ty<'tcx>> {
-        if !ty.has_opaque_types() {
-            return InferOk { value: ty, obligations: vec![] };
+    ) -> InferOk<'tcx, T> {
+        if !value.has_opaque_types() {
+            return InferOk { value, obligations: vec![] };
         }
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
@@ -56,7 +58,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .as_local()
                 .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
         };
-        let value = ty.fold_with(&mut ty::fold::BottomUpFolder {
+        let value = value.fold_with(&mut ty::fold::BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,
