@@ -11,9 +11,11 @@ use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::TargetIsa;
 
 use gimli::write::{
-    Address, AttributeValue, DwarfUnit, LineProgram, LineString, Range, RangeList, UnitEntryId,
+    Address, AttributeValue, DwarfUnit, FileId, LineProgram, LineString, Range, RangeList,
+    UnitEntryId,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
+use indexmap::IndexSet;
 
 pub(crate) use emit::{DebugReloc, DebugRelocName};
 pub(crate) use unwind::UnwindContext;
@@ -27,6 +29,8 @@ pub(crate) struct DebugContext {
 
 pub(crate) struct FunctionDebugContext {
     entry_id: UnitEntryId,
+    function_source_loc: (FileId, u64, u64),
+    source_loc_set: indexmap::IndexSet<(FileId, u64, u64)>,
 }
 
 impl DebugContext {
@@ -105,6 +109,10 @@ impl DebugContext {
         name: &str,
         function_span: Span,
     ) -> FunctionDebugContext {
+        let (file, line, column) = DebugContext::get_span_loc(tcx, function_span, function_span);
+
+        let file_id = self.add_source_file(&file);
+
         // FIXME: add to appropriate scope instead of root
         let scope = self.dwarf.unit.root();
 
@@ -115,11 +123,15 @@ impl DebugContext {
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
         entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
 
-        let mut function_debug_context = FunctionDebugContext { entry_id };
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
+        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
+        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(column));
 
-        function_debug_context.set_function_span(self, tcx, function_span);
-
-        function_debug_context
+        FunctionDebugContext {
+            entry_id,
+            function_source_loc: (file_id, line, column),
+            source_loc_set: IndexSet::new(),
+        }
     }
 }
 
@@ -127,22 +139,12 @@ impl FunctionDebugContext {
     pub(crate) fn finalize(
         mut self,
         debug_context: &mut DebugContext,
-        tcx: TyCtxt<'_>,
         func_id: FuncId,
         context: &Context,
-        function_span: Span,
-        source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) {
         let symbol = func_id.as_u32() as usize;
 
-        let end = self.create_debug_lines(
-            debug_context,
-            tcx,
-            symbol,
-            context,
-            function_span,
-            source_info_set,
-        );
+        let end = self.create_debug_lines(debug_context, symbol, context);
 
         debug_context.unit_range_list.0.push(Range::StartLength {
             begin: Address::Symbol { symbol, addend: 0 },

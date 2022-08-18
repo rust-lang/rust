@@ -7,8 +7,6 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::SymbolName;
 
-use indexmap::IndexSet;
-
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
@@ -20,8 +18,6 @@ struct CodegenedFunction<'tcx> {
     func: Function,
     clif_comments: CommentWriter,
     func_debug_cx: Option<FunctionDebugContext>,
-    function_span: Span,
-    source_info_set: IndexSet<SourceInfo>,
 }
 
 pub(crate) fn codegen_and_compile_fn<'tcx>(
@@ -37,7 +33,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
     let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
 
-    compile_fn(tcx, cx, cached_context, module, codegened_func);
+    compile_fn(cx, cached_context, module, codegened_func);
 }
 
 fn codegen_fn<'tcx>(
@@ -110,7 +106,7 @@ fn codegen_fn<'tcx>(
         caller_location: None, // set by `codegen_fn_prelude`
 
         clif_comments,
-        source_info_set: indexmap::IndexSet::new(),
+        last_source_file: None,
         next_ssa_var: 0,
     };
 
@@ -119,8 +115,6 @@ fn codegen_fn<'tcx>(
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let clif_comments = fx.clif_comments;
     let func_debug_cx = fx.func_debug_cx;
-    let function_span = fx.mir.span;
-    let source_info_set = fx.source_info_set;
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
@@ -138,19 +132,10 @@ fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction {
-        symbol_name,
-        func_id,
-        func,
-        clif_comments,
-        func_debug_cx,
-        function_span,
-        source_info_set,
-    }
+    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
 }
 
 fn compile_fn<'tcx>(
-    tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
     cached_context: &mut Context,
     module: &mut dyn Module,
@@ -234,11 +219,8 @@ fn compile_fn<'tcx>(
         if let Some(debug_context) = debug_context {
             codegened_func.func_debug_cx.unwrap().finalize(
                 debug_context,
-                tcx,
                 codegened_func.func_id,
                 context,
-                codegened_func.function_span,
-                &codegened_func.source_info_set,
             );
         }
         unwind_context.add_function(codegened_func.func_id, &context, isa);

@@ -48,30 +48,6 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
     }
 }
 
-fn get_span_loc(tcx: TyCtxt<'_>, function_span: Span, span: Span) -> (Lrc<SourceFile>, u64, u64) {
-    // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
-    // In order to have a good line stepping behavior in debugger, we overwrite debug
-    // locations of macro expansions with that of the outermost expansion site
-    // (unless the crate is being compiled with `-Z debug-macros`).
-    let span = if !span.from_expansion() || tcx.sess.opts.unstable_opts.debug_macros {
-        span
-    } else {
-        // Walk up the macro expansion chain until we reach a non-expanded span.
-        // We also stop at the function body level because no line stepping can occur
-        // at the level above that.
-        rustc_span::hygiene::walk_chain(span, function_span.ctxt())
-    };
-
-    match tcx.sess.source_map().lookup_line(span.lo()) {
-        Ok(SourceFileAndLine { sf: file, line }) => {
-            let line_pos = file.line_begin_pos(span.lo());
-
-            (file, u64::try_from(line).unwrap() + 1, u64::from((span.lo() - line_pos).to_u32()) + 1)
-        }
-        Err(file) => (file, 0, 0),
-    }
-}
-
 const MD5_LEN: usize = 16;
 
 fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
@@ -85,6 +61,38 @@ fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
 }
 
 impl DebugContext {
+    pub(crate) fn get_span_loc(
+        tcx: TyCtxt<'_>,
+        function_span: Span,
+        span: Span,
+    ) -> (Lrc<SourceFile>, u64, u64) {
+        // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
+        // In order to have a good line stepping behavior in debugger, we overwrite debug
+        // locations of macro expansions with that of the outermost expansion site
+        // (unless the crate is being compiled with `-Z debug-macros`).
+        let span = if !span.from_expansion() || tcx.sess.opts.unstable_opts.debug_macros {
+            span
+        } else {
+            // Walk up the macro expansion chain until we reach a non-expanded span.
+            // We also stop at the function body level because no line stepping can occur
+            // at the level above that.
+            rustc_span::hygiene::walk_chain(span, function_span.ctxt())
+        };
+
+        match tcx.sess.source_map().lookup_line(span.lo()) {
+            Ok(SourceFileAndLine { sf: file, line }) => {
+                let line_pos = file.line_begin_pos(span.lo());
+
+                (
+                    file,
+                    u64::try_from(line).unwrap() + 1,
+                    u64::from((span.lo() - line_pos).to_u32()) + 1,
+                )
+            }
+            Err(file) => (file, 0, 0),
+        }
+    }
+
     pub(crate) fn add_source_file(&mut self, source_file: &SourceFile) -> FileId {
         let line_program: &mut LineProgram = &mut self.dwarf.unit.line_program;
         let line_strings: &mut LineStringTable = &mut self.dwarf.line_strings;
@@ -124,63 +132,26 @@ impl DebugContext {
 }
 
 impl FunctionDebugContext {
-    pub(super) fn set_function_span(
-        &mut self,
-        debug_context: &mut DebugContext,
-        tcx: TyCtxt<'_>,
-        span: Span,
-    ) {
-        let (file, line, column) = get_span_loc(tcx, span, span);
-
-        let file_id = debug_context.add_source_file(&file);
-
-        let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
-        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
-        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
-        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(column));
+    pub(crate) fn add_dbg_loc(&mut self, file_id: FileId, line: u64, column: u64) -> SourceLoc {
+        let (index, _) = self.source_loc_set.insert_full((file_id, line, column));
+        SourceLoc::new(u32::try_from(index).unwrap())
     }
 
     pub(super) fn create_debug_lines(
         &mut self,
         debug_context: &mut DebugContext,
-        tcx: TyCtxt<'_>,
         symbol: usize,
         context: &Context,
-        function_span: Span,
-        source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
-        let mut last_span = None;
-        let mut last_file = None;
-        let mut create_row_for_span = |debug_context: &mut DebugContext, span: Span| {
-            if let Some(last_span) = last_span {
-                if span == last_span {
-                    debug_context.dwarf.unit.line_program.generate_row();
-                    return;
-                }
-            }
-            last_span = Some(span);
+        let create_row_for_span =
+            |debug_context: &mut DebugContext, source_loc: (FileId, u64, u64)| {
+                let (file_id, line, col) = source_loc;
 
-            let (file, line, col) = get_span_loc(tcx, function_span, span);
-
-            // line_program_add_file is very slow.
-            // Optimize for the common case of the current file not being changed.
-            let current_file_changed = if let Some(last_file) = &last_file {
-                // If the allocations are not equal, then the files may still be equal, but that
-                // is not a problem, as this is just an optimization.
-                !rustc_data_structures::sync::Lrc::ptr_eq(last_file, &file)
-            } else {
-                true
-            };
-            if current_file_changed {
-                let file_id = debug_context.add_source_file(&file);
                 debug_context.dwarf.unit.line_program.row().file = file_id;
-                last_file = Some(file);
-            }
-
-            debug_context.dwarf.unit.line_program.row().line = line;
-            debug_context.dwarf.unit.line_program.row().column = col;
-            debug_context.dwarf.unit.line_program.generate_row();
-        };
+                debug_context.dwarf.unit.line_program.row().line = line;
+                debug_context.dwarf.unit.line_program.row().column = col;
+                debug_context.dwarf.unit.line_program.generate_row();
+            };
 
         debug_context
             .dwarf
@@ -194,10 +165,10 @@ impl FunctionDebugContext {
         for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
             debug_context.dwarf.unit.line_program.row().address_offset = u64::from(start);
             if !loc.is_default() {
-                let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
-                create_row_for_span(debug_context, source_info.span);
+                let source_loc = *self.source_loc_set.get_index(loc.bits() as usize).unwrap();
+                create_row_for_span(debug_context, source_loc);
             } else {
-                create_row_for_span(debug_context, function_span);
+                create_row_for_span(debug_context, self.function_source_loc);
             }
             func_end = end;
         }
