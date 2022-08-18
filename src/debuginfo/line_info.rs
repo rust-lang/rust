@@ -5,6 +5,7 @@ use std::path::{Component, Path};
 
 use crate::prelude::*;
 
+use rustc_data_structures::sync::Lrc;
 use rustc_span::{
     FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm,
 };
@@ -47,9 +48,33 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
     }
 }
 
-pub(crate) const MD5_LEN: usize = 16;
+fn get_span_loc(tcx: TyCtxt<'_>, function_span: Span, span: Span) -> (Lrc<SourceFile>, u64, u64) {
+    // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
+    // In order to have a good line stepping behavior in debugger, we overwrite debug
+    // locations of macro expansions with that of the outermost expansion site
+    // (unless the crate is being compiled with `-Z debug-macros`).
+    let span = if !span.from_expansion() || tcx.sess.opts.unstable_opts.debug_macros {
+        span
+    } else {
+        // Walk up the macro expansion chain until we reach a non-expanded span.
+        // We also stop at the function body level because no line stepping can occur
+        // at the level above that.
+        rustc_span::hygiene::walk_chain(span, function_span.ctxt())
+    };
 
-pub(crate) fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
+    match tcx.sess.source_map().lookup_line(span.lo()) {
+        Ok(SourceFileAndLine { sf: file, line }) => {
+            let line_pos = file.line_begin_pos(span.lo());
+
+            (file, u64::try_from(line).unwrap() + 1, u64::from((span.lo() - line_pos).to_u32()) + 1)
+        }
+        Err(file) => (file, 0, 0),
+    }
+}
+
+const MD5_LEN: usize = 16;
+
+fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
     if hash.kind == SourceFileHashAlgorithm::Md5 {
         let mut buf = [0u8; MD5_LEN];
         buf.copy_from_slice(hash.hash_bytes());
@@ -97,22 +122,6 @@ fn line_program_add_file(
 }
 
 impl DebugContext {
-    fn emit_location(&mut self, tcx: TyCtxt<'_>, entry_id: UnitEntryId, span: Span) {
-        let loc = tcx.sess.source_map().lookup_char_pos(span.lo());
-
-        let file_id = line_program_add_file(
-            &mut self.dwarf.unit.line_program,
-            &mut self.dwarf.line_strings,
-            &loc.file,
-        );
-
-        let entry = self.dwarf.unit.get_mut(entry_id);
-
-        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
-        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(loc.line as u64));
-        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(loc.col.to_usize() as u64));
-    }
-
     pub(super) fn create_debug_lines(
         &mut self,
         tcx: TyCtxt<'_>,
@@ -136,31 +145,7 @@ impl DebugContext {
             }
             last_span = Some(span);
 
-            // Based on https://github.com/rust-lang/rust/blob/e369d87b015a84653343032833d65d0545fd3f26/src/librustc_codegen_ssa/mir/mod.rs#L116-L131
-            // In order to have a good line stepping behavior in debugger, we overwrite debug
-            // locations of macro expansions with that of the outermost expansion site
-            // (unless the crate is being compiled with `-Z debug-macros`).
-            let span = if !span.from_expansion() || tcx.sess.opts.unstable_opts.debug_macros {
-                span
-            } else {
-                // Walk up the macro expansion chain until we reach a non-expanded span.
-                // We also stop at the function body level because no line stepping can occur
-                // at the level above that.
-                rustc_span::hygiene::walk_chain(span, function_span.ctxt())
-            };
-
-            let (file, line, col) = match tcx.sess.source_map().lookup_line(span.lo()) {
-                Ok(SourceFileAndLine { sf: file, line }) => {
-                    let line_pos = file.line_begin_pos(span.lo());
-
-                    (
-                        file,
-                        u64::try_from(line).unwrap() + 1,
-                        u64::from((span.lo() - line_pos).to_u32()) + 1,
-                    )
-                }
-                Err(file) => (file, 0, 0),
-            };
+            let (file, line, col) = get_span_loc(tcx, function_span, span);
 
             // line_program_add_file is very slow.
             // Optimize for the common case of the current file not being changed.
@@ -204,14 +189,24 @@ impl DebugContext {
 
         assert_ne!(func_end, 0);
 
+        let (function_file, function_line, function_col) =
+            get_span_loc(tcx, function_span, function_span);
+
+        let function_file_id = line_program_add_file(
+            &mut self.dwarf.unit.line_program,
+            &mut self.dwarf.line_strings,
+            &function_file,
+        );
+
         let entry = self.dwarf.unit.get_mut(entry_id);
         entry.set(
             gimli::DW_AT_low_pc,
             AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
         );
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
-
-        self.emit_location(tcx, entry_id, function_span);
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(function_file_id)));
+        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(function_line));
+        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(function_col));
 
         func_end
     }
