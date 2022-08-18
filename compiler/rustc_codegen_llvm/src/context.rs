@@ -644,7 +644,6 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         let i8p = self.type_i8p();
         let void = self.type_void();
-        let voidp = self.type_ptr_to(void);
         let i1 = self.type_i1();
         let t_i8 = self.type_i8();
         let t_i16 = self.type_i16();
@@ -888,7 +887,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             ifn!("llvm.dbg.value", fn(t_metadata, t_i64, t_metadata) -> void);
         }
 
-        ifn!("llvm.ptrmask", fn(voidp, t_isize) -> voidp);
+        ifn!("llvm.ptrmask", fn(i8p, t_isize) -> i8p);
 
         None
     }
