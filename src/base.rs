@@ -10,6 +10,7 @@ use rustc_middle::ty::SymbolName;
 use indexmap::IndexSet;
 
 use crate::constant::ConstantCx;
+use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
@@ -18,6 +19,7 @@ struct CodegenedFunction<'tcx> {
     func_id: FuncId,
     func: Function,
     clif_comments: CommentWriter,
+    func_debug_cx: Option<FunctionDebugContext>,
     function_span: Span,
     source_info_set: IndexSet<SourceInfo>,
 }
@@ -82,6 +84,12 @@ fn codegen_fn<'tcx>(
     let pointer_type = target_config.pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
+    let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
+        Some(debug_context.define_function(symbol_name.name))
+    } else {
+        None
+    };
+
     let mut fx = FunctionCx {
         cx,
         module,
@@ -89,6 +97,7 @@ fn codegen_fn<'tcx>(
         target_config,
         pointer_type,
         constants_cx: ConstantCx::new(),
+        func_debug_cx,
 
         instance,
         symbol_name,
@@ -109,6 +118,7 @@ fn codegen_fn<'tcx>(
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let clif_comments = fx.clif_comments;
+    let func_debug_cx = fx.func_debug_cx;
     let function_span = fx.mir.span;
     let source_info_set = fx.source_info_set;
 
@@ -128,7 +138,15 @@ fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction { symbol_name, func_id, func, clif_comments, function_span, source_info_set }
+    CodegenedFunction {
+        symbol_name,
+        func_id,
+        func,
+        clif_comments,
+        func_debug_cx,
+        function_span,
+        source_info_set,
+    }
 }
 
 fn compile_fn<'tcx>(
@@ -214,7 +232,7 @@ fn compile_fn<'tcx>(
     let unwind_context = &mut cx.unwind_context;
     cx.profiler.verbose_generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
-            debug_context.define_function(codegened_func.symbol_name.name).finalize(
+            codegened_func.func_debug_cx.unwrap().finalize(
                 debug_context,
                 tcx,
                 codegened_func.func_id,

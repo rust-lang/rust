@@ -9,6 +9,7 @@ use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
+use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -238,6 +239,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) target_config: TargetFrontendConfig, // Cached from module
     pub(crate) pointer_type: Type,                  // Cached from module
     pub(crate) constants_cx: ConstantCx,
+    pub(crate) func_debug_cx: Option<FunctionDebugContext>,
 
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: SymbolName<'tcx>,
