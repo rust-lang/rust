@@ -228,6 +228,8 @@ pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
 pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
 pub const MSG_PEEK: c_int = 0x2;
 
+pub const LOAD_LIBRARY_SEARCH_SYSTEM32: u32 = 0x800;
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct linger {
@@ -1030,6 +1032,7 @@ extern "system" {
     pub fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
+    pub fn LoadLibraryExA(lplibfilename: *const i8, hfile: HANDLE, dwflags: u32) -> HINSTANCE;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
     pub fn GetSystemInfo(lpSystemInfo: LPSYSTEM_INFO);
@@ -1250,21 +1253,16 @@ compat_fn_with_fallback! {
     }
 }
 
-compat_fn_with_fallback! {
-    pub static SYNCH_API: &CStr = ansi_str!("api-ms-win-core-synch-l1-2-0");
-    #[allow(unused)]
-    fn WakeByAddressSingle(Address: LPVOID) -> () {
-        // This fallback is currently tightly coupled to its use in Parker::unpark.
-        //
-        // FIXME: If `WakeByAddressSingle` needs to be used anywhere other than
-        // Parker::unpark then this fallback will be wrong and will need to be decoupled.
-        crate::sys::windows::thread_parker::unpark_keyed_event(Address)
-    }
+compat_fn_optional! {
+    crate::sys::compat::load_synch_functions();
+    pub fn WaitOnAddress(
+        Address: LPVOID,
+        CompareAddress: LPVOID,
+        AddressSize: SIZE_T,
+        dwMilliseconds: DWORD
+    );
+    pub fn WakeByAddressSingle(Address: LPVOID);
 }
-pub use crate::sys::compat::WaitOnAddress;
-// Change exported name of `WakeByAddressSingle` to make the strange fallback
-// behaviour clear.
-pub use WakeByAddressSingle::call as wake_by_address_single_or_unpark_keyed_event;
 
 compat_fn_with_fallback! {
     pub static NTDLL: &CStr = ansi_str!("ntdll");
