@@ -71,3 +71,14 @@ pub enum InvalidVisibilityNote {
     #[note(ast_passes::individual_foreign_items)]
     IndividualForeignItems,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(ast_passes::trait_fn_async, code = "E0706")]
+#[note]
+#[note(ast_passes::note2)]
+pub struct TraitFnAsync {
+    #[primary_span]
+    pub fn_span: Span,
+    #[label]
+    pub span: Span,
+}

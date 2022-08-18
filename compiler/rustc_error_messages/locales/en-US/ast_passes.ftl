@@ -21,3 +21,9 @@ ast_passes_invalid_visibility =
     .implied = `pub` not permitted here because it's implied
     .individual_impl_items = place qualifiers on individual impl items instead
     .individual_foreign_items = place qualifiers on individual foreign items instead
+
+ast_passes_trait_fn_async =
+    functions in traits cannot be declared `async`
+    .label = `async` because of this
+    .note = `async` trait functions are not currently supported
+    .note2 = consider using the `async-trait` crate: https://crates.io/crates/async-trait

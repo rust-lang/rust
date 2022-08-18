@@ -287,16 +287,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_async(&self, fn_span: Span, asyncness: Async) {
         if let Async::Yes { span, .. } = asyncness {
-            struct_span_err!(
-                self.session,
-                fn_span,
-                E0706,
-                "functions in traits cannot be declared `async`"
-            )
-            .span_label(span, "`async` because of this")
-            .note("`async` trait functions are not currently supported")
-            .note("consider using the `async-trait` crate: https://crates.io/crates/async-trait")
-            .emit();
+            self.session.emit_err(TraitFnAsync { fn_span, span });
         }
     }
 
