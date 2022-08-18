@@ -11,6 +11,8 @@ use rustc_target::abi::VariantIdx;
 
 use std::iter;
 
+use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
+
 /// Destructures array, ADT or tuple constants into the constants
 /// of their fields.
 pub(crate) fn destructure_const<'tcx>(
@@ -93,26 +95,25 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         self.body.exprs[self.body_id].span
     }
 
-    fn error(&mut self, span: Span, msg: &str) -> Result<!, ErrorGuaranteed> {
-        let reported = self
-            .tcx
-            .sess
-            .struct_span_err(self.root_span(), "overly complex generic constant")
-            .span_label(span, msg)
-            .help("consider moving this anonymous constant into a `const` function")
-            .emit();
+    fn error(&mut self, sub: GenericConstantTooComplexSub) -> Result<!, ErrorGuaranteed> {
+        let reported = self.tcx.sess.emit_err(GenericConstantTooComplex {
+            span: self.root_span(),
+            maybe_supported: None,
+            sub,
+        });
 
         Err(reported)
     }
-    fn maybe_supported_error(&mut self, span: Span, msg: &str) -> Result<!, ErrorGuaranteed> {
-        let reported = self
-            .tcx
-            .sess
-            .struct_span_err(self.root_span(), "overly complex generic constant")
-            .span_label(span, msg)
-            .help("consider moving this anonymous constant into a `const` function")
-            .note("this operation may be supported in the future")
-            .emit();
+
+    fn maybe_supported_error(
+        &mut self,
+        sub: GenericConstantTooComplexSub,
+    ) -> Result<!, ErrorGuaranteed> {
+        let reported = self.tcx.sess.emit_err(GenericConstantTooComplex {
+            span: self.root_span(),
+            maybe_supported: Some(()),
+            sub,
+        });
 
         Err(reported)
     }
@@ -243,22 +244,23 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             &ExprKind::Scope { value, .. } => self.recurse_build(value)?,
             &ExprKind::PlaceTypeAscription { source, .. }
             | &ExprKind::ValueTypeAscription { source, .. } => self.recurse_build(source)?,
-            &ExprKind::Literal { lit, neg} => {
+            &ExprKind::Literal { lit, neg } => {
                 let sp = node.span;
-                let constant =
-                    match self.tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
-                        Ok(c) => c,
-                        Err(LitToConstError::Reported) => {
-                            self.tcx.const_error(node.ty)
-                        }
-                        Err(LitToConstError::TypeError) => {
-                            bug!("encountered type error in lit_to_const")
-                        }
-                    };
+                let constant = match self.tcx.at(sp).lit_to_const(LitToConstInput {
+                    lit: &lit.node,
+                    ty: node.ty,
+                    neg,
+                }) {
+                    Ok(c) => c,
+                    Err(LitToConstError::Reported) => self.tcx.const_error(node.ty),
+                    Err(LitToConstError::TypeError) => {
+                        bug!("encountered type error in lit_to_const")
+                    }
+                };
 
                 self.nodes.push(Node::Leaf(constant))
             }
-            &ExprKind::NonHirLiteral { lit , user_ty: _} => {
+            &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
                 let val = ty::ValTree::from_scalar_int(lit);
                 self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, val, node.ty)))
             }
@@ -269,19 +271,17 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
 
-                let constant = self.tcx.mk_const(ty::ConstS {
-                                kind: ty::ConstKind::Unevaluated(uneval),
-                                ty: node.ty,
-                            });
+                let constant = self
+                    .tcx
+                    .mk_const(ty::ConstS { kind: ty::ConstKind::Unevaluated(uneval), ty: node.ty });
 
                 self.nodes.push(Node::Leaf(constant))
             }
 
-            ExprKind::ConstParam {param, ..} => {
-                let const_param = self.tcx.mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Param(*param),
-                        ty: node.ty,
-                    });
+            ExprKind::ConstParam { param, .. } => {
+                let const_param = self
+                    .tcx
+                    .mk_const(ty::ConstS { kind: ty::ConstKind::Param(*param), ty: node.ty });
                 self.nodes.push(Node::Leaf(const_param))
             }
 
@@ -312,13 +312,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // }
             // ```
             ExprKind::Block { block } => {
-                if let thir::Block { stmts: box [], expr: Some(e), .. } = &self.body.blocks[*block] {
+                if let thir::Block { stmts: box [], expr: Some(e), .. } = &self.body.blocks[*block]
+                {
                     self.recurse_build(*e)?
                 } else {
-                    self.maybe_supported_error(
+                    self.maybe_supported_error(GenericConstantTooComplexSub::BlockNotSupported(
                         node.span,
-                        "blocks are not supported in generic constant",
-                    )?
+                    ))?
                 }
             }
             // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
@@ -332,7 +332,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let arg = self.recurse_build(source)?;
                 self.nodes.push(Node::Cast(CastKind::As, arg, node.ty))
             }
-            ExprKind::Borrow{ arg, ..} => {
+            ExprKind::Borrow { arg, .. } => {
                 let arg_node = &self.body.exprs[*arg];
 
                 // Skip reborrows for now until we allow Deref/Borrow/AddressOf
@@ -341,76 +341,69 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 if let ExprKind::Deref { arg } = arg_node.kind {
                     self.recurse_build(arg)?
                 } else {
-                    self.maybe_supported_error(
+                    self.maybe_supported_error(GenericConstantTooComplexSub::BorrowNotSupported(
                         node.span,
-                        "borrowing is not supported in generic constants",
-                    )?
+                    ))?
                 }
             }
             // FIXME(generic_const_exprs): We may want to support these.
-            ExprKind::AddressOf { .. } | ExprKind::Deref {..}=> self.maybe_supported_error(
-                node.span,
-                "dereferencing or taking the address is not supported in generic constants",
+            ExprKind::AddressOf { .. } | ExprKind::Deref { .. } => self.maybe_supported_error(
+                GenericConstantTooComplexSub::AddressAndDerefNotSupported(node.span),
             )?,
-            ExprKind::Repeat { .. } | ExprKind::Array { .. } =>  self.maybe_supported_error(
-                node.span,
-                "array construction is not supported in generic constants",
+            ExprKind::Repeat { .. } | ExprKind::Array { .. } => self.maybe_supported_error(
+                GenericConstantTooComplexSub::ArrayNotSupported(node.span),
             )?,
             ExprKind::NeverToAny { .. } => self.maybe_supported_error(
-                node.span,
-                "converting nevers to any is not supported in generic constant",
+                GenericConstantTooComplexSub::NeverToAnyNotSupported(node.span),
             )?,
             ExprKind::Tuple { .. } => self.maybe_supported_error(
-                node.span,
-                "tuple construction is not supported in generic constants",
+                GenericConstantTooComplexSub::TupleNotSupported(node.span),
             )?,
             ExprKind::Index { .. } => self.maybe_supported_error(
-                node.span,
-                "indexing is not supported in generic constant",
+                GenericConstantTooComplexSub::IndexNotSupported(node.span),
             )?,
             ExprKind::Field { .. } => self.maybe_supported_error(
-                node.span,
-                "field access is not supported in generic constant",
+                GenericConstantTooComplexSub::FieldNotSupported(node.span),
             )?,
             ExprKind::ConstBlock { .. } => self.maybe_supported_error(
-                node.span,
-                "const blocks are not supported in generic constant",
+                GenericConstantTooComplexSub::ConstBlockNotSupported(node.span),
             )?,
-            ExprKind::Adt(_) => self.maybe_supported_error(
-                node.span,
-                "struct/enum construction is not supported in generic constants",
-            )?,
+            ExprKind::Adt(_) => self
+                .maybe_supported_error(GenericConstantTooComplexSub::AdtNotSupported(node.span))?,
             // dont know if this is correct
-            ExprKind::Pointer { .. } =>
-                self.error(node.span, "pointer casts are not allowed in generic constants")?,
-            ExprKind::Yield { .. } =>
-                self.error(node.span, "generator control flow is not allowed in generic constants")?,
-            ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Loop { .. } => self
-                .error(
-                    node.span,
-                    "loops and loop control flow are not supported in generic constants",
-                )?,
-            ExprKind::Box { .. } =>
-                self.error(node.span, "allocations are not allowed in generic constants")?,
+            ExprKind::Pointer { .. } => {
+                self.error(GenericConstantTooComplexSub::PointerNotSupported(node.span))?
+            }
+            ExprKind::Yield { .. } => {
+                self.error(GenericConstantTooComplexSub::YieldNotSupported(node.span))?
+            }
+            ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Loop { .. } => {
+                self.error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
+            }
+            ExprKind::Box { .. } => {
+                self.error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?
+            }
 
             ExprKind::Unary { .. } => unreachable!(),
             // we handle valid unary/binary ops above
-            ExprKind::Binary { .. } =>
-                self.error(node.span, "unsupported binary operation in generic constants")?,
-            ExprKind::LogicalOp { .. } =>
-                self.error(node.span, "unsupported operation in generic constants, short-circuiting operations would imply control flow")?,
-            ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-                self.error(node.span, "assignment is not supported in generic constants")?
+            ExprKind::Binary { .. } => {
+                self.error(GenericConstantTooComplexSub::BinaryNotSupported(node.span))?
             }
-            ExprKind::Closure { .. } | ExprKind::Return { .. } => self.error(
-                node.span,
-                "closures and function keywords are not supported in generic constants",
-            )?,
+            ExprKind::LogicalOp { .. } => {
+                self.error(GenericConstantTooComplexSub::LogicalOpNotSupported(node.span))?
+            }
+            ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
+                self.error(GenericConstantTooComplexSub::AssignNotSupported(node.span))?
+            }
+            ExprKind::Closure { .. } | ExprKind::Return { .. } => {
+                self.error(GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span))?
+            }
             // let expressions imply control flow
-            ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } =>
-                self.error(node.span, "control flow is not supported in generic constants")?,
+            ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } => {
+                self.error(GenericConstantTooComplexSub::ControlFlowNotSupported(node.span))?
+            }
             ExprKind::InlineAsm { .. } => {
-                self.error(node.span, "assembly is not supported in generic constants")?
+                self.error(GenericConstantTooComplexSub::InlineAsmNotSupported(node.span))?
             }
 
             // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
@@ -418,7 +411,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             | ExprKind::UpvarRef { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::ThreadLocalRef(_) => {
-                self.error(node.span, "unsupported operation in generic constant")?
+                self.error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
             }
         })
     }
