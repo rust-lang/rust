@@ -1,6 +1,14 @@
 #![feature(type_alias_impl_trait)]
 
 // edition:2021
+// unset-rustc-env:RUST_BACKTRACE
+// compile-flags:-Z treat-err-as-bug=1
+// error-pattern:stack backtrace:
+// failure-status:101
+// normalize-stderr-test "note: .*" -> ""
+// normalize-stderr-test "thread 'rustc' .*" -> ""
+// normalize-stderr-test " +[0-9]+:.*\n" -> ""
+// normalize-stderr-test " +at .*\n" -> ""
 
 use std::future::Future;
 
@@ -23,7 +31,6 @@ struct Context {
 type TransactionResult<O> = Result<O, ()>;
 
 type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
-//~^ ERROR unconstrained opaque type
 
 fn execute_transaction_fut<'f, F, O>(
     f: F,
