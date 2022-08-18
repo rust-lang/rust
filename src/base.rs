@@ -214,10 +214,10 @@ fn compile_fn<'tcx>(
     let unwind_context = &mut cx.unwind_context;
     cx.profiler.verbose_generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
-            debug_context.define_function(
+            debug_context.define_function(codegened_func.symbol_name.name).finalize(
+                debug_context,
                 tcx,
                 codegened_func.func_id,
-                codegened_func.symbol_name.name,
                 context,
                 codegened_func.function_span,
                 &codegened_func.source_info_set,
