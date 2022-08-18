@@ -99,7 +99,12 @@ impl DebugContext {
         DebugContext { endian, dwarf, unit_range_list: RangeList(Vec::new()) }
     }
 
-    pub(crate) fn define_function(&mut self, name: &str) -> FunctionDebugContext {
+    pub(crate) fn define_function(
+        &mut self,
+        tcx: TyCtxt<'_>,
+        name: &str,
+        function_span: Span,
+    ) -> FunctionDebugContext {
         // FIXME: add to appropriate scope instead of root
         let scope = self.dwarf.unit.root();
 
@@ -110,13 +115,17 @@ impl DebugContext {
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
         entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
 
-        FunctionDebugContext { entry_id }
+        let mut function_debug_context = FunctionDebugContext { entry_id };
+
+        function_debug_context.set_function_span(self, tcx, function_span);
+
+        function_debug_context
     }
 }
 
 impl FunctionDebugContext {
     pub(crate) fn finalize(
-        self,
+        mut self,
         debug_context: &mut DebugContext,
         tcx: TyCtxt<'_>,
         func_id: FuncId,
@@ -126,10 +135,10 @@ impl FunctionDebugContext {
     ) {
         let symbol = func_id.as_u32() as usize;
 
-        let end = debug_context.create_debug_lines(
+        let end = self.create_debug_lines(
+            debug_context,
             tcx,
             symbol,
-            self.entry_id,
             context,
             function_span,
             source_info_set,

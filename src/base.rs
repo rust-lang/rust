@@ -85,7 +85,7 @@ fn codegen_fn<'tcx>(
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
-        Some(debug_context.define_function(symbol_name.name))
+        Some(debug_context.define_function(tcx, symbol_name.name, mir.span))
     } else {
         None
     };

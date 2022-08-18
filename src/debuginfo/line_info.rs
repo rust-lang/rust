@@ -3,6 +3,7 @@
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
+use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 
 use rustc_data_structures::sync::Lrc;
@@ -15,7 +16,6 @@ use cranelift_codegen::MachSrcLoc;
 
 use gimli::write::{
     Address, AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable,
-    UnitEntryId,
 };
 
 // OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.
@@ -121,19 +121,39 @@ fn line_program_add_file(
     }
 }
 
-impl DebugContext {
+impl FunctionDebugContext {
+    pub(super) fn set_function_span(
+        &mut self,
+        debug_context: &mut DebugContext,
+        tcx: TyCtxt<'_>,
+        span: Span,
+    ) {
+        let (file, line, column) = get_span_loc(tcx, span, span);
+
+        let file_id = line_program_add_file(
+            &mut debug_context.dwarf.unit.line_program,
+            &mut debug_context.dwarf.line_strings,
+            &file,
+        );
+
+        let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
+        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
+        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(column));
+    }
+
     pub(super) fn create_debug_lines(
         &mut self,
+        debug_context: &mut DebugContext,
         tcx: TyCtxt<'_>,
         symbol: usize,
-        entry_id: UnitEntryId,
         context: &Context,
         function_span: Span,
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
-        let line_program = &mut self.dwarf.unit.line_program;
+        let line_program = &mut debug_context.dwarf.unit.line_program;
 
-        let line_strings = &mut self.dwarf.line_strings;
+        let line_strings = &mut debug_context.dwarf.line_strings;
         let mut last_span = None;
         let mut last_file = None;
         let mut create_row_for_span = |line_program: &mut LineProgram, span: Span| {
@@ -189,24 +209,12 @@ impl DebugContext {
 
         assert_ne!(func_end, 0);
 
-        let (function_file, function_line, function_col) =
-            get_span_loc(tcx, function_span, function_span);
-
-        let function_file_id = line_program_add_file(
-            &mut self.dwarf.unit.line_program,
-            &mut self.dwarf.line_strings,
-            &function_file,
-        );
-
-        let entry = self.dwarf.unit.get_mut(entry_id);
+        let entry = debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(
             gimli::DW_AT_low_pc,
             AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
         );
         entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
-        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(function_file_id)));
-        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(function_line));
-        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(function_col));
 
         func_end
     }
