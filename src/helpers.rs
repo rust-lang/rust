@@ -954,5 +954,5 @@ pub fn get_local_crates(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
 /// Helper function used inside the shims of foreign functions to check that
 /// `target_os` is a supported UNIX OS.
 pub fn target_os_is_unix(target_os: &str) -> bool {
-    matches!(target_os, "linux" | "macos" | "freebsd")
+    matches!(target_os, "linux" | "macos" | "freebsd" | "android")
 }

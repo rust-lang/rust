@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Dlsym::NtWriteFile => {
                 if !this.frame_in_std() {
                     throw_unsup_format!(
-                        "NtWriteFile support is crude and just enough for stdout to work"
+                        "`NtWriteFile` support is crude and just enough for stdout to work"
                     );
                 }
 
@@ -68,7 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 if byte_offset != 0 {
                     throw_unsup_format!(
-                        "NtWriteFile ByteOffset paremeter is non-null, which is unsupported"
+                        "`NtWriteFile` `ByteOffset` paremeter is non-null, which is unsupported"
                     );
                 }
 
