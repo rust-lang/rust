@@ -420,28 +420,21 @@ fn assoc_fn_target_info(
 ) -> Option<TargetInfo> {
     let mut target_module = None;
     let mut adt_name = None;
-    let (target, file, insert_offset) =
-        assoc_fn_target(ctx, call, adt, &mut target_module, fn_name, &mut adt_name)?;
+    let (target, file, insert_offset) = {
+        let target_module: &mut Option<Module> = &mut target_module;
+        let adt_name: &mut Option<hir::Name> = &mut adt_name;
+        let current_module = ctx.sema.scope(call.syntax())?.module();
+        let module = adt.module(ctx.sema.db);
+        *target_module = if current_module == module { None } else { Some(module) };
+        if current_module.krate() != module.krate() {
+            return None;
+        }
+        let (impl_, file) = get_adt_source(ctx, &adt, fn_name)?;
+        let (target, insert_offset) = get_method_target(ctx, &module, &impl_)?;
+        *adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
+        Some((target, file, insert_offset))
+    }?;
     Some(TargetInfo { target_module, adt_name, target, file, insert_offset })
-}
-fn assoc_fn_target(
-    ctx: &AssistContext<'_>,
-    call: &CallExpr,
-    adt: hir::Adt,
-    target_module: &mut Option<Module>,
-    fn_name: &str,
-    adt_name: &mut Option<hir::Name>,
-) -> Option<(GeneratedFunctionTarget, FileId, TextSize)> {
-    let current_module = ctx.sema.scope(call.syntax())?.module();
-    let module = adt.module(ctx.sema.db);
-    *target_module = if current_module == module { None } else { Some(module) };
-    if current_module.krate() != module.krate() {
-        return None;
-    }
-    let (impl_, file) = get_adt_source(ctx, &adt, fn_name)?;
-    let (target, insert_offset) = get_method_target(ctx, &module, &impl_)?;
-    *adt_name = if impl_.is_none() { Some(adt.name(ctx.sema.db)) } else { None };
-    Some((target, file, insert_offset))
 }
 
 fn get_insert_offset(target: &GeneratedFunctionTarget) -> TextSize {
